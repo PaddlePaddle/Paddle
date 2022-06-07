@@ -6,7 +6,7 @@
 # run a container
 # docker run --ulimit memlock=-1:-1 --net=host --cap-add=IPC_LOCK --device=/dev/infiniband/ --ipc=host --rm -it paddlepaddle/paddle:latest-dev-ipu bash
 
-FROM graphcore/poplar-extbaidu:2.5.0-ubuntu-18.04-20220407
+FROM graphcore/poplar:2.5.1
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 # ENV variables

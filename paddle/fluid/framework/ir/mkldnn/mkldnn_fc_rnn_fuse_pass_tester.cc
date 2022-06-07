@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/ir/fc_gru_fuse_pass_tester.h"
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass_tester.h"
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"

@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,9 +21,6 @@ import paddle.nn.functional as F
 
 from paddle.incubate.optimizer.functional.bfgs import minimize_bfgs
 from paddle.fluid.framework import _test_eager_guard
-
-from paddle.fluid.framework import _enable_legacy_dygraph
-_enable_legacy_dygraph()
 
 np.random.seed(123)
 
@@ -48,10 +45,13 @@ def test_static_graph_H0(func, x0, H0, dtype='float32'):
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
         X = paddle.static.data(name='x', shape=[x0.shape[0]], dtype=dtype)
-        H = paddle.static.data(
-            name='h', shape=[H0.shape[0], H0.shape[1]], dtype=dtype)
-        Y = minimize_bfgs(
-            func, X, initial_inverse_hessian_estimate=H, dtype=dtype)
+        H = paddle.static.data(name='h',
+                               shape=[H0.shape[0], H0.shape[1]],
+                               dtype=dtype)
+        Y = minimize_bfgs(func,
+                          X,
+                          initial_inverse_hessian_estimate=H,
+                          dtype=dtype)
 
     exe = paddle.static.Executor()
     exe.run(startup)
@@ -67,15 +67,15 @@ def test_dynamic_graph(func,
     x0 = paddle.to_tensor(x0)
     if H0 is not None:
         H0 = paddle.to_tensor(H0)
-    return minimize_bfgs(
-        func,
-        x0,
-        initial_inverse_hessian_estimate=H0,
-        line_search_fn=line_search_fn,
-        dtype=dtype)
+    return minimize_bfgs(func,
+                         x0,
+                         initial_inverse_hessian_estimate=H0,
+                         line_search_fn=line_search_fn,
+                         dtype=dtype)
 
 
 class TestBfgs(unittest.TestCase):
+
     def test_quadratic_nd(self):
         for dimension in [1, 10]:
             minimum = np.random.random(size=[dimension]).astype('float32')
@@ -109,10 +109,11 @@ class TestBfgs(unittest.TestCase):
         self.assertFalse(results[0][0])
 
     def test_multi_minima(self):
+
         def func(x):
             # df = 12(x + 1.1)(x - 0.2)(x - 0.8)
             # f = 3*x^4+0.4*x^3-5.46*x^2+2.112*x
-            # minimum = -1.1 or 0.8. 
+            # minimum = -1.1 or 0.8.
             # All these minima may be reached from appropriate starting points.
             return 3 * x**4 + 0.4 * x**3 - 5.64 * x**2 + 2.112 * x
 
@@ -146,6 +147,7 @@ class TestBfgs(unittest.TestCase):
         self.func_rosenbrock()
 
     def test_exception(self):
+
         def func(x):
             return paddle.dot(x, x)
 
@@ -162,12 +164,11 @@ class TestBfgs(unittest.TestCase):
         self.assertRaises(ValueError, test_dynamic_graph, func, x0, H0=H1)
 
         # test line_search_fn is bad
-        self.assertRaises(
-            NotImplementedError,
-            test_static_graph,
-            func,
-            x0,
-            line_search_fn='other')
+        self.assertRaises(NotImplementedError,
+                          test_static_graph,
+                          func,
+                          x0,
+                          line_search_fn='other')
 
 
 if __name__ == '__main__':

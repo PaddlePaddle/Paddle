@@ -19,11 +19,13 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <curand_kernel.h>
+
 #include "paddle/fluid/platform/dynload/curand.h"
 #endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
+
 #include "paddle/fluid/platform/dynload/hiprand.h"
 #endif
 
@@ -34,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/functors.h"
@@ -195,9 +198,13 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
     size_t main_offset =
         size / (block_size * kVecSize) * (block_size * kVecSize);
 
-    VectorizedRandomGenerator<T, uint8_t><<<grid_size, block_size, 0, stream>>>(
+#define PD_DROPOUT_KERNEL_NAME VectorizedRandomGenerator<T, uint8_t>
+    PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(
+        !is_fix_seed, PD_DROPOUT_KERNEL_NAME, grid_size, block_size, 0, stream,
+        offset, KERNEL_PARAMS.As<uint64_t>(1), KERNEL_PARAMS.As<uint64_t>(7),
         size, seed_data, dropout_prob, x_data, mask_data, y_data,
         upscale_in_train, increment, main_offset);
+#undef PD_DROPOUT_KERNEL_NAME
   } else {
     if (upscale_in_train) {
 // todo: can y share with data with x directly?

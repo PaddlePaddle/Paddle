@@ -25,7 +25,7 @@ namespace paddle {
 namespace framework {
 class ProgramDesc;
 class Scope;
-}
+}  // namespace framework
 
 namespace distributed {
 class RuntimeGraph;

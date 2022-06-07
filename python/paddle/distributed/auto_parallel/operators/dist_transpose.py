@@ -26,6 +26,7 @@ from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedTranspose2(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedTranspose2, self).__init__(op_type)
 
@@ -35,6 +36,7 @@ register_distributed_operator_impl_container(
 
 
 class DistributedTranspose2Impl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedTranspose2Impl, self).__init__(name)
         self._forward_implemented = False

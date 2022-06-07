@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/modified_huber_loss_op.h"
+
 #include <memory>
 
 namespace paddle {
@@ -29,10 +30,11 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::InvalidArgument(
-                                            "Input(input) rank should be 2, "
-                                            "but received input rank(%d) != 2",
-                                            x_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 2,
+        platform::errors::InvalidArgument("Input(input) rank should be 2, "
+                                          "but received input rank(%d) != 2",
+                                          x_dims.size()));
 
     if (ctx->IsRuntime() ||
         (phi::product(x_dims) > 0 && phi::product(y_dims) > 0)) {

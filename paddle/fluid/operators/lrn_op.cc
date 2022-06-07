@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lrn_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
@@ -174,20 +176,23 @@ class LRNOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("MidOut"), "Output", "MidOut", "LRN");
 
     auto x_dim = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(x_dim.size(), 4, platform::errors::InvalidArgument(
-                                           "Input(input) rank should be 4, "
-                                           "but received input rank (%d) != 4",
-                                           x_dim.size()));
+    PADDLE_ENFORCE_EQ(
+        x_dim.size(), 4,
+        platform::errors::InvalidArgument("Input(input) rank should be 4, "
+                                          "but received input rank (%d) != 4",
+                                          x_dim.size()));
 
     int n = ctx->Attrs().Get<int>("n");
-    PADDLE_ENFORCE_GT(n, 0UL, platform::errors::InvalidArgument(
-                                  "Argument(n) should be positive, "
-                                  "but received n(%d) not greater than 0",
-                                  n));
-    PADDLE_ENFORCE_EQ(n % 2, 1UL, platform::errors::InvalidArgument(
-                                      "Argument(n) should be odd value, "
-                                      "but received n(%d) is not an odd value",
-                                      n));
+    PADDLE_ENFORCE_GT(n, 0UL,
+                      platform::errors::InvalidArgument(
+                          "Argument(n) should be positive, "
+                          "but received n(%d) not greater than 0",
+                          n));
+    PADDLE_ENFORCE_EQ(n % 2, 1UL,
+                      platform::errors::InvalidArgument(
+                          "Argument(n) should be odd value, "
+                          "but received n(%d) is not an odd value",
+                          n));
 
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");

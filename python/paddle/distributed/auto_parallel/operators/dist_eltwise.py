@@ -35,6 +35,7 @@ from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedElementwise(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedElementwise, self).__init__(op_type)
 
@@ -45,6 +46,7 @@ register_distributed_operator_impl_container(
 
 # Replicated Elementwise
 class DistributedElementwiseImpl0(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedElementwiseImpl0, self).__init__(name)
         self._forward_implemented = False
@@ -208,8 +210,8 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
                     changed = True
             else:
                 if compatible_dims_mapping != input_dims_mapping_dict[arg_name]:
-                    op_dist_attr.set_input_dims_mapping(arg_name,
-                                                        compatible_dims_mapping)
+                    op_dist_attr.set_input_dims_mapping(
+                        arg_name, compatible_dims_mapping)
                     changed = True
 
         for arg_name in output_arg_names:
@@ -222,12 +224,11 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
                                output_dims_mapping_lens[arg_name]) + i
                     new_dims_mapping[i] = compatible_dims_mapping[new_idx]
                 if new_dims_mapping != output_dims_mapping_dict[arg_name]:
-                    op_dist_attr.set_output_dims_mapping(arg_name,
-                                                         new_dims_mapping)
+                    op_dist_attr.set_output_dims_mapping(
+                        arg_name, new_dims_mapping)
                     changed = True
             else:
-                if compatible_dims_mapping != output_dims_mapping_dict[
-                        arg_name]:
+                if compatible_dims_mapping != output_dims_mapping_dict[arg_name]:
                     op_dist_attr.set_output_dims_mapping(
                         arg_name, compatible_dims_mapping)
                     changed = True

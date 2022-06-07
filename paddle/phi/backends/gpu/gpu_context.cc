@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+
 #include <algorithm>
 #include <array>
 #include <functional>
@@ -21,8 +22,8 @@ limitations under the License. */
 #include <memory>
 #include <mutex>
 
+#include "glog/logging.h"
 #include "paddle/phi/api/ext/exception.h"
-
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_resources.h"
@@ -503,8 +504,7 @@ struct GPUContext::Impl {
 
   void AddStreamCallback(const std::function<void()>& callback) const {
     // NOTE(zhiqiu): better use threadpool here, otherwise "std::async" may
-    // launch too
-    // many threads and result in thread oversubscription.
+    // launch too many threads and result in thread oversubscription.
     auto* callback_func = new std::function<void()>(std::move(callback));
     auto* func = new std::function<void()>([this, callback_func] {
       std::lock_guard<std::mutex> lock(stream_call_back_mtx_);

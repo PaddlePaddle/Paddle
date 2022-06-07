@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -264,10 +263,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   kernel_context.EmplaceBackAttr(fake_attr_int64_vec);
   kernel_context.EmplaceBackAttr(fake_attr_int_vec);
 
-  auto dense_out = std::make_shared<phi::DenseTensor>(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPhiPlace(backend)),
-      phi::DenseTensorMeta());
+  auto dense_out = std::make_shared<phi::DenseTensor>();
 
   phi::MetaTensor meta_out(dense_out.get());
   phi::DotInferMeta(*dense_x, *dense_y, &meta_out);

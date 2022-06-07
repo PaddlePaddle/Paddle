@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -41,7 +42,7 @@ class SegmentPoolGradFunctor {
                   const DenseTensor& out_grad,
                   const DenseTensor& segments,
                   DenseTensor* in_grad,
-                  paddle::optional<const DenseTensor&> summed_ids,
+                  const paddle::optional<DenseTensor>& summed_ids,
                   const std::string pooltype = "SUM");
 };
 

@@ -178,10 +178,8 @@ REGISTER_OPERATOR(print, ops::PrintOp, ops::PrintOpProtoAndCheckMaker,
                   ops::PrintOpGradientMaker<paddle::imperative::OpBase>,
                   ops::PrintOpInferShape, ops::PrintOpVarTypeInference);
 
-REGISTER_OP_VERSION(print)
-    .AddCheckpoint(
-        R"ROC(Upgrade print add a new attribute [print_tensor_layout] to "
+REGISTER_OP_VERSION(print).AddCheckpoint(
+    R"ROC(Upgrade print add a new attribute [print_tensor_layout] to "
              "contorl whether to print tensor's layout.)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "print_tensor_layout", "Whether to print the tensor's layout.",
-            true));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "print_tensor_layout", "Whether to print the tensor's layout.", true));

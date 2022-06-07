@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/mlu/mlu_tracer.h"
+
 #include <string>
 #include <unordered_map>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/platform/os_info.h"

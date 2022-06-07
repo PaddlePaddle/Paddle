@@ -114,14 +114,16 @@ class InterpolateV2XPUKernel : public framework::OpKernel<T> {
         out_w = out_size_data[1];
       }
     }
-    PADDLE_ENFORCE_GT(out_h, 0, platform::errors::InvalidArgument(
-                                    "out_h in Attr(out_shape) of "
-                                    "Op(interpolate) "
-                                    "should be greater than 0."));
-    PADDLE_ENFORCE_GT(out_w, 0, platform::errors::InvalidArgument(
-                                    "out_w in Attr(out_shape) of "
-                                    "Op(interpolate) "
-                                    "should be greater than 0."));
+    PADDLE_ENFORCE_GT(
+        out_h, 0,
+        platform::errors::InvalidArgument("out_h in Attr(out_shape) of "
+                                          "Op(interpolate) "
+                                          "should be greater than 0."));
+    PADDLE_ENFORCE_GT(
+        out_w, 0,
+        platform::errors::InvalidArgument("out_w in Attr(out_shape) of "
+                                          "Op(interpolate) "
+                                          "should be greater than 0."));
     framework::DDim dim_out;
     if (data_layout == DataLayout::kNCHW) {
       dim_out = {n, c, out_h, out_w};

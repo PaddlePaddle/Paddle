@@ -14,6 +14,7 @@
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+
 #include "paddle/fluid/operators/sequence_ops/sequence_enumerate_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 

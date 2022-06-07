@@ -51,7 +51,7 @@ void InitRandomTensor(const std::vector<int64_t> &dims,
 template <typename T>
 void TransposeNchwToNhwc(const framework::Tensor &cpu_in,
                          framework::Tensor *cpu_out) {
-  auto in_dims = cpu_in.dims();
+  const auto &in_dims = cpu_in.dims();
   EXPECT_EQ(cpu_in.dims().size(), 4);
 
   const T *cpu_in_ptr = cpu_in.data<T>();
@@ -167,9 +167,10 @@ void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
   attrs.insert({"workspace_size_MB", 512});
 
   auto op = framework::OpRegistry::CreateOp(
-      "conv2d_grad", {{"Input", {"Input"}},
-                      {"Filter", {"Filter"}},
-                      {"Output@GRAD", {"Output@GRAD"}}},
+      "conv2d_grad",
+      {{"Input", {"Input"}},
+       {"Filter", {"Filter"}},
+       {"Output@GRAD", {"Output@GRAD"}}},
       {{"Input@GRAD", {"Input@GRAD"}}, {"Filter@GRAD", {"Filter@GRAD"}}},
       attrs);
   op->Run(scope, ctx.GetPlace());
@@ -184,7 +185,7 @@ template <typename T>
 void ComputeSumAndSquareSum(const framework::Tensor &cpu_out,
                             framework::Tensor *cpu_sum,
                             framework::Tensor *cpu_sum_of_square) {
-  auto dims = cpu_out.dims();
+  const auto &dims = cpu_out.dims();
   int64_t c = dims[3];
 
   const T *cpu_out_ptr = cpu_out.data<T>();

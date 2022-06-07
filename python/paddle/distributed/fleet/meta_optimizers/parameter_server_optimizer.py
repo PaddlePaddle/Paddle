@@ -24,6 +24,7 @@ __all__ = []
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super(ParameterServerOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -32,8 +33,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
-        super(ParameterServerOptimizer, self)._set_basic_info(
-            loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        super(ParameterServerOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
 
         #self.micro_batch_size = user_defined_strategy.pipeline_configs[
         #    'micro_batch_size']
@@ -107,8 +109,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             if not use_ps_gpu:
                 _main = worker.delete_optimizer_pass(_main, compiled_config)
                 _main = worker.append_send_ops_pass(_main, compiled_config)
-                _startup = worker.delete_extra_optimizes_pass(_startup,
-                                                              compiled_config)
+                _startup = worker.delete_extra_optimizes_pass(
+                    _startup, compiled_config)
 
                 # for startup program
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
@@ -117,13 +119,12 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 from paddle.fluid.transpiler.collective import SingleProcessMultiThread
                 t = SingleProcessMultiThread()
                 env = self.get_dist_env()
-                t.transpile(
-                    startup_program=_startup,
-                    main_program=_main,
-                    rank=env["trainer_id"],
-                    endpoints=env["trainer_endpoints"],
-                    current_endpoint=env['current_endpoint'],
-                    wait_port=False)
+                t.transpile(startup_program=_startup,
+                            main_program=_main,
+                            rank=env["trainer_id"],
+                            endpoints=env["trainer_endpoints"],
+                            current_endpoint=env['current_endpoint'],
+                            wait_port=False)
 
             compiled_config.set_origin_ps_main_program(_main)
             compiled_config.set_origin_ps_startup_program(_startup)
@@ -138,8 +139,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                         _main, compiled_config, stage_id, device)
                 else:
                     # for default worker
-                    _main = heter_worker.split_trainer_ops_pass(_main,
-                                                                compiled_config)
+                    _main = heter_worker.split_trainer_ops_pass(
+                        _main, compiled_config)
         else:
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
@@ -202,28 +203,29 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                                                       compiled_config, True)
 
             if not compiled_config.is_sync_mode():
-                _main = server.delete_unused_in_main_pass(_main,
-                                                          compiled_config)
+                _main = server.delete_unused_in_main_pass(
+                    _main, compiled_config)
 
-            _startup = server.delete_unused_in_startup_pass(_startup, _main,
-                                                            compiled_config)
+            _startup = server.delete_unused_in_startup_pass(
+                _startup, _main, compiled_config)
         else:
             _main = server.add_listen_and_serv_pass(_main, compiled_config)
             _main = server.add_rpc_global_flags_pass(_main, compiled_config)
             _main = server.add_geo_optimizer_pass(_main, compiled_config)
             _startup = server.build_pserver_startup_program_pass(
                 _startup, _main, compiled_config)
-            _startup = server.delete_unused_in_startup_pass(_startup, _main,
-                                                            compiled_config)
+            _startup = server.delete_unused_in_startup_pass(
+                _startup, _main, compiled_config)
 
         return _main, _startup
 
     def _can_apply_geo(self, dist_strategy, program):
+
         def get_sys_free_mem():
             plat = platform.system()
             if platform.system() == "Darwin":
-                vm = subprocess.Popen(
-                    ['vm_stat'], stdout=subprocess.PIPE).communicate()[0]
+                vm = subprocess.Popen(['vm_stat'],
+                                      stdout=subprocess.PIPE).communicate()[0]
                 # Process vm_stat
                 vmLines = vm.split('\n')
                 sep = re.compile(r':[\s]+')
@@ -231,8 +233,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 for row in range(1, len(vmLines) - 2):
                     rowText = vmLines[row].strip()
                     rowElements = sep.split(rowText)
-                    vmStats[(rowElements[0]
-                             )] = int(rowElements[1].strip(r'\.')) * 4096
+                    vmStats[(rowElements[0])] = int(
+                        rowElements[1].strip(r'\.')) * 4096
                 return vmStats["Pages free"]
             elif platform.system() == "Linux":
                 mems = {}

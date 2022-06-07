@@ -21,15 +21,15 @@ import time
 
 def inplace_add(x, bias):
     helper = LayerHelper('scale', **locals())
-    helper.append_op(
-        type='scale',
-        inputs={'X': [x]},
-        outputs={'Out': [x]},
-        attrs={'bias': bias})
+    helper.append_op(type='scale',
+                     inputs={'X': [x]},
+                     outputs={'Out': [x]},
+                     attrs={'bias': bias})
     return x
 
 
 class TestAddReaderDependency(unittest.TestCase):
+
     def setUp(self):
         self.batch_num = 3
         self.sleep_time = 2
@@ -54,11 +54,12 @@ class TestAddReaderDependency(unittest.TestCase):
                 def data_source():
                     for _ in range(self.batch_num):
                         time.sleep(self.sleep_time)  # sleep some times
-                        yield np.random.uniform(
-                            low=-1, high=1, size=[1]).astype('float32'),
+                        yield np.random.uniform(low=-1, high=1,
+                                                size=[1]).astype('float32'),
 
-                persistable_in = fluid.data(
-                    name='persistable_in', dtype='float32', shape=[1])
+                persistable_in = fluid.data(name='persistable_in',
+                                            dtype='float32',
+                                            shape=[1])
                 persistable_in.persistable = True
 
                 persistable_in = inplace_add(persistable_in, bias=1)
@@ -97,6 +98,7 @@ class TestAddReaderDependency(unittest.TestCase):
 
 
 class TestAddReaderDependencyWithoutDoubleBuffer(TestAddReaderDependency):
+
     def setUp(self):
         self.batch_num = 3
         self.sleep_time = 2

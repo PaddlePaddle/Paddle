@@ -23,6 +23,7 @@ import paddle.fluid.core as core
 
 
 class ApiMaxTest(unittest.TestCase):
+
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
@@ -114,13 +115,13 @@ class ApiMaxTest(unittest.TestCase):
 
 
 class TestOutDtype(unittest.TestCase):
+
     def test_max(self):
         api_fn = paddle.max
         shape = [10, 16]
-        check_out_dtype(
-            api_fn,
-            in_specs=[(shape, )],
-            expect_dtypes=['float32', 'float64', 'int32', 'int64'])
+        check_out_dtype(api_fn,
+                        in_specs=[(shape, )],
+                        expect_dtypes=['float32', 'float64', 'int32', 'int64'])
 
 
 if __name__ == '__main__':

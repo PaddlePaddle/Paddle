@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <vector>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -53,7 +54,7 @@ __global__ void LabelSmoothRunDistKernel(const int N,
 template <typename T, typename Context>
 void LabelSmoothKernel(const Context& ctx,
                        const DenseTensor& label,
-                       paddle::optional<const DenseTensor&> prior_dist,
+                       const paddle::optional<DenseTensor>& prior_dist,
                        float epsilon,
                        DenseTensor* out) {
   auto label_dim = label.dims()[label.dims().size() - 1];

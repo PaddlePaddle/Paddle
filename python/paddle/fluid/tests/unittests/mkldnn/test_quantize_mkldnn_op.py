@@ -17,9 +17,11 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
+import paddle
 
 
 class TestQuantizeOp(OpTest):
+
     def setUp(self):
         self.op_type = 'quantize'
         self.scale = 255.0
@@ -38,12 +40,12 @@ class TestQuantizeOp(OpTest):
     def prepare_input(self):
         if self.is_negative:
             # input data values are from interval [-1.0, 1.0)
-            self.input = (2 * np.random.random_sample(self.input_size) - 1
-                          ).astype('float32')
+            self.input = (2 * np.random.random_sample(self.input_size) -
+                          1).astype('float32')
         else:
             # input data values are from interval [0.0, 1.0)
-            self.input = (
-                np.random.random_sample(self.input_size)).astype('float32')
+            self.input = (np.random.random_sample(
+                self.input_size)).astype('float32')
 
         self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(self.input)}
         self.attrs = {
@@ -55,8 +57,8 @@ class TestQuantizeOp(OpTest):
 
     def prepare_output(self):
         input_data_type = 'int8' if self.is_negative else 'uint8'
-        output = np.rint(self.input * self.scale + self.shift).astype(
-            input_data_type)
+        output = np.rint(self.input * self.scale +
+                         self.shift).astype(input_data_type)
         self.outputs = {'Output': output}
 
     def test_check_output(self):
@@ -89,6 +91,7 @@ class TestQuantizeOp(OpTest):
 
 
 class TestQuantizeOp1(TestQuantizeOp):
+
     def set_scale(self):
         self.scale = 127.0
 
@@ -97,6 +100,7 @@ class TestQuantizeOp1(TestQuantizeOp):
 
 
 class TestQuantizeOp2(TestQuantizeOp):
+
     def set_scale(self):
         self.scale = 255.0
 
@@ -104,22 +108,10 @@ class TestQuantizeOp2(TestQuantizeOp):
         self.is_nagative = False
 
 
-class TestQuantizeOp_ZeroScale(TestQuantizeOp):
-    def set_scale(self):
-        self.scale = 0.0
-
-    def prepare_output(self):
-        self.output = np.zeros(self.input_size)
-        self.outputs = {'Output': self.output}
-
-    def test_check_output(self):
-        self.assertRaises(AttributeError, self.check_raise_error,
-                          'Quantization scale cannot be 0.0')
-
-
 # 2-dim input
 # P - positive input
 class TestQuantizeOpShift_NCHW_2_P(TestQuantizeOp):
+
     def set_output_format(self):
         self.output_format = 'NCHW'
 
@@ -139,6 +131,7 @@ class TestQuantizeOpShift_NCHW_2_P(TestQuantizeOp):
 # 2-dim input
 # N - negative input
 class TestQuantizeOpShift_NCHW_2_N(TestQuantizeOpShift_NCHW_2_P):
+
     def set_is_negative(self):
         self.is_nagative = True
 
@@ -150,85 +143,67 @@ class TestQuantizeOpShift_NCHW_2_N(TestQuantizeOpShift_NCHW_2_P):
 
 
 class TestQuantizeOpShift_NHWC_2_P(TestQuantizeOpShift_NCHW_2_P):
+
     def set_output_format(self):
         self.output_format = 'NHWC'
 
 
 class TestQuantizeOpShift_NHWC_2_N(TestQuantizeOpShift_NCHW_2_N):
+
     def set_output_format(self):
         self.output_format = 'NHWC'
 
 
 # 3-dim input
 class TestQuantizeOpShift_NCHW_3_P(TestQuantizeOpShift_NCHW_2_P):
+
     def set_input_size(self):
         self.input_size = [2, 3, 4]
 
 
 class TestQuantizeOpShift_NCHW_3_N(TestQuantizeOpShift_NCHW_2_N):
+
     def set_input_size(self):
         self.input_size = [2, 3, 4]
 
 
 class TestQuantizeOpShift_NHWC_3_P(TestQuantizeOpShift_NCHW_3_P):
+
     def set_output_format(self):
         self.output_format = 'NHWC'
 
 
 class TestQuantizeOpShift_NHWC_3_N(TestQuantizeOpShift_NCHW_3_N):
+
     def set_output_format(self):
         self.output_format = 'NHWC'
 
 
 # 4-dim input
 class TestQuantizeOpShift_NCHW_4_P(TestQuantizeOpShift_NCHW_2_P):
+
     def set_input_size(self):
         self.input_size = [2, 3, 4, 5]
 
 
 class TestQuantizeOpShift_NCHW_4_N(TestQuantizeOpShift_NCHW_2_N):
+
     def set_input_size(self):
         self.input_size = [2, 3, 4, 5]
 
 
 class TestQuantizeOpShift_NHWC_4_P(TestQuantizeOpShift_NCHW_4_P):
+
     def set_output_format(self):
         self.output_format = 'NHWC'
 
 
 class TestQuantizeOpShift_NHWC_4_N(TestQuantizeOpShift_NCHW_4_N):
+
     def set_output_format(self):
         self.output_format = 'NHWC'
 
 
-class TestQuantizeOp_NegativeShift(TestQuantizeOp):
-    def set_is_negative(self):
-        self.is_nagative = False
-
-    def set_scale(self):
-        self.scale = 100.0
-
-    def set_shift(self):
-        self.shift = -10.0
-
-    def prepare_output(self):
-        self.output = np.zeros(self.input_size)
-        self.outputs = {'Output': self.output}
-
-    def test_check_output(self):
-        self.assertRaises(AttributeError, self.check_raise_error,
-                          'Quantization shift must be nonnegative.')
-
-
-class TestQuantizeOp_TooBigShift(TestQuantizeOp_NegativeShift):
-    def set_shift(self):
-        self.shift = 300.0
-
-    def test_check_output(self):
-        self.assertRaises(
-            AttributeError, self.check_raise_error,
-            'Quantization shift must be less than or equal to 255.')
-
-
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

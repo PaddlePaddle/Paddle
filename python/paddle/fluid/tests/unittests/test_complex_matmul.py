@@ -21,6 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexMatMulLayer(unittest.TestCase):
+
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [fluid.CPUPlace()]
@@ -36,9 +37,9 @@ class TestComplexMatMulLayer(unittest.TestCase):
                 pd_result = result.numpy()
                 self.assertTrue(
                     np.allclose(pd_result, np_result),
-                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
-                    format(place, pd_result[~np.isclose(pd_result, np_result)],
-                           np_result[~np.isclose(pd_result, np_result)]))
+                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n"
+                    .format(place, pd_result[~np.isclose(pd_result, np_result)],
+                            np_result[~np.isclose(pd_result, np_result)]))
 
     def compare_op_by_basic_api(self, x, y, np_result):
         for place in self._places:
@@ -49,9 +50,9 @@ class TestComplexMatMulLayer(unittest.TestCase):
                 pd_result = result.numpy()
                 self.assertTrue(
                     np.allclose(pd_result, np_result),
-                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
-                    format(place, pd_result[~np.isclose(pd_result, np_result)],
-                           np_result[~np.isclose(pd_result, np_result)]))
+                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n"
+                    .format(place, pd_result[~np.isclose(pd_result, np_result)],
+                            np_result[~np.isclose(pd_result, np_result)]))
 
     def test_complex_xy(self):
         for dtype in self._dtypes:

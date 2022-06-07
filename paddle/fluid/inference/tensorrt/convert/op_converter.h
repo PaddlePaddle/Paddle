@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
@@ -67,10 +68,8 @@ class OpConverter {
     if (op_desc.Type().find("elementwise") != std::string::npos) {
       static std::unordered_set<std::string> add_tensor_op_set{
           "add", "mul", "sub", "div", "max", "min", "pow"};
-      // TODO(xingzhaolong): all mul, sub, div
-      // static std::unordered_set<std::string> add_weight_op_set {"add", "mul",
-      // "sub", "div"};
-      static std::unordered_set<std::string> add_weight_op_set{"add", "mul"};
+      static std::unordered_set<std::string> add_weight_op_set{
+          "add", "mul", "sub", "div", "pow"};
       PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL,
                         platform::errors::InvalidArgument(
                             "The input op's Input(\"Y\")."
@@ -270,14 +269,16 @@ class OpConverter {
           }
         }
         engine->DeclareInput(
-            input, FluidDataType2TRT(
-                       var->Proto()->type().lod_tensor().tensor().data_type()),
+            input,
+            FluidDataType2TRT(
+                var->Proto()->type().lod_tensor().tensor().data_type()),
             Vec2TRT_Dims(input_shape, input, true));
 #endif
       } else {
         engine->DeclareInput(
-            input, FluidDataType2TRT(
-                       var->Proto()->type().lod_tensor().tensor().data_type()),
+            input,
+            FluidDataType2TRT(
+                var->Proto()->type().lod_tensor().tensor().data_type()),
             Vec2TRT_Dims(var_shape, input));
       }
     }
