@@ -1903,8 +1903,8 @@ class CyclicLR(LRScheduler):
                 format(type(max_learning_rate)))
         if max_learning_rate < 0:
             raise ValueError(
-                "'max_learning_rate' must be a positive integer, but received {}".
-                format(max_learning_rate))
+                "'max_learning_rate' must be a positive integer, but received {}"
+                .format(max_learning_rate))
 
         # check type and value of step_size_up
         if not isinstance(step_size_up, int):
@@ -1924,8 +1924,8 @@ class CyclicLR(LRScheduler):
                     format(type(step_size_down)))
             if step_size_down <= 0:
                 raise ValueError(
-                    "'step_size_down' must be a positive integer, but received {}".
-                    format(step_size_down))
+                    "'step_size_down' must be a positive integer, but received {}"
+                    .format(step_size_down))
 
         # check type of exp_gamma
         if not isinstance(exp_gamma, float):
