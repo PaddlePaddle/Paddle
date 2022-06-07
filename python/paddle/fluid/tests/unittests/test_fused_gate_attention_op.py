@@ -18,7 +18,7 @@ import paddle
 import paddle.nn as nn
 from paddle import tensor
 import unittest
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 from test_sparse_attention_op import get_cuda_version
 from paddle import _C_ops
 from paddle.fluid.framework import default_main_program
@@ -192,21 +192,34 @@ class TestFusedGateAttentionOp(OpTest):
             return out, query.grad, None
 
     def check_output_and_grad(self, atol, rtol):
-        out_ref, query_grad_ref, key_grad_ref = self.get_reference_out()
-        out, query_grad, key_grad = self.get_fused_gate_attention_out()
-        np.testing.assert_allclose(out_ref, out.numpy(), atol=atol, rtol=rtol)
-        np.testing.assert_allclose(query_grad_ref,
-                                   query_grad.numpy(),
-                                   atol=atol,
-                                   rtol=rtol)
-        if key_grad_ref is not None and key_grad is not None:
-            np.testing.assert_allclose(key_grad_ref,
-                                       key_grad.numpy(),
-                                       atol=atol,
-                                       rtol=rtol)
+
+        def _convert(value):
+            if self.dtype == "bfloat16":
+                return convert_uint16_to_float(value)
+            return value
+
+        output_names = ["out", "query_grad", "key_grad"]
+        outputs_ref = self.get_reference_out()
+        outputs_fused = self.get_fused_gate_attention_out()
+        for i in range(len(outputs_fused)):
+            ref_res = outputs_ref[i]
+            fused_res = outputs_fused[i]
+            if ref_res is not None and fused_res is not None:
+                print("Checking {}".format(output_names[i]))
+                np.testing.assert_allclose(_convert(ref_res),
+                                           _convert(fused_res.numpy()),
+                                           atol=atol,
+                                           rtol=rtol)
 
     def test_output_and_grad(self):
         self.check_output_and_grad(atol=1e-5, rtol=1e-5)
+
+
+class TestMergeQKVLargeBatchSizeCase(TestFusedGateAttentionOp):
+
+    def config(self):
+        super().config()
+        self.batch_size = 2
 
 
 class TestSeparatedQKVCase(TestFusedGateAttentionOp):
@@ -241,7 +254,16 @@ class TestMergeQKVFp16Case(TestFusedGateAttentionOp):
         self.dtype = "float16"
 
     def test_output_and_grad(self):
-        self.check_output_and_grad(atol=1e-1, rtol=1e-5)
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_output_and_grad(atol=1e-1, rtol=1e-5)
+
+
+class TestMergeQKVLargeBatchSizeFp16Case(TestMergeQKVFp16Case):
+
+    def config(self):
+        super().config()
+        self.batch_size = 2
 
 
 @unittest.skipIf(
@@ -256,6 +278,13 @@ class TestMergeQKVBF16Case(TestFusedGateAttentionOp):
 
     def test_output_and_grad(self):
         self.check_output_and_grad(atol=1e-1, rtol=1e-3)
+
+
+class TestMergeQKVLargeBatchSizeBF16Case(TestMergeQKVBF16Case):
+
+    def config(self):
+        super().config()
+        self.batch_size = 2
 
 
 if __name__ == "__main__":
