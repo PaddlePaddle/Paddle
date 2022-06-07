@@ -227,7 +227,7 @@ int32_t CtrCommonAccessor::Merge(float** update_values,
                                  const float** other_update_values,
                                  size_t num) {
   auto embedx_dim = _config.embedx_dim();
-  size_t total_dim = CtrCommonPushValue::Dim(embedx_dim);
+  int total_dim = CtrCommonPushValue::Dim(embedx_dim);
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* other_update_value = other_update_values[value_item];

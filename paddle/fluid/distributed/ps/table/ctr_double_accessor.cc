@@ -233,7 +233,7 @@ int32_t CtrDoubleAccessor::Merge(float** update_values,
     for (auto i = 3u; i < total_dim; ++i) {
         update_value[i] += other_update_value[i];
     }*/
-    for (int i = 0; i < total_dim; ++i) {
+    for (size_t i = 0; i < total_dim; ++i) {
       if (i != CtrDoublePushValue::SlotIndex()) {
         update_value[i] += other_update_value[i];
       }
@@ -320,7 +320,7 @@ std::string CtrDoubleAccessor::ParseToString(const float* v, int param_size) {
   auto score = ShowClickScore(show, click);
   if (score >= _config.embedx_threshold() && param_size > 9) {
     os << " " << v[9];
-    for (auto i = 0; i < _config.embedx_dim(); ++i) {
+    for (size_t i = 0; i < _config.embedx_dim(); ++i) {
       os << " " << v[10 + i];
     }
   }

@@ -43,7 +43,7 @@ int32_t PSClient::Configure(
 
   const auto &work_param = _config.worker_param().downpour_worker_param();
 
-  for (int i = 0; i < work_param.downpour_table_param_size(); ++i) {
+  for (size_t i = 0; i < work_param.downpour_table_param_size(); ++i) {
     auto *accessor = CREATE_PSCORE_CLASS(
         ValueAccessor,
         work_param.downpour_table_param(i).accessor().accessor_class());
