@@ -276,7 +276,10 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                         data = self._reader.read_next_list()
                         for i in range(len(data)):
                             data[i] = data[i]._move_to_list()
-                        structs = [self._structure_infos.pop(0) for _ in range(len(self._places))]
+                        structs = [
+                            self._structure_infos.pop(0)
+                            for _ in range(len(self._places))
+                        ]
                         data = [_restore_batch(d, s) \
                                 for d, s in zip(data, structs)]
                         # static graph organized data on multi-device with list, if
@@ -747,7 +750,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         data = self._reader.read_next_list()
                         for i in range(len(data)):
                             data[i] = data[i]._move_to_list()
-                        structs = [self._structure_infos.pop(0) for _ in range(len(self._places))]
+                        structs = [
+                            self._structure_infos.pop(0)
+                            for _ in range(len(self._places))
+                        ]
                         data = [_restore_batch(d, s) \
                                 for d, s in zip(data, structs)]
                         # static graph organized data on multi-device with list, if
