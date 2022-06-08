@@ -3648,7 +3648,9 @@ export NV_LIBCUBLAS_DEV_PACKAGE=libcublas-dev=10.2.2.89-1
 
 
 #apt-get -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true --allow-unauthenticated update
-apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     cuda-cudart-10-2=${NV_CUDA_CUDART_VERSION}     cuda-compat-10-2     && ln -s cuda-10.2 /usr/local/cuda
+apt-get update
+
+apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     cuda-cudart-10-2=${NV_CUDA_CUDART_VERSION} cuda-compat-10-2 
 ln -s cuda-10.2 /usr/local/cuda
 
 #apt-get -f  install -y --no-install-recommends     cuda-cudart-10-2=${NV_CUDA_CUDART_VERSION}     cuda-compat-10-2
