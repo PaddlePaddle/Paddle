@@ -616,7 +616,22 @@ void ElementwiseCompute(const GPUContext &dev_ctx,
       dev_ctx, ins, &outs, axis, func);
 }
 
-#endif
+template <typename DeviceContext,
+          typename T,
+          typename Functor,
+          typename InverseFunctor>
+void DefaultElementwiseOperator(const DeviceContext &dev_ctx,
+                                const DenseTensor &x,
+                                const DenseTensor &y,
+                                DenseTensor *z,
+                                int axis = -1) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  dev_ctx.template Alloc<T>(z);
+  funcs::ElementwiseCompute<Functor, T>(dev_ctx, x, y, axis, Functor(), z);
+}
+
+#else
 
 template <typename DeviceContext,
           typename T,
@@ -637,6 +652,8 @@ void DefaultElementwiseOperator(const DeviceContext &dev_ctx,
         dev_ctx, x, y, axis, InverseFunctor(), z);
   }
 }
+
+#endif
 
 }  // namespace funcs
 }  // namespace phi
