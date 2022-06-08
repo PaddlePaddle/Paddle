@@ -302,6 +302,17 @@ class TestDygraphInplaceReshape(TestDygraphInplace):
         return paddle.reshape_(var, [-1])
 
 
+class TestDygraphInplaceReshapeTensor(TestDygraphInplace):
+
+    def non_inplace_api_processing(self, var):
+        shape = paddle.to_tensor(-1)
+        return paddle.reshape(var, shape)
+
+    def inplace_api_processing(self, var):
+        shape = paddle.to_tensor(-1)
+        return paddle.reshape_(var, shape)
+
+
 class TestDygraphInplaceFlatten(TestDygraphInplace):
 
     def non_inplace_api_processing(self, var):
