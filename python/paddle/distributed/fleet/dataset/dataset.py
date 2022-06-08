@@ -589,15 +589,14 @@ class InMemoryDataset(DatasetBase):
             data_feed_type = "MultiSlotInMemoryDataFeed"
         self._set_feed_type(data_feed_type)
 
-        super(InMemoryDataset, self).init(
-            batch_size=batch_size,
-            thread_num=thread_num,
-            use_var=use_var,
-            pipe_command=pipe_command,
-            input_type=input_type,
-            fs_name=fs_name,
-            fs_ugi=fs_ugi,
-            download_cmd=download_cmd)
+        super(InMemoryDataset, self).init(batch_size=batch_size,
+                                          thread_num=thread_num,
+                                          use_var=use_var,
+                                          pipe_command=pipe_command,
+                                          input_type=input_type,
+                                          fs_name=fs_name,
+                                          fs_ugi=fs_ugi,
+                                          download_cmd=download_cmd)
 
         if kwargs.get("queue_num", -1) > 0:
             queue_num = kwargs.get("queue_num", -1)
