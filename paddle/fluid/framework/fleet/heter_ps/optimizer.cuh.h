@@ -19,6 +19,7 @@ limitations under the License. */
 #include <curand_kernel.h>
 #endif
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 

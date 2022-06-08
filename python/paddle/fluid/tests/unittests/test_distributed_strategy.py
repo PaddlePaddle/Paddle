@@ -22,6 +22,7 @@ import os
 
 
 class TestStrategyFactor(unittest.TestCase):
+
     def test_sync_strategy(self):
         os.environ['CPU_NUM'] = "2"
         strategy = StrategyFactory.create_sync_strategy()
@@ -108,8 +109,9 @@ class TestStrategyFactor(unittest.TestCase):
         self.assertEqual(strategy._build_strategy.async_mode, True)
 
         trainer_runtime_config = strategy.get_trainer_runtime_config()
-        self.assertEqual(trainer_runtime_config.runtime_configs[
-            'communicator_send_queue_size'], '100')
+        self.assertEqual(
+            trainer_runtime_config.
+            runtime_configs['communicator_send_queue_size'], '100')
 
         # test set_trainer_runtime_config using dict
         trainer_runtime_config_dict = dict()
@@ -193,6 +195,7 @@ class TestStrategyFactor(unittest.TestCase):
 
 
 class TestCreateDefaultStrategy(unittest.TestCase):
+
     def test_default_strategy(self):
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,
@@ -209,6 +212,7 @@ class TestCreateDefaultStrategy(unittest.TestCase):
 
 
 class TestHalfAsyncStrategy(unittest.TestCase):
+
     def test_half_async_strategy(self):
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,
@@ -228,6 +232,7 @@ class TestHalfAsyncStrategy(unittest.TestCase):
 
 
 class TestDebugInfo(unittest.TestCase):
+
     def test_debug_info(self):
         x = fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
@@ -412,8 +413,9 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto in_y = ctx.Input<framework::Tensor>("Y");
-    PADDLE_ENFORCE_NE(in_y, nullptr, platform::errors::InvalidArgument(
-                                         "Input(Y) should not be nullptr."));
+    PADDLE_ENFORCE_NE(
+        in_y, nullptr,
+        platform::errors::InvalidArgument("Input(Y) should not be nullptr."));
     auto in_out = ctx.Input<framework::Tensor>("Out");
     PADDLE_ENFORCE_NE(
         in_out, nullptr,
@@ -449,15 +451,17 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
                             " so the number of 'Out' should be two."));
     } else {
       if (!InputXCanBeAbsent(functor_list)) {
-        PADDLE_ENFORCE_NE(in_x, nullptr, platform::errors::InvalidArgument(
-                                             "Input(X) should not be null."));
+        PADDLE_ENFORCE_NE(
+            in_x, nullptr,
+            platform::errors::InvalidArgument("Input(X) should not be null."));
       }
     }
 
     // Get in_x
     if (ctx.HasInput("X")) {
-      PADDLE_ENFORCE_NE(in_x, nullptr, platform::errors::InvalidArgument(
-                                           "Input(X) should not be null."));
+      PADDLE_ENFORCE_NE(
+          in_x, nullptr,
+          platform::errors::InvalidArgument("Input(X) should not be null."));
     } else {
       // If functor_list contains elementwise_add, the backward doesn't use
       // in_x, in_y and in_out.

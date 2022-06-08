@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_topk_avg_pooling_op.h"
+
 #include <memory>
 #include <string>
 
@@ -44,8 +45,9 @@ class SequenceTopkAvgPoolingOp : public framework::OperatorWithKernel {
     auto topks = attr.Get<std::vector<int>>("topks");
     auto num_k = topks.size();
     PADDLE_ENFORCE_GT(
-        num_k, 0, platform::errors::InvalidArgument(
-                      "Expected topks.size() > 0, but received %zu.", num_k));
+        num_k, 0,
+        platform::errors::InvalidArgument(
+            "Expected topks.size() > 0, but received %zu.", num_k));
 
     auto row_dim = ctx->GetInputDim("ROW");
     auto row_shape_0 = row_dim[0];

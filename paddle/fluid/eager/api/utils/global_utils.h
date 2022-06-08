@@ -17,6 +17,7 @@
 
 #include <atomic>
 #include <memory>
+
 #include "paddle/fluid/eager/type_defs.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
@@ -73,8 +74,9 @@ class Controller {
     return op_meta_info_map_;
   }
 
-  void MergeOpMetaInfoMap(const std::unordered_map<
-                          std::string, std::vector<paddle::OpMetaInfo>>& map) {
+  void MergeOpMetaInfoMap(
+      const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
+          map) {
     op_meta_info_map_.insert(map.begin(), map.end());
   }
 

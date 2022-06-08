@@ -39,10 +39,11 @@ class HuberLossXPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
     int r = xpu::huber_loss<T>(dev_ctx.x_context(), in0_data, in1_data,
                                residual_data, out_data, in0->numel(), 1, delta);
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                          "XPU API(huber_loss) return wrong "
-                                          "value[%d %s]",
-                                          r, XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External("XPU API(huber_loss) return wrong "
+                                   "value[%d %s]",
+                                   r, XPUAPIErrorMsg[r]));
   }
 };
 

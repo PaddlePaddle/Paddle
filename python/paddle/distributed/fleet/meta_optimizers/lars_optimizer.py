@@ -19,6 +19,7 @@ __all__ = []
 
 
 class LarsOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super(LarsOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -29,8 +30,9 @@ class LarsOptimizer(MetaOptimizerBase):
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
-        super(LarsOptimizer, self)._set_basic_info(
-            loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        super(LarsOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
 
         opt = self.inner_opt
         if not isinstance(opt, Momentum):
@@ -57,8 +59,8 @@ class LarsOptimizer(MetaOptimizerBase):
         if self.user_defined_strategy.lars:
             if not isinstance(self.inner_opt, Momentum):
                 logging.warn(
-                    "lars need the inner optimizer to be Momentum optimizer but got {}.".
-                    format(self.inner_opt.type))
+                    "lars need the inner optimizer to be Momentum optimizer but got {}."
+                    .format(self.inner_opt.type))
                 return False
             return True
         return False
@@ -88,8 +90,9 @@ class LarsOptimizer(MetaOptimizerBase):
         return self.lars_opt.apply_gradients(params_grads=params_grads)
 
     def apply_optimize(self, loss, startup_program, params_grads):
-        return self.lars_opt.apply_optimize(
-            loss, startup_program=startup_program, params_grads=params_grads)
+        return self.lars_opt.apply_optimize(loss,
+                                            startup_program=startup_program,
+                                            params_grads=params_grads)
 
     def minimize_impl(self,
                       loss,

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass.h"
 
 #include <algorithm>
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
@@ -90,9 +91,10 @@ static void MergePrograms(ProgramDesc *dst, const details::ProgramDescs &srcs,
   bool reverse = !append;
 
   auto create_var_visitor = [dst](const ProgramDesc &src) {
-    PADDLE_ENFORCE_EQ(src.Size(), 1, platform::errors::Unimplemented(
-                                         "MergePrograms can only support to "
-                                         "merge program with only one block."));
+    PADDLE_ENFORCE_EQ(
+        src.Size(), 1,
+        platform::errors::Unimplemented("MergePrograms can only support to "
+                                        "merge program with only one block."));
     const auto &src_block = src.Block(0);
     auto *dst_block = dst->MutableBlock(0);
     for (const auto *src_new_var : src_block.AllVars()) {

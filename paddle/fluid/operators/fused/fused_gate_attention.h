@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace paddle {
@@ -142,18 +142,6 @@ struct GateAttentionConfig {
     softmax_out_dims = {batch_size, seq_len_m, num_heads, seq_len_r, m_size};
     qktv_out_dims = {batch_size, seq_len_m, num_heads, seq_len_r, key_dim};
     gate_out_dims = {batch_size, seq_len_m, seq_len_r, num_heads, key_dim};
-  }
-
-  ~GateAttentionConfig() {
-    // int64_t limit_bytes = 1UL << 32;
-    // int64_t max_numel = phi::product(softmax_out_dims);
-    // if (max_numel * sizeof(T) > limit_bytes) {
-    //   // larger than 4G.
-    //   VLOG(4) << "Some output holds " << max_numel << " elements (larger than
-    //   4G), clear memory cache.";
-    //   dev_ctx.Wait();
-    //   memory::Release(dev_ctx.GetPlace());
-    // }
   }
 
   int64_t GetQuerySize() const {
@@ -496,14 +484,11 @@ class FMHAGateRef {
       Tensor qktv_out_grad;
       qktv_out_grad.Resize(config->qktv_out_dims);
       AllocWithDebugInfo<T>(dev_ctx_, "qktv_out_grad", &qktv_out_grad);
-      LOG(INFO) << "ComputeQKTVTransposeBackward";
       ComputeQKTVTransposeBackward(*fmha_out_grad, &qktv_out_grad);
-      dev_ctx_.Wait();
 
       // Forward: qktv_out = BatchedGEMM(softmax_out, V)
       // Backward:
       //  V_grad = BatchedGEMM(softmax_out^T, qktv_out_grad) (dy = x^T * dout)
-      LOG(INFO) << "ComputeBatchedGEMM";
       int64_t gemm_m = config->m_size;
       int64_t gemm_n = config->key_dim;
       int64_t gemm_k = config->seq_len_r;
@@ -521,19 +506,15 @@ class FMHAGateRef {
       T* softmax_out_grad_ptr = softmax_out_grad.data<T>();
       ComputeBatchedGEMM(qktv_out_grad_ptr, v_ptr, softmax_out_grad_ptr, false,
                          true, gemm_m, gemm_n, gemm_k, gemm_batch_size);
-      dev_ctx_.Wait();
     }
 
     Tensor* qk_out_grad = config->GetQKOutGrad(&softmax_out_grad);
-    LOG(INFO) << "ComputeBiasMaskSoftmaxBackward";
     ComputeBiasMaskSoftmaxBackward(&softmax_out_grad, softmax_out,
                                    src_mask_grad, qk_out_grad,
                                    nonbatched_bias_grad);
-    dev_ctx_.Wait();
 
     // Forward: qk_out = BatchedGEMM(Q, K^T)
     // Backward: k_grad = BatchedGEMM(qk_out_grad^T, Q) (dy = dout^t * x)
-    LOG(INFO) << "ComputeBatchedGEMM";
     int64_t gemm_m = config->m_size;
     int64_t gemm_n = config->key_dim;
     int64_t gemm_k = config->seq_len_r;
@@ -549,9 +530,7 @@ class FMHAGateRef {
     gemm_k = config->m_size;
     ComputeBatchedGEMM(qk_out_grad_ptr, k_ptr, q_grad_ptr, false, false, gemm_m,
                        gemm_n, gemm_k, gemm_batch_size, alpha);
-    dev_ctx_.Wait();
 
-    LOG(INFO) << "ComputeQKVTransposeBackward";
     if (merge_qkv_) {
       Tensor* qkv_out_grad = config->GetQKVOutGrad();
       ComputeQKVTransposeBackward(qkv_transpose_out_grad, qkv_out_grad);
@@ -563,7 +542,6 @@ class FMHAGateRef {
                                   v_transpose_out_grad, q_out_grad, k_out_grad,
                                   v_out_grad);
     }
-    dev_ctx_.Wait();
   }
 
   void ComputeQKVTransposeForward(const Tensor& q_out, const Tensor& k_out,
@@ -634,12 +612,12 @@ class FMHAGateRef {
     if (nonbatched_bias) {
       std::vector<const Tensor*> ins = {qk_out, nonbatched_bias, src_mask};
       std::vector<Tensor*> outs = {qk_out};
-      phi::funcs::BroadcastKernel<ElementwiseType::kTernary, T, T>(
+      phi::funcs::BroadcastKernel<phi::ElementwiseType::kTernary, T, T>(
           dev_ctx_, ins, &outs, -1, TernaryAddFunctor<T>());
     } else {
       std::vector<const Tensor*> ins = {qk_out, src_mask};
       std::vector<Tensor*> outs = {qk_out};
-      phi::funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+      phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
           dev_ctx_, ins, &outs, -1, phi::funcs::AddFunctor<T>());
     }
     phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *qk_out, -1, softmax_out);
@@ -667,19 +645,15 @@ class FMHAGateRef {
                       platform::errors::InvalidArgument(
                           "src_mask_grad is expected to be nullptr."));
 
-    LOG(INFO) << "SoftmaxBackwardCUDAKernelDriver";
     phi::SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, *softmax_out,
                                             *softmax_out_grad, -1, qk_out_grad);
-    dev_ctx_.Wait();
 
-    // [1, bs, num_head, seq_l, seq_l] -> [bs, num_head, seq_l, seq_l]
     if (nonbatched_bias_grad) {
-      LOG(INFO) << "TensorReduceImpl";
-      gpuStream_t stream = dev_ctx_.stream();
-      // TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      //     dev_ctx_, *qk_out_grad, nonbatched_bias_grad,
-      //     kps::IdentityFunctor<T>(), {0, 1}, stream);
-      dev_ctx_.Wait();
+      // [batch_size, seq_len_m, num_heads, seq_len_r, m_size] ->
+      //      [batch_size, 1, num_heads, seq_len_r, m_size]
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx_, *qk_out_grad, nonbatched_bias_grad,
+          kps::IdentityFunctor<T>(), {1});
     }
   }
 

@@ -22,6 +22,7 @@ import paddle.fluid.core as core
 import os
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
+
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -30,6 +31,7 @@ else:
 
 
 class MyLayer(paddle.nn.Layer):
+
     def __init__(self):
         super(MyLayer, self).__init__()
         self.linear1 = paddle.nn.Linear(32, 32)
@@ -42,6 +44,7 @@ class MyLayer(paddle.nn.Layer):
 
 
 class TestFleetWithASPDynamic(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
         os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
@@ -66,17 +69,14 @@ class TestFleetWithASPDynamic(unittest.TestCase):
         self.optimizer = fleet.distributed_optimizer(self.optimizer)
         self.layer = fleet.distributed_model(self.layer)
 
-        imgs = paddle.to_tensor(
-            np.random.randn(64, 32),
-            dtype='float32',
-            place=self.place,
-            stop_gradient=False)
-        labels = paddle.to_tensor(
-            np.random.randint(
-                10, size=(64, 1)),
-            dtype='float32',
-            place=self.place,
-            stop_gradient=False)
+        imgs = paddle.to_tensor(np.random.randn(64, 32),
+                                dtype='float32',
+                                place=self.place,
+                                stop_gradient=False)
+        labels = paddle.to_tensor(np.random.randint(10, size=(64, 1)),
+                                  dtype='float32',
+                                  place=self.place,
+                                  stop_gradient=False)
 
         loss_fn = paddle.nn.MSELoss(reduction='mean')
 
@@ -91,11 +91,13 @@ class TestFleetWithASPDynamic(unittest.TestCase):
                     paddle.static.default_main_program(), param.name):
                 mat = param.numpy()
                 self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, n=2, m=4))
+                    paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                 n=2,
+                                                                 m=4))
 
 
 class TestFleetWithASPAMPDynamic(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
         os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
@@ -120,17 +122,14 @@ class TestFleetWithASPAMPDynamic(unittest.TestCase):
         self.optimizer = fleet.distributed_optimizer(self.optimizer)
         self.layer = fleet.distributed_model(self.layer)
 
-        imgs = paddle.to_tensor(
-            np.random.randn(64, 32),
-            dtype='float32',
-            place=self.place,
-            stop_gradient=False)
-        labels = paddle.to_tensor(
-            np.random.randint(
-                10, size=(64, 1)),
-            dtype='float32',
-            place=self.place,
-            stop_gradient=False)
+        imgs = paddle.to_tensor(np.random.randn(64, 32),
+                                dtype='float32',
+                                place=self.place,
+                                stop_gradient=False)
+        labels = paddle.to_tensor(np.random.randint(10, size=(64, 1)),
+                                  dtype='float32',
+                                  place=self.place,
+                                  stop_gradient=False)
 
         loss_fn = paddle.nn.MSELoss(reduction='mean')
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
@@ -148,8 +147,9 @@ class TestFleetWithASPAMPDynamic(unittest.TestCase):
                     paddle.static.default_main_program(), param.name):
                 mat = param.numpy()
                 self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, n=2, m=4))
+                    paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                 n=2,
+                                                                 m=4))
 
 
 if __name__ == "__main__":

@@ -17,11 +17,11 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/operators/utils.h"
-
 #include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 

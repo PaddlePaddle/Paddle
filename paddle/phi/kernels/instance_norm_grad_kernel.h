@@ -21,10 +21,10 @@ namespace phi {
 template <typename T, typename Context>
 void InstanceNormGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const DenseTensor& y_grad,
                             const paddle::optional<DenseTensor>& scale,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
+                            const DenseTensor& y_grad,
                             float epsilon,
                             DenseTensor* x_grad,
                             DenseTensor* scale_grad,

@@ -22,6 +22,7 @@ from op_test import OpTest
 from test_collective_base import TestDistBase
 
 import random
+
 random.seed(2021)
 
 paddle.enable_static()
@@ -82,6 +83,7 @@ def gen_mixed_tensors_test(dtype):
 
 
 class TestCPUBroadcastTensorsOp(OpTest):
+
     def set_place(self):
         self.place = core.CPUPlace()
 
@@ -105,22 +107,25 @@ class TestCPUBroadcastTensorsOp(OpTest):
                 test_func(**args)
 
     def test_check_output(self):
-        self.run_test(self.check_output_with_place,
-                      {"place": self.place,
-                       "atol": 1e-1})
+        self.run_test(self.check_output_with_place, {
+            "place": self.place,
+            "atol": 1e-1
+        })
 
     def test_check_grad_normal(self):
-        self.run_test(self.check_grad_with_place, {
-            "place": self.place,
-            "inputs_to_check": ['x0', 'x1'],
-            "output_names": ['out0', 'out1'],
-            "max_relative_error": 0.05,
-        })
+        self.run_test(
+            self.check_grad_with_place, {
+                "place": self.place,
+                "inputs_to_check": ['x0', 'x1'],
+                "output_names": ['out0', 'out1'],
+                "max_relative_error": 0.05,
+            })
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDABroadcastTensorsOp(TestCPUBroadcastTensorsOp):
+
     def set_place(self):
         self.place = core.CUDAPlace(0)
 
@@ -131,13 +136,17 @@ class TestCUDABroadcastTensorsOp(TestCPUBroadcastTensorsOp):
 
 
 class TestBroadcastTensorsAPI(unittest.TestCase):
+
     def test_api(self):
+
         def test_static():
             inputs = [
-                paddle.fluid.layers.data(
-                    shape=[4, 1, 4, 1], dtype='float32', name="x0"),
-                paddle.fluid.layers.data(
-                    shape=[1, 4, 1, 4], dtype='float32', name="x1")
+                paddle.fluid.layers.data(shape=[4, 1, 4, 1],
+                                         dtype='float32',
+                                         name="x0"),
+                paddle.fluid.layers.data(shape=[1, 4, 1, 4],
+                                         dtype='float32',
+                                         name="x1")
             ]
             paddle.broadcast_tensors(inputs)
 
@@ -159,31 +168,39 @@ class TestBroadcastTensorsAPI(unittest.TestCase):
 
 
 class TestRaiseBroadcastTensorsError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             inputs = [
-                paddle.fluid.layers.data(
-                    shape=[1, 1, 1, 1], dtype='float32', name="x4"),
-                paddle.fluid.layers.data(
-                    shape=[1, 4, 1, 1], dtype='float64', name="x5")
+                paddle.fluid.layers.data(shape=[1, 1, 1, 1],
+                                         dtype='float32',
+                                         name="x4"),
+                paddle.fluid.layers.data(shape=[1, 4, 1, 1],
+                                         dtype='float64',
+                                         name="x5")
             ]
             paddle.broadcast_tensors(inputs)
 
         def test_dtype():
             inputs = [
-                paddle.fluid.layers.data(
-                    shape=[1, 1, 1, 1], dtype='int8', name="x6"),
-                paddle.fluid.layers.data(
-                    shape=[1, 4, 1, 1], dtype='int8', name="x7")
+                paddle.fluid.layers.data(shape=[1, 1, 1, 1],
+                                         dtype='int8',
+                                         name="x6"),
+                paddle.fluid.layers.data(shape=[1, 4, 1, 1],
+                                         dtype='int8',
+                                         name="x7")
             ]
             paddle.broadcast_tensors(inputs)
 
         def test_bcast_semantics():
             inputs = [
-                paddle.fluid.layers.data(
-                    shape=[1, 3, 1, 1], dtype='float32', name="x9"),
-                paddle.fluid.layers.data(
-                    shape=[1, 8, 1, 1], dtype='float32', name="x10")
+                paddle.fluid.layers.data(shape=[1, 3, 1, 1],
+                                         dtype='float32',
+                                         name="x9"),
+                paddle.fluid.layers.data(shape=[1, 8, 1, 1],
+                                         dtype='float32',
+                                         name="x10")
             ]
             paddle.broadcast_tensors(inputs)
 
@@ -193,37 +210,33 @@ class TestRaiseBroadcastTensorsError(unittest.TestCase):
 
 
 class TestRaiseBroadcastTensorsErrorDyGraph(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             inputs = [
                 paddle.to_tensor(
-                    np.ones(
-                        shape=[1, 1, 1, 1], dtype='float32', name="x4")),
+                    np.ones(shape=[1, 1, 1, 1], dtype='float32', name="x4")),
                 paddle.to_tensor(
-                    np.ones(
-                        shape=[1, 4, 1, 1], dtype='float64', name="x5"))
+                    np.ones(shape=[1, 4, 1, 1], dtype='float64', name="x5"))
             ]
             paddle.broadcast_tensors(inputs)
 
         def test_dtype():
             inputs = [
                 paddle.to_tensor(
-                    np.ones(
-                        shape=[1, 1, 1, 1], dtype='int8', name="x6")),
+                    np.ones(shape=[1, 1, 1, 1], dtype='int8', name="x6")),
                 paddle.to_tensor(
-                    np.ones(
-                        shape=[1, 4, 1, 1], dtype='int8', name="x7"))
+                    np.ones(shape=[1, 4, 1, 1], dtype='int8', name="x7"))
             ]
             paddle.broadcast_tensors(inputs)
 
         def test_bcast_semantics():
             inputs = [
                 paddle.to_tensor(
-                    np.ones(
-                        shape=[1, 3, 1, 1], dtype='float32', name="x9")),
+                    np.ones(shape=[1, 3, 1, 1], dtype='float32', name="x9")),
                 paddle.to_tensor(
-                    np.ones(
-                        shape=[1, 8, 1, 1], dtype='float32', name="x10"))
+                    np.ones(shape=[1, 8, 1, 1], dtype='float32', name="x10"))
             ]
             paddle.broadcast_tensors(inputs)
 

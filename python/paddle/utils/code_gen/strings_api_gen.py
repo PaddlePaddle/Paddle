@@ -18,11 +18,13 @@ import argparse
 import re
 
 from api_gen import ForwardAPI
+
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
 
 
 class StringsAPI(ForwardAPI):
+
     def __init__(self, api_item_yaml):
         super(StringsAPI, self).__init__(api_item_yaml)
 
@@ -99,7 +101,8 @@ class StringsAPI(ForwardAPI):
 
     def get_kernel_args(self, code_indent):
         input_trans_map = {
-            'const Tensor&': 'const phi::StringTensor&',
+            'const Tensor&':
+            'const phi::StringTensor&',
             'const std::vector<Tensor>&':
             'const std::vector<const phi::StringTensor*>&',
             'const paddle::optional<Tensor>&':
@@ -151,8 +154,8 @@ class StringsAPI(ForwardAPI):
                     kernel_args_type_list.append('const phi::Scalar&')
                     param = 'phi::Scalar(' + param + ')'
                 else:
-                    kernel_args_type_list.append(self.attrs['attr_info'][param][
-                        0])
+                    kernel_args_type_list.append(
+                        self.attrs['attr_info'][param][0])
                 kernel_args = kernel_args + param + ", "
             elif isinstance(param, bool):
                 kernel_args = kernel_args + str(param).lower() + ", "
@@ -351,20 +354,17 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 def main():
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle C++ Strings API files')
-    parser.add_argument(
-        '--api_yaml_path',
-        help='path to sparse api yaml file',
-        default='python/paddle/utils/code_gen/strings_api.yaml')
+    parser.add_argument('--api_yaml_path',
+                        help='path to sparse api yaml file',
+                        default='python/paddle/utils/code_gen/strings_api.yaml')
 
-    parser.add_argument(
-        '--api_header_path',
-        help='output of generated api header code file',
-        default='paddle/phi/api/include/strings_api.h')
+    parser.add_argument('--api_header_path',
+                        help='output of generated api header code file',
+                        default='paddle/phi/api/include/strings_api.h')
 
-    parser.add_argument(
-        '--api_source_path',
-        help='output of generated api source code file',
-        default='paddle/phi/api/lib/strings_api.cc')
+    parser.add_argument('--api_source_path',
+                        help='output of generated api source code file',
+                        default='paddle/phi/api/lib/strings_api.cc')
 
     options = parser.parse_args()
 

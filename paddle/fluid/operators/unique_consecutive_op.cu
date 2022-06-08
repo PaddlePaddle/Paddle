@@ -18,8 +18,10 @@ limitations under the License. */
 #include <thrust/scatter.h>
 #include <thrust/sequence.h>
 #include <thrust/unique.h>
+
 #include <iostream>
 #include <vector>
+
 #include "paddle/fluid/framework/tensor_util.h"            // TensorToVector()
 #include "paddle/fluid/operators/unique_consecutive_op.h"  // TransComute()
 
