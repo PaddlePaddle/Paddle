@@ -73,8 +73,6 @@ def _normalize_path_prefix(path_prefix):
     """
     if not isinstance(path_prefix, six.string_types):
         raise ValueError("'path_prefix' should be a string.")
-    if path_prefix.endswith("/"):
-        raise ValueError("'path_prefix' should not be a directory")
     path_prefix = os.path.normpath(path_prefix)
     path_prefix = os.path.abspath(path_prefix)
     return path_prefix
