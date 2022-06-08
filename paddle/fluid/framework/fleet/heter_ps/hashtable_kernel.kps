@@ -124,7 +124,7 @@ template <>
 template <>
 void HashTable<unsigned long, FeatureValue>::get(const paddle::platform::Place& place,
                                      const unsigned long* d_keys, FeatureValue* d_vals,
-                                      size_t len, StreamType stream) {
+                                      size_t len, XPUStream stream) {
   if (len == 0) {
     return;
   }
@@ -157,7 +157,7 @@ void HashTable<unsigned long, FeatureValue>::get(const paddle::platform::Place& 
 template <typename KeyType, typename ValType>
 template <typename StreamType>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
-                                      size_t len, XPUStream stream) {
+                                      size_t len, StreamType stream) {
   if (len == 0) {
     return;
   }
