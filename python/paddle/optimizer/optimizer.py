@@ -339,9 +339,6 @@ class Optimizer(object):
 
         '''
         if isinstance(self._learning_rate, LRScheduler):
-            self._learning_rate.set_dict(state_dict["LR_Scheduler"])
-
-        if isinstance(self._learning_rate, LRScheduler):
             self._learning_rate.set_state_dict(state_dict["LR_Scheduler"])
 
         # NOTE: exclude learning rate scheduler's state from

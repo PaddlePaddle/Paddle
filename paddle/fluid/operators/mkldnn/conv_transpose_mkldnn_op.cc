@@ -139,10 +139,6 @@ class ConvTransposeMKLDNNHandlerT
      * the memory format preferred for best performance
      */
     const auto chosen_memory_format = MKLDNNMemoryFormat::any;
-    const std::string fuse_activation =
-        ctx.Attr<std::string>("fuse_activation");
-    const float fuse_alpha = ctx.Attr<float>("fuse_alpha");
-    const float fuse_beta = ctx.Attr<float>("fuse_beta");
 
     auto data_type = dnnl::memory::data_type::f32;
     if (ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16" ||
@@ -156,8 +152,7 @@ class ConvTransposeMKLDNNHandlerT
     const auto dst_md = platform::MKLDNNMemDesc(
         dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
 
-    const dnnl::primitive_attr conv_trans_attr =
-        CreatePostOps(fuse_activation, fuse_alpha, fuse_beta);
+    const dnnl::primitive_attr conv_trans_attr = CreateConvAttrs(ctx);
     auto fwd_prop_kind = is_test_ ? dnnl::prop_kind::forward_inference
                                   : dnnl::prop_kind::forward_training;
     if (bias) {
@@ -176,11 +171,14 @@ class ConvTransposeMKLDNNHandlerT
     }
   }
 
-  dnnl::primitive_attr CreatePostOps(const std::string& fuse_activation,
-                                     const float& fuse_alpha,
-                                     const float& fuse_beta) {
+  dnnl::primitive_attr CreateConvAttrs(const framework::ExecutionContext& ctx) {
     dnnl::primitive_attr conv_attr;
     dnnl::post_ops post_operations;
+
+    const std::string fuse_activation =
+        ctx.Attr<std::string>("fuse_activation");
+    const float fuse_alpha = ctx.Attr<float>("fuse_alpha");
+    const float fuse_beta = ctx.Attr<float>("fuse_beta");
 
     // Fusion with ReLU layer is executed through the PostOps feature. Create a
     // PostOps object and configure it to execute an eltwise relu operation.
