@@ -22,10 +22,9 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-TEST(AnalysisPredictor, use_gpu) {
+TEST(AnalysisPredictor, use_cpu) {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   AnalysisConfig config;
-  config.EnableUseGpu(100, 0);
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32, true);
 
@@ -73,10 +72,9 @@ TEST(AnalysisPredictor, use_gpu) {
 
 namespace paddle_infer {
 
-TEST(Predictor, use_gpu) {
+TEST(Predictor, use_cpu) {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   Config config;
-  config.EnableUseGpu(100, 0);
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.EnableLiteEngine(PrecisionType::kFloat32);
 
