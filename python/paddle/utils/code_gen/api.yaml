@@ -1695,7 +1695,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
-    param : [index]
+    param : [x]
   kernel :
     func : put_along_axis
     data_type : x
