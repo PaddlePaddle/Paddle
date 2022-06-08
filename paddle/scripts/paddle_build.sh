@@ -3300,7 +3300,6 @@ function check_coverage_build() {
     set -x
 }
 
-
 function main() {
     local CMD=$1 
     local parallel_number=$2

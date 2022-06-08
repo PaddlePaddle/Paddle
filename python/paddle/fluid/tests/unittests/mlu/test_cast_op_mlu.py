@@ -61,6 +61,25 @@ class TestCastOpFp16ToFp32(OpTest):
         self.op_type = 'cast'
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
+        self.__class__.no_need_check_grad = True
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, atol=1e-3)
+
+
+class TestCastOpFp32ToFp64(OpTest):
+    def setUp(self):
+        ipt = np.random.random(size=[10, 10])
+        self.inputs = {'X': ipt.astype('float32')}
+        self.outputs = {'Out': ipt.astype('float64')}
+        self.attrs = {
+            'in_dtype': int(core.VarDesc.VarType.FP32),
+            'out_dtype': int(core.VarDesc.VarType.FP64)
+        }
+        self.op_type = 'cast'
+        self.place = paddle.device.MLUPlace(0)
+        self.__class__.use_mlu = True
+        self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output_with_place(self.place, atol=1e-3)
