@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+
 #include <bitset>
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
 
@@ -98,6 +100,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "gather",
       "gather_nd",
       "yolo_box",
+      "yolo_box_head",
+      "arg_max",
       "roi_align",
       "affine_channel",
       "nearest_interp",
@@ -162,6 +166,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "gather",
       "gather_nd",
       "yolo_box",
+      "yolo_box_head",
+      "arg_max",
       "roi_align",
       "affine_channel",
       "nearest_interp",
@@ -630,6 +636,22 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
            desc.HasAttr("downsample_ratio") && desc.HasAttr("conf_thresh") &&
            desc.HasAttr("clip_bbox") && desc.HasAttr("scale_x_y"));
       if (!has_attrs) return false;
+    }
+
+    if (op_type == "yolo_box_head") {
+      if (with_dynamic_shape) return false;
+      bool has_attrs = desc.HasAttr("class_num") && desc.HasAttr("anchors");
+      if (!has_attrs) return false;
+    }
+
+    if (op_type == "arg_max") {
+      if (with_dynamic_shape) return false;
+      int axis = desc.HasAttr("axis")
+                     ? BOOST_GET_CONST(int64_t, desc.GetAttr("axis"))
+                     : -1;
+      bool flatten = BOOST_GET_CONST(bool, desc.GetAttr("flatten"));
+      int dtype = BOOST_GET_CONST(int, desc.GetAttr("dtype"));
+      if (axis == 0 || flatten || dtype != 2) return false;
     }
 
     if (op_type == "affine_channel") {
