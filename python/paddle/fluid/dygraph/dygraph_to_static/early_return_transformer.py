@@ -24,7 +24,7 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 
 class EarlyReturnTransformer(gast.NodeTransformer):
     """
-    Transform if/else statement of Dygraph into Static Graph.
+    Transform if/else return statement of Dygraph into Static Graph.
     """
 
     def __init__(self, wrapper_root):
@@ -67,6 +67,16 @@ class EarlyReturnTransformer(gast.NodeTransformer):
         return result
 
     def visit_If(self, node):
+        node.body = self.visit_stmt_block(node.body)
+        node.orelse = self.visit_stmt_block(node.orelse)
+        return node
+
+    def visit_While(self, node):
+        node.body = self.visit_stmt_block(node.body)
+        node.orelse = self.visit_stmt_block(node.orelse)
+        return node
+
+    def visit_For(self, node):
         node.body = self.visit_stmt_block(node.body)
         node.orelse = self.visit_stmt_block(node.orelse)
         return node
