@@ -64,7 +64,7 @@ if(WIN32)
         DEPENDS onnxruntime)
         list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/onnxruntime.dll)
       ADD_CUSTOM_COMMAND(OUTPUT ${eager_generator_path}/paddle2onnx.dll
-        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_SHARED_LIB} ${eager_generator_path}
+        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_LIB} ${eager_generator_path}
         DEPENDS paddle2onnx)
         list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/paddle2onnx.dll)
     endif()
