@@ -696,7 +696,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     AnyDeviceGuard guard(resource_->dev_id(i));
 
     tables_[i]->rwlock_->RDLock();
-    tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
+    tables_[i]->get(place, reinterpret_cast<KeyType*>(node.key_storage),
                     reinterpret_cast<ValType*>(node.val_storage),
                     h_right[i] - h_left[i] + 1,
                     resource_->remote_stream(i, num));
@@ -927,7 +927,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   GradType* d_shard_grads_ptr =
       reinterpret_cast<GradType*>(d_shard_grads->ptr());
 
-  int uniq_len = len;x
+  int uniq_len = len;
   merge_grad(dev_num, d_keys, d_grads, len, uniq_len);
 
   // int grid_size = (uniq_len - 1) / block_size_ + 1;
