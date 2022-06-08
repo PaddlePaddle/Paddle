@@ -34,8 +34,7 @@ def init_communicator(block, rank, ranks, ring_id):
     other_eps = [eps[r] for r in ranks if r != rank]
 
     local_rank = ranks.index(rank)
-    comm_var_name = unique_name.generate(
-        'comm_id') if ring_id != 0 else 'NCCLID'
+    comm_var_name = unique_name.generate('comm_id')
     comm_id_var = block.create_var(name=comm_var_name,
                                    persistable=True,
                                    type=core.VarDesc.VarType.RAW)
@@ -43,21 +42,45 @@ def init_communicator(block, rank, ranks, ring_id):
                     inputs={},
                     outputs={'Out': comm_id_var},
                     attrs={
-                        'rank': rank,
+                        'rank': local_rank,
                         'endpoint': cur_ep,
                         'other_endpoints': other_eps,
                         'ring_id': ring_id
                     })
-    if ring_id != 0:
-        block.append_op(type='c_comm_init',
-                        inputs={'X': comm_id_var},
-                        outputs={},
-                        attrs={
-                            'nranks': len(ranks),
-                            'rank': local_rank,
-                            'ring_id': ring_id
-                        })
+    block.append_op(type='c_comm_init',
+                    inputs={'X': comm_id_var},
+                    outputs={},
+                    attrs={
+                        'nranks': len(ranks),
+                        'rank': local_rank,
+                        'ring_id': ring_id
+                    })
+    tmp_var = block.create_var(name=unique_name.generate('tmp'))
+    block.append_op(type='fill_constant',
+                    outputs={'Out': tmp_var},
+                    attrs={'value': 1})
+    block.append_op(type='c_allreduce_sum',
+                    inputs={'X': tmp_var},
+                    outputs={'Out': tmp_var},
+                    attrs={
+                        'ring_id': ring_id,
+                        'use_calc_stream': True
+                    })
+    block.append_op(type='c_sync_calc_stream',
+                    inputs={'X': tmp_var},
+                    outputs={'Out': tmp_var})
     return ring_id
+
+
+def broadcast_parameters(block, parameters, ring_id):
+    for p in parameters:
+        block.append_op(type='c_broadcast',
+                        inputs={'X': p},
+                        outputs={'Out': p},
+                        attrs={
+                            'ring_id': ring_id,
+                            'use_calc_stream': True
+                        })
 
 
 class DistributedFusedLamb(Optimizer):
@@ -275,6 +298,19 @@ class DistributedFusedLamb(Optimizer):
         local_rank = rank % nproc_per_node
         node_id = int(rank / nproc_per_node)
         node_num = int(nranks / nproc_per_node)
+        ring_ids = []
+        startup_block = self.helper.startup_program.global_block()
+        if nranks > 1:
+            ring_id = init_communicator(startup_block, rank,
+                                        list(range(nranks)), 0)
+            ring_ids.append(ring_id)
+
+        if node_num > 1 and len(ring_ids) <= 1 and shard_inside_node:
+            local_group_ranks = list(
+                range(node_id * nproc_per_node, (node_id + 1) * nproc_per_node))
+            ring_id = init_communicator(startup_block, rank, local_group_ranks,
+                                        1)
+            ring_ids.append(ring_id)
 
         scale = self._get_or_create_scale()
 
@@ -286,13 +322,15 @@ class DistributedFusedLamb(Optimizer):
                 if self._exclude_from_weight_decay_fn(p):
                     apply_weight_decay[i] = 0
 
-        startup_block = self.helper.startup_program.global_block()
         for g in grads:
             startup_block.create_var(name=g.name,
                                      type=g.type,
                                      dtype=g.dtype,
                                      persistable=g.persistable,
                                      shape=g.shape)
+
+        if nranks > 1:
+            broadcast_parameters(startup_block, params, ring_ids[0])
 
         startup_block.append_op(
             type='distributed_fused_lamb_init',
@@ -330,19 +368,6 @@ class DistributedFusedLamb(Optimizer):
                 'beta1': self._beta1,
                 'beta2': self._beta2,
             })
-
-        ring_ids = []
-        if nranks > 1:
-            ring_id = init_communicator(startup_block, rank,
-                                        list(range(nranks)), 0)
-            ring_ids.append(ring_id)
-
-        if node_num > 1 and len(ring_ids) <= 1 and shard_inside_node:
-            local_group_ranks = list(
-                range(node_id * nproc_per_node, (node_id + 1) * nproc_per_node))
-            ring_id = init_communicator(startup_block, rank, local_group_ranks,
-                                        1)
-            ring_ids.append(ring_id)
 
         main_block = self.helper.main_program.global_block()
         self._create_global_learning_rate()

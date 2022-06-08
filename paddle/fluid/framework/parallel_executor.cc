@@ -683,6 +683,10 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   // broadcast parameters from the 0th device to others:
   auto need_broadcast = [&]() -> bool {
+    if (member_->build_strategy_.reduce_ ==
+        BuildStrategy::ReduceStrategy::kNoReduce) {
+      return false;
+    }
     if (member_->build_strategy_.num_trainers_ > 1) {
       // 1. num_tariners would be grater than 1 for nccl distributed training.
       return true;
@@ -1348,6 +1352,12 @@ std::vector<ir::Graph *> ParallelExecutor::CloneGraphToMultiDevices(
 }
 
 void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
+  if (member_->build_strategy_.reduce_ ==
+      BuildStrategy::ReduceStrategy::kNoReduce) {
+    member_->nccl_ctxs_ = nullptr;
+    return;
+  }
+
   if (member_->IsUseCUDA(member_->use_device_) && member_->nranks_ > 1) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     member_->InitOrGetNCCLCommunicator(global_scope, &member_->build_strategy_);
