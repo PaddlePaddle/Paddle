@@ -135,7 +135,7 @@ void HashTable<unsigned long, FeatureValue>::get(const paddle::platform::Place& 
   auto ctx_xpu = xpu_dev_ctx.x_context();
   int r = xpu::get_pairs<unsigned int, ::FeatureValue>(
       ctx_xpu,
-      reinterpret_cast<unsigned int*>(d_keys),
+      reinterpret_cast<const unsigned int*>(d_keys),
       reinterpret_cast<::FeatureValue*>(d_vals_in),
       len,
       reinterpret_cast<::FeatureValue*>(d_vals),
