@@ -25,7 +25,7 @@ namespace framework {
 namespace ir {
 namespace {
 struct Data {
-  Data() {}
+  Data() = default;
 
   Data(std::vector<int64_t>&& data_shape, std::vector<float>&& raw_data)
       : shape(std::move(data_shape)), data(std::move(raw_data)) {
