@@ -15,11 +15,39 @@
 #include "paddle/fluid/framework/ir/dense_fc_to_sparse_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace patterns {
+
+PDNode *patterns::DenseFC::operator()() {
+  auto *fc = pattern->NewNode(fc_repr())->assert_is_op("fc");
+  // Input
+  auto *fc_input = pattern->NewNode(fc_input_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("fc", "Input");
+  // Filter
+  auto *fc_weights = pattern->NewNode(fc_weights_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("fc", "W");
+  // Bias
+  auto *fc_bias = pattern->NewNode(fc_bias_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("fc", "Bias");
+  // Output
+  auto *fc_out = pattern->NewNode(fc_out_repr())
+                     ->AsOutput()
+                     ->assert_is_op_output("fc", "Out")
+                     ->assert_is_only_output_of_op("fc");
+
+  fc->LinksFrom({fc_input, fc_weights, fc_bias}).LinksTo({fc_out});
+
+  return fc_out;
+}
+}  // namespace patterns
 
 DenseFCToSparsePass::DenseFCToSparsePass() {
   AddOpCompat(OpCompat("fc"))

@@ -24,6 +24,22 @@
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace patterns {
+
+struct DenseFC : public PatternBase {
+  DenseFC(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dense_fc") {}
+
+  PDNode* operator()();
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(fc);
+  PATTERN_DECL_NODE(fc_out);
+  PATTERN_DECL_NODE(fc_input);
+  PATTERN_DECL_NODE(fc_weights);
+  PATTERN_DECL_NODE(fc_bias);
+};
+}  // namespace patterns
 
 /**
  * Replace dense op with sparse op

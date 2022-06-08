@@ -24,7 +24,23 @@
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace patterns {
 
+struct DenseMultiheadMatmul : public PatternBase {
+  DenseMultiheadMatmul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dense_multihead_matmul") {}
+
+  PDNode* operator()();
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(multihead_matmul);
+  PATTERN_DECL_NODE(multihead_matmul_out);
+  PATTERN_DECL_NODE(multihead_matmul_input);
+  PATTERN_DECL_NODE(multihead_matmul_weights);
+  PATTERN_DECL_NODE(multihead_matmul_bias);
+  PATTERN_DECL_NODE(multihead_matmul_biasqk);
+};
+}  // namespace patterns
 /**
  * Replace dense multihead_matmul op with sparse multihead_matmul op
  */

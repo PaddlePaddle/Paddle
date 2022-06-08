@@ -3403,69 +3403,6 @@ PDNode *patterns::AddSupportInt8::operator()() {
   return quant_out;
 }
 
-PDNode *patterns::DenseFC::operator()() {
-  auto *fc = pattern->NewNode(fc_repr())->assert_is_op("fc");
-  // Input
-  auto *fc_input = pattern->NewNode(fc_input_repr())
-                       ->AsInput()
-                       ->assert_is_op_input("fc", "Input");
-  // Filter
-  auto *fc_weights = pattern->NewNode(fc_weights_repr())
-                         ->AsInput()
-                         ->assert_is_op_input("fc", "W");
-  // Bias
-  auto *fc_bias = pattern->NewNode(fc_bias_repr())
-                      ->AsInput()
-                      ->assert_is_op_input("fc", "Bias");
-  // Output
-  auto *fc_out = pattern->NewNode(fc_out_repr())
-                     ->AsOutput()
-                     ->assert_is_op_output("fc", "Out")
-                     ->assert_is_only_output_of_op("fc");
-
-  fc->LinksFrom({fc_input, fc_weights, fc_bias}).LinksTo({fc_out});
-
-  return fc_out;
-}
-
-PDNode *patterns::DenseMultiheadMatmul::operator()() {
-  auto *multihead_matmul = pattern->NewNode(multihead_matmul_repr())
-                               ->assert_is_op("multihead_matmul");
-  // Input
-  auto *multihead_matmul_input =
-      pattern->NewNode(multihead_matmul_input_repr())
-          ->AsInput()
-          ->assert_is_op_input("multihead_matmul", "Input");
-  // Filter
-  auto *multihead_matmul_weights =
-      pattern->NewNode(multihead_matmul_weights_repr())
-          ->AsInput()
-          ->assert_is_op_input("multihead_matmul", "W");
-  // Bias
-  auto *multihead_matmul_bias =
-      pattern->NewNode(multihead_matmul_bias_repr())
-          ->AsInput()
-          ->assert_is_op_input("multihead_matmul", "Bias");
-  // BiasQK
-  auto *multihead_matmul_biasqk =
-      pattern->NewNode(multihead_matmul_biasqk_repr())
-          ->AsInput()
-          ->assert_is_op_input("multihead_matmul", "BiasQK");
-  // Output
-  auto *multihead_matmul_out =
-      pattern->NewNode(multihead_matmul_out_repr())
-          ->AsOutput()
-          ->assert_is_op_output("multihead_matmul", "Out")
-          ->assert_is_only_output_of_op("multihead_matmul");
-
-  multihead_matmul
-      ->LinksFrom({multihead_matmul_input, multihead_matmul_weights,
-                   multihead_matmul_bias, multihead_matmul_biasqk})
-      .LinksTo({multihead_matmul_out});
-
-  return multihead_matmul_out;
-}
-
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

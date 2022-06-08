@@ -30,7 +30,7 @@ namespace inference {
 namespace tensorrt {
 
 /*
- * FC converter convert a sparse_fc op in Fluid to a sparse_fc layer in TRT.
+ * FC converter convert a sparse_fc op to a sparse_fc plugin in TRT.
  */
 class SparseFcOpConverter : public OpConverter {
  public:
@@ -101,7 +101,7 @@ class SparseFcOpConverter : public OpConverter {
 
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a sparse_fc op to tensorrt sparse_fc layer";
+    VLOG(3) << "convert a sparse_fc op to tensorrt sparse_fc plugin";
     framework::OpDesc op_desc(op, nullptr);
     auto output_name = op_desc.Output("Out").front();
     auto input_names = op_desc.InputNames();
@@ -132,8 +132,6 @@ class SparseFcOpConverter : public OpConverter {
         op_desc.HasAttr("activation_type")
             ? BOOST_GET_CONST(std::string, op_desc.GetAttr("activation_type"))
             : "";
-    // This may trigger a GPU->CPU copy, because TRT's weight can only be
-    // assigned from CPU memory, which can't be avoided.
     float* weight_data = nullptr;
     bool enable_int8 = op_desc.HasAttr("enable_int8");
     bool support_int8 = false;
@@ -169,8 +167,63 @@ class SparseFcOpConverter : public OpConverter {
     };
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     auto regist_fc = [&](nvinfer1::ITensor* inputs, int n_output,
-                         TensorRTEngine::Weight* weight,
-                         TensorRTEngine::Weight* bias) {
+                         TensorRTEngine::Weight& weight,
+                         TensorRTEngine::Weight& bias) {
+      if (enable_int8 || support_int8) {
+        // add conv1x1 layer
+        nvinfer1::DimsHW nv_ksize(1, 1);
+        auto* fc_layer_int8 =
+            TRT_ENGINE_ADD_LAYER(engine_, Convolution, *X, n_output, nv_ksize,
+                                 weight.get(), bias.get());
+        if (activation_type == "relu") {
+          fc_layer_int8->setName(
+              ("ernie_fc_op_int8: Convolution (Output: " + output_name + ")")
+                  .c_str());
+          PADDLE_ENFORCE_EQ(
+              op_desc.HasAttr("out_threshold"), true,
+              platform::errors::InvalidArgument(
+                  "must have out threshold in fc layers in int8 mode"));
+          float out_scale = 0;
+          if (enable_int8) {
+            out_scale =
+                BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          } else {
+            out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Out"));
+          }
+          engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0),
+                                         out_scale);
+          nvinfer1::IActivationLayer* relu_layer_int8 = TRT_ENGINE_ADD_LAYER(
+              engine_, Activation, *(fc_layer_int8->getOutput(0)),
+              nvinfer1::ActivationType::kRELU);
+          RreplenishLayerAndOutput(relu_layer_int8, "relu_after_ernie_fc_int8",
+                                   {output_name}, test_mode);
+        } else {
+          RreplenishLayerAndOutput(fc_layer_int8,
+                                   "ernie_fc_op_int8: Convolution",
+                                   {output_name}, test_mode);
+        }
+      } else {
+        // add fc layer
+        auto* fc_layer_float = TRT_ENGINE_ADD_LAYER(
+            engine_, FullyConnected, *X, n_output, weight.get(), bias.get());
+        if (activation_type == "relu") {
+          fc_layer_float->setName(
+              ("ernie_fc_op_float: (Output: " + output_name + ")").c_str());
+          nvinfer1::IActivationLayer* relu_layer_float = TRT_ENGINE_ADD_LAYER(
+              engine_, Activation, *(fc_layer_float->getOutput(0)),
+              nvinfer1::ActivationType::kRELU);
+          RreplenishLayerAndOutput(relu_layer_float,
+                                   "relu_after_ernie_fc_float", {output_name},
+                                   test_mode);
+        } else {
+          RreplenishLayerAndOutput(fc_layer_float, "ernie_fc_op_float",
+                                   {output_name}, test_mode);
+        }
+      }
+    };
+    auto regist_sparse_fc = [&](nvinfer1::ITensor* inputs, int n_output,
+                                TensorRTEngine::Weight* weight,
+                                TensorRTEngine::Weight* bias) {
       if (enable_int8 || support_int8) {
         // add conv layer
         float out_scale = 0;
@@ -235,91 +288,78 @@ class SparseFcOpConverter : public OpConverter {
       weight_w = m;
       weight_h = n;
     }
-    half* half_data = nullptr;
-    void* w_data = nullptr;
-    if (with_fp16) {
-      half_data = new half[Y_t->numel()];
-      for (int i = 0; i < Y_t->numel(); i++) {
-        half_data[i] = static_cast<half>(weight_data[i]);
-      }
-      w_data = static_cast<void*>(half_data);
-    } else {
-      w_data = static_cast<void*>(weight_data);
-    }
     size_t n_output = weight_w;
-    TensorRTEngine::Weight weight{
-        with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
-        w_data, static_cast<size_t>(Y_t->numel())};
-    weight.dims.assign({weight_w, weight_h});
-
     float* bias_data = nullptr;
     int bias_num = 0;
-    void* b_data = nullptr;
     if (with_bias) {
       auto* b_v = scope.GetVar(op_desc.Input("Bias").front());
       auto* b_t = b_v->GetMutable<framework::LoDTensor>();
       bias_data = engine_->GetWeightCPUData(op_desc.Input("Bias").front(), b_t);
       bias_num = b_t->numel();
-
-      half* half_bias_data = nullptr;
-      if (with_fp16) {
-        half_bias_data = new half[bias_num];
-        for (int i = 0; i < bias_num; i++) {
-          half_bias_data[i] = static_cast<half>(bias_data[i]);
-        }
-        b_data = static_cast<void*>(half_bias_data);
-      } else {
-        b_data = static_cast<void*>(bias_data);
-      }
     }
-    TensorRTEngine::Weight bias{
-        with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
-        b_data, static_cast<size_t>(bias_num)};
-
     // Running the TRT Static Shape mode: x_num_col_dims-1
     if (!engine_->with_dynamic_shape()) {
       x_num_col_dims--;
     }
     // If use tensorrt'oss, the x_dim and x_num_col_dims need change, and can
     // not add Shuffle layer in ernie's multihead.
+    // Sparse inference doesn't support variable length for now.
     if (x_dim.nbDims == 4 && x_num_col_dims == 1) {
-      if (enable_int8 || support_int8) {
-        plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
-            &weight, &bias, activation_type, nvinfer1::DataType::kINT8, n);
-        std::vector<nvinfer1::ITensor*> plugin_inputs;
-        plugin_inputs.emplace_back(X);
-        auto fc_layer_int8 = engine_->network()->addPluginV2(
-            plugin_inputs.data(), plugin_inputs.size(), *plugin);
-        RreplenishLayerAndOutput(fc_layer_int8,
-                                 "ernie_sparse_fc_op_int8: ", {output_name},
-                                 test_mode);
-      } else {
-        plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
-            &weight, &bias, activation_type,
-            with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
-            n);
-        std::vector<nvinfer1::ITensor*> plugin_inputs;
-        plugin_inputs.emplace_back(X);
-        auto fc_layer_float = engine_->network()->addPluginV2(
-            plugin_inputs.data(), plugin_inputs.size(), *plugin);
-        RreplenishLayerAndOutput(fc_layer_float, "ernie_sparse_fc_op_float",
-                                 {output_name}, test_mode);
-      }
+      TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
+                                    static_cast<void*>(weight_data),
+                                    static_cast<size_t>(Y_t->numel())};
+      weight.dims.assign({weight_w, weight_h});
+      TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
+                                  static_cast<void*>(bias_data),
+                                  static_cast<size_t>(bias_num)};
+      regist_fc(X, n_output, weight, bias);
     } else {  // need reshape input before and after fc
       PADDLE_ENFORCE_GT(
           x_dim.nbDims, x_num_col_dims,
           platform::errors::InvalidArgument(
-              "Params and input dims mismatch. Paddle-TRT SPARSE_FC "
+              "Params and input dims mismatch. Paddle-TRT FC "
               "converter expects x_dim.nbDims > x_num_col_dims, but "
               "x_dim.nbDims : %d, x_num_col_dims : %d.",
               x_dim.nbDims, x_num_col_dims));
+      half* half_data = nullptr;
+      void* w_data = nullptr;
+      if (with_fp16) {
+        half_data = new half[Y_t->numel()];
+        for (int i = 0; i < Y_t->numel(); i++) {
+          half_data[i] = static_cast<half>(weight_data[i]);
+        }
+        w_data = static_cast<void*>(half_data);
+      } else {
+        w_data = static_cast<void*>(weight_data);
+      }
+      TensorRTEngine::Weight weight{
+          with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+          w_data, static_cast<size_t>(Y_t->numel())};
+      weight.dims.assign({weight_w, weight_h});
+      void* b_data = nullptr;
+      if (with_bias) {
+        half* half_bias_data = nullptr;
+        if (with_fp16) {
+          half_bias_data = new half[bias_num];
+          for (int i = 0; i < bias_num; i++) {
+            half_bias_data[i] = static_cast<half>(bias_data[i]);
+          }
+          b_data = static_cast<void*>(half_bias_data);
+        } else {
+          b_data = static_cast<void*>(bias_data);
+        }
+      }
+      TensorRTEngine::Weight bias{
+          with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+          b_data, static_cast<size_t>(bias_num)};
+
       auto* reshape_before_fc_layer =
           reshape_before_fc(X, x_dim, x_num_col_dims, output_name);
       auto* reshape_itensor = reshape_before_fc_layer->getOutput(0);
       if (enable_int8 || support_int8) {
         engine_->SetTensorDynamicRange(reshape_itensor, in_scale);
       }
-      regist_fc(reshape_itensor, n_output, &weight, &bias);
+      regist_sparse_fc(reshape_itensor, n_output, &weight, &bias);
     }
   }
 };
