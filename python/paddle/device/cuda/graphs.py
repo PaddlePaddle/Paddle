@@ -106,3 +106,15 @@ def wrap_cuda_graph(function, mode="thread_local", memory_pool="default"):
         else:
             mock_func._cuda_graph_pool_id = memory_pool._cuda_graph_pool_id
     return new_function
+
+
+def find_in_n_out(program):
+    # find the all logical inputs and outpus of a program section
+    ins = []
+    outs = []
+    return ins, outs
+
+
+def cuda_graph_transform(program):
+    # replace the ops marked with cuda_graph_attr to run_program_op to use cuda graph
+    return program
