@@ -67,11 +67,12 @@
 
 - api : add
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
     func : add
+  inplace : (x -> out)
   backward : add_grad
 
 - api : add_n
@@ -329,6 +330,7 @@
     func : UnchangedInferMeta
   kernel :
     func : ceil
+  inplace : (x -> out)
   backward : ceil_grad
 
 - api : celu
@@ -622,12 +624,13 @@
 # elu
 - api : elu
   args : (Tensor x, float alpha)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : elu
+  inplace : (x -> out)
   backward : elu_grad
 
 - api : embedding
@@ -689,21 +692,23 @@
 # erfinv
 - api : erfinv
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : erfinv
+  inplace : (x -> out)
   backward : erfinv_grad
 
 # exp
 - api : exp
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : exp
+  inplace : (x -> out)
   backward : exp_grad
 
 # expand
@@ -779,6 +784,7 @@
     func : UnchangedInferMeta
   kernel :
     func : floor
+  inplace : (x -> out)
   backward : floor_grad
 
 - api : floor_divide
@@ -1163,11 +1169,12 @@
 
 - api : lerp
   args : (Tensor x, Tensor y, Tensor weight)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : LerpInferMeta
   kernel :
     func : lerp
+  inplace : (x -> out)
   backward : lerp_grad
 
 - api : less_equal
@@ -1697,13 +1704,14 @@
 # put_along_axis
 - api : put_along_axis
   args : (Tensor x, Tensor index, Tensor value, int axis, str reduce)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
-    param : [index]
+    param : [x]
   kernel :
     func : put_along_axis
     data_type : x
+  inplace : (x -> out)
   backward : put_along_axis_grad
 
 - api : qr
@@ -1750,11 +1758,12 @@
 
 - api : reciprocal
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : reciprocal
+  inplace : (x -> out)
   backward : reciprocal_grad
 
 # reduce_prod
@@ -1769,7 +1778,7 @@
 
 - api : relu
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
@@ -1828,6 +1837,7 @@
     func : UnchangedInferMeta
   kernel :
     func : round
+  inplace : (x -> out)
   backward : round_grad
 
 - api : rsqrt
@@ -1842,7 +1852,7 @@
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
@@ -1853,12 +1863,13 @@
 
 - api : scatter
   args : (Tensor x, Tensor index, Tensor updates, bool overwrite)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ScatterInferMeta
     dtype : x
   kernel :
     func : scatter
+  inplace : (x -> out)
   backward : scatter_grad
 
 - api : scatter_nd_add
@@ -2018,12 +2029,13 @@
 
 - api : softmax
   args : (Tensor x, int axis)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : SoftmaxInferMeta
   kernel :
     func : softmax
     use_gpudnn : true
+  inplace : (x -> out)
   backward : softmax_grad
 
 - api : split
@@ -2034,11 +2046,12 @@
 
 - api : sqrt
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : sqrt
+  inplace : (x -> out)
   backward : sqrt_grad
 
 - api : square
@@ -2057,6 +2070,7 @@
     func : SqueezeInferMeta
   kernel :
     func : squeeze
+  inplace : (x -> out)
   view: (x -> out)
   intermediate : xshape
   backward : squeeze_grad
@@ -2081,11 +2095,12 @@
 
 - api : subtract
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
     func : subtract
+  inplace : (x -> out)
   backward : subtract_grad
 
 - api : sum
@@ -2134,11 +2149,12 @@
 # tanh
 - api : tanh
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : tanh
+  inplace : (x -> out)
   backward : tanh_grad
 
 # tanh_shrink
@@ -2299,6 +2315,7 @@
     func : UnsqueezeInferMeta
   kernel :
     func : unsqueeze
+  inplace : (x -> out)
   view: (x -> out)
   intermediate : xshape
   backward : unsqueeze_grad
