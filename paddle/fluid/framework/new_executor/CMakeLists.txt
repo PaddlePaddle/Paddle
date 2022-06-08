@@ -85,8 +85,9 @@ if(WITH_GPU
     download_program
     COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program
             --no-check-certificate
-    COMMAND wget -n https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program
-            --no-check-certificate)
+    COMMAND
+        wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program
+        --no-check-certificate)
 
   # all operators used in the program
   set(OPS
