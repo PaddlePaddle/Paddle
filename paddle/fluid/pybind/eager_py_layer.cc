@@ -241,6 +241,14 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
   PyObject* outputs_tuple = nullptr;
   if (PyTuple_Check(outputs)) {
     outputs_tuple = outputs;
+  } else if (PyList_Check(outputs)) {
+    Py_ssize_t len = PyList_Size(outputs);
+    outputs_tuple = PyTuple_New(len);
+    for (Py_ssize_t i = 0; i < len; i++) {
+      auto* tmp_obj = PyList_GetItem(outputs, i);
+      Py_INCREF(tmp_obj);
+      PyTuple_SET_ITEM(outputs_tuple, i, tmp_obj);
+    }
   } else {
     outputs_tuple = PyTuple_New(1);
     Py_INCREF(outputs);
