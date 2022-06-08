@@ -105,6 +105,7 @@ void HashTable<KeyType, ValType>::get(const paddle::platform::Place& place,
   uint32_t xpu_num = container_->get_xpu_num();
   platform::XPUDeviceContext xpu_dev_ctx(place);
   auto ctx_xpu = xpu_dev_ctx.x_context();
+  /*
   int r = xpu::fill_dvals<KeyType, ValType>(
       ctx_xpu, d_keys, d_vals_in, len,  d_vals,
       xpu_id, xpu_num
@@ -113,6 +114,7 @@ void HashTable<KeyType, ValType>::get(const paddle::platform::Place& place,
       r, XPU_SUCCESS,
       platform::errors::External("XPU get kernel return wrong value[%d %s]",
                                   r, XPUAPIErrorMsg[r]));
+  */
   #else
     return;
   #endif
