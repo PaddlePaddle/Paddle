@@ -548,5 +548,29 @@ class TestGetitemBeforeInplace(unittest.TestCase):
             loss.backward()
 
 
+class TestInplaceChangeStopGradient(unittest.TestCase):
+
+    def change_stop_gradient_in_inplace(self):
+        with _test_eager_guard():
+            a = paddle.rand([2, 3], dtype='float32')
+            b = paddle.rand([2, 3], dtype='float32')
+            b.stop_gradient = False
+            self.assertEqual(a.stop_gradient, True)
+            a.add_(b)
+            self.assertEqual(a.stop_gradient, False)
+            a.sum().backward()
+            return a.grad
+
+    def test_retain_grad_1(self):
+        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        a_grad_np = self.change_stop_gradient_in_inplace().numpy()
+        np_result = np.ones([2, 3], dtype='float32')
+        self.assertTrue(np.array_equal(a_grad_np, np_result))
+
+    def test_retain_grad_0(self):
+        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+        self.assertEqual(self.change_stop_gradient_in_inplace(), None)
+
+
 if __name__ == '__main__':
     unittest.main()
