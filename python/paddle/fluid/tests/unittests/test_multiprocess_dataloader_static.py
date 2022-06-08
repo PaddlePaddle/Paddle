@@ -182,6 +182,7 @@ class TestStaticDataLoader(unittest.TestCase):
 
 
 class TestStaticDataLoaderReturnList(unittest.TestCase):
+
     def run_single_place(self, num_workers):
         scope = fluid.Scope()
         image = fluid.data(
@@ -189,13 +190,12 @@ class TestStaticDataLoaderReturnList(unittest.TestCase):
         label = fluid.data(name='label', shape=[None, 1], dtype='int64')
         with fluid.scope_guard(scope):
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
-            dataloader = DataLoader(
-                dataset,
-                feed_list=[image, label],
-                num_workers=num_workers,
-                batch_size=BATCH_SIZE,
-                drop_last=True,
-                return_list=True)
+            dataloader = DataLoader(dataset,
+                                    feed_list=[image, label],
+                                    num_workers=num_workers,
+                                    batch_size=BATCH_SIZE,
+                                    drop_last=True,
+                                    return_list=True)
 
             for d in dataloader:
                 assert isinstance(d, list)
@@ -210,14 +210,13 @@ class TestStaticDataLoaderReturnList(unittest.TestCase):
         label = fluid.data(name='label', shape=[None, 1], dtype='int64')
         with fluid.scope_guard(scope):
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
-            dataloader = DataLoader(
-                dataset,
-                feed_list=[image, label],
-                num_workers=num_workers,
-                batch_size=BATCH_SIZE,
-                places=[fluid.CPUPlace()] * 2,
-                drop_last=True,
-                return_list=True)
+            dataloader = DataLoader(dataset,
+                                    feed_list=[image, label],
+                                    num_workers=num_workers,
+                                    batch_size=BATCH_SIZE,
+                                    places=[fluid.CPUPlace()] * 2,
+                                    drop_last=True,
+                                    return_list=True)
 
             for d in dataloader:
                 assert isinstance(d, list)
