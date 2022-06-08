@@ -16,8 +16,6 @@ limitations under the License. */
 #include <vector>
 
 #pragma GCC diagnostic ignored "-Wattributes"
-#include "pybind11/pytypes.h"
-
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -34,6 +32,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "pybind11/detail/internals.h"
+#include "pybind11/pytypes.h"
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
@@ -323,10 +322,11 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
           egr::EagerUtils::autograd_meta(dirty_tensor);
       PADDLE_ENFORCE_EQ(!dirty_tensor_autograd_meta->StopGradient() &&
                             egr::egr_utils_api::IsLeafTensor(*dirty_tensor),
-                        false, paddle::platform::errors::InvalidArgument(
-                                   "Leaf Var (%s) that doesn't stop gradient "
-                                   "can't use inplace strategy.",
-                                   dirty_tensor->name()));
+                        false,
+                        paddle::platform::errors::InvalidArgument(
+                            "Leaf Var (%s) that doesn't stop gradient "
+                            "can't use inplace strategy.",
+                            dirty_tensor->name()));
       dirty_tensor->bump_inplace_version();
       VLOG(3) << "Tensor(" << dirty_tensor->name()
               << ") uses Inplace Strategy.";
@@ -466,16 +466,19 @@ PyMethodDef pylayer_methods[] = {
      METH_O, NULL},
     {NULL, NULL, 0, NULL}};
 
-struct PyGetSetDef pylayer_properties[]{
-    {"container", (getter)tensor_properties_get_container,
-     (setter)tensor_properties_set_container, nullptr, nullptr},
-    {"non_differentiable", (getter)tensor_properties_get_non_differentiable,
-     (setter)tensor_properties_set_non_differentiable, nullptr, nullptr},
-    {"dirty_tensors", (getter)tensor_properties_get_dirty_tensors,
-     (setter)tensor_properties_set_dirty_tensors, nullptr, nullptr},
-    {"materialize_grads", nullptr,
-     (setter)tensor_properties_set_materialize_grads, nullptr, nullptr},
-    {nullptr, nullptr, nullptr, nullptr, nullptr}};
+struct PyGetSetDef pylayer_properties[] {
+  {"container", (getter)tensor_properties_get_container,
+   (setter)tensor_properties_set_container, nullptr, nullptr},
+      {"non_differentiable", (getter)tensor_properties_get_non_differentiable,
+       (setter)tensor_properties_set_non_differentiable, nullptr, nullptr},
+      {"dirty_tensors", (getter)tensor_properties_get_dirty_tensors,
+       (setter)tensor_properties_set_dirty_tensors, nullptr, nullptr},
+      {"materialize_grads", nullptr,
+       (setter)tensor_properties_set_materialize_grads, nullptr, nullptr},
+  {
+    nullptr, nullptr, nullptr, nullptr, nullptr
+  }
+};
 
 void BindEagerPyLayer(PyObject* module) {
   auto heap_type = reinterpret_cast<PyHeapTypeObject*>(

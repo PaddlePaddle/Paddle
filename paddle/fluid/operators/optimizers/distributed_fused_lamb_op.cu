@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cmath>
+
 #include "paddle/fluid/memory/buffer.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/optimizers/cast_with_ptr.h"
@@ -32,6 +33,7 @@
 
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
+
 #include "math.h"  // NOLINT
 namespace cub = hipcub;
 #endif
@@ -190,9 +192,8 @@ static void MultiTensorL2Norm(const platform::CUDAPlace &place,
   PD_VEC_LAUNCH_KERNEL(vec_size, PD_LAUNCH_MULTI_TENSOR_APPLY_L2_NORM_KERNEL);
 #undef PD_LAUNCH_MULTI_TENSOR_APPLY_L2_NORM_KERNEL
 
-  MultiTensorL2NormReduceAgainCUDAKernel<
-      MT, OutT, kBlockDim><<<n, kBlockDim, 0, stream>>>(tmp_out_ptr, y,
-                                                        max_chunk_num);
+  MultiTensorL2NormReduceAgainCUDAKernel<MT, OutT, kBlockDim>
+      <<<n, kBlockDim, 0, stream>>>(tmp_out_ptr, y, max_chunk_num);
 }
 
 template <int LogLevel>
@@ -508,14 +509,14 @@ static void MultiTensorUpdateLambMomentAndTrustRatioDiv(
                                       "Output(Step) cannot be nullptr."));
   }
 
-#define PD_LAUNCH_LAMB_MOM_TRUST_RATIO_DIV_KERNEL                         \
-  do {                                                                    \
-    UpdateLambMomentAndTrustRatioDivCUDAKernel<T, GradT, kVecSize><<<     \
-        config.block_per_grid, config.thread_per_block, 0, stream>>>(     \
-        param_p, grad_p, square_grad_norm_p, global_scale, beta1pow_p,    \
-        beta2pow_p, mom1_p, mom2_p, trust_ratio_div_p, found_inf_p, step, \
-        weight_decay, weight_decay_end_numel, beta1, beta2, epsilon,      \
-        max_global_grad_norm, numel, rescale_grad);                       \
+#define PD_LAUNCH_LAMB_MOM_TRUST_RATIO_DIV_KERNEL                             \
+  do {                                                                        \
+    UpdateLambMomentAndTrustRatioDivCUDAKernel<T, GradT, kVecSize>            \
+        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(      \
+            param_p, grad_p, square_grad_norm_p, global_scale, beta1pow_p,    \
+            beta2pow_p, mom1_p, mom2_p, trust_ratio_div_p, found_inf_p, step, \
+            weight_decay, weight_decay_end_numel, beta1, beta2, epsilon,      \
+            max_global_grad_norm, numel, rescale_grad);                       \
   } while (0)
 
   PD_VEC_LAUNCH_KERNEL(vec_size, PD_LAUNCH_LAMB_MOM_TRUST_RATIO_DIV_KERNEL);
@@ -705,8 +706,9 @@ static void MultiTensorUpdateLambParamAndBetaPows(
     PADDLE_ENFORCE_NOT_NULL(beta2pow, platform::errors::InvalidArgument(
                                           "Beta2Pow should not be nullptr."));
   } else {
-    PADDLE_ENFORCE_EQ(beta2pow, nullptr, platform::errors::InvalidArgument(
-                                             "Beta2Pow should be nullptr."));
+    PADDLE_ENFORCE_EQ(
+        beta2pow, nullptr,
+        platform::errors::InvalidArgument("Beta2Pow should be nullptr."));
   }
 
   const int block_dim = 512;
@@ -744,21 +746,21 @@ static void MultiTensorUpdateLambParamAndBetaPows(
                     betapow_helper);                                           \
   } while (0)
 
-#define PD_LAUNCH_VEC_MULTI_TENSOR_UPDATE_PARAM_BETAPOW_CASE        \
-  do {                                                              \
-    auto callback = [&](                                            \
-        const MultiTensorLauncher<kNumTensor, kNumChunk> &launcher, \
-        int launch_n) {                                             \
-      if (has_beta_pow && launch_n == 0) {                          \
-        PD_LAUNCH_MULTI_TENSOR_UPDATE_PARAM_BETAPOW(true);          \
-        beta1pow = nullptr;                                         \
-        beta2pow = nullptr;                                         \
-      } else {                                                      \
-        PD_LAUNCH_MULTI_TENSOR_UPDATE_PARAM_BETAPOW(false);         \
-      }                                                             \
-    };                                                              \
-    MultiTensorApplyWithCallback<kNumTensor, kNumChunk>(            \
-        stream, offsets, n, chunk_size, block_dim, callback);       \
+#define PD_LAUNCH_VEC_MULTI_TENSOR_UPDATE_PARAM_BETAPOW_CASE            \
+  do {                                                                  \
+    auto callback =                                                     \
+        [&](const MultiTensorLauncher<kNumTensor, kNumChunk> &launcher, \
+            int launch_n) {                                             \
+          if (has_beta_pow && launch_n == 0) {                          \
+            PD_LAUNCH_MULTI_TENSOR_UPDATE_PARAM_BETAPOW(true);          \
+            beta1pow = nullptr;                                         \
+            beta2pow = nullptr;                                         \
+          } else {                                                      \
+            PD_LAUNCH_MULTI_TENSOR_UPDATE_PARAM_BETAPOW(false);         \
+          }                                                             \
+        };                                                              \
+    MultiTensorApplyWithCallback<kNumTensor, kNumChunk>(                \
+        stream, offsets, n, chunk_size, block_dim, callback);           \
   } while (0)
 
   PD_VEC_LAUNCH_KERNEL(vec_size,
@@ -793,11 +795,11 @@ static void LaunchScaleKernel(const platform::CUDADeviceContext &dev_ctx,
   int vec_size = std::min(GetChunkedVecSize(x, 0), GetChunkedVecSize(y, 0));
   auto config = platform::GetGpuLaunchConfig1D(dev_ctx, n, vec_size);
 
-#define PD_LAMB_VEC_SCALE_KERNEL_CASE                                          \
-  do {                                                                         \
-    ScaleCUDAKernel<T1, T2, kVecSize><<<config.block_per_grid,                 \
-                                        config.thread_per_block, 0, stream>>>( \
-        x, scale, y, n);                                                       \
+#define PD_LAMB_VEC_SCALE_KERNEL_CASE                                    \
+  do {                                                                   \
+    ScaleCUDAKernel<T1, T2, kVecSize>                                    \
+        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>( \
+            x, scale, y, n);                                             \
   } while (0)
 
   PD_VEC_LAUNCH_KERNEL(vec_size, PD_LAMB_VEC_SCALE_KERNEL_CASE);
@@ -1015,7 +1017,7 @@ static void CheckHasNanInfGrad(const float *fp32_grad, int fp32_numel,
   if (fp32_numel > 0) {
     fp32_has_nan_inf = reinterpret_cast<bool *>(nan_inf_flag + 1);
     cub::TransformInputIterator<bool, IsNanInfFunctor<float>, const float *>
-    iter(fp32_grad, IsNanInfFunctor<float>());
+        iter(fp32_grad, IsNanInfFunctor<float>());
     CubDeviceReduce(iter, fp32_has_nan_inf, fp32_numel, OrFunctor(), false,
                     stream, cub_tmp_buffer);
   }
@@ -1082,11 +1084,11 @@ static void LaunchElementwiseAddWithCastKernel(
                GetChunkedVecSize(z, 0));
   auto config = platform::GetGpuLaunchConfig1D(dev_ctx, n, vec_size);
 
-#define PD_LAUNCH_ELEMENTWISE_ADD_WITH_CAST_KERNEL                            \
-  do {                                                                        \
-    ElementwiseAddWithCastCUDAKernel<T1, T2, T3, kVecSize><<<                 \
-        config.block_per_grid, config.thread_per_block, 0, stream>>>(x, y, z, \
-                                                                     n);      \
+#define PD_LAUNCH_ELEMENTWISE_ADD_WITH_CAST_KERNEL                             \
+  do {                                                                         \
+    ElementwiseAddWithCastCUDAKernel<T1, T2, T3, kVecSize>                     \
+        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(x, y,  \
+                                                                        z, n); \
   } while (0)
 
   PD_VEC_LAUNCH_KERNEL(vec_size, PD_LAUNCH_ELEMENTWISE_ADD_WITH_CAST_KERNEL);
@@ -1191,7 +1193,9 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
 
       platform::float16 *fp16_acc_grad = nullptr;
       float *master_acc_grad = nullptr;
+      bool use_master_acc_grad = false;
       if (has_fp16_param) {
+        use_master_acc_grad = ctx.Attr<bool>("use_master_acc_grad");
         auto *fp16_acc_grad_t =
             ctx.Output<framework::Tensor>("FP16AccFusedGrad");
         PADDLE_ENFORCE_NOT_NULL(
@@ -1199,13 +1203,18 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                                  "Output(FP16AccFusedGrad) cannot be nullptr "
                                  "when Attr(acc_steps) > 1."));
         if (!fp16_acc_grad_t->IsInitialized()) {
-          fp16_acc_grad_t->Resize({static_cast<int64_t>(3 * fp16_numel)});
+          auto acc_grad_size =
+              use_master_acc_grad ? (3 * fp16_numel) : fp16_numel;
+          fp16_acc_grad_t->Resize({static_cast<int64_t>(acc_grad_size)});
           fp16_acc_grad =
               fp16_acc_grad_t->mutable_data<platform::float16>(place);
         } else {
           fp16_acc_grad = fp16_acc_grad_t->data<platform::float16>();
         }
-        master_acc_grad = reinterpret_cast<float *>(fp16_acc_grad + fp16_numel);
+        if (use_master_acc_grad) {
+          master_acc_grad =
+              reinterpret_cast<float *>(fp16_acc_grad + fp16_numel);
+        }
       }
 
       // Inplace addto
@@ -1220,8 +1229,8 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
       }
 
       if (has_fp16_param) {
-        if (acc_steps == 2) {
-          if (rounded_step == 0) {
+        if (acc_steps == 2 || !use_master_acc_grad) {
+          if (rounded_step != 1) {
             LaunchElementwiseAddWithCastKernel(dev_ctx, fp16_acc_grad,
                                                fp16_grad, fp16_acc_grad,
                                                fp16_numel, stream);
@@ -1445,10 +1454,10 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         if (is_grad_scaled_by_nranks) {
           clip_scale *= num_devices;
         }
-        CalcGradNormClipBeforeAllReduceScale<
-            float, platform::float16><<<1, 1, 0, stream>>>(
-            global_scale, max_global_grad_norm, fp32_square_grad_norm,
-            fp32_scale, fp16_scale, clip_scale);
+        CalcGradNormClipBeforeAllReduceScale<float, platform::float16>
+            <<<1, 1, 0, stream>>>(global_scale, max_global_grad_norm,
+                                  fp32_square_grad_norm, fp32_scale, fp16_scale,
+                                  clip_scale);
         if (fp32_scale) {
           VLOG(1) << "Grad scale: " << FlattenToString(fp32_scale, 1, place);
         } else {
@@ -1567,11 +1576,12 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                         fp16_partial_fused_offsets, fp16_local_param_num,
                         param_square_norm + fp16_local_start_idx);
     } else {
-      MultiTensorL2Norm(
-          place, stream, fp16_param + fused_offsets[fp16_local_start_idx] -
-                             fused_offsets[fp32_global_param_num],
-          fused_offsets + fp16_local_start_idx, fp16_local_param_num,
-          param_square_norm + fp16_local_start_idx);
+      MultiTensorL2Norm(place, stream,
+                        fp16_param + fused_offsets[fp16_local_start_idx] -
+                            fused_offsets[fp32_global_param_num],
+                        fused_offsets + fp16_local_start_idx,
+                        fp16_local_param_num,
+                        param_square_norm + fp16_local_start_idx);
     }
 
     MultiTensorL2Norm(place, stream, trust_ratio_div,

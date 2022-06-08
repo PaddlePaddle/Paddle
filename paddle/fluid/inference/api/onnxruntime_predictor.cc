@@ -74,8 +74,14 @@ bool CheckConvertToONNX(const AnalysisConfig &config) {
         config.model_dir(), config.prog_file(), config.params_file());
     return false;
   }
-  return paddle2onnx::IsExportable(config.prog_file(), config.params_file(),
-                                   config.model_from_memory());
+  if (config.model_from_memory()) {
+    return paddle2onnx::IsExportable(
+        config.prog_file().data(), config.prog_file().size(),
+        config.params_file().data(), config.params_file().size());
+  } else {
+    return paddle2onnx::IsExportable(config.prog_file().c_str(),
+                                     config.params_file().c_str());
+  }
 }
 
 bool ONNXRuntimePredictor::Init() {
@@ -89,9 +95,16 @@ bool ONNXRuntimePredictor::Init() {
     place_ = paddle::platform::CPUPlace();
   }
 
-  std::string onnx_proto;
-  paddle2onnx::Export(config_.prog_file(), config_.params_file(), &onnx_proto,
-                      config_.model_from_memory());
+  char *onnx_proto = nullptr;
+  int out_size;
+  if (config_.model_from_memory()) {
+    paddle2onnx::Export(config_.prog_file().data(), config_.prog_file().size(),
+                        config_.params_file().data(),
+                        config_.params_file().size(), &onnx_proto, &out_size);
+  } else {
+    paddle2onnx::Export(config_.prog_file().c_str(),
+                        config_.params_file().c_str(), &onnx_proto, &out_size);
+  }
 
   Ort::SessionOptions session_options;
   if (config_.ort_optimization_enabled()) {
@@ -118,7 +131,7 @@ bool ONNXRuntimePredictor::Init() {
                "will be "
                "generated.";
   }
-  session_ = {env_, onnx_proto.data(), onnx_proto.size(), session_options};
+  session_ = {env_, onnx_proto, static_cast<size_t>(out_size), session_options};
   binding_ = std::make_shared<Ort::IoBinding>(session_);
 
   Ort::MemoryInfo memory_info(device_name, OrtDeviceAllocator,
@@ -153,6 +166,8 @@ bool ONNXRuntimePredictor::Init() {
 
     allocator.Free(output_name);
   }
+  delete onnx_proto;
+  onnx_proto = nullptr;
   return true;
 }
 
@@ -228,7 +243,7 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetInputTensor(
                         "The in variable named %s is not found in the "
                         "ONNXPredictor.",
                         name));
-  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr));
+  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr, this));
   res->input_or_output_ = true;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -249,7 +264,7 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetOutputTensor(
                         "The out variable named %s is not found in the "
                         "ONNXPredictor.",
                         name));
-  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr));
+  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr, this));
   res->input_or_output_ = false;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -294,7 +309,7 @@ bool ONNXRuntimePredictor::ZeroCopyRun() {
   return true;
 }
 
-std::unique_ptr<PaddlePredictor> ONNXRuntimePredictor::Clone() {
+std::unique_ptr<PaddlePredictor> ONNXRuntimePredictor::Clone(void *stream) {
   LOG(ERROR) << "Not support Clone(), Please create new Predictor";
   return nullptr;
 }
@@ -308,6 +323,16 @@ ONNXRuntimePredictor::~ONNXRuntimePredictor() {
   binding_->ClearBoundOutputs();
 
   memory::Release(place_);
+}
+
+const void *ONNXRuntimePredictor::GetDeviceContexts() const {
+  // TODO(inference): Support private device contexts.
+  paddle::platform::DeviceContextPool &pool =
+      paddle::platform::DeviceContextPool::Instance();
+  const auto &dev_ctxs = pool.device_contexts();
+  return &const_cast<std::map<
+      phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> &>(
+      dev_ctxs);
 }
 
 }  // namespace paddle

@@ -22,6 +22,7 @@ from op_test import OpTest
 
 
 class TestFillAnyOp(OpTest):
+
     def setUp(self):
         self.op_type = "fill_any"
         self.dtype = 'float64'
@@ -48,23 +49,27 @@ class TestFillAnyOp(OpTest):
 
 
 class TestFillAnyOpFloat32(TestFillAnyOp):
+
     def init(self):
         self.dtype = np.float32
         self.value = 0.0
 
 
 class TestFillAnyOpFloat16(TestFillAnyOp):
+
     def init(self):
         self.dtype = np.float16
 
 
 class TestFillAnyOpvalue1(TestFillAnyOp):
+
     def init(self):
         self.dtype = np.float32
         self.value = 111111555
 
 
 class TestFillAnyOpvalue2(TestFillAnyOp):
+
     def init(self):
         self.dtype = np.float32
         self.value = 11111.1111

@@ -25,6 +25,7 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
+
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #endif
 
@@ -47,9 +48,9 @@ __global__ void add_kernel(int *x, int *y, int n) {
 void CheckMemLeak(const platform::CUDAPlace &place) {
   uint64_t cuda_malloc_size =
       platform::RecordedGpuMallocSize(place.GetDeviceId());
-  ASSERT_EQ(cuda_malloc_size, 0) << "Found " << cuda_malloc_size
-                                 << " bytes memory that not released yet,"
-                                 << " there may be a memory leak problem";
+  ASSERT_EQ(cuda_malloc_size, 0)
+      << "Found " << cuda_malloc_size << " bytes memory that not released yet,"
+      << " there may be a memory leak problem";
 }
 
 TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {

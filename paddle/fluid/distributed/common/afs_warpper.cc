@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/common/afs_warpper.h"
+
 #include "paddle/fluid/framework/io/fs.h"
 
 namespace paddle {
@@ -27,9 +28,10 @@ int AfsClient::initialize(const FsClientParameter& fs_client_param) {
 int AfsClient::initialize(const std::string& hadoop_bin, const std::string& uri,
                           const std::string& user, const std::string& passwd,
                           int buffer_size_param) {
-  return initialize(hadoop_bin, uri, paddle::string::format_string(
-                                         "%s,%s", user.c_str(), passwd.c_str()),
-                    buffer_size_param);
+  return initialize(
+      hadoop_bin, uri,
+      paddle::string::format_string("%s,%s", user.c_str(), passwd.c_str()),
+      buffer_size_param);
 }
 int AfsClient::initialize(const std::string& hadoop_bin, const std::string& uri,
                           const std::string& ugi, int buffer_size_param) {

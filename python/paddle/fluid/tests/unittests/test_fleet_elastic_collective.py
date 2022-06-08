@@ -32,6 +32,7 @@ print("test")
 
 
 class TestCollectiveLauncher(unittest.TestCase):
+
     def setUp(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -40,6 +41,7 @@ class TestCollectiveLauncher(unittest.TestCase):
             f.write(fake_python_code)
 
     def test_launch(self):
+
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"
@@ -78,6 +80,7 @@ class TestCollectiveLauncher(unittest.TestCase):
             pass
 
     def test_stop(self):
+
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"

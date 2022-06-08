@@ -566,8 +566,9 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       paddle::framework::TensorToVector(
           device_count_tensor, ctx.device_context(), &device_count_vec);
       device_counts = device_count_vec[0];
-      PADDLE_ENFORCE_GE(device_counts, 2, platform::errors::PreconditionNotMet(
-                                              "device_counts should >= 2."));
+      PADDLE_ENFORCE_GE(
+          device_counts, 2,
+          platform::errors::PreconditionNotMet("device_counts should >= 2."));
     }
 
     // cacl var_ref

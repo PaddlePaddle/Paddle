@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pscore/heter_listen_and_serv_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 
 PADDLE_DEFINE_EXPORTED_int32(rpc_send_thread_num, 12,
@@ -92,8 +93,9 @@ void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
     auto blkid = block_list[i];
     auto it = message_to_block_id.find_value(blkid);
     heter_server_->RegisterServiceHandler(
-        it->first, [&](const MultiVarMsg *request, MultiVarMsg *response,
-                       brpc::Controller *cntl) -> int {
+        it->first,
+        [&](const MultiVarMsg *request, MultiVarMsg *response,
+            brpc::Controller *cntl) -> int {
           return send_and_recv_variable_handler_->Handle(request, response,
                                                          cntl);
         });

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -88,12 +89,13 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("QKVW");
-    PADDLE_ENFORCE_EQ(x_dim.size(), 3, platform::errors::InvalidArgument(
-                                           "The dimensions of x must be 3"
-                                           "(batch_size, seq_len, dim_embed),"
-                                           "but received dimensions of"
-                                           "Input is [%d]",
-                                           x_dim.size()));
+    PADDLE_ENFORCE_EQ(
+        x_dim.size(), 3,
+        platform::errors::InvalidArgument("The dimensions of x must be 3"
+                                          "(batch_size, seq_len, dim_embed),"
+                                          "but received dimensions of"
+                                          "Input is [%d]",
+                                          x_dim.size()));
     PADDLE_ENFORCE_EQ(y_dim.size(), 4,
                       platform::errors::InvalidArgument(
                           "The dimensions of qkv_weight must be 4"
@@ -194,7 +196,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     // the same as QKOut's shape.
     ctx->SetOutputDim("AttnDropoutOut",
                       {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
-    if (ctx->Attrs().Get<bool>("attn_dropout_is_test") == false) {
+    if (ctx->Attrs().Get<bool>("is_test") == false) {
       ctx->SetOutputDim("AttnDropoutMaskOut",
                         {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
     }
@@ -206,7 +208,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("FMHAOut", {x_dim[0], x_dim[1], y_dim[1], y_dim[2]});
     ctx->SetOutputDim("OutLinearOut", ctx->GetInputDim("X"));
 
-    if (ctx->Attrs().Get<bool>("dropout_is_test") == false) {
+    if (ctx->Attrs().Get<bool>("is_test") == false) {
       ctx->SetOutputDim("DropoutMaskOut", ctx->GetInputDim("X"));
     }
 
@@ -301,7 +303,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
               platform::errors::InvalidArgument(
                   "'attn_dropout_rate' must be between 0.0 and 1.0."));
         });
-    AddAttr<bool>("attn_dropout_is_test",
+    AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
@@ -345,11 +347,6 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                             platform::errors::InvalidArgument(
                                 "'dropout_rate' must be between 0.0 and 1.0."));
         });
-
-    AddAttr<bool>("dropout_is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
     AddAttr<bool>("dropout_fix_seed",
                   "A flag indicating whether to use a fixed seed to generate "
                   "random mask. NOTE: DO NOT set this flag to true in "
@@ -418,10 +415,9 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->Attrs().Get<bool>("attn_dropout_is_test"), false,
-        platform::errors::InvalidArgument(
-            "GradOp is only callable when attn_dropout_is_test is false"));
+    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"), false,
+                      platform::errors::InvalidArgument(
+                          "GradOp is only callable when is_test is false"));
 
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == false) {
       OP_INOUT_CHECK(ctx->HasInput("Ln2Mean"), "Input", "Ln2Mean",

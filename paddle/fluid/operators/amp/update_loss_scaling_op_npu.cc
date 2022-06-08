@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 #include <cmath>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 DECLARE_int32(min_loss_scaling);
@@ -161,8 +162,8 @@ class LazyZerosNPU {
     }
     auto place = dev_ctx.GetPlace();
     auto stream = dev_ctx.stream();
-    Tensor* zero_tensor;
-    void* zero_ptr;
+    Tensor* zero_tensor = nullptr;
+    void* zero_ptr = nullptr;
     if (found_inf_vec[0]) {
       int max_num = -1;
       for (size_t i = 0; i < xs.size(); ++i) {

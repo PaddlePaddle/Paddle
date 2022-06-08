@@ -20,6 +20,7 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #endif
 #include <stdio.h>
+
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"

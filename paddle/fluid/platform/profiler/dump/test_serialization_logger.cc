@@ -13,26 +13,25 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/platform/profiler/dump/deserialization_reader.h"
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 
-using paddle::platform::SerializationLogger;
-using paddle::platform::DeserializationReader;
-using paddle::platform::NodeTrees;
-using paddle::platform::HostTraceEventNode;
 using paddle::platform::CudaRuntimeTraceEventNode;
+using paddle::platform::DeserializationReader;
+using paddle::platform::DeviceTraceEvent;
 using paddle::platform::DeviceTraceEventNode;
 using paddle::platform::HostTraceEvent;
-using paddle::platform::RuntimeTraceEvent;
-using paddle::platform::DeviceTraceEvent;
-using paddle::platform::TracerEventType;
+using paddle::platform::HostTraceEventNode;
 using paddle::platform::KernelEventInfo;
 using paddle::platform::MemcpyEventInfo;
 using paddle::platform::MemsetEventInfo;
+using paddle::platform::NodeTrees;
 using paddle::platform::ProfilerResult;
+using paddle::platform::RuntimeTraceEvent;
+using paddle::platform::SerializationLogger;
+using paddle::platform::TracerEventType;
 
 TEST(SerializationLoggerTest, dump_case0) {
   std::list<HostTraceEvent> host_events;
