@@ -479,18 +479,31 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
   auto d_num_runs_out_mem = memory::Alloc(place, sizeof(int));
   int* d_num_runs_out = reinterpret_cast<int*>(d_num_runs_out_mem->ptr());
 
+#if defined(PADDLE_WITH_CUDA)
   heter_comm_kernel_->reduce_by_key(NULL, temp_storage_bytes, d_merge_keys_ptr,
                                     d_keys, d_merge_grads_ptr, d_grads,
                                     d_num_runs_out, len, stream, false);
+#elif defined(PADDLE_WITH_XPU_KP)
+  heter_comm_kernel_->reduce_by_key(place, NULL, temp_storage_bytes,
+                                    d_merge_keys_ptr, d_keys, d_merge_grads_ptr,
+                                    d_grads, d_num_runs_out, len, stream,
+                                    false);
+#endif
 
   if (d_temp_storage->size() < temp_storage_bytes) {
     d_temp_storage = NULL;
     d_temp_storage = memory::Alloc(place, temp_storage_bytes);
   }
 
+#if defined(PADDLE_WITH_CUDA)
   heter_comm_kernel_->reduce_by_key(
       d_temp_storage->ptr(), temp_storage_bytes, d_merge_keys_ptr, d_keys,
       d_merge_grads_ptr, d_grads, d_num_runs_out, len, stream, false);
+#elif defined(PADDLE_WITH_XPU_KP)
+  heter_comm_kernel_->reduce_by_key(
+      place, d_temp_storage->ptr(), temp_storage_bytes, d_merge_keys_ptr,
+      d_keys, d_merge_grads_ptr, d_grads, d_num_runs_out, len, stream, false);
+#endif
 
   auto dst_place = platform::CPUPlace();
   auto src_place = place;
