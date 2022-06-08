@@ -389,6 +389,53 @@ def one_cycle_lr(epoch_num,
     return computed_lr
 
 
+def cyclic_lr(epoch_num,
+              base_learning_rate,
+              max_learning_rate,
+              step_size_up,
+              step_size_down,
+              mode,
+              exp_gamma=0.1,
+              scale_fn=None,
+              scale_mode='cycle',
+              verbose=False):
+    total_steps = step_size_up + step_size_down
+    step_ratio = step_size_up / total_steps
+
+    def triangular(x):
+        return 1.
+
+    def triangular2(x):
+        return 1 / (2.**(x - 1))
+
+    def exp_range(x):
+        return exp_gamma**x
+
+    if scale_fn is None:
+        if mode == 'triangular':
+            scale_fn = triangular
+            scale_mode = 'cycle'
+        elif mode == 'triangular2':
+            scale_fn = triangular2
+            scale_mode = 'cycle'
+        elif mode == 'exp_range':
+            scale_fn = exp_range
+            scale_mode = 'iterations'
+
+    cycle = math.floor(1 + epoch_num / total_steps)
+    iterations = epoch_num
+    x = 1. + epoch_num / total_steps - cycle
+
+    if x <= step_ratio:
+        scale_factor = x / step_ratio
+    else:
+        scale_factor = (x - 1) / (step_ratio - 1)
+
+    base_height = (max_learning_rate - base_learning_rate) * scale_factor
+
+    return base_learning_rate + base_height * scale_fn(eval(scale_mode))
+
+
 class TestLRScheduler(unittest.TestCase):
 
     def _test_static(self, python_func, paddle_api, kwarg, place):
@@ -533,35 +580,89 @@ class TestLRScheduler(unittest.TestCase):
             paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5,
                                                milestones=[1, 2, 3],
                                                gamma=2)
+        # check type of max_learning_rate
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.OneCycleLR(max_learning_rate='test',
                                            total_steps=20)
+        # check value of max_learning_rate
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.OneCycleLR(max_learning_rate=-1.5,
                                            total_steps=20)
+        # check type of end_learning_rate
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1,
                                            total_steps=20,
                                            end_learning_rate='test')
+        # check value of end_learning_rate
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1,
                                            total_steps=20,
                                            end_learning_rate=-1)
+        # check type of total_steps
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1,
                                            total_steps='test')
+        # check value of total_steps
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1,
                                            total_steps=-10)
+        # check value of anneal_strategy
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1,
                                            total_steps=20,
                                            anneal_strategy='test')
+        # check value of phase_pct when three_phase is True
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1,
                                            total_steps=20,
                                            phase_pct=0.6,
                                            three_phase=True)
+        # check type of max_learning_rate
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate='test',
+                                         step_size_up=10)
+        # check value of max_learning_rate
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=-1,
+                                         step_size_up=10)
+        # check type of step_size_up
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=1.0,
+                                         step_size_up='test')
+        # check value of step_size_up
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=1.0,
+                                         step_size_up=-1)
+        # check type of step_size_down
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=1.0,
+                                         step_size_up=500,
+                                         step_size_down='test')
+        # check type of step_size_down
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=1.0,
+                                         step_size_up=500,
+                                         step_size_down=-1)
+        # check value of mode
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=1.0,
+                                         step_size_up=500,
+                                         step_size_down=500,
+                                         mode='test')
+        # check type value of scale_mode
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=1.0,
+                                         step_size_up=500,
+                                         step_size_down=-1,
+                                         scale_mode='test')
 
         func_api_kwargs = [
             (noam_lr, paddle.optimizer.lr.NoamDecay, {
@@ -671,6 +772,61 @@ class TestLRScheduler(unittest.TestCase):
                 "anneal_strategy": 'linear',
                 "phase_pct": 0.2,
                 "three_phase": True,
+            }),
+            (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+                "base_learning_rate": 0.5,
+                "max_learning_rate": 1.0,
+                "step_size_up": 15,
+                "step_size_down": 5,
+                "mode": 'triangular',
+                "exp_gamma": 1.,
+                "scale_fn": None,
+                "scale_mode": 'cycle',
+                "verbose": False
+            }),
+            (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+                "base_learning_rate": 0.5,
+                "max_learning_rate": 1.0,
+                "step_size_up": 15,
+                "step_size_down": 5,
+                "mode": 'triangular2',
+                "exp_gamma": 1.,
+                "scale_fn": None,
+                "scale_mode": 'cycle',
+                "verbose": False
+            }),
+            (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+                "base_learning_rate": 0.5,
+                "max_learning_rate": 1.0,
+                "step_size_up": 15,
+                "step_size_down": 5,
+                "mode": 'exp_range',
+                "exp_gamma": 0.8,
+                "scale_fn": None,
+                "scale_mode": 'cycle',
+                "verbose": False
+            }),
+            (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+                "base_learning_rate": 0.5,
+                "max_learning_rate": 1.0,
+                "step_size_up": 15,
+                "step_size_down": 5,
+                "mode": 'exp_range',
+                "exp_gamma": 1.,
+                "scale_fn": lambda x: 0.95**x,
+                "scale_mode": 'cycle',
+                "verbose": False
+            }),
+            (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+                "base_learning_rate": 0.5,
+                "max_learning_rate": 1.0,
+                "step_size_up": 15,
+                "step_size_down": 5,
+                "mode": 'exp_range',
+                "exp_gamma": 1.,
+                "scale_fn": lambda x: 0.95,
+                "scale_mode": 'iterations',
+                "verbose": False
             })
         ]
 

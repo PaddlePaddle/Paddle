@@ -263,8 +263,9 @@ void CumsumKernel(const Context& dev_ctx,
   dim3 blocks(32, 8);
   dim3 transpose_grids((width + tile_size - 1) / tile_size,
                        (height + tile_size - 1) / tile_size);
-  out->Resize(out_dims);
-  auto* tmp_data = out->data<T>();
+  DenseTensor tmp_tensor;
+  tmp_tensor.Resize(out_dims);
+  auto* tmp_data = dev_ctx.template Alloc<T>(&tmp_tensor);
 
   T* next_in_data = out_data;
   T* next_out_data = tmp_data;
