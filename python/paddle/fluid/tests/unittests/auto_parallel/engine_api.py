@@ -14,7 +14,7 @@
 
 import unittest
 import time
-import paddle.fluid as fluid
+import tempfile
 import copy
 import os
 import numpy as np
@@ -144,7 +144,10 @@ def train():
     engine.predict(test_dataset, batch_size)
 
     # save
-    engine.save('./mlp_inf', training=False, mode='predict')
+    temp_dir = tempfile.TemporaryDirectory()
+    model_filename = os.path.join(temp_dir.name, 'mlp_inf')
+    engine.save(model_filename, training=False, mode='predict')
+    temp_dir.cleanup()
 
 
 if __name__ == "__main__":
