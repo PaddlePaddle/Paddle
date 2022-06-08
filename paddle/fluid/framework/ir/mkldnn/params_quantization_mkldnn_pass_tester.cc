@@ -33,7 +33,7 @@ struct Data {
                                            std::multiplies<int64_t>());
     PADDLE_ENFORCE_EQ(
         size_from_shape, data.size(),
-        platform::errors::InvalidArgument("Shape and data don't match."));
+        platform::errors::InvalidArgument("Shape size doesn't match data size."));
   }
 
   const std::vector<int64_t>& getShape() const { return shape; }
