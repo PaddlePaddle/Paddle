@@ -29,6 +29,7 @@ import time
 class ControleMode:
     COLLECTIVE = "collective"
     PS = "ps"
+    IPU = "ipu"
 
 
 class ControllerBase(object):

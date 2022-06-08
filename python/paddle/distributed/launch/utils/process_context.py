@@ -36,7 +36,16 @@ class ProcessContext(object):
 
     def _start(self):
         pre_fn = os.setsid if self._group else None
-        self._proc = subprocess.Popen(self._cmd,
+        # Need shell=True for IPU PopRun command
+        if "poprun" in self._cmd[0]:
+            self._proc = subprocess.Popen(self._cmd,
+                                      env=self._env,
+                                      stdout=self._stdout,
+                                      stderr=self._stderr,
+                                      shell=True,
+                                      preexec_fn=self._preexec_fn or pre_fn)
+        else:
+            self._proc = subprocess.Popen(self._cmd,
                                       env=self._env,
                                       stdout=self._stdout,
                                       stderr=self._stderr,
