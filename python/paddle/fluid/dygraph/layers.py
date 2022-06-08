@@ -127,6 +127,8 @@ class Layer(object):
         self._casted_by_pure_fp16 = False
 
         self._state_dict_hooks = collections.OrderedDict()
+        # Records orignal functions after @to_static to support to rollback
+        self._original_funcs = collections.OrderedDict()
 
     def train(self):
         """

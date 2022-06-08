@@ -1142,7 +1142,7 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 }
 
 /* static */ void MLUCnnl::Logic(
-    const ExecutionContext& ctx, const MLULogicMethod log_method,
+    const ExecutionContext& ctx, const cnnlLogicOp_t log_method,
     const cnnlTensorDescriptor_t input1_desc, const void* input1,
     const cnnlTensorDescriptor_t input2_desc, const void* input2,
     const cnnlTensorDescriptor_t output_desc, void* output) {
@@ -1157,9 +1157,9 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlLogicOp(
-      handle, cnnlLogicOp_t(log_method), input1_desc, input1, input2_desc,
-      input2, workspace_ptr, workspace_size, output_desc, output));
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlLogicOp(handle, log_method, input1_desc, input1, input2_desc, input2,
+                  workspace_ptr, workspace_size, output_desc, output));
 }
 
 /* static */ void MLUCnnl::Select(

@@ -255,6 +255,8 @@ class StaticFunction(object):
         if inspect.ismethod(function):
             self._dygraph_function = getattr(function, '__func__')
             self._class_instance = getattr(function, '__self__')
+            self._class_instance._original_funcs[
+                function.__name__] = self._dygraph_function
         else:
             self._dygraph_function = function
             self._class_instance = None
@@ -563,6 +565,60 @@ class StaticFunction(object):
         cache_key, (concrete_program,
                     partial_layer) = self._program_cache.last()
         return concrete_program
+
+    def rollback(self):
+        """
+        Rollback into original dygraph functions for current class instance.
+        
+        Returns:
+            Function or Method
+
+        Example::
+            .. code-block:: python
+
+                import paddle
+
+                class Net(paddle.nn.Layer):
+                    def __init__(self):
+                        super(Net, self).__init__()
+
+                    def forward(self, x, flag=True):
+                        if flag:
+                            out = x + 1
+                        else:
+                            out = x - 1
+                        return out
+
+                x = paddle.randn([10, 1], 'float32')
+                net = paddle.jit.to_static(Net())  # convert into static mode
+                out = net(x)
+                
+                net.forward.rollback()  # rollback into dygraph mode
+                out = net(x)
+        """
+
+        def rollback_impl(class_instance):
+            for name, func in class_instance._original_funcs.items():
+                setattr(class_instance, name, func.__get__(class_instance))
+
+            for sublayer in class_instance.sublayers(include_self=False):
+                rollback_impl(sublayer)
+
+        if self._class_instance is None:
+            return self._dygraph_function
+
+        # only rollback sub-functions on path of top _dygraph_function
+        func_name = self._dygraph_function.__name__
+        assert func_name in self._class_instance._original_funcs, "Not Found function '{}' in class '{}'.".format(
+            func_name, self._class_instance.__name__)
+        func = self._class_instance._original_funcs[func_name]
+        setattr(self._class_instance, func_name,
+                func.__get__(self._class_instance))
+
+        for sublayer in self._class_instance.sublayers(include_self=False):
+            rollback_impl(sublayer)
+
+        return getattr(self._class_instance, func_name)
 
     @property
     def inputs(self):

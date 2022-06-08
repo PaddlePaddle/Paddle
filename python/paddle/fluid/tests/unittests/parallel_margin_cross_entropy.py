@@ -39,6 +39,7 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         fleet.init(is_collective=True, strategy=strategy)
+        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
     def test_parallel_margin_softmax_cross_entropy(self):
         margin1s = [1.0, 1.0, 1.35]

@@ -36,7 +36,8 @@ def remove_file_if_exists(file_name):
 
 def run_test(clip_after_allreduce=True,
              max_global_norm=-1.0,
-             gradient_merge_steps=1):
+             gradient_merge_steps=1,
+             use_master_acc_grad=True):
     if not paddle.is_compiled_with_cuda():
         return
     if os.name == 'nt':
@@ -58,6 +59,7 @@ def run_test(clip_after_allreduce=True,
     os.environ['CLIP_AFTER_ALLREDUCE'] = str(clip_after_allreduce)
     os.environ['MAX_GLOBAL_NORM'] = str(max_global_norm)
     os.environ['GRADIENT_MERGE_STEPS'] = str(gradient_merge_steps)
+    os.environ['USE_MASTER_ACC_GRAD'] = str(1 if use_master_acc_grad else 0)
 
     touch_file_env = 'SUCCESS_TOUCH_FILE'
     touch_file_name = 'distributed_fused_lamb_touch_file_{}'.format(os.getpid())
