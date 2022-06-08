@@ -48,6 +48,13 @@ const std::map<std::string, cnnlInterpMode_t> MLUInterpModeMap = {
     {"trilinear", CNNL_INTERP_TRILINEAR},
     {"bicubic", CNNL_INTERP_BICUBIC}};
 
+const std::map<std::string, cnnlInterpBackwardMode_t> MLUInterpBackwardModeMap =
+    {{"bilinear", CNNL_INTERP_BACKWARD_BILINEAR},
+     {"nearest", CNNL_INTERP_BACKWARD_NEAREST},
+     {"linear", CNNL_INTERP_BACKWARD_LINEAR},
+     {"trilinear", CNNL_INTERP_BACKWARD_TRILINEAR},
+     {"bicubic", CNNL_INTERP_BACKWARD_BICUBIC}};
+
 inline cnnlReduceOp_t GetMLUCnnlReduceOp(const std::string reduce_name) {
   auto iter = MLUReduceOpMap.find(reduce_name);
   if (iter != MLUReduceOpMap.end()) {
@@ -60,6 +67,16 @@ inline cnnlReduceOp_t GetMLUCnnlReduceOp(const std::string reduce_name) {
 inline cnnlInterpMode_t GetMLUCnnlInterpMode(const std::string interp_mode) {
   auto iter = MLUInterpModeMap.find(interp_mode);
   if (iter != MLUInterpModeMap.end()) {
+    return iter->second;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Not support interp mode of MLU Device: %s", interp_mode));
+}
+
+inline cnnlInterpBackwardMode_t GetMLUCnnlInterpBackwardMode(
+    const std::string interp_mode) {
+  auto iter = MLUInterpBackwardModeMap.find(interp_mode);
+  if (iter != MLUInterpBackwardModeMap.end()) {
     return iter->second;
   }
   PADDLE_THROW(platform::errors::InvalidArgument(

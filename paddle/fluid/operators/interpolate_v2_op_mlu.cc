@@ -315,142 +315,159 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
   }
 };
 
-// template <typename DeviceContext, typename T>
-// class InterpolateV2NPUGradKernel : public framework::OpKernel<T> {
-//  public:
-//   void Compute(const framework::ExecutionContext& ctx) const override {
-//     auto* input = ctx.Input<Tensor>("X");
-//     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-//     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+template <typename T>
+class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto& dev_ctx = ctx.template device_context<MLUDeviceContext>();
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
-//     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-//     const DataLayout data_layout =
-//         framework::StringToDataLayout(data_layout_str);
-//     int n, c, in_d, in_h, in_w;
-//     phi::funcs::ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d,
-//     &in_h,
-//                              &in_w);
+    auto output_grad_dims = output_grad->dims();
 
-//     auto interp_method = ctx.Attr<std::string>("interp_method");
-//     bool align_corners = ctx.Attr<bool>("align_corners");
+    PADDLE_ENFORCE_EQ(output_grad_dims.size(), 4,
+                      platform::errors::External(
+                          "XPU Interpolategrad kernel only support 2d"));
 
-//     // To-do(qili93): need to support align_corners = true case, try ReSizeD
-//     PADDLE_ENFORCE_EQ(
-//         align_corners, false,
-//         platform::errors::InvalidArgument(
-//             "NPU Interpolate Kernel has diff when align_corners is true."));
+    auto* input = ctx.Input<Tensor>("X");
+    auto input_dims = input->dims();
+    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
+    int n, c, in_d, in_h, in_w;
+    ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-//     int out_h = ctx.Attr<int>("out_h");
-//     int out_w = ctx.Attr<int>("out_w");
-//     float scale_h = -1;
-//     float scale_w = -1;
+    auto interp_method = ctx.Attr<std::string>("interp_method");
+    bool align_corners = ctx.Attr<bool>("align_corners");
+    int align_mode = ctx.Attr<int>("align_mode");
+    int align_center = align_corners ? 0 : (align_mode == 0 ? 0 : 1);
+    align_center = 0;
 
-//     // Priority: SizeTensor > OutSize > Scale > scale > out_h & out_w
-//     auto list_new_size_tensor =
-//     ctx.MultiInput<framework::Tensor>("SizeTensor");
-//     if (list_new_size_tensor.size() > 0) {
-//       std::vector<int32_t> output_h(1);
-//       std::vector<int32_t> output_w(1);
-//       auto dev_ctx =
-//           platform::DeviceContextPool::Instance().Get(ctx.GetPlace());
-//       framework::TensorToVector(*list_new_size_tensor[0], *dev_ctx,
-//       &output_h);
-//       framework::TensorToVector(*list_new_size_tensor[1], *dev_ctx,
-//       &output_w);
-//       out_h = output_h[0];
-//       out_w = output_w[0];
-//     } else if (ctx.HasInput("OutSize")) {
-//       auto out_size = ctx.Input<Tensor>("OutSize");
-//       auto out_size_data =
-//       phi::funcs::get_new_data_from_tensor<int>(out_size);
-//       out_h = out_size_data[0];
-//       out_w = out_size_data[1];
-//     } else {
-//       auto scale_tensor = ctx.Input<Tensor>("Scale");
-//       auto scale = ctx.Attr<std::vector<float>>("scale");
-//       if (scale_tensor != nullptr) {
-//         auto scale_data =
-//             phi::funcs::get_new_data_from_tensor<float>(scale_tensor);
-//         if (scale_data.size() > 1) {
-//           scale_h = scale_data[0];
-//           scale_w = scale_data[1];
-//         } else {
-//           scale_w = scale_data[0];
-//           scale_h = scale_data[0];
-//         }
-//         PADDLE_ENFORCE_EQ(
-//             scale_w > 0, true,
-//             platform::errors::InvalidArgument(
-//                 "The scale_w in input 'Scale' Tensor of Operator(interpolate)
-//                 "
-//                 "should be greater than 0, but received value is %d.",
-//                 scale_w));
-//         PADDLE_ENFORCE_EQ(
-//             scale_h > 0, true,
-//             platform::errors::InvalidArgument(
-//                 "The scale_h in input 'Scale' Tensor of Operator(interpolate)
-//                 "
-//                 "should be greater than 0, but received value is %d.",
-//                 scale_h));
-//       } else {
-//         if (scale.size() > 1) {
-//           scale_h = scale[0];
-//           scale_w = scale[1];
-//           PADDLE_ENFORCE_EQ(
-//               scale_w > 0, true,
-//               platform::errors::InvalidArgument(
-//                   "The scale_w in Attr(scale) of Operator(interpolate) "
-//                   "should be greater than 0, but received value is %d.",
-//                   scale_w));
-//           PADDLE_ENFORCE_EQ(
-//               scale_h > 0, true,
-//               platform::errors::InvalidArgument(
-//                   "The scale_h in Attr(scale) of Operator(interpolate) "
-//                   "should be greater than 0, but received value is %d.",
-//                   scale_h));
-//         }
-//       }
-//       if (scale_h > 0. && scale_w > 0.) {
-//         out_h = static_cast<int>(in_h * scale_h);
-//         out_w = static_cast<int>(in_w * scale_w);
-//       }
-//     }
+    int out_h = ctx.Attr<int>("out_h");
+    int out_w = ctx.Attr<int>("out_w");
+    float scale_h = -1;
+    float scale_w = -1;
 
-//     framework::DDim dim_grad;
-//     if (data_layout == DataLayout::kNCHW) {
-//       dim_grad = {n, c, in_h, in_w};
-//     } else {
-//       dim_grad = {n, in_h, in_w, c};
-//     }
+    auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+    if (list_new_size_tensor.size() > 0) {
+      // have size tensor
+      auto new_size = get_new_shape_mlu(list_new_size_tensor);
+      out_h = new_size[0];
+      out_w = new_size[1];
+    } else {
+      auto scale_tensor = ctx.Input<Tensor>("Scale");
+      auto scale = ctx.Attr<std::vector<float>>("scale");
+      if (scale_tensor != nullptr) {
+        std::vector<float> scale_data;
+        scale_data = GetDataFromTensor<float>(scale_tensor);
+        if (scale_data.size() > 1) {
+          scale_h = scale_data[0];
+          scale_w = scale_data[1];
+        } else {
+          scale_h = scale_data[0];
+          scale_w = scale_data[0];
+        }
+        PADDLE_ENFORCE_EQ(
+            scale_w > 0 && scale_h > 0, true,
+            platform::errors::InvalidArgument("scale  of Op(interpolate) "
+                                              "should be greater than 0."));
+      } else {
+        if (scale.size() > 1) {
+          scale_h = scale[0];
+          scale_w = scale[1];
 
-//     input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
+          PADDLE_ENFORCE_EQ(
+              scale_w > 0 && scale_h > 0, true,
+              platform::errors::InvalidArgument("scale  of Op(interpolate) "
+                                                "should be greater than 0."));
+        }
+      }
+      if (scale_h > 0. && scale_w > 0.) {
+        out_h = static_cast<int>(in_h * scale_h);
+        out_w = static_cast<int>(in_w * scale_w);
+      }
+      auto out_size = ctx.Input<Tensor>("OutSize");
+      if (out_size != nullptr) {
+        std::vector<int32_t> out_size_data;
+        out_size_data = GetDataFromTensor<int>(out_size);
+        out_h = out_size_data[0];
+        out_w = out_size_data[1];
+      }
+    }
 
-//     if (in_h == out_h && in_w == out_w) {
-//       framework::TensorCopy(*output_grad, ctx.GetPlace(), input_grad);
-//       return;
-//     }
+    framework::DDim dim_grad;
+    framework::DDim dim_out_grad, dim_out_trans_grad, dim_in_grad,
+        dim_in_trans_grad;
+    Tensor transformed_output_grad, transformed_input_grad;
+    bool need_transpose =
+        input_dims.size() != 2 && data_layout == DataLayout::kNCHW;
 
-//     auto stream =
-//         ctx.template device_context<paddle::platform::NPUDeviceContext>()
-//             .stream();
+    if (need_transpose) {
+      // if need_transpose, do the following
+      // 1. transpose output_grad NCHW -> NHWC
+      // 2. InterpBackward output_grad(NHWC) -> input_grad(NHWC)
+      // 3. transpose input_grad NHWC -> HCHW
+      // dim_out_grad = {n, c, out_h, out_w};
+      dim_out_trans_grad = {n, out_h, out_w, c};
+      dim_in_grad = {n, c, in_h, in_w};
+      dim_in_trans_grad = {n, in_h, in_w, c};
+      input_grad->mutable_data<T>(dim_in_grad, ctx.GetPlace());
 
-//     // To-do(qili93): need to support bilineare, try ResizeGradD
-//     if ("nearest" == interp_method) {
-//       NpuOpRunner runner;
-//       runner.SetType("ResizeNearestNeighborV2Grad")
-//           .AddInput(*output_grad)
-//           .AddInput(std::vector<int32_t>{in_h, in_w})
-//           .AddOutput(*input_grad)
-//           .AddAttr("align_corners", align_corners)
-//           .AddAttr("half_pixel_centers", false);
-//       runner.Run(stream);
-//     } else if ("bilinear" == interp_method) {
-//       int align_mode = ctx.Attr<int>("align_mode");
-//       BilinearBwdNpu<T>(ctx, output_grad, input_grad, scale_h, scale_w,
-//                         align_corners, align_mode, data_layout);
-//     }
-//   }
-// };
+      if (in_h == out_h && in_w == out_w) {
+        framework::TensorCopy(*output_grad, ctx.GetPlace(), input_grad);
+        return;
+      }
+      // do transpose on input tensor, then do interpolation
+      MLUCnnlTensorDesc input_desc(*output_grad, CNNL_LAYOUT_NCHW,
+                                   ToCnnlDataType(output_grad->dtype()));
+
+      transformed_output_grad = ctx.AllocateTmpTensor<T, MLUDeviceContext>(
+          dim_out_trans_grad, dev_ctx);
+      transformed_input_grad = ctx.AllocateTmpTensor<T, MLUDeviceContext>(
+          dim_in_trans_grad, dev_ctx);
+
+      MLUCnnlTensorDesc input_reshaped_desc(
+          transformed_output_grad, CNNL_LAYOUT_NHWC,
+          ToCnnlDataType(transformed_output_grad.dtype()));
+      const std::vector<int> perm = {0, 2, 3, 1};
+      MLUCnnl::Transpose(ctx, perm, input_dims.size(), input_desc.get(),
+                         GetBasePtr(output_grad), input_reshaped_desc.get(),
+                         GetBasePtr(&transformed_output_grad));
+    } else {
+      // if no need_transpose, do the following
+      // 1. InterpBackward output_grad(NHWC) -> input_grad(NHWC)
+      dim_in_grad = {n, in_h, in_w, c};
+      input_grad->mutable_data<T>(dim_in_grad, ctx.GetPlace());
+
+      if (in_h == out_h && in_w == out_w) {
+        framework::TensorCopy(*output_grad, ctx.GetPlace(), input_grad);
+        return;
+      }
+      transformed_output_grad = *output_grad;
+      transformed_input_grad = *input_grad;
+    }
+
+    MLUCnnlTensorDesc input_desc(
+        transformed_output_grad, CNNL_LAYOUT_NHWC,
+        ToCnnlDataType(transformed_output_grad.dtype()));
+    MLUCnnlTensorDesc output_desc(
+        transformed_input_grad, CNNL_LAYOUT_NHWC,
+        ToCnnlDataType(transformed_input_grad.dtype()));
+    MLUCnnl::InterpBackward(
+        ctx, GetMLUCnnlInterpBackwardMode(interp_method), align_corners,
+        align_center, input_desc.get(), GetBasePtr(&transformed_output_grad),
+        output_desc.get(), GetBasePtr(&transformed_input_grad));
+
+    if (need_transpose) {
+      const std::vector<int> perm = {0, 3, 1, 2};
+      MLUCnnlTensorDesc output_reshape_desc(
+          *input_grad, CNNL_LAYOUT_NCHW, ToCnnlDataType(input_grad->dtype()));
+      MLUCnnl::Transpose(ctx, perm, dim_in_trans_grad.size(), output_desc.get(),
+                         GetBasePtr(&transformed_input_grad),
+                         output_reshape_desc.get(), GetBasePtr(input_grad));
+    }
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
@@ -463,7 +480,9 @@ REGISTER_OP_MLU_KERNEL(bilinear_interp_v2, ops::InterpolateV2MLUKernel<float>,
 REGISTER_OP_MLU_KERNEL(nearest_interp_v2, ops::InterpolateV2MLUKernel<float>,
                        ops::InterpolateV2MLUKernel<plat::float16>);
 
-// REGISTER_OP_MLU_KERNEL(
-//     nearest_interp_v2_grad,
-//     ops::InterpolateV2NPUGradKernel<plat::NPUDeviceContext, float>,
-//     ops::InterpolateV2NPUGradKernel<plat::NPUDeviceContext, plat::float16>);
+REGISTER_OP_MLU_KERNEL(nearest_interp_v2_grad,
+                       ops::InterpolateV2GradMLUKernel<float>,
+                       ops::InterpolateV2GradMLUKernel<plat::float16>);
+REGISTER_OP_MLU_KERNEL(bilinear_interp_v2_grad,
+                       ops::InterpolateV2GradMLUKernel<float>,
+                       ops::InterpolateV2GradMLUKernel<plat::float16>);
