@@ -229,6 +229,16 @@ def launch():
             
             # once the number of nodes changes between 2:4 during training, the strategy holds
 
+    Examples 10 (ipu):
+        .. code-block:: bash
+            :name: code-block-example-bash10
+            # required: ipu
+            
+            # With the following command, the job will begin to run the distributhed program with IPUs.
+            # Only support and require the `device_num` as the arg and `ipu` as the launch script.
+            # Please Check the details about the following args of the launch scripte from `utils/ipu_launch.py`.
+            python -m paddle.distributed.launch --devices 4 ipu --hosts=localhost --nproc_per_host=2 --ipus_per_replica=1 --ipu_partition=pod16 --vipu_server=127.0.0.1 train.py
+
     """
 
     # initialize the context to run
