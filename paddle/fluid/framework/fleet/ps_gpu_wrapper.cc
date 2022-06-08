@@ -315,26 +315,20 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
 
 void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   platform::Timer timeline;
-  std::vector<std::future<void>> task_futures;
-  int device_num = heter_devices_.size();
   auto& local_keys = gpu_task->feature_keys_;
   auto& local_ptr = gpu_task->value_ptr_;
 
   auto& local_dim_keys = gpu_task->feature_dim_keys_;
   auto& local_dim_ptr = gpu_task->value_dim_ptr_;
 
-  auto& device_keys = gpu_task->device_keys_;
-  auto& device_vals = gpu_task->device_values_;
   auto& device_dim_keys = gpu_task->device_dim_keys_;
   auto& device_dim_ptr = gpu_task->device_dim_ptr_;
-  auto& device_dim_mutex = gpu_task->dim_mutex_;
   if (multi_mf_dim_) {
     for (size_t dev = 0; dev < device_dim_keys.size(); dev++) {
       device_dim_keys[dev].resize(multi_mf_dim_);
       device_dim_ptr[dev].resize(multi_mf_dim_);
     }
   }
-  // auto& device_mutex = gpu_task->mutex_;
 
   std::vector<std::thread> threads(thread_keys_shard_num_);
 #ifdef PADDLE_WITH_PSLIB
@@ -482,6 +476,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     }
 #endif
   };
+  fleet_ptr->pslib_ptr_->_worker_ptr->acquire_table_mutex(this->table_id_);
   if (!multi_mf_dim_) {
     for (size_t i = 0; i < threads.size(); i++) {
       threads[i] = std::thread(ptl_func, i);
@@ -506,7 +501,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
       t.join();
     }
   }
-  
+  fleet_ptr->pslib_ptr_->_worker_ptr->release_table_mutex(this->table_id_);
   timeline.Pause();
   VLOG(0) << "pull sparse from CpuPS into GpuPS cost " << timeline.ElapsedSec()
           << " seconds.";
@@ -519,11 +514,35 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     gloo_wrapper->Barrier();
   }
 
+}
+
+void PSGPUWrapper::PrepareGPUTask(std::shared_ptr<HeterContext> gpu_task) {
+  platform::Timer timeline;
+  int device_num = heter_devices_.size();
+  auto& local_keys = gpu_task->feature_keys_;
+  auto& local_ptr = gpu_task->value_ptr_;
+  auto& local_dim_keys = gpu_task->feature_dim_keys_;
+  auto& local_dim_ptr = gpu_task->value_dim_ptr_;
+
+  auto& device_keys = gpu_task->device_keys_;
+  auto& device_vals = gpu_task->device_values_;
+  auto& device_dim_keys = gpu_task->device_dim_keys_;
+  auto& device_dim_ptr = gpu_task->device_dim_ptr_;
+  auto& device_dim_mutex = gpu_task->dim_mutex_;
+  auto& device_mutex = gpu_task->mutex_;
+  
+  if (multi_mf_dim_) {
+    for (size_t dev = 0; dev < device_dim_keys.size(); dev++) {
+      device_dim_keys[dev].resize(multi_mf_dim_);
+      device_dim_ptr[dev].resize(multi_mf_dim_);
+    }
+  }
   timeline.Start();
   std::vector<std::vector<std::pair<uint64_t, char*>>> pass_values;
 
   bool record_status = false;
 #ifdef PADDLE_WITH_PSLIB
+  auto fleet_ptr = FleetWrapper::GetInstance();
   uint16_t pass_id = 0;
   if (multi_node_) {
     record_status = fleet_ptr->pslib_ptr_->_worker_ptr->take_sparse_record(
@@ -893,6 +912,7 @@ void PSGPUWrapper::start_build_thread() {
   running_ = true;
   VLOG(3) << "start build CPU ps thread.";
   pre_build_threads_ = std::thread([this] { pre_build_thread(); });
+  buildpull_threads_ = std::thread([this] { build_pull_thread(); });
 }
 
 void PSGPUWrapper::pre_build_thread() {
@@ -915,6 +935,25 @@ void PSGPUWrapper::pre_build_thread() {
   VLOG(3) << "build cpu thread end";
 }
 
+void PSGPUWrapper::build_pull_thread() {
+  while (running_) {
+    std::shared_ptr<HeterContext> gpu_task = nullptr;
+    if (!buildcpu_ready_channel_->Get(gpu_task)) {
+      continue;
+    }
+    VLOG(3) << "thread build pull start.";
+    platform::Timer timer;
+    timer.Start();
+    // build cpu ps data process
+    BuildPull(gpu_task);
+    timer.Pause();
+    VLOG(1) << "thread BuildPull end, cost time: " << timer.ElapsedSec()
+            << "s";
+    buildpull_ready_channel_->Put(gpu_task);
+  }
+  VLOG(3) << "build cpu thread end";
+}
+
 void PSGPUWrapper::build_task() {
   // build_task: build_pull + build_gputask
   std::shared_ptr<HeterContext> gpu_task = nullptr;
@@ -923,17 +962,17 @@ void PSGPUWrapper::build_task() {
     return;
   }
   // ins and pre_build end
-  if (!buildcpu_ready_channel_->Get(gpu_task)) {
+  if (!buildpull_ready_channel_->Get(gpu_task)) {
     return;
   }
 
-  VLOG(0) << "BuildPull start.";
+  VLOG(0) << "PrepareGPUTask start.";
   platform::Timer timer;
   timer.Start();
-  BuildPull(gpu_task);
+  PrepareGPUTask(gpu_task);
   BuildGPUTask(gpu_task);
   timer.Pause();
-  VLOG(0) << "BuildPull + BuildGPUTask end, cost time: " << timer.ElapsedSec()
+  VLOG(0) << "PrepareGPUTask + BuildGPUTask end, cost time: " << timer.ElapsedSec()
           << "s";
 
   current_task_ = gpu_task;
@@ -964,7 +1003,8 @@ void PSGPUWrapper::EndPass() {
     PADDLE_THROW(
         platform::errors::Fatal("[EndPass] current task has been ended."));
   }
-
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  fleet_ptr->pslib_ptr_->_worker_ptr->acquire_table_mutex(this->table_id_);
   platform::Timer timer;
   timer.Start();
   size_t keysize_max = 0;
@@ -1080,6 +1120,7 @@ void PSGPUWrapper::EndPass() {
   gpu_task_pool_.Push(current_task_);
   current_task_ = nullptr;
   gpu_free_channel_->Put(current_task_);
+  fleet_ptr->pslib_ptr_->_worker_ptr->release_table_mutex(this->table_id_);
   timer.Pause();
   // timer.Pause();
   // VLOG(1) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
