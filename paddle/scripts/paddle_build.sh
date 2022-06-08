@@ -3598,4 +3598,76 @@ function main() {
       echo "paddle_build script finished as expected"
 }
 
+
+
+
+apt-get remove -y --no-install-recommends     cuda-cudart-10-2=${NV_CUDA_CUDART_VERSION}     cuda-compat-10-2
+ln -s cuda-10.2 /usr/local/cuda
+
+apt-get remove -y --no-install-recommends     cuda-libraries-10-2=${NV_CUDA_LIB_VERSION}     cuda-npp-10-2=${NV_LIBNPP_VERSION}     cuda-nvtx-10-2=${NV_NVTX_VERSION}     cuda-cusparse-10-2=${NV_LIBCUSPARSE_VERSION}     ${NV_LIBCUBLAS_PACKAGE}
+#${NV_LIBNCCL_PACKAGE}
+
+apt-get remove -y --no-install-recommends     cuda-nvml-dev-10-2=${NV_NVML_DEV_VERSION}     cuda-command-line-tools-10-2=${NV_CUDA_LIB_VERSION}     cuda-nvprof-10-2=${NV_CUDA_LIB_VERSION}     cuda-npp-dev-10-2=${NV_LIBNPP_DEV_VERSION}     cuda-libraries-dev-10-2=${NV_CUDA_LIB_VERSION}     cuda-minimal-build-10-2=${NV_CUDA_LIB_VERSION}     ${NV_LIBCUBLAS_DEV_PACKAGE}
+#${NV_LIBNCCL_DEV_PACKAGE}
+
+
+rm -rf /usr/local/cuda*
+apt-get clean
+
+
+export CUDA_VERSION=10.2.89
+export NV_NVML_DEV_VERSION=10.2.89-1
+export nv_libnccl_package_name=libnccl2
+export NV_LIBCUBLAS_DEV_VERSION=10.2.2.89-1
+export NV_LIBNPP_VERSION=10.2.89-1
+export NV_CUDNN_VERSION=8.4.0.27
+export NV_LIBNPP_DEV_VERSION=10.2.89-1
+export NV_CUDNN_PACKAGE_NAME=libcudnn8
+export NV_CUDNN_PACKAGE_DEV=libcudnn8-dev=8.4.0.27-1+cuda10.2
+export NV_LIBNCCL_DEV_VERSION=2.12.10-1
+export NV_CUDA_LIB_VERSION=10.2.89-1
+export NV_CUDNN_PACKAGE=libcudnn8=8.4.0.27-1+cuda10.2
+export NV_NVML_DEV_VERSION=10.2.89-1
+export NVIDIA_VISIBLE_DEVICES=all
+export NV_LIBNCCL_PACKAGE_VERSION=2.12.10-1
+export NV_CUDNN_PACKAGE_VERSION=8.4.0.27-1
+export NV_NVTX_VERSION=10.2.89-1
+export NVIDIA_DRIVER_CAPABILITIES=compute,utility
+export NV_LIBNCCL_DEV_PACKAGE=libnccl-dev=2.12.10-1+cuda10.2
+export NV_LIBCUSPARSE_VERSION=10.2.89-1
+export NV_LIBCUBLAS_VERSION=10.2.2.89-1
+export NV_CUDA_CUDART_VERSION=10.2.89-1
+export NVARCH=x86_64
+export NV_CUDA_CUDART_DEV_VERSION=10.2.89-1
+export NV_LIBCUBLAS_PACKAGE=libcublas10=10.2.2.89-1
+export NV_LIBCUBLAS_PACKAGE_NAME=libcublas10
+export NV_LIBCUSPARSE_DEV_VERSION=10.2.89-1
+export NV_LIBNCCL_PACKAGE=libnccl2=2.12.10-1+cuda10.2
+export NV_LIBCUBLAS_DEV_PACKAGE_NAME=libcublas-dev
+export NV_LIBNCCL_DEV_PACKAGE_NAME=libnccl-dev
+export NV_LIBCUBLAS_DEV_PACKAGE=libcublas-dev=10.2.2.89-1
+
+
+#apt-get -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true --allow-unauthenticated update
+apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     cuda-cudart-10-2=${NV_CUDA_CUDART_VERSION}     cuda-compat-10-2     && ln -s cuda-10.2 /usr/local/cuda
+ln -s cuda-10.2 /usr/local/cuda
+
+#apt-get -f  install -y --no-install-recommends     cuda-cudart-10-2=${NV_CUDA_CUDART_VERSION}     cuda-compat-10-2
+
+apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     cuda-libraries-10-2=${NV_CUDA_LIB_VERSION}     cuda-npp-10-2=${NV_LIBNPP_VERSION}     cuda-nvtx-10-2=${NV_NVTX_VERSION}     cuda-cusparse-10-2=${NV_LIBCUSPARSE_VERSION}     ${NV_LIBCUBLAS_PACKAGE}
+#${NV_LIBNCCL_PACKAGE}
+
+#apt-mark hold ${NV_LIBNCCL_PACKAGE_NAME} ${NV_LIBCUBLAS_PACKAGE_NAME}
+
+apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     cuda-nvml-dev-10-2=${NV_NVML_DEV_VERSION}     cuda-command-line-tools-10-2=${NV_CUDA_LIB_VERSION}     cuda-nvprof-10-2=${NV_CUDA_LIB_VERSION}     cuda-npp-dev-10-2=${NV_LIBNPP_DEV_VERSION}     cuda-libraries-dev-10-2=${NV_CUDA_LIB_VERSION}     cuda-minimal-build-10-2=${NV_CUDA_LIB_VERSION}     ${NV_LIBCUBLAS_DEV_PACKAGE}
+#${NV_LIBNCCL_DEV_PACKAGE}
+
+
+
+
+
+
+
+
+
 main $@
