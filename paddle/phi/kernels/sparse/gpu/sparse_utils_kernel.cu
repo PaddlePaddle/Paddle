@@ -111,13 +111,8 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
 
   // 1. get numbers of non zero elements, and get the index of non zero elements
   int* nums_ptr = nums.mutable_data<int>(place);
-#ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      hipMemsetAsync(nums_ptr, 0, sizeof(int), dev_ctx.stream()));
-#else
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemsetAsync(nums_ptr, 0, sizeof(int), dev_ctx.stream()));
-#endif
+  phi::backends::gpu::GpuMemsetAsync(
+      nums_ptr, 0, sizeof(int), dev_ctx.stream());
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rows, 1);
 
   auto temp_indexs_meta =
@@ -140,35 +135,16 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
 
   // 2. copy non_zero_num to host, copy x_dims to device
   int non_zero_num = 0;
-#ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(&non_zero_num,
-                                            nums_ptr,
-                                            sizeof(int),
-                                            hipMemcpyDeviceToHost,
-                                            dev_ctx.stream()));
-#else
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&non_zero_num,
-                                             nums_ptr,
-                                             sizeof(int),
-                                             cudaMemcpyDeviceToHost,
-                                             dev_ctx.stream()));
-#endif
-
-#ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      hipMemcpyAsync(d_x_dims.mutable_data<int64_t>(place),
-                     x_dims.Get(),
-                     x_dims.size() * sizeof(x_dims[0]),
-                     hipMemcpyHostToDevice,
-                     dev_ctx.stream()));
-#else
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemcpyAsync(d_x_dims.mutable_data<int64_t>(place),
-                      x_dims.Get(),
-                      x_dims.size() * sizeof(x_dims[0]),
-                      cudaMemcpyHostToDevice,
-                      dev_ctx.stream()));
-#endif
+  phi::backends::gpu::GpuMemcpyAsync(&non_zero_num,
+                                     nums_ptr,
+                                     sizeof(int),
+                                     gpuMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+  phi::backends::gpu::GpuMemcpyAsync(d_x_dims.data<int64_t>(),
+                                     x_dims.Get(),
+                                     x_dims.size() * sizeof(x_dims[0]),
+                                     gpuMemcpyHostToDevice,
+                                     dev_ctx.stream());
 
   dev_ctx.Wait();  // wait the copy
 
@@ -285,29 +261,16 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
                              config.thread_per_block.x>>>(
       csr_crows_data, offsets_ptr, coo_rows_data, batch_ptr, rows);
 
-#ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(coo_cols_data,
-                                            csr_cols_data,
-                                            sizeof(int64_t) * non_zero_num,
-                                            hipMemcpyDeviceToDevice,
-                                            dev_ctx.stream()));
-  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(coo_values_data,
-                                            csr_values_data,
-                                            sizeof(T) * non_zero_num,
-                                            hipMemcpyDeviceToDevice,
-                                            dev_ctx.stream()));
-#else
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(coo_cols_data,
-                                             csr_cols_data,
-                                             sizeof(int64_t) * non_zero_num,
-                                             cudaMemcpyDeviceToDevice,
-                                             dev_ctx.stream()));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(coo_values_data,
-                                             csr_values_data,
-                                             sizeof(T) * non_zero_num,
-                                             cudaMemcpyDeviceToDevice,
-                                             dev_ctx.stream()));
-#endif
+  phi::backends::gpu::GpuMemcpyAsync(coo_cols_data,
+                                     csr_cols_data,
+                                     sizeof(int64_t) * non_zero_num,
+                                     gpuMemcpyDeviceToDevice,
+                                     dev_ctx.stream());
+  phi::backends::gpu::GpuMemcpyAsync(coo_values_data,
+                                     csr_values_data,
+                                     sizeof(T) * non_zero_num,
+                                     gpuMemcpyDeviceToDevice,
+                                     dev_ctx.stream());
 
   out->SetMember(indices, values, x_dims, true);
 }
@@ -419,29 +382,16 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
         nullptr, coo_rows_data, csr_crows_data, rows, non_zero_num);
   }
 
-#ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(csr_cols_data,
-                                            coo_cols_data,
-                                            sizeof(int64_t) * non_zero_num,
-                                            hipMemcpyDeviceToDevice,
-                                            dev_ctx.stream()));
-  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(csr_values_data,
-                                            coo_values_data,
-                                            sizeof(T) * non_zero_num,
-                                            hipMemcpyDeviceToDevice,
-                                            dev_ctx.stream()));
-#else
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(csr_cols_data,
-                                             coo_cols_data,
-                                             sizeof(int64_t) * non_zero_num,
-                                             cudaMemcpyDeviceToDevice,
-                                             dev_ctx.stream()));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(csr_values_data,
-                                             coo_values_data,
-                                             sizeof(T) * non_zero_num,
-                                             cudaMemcpyDeviceToDevice,
-                                             dev_ctx.stream()));
-#endif
+  phi::backends::gpu::GpuMemcpyAsync(csr_cols_data,
+                                     coo_cols_data,
+                                     sizeof(int64_t) * non_zero_num,
+                                     cudaMemcpyDeviceToDevice,
+                                     dev_ctx.stream());
+  phi::backends::gpu::GpuMemcpyAsync(csr_values_data,
+                                     coo_values_data,
+                                     sizeof(T) * non_zero_num,
+                                     cudaMemcpyDeviceToDevice,
+                                     dev_ctx.stream());
   out->SetMember(non_zero_crows, non_zero_cols, non_zero_elements, x_dims);
 }
 
@@ -502,26 +452,14 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
       DataType::INT64, {sparse_dim}, phi::DataLayout::NCHW);
   DenseTensor d_sparse_offsets = Empty(dev_ctx, std::move(sparse_offset_meta));
 
-#ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      hipMemcpyAsync(d_sparse_offsets.mutable_data<int64_t>(place),
-                     sparse_offsets.data(),
-                     sparse_dim * sizeof(int64_t),
-                     hipMemcpyHostToDevice,
-                     dev_ctx.stream()));
+  phi::backends::gpu::GpuMemcpyAsync(d_sparse_offsets.data<int64_t>(),
+                                     sparse_offsets.data(),
+                                     sparse_dim * sizeof(int64_t),
+                                     gpuMemcpyHostToDevice,
+                                     dev_ctx.stream());
+  phi::backends::gpu::GpuMemsetAsync(
+      out_data, 0, sizeof(T) * out->numel(), dev_ctx.stream());
 
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      hipMemsetAsync(out_data, 0, sizeof(T) * out->numel(), dev_ctx.stream()));
-#else
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemcpyAsync(d_sparse_offsets.mutable_data<int64_t>(place),
-                      sparse_offsets.data(),
-                      sparse_dim * sizeof(int64_t),
-                      cudaMemcpyHostToDevice,
-                      dev_ctx.stream()));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemsetAsync(out_data, 0, sizeof(T) * out->numel(), dev_ctx.stream()));
-#endif
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
 
