@@ -579,7 +579,6 @@ int GraphDataGenerator::FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
 }
 
 int GraphDataGenerator::FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk) {
-  VLOG(0) << "begin FillWalkBuf";
   platform::CUDADeviceGuard guard(gpuid_);
   size_t once_max_sample_keynum = walk_degree_ * once_sample_startid_len_;
   ////////
