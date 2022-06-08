@@ -696,10 +696,17 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     AnyDeviceGuard guard(resource_->dev_id(i));
 
     tables_[i]->rwlock_->RDLock();
+#if defined(PADDLE_WITH_CUDA)
+    tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
+                    reinterpret_cast<ValType*>(node.val_storage),
+                    h_right[i] - h_left[i] + 1,
+                    resource_->remote_stream(i, num));
+#elif defined(PADDLE_WITH_XPU_KP)
     tables_[i]->get(place, reinterpret_cast<KeyType*>(node.key_storage),
                     reinterpret_cast<ValType*>(node.val_storage),
                     h_right[i] - h_left[i] + 1,
                     resource_->remote_stream(i, num));
+#endif
   }
 
   for (int i = 0; i < total_device; ++i) {
