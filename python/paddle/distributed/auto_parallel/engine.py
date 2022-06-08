@@ -296,12 +296,14 @@ class Engine:
 
         for step, data in enumerate(eval_dataloader):
             eval_logs = dict()
-            outs = self._eval_step(data, use_program_cache, return_numpy)
+            logs, outs = self._eval_step(data, use_program_cache, return_numpy)
             eval_logs["eval_loss"] = outs[0] if len(outs) > 0 else []
             for metric in self._metrics:
                 results = metric.accumulate()
                 for i, res in enumerate(to_list(results)):
                     eval_logs["eval_" + metric.name()[i]] = res
+            for name, val in logs.items():
+                eval_logs["eval_" + name] = val
             self._logger.info(eval_logs)
         return eval_logs
 
@@ -356,13 +358,13 @@ class Engine:
                                   return_numpy=return_numpy)
         usr_out = outs[len(fetch_list):]
         for i, out in enumerate(outs):
-            logs["eval_" + usr_fetch_list[i]] = usr_out[i]
+            logs["eval_" + usr_fetch_list[i]] = out
         outs = outs[:len(fetch_list)]
         if not outs[len(fetch_loss):]:
             return outs[:len(fetch_loss)]
         for metric in self._metrics:
             metric.update(*outs[len(fetch_loss):])
-        return outs[:len(fetch_loss)]
+        return logs, outs[:len(fetch_loss)]
 
     def _predict_step(self, data, use_program_cache=False, return_numpy=True):
         logs = {}
