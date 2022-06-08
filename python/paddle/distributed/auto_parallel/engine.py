@@ -324,10 +324,7 @@ class Engine:
             logs, outs = self._predict_step(data, use_program_cache,
                                             return_numpy)
             outputs.append(outs)
-            predict_logs = {
-                "predict_" + name: val
-                for name, val in logs.items()
-            }
+            predict_logs = {"pred_" + name: val for name, val in logs.items()}
             self._logger.info(predict_logs)
         return outputs
 
@@ -335,13 +332,14 @@ class Engine:
         logs = {}
         fetch_vars = self._fetch_vars[self.mode]["loss"]
         fetch_list, usr_fetch_list = self._fetch_list(fetch_vars)
+        fetch_list += usr_fetch_list
 
         outs = self._executor.run(self.main_program,
-                                  fetch_list=fetch_list + usr_fetch_list,
+                                  fetch_list=fetch_list,
                                   use_program_cache=use_program_cache,
                                   return_numpy=return_numpy)
         for i, out in enumerate(outs):
-            logs["train_" + fetch_list[i]] = out
+            logs[fetch_list[i]] = out
         return logs, outs
 
     def _eval_step(self, data, use_program_cache=False, return_numpy=True):
@@ -357,11 +355,11 @@ class Engine:
                                   use_program_cache=use_program_cache,
                                   return_numpy=return_numpy)
         usr_out = outs[len(fetch_list):]
-        for i, out in enumerate(outs):
-            logs["eval_" + usr_fetch_list[i]] = out
+        for i, out in enumerate(usr_out):
+            logs[usr_fetch_list[i]] = out
         outs = outs[:len(fetch_list)]
         if not outs[len(fetch_loss):]:
-            return outs[:len(fetch_loss)]
+            return logs, outs[:len(fetch_loss)]
         for metric in self._metrics:
             metric.update(*outs[len(fetch_loss):])
         return logs, outs[:len(fetch_loss)]
@@ -370,13 +368,14 @@ class Engine:
         logs = {}
         fetch_vars = self._fetch_vars[self.mode]["outputs"]
         fetch_list, usr_fetch_list = self._fetch_list(fetch_vars)
+        fetch_list += usr_fetch_list
 
         outs = self._executor.run(self.main_program,
-                                  fetch_list=fetch_list + usr_fetch_list,
+                                  fetch_list=fetch_list,
                                   use_program_cache=use_program_cache,
                                   return_numpy=return_numpy)
         for i, out in enumerate(outs):
-            logs["pred_" + fetch_list[i]] = out
+            logs[fetch_list[i]] = out
         return logs, outs
 
     def _fetch_list(self, fetch_vars):
