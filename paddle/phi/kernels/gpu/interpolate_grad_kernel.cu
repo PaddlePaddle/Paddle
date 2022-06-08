@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/interpolate_grad_kernel.h"
-
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -23,6 +21,7 @@
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/interpolate_grad_kernel.h"
 
 namespace phi {
 
@@ -747,9 +746,9 @@ template <typename T, typename Context>
 static void Interpolate1DCUDABwd(
     const Context& dev_ctx,
     const DenseTensor& input,
-    paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
-    paddle::optional<const DenseTensor&> scale_tensor,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
     const DenseTensor& output_grad,
     const std::string& data_layout_str,
     int out_w,
@@ -861,9 +860,9 @@ template <typename T, typename Context>
 static void Interpolate2DCUDABwd(
     const Context& dev_ctx,
     const DenseTensor& input,
-    paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
-    paddle::optional<const DenseTensor&> scale_tensor,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
     const DenseTensor& output_grad,
     const std::string& data_layout_str,
     int out_h,
@@ -1059,21 +1058,21 @@ static void Interpolate2DCUDABwd(
     } else if (!optimize_flag & is_nchw) {
       const int num_kernels = n * c * out_h * out_w;
       const int num_threads = std::min(dev_ctx.GetMaxThreadsPerBlock(), 1024);
-      KeBilinearInterpNCHWBw<
-          T><<<backends::gpu::DivUp(num_kernels, num_threads),
-               num_threads,
-               0,
-               dev_ctx.stream()>>>(input_grad_data,
-                                   in_h,
-                                   in_w,
-                                   out_h,
-                                   out_w,
-                                   n,
-                                   c,
-                                   ratio_h,
-                                   ratio_w,
-                                   output_grad_data,
-                                   align_type_value);
+      KeBilinearInterpNCHWBw<T>
+          <<<backends::gpu::DivUp(num_kernels, num_threads),
+             num_threads,
+             0,
+             dev_ctx.stream()>>>(input_grad_data,
+                                 in_h,
+                                 in_w,
+                                 out_h,
+                                 out_w,
+                                 n,
+                                 c,
+                                 ratio_h,
+                                 ratio_w,
+                                 output_grad_data,
+                                 align_type_value);
     } else {
       int64_t cw = c * out_w;
       auto interp_divmods = funcs::FastDivModForInterpolate(c, out_chw, cw);
@@ -1100,23 +1099,23 @@ static void Interpolate2DCUDABwd(
 #else
     constexpr int thread_per_block = 512;
 #endif
-    KeBicubicInterpBw<
-        T><<<config.block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
-        input_grad_data,
-        in_h,
-        in_w,
-        n,
-        in_chw,
-        output_grad_data,
-        out_h,
-        out_w,
-        n,
-        out_chw,
-        c,
-        ratio_h,
-        ratio_w,
-        align_corners,
-        data_layout);
+    KeBicubicInterpBw<T>
+        <<<config.block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
+            input_grad_data,
+            in_h,
+            in_w,
+            n,
+            in_chw,
+            output_grad_data,
+            out_h,
+            out_w,
+            n,
+            out_chw,
+            c,
+            ratio_h,
+            ratio_w,
+            align_corners,
+            data_layout);
   }
 }
 
@@ -1124,9 +1123,9 @@ template <typename T, typename Context>
 static void Interpolate3DCUDABwd(
     const Context& dev_ctx,
     const DenseTensor& input,
-    paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
-    paddle::optional<const DenseTensor&> scale_tensor,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
     const DenseTensor& output_grad,
     const std::string& data_layout_str,
     int out_d,
@@ -1334,9 +1333,9 @@ template <typename T, typename Context>
 void InterpolateGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
-    paddle::optional<const DenseTensor&> scale_tensor,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
     const DenseTensor& output_grad,
     const std::string& data_layout,
     int out_d,
@@ -1401,9 +1400,9 @@ template <typename T, typename Context>
 void BilinearInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
-    paddle::optional<const DenseTensor&> scale_tensor,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
@@ -1435,9 +1434,9 @@ template <typename T, typename Context>
 void NearestInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
-    paddle::optional<const DenseTensor&> scale_tensor,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
@@ -1469,9 +1468,9 @@ template <typename T, typename Context>
 void TrilinearInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
-    paddle::optional<const DenseTensor&> scale_tensor,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
@@ -1503,9 +1502,9 @@ template <typename T, typename Context>
 void LinearInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
-    paddle::optional<const DenseTensor&> scale_tensor,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
@@ -1537,9 +1536,9 @@ template <typename T, typename Context>
 void BicubicInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
-    paddle::optional<const DenseTensor&> scale_tensor,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,

@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,10 +22,12 @@ import unittest
 
 
 class TrtConvertMatmulTest_static(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -73,9 +75,11 @@ class TrtConvertMatmulTest_static(TrtLayerAutoScanTest):
                             ops=ops,
                             weights={},
                             inputs={
-                                "input1_data": TensorConfig(data_gen=partial(
+                                "input1_data":
+                                TensorConfig(data_gen=partial(
                                     generate_input, input1_shape)),
-                                "input2_data": TensorConfig(data_gen=partial(
+                                "input2_data":
+                                TensorConfig(data_gen=partial(
                                     generate_input, input2_shape))
                             },
                             outputs=["output_data"])
@@ -84,6 +88,7 @@ class TrtConvertMatmulTest_static(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             pass
 
@@ -104,10 +109,12 @@ class TrtConvertMatmulTest_static(TrtLayerAutoScanTest):
 
 
 class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -154,9 +161,11 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
                         ops=ops,
                         weights={},
                         inputs={
-                            "input1_data": TensorConfig(
+                            "input1_data":
+                            TensorConfig(
                                 data_gen=partial(generate_input, input1_shape)),
-                            "input2_data": TensorConfig(
+                            "input2_data":
+                            TensorConfig(
                                 data_gen=partial(generate_input, input2_shape))
                         },
                         outputs=["output_data"])
@@ -165,6 +174,7 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input1_data": [1, 4, 4],
@@ -180,8 +190,7 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
             }
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for dynamic_shape

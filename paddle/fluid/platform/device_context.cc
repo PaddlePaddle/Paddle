@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
+
 #include <functional>
 #include <memory>
 #include <set>
+
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -52,7 +54,9 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
     auto& desired_dev_ctx =
         static_cast<const platform::CUDADeviceContext&>(dev_ctx);
     if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
-      return Alloc(place, size);
+      return paddle::memory::Alloc(desired_dev_ctx.GetPlace(), size,
+                                   phi::Stream(reinterpret_cast<phi::StreamId>(
+                                       desired_dev_ctx.stream())));
     } else {
       return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
           desired_dev_ctx, size);
@@ -125,11 +129,22 @@ DeviceType Place2DeviceType(const platform::Place& place) {
 }
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
+thread_local const std::map<Place,
+                            std::shared_future<std::unique_ptr<DeviceContext>>>*
+    DeviceContextPool::external_device_contexts_ = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   VLOG(6) << "DeviceContextPool Get: " << place;
-  auto it = device_contexts_.find(place);
-  if (it == device_contexts_.end()) {
+  const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+      ptr;
+  if (external_device_contexts_ && external_device_contexts_->count(place)) {
+    ptr = external_device_contexts_;
+  } else {
+    ptr = &device_contexts_;
+  }
+
+  auto it = ptr->find(place);
+  if (it == ptr->end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
         "with WITH_GPU, WITH_XPU, WITH_IPU, WITH_MLU or WITH_ASCEND_CL option "
@@ -139,6 +154,27 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
         place));
   }
   return it->second.get().get();
+}
+
+size_t DeviceContextPool::size() const {
+  if (external_device_contexts_) {
+    return external_device_contexts_->size();
+  }
+  return device_contexts_.size();
+}
+
+const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
+DeviceContextPool::device_contexts() const {
+  if (external_device_contexts_) {
+    return *external_device_contexts_;
+  }
+  return device_contexts_;
+}
+
+void DeviceContextPool::SetDeviceContexts(
+    const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        dev_ctxs) {
+  external_device_contexts_ = dev_ctxs;
 }
 
 template <typename DevCtx>
@@ -169,7 +205,7 @@ inline void EmplaceDeviceContext(
 
           cuda_ctx->PartialInitWithAllocator();
           dev_ctx->SetGenerator(
-              framework::GetDefaultCUDAGenerator(p.GetDeviceId()).get());
+              framework::DefaultCUDAGenerator(p.GetDeviceId()).get());
 #endif
         } else {
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
@@ -750,7 +786,7 @@ dnnl::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
 void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
   VLOG(4) << tls().get_curr_exec() << " " << ptr;
   std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
-  if (!block_next_cache_clearing_) {
+  if (block_next_cache_clearing_ == 0) {
     VLOG(3) << "Clearing DNNL cache.";
     // If no specific executor pointer then clear
     // everything. For executor pointer then clear only
@@ -768,9 +804,20 @@ void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
         s.second->erase(ptr);
       }
     }
+    // Reset paddle layout to NCHW
+    VLOG(3) << "Resetting Paddle data layout to NCHW.";
+    platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+        paddle::framework::DataLayout::kNCHW);
   } else {
-    VLOG(3) << "Prevented Clearing DNNL cache.";
-    block_next_cache_clearing_ = false;
+    --block_next_cache_clearing_;
+    VLOG(3) << "Prevented Clearing DNNL cache. Updated "
+               "block_next_cache_clearing_ : "
+            << block_next_cache_clearing_;
+    PADDLE_ENFORCE_GE(block_next_cache_clearing_, 0,
+                      platform::errors::InvalidArgument(
+                          "Cache clearing mark should be non-negative "
+                          ". But received %d.",
+                          block_next_cache_clearing_));
   }
 }
 
@@ -796,8 +843,10 @@ void MKLDNNDeviceContext::LinkEntryWithExecutor(BlobPtr_t<KeyBlob> pblob,
 
 void MKLDNNDeviceContext::BlockNextCacheClearing() {
   std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
-  VLOG(3) << "Next DNNL cache clearing has been blocked.";
-  block_next_cache_clearing_ = true;
+  ++block_next_cache_clearing_;
+  VLOG(3) << "Next DNNL cache clearing has been blocked. Updated "
+             "block_next_cache_clearing_ : "
+          << block_next_cache_clearing_;
 }
 
 size_t MKLDNNDeviceContext::GetShapeBlobSize() const {

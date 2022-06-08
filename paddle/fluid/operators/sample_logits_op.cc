@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/sample_logits_op.h"
+
 #include <memory>
+
 #include "paddle/fluid/operators/math/sample_prob.h"
 
 namespace paddle {
@@ -58,7 +60,7 @@ class SampleLogitsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(
         "Probabilities",
         "(Tensor, default: Tensor<float>), A 2-D tensor with shape [N, NT + S]."
-        "The probabilites of sampled positive and negtive labels.")
+        "The probabilities of sampled positive and negtive labels.")
         .AsIntermediate();
     AddOutput("LogitsDim", "Store dim information of Logits for gradient op")
         .AsIntermediate();

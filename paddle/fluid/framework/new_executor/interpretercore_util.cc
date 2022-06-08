@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+
 #include <algorithm>
 
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -398,9 +399,10 @@ void build_op_func_list(const platform::Place& place,
       // But some OPs do have such behavior (e.g., cinn_launch OP). Here special
       // treatment for them.
       if (op_with_kernel->Type() == "cinn_launch") {
-        VLOG(6) << "OP(" << op_with_kernel->Type() << ") use scope in kernel, "
-                                                      "so pass a real scope to "
-                                                      "ExecutionContext";
+        VLOG(6) << "OP(" << op_with_kernel->Type()
+                << ") use scope in kernel, "
+                   "so pass a real scope to "
+                   "ExecutionContext";
         runtime_scope = local_scope;
       }
 
@@ -666,7 +668,7 @@ std::map<int, std::list<int>> get_downstream_map(
   VLOG(6) << "downstream count: " << downstream_map_count();
   VLOG(6) << "downstream_map: " << std::endl << downstream_map_to_str();
 
-  // step2: remove unneccessary downstream ops
+  // step2: remove unnecessary downstream ops
   // for example, a->b->c
   // a: b, c
   // b: c
@@ -747,8 +749,9 @@ std::map<int, std::list<int>> get_downstream_map(
 std::map<int, std::list<int>> build_op_downstream_map(
     const std::vector<Instruction>& vec_instruction,
     std::vector<std::vector<bool>>* op_happens_before) {
-  auto var2min_rw_op = std::map<
-      int, std::list<int>>();  // # map from variable id to read / write op id.
+  auto var2min_rw_op =
+      std::map<int, std::list<int>>();  // # map from variable id to read /
+                                        // write op id.
   auto var2recent_write_op =
       std::map<int, int>();  // # map from variable to recent write op.
   auto op2dependences =
@@ -825,8 +828,14 @@ std::map<int, std::list<int>> build_op_downstream_map(
   // add dependences for random op, make sure that the random op is scheduled
   // sequentially
   const std::set<std::string> random_op_set = {
-      "bernoulli", "poisson", "multinomial", "gaussian_random",
-      "truncated_gaussian_random", "uniform_random", "randint", "randperm",
+      "bernoulli",
+      "poisson",
+      "multinomial",
+      "gaussian_random",
+      "truncated_gaussian_random",
+      "uniform_random",
+      "randint",
+      "randperm",
       "exponential",
       "sampling_id"
       "dropout",
@@ -846,7 +855,10 @@ std::map<int, std::list<int>> build_op_downstream_map(
   // add dependency for communication op
   auto is_comm_op = [](std::string op) -> bool {
     const std::set<std::string> special_comm_op_set = {
-        "send", "recv", "send_v2", "recv_v2",
+        "send",
+        "recv",
+        "send_v2",
+        "recv_v2",
     };
     const std::string communication_op_prefix = "c_";
     if (op.find(communication_op_prefix) != std::string::npos ||

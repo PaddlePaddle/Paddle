@@ -144,6 +144,7 @@ def gen_rank_offset(pv_nums, max_rank):
 
 
 class TestRankAttentionOpComplex(OpTest):
+
     def config(self):
         self.pv_num = 100
         self.x_feat = 10
@@ -161,8 +162,8 @@ class TestRankAttentionOpComplex(OpTest):
         ]
         rank_para = np.random.random(rank_para_shape).astype(self.dtype)
         np_out, np_input_help, np_param_help, np_ins_rank = np_rank_attention(
-            input,
-            np.array(rank_offset), rank_para, self.max_rank, self.pv_num * 7)
+            input, np.array(rank_offset), rank_para, self.max_rank,
+            self.pv_num * 7)
         self.inputs = {
             "X": input,
             "RankOffset": np.array(rank_offset).astype("int32"),
@@ -185,6 +186,7 @@ class TestRankAttentionOpComplex(OpTest):
 
 
 class TestRankAttentionOpCpu(OpTest):
+
     def config(self):
         self.pv_num = 100
         self.x_feat = 10
@@ -202,8 +204,8 @@ class TestRankAttentionOpCpu(OpTest):
         ]
         rank_para = np.random.random(rank_para_shape).astype(self.dtype)
         np_out, np_input_help, np_param_help, np_ins_rank = np_rank_attention(
-            input,
-            np.array(rank_offset), rank_para, self.max_rank, self.pv_num * 7)
+            input, np.array(rank_offset), rank_para, self.max_rank,
+            self.pv_num * 7)
         self.inputs = {
             "X": input,
             "RankOffset": np.array(rank_offset).astype("int32"),

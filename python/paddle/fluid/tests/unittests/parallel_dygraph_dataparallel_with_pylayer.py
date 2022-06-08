@@ -31,6 +31,7 @@ out_dim = 10
 
 
 class cus_tanh(PyLayer):
+
     @staticmethod
     def forward(ctx, x):
         y = paddle.tanh(x)
@@ -45,6 +46,7 @@ class cus_tanh(PyLayer):
 
 
 class cus_tanh_eager(EagerPyLayer):
+
     @staticmethod
     def forward(ctx, x):
         y = paddle.tanh(x)
@@ -59,6 +61,7 @@ class cus_tanh_eager(EagerPyLayer):
 
 
 class SimpleNet(paddle.nn.Layer):
+
     def __init__(self, train_id, model_id):
         super(SimpleNet, self).__init__()
         self.w = self.create_parameter(shape=[in_dim, batch], dtype="float32")
@@ -82,6 +85,7 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestDistTraning(unittest.TestCase):
+
     def test_multiple_gpus(self):
         self.trainer_id = dist.get_rank()
         dist.init_parallel_env()

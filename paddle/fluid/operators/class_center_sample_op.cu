@@ -15,17 +15,20 @@
 #ifdef PADDLE_WITH_HIP
 #include <hiprand.h>
 #include <hiprand_kernel.h>
+
 #include <hipcub/hipcub.hpp>
 typedef hiprandState curandState;
 namespace cub = hipcub;
 #else
 #include <curand.h>
 #include <curand_kernel.h>
+
 #include <cub/cub.cuh>
 #endif
 
 #include <iterator>
 #include <random>
+
 #include "paddle/fluid/operators/class_center_sample_op.h"
 #include "paddle/phi/api/include/tensor.h"
 
@@ -416,14 +419,13 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
                    1) *
                   vec_size;
     int device_id = ctx.GetPlace().GetDeviceId();
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
-    if (gen_cuda->GetIsInitPy() && (!fix_seed)) {
+    auto gen_cuda = framework::DefaultCUDAGenerator(device_id);
+    if (!fix_seed) {
       auto seed_offset = gen_cuda->IncrementOffset(offset);
       seed_data = seed_offset.first;
       increment = seed_offset.second;
     } else {
-      std::random_device rnd;
-      seed_data = fix_seed ? seed + rank : rnd();
+      seed_data = seed + rank;
       increment = offset;
     }
     RandomSampleClassCenter<T><<<NumBlocks(num_classes), kNumCUDAThreads, 0,

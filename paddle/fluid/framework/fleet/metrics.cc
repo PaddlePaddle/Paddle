@@ -17,6 +17,7 @@
 #include <ctime>
 #include <memory>
 #include <numeric>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 
 #if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
@@ -63,10 +64,12 @@ void BasicAucCalculator::add_data(const float* d_pred, const int64_t* d_label,
 }
 
 void BasicAucCalculator::add_unlock_data(double pred, int label) {
-  PADDLE_ENFORCE_GE(pred, 0.0, platform::errors::PreconditionNotMet(
-                                   "pred should be greater than 0"));
-  PADDLE_ENFORCE_LE(pred, 1.0, platform::errors::PreconditionNotMet(
-                                   "pred should be lower than 1"));
+  PADDLE_ENFORCE_GE(
+      pred, 0.0,
+      platform::errors::PreconditionNotMet("pred should be greater than 0"));
+  PADDLE_ENFORCE_LE(
+      pred, 1.0,
+      platform::errors::PreconditionNotMet("pred should be lower than 1"));
   PADDLE_ENFORCE_EQ(
       label * label, label,
       platform::errors::PreconditionNotMet(
@@ -272,10 +275,12 @@ void BasicAucCalculator::add_uid_data(const float* d_pred,
 
 void BasicAucCalculator::add_uid_unlock_data(double pred, int label,
                                              uint64_t uid) {
-  PADDLE_ENFORCE_GE(pred, 0.0, platform::errors::PreconditionNotMet(
-                                   "pred should be greater than 0"));
-  PADDLE_ENFORCE_LE(pred, 1.0, platform::errors::PreconditionNotMet(
-                                   "pred should be lower than 1"));
+  PADDLE_ENFORCE_GE(
+      pred, 0.0,
+      platform::errors::PreconditionNotMet("pred should be greater than 0"));
+  PADDLE_ENFORCE_LE(
+      pred, 1.0,
+      platform::errors::PreconditionNotMet("pred should be lower than 1"));
   PADDLE_ENFORCE_EQ(
       label * label, label,
       platform::errors::PreconditionNotMet(

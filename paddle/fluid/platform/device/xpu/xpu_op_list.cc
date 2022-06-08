@@ -9,6 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+
 #include <mutex>
 #include <string>
 #include <unordered_set>
@@ -17,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/xpu2_op_list.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_kpfirst_list.h"
-#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 
 namespace paddle {
 namespace platform {

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+
 #include "paddle/fluid/operators/concat_op.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -21,13 +22,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
-using framework::Tensor;
-using framework::LoDTensor;
+using dnnl::concat;
 using dnnl::memory;
 using dnnl::primitive;
-using dnnl::concat;
 using dnnl::stream;
+using framework::DataLayout;
+using framework::LoDTensor;
+using framework::Tensor;
 using platform::to_void_cast;
 
 template <typename T>

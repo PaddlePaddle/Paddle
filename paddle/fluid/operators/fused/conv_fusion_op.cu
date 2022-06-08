@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <array>
+
 #include "paddle/fluid/framework/conv_search_cache.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
@@ -130,7 +131,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         default:
           PADDLE_THROW(platform::errors::PermissionDenied(
               "Operator Conv2DFusion expects Input to be a 4-D or 5-D Tensor. "
-              "But recieved the actual dimension = %d, shape = [%s].",
+              "But received the actual dimension = %d, shape = [%s].",
               rank, transformed_input_channel.dims()));
       }
 
@@ -355,7 +356,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         workspace_size_in_bytes, workspace_size_limit,
         platform::errors::InvalidArgument(
             "The actual workspace size to be allocated for cuDNN is expected "
-            "to be less than the limit. But recieved: the actual workspace "
+            "to be less than the limit. But received: the actual workspace "
             "size = %d, limit = %d.",
             workspace_size_in_bytes, workspace_size_limit));
 
@@ -414,7 +415,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       } else {
         // TODO(qingiqng): do copy when batch size large than 1
         PADDLE_THROW(platform::errors::Unimplemented(
-            "Input with batch size greater than 1 is unsupported. The recieved "
+            "Input with batch size greater than 1 is unsupported. The received "
             "batch size is %d, Input's shape is [%s].",
             x_dims[0], phi::make_ddim(x_dims)));
       }

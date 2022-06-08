@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <omp.h>
-#include <sstream>
-
-#include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/ps/table/memory_sparse_table.h"
-#include "paddle/fluid/framework/io/fs.h"
+
+#include <omp.h>
+
+#include <sstream>
 
 #include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
+#include "paddle/fluid/distributed/common/cost_timer.h"
+#include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_bool(pserver_print_missed_key_num_every_push, false,
@@ -272,9 +273,8 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
         if (_value_accesor->Save(it.value().data(), save_param)) {
           std::string format_value = _value_accesor->ParseToString(
               it.value().data(), it.value().size());
-          if (0 !=
-              write_channel->write_line(paddle::string::format_string(
-                  "%lu %s", it.key(), format_value.c_str()))) {
+          if (0 != write_channel->write_line(paddle::string::format_string(
+                       "%lu %s", it.key(), format_value.c_str()))) {
             ++retry_num;
             is_write_failed = true;
             LOG(ERROR)

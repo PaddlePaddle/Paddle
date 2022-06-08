@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
@@ -157,8 +158,9 @@ class GradOpDescMakerBase {
   const Attribute& GetAttr(const std::string& name) const {
     auto& map = fwd_op_.GetAttrMap();
     auto it = map.find(name);
-    PADDLE_ENFORCE_NE(it, map.end(), platform::errors::NotFound(
-                                         "Cannot find attribute (%s).", name));
+    PADDLE_ENFORCE_NE(
+        it, map.end(),
+        platform::errors::NotFound("Cannot find attribute (%s).", name));
     return it->second;
   }
 

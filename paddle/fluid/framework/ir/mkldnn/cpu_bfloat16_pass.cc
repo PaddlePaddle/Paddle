@@ -186,9 +186,23 @@ class DeQuantizer final : public Quanter {
   // Checking whether a reorder from BF16 to FP32
   // should be added after the output to the operator
   bool IsNotPermittedName(const std::string& output_name) const override {
-    // XShape is output in transpose2 and reshape2 operators used to store the
-    // shape and lod of X. So this output do not need dequantize before.
-    return (output_name == "XShape");
+    std::unordered_map<std::string, std::vector<std::string>> block_list{
+        {"layer_norm",
+         {"Mean", "Variance"}},     // not used in inference in MKLDNN
+        {"fc", {"ResidualData"}}};  // artifical output, already dequantized
+
+    std::vector<std::string> blocked_outputs{"XShape"};  // blocklist for any op
+    auto op_name = op->Name();
+    if (block_list.count(op_name)) {
+      const auto& op_blocklist = block_list[op_name];
+      blocked_outputs.insert(blocked_outputs.begin(), op_blocklist.begin(),
+                             op_blocklist.end());
+    }
+
+    return std::any_of(blocked_outputs.begin(), blocked_outputs.end(),
+                       [&output_name](const std::string& name) {
+                         return name == output_name;
+                       });
   }
 
   std::string get_op_type() const override { return "dequantize"; };
@@ -212,7 +226,7 @@ class DeQuantizer final : public Quanter {
     return Quanter::create_quant_op(output_name, input_name);
   }
 };
-}
+}  // namespace
 using string::PrettyLogDetail;
 
 void CPUBFloat16Pass::ApplyImpl(ir::Graph* graph) const {

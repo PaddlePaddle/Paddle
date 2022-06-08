@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -12,10 +12,16 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 #include <vector>
+
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
+#include "xpu/runtime.h"
 
 namespace paddle {
+
+using xpuStream = XPUStream;
+using xpuEventHandle = XPUEvent;
+
 namespace platform {
 
 /***** Version Management *****/
@@ -50,6 +56,9 @@ void MemcpySyncD2H(void *dst, const void *src, size_t count,
 void MemcpySyncD2D(void *dst, const platform::XPUPlace &dst_place,
                    const void *src, const platform::XPUPlace &src_place,
                    size_t count);
+
+//! Blocks until stream has completed all operations.
+void XPUStreamSync(xpuStream stream);
 
 using XPUDeviceGuard = phi::backends::xpu::XPUDeviceGuard;
 

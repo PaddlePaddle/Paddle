@@ -85,9 +85,11 @@ if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
 
+set error_code=0
+type %cache_dir%\error_code.txt
+
 rem ------initialize set git config------
 git config --global core.longpaths true
-
 
 rem ------initialize the python environment------
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
@@ -119,8 +121,6 @@ if "%WITH_CACHE%"=="OFF" (
     goto :mkbuild
 )
 
-set error_code=0
-type %cache_dir%\error_code.txt
 : set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
     rmdir %BUILD_DIR% /s/q
@@ -305,10 +305,14 @@ if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_inference || goto test_inference_error
-call :test_inference_ut || goto test_inference_ut_error
+call :test_inference
+if %errorlevel% NEQ 0 set error_code=%errorlevel%
+call :test_inference_ut
+if %errorlevel% NEQ 0 set error_code=%errorlevel%
+
 call :zip_cc_file || goto zip_cc_file_error
 call :zip_c_file || goto zip_c_file_error
+if %error_code% NEQ 0 goto test_inference_error
 goto:success
 
 rem "Other configurations are added here"
@@ -760,12 +764,15 @@ for /F %%i in ("%libsize%") do (
 
 cd /d %work_dir%\paddle\fluid\inference\api\demo_ci
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %WITH_TENSORRT% %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT% "%CUDA_TOOLKIT_ROOT_DIR%"
+
 goto:eof
 
 :test_inference_error
 ::echo 1 > %cache_dir%\error_code.txt
 ::type %cache_dir%\error_code.txt
-echo Testing fluid library for inference failed!
+echo    ==========================================
+echo    Testing inference library failed!
+echo    ==========================================
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------

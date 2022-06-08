@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,7 @@ from dist_mnist import cnn_model
 
 
 class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):
+
     def get_model(self, batch_size=2, single_device=False):
         paddle.enable_static()
         paddle.seed(1)
@@ -53,8 +54,9 @@ class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):
         strategy.without_graph_optimization = True
 
         fleet.init(is_collective=True, strategy=strategy)
-        image = paddle.static.data(
-            name='image', shape=[None, 1, 28, 28], dtype="float32")
+        image = paddle.static.data(name='image',
+                                   shape=[None, 1, 28, 28],
+                                   dtype="float32")
         label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
         predict = cnn_model(image)
         acc = paddle.metric.accuracy(predict, label)
@@ -86,10 +88,10 @@ class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):
             else:
                 assert start_allreduce_idx == 1
 
-        train_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
-        test_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
+        train_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                    batch_size=batch_size)
+        test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                   batch_size=batch_size)
         return test_program, cost, train_reader, test_reader, acc, predict
 
 

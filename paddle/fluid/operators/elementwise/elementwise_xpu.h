@@ -18,6 +18,7 @@ limitations under the License. */
 #include <tuple>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
 #include "xpu/refactor/math.h"
@@ -32,8 +33,9 @@ void XPUElementwise(
                       const std::vector<int>&, const std::vector<int>&)>
         func) {
   auto x_var = ctx.InputVar("X");
-  PADDLE_ENFORCE_NE(x_var, nullptr, platform::errors::InvalidArgument(
-                                        "Cannot get input Variable X"));
+  PADDLE_ENFORCE_NE(
+      x_var, nullptr,
+      platform::errors::InvalidArgument("Cannot get input Variable X"));
   PADDLE_ENFORCE_EQ(
       x_var->IsType<framework::LoDTensor>(), true,
       platform::errors::InvalidArgument(
