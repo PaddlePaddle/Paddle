@@ -1354,7 +1354,6 @@ std::vector<ir::Graph *> ParallelExecutor::CloneGraphToMultiDevices(
 void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
   if (member_->build_strategy_.reduce_ ==
       BuildStrategy::ReduceStrategy::kNoReduce) {
-    member_->nccl_ctxs_ = nullptr;
     return;
   }
 
