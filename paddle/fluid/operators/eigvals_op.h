@@ -94,14 +94,14 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
       w.mutable_data<T>(phi::make_ddim({n_dim << 1}), ctx.GetPlace());
 
   int64_t work_mem = work->memory_size();
-  // int64_t required_work_mem = 3 * n_dim * sizeof(T);
-  // PADDLE_ENFORCE_GE(
-  //     work_mem, 3 * n_dim * sizeof(T),
-  //     platform::errors::InvalidArgument(
-  //         "The memory size of the work tensor in LapackEigvals function "
-  //         "should be at least %" PRId64 " bytes, "
-  //         "but received work\'s memory size = %" PRId64 " bytes.",
-  //         required_work_mem, work_mem));
+  int64_t required_work_mem = 3 * n_dim * sizeof(T);
+  PADDLE_ENFORCE_GE(
+       work_mem, 3 * n_dim * sizeof(T),
+       platform::errors::InvalidArgument(
+           "The memory size of the work tensor in LapackEigvals function "
+           "should be at least %" PRId64 " bytes, "
+           "but received work\'s memory size = %" PRId64 " bytes.",
+           required_work_mem, work_mem));
 
   int info = 0;
   phi::funcs::lapackEig<T>('N', 'N', static_cast<int>(n_dim),
@@ -134,24 +134,24 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
 
   int64_t work_mem = work->memory_size();
   int64_t n_dim = input.dims()[1];
-  // int64_t required_work_mem = 3 * n_dim * sizeof(T);
-  // PADDLE_ENFORCE_GE(
-  //     work_mem, 3 * n_dim * sizeof(T),
-  //     platform::errors::InvalidArgument(
-  //         "The memory size of the work tensor in LapackEigvals function "
-  //         "should be at least %" PRId64 " bytes, "
-  //         "but received work\'s memory size = %" PRId64 " bytes.",
-  //         required_work_mem, work_mem));
+  int64_t required_work_mem = 3 * n_dim * sizeof(T);
+  PADDLE_ENFORCE_GE(
+       work_mem, 3 * n_dim * sizeof(T),
+       platform::errors::InvalidArgument(
+           "The memory size of the work tensor in LapackEigvals function "
+           "should be at least %" PRId64 " bytes, "
+           "but received work\'s memory size = %" PRId64 " bytes.",
+           required_work_mem, work_mem));
 
-  // int64_t rwork_mem = rwork->memory_size();
-  // int64_t required_rwork_mem = (n_dim << 1) * sizeof(phi::dtype::Real<T>);
-  // PADDLE_ENFORCE_GE(
-  //     rwork_mem, required_rwork_mem,
-  //     platform::errors::InvalidArgument(
-  //         "The memory size of the rwork tensor in LapackEigvals function "
-  //         "should be at least %" PRId64 " bytes, "
-  //         "but received rwork\'s memory size = %" PRId64 " bytes.",
-  //         required_rwork_mem, rwork_mem));
+   int64_t rwork_mem = rwork->memory_size();
+   int64_t required_rwork_mem = (n_dim << 1) * sizeof(phi::dtype::Real<T>);
+   PADDLE_ENFORCE_GE(
+       rwork_mem, required_rwork_mem,
+       platform::errors::InvalidArgument(
+           "The memory size of the rwork tensor in LapackEigvals function "
+           "should be at least %" PRId64 " bytes, "
+           "but received rwork\'s memory size = %" PRId64 " bytes.",
+           required_rwork_mem, rwork_mem));
 
   int info = 0;
   phi::funcs::lapackEig<T, phi::dtype::Real<T>>(
