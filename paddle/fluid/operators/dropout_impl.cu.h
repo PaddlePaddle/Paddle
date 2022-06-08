@@ -266,7 +266,7 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
                               bool is_fix_seed, int seed_val,
                               const framework::Tensor& x,
                               const framework::Tensor* seed,
-                              const std::vector<int> axis,
+                              const std::vector<int>& axis,
                               framework::Tensor* mask, framework::Tensor* y) {
   auto& place = *dev_ctx.eigen_device();
   int64_t x_numel = x.numel();
