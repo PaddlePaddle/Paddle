@@ -82,10 +82,11 @@ class TestCudaGraphAttrAll(unittest.TestCase):
 
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         exe.run(start_prog)
-        # TODO: test runable
-        # for i in range(10):
-        #     rst = exe.run(transform_program, feed={'x': x_data}, fetch_list=[loss])
-        return 0
+        for i in range(10):
+            rst = exe.run(transform_program,
+                          feed={'x': x_data},
+                          fetch_list=[loss])
+        return rst
 
     def normal_run(self, x_data):
         paddle.seed(1024)
@@ -109,6 +110,7 @@ class TestCudaGraphAttrAll(unittest.TestCase):
         x_data = np.random.random((3, 10)).astype('float32')
         cuda_graph_rst = self.run_with_cuda_graph(x_data)
         normal_run_rst = self.normal_run(x_data)
+        assert np.allclose(cuda_graph_rst, normal_run_rst)
 
 
 if __name__ == "__main__":

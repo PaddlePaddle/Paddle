@@ -115,6 +115,89 @@ def find_in_n_out(program):
     return ins, outs
 
 
+def get_cuda_graph_sections(program):
+    # get all sections that should run under cuda graph and the corresponding idx
+    block = program.global_block()
+    cuda_graph_sections = []  # record all ops in every cuda graph sections
+    sections_idx = []  # idx of all ops in every cuda graph sections
+    internal_section = [
+    ]  # ops between cuda graph wrapped op, may belong to a section
+    internal_idx = [
+    ]  # ops' idx between cuda graph wrapped op, may belong to a section
+    current_section = []  # current recording cuda graph sections
+    current_idx = []  # current recording cuda graph ops' idx
+    current_cuda_graph_id = -1  # current recording cuda graph id
+    for idx, op in enumerate(block.ops):
+        # find cuda graph sections
+        if op._cuda_graph_attr is not None:
+            assert isinstance(op._cuda_graph_attr,
+                              str), "cuda_graph_attr should be a str"
+            cuda_graph_attrs = op._cuda_graph_attr.split(';')
+            assert len(cuda_graph_attrs) == 3, "cuda graph attr should have three fields: " \
+                                               "cuda graph mode, cuda graph memory pool id, cuda graph id"
+            local_cuda_graph_id = int(cuda_graph_attrs[2])
+            if local_cuda_graph_id == current_cuda_graph_id:
+                if len(internal_section) > 0:
+                    for internal_op in internal_section:
+                        if internal_op.attr(
+                                'op_role') == 256 or internal_op.attr(
+                                    'op_role') == 257:
+                            # The internal section contains loss related ops,
+                            # although these ops are between two cuda graph sections with same graph id,
+                            # they belong to none of these two sections.
+                            # The loss related op should be wrapped by user explicitly.
+                            internal_section = []
+                            # Beside clear the internal section, a new cuda graph section should be recorded
+                            assert len(current_section) == len(current_idx), \
+                                "num of section's op is not equal with the idx"
+                            if len(current_section) > 0:
+                                # store previous section
+                                cuda_graph_sections.append(current_section)
+                                sections_idx.append(current_idx)
+                                current_section = []
+                                current_idx = []
+                    # some ops inserted by optimizer, should be added to current section
+                    for internal_op in internal_section:
+                        current_section.append(internal_op)
+                internal_section = []
+                current_section.append(op)
+                current_idx.append(idx)
+            else:
+                # current graph id is different with previous, start a new section of cuda graph
+                internal_section = [
+                ]  # internal ops belong to no section, just clear it
+                internal_idx = [
+                ]  # internal idx belong to no section, just clear it
+                current_cuda_graph_id = local_cuda_graph_id  # start record a new section
+                assert len(current_section) == len(
+                    current_idx
+                ), "num of section's op is not equal with num of idx"
+                if len(current_section) > 0:
+                    # store previous section
+                    cuda_graph_sections.append(current_section)
+                    sections_idx.append(current_idx)
+                    current_section = [op]
+                    current_idx = [idx]
+        else:
+            # recode ops which cuda_graph_attr is None, may belong to a section
+            internal_section.append(op)
+            internal_idx.append(idx)
+
+    # handle the last section
+    assert len(current_section) == len(
+        current_idx), "num of section's op is not equal with num of idx"
+    if len(current_section) > 0:
+        # store previous section
+        cuda_graph_sections.append(current_section)
+        sections_idx.append(current_idx)
+
+    return cuda_graph_sections, sections_idx
+
+
 def cuda_graph_transform(program):
     # replace the ops marked with cuda_graph_attr to run_program_op to use cuda graph
+
+    # step 1: get all cuda graph sections
+    cuda_graph_sections, sections_idx = get_cuda_graph_sections(program)
+
     return program
