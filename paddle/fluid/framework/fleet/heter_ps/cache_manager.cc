@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <set>
 #include <thread>
-
+#include "glog/logging.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cache_manager.h"
 
 #if defined(PADDLE_WITH_XPU_KP)
@@ -31,6 +31,8 @@ void CacheManager::init(int thread_num, int batch_sz, int worker_num) {
     thread_num_ = thread_num;
     batch_sz_ = batch_sz;
     worker_num_ = worker_num;
+    clear_sign2fids();
+    VLOG(0) << "CacheManager init:" << thread_num << "|" << batch_sz << "|" << worker_num;
 }
 
 void CacheManager::clear_sign2fids() {
@@ -43,7 +45,8 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
     VLOG(0) << "build_sign2fids: keylen:" << len;
     // pre-build the sign2fid_, in order not to use mutex
     for (size_t i = 0; i < len; ++i) {
-        // assert(sign2fid_.find(d_keys[i]) == sign2fid_.end());
+        CHECK(sign2fid_.find(d_keys[i]) == sign2fid_.end()) 
+            << "build_sign2fids: error, the same key found:" << d_keys[i];
         sign2fid_[d_keys[i]] = 0;
     }
     size_t origin_size = fid2meta_.size();
@@ -53,10 +56,9 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
     std::vector<std::thread> threads(thread_num_);
     size_t split_len = len % thread_num_ == 0 ? (len / thread_num_) : (len / thread_num_ + 1);
     for (int i = 0; i < thread_num_; ++i) {
-        threads[i] = std::thread([this](const FeatureKey* keys, size_t keys_len) {
+        threads[i] = std::thread([i, this](const FeatureKey* keys, size_t keys_len) {
             for (size_t j = 0; j < keys_len; ++j) {
-                int tmp = feasign_cnt_;
-                while (!feasign_cnt_.compare_exchange_strong(tmp, tmp + 1)) {}
+                int tmp = feasign_cnt_++;
                 sign2fid_[keys[j]] = tmp;
                 fid2meta_[tmp] = {keys[j]};
             }
