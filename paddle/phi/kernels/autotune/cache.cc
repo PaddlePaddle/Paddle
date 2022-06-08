@@ -36,6 +36,13 @@ size_t ConvKey(const std::vector<int64_t>& x_dims,
                 static_cast<int64_t>(dtype));
 }
 
+size_t TransposeKey(const std::vector<int64_t>& x_dims,
+                    const std::vector<int32_t>& perm,
+                    const phi::DataType dtype) {
+  const int rank = perm.size();
+  return GetKey(x_dims, perm, rank, dtype);
+}
+
 std::string AlgorithmTypeString(int64_t algo_type) {
   if (algo_type == static_cast<int64_t>(AlgorithmType::kConvForward)) {
     return "conv_forward";

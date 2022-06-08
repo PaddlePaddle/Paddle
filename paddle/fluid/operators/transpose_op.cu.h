@@ -871,15 +871,13 @@ inline void LaunchPermuteKernel(const phi::GPUContext& ctx, const IndexT count,
   if (perm_type == PermuteType::kNormalPermute) {
     size_t tail_count = count - main_count * VecSize;
     size_t offset = count - tail_count;
-    GeneralPermuteKernel<
-        T, IndexT, VecSize,
-        Rank><<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
-        params, src, dst, main_count, tail_count, offset);
+    GeneralPermuteKernel<T, IndexT, VecSize, Rank>
+        <<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
+            params, src, dst, main_count, tail_count, offset);
   } else {
-    VectorizedPermuteKernel<
-        T, IndexT, VecSize,
-        Rank><<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
-        params, main_count, src, dst);
+    VectorizedPermuteKernel<T, IndexT, VecSize, Rank>
+        <<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
+            params, main_count, src, dst);
   }
 }
 
@@ -976,9 +974,8 @@ inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
   dim3 blocks(num_tile_cols, num_tile_rows, num_batches);
   dim3 threads(kTileSize, kBlockRows, 1);
 
-  BatchTransposeKernel<T, IndexT,
-                       VecSize><<<blocks, threads, 0, ctx.stream()>>>(
-      src, dst, rows, cols);
+  BatchTransposeKernel<T, IndexT, VecSize>
+      <<<blocks, threads, 0, ctx.stream()>>>(src, dst, rows, cols);
 }
 
 template <typename T, typename IndexT>
@@ -1052,17 +1049,9 @@ inline void SimplifyThenLaunch(const int rank, const DeviceContext& ctx,
 }
 
 template <typename T>
-size_t GetTransposeKey(const int rank, const Tensor& in,
-                       const std::vector<int32_t>& perm) {
-  auto in_shape = phi::vectorize(in.dims());
-  return phi::autotune::GetKey(
-      in_shape, perm, rank, paddle::experimental::CppTypeToDataType<T>::Type());
-}
-
-template <typename T>
-void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int rank,
-                              const Tensor& in,
+void TransposeGPUKernelDriver(const phi::GPUContext& ctx, const Tensor& in,
                               const std::vector<int32_t>& perm, Tensor* out) {
+  const int rank = perm.size();
   PADDLE_ENFORCE_LT(
       rank, phi::DDim::kMaxRank,
       platform::errors::OutOfRange(
@@ -1070,26 +1059,25 @@ void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int rank,
           "tensor is expected to be less than %d, but here is %d.",
           phi::DDim::kMaxRank, rank));
 
-  auto ret = TransposeSimple<T>::run(dev_ctx, in, perm, out);
+  auto ret = TransposeSimple<T>::run(ctx, in, perm, out);
   if (!ret) {
     auto* tuner = phi::autotune::MakeTransposeTuner<T>(
         SimplifyThenLaunch<phi::GPUContext, T>);
-    if (!tuner->IsInit()) {
-      tuner->AddCallBack(
-          phi::autotune::MakeCallback<T>(TransCompute<phi::GPUContext, T>));
-      tuner->Finalize();
-    }
+    tuner->AddCallBack(
+        phi::autotune::MakeCallback<T>(TransCompute<phi::GPUContext, T>));
 
-    auto key = GetTransposeKey<T>(rank, in, perm);
+    auto key = phi::autotune::TransposeKey(
+        phi::vectorize(in.dims()), perm,
+        paddle::experimental::CppTypeToDataType<T>::Type());
     auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
     if (cache.Find(key)) {
-      auto index = cache.Get(key);
-      tuner->RunBestKernel(index, rank, dev_ctx, in, out, perm);
+      auto best_idx = cache.Get(key);
+      tuner->RunBestKernel(best_idx, rank, ctx, in, out, perm);
     } else {
-      // All avaliable kernels have ran while picking the best kernel, so
-      // there may be no need for another RunBestKernel.
-      auto index = tuner->PickBestKernel(dev_ctx, rank, dev_ctx, in, out, perm);
-      cache.Set(key, index);
+      // All avaliable kernels have ran while picking the best kernel,
+      // so there may be no need for another kernel run.
+      auto best_idx = tuner->PickBestKernel(ctx, rank, ctx, in, out, perm);
+      cache.Set(key, best_idx);
     }
   }
 }

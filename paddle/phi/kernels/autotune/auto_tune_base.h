@@ -55,9 +55,11 @@ class AutoTuneBase {
 
   template <typename Type>
   void AddCallBack(Type kernel) {
-    static_assert(std::is_same<Type, KernelType>::value,
-                  "Type must be the same");
-    kernels_.push_back(kernel);
+    if (!is_init_) {
+      static_assert(std::is_same<Type, KernelType>::value,
+                    "Type must be the same");
+      kernels_.push_back(kernel);
+    }
   }
 
   template <typename... Args>
@@ -89,11 +91,10 @@ class AutoTuneBase {
       }
     }
     VLOG(3) << "best kernel idx is " << best_idx;
+    is_init_ = true;
+
     return best_idx;
   }
-
-  bool IsInit() { return is_init_; }
-  void Finalize() { is_init_ = true; }
 
  private:
   bool is_init_{false};
@@ -151,7 +152,7 @@ std::once_flag TransposeAutoTuner<T, KernelType>::init_flag_;
 
 template <typename T, typename RetureType, typename... Args>
 static AutoTuneBase<T, KernelCallback<T, RetureType, Args...>>*
-    MakeTransposeTuner(RetureType (*func)(Args...)) {
+MakeTransposeTuner(RetureType (*func)(Args...)) {
   auto obj = MakeCallback<T>(func);
   return TransposeAutoTuner<T, decltype(obj)>::Instance(obj);
 }
