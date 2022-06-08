@@ -210,12 +210,10 @@ class TestFullOpError(unittest.TestCase):
 class TestEagerMode(unittest.TestCase):
 
     def test_eager(self):
-        if os.environ.get('FLAGS_enable_eager_mode') == '0':
-            warnings.warn(" FLAGS_enable_eager_mode == 0 ")
-            print("FLAGS_enable_eager_mode == 0")
-        if _in_eager_mode_ == True:
-            warnings.warn(" _in_eager_mode_ is True by default! ")
-            print("_in_eager_mode_ is True by default!")
+        if os.environ.get('FLAGS_enable_eager_mode') == '1':
+            raise ValueError("FLAGS_enable_eager_mode should be 0")
+        if _in_eager_mode_ == False:
+            raise ValueError("_in_eager_mode_ should be True")
 
 
 if __name__ == "__main__":
