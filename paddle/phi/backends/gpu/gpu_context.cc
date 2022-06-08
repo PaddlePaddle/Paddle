@@ -406,7 +406,7 @@ struct GPUContext::Impl {
 
   sparseHandle_t GetSparseHandle() const {
     if (sparse_handle_ == nullptr) {
-      phi::InitSparseHandle(const_cast<cusparseContext**>(&sparse_handle_),
+      phi::InitSparseHandle(const_cast<sparseHandle_t*>(&sparse_handle_),
                             stream_);
     }
     PD_CHECK(sparse_handle_ != nullptr, "the gpu sparse handle is nullptr.");
@@ -489,7 +489,7 @@ struct GPUContext::Impl {
       const std::function<void(sparseHandle_t)>& callback) const {
     std::lock_guard<std::mutex> guard(sparse_mtx_);
     if (sparse_handle_ == nullptr) {
-      phi::InitSparseHandle(const_cast<cusparseContext**>(&sparse_handle_),
+      phi::InitSparseHandle(const_cast<sparseHandle_t*>(&sparse_handle_),
                             stream_);
     }
     callback(sparse_handle_);
