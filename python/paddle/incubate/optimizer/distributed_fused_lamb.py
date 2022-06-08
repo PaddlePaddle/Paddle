@@ -40,6 +40,7 @@ class DistributedFusedLamb(Optimizer):
                  alignment=128,
                  use_master_param_norm=True,
                  gradient_accumulation_steps=1,
+                 use_master_acc_grad=True,
                  name=None):
         assert not framework._non_static_mode(
         ), "DistributedFusedLamb does not support dygraph mode"
@@ -67,6 +68,7 @@ class DistributedFusedLamb(Optimizer):
         self._ring_id = 0
         self._use_master_param_norm = use_master_param_norm
         self._gradient_accumulation_steps = gradient_accumulation_steps
+        self._use_master_acc_grad = use_master_acc_grad
         assert self._gradient_accumulation_steps >= 1
 
         self.helper = LayerHelper('distributed_fused_lamb')
@@ -353,5 +355,6 @@ class DistributedFusedLamb(Optimizer):
                 'use_master_param_norm': self._use_master_param_norm,
                 'is_grad_scaled_by_nranks': self._is_grad_scaled_by_nranks,
                 'acc_steps': self._gradient_accumulation_steps,
+                'use_master_acc_grad': self._use_master_acc_grad,
             })
         return [lamb_op]

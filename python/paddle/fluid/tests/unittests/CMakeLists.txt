@@ -1508,7 +1508,7 @@ if(WITH_DISTRIBUTE
                                                                      350)
   set_tests_properties(test_parallel_dygraph_no_sync PROPERTIES TIMEOUT 300)
   set_tests_properties(test_parallel_dygraph_no_sync_gradient_check
-                       PROPERTIES TIMEOUT 30)
+                       PROPERTIES TIMEOUT 60)
   set_tests_properties(test_parallel_dygraph_pipeline_parallel
                        PROPERTIES TIMEOUT 500)
   set_tests_properties(test_parallel_dygraph_tensor_parallel PROPERTIES TIMEOUT
