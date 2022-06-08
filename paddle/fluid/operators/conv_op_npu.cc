@@ -130,12 +130,12 @@ class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
         "TransposeD", {*filter}, {transformed_filter}, {{"perm", perm}});
     runner_trans.Run(stream);
 
-    const auto& runner =
-        NpuOpRunner("DepthwiseConv2D", {input_tensor, transformed_filter},
-                    {output_tensor}, {{"strides", strides},
-                                      {"dilations", dilations},
-                                      {"pads", padding},
-                                      {"data_format", data_format}});
+    const auto& runner = NpuOpRunner(
+        "DepthwiseConv2D", {input_tensor, transformed_filter}, {output_tensor},
+        {{"strides", strides},
+         {"dilations", dilations},
+         {"pads", padding},
+         {"data_format", data_format}});
     runner.Run(stream);
   }
 };
@@ -392,14 +392,15 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
         filter_grad_fp32.ShareDataWith(*filter_grad);
       }
 
-      const auto& runner = NpuOpRunner(
-          "Conv2DBackpropFilterD", {input_tensor, output_grad_tensor},
-          {filter_grad_fp32}, {{"filter_size", filter_shape_vec},
-                               {"strides", strides_vec},
-                               {"pads", paddings},
-                               {"dilations", dilations_vec},
-                               {"groups", groups},
-                               {"data_format", data_format}});
+      const auto& runner =
+          NpuOpRunner("Conv2DBackpropFilterD",
+                      {input_tensor, output_grad_tensor}, {filter_grad_fp32},
+                      {{"filter_size", filter_shape_vec},
+                       {"strides", strides_vec},
+                       {"pads", paddings},
+                       {"dilations", dilations_vec},
+                       {"groups", groups},
+                       {"data_format", data_format}});
       runner.Run(stream);
 
       if (framework::TransToProtoVarType(input->dtype()) ==
@@ -418,12 +419,13 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
       }
       const auto& runner =
           NpuOpRunner("Conv2DBackpropInputD", {*filter, output_grad_tensor},
-                      {input_grad_tensor}, {{"input_size", input_shape_vec},
-                                            {"strides", strides_vec},
-                                            {"pads", paddings},
-                                            {"dilations", dilations_vec},
-                                            {"groups", groups},
-                                            {"data_format", data_format}});
+                      {input_grad_tensor},
+                      {{"input_size", input_shape_vec},
+                       {"strides", strides_vec},
+                       {"pads", paddings},
+                       {"dilations", dilations_vec},
+                       {"groups", groups},
+                       {"data_format", data_format}});
       runner.Run(stream);
     }
   }
@@ -452,11 +454,12 @@ class NPUConv3dKernel : public framework::OpKernel<T> {
                           "= [%s]",
                           data_format));
 
-    PADDLE_ENFORCE_EQ(groups, 1, platform::errors::Unimplemented(
-                                     "the groups must be 1 in "
-                                     "the npu kernel of conv3d, but got groups "
-                                     "= [%d]",
-                                     groups));
+    PADDLE_ENFORCE_EQ(groups, 1,
+                      platform::errors::Unimplemented(
+                          "the groups must be 1 in "
+                          "the npu kernel of conv3d, but got groups "
+                          "= [%d]",
+                          groups));
 
     output->mutable_data<T>(ctx.GetPlace());
 
@@ -537,11 +540,12 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
                           "= [%s]",
                           data_format));
 
-    PADDLE_ENFORCE_EQ(groups, 1, platform::errors::Unimplemented(
-                                     "the groups must be 1 in "
-                                     "the npu kernel of conv3d, but got groups "
-                                     "= [%d]",
-                                     groups));
+    PADDLE_ENFORCE_EQ(groups, 1,
+                      platform::errors::Unimplemented(
+                          "the groups must be 1 in "
+                          "the npu kernel of conv3d, but got groups "
+                          "= [%d]",
+                          groups));
 
     auto& dev_ctx = ctx.template device_context<NPUDeviceContext>();
     auto input_tensor =
@@ -593,14 +597,15 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
       filter_grad_tensor.ShareDataWith(*filter_grad);
       filter_grad_tensor.set_layout(DataLayout::kNCDHW);
 
-      const auto& runner = NpuOpRunner(
-          "Conv3DBackpropFilterD", {input_tensor, output_grad_tensor},
-          {filter_grad_tensor}, {{"filter_size", filter_shape_vec},
-                                 {"strides", strides_vec},
-                                 {"pads", paddings},
-                                 {"dilations", dilations_vec},
-                                 {"groups", groups},
-                                 {"data_format", data_format}});
+      const auto& runner =
+          NpuOpRunner("Conv3DBackpropFilterD",
+                      {input_tensor, output_grad_tensor}, {filter_grad_tensor},
+                      {{"filter_size", filter_shape_vec},
+                       {"strides", strides_vec},
+                       {"pads", paddings},
+                       {"dilations", dilations_vec},
+                       {"groups", groups},
+                       {"data_format", data_format}});
       runner.Run(stream);
     }
 
@@ -613,14 +618,15 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
       input_grad_tensor.ShareDataWith(*input_grad);
       input_grad_tensor.set_layout(DataLayout::kNCDHW);
 
-      const auto& runner = NpuOpRunner(
-          "Conv3DBackpropInputD", {filter_tensor, output_grad_tensor},
-          {input_grad_tensor}, {{"input_size", input_shape_vec},
-                                {"strides", strides_vec},
-                                {"pads", paddings},
-                                {"dilations", dilations_vec},
-                                {"groups", groups},
-                                {"data_format", data_format}});
+      const auto& runner =
+          NpuOpRunner("Conv3DBackpropInputD",
+                      {filter_tensor, output_grad_tensor}, {input_grad_tensor},
+                      {{"input_size", input_shape_vec},
+                       {"strides", strides_vec},
+                       {"pads", paddings},
+                       {"dilations", dilations_vec},
+                       {"groups", groups},
+                       {"data_format", data_format}});
       runner.Run(stream);
     }
   }

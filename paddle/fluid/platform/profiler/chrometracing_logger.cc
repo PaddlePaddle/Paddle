@@ -12,15 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/platform/profiler/chrometracing_logger.h"
+
 #include <cstdio>
 #include <ctime>
 #include <limits>
 
 #include "glog/logging.h"
-
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler/chrometracing_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/utils.h"
 
@@ -304,9 +304,10 @@ void ChromeTracingLogger::HandleTypeKernel(
   blocks_per_sm = static_cast<float>(kernel_info.grid_x * kernel_info.grid_y *
                                      kernel_info.grid_z) /
                   device_property.multiProcessorCount;
-  warps_per_sm = blocks_per_sm * (kernel_info.block_x * kernel_info.block_y *
-                                  kernel_info.block_z) /
-                 threads_per_warp;
+  warps_per_sm =
+      blocks_per_sm *
+      (kernel_info.block_x * kernel_info.block_y * kernel_info.block_z) /
+      threads_per_warp;
   occupancy = CalculateEstOccupancy(
       device_node.DeviceId(), kernel_info.registers_per_thread,
       kernel_info.static_shared_memory, kernel_info.dynamic_shared_memory,

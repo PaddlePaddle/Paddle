@@ -18,6 +18,7 @@ __all__ = []
 
 
 class FP16AllReduceOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super(FP16AllReduceOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -35,8 +36,9 @@ class FP16AllReduceOptimizer(MetaOptimizerBase):
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
-        super(FP16AllReduceOptimizer, self)._set_basic_info(
-            loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        super(FP16AllReduceOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -82,22 +84,23 @@ class FP16AllReduceOptimizer(MetaOptimizerBase):
             else:
                 op._remove_attr(op_maker.kOpRoleVarAttrName())
 
-            new_grad = block.create_var(
-                name=unique_name.generate(grad.name + ".cast_fp16"),
-                dtype=core.VarDesc.VarType.FP16,
-                persistable=False,
-                stop_gradient=True)
+            new_grad = block.create_var(name=unique_name.generate(grad.name +
+                                                                  ".cast_fp16"),
+                                        dtype=core.VarDesc.VarType.FP16,
+                                        persistable=False,
+                                        stop_gradient=True)
 
             with block.program._backward_role_guard():
-                cast_op = block.append_op(
-                    type="cast",
-                    inputs={"X": grad},
-                    outputs={"Out": new_grad},
-                    attrs={
-                        "in_dtype": core.VarDesc.VarType.FP32,
-                        "out_dtype": core.VarDesc.VarType.FP16
-                    },
-                    stop_gradient=True)
+                cast_op = block.append_op(type="cast",
+                                          inputs={"X": grad},
+                                          outputs={"Out": new_grad},
+                                          attrs={
+                                              "in_dtype":
+                                              core.VarDesc.VarType.FP32,
+                                              "out_dtype":
+                                              core.VarDesc.VarType.FP16
+                                          },
+                                          stop_gradient=True)
 
                 backward = op_maker.OpRole.Backward
                 cast_op._set_attr(op_maker.kOpRoleAttrName(), backward)
@@ -119,30 +122,30 @@ class FP16AllReduceOptimizer(MetaOptimizerBase):
                 continue
 
             block = grad.block
-            new_grad = block.create_var(
-                name=unique_name.generate(grad.name + ".cast_fp32"),
-                dtype=core.VarDesc.VarType.FP32,
-                persistable=False,
-                stop_gradient=True)
+            new_grad = block.create_var(name=unique_name.generate(grad.name +
+                                                                  ".cast_fp32"),
+                                        dtype=core.VarDesc.VarType.FP32,
+                                        persistable=False,
+                                        stop_gradient=True)
 
             with block.program._optimized_guard(
                 [param, grad]), framework.name_scope('fp16_allreduce'):
-                cast_op = block.append_op(
-                    type="cast",
-                    inputs={"X": grad},
-                    outputs={"Out": new_grad},
-                    attrs={
-                        "in_dtype": core.VarDesc.VarType.FP16,
-                        "out_dtype": core.VarDesc.VarType.FP32
-                    },
-                    stop_gradient=True)
+                cast_op = block.append_op(type="cast",
+                                          inputs={"X": grad},
+                                          outputs={"Out": new_grad},
+                                          attrs={
+                                              "in_dtype":
+                                              core.VarDesc.VarType.FP16,
+                                              "out_dtype":
+                                              core.VarDesc.VarType.FP32
+                                          },
+                                          stop_gradient=True)
             ret_param_and_grads.append((param, new_grad))
 
         return ret_param_and_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
         new_params_grads = self.fp16_compression(params_grads)
-        return self.inner_opt.apply_optimize(
-            loss,
-            startup_program=startup_program,
-            params_grads=new_params_grads)
+        return self.inner_opt.apply_optimize(loss,
+                                             startup_program=startup_program,
+                                             params_grads=new_params_grads)

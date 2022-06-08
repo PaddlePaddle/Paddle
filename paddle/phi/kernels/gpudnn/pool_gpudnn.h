@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace phi {

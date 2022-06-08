@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/ir/mkldnn/compute_propagate_scales_mkldnn_pass.h"
+
 #include <float.h>
+
 #include <algorithm>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/mkldnn/compute_propagate_scales_mkldnn_pass.h"
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -347,9 +349,9 @@ std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
         waiting_for_scale.insert(input_name);
         waiting_for_scale.insert(output_name);
       } else if (in_iter != var_quant_scales->end()) {
-        out_iter->second = in_iter->second;
+        (*var_quant_scales)[output_name] = in_iter->second;
       } else if (out_iter != var_quant_scales->end()) {
-        in_iter->second = out_iter->second;
+        (*var_quant_scales)[input_name] = out_iter->second;
       }
     } else if (op_name == "scale") {
       const std::string output_name = op_node->Op()->Output("Out")[0];

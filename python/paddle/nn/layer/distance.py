@@ -103,8 +103,10 @@ class PairwiseDistance(Layer):
             'epsilon': self.epsilon,
         }
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='p_norm', inputs={'X': sub}, outputs={'Out': out}, attrs=attrs)
+        helper.append_op(type='p_norm',
+                         inputs={'X': sub},
+                         outputs={'Out': out},
+                         attrs=attrs)
 
         return out
 

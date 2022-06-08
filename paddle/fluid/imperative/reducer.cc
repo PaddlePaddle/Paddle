@@ -18,13 +18,10 @@
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/string/string_helper.h"
-
+#include "paddle/fluid/imperative/parallel_context.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
-
-#include "paddle/fluid/imperative/parallel_context.h"
-
+#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/dense_tensor.h"
 namespace paddle {
 namespace imperative {
@@ -452,8 +449,9 @@ void Reducer::InitializeDenseGroups(
                           "Tensor %s is not initialized.", var_name));
     const auto size = lod_tensor->numel();
     PADDLE_ENFORCE_GT(
-        size, 0, platform::errors::PreconditionNotMet(
-                     "The number of tensor %s's elements is 0.", var_name));
+        size, 0,
+        platform::errors::PreconditionNotMet(
+            "The number of tensor %s's elements is 0.", var_name));
     all_length += size;
 
     p_group->length_.push_back(size);

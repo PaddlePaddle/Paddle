@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <limits>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/jit/kernels.h"
@@ -22,8 +23,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
 using framework::LoD;
+using framework::LoDTensor;
 using framework::Tensor;
 
 template <typename DeviceContext, typename T>

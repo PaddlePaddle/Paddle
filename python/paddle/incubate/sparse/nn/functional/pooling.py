@@ -87,8 +87,10 @@ def max_pool3d(x,
 
     channel_last = True
 
-    padding, padding_algorithm = _update_padding_nd(
-        padding, 3, channel_last=channel_last, ceil_mode=ceil_mode)
+    padding, padding_algorithm = _update_padding_nd(padding,
+                                                    3,
+                                                    channel_last=channel_last,
+                                                    ceil_mode=ceil_mode)
 
     #TODO(zkh2016): remove the dependency on dilation from the backend
     dilation = [1, 1, 1]

@@ -1,4 +1,3 @@
 core_gather_headers()
 
-gather_srcs(infrt_src SRCS
-    )
+gather_srcs(infrt_src SRCS)

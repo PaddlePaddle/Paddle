@@ -15,14 +15,13 @@ limitations under the License. */
 #include <thrust/execution_policy.h>
 #include <thrust/remove.h>
 
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/funcs/sparse/common_shape.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
-
-#include "paddle/fluid/platform/enforce.h"
 
 namespace phi {
 namespace sparse {
@@ -526,17 +525,17 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
 
-  KernelSparseCooToDense<T, int64_t><<<config.block_per_grid.x,
-                                       config.thread_per_block.x,
-                                       0,
-                                       dev_ctx.stream()>>>(
-      indices.data<int64_t>(),
-      d_sparse_offsets.data<int64_t>(),
-      x_data,
-      out_data,
-      non_zero_num,
-      base_offset,
-      sparse_dim);
+  KernelSparseCooToDense<T, int64_t>
+      <<<config.block_per_grid.x,
+         config.thread_per_block.x,
+         0,
+         dev_ctx.stream()>>>(indices.data<int64_t>(),
+                             d_sparse_offsets.data<int64_t>(),
+                             x_data,
+                             out_data,
+                             non_zero_num,
+                             base_offset,
+                             sparse_dim);
 }
 
 }  // namespace sparse
