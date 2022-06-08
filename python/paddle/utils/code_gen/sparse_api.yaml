@@ -97,6 +97,14 @@
     layout : x
     data_type : dtype
 
+- api: masked_mm
+  args : (Tensor x, Tensor y, Tensor mask)
+  output : Tensor(out)
+  kernel :
+    func : csr_masked_mm{dense, dense, sparse_csr -> sparse_csr}
+    layout : x
+  backward: masked_mm_grad
+
 - api: maxpool
   args : (Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides)
   output : Tensor(out), Tensor(rulebook)
@@ -116,11 +124,3 @@
            coo_coo_matmul{sparse_coo, sparse_coo -> sparse_coo}
     layout : x
   backward: mm_grad
-
-- api: mm_mask_as
-  args : (Tensor x, Tensor y, Tensor mask)
-  output : Tensor(out)
-  kernel :
-    func : mm_mask_as_csr{dense, dense, sparse_csr -> sparse_csr}
-    layout : x
-  backward: mm_mask_as_grad

@@ -59,7 +59,7 @@ void CsrDenseMatmulGradKernel(const Context& dev_ctx,
 
 /* Backward of "DENSE @ DENSE * CSR_MASK -> CSR" */
 template <typename T, typename Context>
-void MatmulMaskAsCsrGradKernel(const Context& dev_ctx,
+void CsrMaskedMatmulGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const SparseCsrTensor& dout,

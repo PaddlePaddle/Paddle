@@ -20,7 +20,7 @@ from .unary import sin
 from .unary import tanh
 
 from .binary import mm
-from .binary import mm_mask_as
+from .binary import masked_mm
 
 from . import nn
 
@@ -31,5 +31,5 @@ __all__ = [
     'sin',
     'tanh',
     'mm',
-    'mm_mask_as',
+    'masked_mm',
 ]

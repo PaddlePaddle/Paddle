@@ -38,24 +38,23 @@ def get_cuda_version():
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000
-    or scipy.__version__ < '1.8.0',
-    "paddle is not compiled with CUDA and cuda version need to >= 11.2")
-class TestCsrDenseMatmul2D(object):
+    not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+    "paddle is not compiled with CUDA and cuda version need to >= 11.0")
+class TestCsrDenseMatmul2D(unittest.TestCase):
     # x: csr, y: dense, out: dense
     def test_matmul(self):
         with _test_eager_guard():
             mask = np.random.rand(10, 12) < 0.2
             np_x = np.random.rand(10, 12) * mask
 
-            np_csr = sp.csr_array(np_x)
+            np_csr = sp.csr_matrix(np_x)
             np_dense = np.random.rand(12, 6)
             np_out = np_csr @ np_dense
 
             np_out_grad = np.ones([10, 6])
 
             # dx(csr) = dout(dense) * y'(dense) * mask
-            np_csr_grad = sp.csr_array(
+            np_csr_grad = sp.csr_matrix(
                 np.matmul(np_out_grad, np_dense.transpose(1, 0)) * mask)
             # dy(dense) = x'(csr) * dout(dense)
             np_dense_grad = np_csr.transpose() @ np_out_grad
@@ -82,10 +81,9 @@ class TestCsrDenseMatmul2D(object):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or get_cuda_version() < 11030
-    or os.name == 'nt' or scipy.__version__ < '1.8.0',
-    "paddle is not compiled with CUDA and cuda version need to >= 11.2")
-class TestCsrMatmulMask2D(unittest.TestCase):
+    not paddle.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    "paddle is not compiled with CUDA and cuda version need to >= 11.3")
+class TestCsrMaskedMatmul2D(unittest.TestCase):
     # x: dense, y: dense, out: csr
     def test_matmul(self):
         with _test_eager_guard():
@@ -93,9 +91,9 @@ class TestCsrMatmulMask2D(unittest.TestCase):
 
             np_x = np.random.rand(10, 12)
             np_y = np.random.rand(12, 6)
-            np_out = sp.csr_array(np.matmul(np_x, np_y) * np_mask)
+            np_out = sp.csr_matrix(np.matmul(np_x, np_y) * np_mask)
 
-            np_out_grad = sp.csr_array(np.ones([10, 6]) * np_mask)
+            np_out_grad = sp.csr_matrix(np.ones([10, 6]) * np_mask)
             # dx(dense) = dout(csr) * y'(dense)
             np_x_grad = np_out_grad @ np_y.transpose(1, 0)
             # dy(dense) = x'(dense) * dout(csr) -> dy'(dense) = dout'(csr) * x(dense)
@@ -104,7 +102,7 @@ class TestCsrMatmulMask2D(unittest.TestCase):
             x = paddle.to_tensor(np_x, stop_gradient=False)
             y = paddle.to_tensor(np_y, stop_gradient=False)
             mask = paddle.to_tensor(np.ones([10, 6]) * np_mask).to_sparse_csr()
-            out = paddle.incubate.sparse.mm_mask_as(x, y, mask)
+            out = paddle.incubate.sparse.masked_mm(x, y, mask)
 
             self.assertTrue(np.allclose(np_out.indptr, out.crows().numpy()))
             self.assertTrue(np.allclose(np_out.indices, out.cols().numpy()))
@@ -116,7 +114,7 @@ class TestCsrMatmulMask2D(unittest.TestCase):
             self.assertTrue(np.allclose(np_y_grad, y.grad.numpy()))
 
 
-#TODO(zhouwei25): support unit test of batch 'paddle.sparse.mm/mm_mask_as'
+#TODO(zhouwei25): support unit test of batch 'paddle.sparse.mm/masked_mm'
 
 if __name__ == "__main__":
     unittest.main()

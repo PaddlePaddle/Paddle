@@ -83,7 +83,7 @@ void CsrDenseMatmulKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MatmulMaskAsCsrKernel(const Context& dev_ctx,
+void CsrMaskedMatmulKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& y,
                            const SparseCsrTensor& mask,
@@ -153,21 +153,30 @@ void MatmulMaskAsCsrKernel(const Context& dev_ctx,
           "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
 
   // InferMeta of SparseCsrTensor 'out'
-  DenseTensor crows =
-      phi::EmptyLike<T, Context>(dev_ctx, mask.non_zero_crows());
-  phi::Copy(dev_ctx, mask.non_zero_crows(), dev_ctx.GetPlace(), false, &crows);
-  DenseTensor cols = phi::EmptyLike<T, Context>(dev_ctx, mask.non_zero_cols());
-  phi::Copy(dev_ctx, mask.non_zero_cols(), dev_ctx.GetPlace(), false, &cols);
-  DenseTensor values =
-      phi::EmptyLike<T, Context>(dev_ctx, mask.non_zero_elements());
+  out->set_dims(mask.dims());
 
-  out->SetMember(crows, cols, values, mask.dims());
+  phi::Copy(dev_ctx,
+            mask.non_zero_crows(),
+            dev_ctx.GetPlace(),
+            false,
+            out->mutable_non_zero_crows());
+  phi::Copy(dev_ctx,
+            mask.non_zero_cols(),
+            dev_ctx.GetPlace(),
+            false,
+            out->mutable_non_zero_cols());
+
+  DenseTensor* values = out->mutable_non_zero_elements();
+  values->Resize(mask.non_zero_elements().dims());
+  dev_ctx.template Alloc<T>(values);
+
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SDDMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 #else
-  PADDLE_THROW(
-      phi::errors::Unimplemented("Only support cusparseSDDMM from CUDA 11.3"));
+  PADDLE_THROW(phi::errors::Unimplemented(
+      " forward of 'sparse.masked_mm' use cusparseSDDMM, Only support it from "
+      "CUDA 11.3"));
 #endif
 }
 
@@ -183,11 +192,9 @@ PD_REGISTER_KERNEL(csr_dense_matmul,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(mm_mask_as_csr,
+PD_REGISTER_KERNEL(csr_masked_mm,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::MatmulMaskAsCsrKernel,
+                   phi::sparse::CsrMaskedMatmulKernel,
                    float,
-                   double) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
-}
+                   double) {}

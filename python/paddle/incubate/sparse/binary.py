@@ -19,10 +19,10 @@ __all__ = []
 
 
 @dygraph_only
-def mm(x, y):
+def mm(x, y, name=None):
     """
     Warning:    
-        This API is only used from ``CUDA 11.2`` and linux.
+        This API is only used from ``CUDA 11.0`` .
 
     Applies matrix multiplication of two Tensors. 
     
@@ -43,7 +43,8 @@ def mm(x, y):
     Args:
         x (Tensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
         y (Tensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor/DenseTensor. The data type can be float32 or float64.
-
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    
     Returns:
         Tensor: Its layout is determined by that of `x` and `y` .
 
@@ -56,6 +57,7 @@ def mm(x, y):
             from paddle.fluid.framework import _test_eager_guard
             
             paddle.seed(100)
+            paddle.set_device('gpu')
 
             with _test_eager_guard():
                 # csr @ dense -> dense
@@ -77,10 +79,10 @@ def mm(x, y):
 
 
 @dygraph_only
-def mm_mask_as(x, y, mask):
+def masked_mm(x, y, mask, name=None):
     """
     Warning:    
-        This API is only used from ``CUDA 11.2`` and linux.
+        This API is only used from ``CUDA 11.3`` .
 
     Applies matrix multiplication of two Dense Tensors. 
     
@@ -100,6 +102,7 @@ def mm_mask_as(x, y, mask):
         x (Tensor): The input tensor. It is DenseTensor. The data type can be float32 or float64.
         y (Tensor): The input tensor. It is DenseTensor. The data type can be float32 or float64.
         mask (Tensor): The mask tensor, which can be SparseCooTensor/SparseCsrTensor. It specify sparse coordinates. The data type can be float32 or float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: SparseCoo or SparseCsr, which is determined by that of `mask` .
@@ -113,6 +116,7 @@ def mm_mask_as(x, y, mask):
             from paddle.fluid.framework import _test_eager_guard
             
             paddle.seed(100)
+            paddle.set_device('gpu')
 
             with _test_eager_guard():
                 # dense @ dense * csr_mask -> csr
@@ -125,11 +129,11 @@ def mm_mask_as(x, y, mask):
                 x = paddle.rand([3, 5])
                 y = paddle.rand([5, 4])
 
-                out = paddle.incubate.sparse.mm_mask_as(x, y, mask)
+                out = paddle.incubate.sparse.masked_mm(x, y, mask)
                 # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True, 
                 #        crows=[0, 2, 3, 5], 
                 #        cols=[1, 3, 2, 0, 1], 
                 #        values=[0.98986477, 0.97800624, 1.14591956, 0.68561077, 0.94714981])
 
     """
-    return _C_ops.final_state_sparse_mm_mask_as(x, y, mask)
+    return _C_ops.final_state_sparse_masked_mm(x, y, mask)

@@ -25,19 +25,19 @@
   output : Tensor(x_grad)
   invoke : to_dense_impl(out_grad)
 
+- backward_api : masked_mm_grad
+  forward : masked_mm(Tensor x, Tensor y, Tensor mask) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(y_grad)
+  kernel :
+    func : csr_masked_mm_grad{dense, dense, sparse_csr -> dense, dense}
+
 - backward_api : mm_grad
   forward : mm(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
   kernel :
     func : csr_dense_matmul_grad{sparse_csr, dense, dense -> sparse_csr, dense}
-
-- backward_api : mm_mask_as_grad
-  forward : mm_mask_as(Tensor x, Tensor y, Tensor mask) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad)
-  output : Tensor(x_grad), Tensor(y_grad)
-  kernel :
-    func : mm_mask_as_csr_grad{dense, dense, sparse_csr -> dense, dense}
 
 - backward_api : relu_grad
   forward : relu(Tensor x) -> Tensor(out)

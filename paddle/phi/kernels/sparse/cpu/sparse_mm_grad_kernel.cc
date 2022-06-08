@@ -29,7 +29,19 @@ void CsrDenseMatmulGradKernel(const Context& dev_ctx,
                               SparseCsrTensor* dx,
                               DenseTensor* dy) {
   PADDLE_THROW(phi::errors::Unimplemented(
-      "Only support GPU kernel of Sparse Matmul now."));
+      "Not support CPU backward kernel of Sparse Matmul now."));
+}
+
+// TODO(zhouwei25): implement CPU kernel of " DENSE @ DENSE * CSR_MASK -> CSR"
+template <typename T, typename Context>
+void CsrMaskedMatmulGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               const SparseCsrTensor& dout,
+                               DenseTensor* dx,
+                               DenseTensor* dy) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Not support CPU backward kernel of Matmul Mask As Sparse now."));
 }
 
 }  // namespace sparse
@@ -40,7 +52,13 @@ PD_REGISTER_KERNEL(csr_dense_matmul_grad,
                    ALL_LAYOUT,
                    phi::sparse::CsrDenseMatmulGradKernel,
                    float,
-                   double,
-                   phi::dtype::float16) {
+                   double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
+
+PD_REGISTER_KERNEL(csr_masked_mm_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::CsrMaskedMatmulGradKernel,
+                   float,
+                   double) {}

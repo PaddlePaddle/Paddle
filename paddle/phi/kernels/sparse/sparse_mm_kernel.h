@@ -51,11 +51,11 @@ void CsrDenseMatmulKernel(const Context& dev_ctx,
 
 /* DENSE @ DENSE * CSR_MASK -> CSR */
 template <typename T, typename Context>
-void CsrMatmulMaskKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& y,
-                         const SparseCsrTensor& mask,
-                         SparseCsrTensor* out);
+void CsrMaskedMatmulKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& y,
+                           const SparseCsrTensor& mask,
+                           SparseCsrTensor* out);
 
 }  // namespace sparse
 }  // namespace phi

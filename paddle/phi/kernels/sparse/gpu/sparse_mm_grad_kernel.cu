@@ -36,14 +36,23 @@ void CsrDenseMatmulGradKernel(const Context& dev_ctx,
   // dx{SparseCsr} = dout{Dense} * y'{Dense}
   if (dx) {
     // InferMeta of SparseCsrTensor 'dx'
-    DenseTensor crows = phi::EmptyLike<T, Context>(dev_ctx, x.non_zero_crows());
-    phi::Copy(dev_ctx, x.non_zero_crows(), dev_ctx.GetPlace(), false, &crows);
-    DenseTensor cols = phi::EmptyLike<T, Context>(dev_ctx, x.non_zero_cols());
-    phi::Copy(dev_ctx, x.non_zero_cols(), dev_ctx.GetPlace(), false, &cols);
-    DenseTensor values =
-        phi::EmptyLike<T, Context>(dev_ctx, x.non_zero_elements());
+    dx->set_dims(x.dims());
 
-    dx->SetMember(crows, cols, values, x.dims());
+    phi::Copy(dev_ctx,
+              x.non_zero_crows(),
+              dev_ctx.GetPlace(),
+              false,
+              dx->mutable_non_zero_crows());
+    phi::Copy(dev_ctx,
+              x.non_zero_cols(),
+              dev_ctx.GetPlace(),
+              false,
+              dx->mutable_non_zero_cols());
+
+    DenseTensor* values = dx->mutable_non_zero_elements();
+    values->Resize(x.non_zero_elements().dims());
+    dev_ctx.template Alloc<T>(values);
+
     sparse_blas.SDDMM(
         false, true, static_cast<T>(1), dout, y, static_cast<T>(0), dx);
   }
@@ -61,14 +70,14 @@ void CsrDenseMatmulGradKernel(const Context& dev_ctx,
         true, false, static_cast<T>(1), x, dout, static_cast<T>(0), dy);
   }
 #else
-  PADDLE_THROW(
-      phi::errors::Unimplemented("sparse.mm.grad use cusparseSDDMM, Only "
-                                 "support cusparseSDDMM from CUDA 11.3"));
+  PADDLE_THROW(phi::errors::Unimplemented(
+      " backward of 'sparse.mm' use cusparseSDDMM, Only "
+      "support it from CUDA 11.3"));
 #endif
 }
 
 template <typename T, typename Context>
-void MatmulMaskAsCsrGradKernel(const Context& dev_ctx,
+void CsrMaskedMatmulGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const SparseCsrTensor& dout,
@@ -128,9 +137,9 @@ PD_REGISTER_KERNEL(csr_dense_matmul_grad,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(mm_mask_as_csr_grad,
+PD_REGISTER_KERNEL(csr_masked_mm_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::MatmulMaskAsCsrGradKernel,
+                   phi::sparse::CsrMaskedMatmulGradKernel,
                    float,
                    double) {}
