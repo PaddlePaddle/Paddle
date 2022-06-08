@@ -683,10 +683,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   // broadcast parameters from the 0th device to others:
   auto need_broadcast = [&]() -> bool {
-    if (member_->build_strategy_.reduce_ ==
-        BuildStrategy::ReduceStrategy::kNoReduce) {
-      return false;
-    }
     if (member_->build_strategy_.num_trainers_ > 1) {
       // 1. num_tariners would be grater than 1 for nccl distributed training.
       return true;
@@ -797,8 +793,8 @@ void ParallelExecutor::BCastParamsToDevices(
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
-      ncclDataType_t data_type = platform::ToNCCLDataType(
-          framework::TransToProtoVarType(main_tensor.dtype()));
+      auto dtype = framework::TransToProtoVarType(main_tensor.dtype());
+      ncclDataType_t data_type = platform::ToNCCLDataType(dtype);
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;
@@ -819,7 +815,7 @@ void ParallelExecutor::BCastParamsToDevices(
                             "variables' buffer size to bcast is %d, which is "
                             "NOT equal to places size %d",
                             buffers.size(), member_->places_.size()));
-      {
+      if (member_->nccl_ctxs_ != nullptr) {
         auto *nccl_ctxs = member_->nccl_ctxs_->DefaultFlatCtx();
         platform::NCCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
@@ -828,6 +824,22 @@ void ParallelExecutor::BCastParamsToDevices(
                                        nccl_ctx.comm_, nccl_ctx.stream());
         }
         nccl_ctxs->WaitAll();
+      } else {
+        auto src_place = member_->places_[0];
+        auto src_dev_ctx = static_cast<platform::CUDADeviceContext *>(
+            platform::DeviceContextPool::Instance().Get(src_place));
+        auto sizeof_dtype = framework::SizeOfType(dtype) * numel;
+        for (size_t i = 1; i < member_->places_.size(); ++i) {
+          auto dst_place = member_->places_[i];
+          auto dst_dev_ctx = static_cast<platform::CUDADeviceContext *>(
+              platform::DeviceContextPool::Instance().Get(dst_place));
+          src_dev_ctx->Wait();
+          dst_dev_ctx->Wait();
+          memory::Copy(dst_place, buffers[i], src_place, buffers[0],
+                       sizeof_dtype, src_dev_ctx->stream());
+          src_dev_ctx->Wait();
+          dst_dev_ctx->Wait();
+        }
       }
 #endif
     } else if (paddle::platform::is_xpu_place(main_tensor.place())) {
