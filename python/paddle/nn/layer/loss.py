@@ -1323,7 +1323,7 @@ class SoftMarginLoss(Layer):
     Parameters:
 
         reduction (str, optional): Indicate how to average the loss by batch_size,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -1352,17 +1352,20 @@ class SoftMarginLoss(Layer):
         .. code-block:: python
 
             import paddle
+            import numpy as np
+
             input = paddle.to_tensor([[0.5, 0.6, 0.7],[0.3, 0.5, 0.2]], 'float32')
             label = paddle.to_tensor([[1.0, -1.0, 1.0],[-1.0, 1.0, 1.0]], 'float32')
             soft_margin_loss = paddle.nn.SoftMarginLoss()
             output = soft_margin_loss(input, label)
 
-            shape = (5, 5)
-            input = paddle.uniform(shape, 0, 2, dtype='float32')
-            label = paddle.randint(shape, 0, 2, dtype='float32')
-            label[label==0]=-1
+            input_np = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
+            label_np = np.random.randint(0, 2, size=(5, 5)).astype(np.int64)
+            label_np[label_np==0]=-1
+            input = paddle.to_tensor(input_np)
+            label = paddle.to_tensor(label_np)
             soft_margin_loss = paddle.nn.SoftMarginLoss(reduction='none')
-            output = soft_margin_loss(input, label,)
+            output = soft_margin_loss(input, label)
     """
 
     def __init__(self, reduction='mean', name=None):

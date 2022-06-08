@@ -2767,7 +2767,7 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
 
 def soft_margin_loss(input, label, reduction='mean', name=None):
     """
-    This APIs measures the soft margin loss between input predictions ``input``
+    The API measures the soft margin loss between input predictions ``input``
     and target labels ``label`` . It can be described as:
 
     .. math::
@@ -2777,14 +2777,14 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
 
         input (Tensor): The input predications tensor with shape: [N, *],
             N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf.
-             Available dtype is int32, int64, float32, float64.
+             Available dtype is float32, float64.
 
         label (Tensor): The target labels tensor with the same shape as
             ``input``. The target labels which values should be numbers -1 or 1.
-            Available dtype is float32, float64.
+            Available dtype is int32, int64, float32, float64.
 
         reduction (str, optional): Indicate how to average the loss by batch_size,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -2802,17 +2802,18 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle
+            import numpy as np
+
             input = paddle.to_tensor([[0.5, 0.6, 0.7],[0.3, 0.5, 0.2]], 'float32')
             label = paddle.to_tensor([[1.0, -1.0, 1.0],[-1.0, 1.0, 1.0]], 'float32')
             output = paddle.nn.functional.soft_margin_loss(input, label)
 
-            shape = (5, 5)
-            input_np = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
-            label_np = np.random.randint(0, 2, size=shape).astype(int64)
-            label[label==0]=-1
+            input_np = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
+            label_np = np.random.randint(0, 2, size=(5, 5)).astype(np.int64)
+            label_np[label_np==0]=-1
             input = paddle.to_tensor(input_np)
             label = paddle.to_tensor(label_np)
-            output = paddle.nn.functional.soft_margin_loss(input, label,reduction='none')
+            output = paddle.nn.functional.soft_margin_loss(input, label, reduction='none')
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
