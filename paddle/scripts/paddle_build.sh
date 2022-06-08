@@ -3601,12 +3601,12 @@ function main() {
 
 
 
-apt-get remove -y --no-install-recommends     cuda-cudart-10-1=${NV_CUDA_CUDART_VERSION}     cuda-compat-10-1
-
-apt-get remove -y --no-install-recommends     cuda-libraries-10-1=${NV_CUDA_LIB_VERSION}     cuda-npp-10-1=${NV_LIBNPP_VERSION}     cuda-nvtx-10-1=${NV_NVTX_VERSION}     cuda-cusparse-10-1=${NV_LIBCUSPARSE_VERSION}     ${NV_LIBCUBLAS_PACKAGE}
-#${NV_LIBNCCL_PACKAGE}
-
-apt-get remove -y --no-install-recommends     cuda-nvml-dev-10-1=${NV_NVML_DEV_VERSION}     cuda-command-line-tools-10-1=${NV_CUDA_LIB_VERSION}     cuda-nvprof-10-1=${NV_CUDA_LIB_VERSION}     cuda-npp-dev-10-1=${NV_LIBNPP_DEV_VERSION}     cuda-libraries-dev-10-1=${NV_CUDA_LIB_VERSION}     cuda-minimal-build-10-1=${NV_CUDA_LIB_VERSION}     ${NV_LIBCUBLAS_DEV_PACKAGE}
+#apt-get remove -y --no-install-recommends     cuda-cudart-10-1=${NV_CUDA_CUDART_VERSION}     cuda-compat-10-1
+#
+#apt-get remove -y --no-install-recommends     cuda-libraries-10-1=${NV_CUDA_LIB_VERSION}     cuda-npp-10-1=${NV_LIBNPP_VERSION}     cuda-nvtx-10-1=${NV_NVTX_VERSION}     cuda-cusparse-10-1=${NV_LIBCUSPARSE_VERSION}     ${NV_LIBCUBLAS_PACKAGE}
+##${NV_LIBNCCL_PACKAGE}
+#
+#apt-get remove -y --no-install-recommends     cuda-nvml-dev-10-1=${NV_NVML_DEV_VERSION}     cuda-command-line-tools-10-1=${NV_CUDA_LIB_VERSION}     cuda-nvprof-10-1=${NV_CUDA_LIB_VERSION}     cuda-npp-dev-10-1=${NV_LIBNPP_DEV_VERSION}     cuda-libraries-dev-10-1=${NV_CUDA_LIB_VERSION}     cuda-minimal-build-10-1=${NV_CUDA_LIB_VERSION}     ${NV_LIBCUBLAS_DEV_PACKAGE}
 #${NV_LIBNCCL_DEV_PACKAGE}
 
 
