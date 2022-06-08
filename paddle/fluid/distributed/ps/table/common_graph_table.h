@@ -70,6 +70,16 @@ class GraphShard {
     }
     return res;
   }
+  std::vector<uint64_t> get_all_feature_ids() {
+    // TODO by huwei02, dedup
+    std::vector<uint64_t> total_res;
+    for (int i = 0; i < (int)bucket.size(); i++) {
+      std::vector<uint64_t> res;
+      res.push_back(bucket[i]->get_feature_ids(&res));
+      total_res.insert(total_res.end(), res.begin(), res.end());
+    }
+    return total_res;
+  }
   GraphNode *add_graph_node(uint64_t id);
   GraphNode *add_graph_node(Node *node);
   FeatureNode *add_feature_node(uint64_t id);
@@ -475,8 +485,11 @@ class GraphTable : public Table {
   int32_t load_edges(const std::string &path, bool reverse,
                      const std::string &edge_type);
 
+  std::vector<std::vector<uint64_t>> get_all_id(int type, int slice_num);
   std::vector<std::vector<uint64_t>> get_all_id(int type, int idx,
                                                 int slice_num);
+  std::vector<std::vector<uint64_t>> get_all_feature_ids(int type, int idx,
+                                                        int slice_num);
   int32_t load_nodes(const std::string &path, std::string node_type);
 
   int32_t add_graph_node(int idx, std::vector<uint64_t> &id_list,
@@ -486,6 +499,7 @@ class GraphTable : public Table {
 
   int32_t get_server_index_by_id(uint64_t id);
   Node *find_node(int type_id, int idx, uint64_t id);
+  Node *find_node(int type_id, uint64_t id);
 
   virtual int32_t Pull(TableContext &context) { return 0; }
   virtual int32_t Push(TableContext &context) { return 0; }
@@ -561,7 +575,7 @@ class GraphTable : public Table {
   virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
       int idx, std::vector<uint64_t> ids);
   virtual paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
-      int ntype_id, std::vector<uint64_t> &node_ids, int slot_num);
+      std::vector<uint64_t> &node_ids, int slot_num);
   int32_t Load_to_ssd(const std::string &path, const std::string &param);
   int64_t load_graph_to_memory_from_ssd(int idx, std::vector<uint64_t> &ids);
   int32_t make_complementary_graph(int idx, int64_t byte_size);

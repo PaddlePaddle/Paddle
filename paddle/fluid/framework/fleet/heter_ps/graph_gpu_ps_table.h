@@ -26,24 +26,25 @@ namespace framework {
 enum GraphTableType { EDGE_TABLE, FEATURE_TABLE };
 class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
  public:
-  int get_table_offset(int gpu_id, GraphTableType type, int idx) {
+  int get_table_offset(int gpu_id, GraphTableType type, int idx) const {
     int type_id = type;
     return gpu_id * (graph_table_num_ + feature_table_num_) +
            type_id * graph_table_num_ + idx;
   }
   GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource, int topo_aware,
-                  int graph_table_num, int feature_table_num)
+                  int graph_table_num)
       : HeterComm<uint64_t, int64_t, int>(1, resource) {
     load_factor_ = 0.25;
     rw_lock.reset(new pthread_rwlock_t());
     this->graph_table_num_ = graph_table_num;
-    this->feature_table_num_ = feature_table_num;
+    this->feature_table_num_ = 1;
     gpu_num = resource_->total_device();
     memset(global_device_map, -1, sizeof(global_device_map));
     for (auto &table : tables_) {
       delete table;
       table = NULL;
     }
+    int feature_table_num = 1;
     tables_ = std::vector<Table *>(
         gpu_num * (graph_table_num + feature_table_num), NULL);
     for (int i = 0; i < gpu_num; i++) {
@@ -108,7 +109,7 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
     // }
   }
   void build_graph_on_single_gpu(GpuPsCommGraph &g, int gpu_id, int idx);
-  void build_graph_fea_on_single_gpu(GpuPsCommGraphFea &g, int gpu_id, int idx);
+  void build_graph_fea_on_single_gpu(GpuPsCommGraphFea &g, int gpu_id);
   void clear_graph_info(int gpu_id, int index);
   void clear_graph_info(int index);
   void clear_feature_info(int gpu_id, int index);
@@ -125,10 +126,15 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
   NeighborSampleResult graph_neighbor_sample_v2(int gpu_id, int idx,
                                                 uint64_t *key, int sample_size,
                                                 int len, bool cpu_query_switch);
+
+  int get_feature_of_nodes(int gpu_id,
+                    std::shared_ptr<phi::Allocation> d_walk,
+                    std::shared_ptr<phi::Allocation> d_offset, int size, int slot_num);
+
   NodeQueryResult query_node_list(int gpu_id, int idx, int start,
                                   int query_size);
   void display_sample_res(void *key, void *val, int len, int sample_len);
-  void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
+  void move_result_to_source_gpu(int gpu_id, int gpu_num,
                                                  int sample_size, int *h_left,
                                                  int *h_right,
                                                  uint64_t *src_sample_res,

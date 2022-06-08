@@ -50,6 +50,9 @@ class Node {
   virtual void to_buffer(char *buffer, bool need_feature);
   virtual void recover_from_buffer(char *buffer);
   virtual std::string get_feature(int idx) { return std::string(""); }
+  virtual int get_feature_ids(std::vector<uint64_t> *res) const {
+    return 0;
+  }
   virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> *res) const {
     return 0;
   }
@@ -100,6 +103,25 @@ class FeatureNode : public Node {
     } else {
       return std::string("");
     }
+  }
+
+  virtual int get_feature_ids(std::vector<uint64_t> *res) const {
+    PADDLE_ENFORCE_NOT_NULL(res);
+    res->clear();
+    errno = 0;
+    for (auto& feature_item: feature) {
+      const char *feat_str = feature_item.c_str();
+      auto fields = paddle::string::split_string<std::string>(feat_str, " ");
+      char *head_ptr = NULL;
+      for (auto &field : fields) {
+        PADDLE_ENFORCE_EQ(field.empty(), false);
+        uint64_t feasign = strtoull(field.c_str(), &head_ptr, 10);
+        PADDLE_ENFORCE_EQ(field.c_str() + field.length(), head_ptr);
+        res->push_back(feasign);
+      }
+    }
+    PADDLE_ENFORCE_EQ(errno, 0);
+    return 0;
   }
 
   virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> *res) const {

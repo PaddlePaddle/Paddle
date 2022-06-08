@@ -895,6 +895,8 @@ class GraphDataGenerator {
   int AcquireInstance(BufState* state);
   int GenerateBatch();
   int FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk);
+  int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
+          std::shared_ptr<phi::Allocation> d_feature);
   void FillOneStep(uint64_t* start_ids, uint64_t* walk, int len,
                    NeighborSampleResult& sample_res, int cur_degree, int step,
                    int* len_per_row);
@@ -929,6 +931,7 @@ class GraphDataGenerator {
   std::vector<std::shared_ptr<phi::Allocation>> d_device_keys_;
 
   std::shared_ptr<phi::Allocation> d_walk_;
+  std::shared_ptr<phi::Allocation> d_feature_;
   std::shared_ptr<phi::Allocation> d_len_per_row_;
   std::shared_ptr<phi::Allocation> d_random_row_;
   //
@@ -942,6 +945,7 @@ class GraphDataGenerator {
   std::unordered_map<int, size_t> node_type_start_;
 
   std::shared_ptr<phi::Allocation> d_ins_buf_;
+  std::shared_ptr<phi::Allocation> d_feature_buf_;
   std::shared_ptr<phi::Allocation> d_pair_num_;
   int ins_buf_pair_len_;
   // size of a d_walk buf
@@ -950,6 +954,7 @@ class GraphDataGenerator {
   std::vector<int> window_step_;
   BufState buf_state_;
   int batch_size_;
+  int slot_num_;
   int shuffle_seed_;
   int debug_mode_;
   std::vector<int> first_node_type_;
