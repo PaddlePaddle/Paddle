@@ -36,7 +36,7 @@ class KaimingNormal(MSRAInitializer):
         \sqrt{\frac{2.0}{fan\_in}}
 
     Args:
-        fan_in (float32|None): fan_in for Kaiming normal Initializer. If None, it is 
+        fan_in (float32|None, optional): fan_in for Kaiming normal Initializer. If None, it is 
         inferred from the variable. default is None.
 
     Note:
