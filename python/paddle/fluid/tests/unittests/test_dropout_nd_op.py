@@ -120,8 +120,10 @@ class TestDropoutNdAPI(unittest.TestCase):
             with fluid.dygraph.guard(place):
                 in_np = np.random.random([4, 32, 16]).astype("float32")
                 input = paddle.to_tensor(in_np)
-                out = dropout_nd(x=input, p=0., axis=[0, 1])
-            self.assertTrue(np.allclose(out.numpy(), in_np))
+                res1 = dropout_nd(x=input, p=0., axis=[0, 1])
+                res2 = dropout_nd(x=input, p=0.5, axis=[0, 1])
+            self.assertTrue(np.allclose(res1.numpy(), in_np))
+            self.assertTrue(np.count_nonzero(res2.numpy(), np.size(in_np) / 2))
         paddle.enable_static()
 
 

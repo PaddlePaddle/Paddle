@@ -202,9 +202,8 @@ __global__ void VectorizedGeneratorMask(const size_t n, uint64_t seed,
                                         const float dropout_prob, const T* src,
                                         MaskType* mask, uint64_t increment,
                                         size_t main_offset) {
+  constexpr int kCount = phi::funcs::uniform_distribution<float>::kReturnsCount;
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
-  static constexpr int kCount =
-      phi::funcs::uniform_distribution<float>::kReturnsCount;
   size_t stride = BLOCK_NUM_X * GRID_NUM_X * kCount;
 #ifdef PADDLE_WITH_HIP
   hiprandStatePhilox4_32_10_t state;
@@ -259,16 +258,37 @@ __global__ void VectorizedGeneratorMask(const size_t n, uint64_t seed,
   }
 }
 
+inline void CalcBroadcastedMask(const phi::GPUContext& dev_ctx,
+                                const framework::Tensor& mask,
+                                framework::Tensor* broadcasted_mask) {
+  // The broadcast of mask can be combined to the following ElementwiseKernel
+  // when the BroadcastKernel supports different input types.
+  broadcasted_mask->mutable_data<uint8_t>(dev_ctx.GetPlace());
+
+  std::vector<const framework::Tensor*> ins = {&mask};
+  std::vector<framework::Tensor*> outs = {broadcasted_mask};
+  phi::funcs::BroadcastKernel<phi::ElementwiseType::kUnary, uint8_t, uint8_t>(
+      dev_ctx, ins, &outs, -1, kps::IdentityFunctor<uint8_t>());
+}
+
+template <typename T, typename MT>
+void ScaleByDropoutFactor(const phi::GPUContext& dev_ctx,
+                          const framework::Tensor& x, framework::Tensor* y,
+                          MT factor) {
+  std::vector<const framework::Tensor*> ins = {&x};
+  std::vector<framework::Tensor*> outs = {y};
+  auto functor = phi::funcs::ScaleFunctor<T>(factor);
+  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+}
+
 template <typename T>
 void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
-                              const std::string dropout_implementation,
                               float dropout_prob, bool upscale_in_train,
                               bool is_fix_seed, int seed_val,
                               const framework::Tensor& x,
                               const framework::Tensor* seed,
-                              const std::vector<int>& axis,
-                              framework::Tensor* mask, framework::Tensor* y) {
-  auto& place = *dev_ctx.eigen_device();
+                              framework::Tensor* mask, framework::Tensor* y,
+                              bool is_dropout_nd = false) {
   int64_t x_numel = x.numel();
   auto stream = dev_ctx.stream();
   auto* x_data = x.data<T>();
@@ -316,29 +336,20 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
     size_t main_offset =
         size / (block_size * kVecSize) * (block_size * kVecSize);
 
-    if (!axis.empty()) {
+    if (is_dropout_nd) {
       VectorizedGeneratorMask<T, uint8_t><<<grid_size, block_size, 0, stream>>>(
           size, seed_data, dropout_prob, x_data, mask_data, increment,
           main_offset);
 
+      framework::Tensor broadcasted_mask;
+      broadcasted_mask.Resize(x.dims());
+      CalcBroadcastedMask(dev_ctx, *mask, &broadcasted_mask);
+
       auto dst_functor = DstFunctor<T, uint8_t>(1.0f - dropout_prob,
                                                 upscale_in_train, x_numel);
-
-      // this can be optimized, when the broadcast supports different types, the
-      // two operations can be combined
-      framework::Tensor broadcast_mask;
-      broadcast_mask.Resize(x.dims());
-      broadcast_mask.mutable_data<uint8_t>(dev_ctx.GetPlace());
-
-      std::vector<const framework::Tensor*> ins_1 = {mask};
-      std::vector<framework::Tensor*> outs_1 = {&broadcast_mask};
-      phi::funcs::BroadcastKernel<phi::ElementwiseType::kUnary, uint8_t,
-                                  uint8_t>(dev_ctx, ins_1, &outs_1, -1,
-                                           kps::IdentityFunctor<uint8_t>());
-
-      std::vector<const framework::Tensor*> ins_2 = {&x, &broadcast_mask};
-      std::vector<framework::Tensor*> outs_2 = {y};
-      phi::funcs::ElementwiseKernel<T>(dev_ctx, ins_2, &outs_2, dst_functor);
+      std::vector<const framework::Tensor*> ins = {&x, &broadcasted_mask};
+      std::vector<framework::Tensor*> outs = {y};
+      phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, dst_functor);
     } else {
 #define PD_DROPOUT_KERNEL_NAME VectorizedRandomGenerator<T, uint8_t>
       PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(
@@ -350,23 +361,13 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
     }
   } else {
     if (upscale_in_train) {
-// todo: can y share with data with x directly?
-#ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          hipMemcpyAsync(y_data, x_data, sizeof(T) * x_numel,
-                         hipMemcpyDeviceToDevice, stream));
-#else
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          cudaMemcpyAsync(y_data, x_data, sizeof(T) * x_numel,
-                          cudaMemcpyDeviceToDevice, stream));
-#endif
+      // y = x
+      framework::TensorCopy(x, dev_ctx.GetPlace(), dev_ctx, y);
     } else {
       using MT = typename details::MPTypeTrait<T>::Type;
       MT factor = static_cast<MT>(1.0f - dropout_prob);
-      std::vector<const framework::Tensor*> ins = {&x};
-      std::vector<framework::Tensor*> outs = {y};
-      auto functor = phi::funcs::ScaleFunctor<T>(factor);
-      phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+      // y = factor * x
+      ScaleByDropoutFactor<T, MT>(dev_ctx, x, y, factor);
     }
   }
 }
@@ -388,41 +389,30 @@ struct CudaDropoutGradFunctor {
 };
 
 template <typename T>
-void DropoutGradGPUKernelDriver(
-    const phi::GPUContext& dev_ctx, const std::string dropout_implementation,
-    float dropout_prob, const framework::Tensor& grad_y,
-    const framework::Tensor& mask, const std::vector<int>& axis,
-    framework::Tensor* grad_x, bool is_test = false) {
+void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
+                                float dropout_prob, bool upscale_in_train,
+                                const framework::Tensor& grad_y,
+                                const framework::Tensor& mask,
+                                framework::Tensor* grad_x,
+                                bool is_dropout_nd = false) {
   using MT = typename details::MPTypeTrait<T>::Type;
-  auto stream = dev_ctx.stream();
-  MT factor;
-  if (is_test) {
-    if (dropout_implementation == "upscale_in_train") {
-      factor = static_cast<MT>(1.0f);
-    } else {
-      factor = static_cast<MT>(1.0f - dropout_prob);
-    }
-    std::vector<const framework::Tensor*> ins = {&grad_y};
-    std::vector<framework::Tensor*> outs = {grad_x};
-    auto functor = phi::funcs::ScaleFunctor<T>(factor);
-    phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
-  } else {
-    framework::Tensor broadcast_mask;
-    if (!axis.empty()) {
-      broadcast_mask.Resize(grad_y.dims());
-      broadcast_mask.mutable_data<uint8_t>(dev_ctx.GetPlace());
 
-      std::vector<const framework::Tensor*> ins = {&mask};
-      std::vector<framework::Tensor*> outs = {&broadcast_mask};
-      phi::funcs::BroadcastKernel<phi::ElementwiseType::kUnary, uint8_t,
-                                  uint8_t>(dev_ctx, ins, &outs, -1,
-                                           kps::IdentityFunctor<uint8_t>());
+  auto stream = dev_ctx.stream();
+  if (is_test) {
+    MT factor = static_cast<MT>(upscale_in_train ? 1.0f : 1.0f - dropout_prob);
+    // y = factor * x
+    ScaleByDropoutFactor<T, MT>(dev_ctx, grad_y, grad_x, factor);
+  } else {
+    framework::Tensor broadcasted_mask;
+    if (is_dropout_nd) {
+      broadcasted_mask.Resize(grad_y.dims());
+      CalcBroadcastedMask(dev_ctx, mask, &broadcasted_mask);
     }
 
     std::vector<const framework::Tensor*> ins = {
-        &grad_y, axis.empty() ? &mask : &broadcast_mask};
+        &grad_y, is_dropout_nd ? &broadcasted_mask : &mask};
     std::vector<framework::Tensor*> outs = {grad_x};
-    if (dropout_implementation == "upscale_in_train") {
+    if (upscale_in_train) {
       if (dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP
         hipMemset(grad_x->data<T>(), 0, grad_x->numel() * sizeof(T));
@@ -430,12 +420,12 @@ void DropoutGradGPUKernelDriver(
         cudaMemset(grad_x->data<T>(), 0, grad_x->numel() * sizeof(T));
 #endif
       } else {
-        factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
+        MT factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
         phi::funcs::ElementwiseKernel<T>(
             dev_ctx, ins, &outs, CudaDropoutGradFunctor<T, uint8_t>(factor));
       }
     } else {
-      factor = static_cast<MT>(1.0f);
+      MT factor = static_cast<MT>(1.0f);
       phi::funcs::ElementwiseKernel<T>(
           dev_ctx, ins, &outs, CudaDropoutGradFunctor<T, uint8_t>(factor));
     }

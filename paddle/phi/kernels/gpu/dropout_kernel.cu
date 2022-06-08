@@ -31,21 +31,19 @@ void DropoutRawKernel(const Context& dev_ctx,
                       DenseTensor* out,
                       DenseTensor* mask) {
   bool upscale_in_train = (mode == "upscale_in_train");
-  std::vector<int> axis = {};
-  dev_ctx.template Alloc<T>(out);
-  dev_ctx.template Alloc<uint8_t>(mask);
+  out->mutable_data<T>(dev_ctx.GetPlace());
+  mask->mutable_data<uint8_t>(dev_ctx.GetPlace());
   paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
                                                  is_test,
-                                                 mode,
                                                  p,
                                                  upscale_in_train,
                                                  fix_seed,
                                                  seed,
                                                  x,
                                                  seed_tensor.get_ptr(),
-                                                 axis,
                                                  mask,
-                                                 out);
+                                                 out,
+                                                 false);
 }
 
 template <typename T, typename Context>
@@ -65,16 +63,15 @@ void DropoutNdKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<uint8_t>(mask);
   paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
                                                  is_test,
-                                                 mode,
                                                  p,
                                                  upscale_in_train,
                                                  fix_seed,
                                                  seed,
                                                  x,
                                                  seed_tensor.get_ptr(),
-                                                 axis,
                                                  mask,
-                                                 out);
+                                                 out,
+                                                 true);
 }
 
 }  // namespace phi

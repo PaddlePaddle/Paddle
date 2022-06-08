@@ -185,13 +185,11 @@ class FMHARef {
     if (dropout_param_.dropout_prob_) {
       DropoutFwGPUKernelDriver<T>(
           static_cast<const phi::GPUContext&>(dev_ctx_),
-          dropout_param_.is_test_,
-          static_cast<const std::string>(
-              dropout_param_.dropout_implementation_),
-          dropout_param_.dropout_prob_, dropout_param_.is_upscale_in_train_,
-          dropout_param_.is_fix_seed_, dropout_param_.seed_val_,
+          dropout_param_.is_test_, dropout_param_.dropout_prob_,
+          dropout_param_.is_upscale_in_train_, dropout_param_.is_fix_seed_,
+          dropout_param_.seed_val_,
           static_cast<const Tensor&>(*softmax_out_tensor), dropout_param_.seed_,
-          {}, dropout_mask_out_tensor, dropout_out_tensor);
+          dropout_mask_out_tensor, dropout_out_tensor, false);
       blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
                        dropout_out_data, v_ptr, beta, qktv_out_data,
                        gemm_batch_size, stride_a, stride_b);
@@ -287,12 +285,10 @@ class FMHARef {
     // dropout bw
     if (dropout_param_.dropout_prob_) {
       DropoutGradGPUKernelDriver<T>(
-          static_cast<const phi::GPUContext&>(dev_ctx_),
-          static_cast<const std::string>(
-              dropout_param_.dropout_implementation_),
-          dropout_param_.dropout_prob_,
+          static_cast<const phi::GPUContext&>(dev_ctx_), false,
+          dropout_param_.dropout_prob_, dropout_param_.is_upscale_in_train_,
           static_cast<const Tensor&>(*dropout_out_grad_tensor),
-          dropout_mask_out_tensor, {}, softmax_out_grad_tensor);
+          dropout_mask_out_tensor, softmax_out_grad_tensor, false);
     }
 
     if (src_mask_tensor != nullptr) {

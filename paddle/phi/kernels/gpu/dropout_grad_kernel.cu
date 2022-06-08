@@ -27,10 +27,10 @@ void DropoutGradRawKernel(const Context& dev_ctx,
                           bool is_test,
                           const std::string& mode,
                           DenseTensor* x_grad) {
-  dev_ctx.template Alloc<T>(x_grad);
-  std::vector<int> axis = {};
+  bool upscale_in_train = (mode == "upscale_in_train");
+  x_grad->mutable_data<T>(dev_ctx.GetPlace());
   paddle::operators::DropoutGradGPUKernelDriver<T>(
-      dev_ctx, mode, p, out_grad, mask, axis, x_grad, is_test);
+      dev_ctx, is_test, p, upscale_in_train, out_grad, mask, x_grad, false);
 }
 
 template <typename T, typename Context>
@@ -42,9 +42,10 @@ void DropoutNdGradKernel(const Context& dev_ctx,
                          const std::string& mode,
                          const std::vector<int>& axis,
                          DenseTensor* x_grad) {
+  bool upscale_in_train = (mode == "upscale_in_train");
   dev_ctx.template Alloc<T>(x_grad);
   paddle::operators::DropoutGradGPUKernelDriver<T>(
-      dev_ctx, mode, p, out_grad, mask, axis, x_grad, is_test);
+      dev_ctx, is_test, p, upscale_in_train, out_grad, mask, x_grad, true);
 }
 
 }  // namespace phi
