@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
-
 #include <bitset>
-
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
 
@@ -103,8 +101,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "gather",
       "gather_nd",
       "yolo_box",
-      "yolo_box_head",
-      "arg_max",
       "roi_align",
       "affine_channel",
       "nearest_interp",
@@ -115,6 +111,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv3d_transpose",
       "mish",
       "nearest_interp_v2",
+      "bilinear_interp_v2",
       "pool3d",
       "deformable_conv",
       "relu6",
@@ -174,8 +171,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "gather",
       "gather_nd",
       "yolo_box",
-      "yolo_box_head",
-      "arg_max",
       "roi_align",
       "affine_channel",
       "nearest_interp",
@@ -185,6 +180,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv3d",
       "conv3d_transpose",
       "mish",
+      "bilinear_interp_v2",
       "nearest_interp_v2",
       "pool3d",
       "deformable_conv",
@@ -648,22 +644,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!has_attrs) return false;
     }
 
-    if (op_type == "yolo_box_head") {
-      if (with_dynamic_shape) return false;
-      bool has_attrs = desc.HasAttr("class_num") && desc.HasAttr("anchors");
-      if (!has_attrs) return false;
-    }
-
-    if (op_type == "arg_max") {
-      if (with_dynamic_shape) return false;
-      int axis = desc.HasAttr("axis")
-                     ? BOOST_GET_CONST(int64_t, desc.GetAttr("axis"))
-                     : -1;
-      bool flatten = BOOST_GET_CONST(bool, desc.GetAttr("flatten"));
-      int dtype = BOOST_GET_CONST(int, desc.GetAttr("dtype"));
-      if (axis == 0 || flatten || dtype != 2) return false;
-    }
-
     if (op_type == "affine_channel") {
       if (!desc.HasAttr("data_layout")) return false;
       auto data_layout = framework::StringToDataLayout(
@@ -800,6 +780,90 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           VLOG(3) << "scale factor must be greater than 0 if out_h or out_w is "
                      "not set.";
           return false;
+        }
+      }
+    }
+
+    if (op_type == "bilinear_interp_v2") {
+      std::vector<std::string> attrs{"data_layout",   "interp_method",
+                                     "align_corners", "scale",
+                                     "out_h",         "out_w"};
+      for (auto const attr : attrs) {
+        if (!desc.HasAttr(attr)) {
+          VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
+                  << attr << " and return false";
+          return false;
+        }
+      }
+
+      auto resize_inputs = desc.Inputs();
+      if (resize_inputs.find("SizeTensor") != resize_inputs.end()) {
+        if (desc.Input("SizeTensor").size() >= 1) {
+          VLOG(3)
+              << "The Paddle-TRT doesn't support the SizeTensor for op_type "
+              << op_type;
+          return false;
+        }
+      }
+
+      auto data_layout = framework::StringToDataLayout(
+          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != framework::DataLayout::kNCHW &&
+          data_layout != framework::DataLayout::kNHWC) {
+        VLOG(3) << "The op_type " << op_type
+                << " is not NCHW or NHWC return false";
+        return false;
+      }
+      auto interp_method =
+          BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
+      if (interp_method != "bilinear") {
+        VLOG(3) << "The interp_method of op_type " << op_type << " is not bilinear";
+        return false;
+      }
+
+      auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      if (align_corners != false) {
+        VLOG(3)
+            << "The bilinear_interp_v2 only supports align_corners with false.";
+        return false;
+      }
+
+      bool has_scale_input_size =
+          (resize_inputs.find("Scale") != resize_inputs.end());
+
+      if (has_scale_input_size && desc.Input("Scale").size() != 1) {
+        const std::vector<float> scale =
+            BOOST_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
+        if (scale.size() <= 1) {
+          if (!desc.HasAttr("out_h") || !desc.HasAttr("out_w")) {
+            VLOG(3) << "The op_type " << op_type
+                    << " doesn't have Scale and the scale size <=1 and without "
+                       "out_h / out_w, it will return false";
+            return false;
+          }
+          auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
+          auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+          if (!(out_h <= 0 && out_w <= 0)) {
+            if (out_h <= 0) {
+              VLOG(3) << "The op_type " << op_type
+                      << "'s out_h must be greater than 0 if scale is not set.";
+              return false;
+            }
+            if (out_w <= 0) {
+              VLOG(3) << "The op_type " << op_type
+                      << "'s out_w must be greater than 0 if scale is not set.";
+              return false;
+            }
+          }
+        } else {
+          for (size_t i = 0; i < scale.size(); i++) {
+            if (scale[i] <= 0 && with_dynamic_shape) {
+              VLOG(3) << "dynamic shape not support Attr(scale[" << i << "]) "
+                      << scale[i]
+                      << " less than 1 and Input(Scale) vector not set.";
+              return false;
+            }
+          }
         }
       }
     }
