@@ -3630,7 +3630,6 @@ function main() {
         build_mac
         ;;
       cicheck_py37)
-        exit 0
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         
