@@ -9,12 +9,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/strings/strings_lower_upper_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/strings/strings_lower_upper_kernel.h"
 #include "paddle/phi/kernels/strings/unicode.h"
 
 using pstring = ::phi::dtype::pstring;
@@ -44,9 +43,8 @@ struct AsciiCaseConverter<phi::GPUContext, CharConverter> {
     dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
     dim3 grid_size =
         dim3((num + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
-    StringCaseConvertCUDAKernel<
-        CharConverter><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-        out, in, num);
+    StringCaseConvertCUDAKernel<CharConverter>
+        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(out, in, num);
   }
 };
 

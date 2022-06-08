@@ -12,10 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/math/sequence_pooling.h"
+
 #include <string>
 
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/sequence_pooling.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 

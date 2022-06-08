@@ -15,6 +15,7 @@
 #pragma once
 
 #include <type_traits>
+
 #include "paddle/infrt/tensor/dense_host_tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 

@@ -1,12 +1,12 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 # Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -34,6 +34,7 @@ def get_outputs(DOut, X, Y):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueGradOpDXYBiasFP16(OpTest):
+
     def setUp(self):
         self.op_type = "fused_gemm_epilogue_grad"
         self.place = core.CUDAPlace(0)
@@ -67,6 +68,7 @@ class TestFuseGemmEpilogueGradOpDXYBiasFP16(OpTest):
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueGradOpDXYBiasFP32(
         TestFuseGemmEpilogueGradOpDXYBiasFP16):
+
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -77,6 +79,7 @@ class TestFuseGemmEpilogueGradOpDXYBiasFP32(
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueGradOpDXYBiasFP64(
         TestFuseGemmEpilogueGradOpDXYBiasFP16):
+
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -86,6 +89,7 @@ class TestFuseGemmEpilogueGradOpDXYBiasFP64(
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueGradOpDYBiasFP16(OpTest):
+
     def setUp(self):
         self.op_type = "fused_gemm_epilogue_grad"
         self.place = core.CUDAPlace(0)
@@ -117,8 +121,9 @@ class TestFuseGemmEpilogueGradOpDYBiasFP16(OpTest):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueGradOpDYBiasFP32(
-        TestFuseGemmEpilogueGradOpDYBiasFP16):
+class TestFuseGemmEpilogueGradOpDYBiasFP32(TestFuseGemmEpilogueGradOpDYBiasFP16
+                                           ):
+
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -127,8 +132,9 @@ class TestFuseGemmEpilogueGradOpDYBiasFP32(
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueGradOpDYBiasFP64(
-        TestFuseGemmEpilogueGradOpDYBiasFP16):
+class TestFuseGemmEpilogueGradOpDYBiasFP64(TestFuseGemmEpilogueGradOpDYBiasFP16
+                                           ):
+
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -138,6 +144,7 @@ class TestFuseGemmEpilogueGradOpDYBiasFP64(
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueGradOpDYFP16(OpTest):
+
     def setUp(self):
         self.op_type = "fused_gemm_epilogue_grad"
         self.place = core.CUDAPlace(0)
@@ -170,6 +177,7 @@ class TestFuseGemmEpilogueGradOpDYFP16(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueGradOpDYFP32(TestFuseGemmEpilogueGradOpDYFP16):
+
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -179,6 +187,7 @@ class TestFuseGemmEpilogueGradOpDYFP32(TestFuseGemmEpilogueGradOpDYFP16):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueGradOpDYFP64(TestFuseGemmEpilogueGradOpDYFP16):
+
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -188,6 +197,7 @@ class TestFuseGemmEpilogueGradOpDYFP64(TestFuseGemmEpilogueGradOpDYFP16):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueGradOpDXYFP16(OpTest):
+
     def setUp(self):
         self.op_type = "fused_gemm_epilogue_grad"
         self.place = core.CUDAPlace(0)
@@ -220,6 +230,7 @@ class TestFuseGemmEpilogueGradOpDXYFP16(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueGradOpDXYFP32(TestFuseGemmEpilogueGradOpDXYFP16):
+
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -229,11 +240,13 @@ class TestFuseGemmEpilogueGradOpDXYFP32(TestFuseGemmEpilogueGradOpDXYFP16):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueGradOpDXYFP64(TestFuseGemmEpilogueGradOpDXYFP16):
+
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     np.random.seed(0)
     unittest.main()

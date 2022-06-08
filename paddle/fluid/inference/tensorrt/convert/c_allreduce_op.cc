@@ -34,23 +34,24 @@ class CAllReduceOpConverter : public OpConverter {
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(4) << "convert fluid callreduce op to tensorrt layer";
     ReduceType red_type = op_to_reduce_type[op.type()];
-    std::string name = "c_allreduce_sum";
+    std::string name = op.type();
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     int input_num = op_desc.Input("X").size();
-    PADDLE_ENFORCE_EQ(input_num, 1,
-                      platform::errors::InvalidArgument(
-                          "The input X's size must equal to 1 in TRT swish op."
-                          " But received X's size %d.",
-                          input_num));
+    PADDLE_ENFORCE_EQ(
+        input_num, 1,
+        platform::errors::InvalidArgument(
+            "The input X's size must equal to 1 in TRT c_allreduce op."
+            " But received X's size %d.",
+            input_num));
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     // Get output
     size_t output_num = op_desc.Output("Out").size();
     PADDLE_ENFORCE_EQ(
         output_num, 1UL,
         platform::errors::InvalidArgument(
-            "The ouput Out's size must equal to 1 in TRT swish op. "
+            "The ouput Out's size must equal to 1 in TRT c_allreduce op. "
             "But received Out's size %u.",
             output_num));
     // Get attrs

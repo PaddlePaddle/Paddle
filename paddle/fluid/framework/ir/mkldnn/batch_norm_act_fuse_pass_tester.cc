@@ -34,7 +34,7 @@ void SetBatchNormAttrs(OpDesc* bn_op, bool is_test = true,
   bn_op->SetAttr("fuse_with_relu", false);
   bn_op->SetAttr("epsilon", 0.001f);
 }
-}
+}  // namespace
 
 // ------------------------------ Test cases -----------------------------------
 
@@ -48,11 +48,12 @@ TEST(FuseBatchNormActOneDNNPass, ThrowIsTestTrainableStats) {
   auto prog = test::BuildProgramDesc(
       {"x", "m", "v", "bn_y", "act_y", "m_out", "var_out", "sm", "sv"},
       {"scale", "bias"});
-  auto* bn_op = test::CreateOp(&prog, "batch_norm", {{"X", "x"},
-                                                     {"Scale", "scale"},
-                                                     {"Bias", "bias"},
-                                                     {"Mean", "m"},
-                                                     {"Variance", "v"}},
+  auto* bn_op = test::CreateOp(&prog, "batch_norm",
+                               {{"X", "x"},
+                                {"Scale", "scale"},
+                                {"Bias", "bias"},
+                                {"Mean", "m"},
+                                {"Variance", "v"}},
                                {{"Y", "bn_y"},
                                 {"MeanOut", "m_out"},
                                 {"VarianceOut", "var_out"},
@@ -73,11 +74,12 @@ TEST(FuseBatchNormActOneDNNPass, ThrowIsTestTrainableStats) {
 TEST(FuseBatchNormActOneDNNPass, FuseIsTest) {
   auto prog = test::BuildProgramDesc({"x", "m", "v", "bn_y", "act_y"},
                                      {"scale", "bias"});
-  auto* bn_op = test::CreateOp(&prog, "batch_norm", {{"X", "x"},
-                                                     {"Scale", "scale"},
-                                                     {"Bias", "bias"},
-                                                     {"Mean", "m"},
-                                                     {"Variance", "v"}},
+  auto* bn_op = test::CreateOp(&prog, "batch_norm",
+                               {{"X", "x"},
+                                {"Scale", "scale"},
+                                {"Bias", "bias"},
+                                {"Mean", "m"},
+                                {"Variance", "v"}},
                                {{"Y", "bn_y"}});
   SetBatchNormAttrs(bn_op, true, false);
   test::CreateOp(&prog, "relu", {{"X", "bn_y"}}, {{"Out", "act_y"}}, false);
@@ -106,11 +108,12 @@ TEST(FuseBatchNormActOneDNNPass, ThrowTrainableStats) {
   auto prog = test::BuildProgramDesc(
       {"x", "m", "v", "bn_y", "act_y", "m_out", "var_out", "sm", "sv"},
       {"scale", "bias"});
-  auto* bn_op = test::CreateOp(&prog, "batch_norm", {{"X", "x"},
-                                                     {"Scale", "scale"},
-                                                     {"Bias", "bias"},
-                                                     {"Mean", "m"},
-                                                     {"Variance", "v"}},
+  auto* bn_op = test::CreateOp(&prog, "batch_norm",
+                               {{"X", "x"},
+                                {"Scale", "scale"},
+                                {"Bias", "bias"},
+                                {"Mean", "m"},
+                                {"Variance", "v"}},
                                {{"Y", "bn_y"},
                                 {"MeanOut", "m_out"},
                                 {"VarianceOut", "var_out"},
@@ -132,11 +135,12 @@ TEST(FuseBatchNormActOneDNNPass, AllAttrsFalse) {
   auto prog = test::BuildProgramDesc(
       {"x", "m", "v", "bn_y", "act_y", "m_out", "var_out", "sm", "sv"},
       {"scale", "bias"});
-  auto* bn_op = test::CreateOp(&prog, "batch_norm", {{"X", "x"},
-                                                     {"Scale", "scale"},
-                                                     {"Bias", "bias"},
-                                                     {"Mean", "m"},
-                                                     {"Variance", "v"}},
+  auto* bn_op = test::CreateOp(&prog, "batch_norm",
+                               {{"X", "x"},
+                                {"Scale", "scale"},
+                                {"Bias", "bias"},
+                                {"Mean", "m"},
+                                {"Variance", "v"}},
                                {{"Y", "bn_y"},
                                 {"MeanOut", "m_out"},
                                 {"VarianceOut", "var_out"},
@@ -158,11 +162,12 @@ TEST(FuseBatchNormActOneDNNPass, ThrowUseMkldnn) {
   auto prog = test::BuildProgramDesc(
       {"x", "m", "v", "bn_y", "act_y", "m_out", "var_out", "sm", "sv"},
       {"scale", "bias"});
-  auto* bn_op = test::CreateOp(&prog, "batch_norm", {{"X", "x"},
-                                                     {"Scale", "scale"},
-                                                     {"Bias", "bias"},
-                                                     {"Mean", "m"},
-                                                     {"Variance", "v"}},
+  auto* bn_op = test::CreateOp(&prog, "batch_norm",
+                               {{"X", "x"},
+                                {"Scale", "scale"},
+                                {"Bias", "bias"},
+                                {"Mean", "m"},
+                                {"Variance", "v"}},
                                {{"Y", "bn_y"},
                                 {"MeanOut", "m_out"},
                                 {"VarianceOut", "var_out"},

@@ -25,8 +25,6 @@ class PrelnResidualBiasOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(4) << "convert fused preln_residual_bias op to tensorrt layer";
-    std::cout << "convert fused preln_residual_bias op to tensorrt layer"
-              << std::endl;
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -36,12 +34,6 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     for (int i = 0; i < input1_dims.nbDims; i++) {
       std::cout << "input1 dims: " << input1_dims.d[i] << std::endl;
     }
-
-    auto input2_dims = input2->getDimensions();
-    for (int i = 0; i < input2_dims.nbDims; i++) {
-      std::cout << "input2 dims: " << input2_dims.d[i] << std::endl;
-    }
-
     std::vector<nvinfer1::ITensor*> inputs;
     inputs.push_back(input1);
     inputs.push_back(input2);

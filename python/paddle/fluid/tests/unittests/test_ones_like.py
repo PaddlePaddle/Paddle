@@ -23,6 +23,7 @@ from paddle.fluid import core, Program, program_guard
 
 
 class TestOnesLikeAPIError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             x = paddle.fluid.data('x', [3, 4])
@@ -30,6 +31,7 @@ class TestOnesLikeAPIError(unittest.TestCase):
 
 
 class TestOnesLikeAPI(unittest.TestCase):
+
     def test_api(self):
         shape = [3, 4]
         startup_program = Program()
@@ -44,8 +46,8 @@ class TestOnesLikeAPI(unittest.TestCase):
             out4 = ones_like(x, 'int32')
             out5 = ones_like(x, 'int64')
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
         outs = exe.run(train_program,
                        feed={'X': np.ones(shape).astype('float32')},
@@ -58,10 +60,11 @@ class TestOnesLikeAPI(unittest.TestCase):
 
 
 class TestOnesLikeImpeartive(unittest.TestCase):
+
     def test_out(self):
         shape = [3, 4]
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         paddle.disable_static(place)
         x = paddle.to_tensor(np.ones(shape))
         for dtype in [np.bool, np.float32, np.float64, np.int32, np.int64]:

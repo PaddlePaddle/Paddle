@@ -17,22 +17,26 @@ import unittest
 import numpy as np
 from pass_test import PassTest
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 
 
 class PrelnResidualBiasFusePassTest(PassTest):
+
     def setUp(self):
         paddle.enable_static()
-        with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(
-                name="x", shape=[128, 768], dtype="float32", lod_level=0)
+        with paddle.static.program_guard(self.main_program,
+                                         self.startup_program):
+            x = paddle.static.data(name="x",
+                                   shape=[128, 768],
+                                   dtype="float32",
+                                   lod_level=0)
             bias = paddle.static.create_parameter(shape=[768], dtype='float32')
-            y = fluid.data(
-                name="y", shape=[128, 768], dtype="float32", lod_level=0)
-            x = fluid.layers.elementwise_add(x=x, y=bias)
-            elementwise_out = fluid.layers.elementwise_add(x=x, y=y)
-            out = fluid.layers.layer_norm(input=elementwise_out)
+            y = paddle.static.data(name="y",
+                                   shape=[128, 768],
+                                   dtype="float32",
+                                   lod_level=0)
+            x = x + bias
+            elementwise_out = x + y
+            out = paddle.static.nn.layer_norm(input=elementwise_out)
 
         self.fetch_list = [out, elementwise_out]
         self.pass_names = "preln_residual_bias_fuse_pass"
@@ -45,10 +49,10 @@ class PrelnResidualBiasFusePassTest(PassTest):
 
     def test_check_program(self):
         use_gpu_set = [False]
-        if core.is_compiled_with_cuda():
+        if paddle.device.is_compiled_with_cuda():
             use_gpu_set.append(True)
         for use_gpu in use_gpu_set:
-            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+            place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
             opt_program = self._apply_ir_passes()
             self.check_program(opt_program)
 

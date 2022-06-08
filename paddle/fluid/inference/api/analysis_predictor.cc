@@ -83,9 +83,9 @@ namespace paddle {
 
 using inference::Singleton;
 #if PADDLE_WITH_TENSORRT
-using inference::tensorrt::TRTInt8Calibrator;
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
+using inference::tensorrt::TRTInt8Calibrator;
 #endif
 
 int AnalysisPredictor::clone_num_ = 1;
@@ -853,8 +853,10 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
   argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
-  argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
+  argument_.SetTensorRtUseOSS(config_.trt_use_varseqlen_);
   argument_.SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
+  argument_.SetTensorRtTransformerPosid(config_.tensorrt_transformer_posid_);
+  argument_.SetTensorRtTransformerMaskid(config_.tensorrt_transformer_maskid_);
   argument_.SetMinInputShape(config_.min_input_shape_);
   argument_.SetMaxInputShape(config_.max_input_shape_);
   argument_.SetOptimInputShape(config_.optim_input_shape_);
@@ -1025,8 +1027,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
+std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+    const AnalysisConfig &config) {
   // TODO(NHZlX): Should add the link to the doc of
   // paddle_infer::CreatePredictor<paddle_infer::Config>
   if (config.glog_info_disabled()) {
@@ -1085,12 +1088,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         process_level_allocator_enabled = false;
       } else {
         process_level_allocator_enabled = true;
-      }
-
-      // TODO(Jingzhuangzhuang): Fix trt error when allocator_strategy is
-      // auto_growth
-      if (config.tensorrt_engine_enabled()) {
-        gflags.push_back("--allocator_strategy=naive_best_fit");
       }
 
       if (framework::InitGflags(gflags)) {
@@ -1807,6 +1804,9 @@ USE_TRT_CONVERTER(preln_residual_bias)
 USE_TRT_CONVERTER(c_allreduce_sum)
 USE_TRT_CONVERTER(roll)
 USE_TRT_CONVERTER(strided_slice)
+USE_TRT_CONVERTER(transformer_input_convert)
+USE_TRT_CONVERTER(recover_padding)
+USE_TRT_CONVERTER(remove_padding)
 #endif
 
 namespace paddle_infer {
@@ -1972,6 +1972,20 @@ void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,
                                             bool with_interleaved) {
 #ifdef PADDLE_WITH_CUDA
   c->trt_with_interleaved_ = with_interleaved;
+#endif
+}
+
+void InternalUtils::SetTransformerPosid(
+    paddle_infer::Config *c, const std::string &tensorrt_transformer_posid) {
+#ifdef PADDLE_WITH_CUDA
+  c->tensorrt_transformer_posid_ = tensorrt_transformer_posid;
+#endif
+}
+
+void InternalUtils::SetTransformerMaskid(
+    paddle_infer::Config *c, const std::string &tensorrt_transformer_maskid) {
+#ifdef PADDLE_WITH_CUDA
+  c->tensorrt_transformer_maskid_ = tensorrt_transformer_maskid;
 #endif
 }
 

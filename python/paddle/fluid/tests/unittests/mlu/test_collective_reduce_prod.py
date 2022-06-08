@@ -24,6 +24,7 @@ paddle.enable_static()
 
 
 class TestCReduceOp(TestDistBase):
+
     def _setup_config(self):
         pass
 

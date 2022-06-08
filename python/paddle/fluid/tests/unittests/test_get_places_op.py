@@ -22,6 +22,7 @@ import unittest
 
 
 class TestGetPlaces(unittest.TestCase):
+
     @prog_scope()
     def check_get_cpu_places(self):
         places = get_places()

@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
