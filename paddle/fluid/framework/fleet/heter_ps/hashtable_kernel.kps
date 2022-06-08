@@ -105,8 +105,7 @@ void HashTable<KeyType, ValType>::get(const paddle::platform::Place& place,
   uint32_t xpu_num = container_->get_xpu_num();
   platform::XPUDeviceContext xpu_dev_ctx(place);
   auto ctx_xpu = xpu_dev_ctx.x_context();
-  /*
-  int r = xpu::fill_dvals<KeyType, ValType>(
+  int r = xpu::get_pairs<KeyType, ValType>(
       ctx_xpu, d_keys, d_vals_in, len,  d_vals,
       xpu_id, xpu_num
      );
@@ -114,7 +113,6 @@ void HashTable<KeyType, ValType>::get(const paddle::platform::Place& place,
       r, XPU_SUCCESS,
       platform::errors::External("XPU get kernel return wrong value[%d %s]",
                                   r, XPUAPIErrorMsg[r]));
-  */
   #else
     return;
   #endif
@@ -135,20 +133,18 @@ void HashTable<unsigned long, FeatureValue>::get(const paddle::platform::Place& 
   uint32_t xpu_num = container_->get_xpu_num();
   platform::XPUDeviceContext xpu_dev_ctx(place);
   auto ctx_xpu = xpu_dev_ctx.x_context();
-  /*
-  int r = xpu::fill_dvals<unsigned int, FeatureValue>(
+  int r = xpu::get_pairs<unsigned int, ::FeatureValue>(
       ctx_xpu,
       reinterpret_cast<unsigned int*>(d_keys),
-      reinterpret_cast<FeatureValue*>(d_vals_in),
+      reinterpret_cast<::FeatureValue*>(d_vals_in),
       len,
-      reinterpret_cast<FeatureValue*>(d_vals),
+      reinterpret_cast<::FeatureValue*>(d_vals),
       xpu_id, xpu_num
      );
   PADDLE_ENFORCE_EQ(
       r, XPU_SUCCESS,
       platform::errors::External("XPU get kernel return wrong value[%d %s]",
                                   r, XPUAPIErrorMsg[r]));
-    */
     #else
       return;
     #endif
