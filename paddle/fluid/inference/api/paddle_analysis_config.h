@@ -602,7 +602,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// operation must use the external stream, otherwise the framework manages
   /// the stream internally.
   ///
-  bool UseExternalStream() const;
+  bool external_stream_enabled() const;
 
   ///
   /// \brief Collect shape info of all tensors in compute graph.

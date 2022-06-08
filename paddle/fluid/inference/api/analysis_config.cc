@@ -114,7 +114,9 @@ void *AnalysisConfig::GetExecStream() const {
   return exec_stream_;
 }
 
-bool AnalysisConfig::UseExternalStream() const { return use_external_stream_; }
+bool AnalysisConfig::external_stream_enabled() const {
+  return use_external_stream_;
+}
 
 void AnalysisConfig::DisableGpu() {
   use_gpu_ = false;

@@ -591,7 +591,7 @@ TEST(Predictor, Streams) {
     config.SetModel(FLAGS_dirname);
     config.EnableUseGpu(100, 0);
     config.SetExecStream(external_stream);
-    CHECK_EQ(config.UseExternalStream(), true);
+    CHECK_EQ(config.external_stream_enabled(), true);
 
     auto predictor = CreatePredictor(config);
     gpuStream_t stream =
