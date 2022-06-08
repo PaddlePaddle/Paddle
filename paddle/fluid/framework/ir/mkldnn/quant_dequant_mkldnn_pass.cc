@@ -353,8 +353,7 @@ bool QuantDequantMkldnnPass::IsInt8Weight(
   auto* op_desc = op_node->Op();
   auto var_name = op_desc->Input(weight_name)[0];
   auto* var = scope->FindVar(var_name);
-  // for some matmul that both X, Y are outputs of other ops,do not dequantize Y
-  if (var == NULL) {
+  if (var == nullptr) {
     return false;
   }
   auto* weight_tensor = var->GetMutable<LoDTensor>();
