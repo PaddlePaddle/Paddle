@@ -78,7 +78,7 @@ class KaimingUniform(MSRAInitializer):
         x = \sqrt{\frac{6.0}{fan\_in}}
 
     Args:
-        fan_in (float32|None): fan_in for Kaiming uniform Initializer. If None, it is 
+        fan_in (float32|None, optional): fan_in for Kaiming uniform Initializer. If None, it is 
         inferred from the variable. default is None.
 
     Note:
