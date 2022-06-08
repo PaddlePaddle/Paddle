@@ -1311,6 +1311,97 @@ class HingeEmbeddingLoss(Layer):
                                       name=self.name)
 
 
+class CosineEmbeddingLoss(Layer):
+    r"""
+    This interface is used to construct a callable object of the ``CosineEmbeddingLoss`` class.
+    The CosineEmbeddingLoss layer measures the cosine_embedding loss between input predictions ``input1``, ``input2``
+    and target labels ``label`` with values 1 or 0. This is used for measuring whether two inputs are similar or
+    dissimilar and is typically used for learning nonlinear embeddings or semi-supervised learning.
+    The cosine embedding loss can be described as:
+
+    If label = 1, then the loss value can be calculated as follow:
+
+    .. math::
+        Out = 1 - cos(input1, input2)
+
+    If label = -1, then the loss value can be calculated as follow:
+
+    .. math::
+        Out = max(0, cos(input1, input2)) - margin
+
+    The operator cos can be described as follow:
+     .. math::
+        cos(x1, x2) = \frac{x1 \cdot{} x2}{\Vert x1 \Vert_2 * \Vert x2 \Vert_2}
+
+    Parameters:
+        margin (float, optional): Should be a number from :math:`-1` to :math:`1`,
+            :math:`0` to :math:`0.5` is suggested. If :attr:`margin` is missing, the
+            default value is :math:`0`.
+        reduction (string, optional): Specifies the reduction to apply to the output:
+            ``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction will be applied,
+            ``'mean'``: the sum of the output will be divided by the number of
+            elements in the output, ``'sum'``: the output will be summed.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+                         Available dtypes are float32, float64.
+        input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+                         Available dtypes are float32, float64.
+        label (Tensor): tensor with shape: [N] or [1]. The target labels values should be -1 or 1.
+                         Available dtypes are int32, int64, float32, float64.
+        output (Tensor): Tensor, the cosine embedding Loss of Tensor ``input1`` ``input2`` and ``label``.
+                         If `reduction` is ``'none'``, the shape of output loss is [N], the same as ``input`` .
+                         If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+
+    Examples:
+        .. code-block:: python
+          :name: code-example1
+
+            import paddle
+
+            input1 = paddle.to_tensor([[1.6, 1.2, -0.5], [3.2, 2.6, -5.8]], 'float32')
+            input2 = paddle.to_tensor([[0.5, 0.5, -1.8], [2.3, -1.4, 1.1]], 'float32')
+            label = paddle.to_tensor([1, -1], 'int64')
+
+            cosine_embedding_loss = paddle.nn.CosineEmbeddingLoss(margin=0.5, reduction='mean')
+            output = cosine_embedding_loss(input1, input2, label)
+            print(output) # [0.21155193]
+
+            cosine_embedding_loss = paddle.nn.CosineEmbeddingLoss(margin=0.5, reduction='sum')
+            output = cosine_embedding_loss(input1, input2, label)
+            print(output) # [0.42310387]
+
+            cosine_embedding_loss = paddle.nn.CosineEmbeddingLoss(margin=0.5, reduction='none')
+            output = cosine_embedding_loss(input1, input2, label)
+            print(output) # [0.42310387, 0.        ]
+
+    """
+
+    def __init__(self, margin=0, reduction='mean', name=None):
+        if margin > 1 or margin < -1:
+            raise ValueError(
+                "The value of 'margin' should be in the interval of [-1, 1], but received %f, which is not allowed."
+                % margin)
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' should be 'sum', 'mean' or "
+                "'none', but received %s, which is not allowed." % reduction)
+        super(CosineEmbeddingLoss, self).__init__()
+        self.margin = margin
+        self.reduction = reduction
+        self.name = name
+
+    def forward(self, input1, input2, label):
+        return F.cosine_embedding_loss(input1,
+                                       input2,
+                                       label,
+                                       margin=self.margin,
+                                       reduction=self.reduction,
+                                       name=self.name)
+
+ 
 class SoftMarginLoss(Layer):
     r"""
     Creates a criterion that measures a two-class

@@ -2765,6 +2765,115 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
         return loss
 
 
+def cosine_embedding_loss(input1,
+                          input2,
+                          label,
+                          margin=0,
+                          reduction='mean',
+                          name=None):
+    r"""
+    This operator computes the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
+
+    If label = 1, then the loss value can be calculated as follow:
+
+    .. math::
+        Out = 1 - cos(input1, input2)
+
+    If label = -1, then the loss value can be calculated as follow:
+
+    .. math::
+        Out = max(0, cos(input1, input2)) - margin
+
+    The operator cos can be described as follow:
+     .. math::
+        cos(x1, x2) = \frac{x1 \cdot{} x2}{\Vert x1 \Vert_2 * \Vert x2 \Vert_2}
+
+     Parameters:
+        input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+                         Available dtypes are float32, float64.
+        input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+                         Available dtypes are float32, float64.
+        label (Tensor): tensor with shape: [N] or [1]. The target labels values should be -1 or 1.
+                         Available dtypes are int32, int64, float32, float64.
+        margin (float, optional): Should be a number from :math:`-1` to :math:`1`,
+                         :math:`0` to :math:`0.5` is suggested. If :attr:`margin` is missing, the
+                         default value is :math:`0`.
+        reduction (string, optional): Specifies the reduction to apply to the output:
+                         ``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction will be applied,
+                         ``'mean'``: the sum of the output will be divided by the number of elements in the output
+                         ``'sum'``: the output will be summed.
+        name (str, optional): Name for the operation (optional, default is None).
+                         For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the cosine embedding Loss of Tensor ``input1`` ``input2`` and ``label``.
+            If `reduction` is ``'none'``, the shape of output loss is [N], the same as ``input`` .
+            If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+
+    Examples:
+        .. code-block:: python
+          :name: code-example1
+
+            import paddle
+
+            input1 = paddle.to_tensor([[1.6, 1.2, -0.5], [3.2, 2.6, -5.8]], 'float32')
+            input2 = paddle.to_tensor([[0.5, 0.5, -1.8], [2.3, -1.4, 1.1]], 'float32')
+            label = paddle.to_tensor([1, -1], 'int64')
+
+            output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='mean')
+            print(output)  # [0.21155193]
+
+            output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='sum')
+            print(output)  # [0.42310387]
+
+            output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='none')
+            print(output)  # [0.42310387, 0.        ]
+
+    """
+    if len(label.shape) != 1:
+        raise ValueError(
+            "1D target tensor expected, multi-target not supported")
+
+    if input1.shape != input2.shape:
+        raise ValueError(
+            "the shape of input tensor 1 should be equal to input tensor 2, but found inputs with "
+            "different sizes")
+
+    if len(input1.shape) > 2:
+        raise ValueError(
+            "1D target tensor expects 1D or 2D input tensors, but found inputs with different sizes"
+        )
+
+    if input1.dtype not in [paddle.float32, paddle.float64]:
+        raise ValueError(
+            "The data type of input Variable must be 'float32' or 'float64'")
+    if label.dtype not in [
+            paddle.int32, paddle.int64, paddle.float32, paddle.float64
+    ]:
+        raise ValueError(
+            "The data type of label Variable must be 'int32', 'int64', 'float32', 'float64'"
+        )
+
+    prod_sum = (input1 * input2).sum(axis=-1)
+    mag_square1 = paddle.square(input1).sum(axis=-1) + 10e-12
+    mag_square2 = paddle.square(input2).sum(axis=-1) + 10e-12
+    denom = paddle.sqrt(mag_square1 * mag_square2)
+    cos = prod_sum / denom
+    zeros = paddle.zeros_like(cos)
+    pos = 1 - cos
+    neg = paddle.clip(cos - margin, min=0)
+    out_pos = paddle.where(label == 1, pos, zeros)
+    out_neg = paddle.where(label == -1, neg, zeros)
+    out = out_pos + out_neg
+
+    if reduction == 'none':
+        return out
+    if reduction == 'mean':
+        return paddle.mean(out, name=name)
+    elif reduction == 'sum':
+        return paddle.sum(out, name=name)
+
+
 def soft_margin_loss(input, label, reduction='mean', name=None):
     """
     The API measures the soft margin loss between input predictions ``input``

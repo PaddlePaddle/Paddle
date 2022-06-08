@@ -54,7 +54,9 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
     auto& desired_dev_ctx =
         static_cast<const platform::CUDADeviceContext&>(dev_ctx);
     if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
-      return Alloc(place, size);
+      return paddle::memory::Alloc(desired_dev_ctx.GetPlace(), size,
+                                   phi::Stream(reinterpret_cast<phi::StreamId>(
+                                       desired_dev_ctx.stream())));
     } else {
       return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
           desired_dev_ctx, size);
@@ -127,11 +129,22 @@ DeviceType Place2DeviceType(const platform::Place& place) {
 }
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
+thread_local const std::map<Place,
+                            std::shared_future<std::unique_ptr<DeviceContext>>>*
+    DeviceContextPool::external_device_contexts_ = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   VLOG(6) << "DeviceContextPool Get: " << place;
-  auto it = device_contexts_.find(place);
-  if (it == device_contexts_.end()) {
+  const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+      ptr;
+  if (external_device_contexts_ && external_device_contexts_->count(place)) {
+    ptr = external_device_contexts_;
+  } else {
+    ptr = &device_contexts_;
+  }
+
+  auto it = ptr->find(place);
+  if (it == ptr->end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
         "with WITH_GPU, WITH_XPU, WITH_IPU, WITH_MLU or WITH_ASCEND_CL option "
@@ -141,6 +154,27 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
         place));
   }
   return it->second.get().get();
+}
+
+size_t DeviceContextPool::size() const {
+  if (external_device_contexts_) {
+    return external_device_contexts_->size();
+  }
+  return device_contexts_.size();
+}
+
+const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
+DeviceContextPool::device_contexts() const {
+  if (external_device_contexts_) {
+    return *external_device_contexts_;
+  }
+  return device_contexts_;
+}
+
+void DeviceContextPool::SetDeviceContexts(
+    const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        dev_ctxs) {
+  external_device_contexts_ = dev_ctxs;
 }
 
 template <typename DevCtx>

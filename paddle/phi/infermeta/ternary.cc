@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/ternary.h"
 
+#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
@@ -361,6 +362,122 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
     }
     dst_count->set_dtype(DataType::INT32);
   }
+}
+
+void GroupNormInferMeta(const MetaTensor& x,
+                        const MetaTensor& scale,
+                        const MetaTensor& bias,
+                        float epsilon,
+                        int groups,
+                        const std::string& data_layout_str,
+                        MetaTensor* y,
+                        MetaTensor* mean,
+                        MetaTensor* variance) {
+  PADDLE_ENFORCE_NE(y,
+                    nullptr,
+                    phi::errors::InvalidArgument(
+                        "The y in GroupNormInferMeta can't be nullptr."));
+  PADDLE_ENFORCE_NE(mean,
+                    nullptr,
+                    phi::errors::InvalidArgument(
+                        "The mean in GroupNormInferMeta can't be nullptr."));
+  PADDLE_ENFORCE_NE(
+      variance,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The variance in GroupNormInferMeta can't be nullptr."));
+
+  auto x_dim = x.dims();
+  PADDLE_ENFORCE_GE(
+      x_dim.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Input(X)'s dimension of Op(group_norm) must be "
+          "greater than 1. But received: %u-D Tensor, which shape is [%s].",
+          x_dim.size(),
+          x_dim));
+
+  const DataLayout data_layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+  const int64_t channel_num =
+      (data_layout == DataLayout::kNCHW ? x_dim[1] : x_dim[x_dim.size() - 1]);
+  auto batch_size = x_dim[0];
+  PADDLE_ENFORCE_LE(
+      groups,
+      channel_num,
+      phi::errors::InvalidArgument(
+          "The Attr(groups) of Op(group_norm) must be less than or "
+          "equal to the number of channels. But received: groups "
+          "is [%s], channels is [%s], the Attr(data_layout) "
+          "is [%s]. The error may come from wrong data_layout setting.",
+          groups,
+          channel_num,
+          data_layout_str));
+  PADDLE_ENFORCE_GE(
+      groups,
+      1,
+      phi::errors::InvalidArgument(
+          "The Attr(groups) of Op(group_norm) must be "
+          "greater than or equal to 1. But received: groups is [%s].",
+          groups));
+  PADDLE_ENFORCE_EQ(
+      channel_num % groups,
+      0,
+      phi::errors::InvalidArgument(
+          "Expected number of channels in input to be divisible by "
+          "num_groups, but got input channel is %d and num_groups is %d",
+          channel_num,
+          groups));
+
+  if (scale) {
+    PADDLE_ENFORCE_EQ(
+        scale.dims().size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "The Input(Scale) of Op(group_norm) should be 1-D Tensor. "
+            "But received: %u-D Tensor, the shape of Input(Scale) is [%s].",
+            scale.dims().size(),
+            scale.dims()));
+    PADDLE_ENFORCE_EQ(
+        scale.dims()[0],
+        channel_num,
+        phi::errors::InvalidArgument(
+            "The Input(Scale)'s first dimension size of Op(group_norm) must "
+            "be equal to the number of channels. But received: the "
+            "Input(Scale)'s first dimension size is [%s], the channels is "
+            "[%s], the Attr(data_layout) is [%s]. The error may come "
+            "from wrong data_layout setting.",
+            scale.dims()[0],
+            channel_num,
+            data_layout_str));
+  }
+  if (bias) {
+    PADDLE_ENFORCE_EQ(
+        bias.dims().size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "The Input(Bias) of Op(group_norm) should be 1-D Tensor. "
+            "But received: %u-D Tensor, the shape of Input(Bias) is [%s].",
+            bias.dims().size(),
+            bias.dims()));
+    PADDLE_ENFORCE_EQ(
+        bias.dims()[0],
+        channel_num,
+        phi::errors::InvalidArgument(
+            "The Input(Bias)'s first dimension size of "
+            "Op(group_norm) must be equal to the number of channels. "
+            "But received: the Input(Bias)'s first dimension size is [%s], "
+            "the channels is [%s], the Attr(data_layout) is [%s]. The "
+            "error may come from wrong data_layout setting.",
+            bias.dims()[0],
+            channel_num,
+            data_layout_str));
+  }
+  y->set_dims(x_dim);
+  y->set_dtype(x.dtype());
+  y->share_lod(x);
+  mean->set_dims({batch_size, groups});
+  variance->set_dims({batch_size, groups});
 }
 
 void LayerNormInferMeta(const MetaTensor& x,
