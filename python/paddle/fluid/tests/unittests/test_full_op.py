@@ -23,7 +23,9 @@ from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, _in_eager_mode_
+import os
+import warnings
 
 
 # Test python API
@@ -202,6 +204,18 @@ class TestFullOpError(unittest.TestCase):
                 paddle.full(shape=[shape, 2], dtype="float32", fill_value=1)
 
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
+
+
+# just for check coverage-eager-ci
+class TestEagerMode(unittest.TestCase):
+
+    def test_eager(self):
+        if os.environ.get('FLAGS_enable_eager_mode') == '0':
+            warnings.warn(" FLAGS_enable_eager_mode == 0 ")
+            print("FLAGS_enable_eager_mode == 0")
+        if _in_eager_mode_ == True:
+            warnings.warn(" _in_eager_mode_ is True by default! ")
+            print("_in_eager_mode_ is True by default!")
 
 
 if __name__ == "__main__":
