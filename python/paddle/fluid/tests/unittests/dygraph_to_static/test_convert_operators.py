@@ -51,7 +51,7 @@ class TestConvertCall(unittest.TestCase):
         def forward_not_exist():
             return net()
 
-        with self.assertRaises(TypeError):
+        with self.assertRaises(AttributeError):
             forward_not_exist()
 
 

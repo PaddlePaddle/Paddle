@@ -75,6 +75,9 @@ inline cnnlDataType_t ToCnnlDataType(
     case DataType::FLOAT32:
       type = CNNL_DTYPE_FLOAT;
       break;
+    case DataType::FLOAT64:
+      type = CNNL_DTYPE_DOUBLE;
+      break;
     case DataType::INT8:
       type = CNNL_DTYPE_INT8;
       break;
