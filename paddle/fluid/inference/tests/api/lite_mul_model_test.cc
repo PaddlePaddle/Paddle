@@ -120,35 +120,13 @@ TEST(AnalysisPredictor, lite_xpu) {
 }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-TEST(AnalysisPredictor, thread_local_stream) {
-  const size_t thread_num = 5;
-  std::vector<std::thread> threads(thread_num);
-  Barrier barrier(thread_num);
-  for (size_t i = 0; i < threads.size(); ++i) {
-    threads[i] = std::thread([&barrier, i]() {
-      AnalysisConfig config;
-      config.EnableUseGpu(100, 0);
-      config.SetModel(FLAGS_infer_model + "/" + "mul_model");
-      config.EnableGpuMultiStream();
-      test_predictor(config, &barrier);
-      test_predictor_zero_copy(config);
-    });
-  }
-  for (auto& th : threads) {
-    th.join();
-  }
-}
-
 TEST(AnalysisPredictor, lite_engine) {
   AnalysisConfig config;
-  config.EnableUseGpu(100, 0);
   config.SetModel(FLAGS_infer_model + "/" + "mul_model");
   config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32);
   test_predictor(config);
   test_predictor_zero_copy(config);
 }
-#endif
 
 }  // namespace inference
 }  // namespace paddle
