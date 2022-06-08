@@ -129,11 +129,22 @@ DeviceType Place2DeviceType(const platform::Place& place) {
 }
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
+thread_local const std::map<Place,
+                            std::shared_future<std::unique_ptr<DeviceContext>>>*
+    DeviceContextPool::external_device_contexts_ = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   VLOG(6) << "DeviceContextPool Get: " << place;
-  auto it = device_contexts_.find(place);
-  if (it == device_contexts_.end()) {
+  const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+      ptr;
+  if (external_device_contexts_ && external_device_contexts_->count(place)) {
+    ptr = external_device_contexts_;
+  } else {
+    ptr = &device_contexts_;
+  }
+
+  auto it = ptr->find(place);
+  if (it == ptr->end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
         "with WITH_GPU, WITH_XPU, WITH_IPU, WITH_MLU or WITH_ASCEND_CL option "
@@ -143,6 +154,27 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
         place));
   }
   return it->second.get().get();
+}
+
+size_t DeviceContextPool::size() const {
+  if (external_device_contexts_) {
+    return external_device_contexts_->size();
+  }
+  return device_contexts_.size();
+}
+
+const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
+DeviceContextPool::device_contexts() const {
+  if (external_device_contexts_) {
+    return *external_device_contexts_;
+  }
+  return device_contexts_;
+}
+
+void DeviceContextPool::SetDeviceContexts(
+    const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        dev_ctxs) {
+  external_device_contexts_ = dev_ctxs;
 }
 
 template <typename DevCtx>

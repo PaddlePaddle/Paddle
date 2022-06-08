@@ -1193,7 +1193,9 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
 
       platform::float16 *fp16_acc_grad = nullptr;
       float *master_acc_grad = nullptr;
+      bool use_master_acc_grad = false;
       if (has_fp16_param) {
+        use_master_acc_grad = ctx.Attr<bool>("use_master_acc_grad");
         auto *fp16_acc_grad_t =
             ctx.Output<framework::Tensor>("FP16AccFusedGrad");
         PADDLE_ENFORCE_NOT_NULL(
@@ -1201,13 +1203,18 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                                  "Output(FP16AccFusedGrad) cannot be nullptr "
                                  "when Attr(acc_steps) > 1."));
         if (!fp16_acc_grad_t->IsInitialized()) {
-          fp16_acc_grad_t->Resize({static_cast<int64_t>(3 * fp16_numel)});
+          auto acc_grad_size =
+              use_master_acc_grad ? (3 * fp16_numel) : fp16_numel;
+          fp16_acc_grad_t->Resize({static_cast<int64_t>(acc_grad_size)});
           fp16_acc_grad =
               fp16_acc_grad_t->mutable_data<platform::float16>(place);
         } else {
           fp16_acc_grad = fp16_acc_grad_t->data<platform::float16>();
         }
-        master_acc_grad = reinterpret_cast<float *>(fp16_acc_grad + fp16_numel);
+        if (use_master_acc_grad) {
+          master_acc_grad =
+              reinterpret_cast<float *>(fp16_acc_grad + fp16_numel);
+        }
       }
 
       // Inplace addto
@@ -1222,8 +1229,8 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
       }
 
       if (has_fp16_param) {
-        if (acc_steps == 2) {
-          if (rounded_step == 0) {
+        if (acc_steps == 2 || !use_master_acc_grad) {
+          if (rounded_step != 1) {
             LaunchElementwiseAddWithCastKernel(dev_ctx, fp16_acc_grad,
                                                fp16_grad, fp16_acc_grad,
                                                fp16_numel, stream);
