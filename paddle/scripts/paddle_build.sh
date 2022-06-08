@@ -3300,6 +3300,131 @@ function check_coverage_build() {
     set -x
 }
 
+
+
+function update_cuda() {
+#apt-get remove -y --no-install-recommends     cuda-cudart-10-1=${NV_CUDA_CUDART_VERSION}     cuda-compat-10-1
+#
+#apt-get remove -y --no-install-recommends     cuda-libraries-10-1=${NV_CUDA_LIB_VERSION}     cuda-npp-10-1=${NV_LIBNPP_VERSION}     cuda-nvtx-10-1=${NV_NVTX_VERSION}     cuda-cusparse-10-1=${NV_LIBCUSPARSE_VERSION}     ${NV_LIBCUBLAS_PACKAGE}
+##${NV_LIBNCCL_PACKAGE}
+#
+#apt-get remove -y --no-install-recommends     cuda-nvml-dev-10-1=${NV_NVML_DEV_VERSION}     cuda-command-line-tools-10-1=${NV_CUDA_LIB_VERSION}     cuda-nvprof-10-1=${NV_CUDA_LIB_VERSION}     cuda-npp-dev-10-1=${NV_LIBNPP_DEV_VERSION}     cuda-libraries-dev-10-1=${NV_CUDA_LIB_VERSION}     cuda-minimal-build-10-1=${NV_CUDA_LIB_VERSION}     ${NV_LIBCUBLAS_DEV_PACKAGE}
+#${NV_LIBNCCL_DEV_PACKAGE}
+
+
+rm -rf /usr/local/cuda*
+apt-get clean
+
+
+export CUDA_VERSION=10.2.89
+export NV_NVML_DEV_VERSION=10.2.89-1
+export nv_libnccl_package_name=libnccl2
+export NV_LIBCUBLAS_DEV_VERSION=10.2.2.89-1
+export NV_LIBNPP_VERSION=10.2.89-1
+export NV_CUDNN_VERSION=8.4.0.27
+export NV_LIBNPP_DEV_VERSION=10.2.89-1
+export NV_CUDNN_PACKAGE_NAME=libcudnn8
+export NV_CUDNN_PACKAGE_DEV=libcudnn8-dev=8.4.0.27-1+cuda10.2
+export NV_LIBNCCL_DEV_VERSION=2.12.10-1
+export NV_CUDA_LIB_VERSION=10.2.89-1
+export NV_CUDNN_PACKAGE=libcudnn8=8.4.0.27-1+cuda10.2
+export NV_NVML_DEV_VERSION=10.2.89-1
+export NVIDIA_VISIBLE_DEVICES=all
+export NV_LIBNCCL_PACKAGE_VERSION=2.12.10-1
+export NV_CUDNN_PACKAGE_VERSION=8.4.0.27-1
+export NV_NVTX_VERSION=10.2.89-1
+export NVIDIA_DRIVER_CAPABILITIES=compute,utility
+export NV_LIBNCCL_DEV_PACKAGE=libnccl-dev=2.12.10-1+cuda10.2
+export NV_LIBCUSPARSE_VERSION=10.2.89-1
+export NV_LIBCUBLAS_VERSION=10.2.2.89-1
+export NV_CUDA_CUDART_VERSION=10.2.89-1
+export NVARCH=x86_64
+export NV_CUDA_CUDART_DEV_VERSION=10.2.89-1
+export NV_LIBCUBLAS_PACKAGE=libcublas10=10.2.2.89-1
+export NV_LIBCUBLAS_PACKAGE_NAME=libcublas10
+export NV_LIBCUSPARSE_DEV_VERSION=10.2.89-1
+export NV_LIBNCCL_PACKAGE=libnccl2=2.12.10-1+cuda10.2
+export NV_LIBCUBLAS_DEV_PACKAGE_NAME=libcublas-dev
+export NV_LIBNCCL_DEV_PACKAGE_NAME=libnccl-dev
+export NV_LIBCUBLAS_DEV_PACKAGE=libcublas-dev=10.2.2.89-1
+
+
+
+export NVARCH=x86_64
+#export NVIDIA_REQUIRE_CUDA=cuda>=10.2 brand=tesla,driver>=418,driver<419
+export NV_CUDA_CUDART_VERSION=10.2.89-1
+export CUDA_VERSION=10.2.89
+#export PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+#export LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+export NVIDIA_VISIBLE_DEVICES=all
+export NVIDIA_DRIVER_CAPABILITIES=compute,utility
+export NV_CUDA_LIB_VERSION=10.2.89-1
+export NV_NVTX_VERSION=10.2.89-1
+export NV_LIBNPP_VERSION=10.2.89-1
+export NV_LIBCUSPARSE_VERSION=10.2.89-1
+export NV_LIBCUBLAS_PACKAGE_NAME=libcublas10
+export NV_LIBCUBLAS_VERSION=10.2.2.89-1
+export NV_LIBCUBLAS_PACKAGE=libcublas10=10.2.2.89-1
+export NV_LIBNCCL_PACKAGE_NAME=libnccl2
+export NV_LIBNCCL_PACKAGE_VERSION=2.12.10-1
+export NCCL_VERSION=2.12.10
+export NV_LIBNCCL_PACKAGE=libnccl2=2.12.10-1+cuda10.2
+export NV_CUDA_LIB_VERSION=10.2.89-1
+export NV_CUDA_CUDART_DEV_VERSION=10.2.89-1
+export NV_NVML_DEV_VERSION=10.2.89-1
+export NV_LIBCUSPARSE_DEV_VERSION=10.2.89-1
+export NV_LIBNPP_DEV_VERSION=10.2.89-1
+export NV_LIBCUBLAS_DEV_PACKAGE_NAME=libcublas-dev
+export NV_LIBCUBLAS_DEV_VERSION=10.2.2.89-1
+export NV_LIBCUBLAS_DEV_PACKAGE=libcublas-dev=10.2.2.89-1
+export NV_LIBNCCL_DEV_PACKAGE_NAME=libnccl-dev
+export NV_LIBNCCL_DEV_VERSION=2.12.10-1
+export NCCL_VERSION=2.12.10-1
+export NV_LIBNCCL_DEV_PACKAGE=libnccl-dev=2.12.10-1+cuda10.2
+#export LIBRARY_PATH=/usr/local/cuda/lib64/stubs
+export NV_CUDNN_PACKAGE_VERSION=8.4.0.27-1
+export NV_CUDNN_VERSION=8.4.0.27
+export NV_CUDNN_PACKAGE_NAME=libcudnn8
+export NV_CUDNN_PACKAGE=libcudnn8=8.4.0.27-1+cuda10.2
+export NV_CUDNN_PACKAGE_DEV=libcudnn8-dev=8.4.0.27-1+cuda10.2
+export CUDNN_VERSION=8.4.0.27
+
+
+
+#RUN |1 TARGETARCH=amd64 /bin/sh -c apt-get update && apt-get install -y --no-install-recommends     ca-certificates apt-transport-https gnupg-curl &&     NVIDIA_GPGKEY_SUM=a21c1a0b18a4196fa901b833e13c4fa64f094d7d9e8a6495318e7255f0ef23d1 &&     NVIDIA_GPGKEY_FPR=eb693b3035cd5710e231e123a4b469963bf863cc &&     apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/${NVARCH}/3bf863cc.pub &&     apt-key adv --export --no-emit-version -a $NVIDIA_GPGKEY_FPR | tail -n +5 > cudasign.pub &&     echo "$NVIDIA_GPGKEY_SUM  cudasign.pub" | sha256sum -c --strict - && rm cudasign.pub &&     echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/${NVARCH} /" > /etc/apt/sources.list.d/cuda.list &&     apt-get purge --auto-remove -y gnupg-curl     && rm -rf /var/lib/apt/lists/* # buildkit
+apt-get update
+(apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     ca-certificates apt-transport-https gnupg-curl &&     NVIDIA_GPGKEY_SUM=a21c1a0b18a4196fa901b833e13c4fa64f094d7d9e8a6495318e7255f0ef23d1 &&     NVIDIA_GPGKEY_FPR=eb693b3035cd5710e231e123a4b469963bf863cc &&     apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/${NVARCH}/3bf863cc.pub &&     apt-key adv --export --no-emit-version -a $NVIDIA_GPGKEY_FPR | tail -n +5 > cudasign.pub &&     echo "$NVIDIA_GPGKEY_SUM  cudasign.pub" | sha256sum -c --strict - && rm cudasign.pub &&     echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/${NVARCH} /" > /etc/apt/sources.list.d/cuda.list) || date
+
+
+#apt-get -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true --allow-unauthenticated update
+#apt-get update
+
+apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     cuda-cudart-10-2=${NV_CUDA_CUDART_VERSION} cuda-compat-10-2 
+
+ln -s cuda-10.2 /usr/local/cuda
+
+
+apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     cuda-libraries-10-2=${NV_CUDA_LIB_VERSION}     cuda-npp-10-2=${NV_LIBNPP_VERSION}     cuda-nvtx-10-2=${NV_NVTX_VERSION}     cuda-cusparse-10-2=${NV_LIBCUSPARSE_VERSION}     ${NV_LIBCUBLAS_PACKAGE} ${NV_LIBNCCL_PACKAGE}
+
+#apt-mark hold ${NV_LIBNCCL_PACKAGE_NAME} ${NV_LIBCUBLAS_PACKAGE_NAME}
+
+apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     cuda-nvml-dev-10-2=${NV_NVML_DEV_VERSION}     cuda-command-line-tools-10-2=${NV_CUDA_LIB_VERSION}     cuda-nvprof-10-2=${NV_CUDA_LIB_VERSION}     cuda-npp-dev-10-2=${NV_LIBNPP_DEV_VERSION}     cuda-libraries-dev-10-2=${NV_CUDA_LIB_VERSION}     cuda-minimal-build-10-2=${NV_CUDA_LIB_VERSION}     ${NV_LIBCUBLAS_DEV_PACKAGE} ${NV_LIBNCCL_DEV_PACKAGE}
+
+
+
+apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     ${NV_CUDNN_PACKAGE}     ${NV_CUDNN_PACKAGE_DEV}  
+
+
+wget https://sys-p0.bj.bcebos.com/paddle-qa/fullchain_ce_test/trt/TensorRT-7.2.3.4.Ubuntu-16.04.x86_64-gnu.cuda-10.2.cudnn8.1.tar.gz --no-check-certificate
+tar -zxf TensorRT-7.2.3.4.Ubuntu-16.04.x86_64-gnu.cuda-10.2.cudnn8.1.tar.gz -C /usr/local
+cp -rf /usr/local/TensorRT-7.2.3.4/include/* /usr/include/ && cp -rf /usr/local/TensorRT-7.2.3.4/lib/* /usr/lib/
+
+}
+
+
+
+
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -3416,6 +3541,7 @@ function main() {
         parallel_test
         ;;
       cicheck_coverage)
+        update_cuda
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
@@ -3424,11 +3550,13 @@ function main() {
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       cpu_cicheck_coverage)
+        update_cuda
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
         ;;
       gpu_cicheck_coverage)
+        update_cuda
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
@@ -3452,6 +3580,7 @@ function main() {
         assert_api_spec_approvals
         ;;
       test_inference)
+        update_cuda
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
         if [ "${WITH_PYTHON}" == "OFF" ] ; then
             python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
@@ -3464,6 +3593,7 @@ function main() {
         check_approvals_of_unittest 3 
         ;;
       build_inference)
+        update_cuda
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
         if [ "${WITH_PYTHON}" == "OFF" ] ; then
             python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
@@ -3471,6 +3601,7 @@ function main() {
         gen_fluid_lib ${parallel_number}
         ;;
       gpu_inference)
+        update_cuda
         test_fluid_lib
         test_go_inference_api
         check_approvals_of_unittest 3
@@ -3598,125 +3729,6 @@ function main() {
       fi
       echo "paddle_build script finished as expected"
 }
-
-
-
-
-#apt-get remove -y --no-install-recommends     cuda-cudart-10-1=${NV_CUDA_CUDART_VERSION}     cuda-compat-10-1
-#
-#apt-get remove -y --no-install-recommends     cuda-libraries-10-1=${NV_CUDA_LIB_VERSION}     cuda-npp-10-1=${NV_LIBNPP_VERSION}     cuda-nvtx-10-1=${NV_NVTX_VERSION}     cuda-cusparse-10-1=${NV_LIBCUSPARSE_VERSION}     ${NV_LIBCUBLAS_PACKAGE}
-##${NV_LIBNCCL_PACKAGE}
-#
-#apt-get remove -y --no-install-recommends     cuda-nvml-dev-10-1=${NV_NVML_DEV_VERSION}     cuda-command-line-tools-10-1=${NV_CUDA_LIB_VERSION}     cuda-nvprof-10-1=${NV_CUDA_LIB_VERSION}     cuda-npp-dev-10-1=${NV_LIBNPP_DEV_VERSION}     cuda-libraries-dev-10-1=${NV_CUDA_LIB_VERSION}     cuda-minimal-build-10-1=${NV_CUDA_LIB_VERSION}     ${NV_LIBCUBLAS_DEV_PACKAGE}
-#${NV_LIBNCCL_DEV_PACKAGE}
-
-
-rm -rf /usr/local/cuda*
-apt-get clean
-
-
-export CUDA_VERSION=10.2.89
-export NV_NVML_DEV_VERSION=10.2.89-1
-export nv_libnccl_package_name=libnccl2
-export NV_LIBCUBLAS_DEV_VERSION=10.2.2.89-1
-export NV_LIBNPP_VERSION=10.2.89-1
-export NV_CUDNN_VERSION=8.4.0.27
-export NV_LIBNPP_DEV_VERSION=10.2.89-1
-export NV_CUDNN_PACKAGE_NAME=libcudnn8
-export NV_CUDNN_PACKAGE_DEV=libcudnn8-dev=8.4.0.27-1+cuda10.2
-export NV_LIBNCCL_DEV_VERSION=2.12.10-1
-export NV_CUDA_LIB_VERSION=10.2.89-1
-export NV_CUDNN_PACKAGE=libcudnn8=8.4.0.27-1+cuda10.2
-export NV_NVML_DEV_VERSION=10.2.89-1
-export NVIDIA_VISIBLE_DEVICES=all
-export NV_LIBNCCL_PACKAGE_VERSION=2.12.10-1
-export NV_CUDNN_PACKAGE_VERSION=8.4.0.27-1
-export NV_NVTX_VERSION=10.2.89-1
-export NVIDIA_DRIVER_CAPABILITIES=compute,utility
-export NV_LIBNCCL_DEV_PACKAGE=libnccl-dev=2.12.10-1+cuda10.2
-export NV_LIBCUSPARSE_VERSION=10.2.89-1
-export NV_LIBCUBLAS_VERSION=10.2.2.89-1
-export NV_CUDA_CUDART_VERSION=10.2.89-1
-export NVARCH=x86_64
-export NV_CUDA_CUDART_DEV_VERSION=10.2.89-1
-export NV_LIBCUBLAS_PACKAGE=libcublas10=10.2.2.89-1
-export NV_LIBCUBLAS_PACKAGE_NAME=libcublas10
-export NV_LIBCUSPARSE_DEV_VERSION=10.2.89-1
-export NV_LIBNCCL_PACKAGE=libnccl2=2.12.10-1+cuda10.2
-export NV_LIBCUBLAS_DEV_PACKAGE_NAME=libcublas-dev
-export NV_LIBNCCL_DEV_PACKAGE_NAME=libnccl-dev
-export NV_LIBCUBLAS_DEV_PACKAGE=libcublas-dev=10.2.2.89-1
-
-
-
-export NVARCH=x86_64
-export NVIDIA_REQUIRE_CUDA=cuda>=10.2 brand=tesla,driver>=418,driver<419
-export NV_CUDA_CUDART_VERSION=10.2.89-1
-export CUDA_VERSION=10.2.89
-#export PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-#export LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
-export NVIDIA_VISIBLE_DEVICES=all
-export NVIDIA_DRIVER_CAPABILITIES=compute,utility
-export NV_CUDA_LIB_VERSION=10.2.89-1
-export NV_NVTX_VERSION=10.2.89-1
-export NV_LIBNPP_VERSION=10.2.89-1
-export NV_LIBCUSPARSE_VERSION=10.2.89-1
-export NV_LIBCUBLAS_PACKAGE_NAME=libcublas10
-export NV_LIBCUBLAS_VERSION=10.2.2.89-1
-export NV_LIBCUBLAS_PACKAGE=libcublas10=10.2.2.89-1
-export NV_LIBNCCL_PACKAGE_NAME=libnccl2
-export NV_LIBNCCL_PACKAGE_VERSION=2.12.10-1
-export NCCL_VERSION=2.12.10
-export NV_LIBNCCL_PACKAGE=libnccl2=2.12.10-1+cuda10.2
-export NV_CUDA_LIB_VERSION=10.2.89-1
-export NV_CUDA_CUDART_DEV_VERSION=10.2.89-1
-export NV_NVML_DEV_VERSION=10.2.89-1
-export NV_LIBCUSPARSE_DEV_VERSION=10.2.89-1
-export NV_LIBNPP_DEV_VERSION=10.2.89-1
-export NV_LIBCUBLAS_DEV_PACKAGE_NAME=libcublas-dev
-export NV_LIBCUBLAS_DEV_VERSION=10.2.2.89-1
-export NV_LIBCUBLAS_DEV_PACKAGE=libcublas-dev=10.2.2.89-1
-export NV_LIBNCCL_DEV_PACKAGE_NAME=libnccl-dev
-export NV_LIBNCCL_DEV_VERSION=2.12.10-1
-export NCCL_VERSION=2.12.10-1
-export NV_LIBNCCL_DEV_PACKAGE=libnccl-dev=2.12.10-1+cuda10.2
-#export LIBRARY_PATH=/usr/local/cuda/lib64/stubs
-export NV_CUDNN_PACKAGE_VERSION=8.4.0.27-1
-export NV_CUDNN_VERSION=8.4.0.27
-export NV_CUDNN_PACKAGE_NAME=libcudnn8
-export NV_CUDNN_PACKAGE=libcudnn8=8.4.0.27-1+cuda10.2
-export NV_CUDNN_PACKAGE_DEV=libcudnn8-dev=8.4.0.27-1+cuda10.2
-export CUDNN_VERSION=8.4.0.27
-
-
-
-#RUN |1 TARGETARCH=amd64 /bin/sh -c apt-get update && apt-get install -y --no-install-recommends     ca-certificates apt-transport-https gnupg-curl &&     NVIDIA_GPGKEY_SUM=a21c1a0b18a4196fa901b833e13c4fa64f094d7d9e8a6495318e7255f0ef23d1 &&     NVIDIA_GPGKEY_FPR=eb693b3035cd5710e231e123a4b469963bf863cc &&     apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/${NVARCH}/3bf863cc.pub &&     apt-key adv --export --no-emit-version -a $NVIDIA_GPGKEY_FPR | tail -n +5 > cudasign.pub &&     echo "$NVIDIA_GPGKEY_SUM  cudasign.pub" | sha256sum -c --strict - && rm cudasign.pub &&     echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/${NVARCH} /" > /etc/apt/sources.list.d/cuda.list &&     apt-get purge --auto-remove -y gnupg-curl     && rm -rf /var/lib/apt/lists/* # buildkit
-apt-get update
-(apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     ca-certificates apt-transport-https gnupg-curl &&     NVIDIA_GPGKEY_SUM=a21c1a0b18a4196fa901b833e13c4fa64f094d7d9e8a6495318e7255f0ef23d1 &&     NVIDIA_GPGKEY_FPR=eb693b3035cd5710e231e123a4b469963bf863cc &&     apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/${NVARCH}/3bf863cc.pub &&     apt-key adv --export --no-emit-version -a $NVIDIA_GPGKEY_FPR | tail -n +5 > cudasign.pub &&     echo "$NVIDIA_GPGKEY_SUM  cudasign.pub" | sha256sum -c --strict - && rm cudasign.pub &&     echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/${NVARCH} /" > /etc/apt/sources.list.d/cuda.list) || date
-
-
-#apt-get -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true --allow-unauthenticated update
-#apt-get update
-
-apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     cuda-cudart-10-2=${NV_CUDA_CUDART_VERSION} cuda-compat-10-2 
-
-ln -s cuda-10.2 /usr/local/cuda
-
-
-apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     cuda-libraries-10-2=${NV_CUDA_LIB_VERSION}     cuda-npp-10-2=${NV_LIBNPP_VERSION}     cuda-nvtx-10-2=${NV_NVTX_VERSION}     cuda-cusparse-10-2=${NV_LIBCUSPARSE_VERSION}     ${NV_LIBCUBLAS_PACKAGE} ${NV_LIBNCCL_PACKAGE}
-
-#apt-mark hold ${NV_LIBNCCL_PACKAGE_NAME} ${NV_LIBCUBLAS_PACKAGE_NAME}
-
-apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     cuda-nvml-dev-10-2=${NV_NVML_DEV_VERSION}     cuda-command-line-tools-10-2=${NV_CUDA_LIB_VERSION}     cuda-nvprof-10-2=${NV_CUDA_LIB_VERSION}     cuda-npp-dev-10-2=${NV_LIBNPP_DEV_VERSION}     cuda-libraries-dev-10-2=${NV_CUDA_LIB_VERSION}     cuda-minimal-build-10-2=${NV_CUDA_LIB_VERSION}     ${NV_LIBCUBLAS_DEV_PACKAGE} ${NV_LIBNCCL_DEV_PACKAGE}
-
-
-
-apt-get -o APT::Get::AllowUnauthenticated=true install -y --no-install-recommends     ${NV_CUDNN_PACKAGE}     ${NV_CUDNN_PACKAGE_DEV}  
-
-
-wget https://sys-p0.bj.bcebos.com/paddle-qa/fullchain_ce_test/trt/TensorRT-7.2.3.4.Ubuntu-16.04.x86_64-gnu.cuda-10.2.cudnn8.1.tar.gz --no-check-certificate
-tar -zxf TensorRT-7.2.3.4.Ubuntu-16.04.x86_64-gnu.cuda-10.2.cudnn8.1.tar.gz -C /usr/local
-cp -rf /usr/local/TensorRT-7.2.3.4/include/* /usr/include/ && cp -rf /usr/local/TensorRT-7.2.3.4/lib/* /usr/lib/
 
 
 
