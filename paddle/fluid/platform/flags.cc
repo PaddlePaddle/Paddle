@@ -97,25 +97,6 @@ PADDLE_DEFINE_EXPORTED_bool(
  * cards
  * Note: A list of device ids separated by comma, like: 0,1,2,3
  */
-PADDLE_DEFINE_EXPORTED_int32(
-    batch_num, 0,
-    "A list of device ids separated by comma, like: 0,1,2,3. "
-    "This option is useful when doing multi process training and "
-    "each process have only one device (GPU). If you want to use "
-    "all visible devices, set this to empty string. NOTE: the "
-    "reason of doing this is that we want to use P2P communication"
-    "between GPU devices, use CUDA_VISIBLE_DEVICES can only use"
-    "share-memory only.");
-
-/**
- * CUDA related FLAG
- * Name: FLAGS_selected_gpus
- * Since Version: 1.3.0
- * Value Range: integer list separated by comma, default empty list
- * Example: FLAGS_selected_gpus=0,1,2,3,4,5,6,7 to train or predict with 0~7 gpu
- * cards
- * Note: A list of device ids separated by comma, like: 0,1,2,3
- */
 PADDLE_DEFINE_EXPORTED_string(
     selected_gpus, "",
     "A list of device ids separated by comma, like: 0,1,2,3. "

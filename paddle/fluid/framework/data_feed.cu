@@ -26,8 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 
-DECLARE_int32(batch_num);
-
 namespace paddle {
 namespace framework {
 
@@ -349,15 +347,7 @@ int GraphDataGenerator::FillInsBuf() {
 }
 
 
-int times = 0;
 int GraphDataGenerator::GenerateBatch() {
-  times += 1;
-  VLOG(0) << "Begin batch " << times;
-  if (times > FLAGS_batch_num) {
-      VLOG(0) << "close batch";
-      return 0;
-  }
-
   platform::CUDADeviceGuard guard(gpuid_);
   int res = 0;
   while (ins_buf_pair_len_ < batch_size_) {
