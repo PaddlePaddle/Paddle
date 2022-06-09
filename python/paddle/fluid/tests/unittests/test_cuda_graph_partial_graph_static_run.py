@@ -76,7 +76,7 @@ class TestCudaGraphAttrAll(unittest.TestCase):
         block = transform_program.global_block()
         run_program_op_num = 0
         for op in block.ops:
-            if op.type == 'run_program_op':
+            if op.type == 'run_program':
                 run_program_op_num += 1
         assert run_program_op_num == 4
 

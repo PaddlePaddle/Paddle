@@ -116,6 +116,10 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int64_t>("cuda_graph_pool_id",
                      "(int64_t, default 0) The CUDA Graph memory pool ID.")
         .SetDefault(0);
+    AddAttr<framework::Scope*>(
+        "inner_scope",
+        "The scope to run the program, used for cuda graph static mode.")
+        .SetDefault(nullptr);
     AddComment(R"DOC(
 RunProgram operator.
 

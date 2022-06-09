@@ -257,7 +257,11 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 
     auto input_var_names = ctx.InputNames("X");
     auto output_var_names = ctx.OutputNames("Out");
-    auto dout_var_names = ctx.OutputNames("DOut");
+    std::vector<std::string> dout_var_names;
+    if (!dout_vars.empty()) {
+      // DOut is dispensable, may be empty
+      dout_var_names = ctx.OutputNames("DOut");
+    }
 
     // current program may not hold parameters
     std::vector<std::string> param_names;
@@ -272,10 +276,20 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     // NOTE(chenweihang): In order not to add new variable type, use vector
     // here. Originally, here can use scope directly.
     auto *out_scope_vec = ctx.Output<StepScopeVar>("OutScope");
-    PADDLE_ENFORCE_EQ(
-        out_scope_vec->size(), 1,
-        platform::errors::InvalidArgument(
-            "The OutScope of RunProgramGradOp should only hold one scope."));
+    framework::Scope *inner_scope = nullptr;
+    if (out_scope_vec->size() == 0) {
+      // for cuda graph usage
+      inner_scope = ctx.Attr<framework::Scope *>("inner_scope");
+      PADDLE_ENFORCE_NE(
+          inner_scope, nullptr,
+          platform::errors::InvalidArgument(
+              "If not provide OutScope, inner_scope should be provided."));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          out_scope_vec->size(), 1,
+          platform::errors::InvalidArgument(
+              "The OutScope of RunProgramGradOp should only hold one scope."));
+    }
 
     // Step 2. prepare executor and init persistable variables
 
@@ -284,7 +298,8 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     // Learning. Tensor data in multi-step training should be saved into single
     // scope separately. Otherwise, the gradients can be miscalculated because
     // always using the Tensor data of the last step in forward.
-    framework::Scope *global_inner_scope = out_scope_vec->front();
+    framework::Scope *global_inner_scope =
+        out_scope_vec->size() == 0 ? inner_scope : out_scope_vec->front();
     VLOG(2) << "The number of sub scopes before forward: "
             << out_scope_vec->front()->kids().size();
     framework::Scope &scope = global_inner_scope->NewScope();
