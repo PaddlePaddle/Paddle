@@ -84,14 +84,14 @@ void CacheManager::build_batch_fid_seq(std::deque<Record> & recs) {
   int n_batch_sz = batch_sz_ * worker_num_;
   int groups = size % n_batch_sz == 0 ? (size / n_batch_sz) : (size / n_batch_sz) + 1;
   std::vector<std::shared_ptr<std::vector<uint64_t>>> n_batch_bfidseq(groups, nullptr);
-  VLOG(0) << "build_batch_fid_seq: in size:" << size;
+  VLOG(0) << "build_batch_fid_seq: in size:" << size << "groups: " << groups;
   // fill n_batch_bfidseq vector by multi-thread
   std::vector<std::thread> threads(thread_num_);
   for (int i = 0; i < thread_num_; ++i) {
     threads[i] = std::thread([this, i, size, &recs, n_batch_sz, &n_batch_bfidseq]() {
       VLOG(0) << "build_batch_fid_seq: in thread-" << i; 
       int my_group = 0;
-      for (int batch_first = i * n_batch_sz; batch_first < size; batch_first += thread_num * n_batch_sz) {
+      for (int batch_first = i * n_batch_sz; batch_first < size; batch_first += thread_num_ * n_batch_sz) {
         int current_batch_sz = std::min(n_batch_sz, size - batch_first);
         std::shared_ptr<std::vector<uint64_t>> current_bfid_seq = std::make_shared<std::vector<uint64_t>>();
         std::set<uint64_t> current_bfid_set;
@@ -109,17 +109,25 @@ void CacheManager::build_batch_fid_seq(std::deque<Record> & recs) {
         //}
         n_batch_bfidseq[my_group * thread_num_ + i] = current_bfid_seq;
         ++my_group;
-        VLOG(0) << "build_batch_fid_seq:" 
-                << recs.size() << "|"
-                << fid_seq_channel_->Size() << "|"
-                << batch_first << "|" 
-                << current_batch_sz << "|" 
-                << current_bfid_seq->size();
+        // VLOG(0) << "build_batch_fid_seq:" 
+        //         << recs.size() << "|"
+        //         << fid_seq_channel_->Size() << "|"
+        //         << batch_first << "|" 
+        //         << current_batch_sz << "|" 
+        //         << current_bfid_seq->size();
         }
     });
   }
   for (auto & thd : threads) {
     thd.join();
+  }
+  // check for debug
+  for (auto group_bfid_ptr : n_batch_bfidseq) {
+    if (group_bfid_ptr == nullptr) {
+      VLOG(0) << "err: bfid_ptr is nullptr"; 
+    } else {
+      VLOG(0) << "group size: " << group_bfid_ptr->size();
+    }
   }
   // write n_batch_bfidseq to channel
   fid_seq_channel_->Write(groups, &n_batch_bfidseq[0]);
