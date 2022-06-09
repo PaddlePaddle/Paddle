@@ -115,6 +115,12 @@ file(
 # file(GLOB kernel_kps "kps/*.cu")
 file(GLOB kernel_xpu "xpu/*.cc")
 
+if(WITH_XPU_KP)
+  file(GLOB kernel_xpu_kps "kps/*.cu")
+else()
+  set(kernel_xpu_kps)
+endif()
+
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")
 target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
@@ -132,7 +138,7 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(WITH_XPU)
-  add_library(phi_xpu ${kernel_xpu})
+  xpu_add_library(phi_xpu ${kernel_xpu} ${kernel_xpu_kps})
   kernel_declare(${kernel_xpu})
   target_link_libraries(phi_xpu ${COMMON_KERNEL_DEPS})
   set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu phi_xpu)
