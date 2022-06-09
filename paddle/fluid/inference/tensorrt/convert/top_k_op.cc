@@ -46,8 +46,7 @@ class TopKOpConverter : public OpConverter {
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
 
-    const nvinfer1::ITensor* input_tensor =
-        engine_->GetITensor(op_desc.Input("X")[0]);
+    auto* input_tensor = engine_->GetITensor(op_desc.Input("X")[0]);
 
     const int k = op_desc.HasAttr("k")
                       ? BOOST_GET_CONST(int, op_desc.GetAttr("k"))
@@ -55,9 +54,9 @@ class TopKOpConverter : public OpConverter {
 
     nvinfer1::Dims input_dims = input_tensor->getDimensions();
     int axis = input_dims.nbDims;
-    nvinfer1::ITopKLayer* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, TopK, *const_cast<nvinfer1::ITensor*>(input_tensor),
-        nvinfer1::TopKOperation::kMAX, k, 1 << (axis - 1));
+    nvinfer1::ITopKLayer* layer =
+        TRT_ENGINE_ADD_LAYER(engine_, TopK, *input_tensor,
+                             nvinfer1::TopKOperation::kMAX, k, 1 << (axis - 1));
 
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Out").front());
@@ -75,8 +74,7 @@ class TopKv2OpConverter : public OpConverter {
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
 
-    const nvinfer1::ITensor* input_tensor =
-        engine_->GetITensor(op_desc.Input("X")[0]);
+    auto* input_tensor = engine_->GetITensor(op_desc.Input("X")[0]);
 
     const int k = op_desc.HasAttr("k")
                       ? BOOST_GET_CONST(int, op_desc.GetAttr("k"))
@@ -91,13 +89,11 @@ class TopKv2OpConverter : public OpConverter {
         largest ? nvinfer1::TopKOperation::kMAX : nvinfer1::TopKOperation::kMIN;
     nvinfer1::ITopKLayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      layer = TRT_ENGINE_ADD_LAYER(
-          engine_, TopK, *const_cast<nvinfer1::ITensor*>(input_tensor), flag, k,
-          1 << axis);
+      layer = TRT_ENGINE_ADD_LAYER(engine_, TopK, *input_tensor, flag, k,
+                                   1 << axis);
     } else {
-      layer = TRT_ENGINE_ADD_LAYER(
-          engine_, TopK, *const_cast<nvinfer1::ITensor*>(input_tensor), flag, k,
-          1 << (axis - 1));
+      layer = TRT_ENGINE_ADD_LAYER(engine_, TopK, *input_tensor, flag, k,
+                                   1 << (axis - 1));
     }
 
     std::vector<std::string> output_names;
