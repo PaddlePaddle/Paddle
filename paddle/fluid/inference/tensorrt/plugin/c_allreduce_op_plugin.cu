@@ -37,7 +37,7 @@ inline ncclDataType_t NvInferDtypeToNCCLDType(nvinfer1::DataType type) {
         "This datatype in nccl is not supported."));
   }
 }
-
+#endif
 int CAllReducePlugin::initialize() TRT_NOEXCEPT { return 0; }
 
 bool CAllReducePlugin::supportsFormat(
@@ -81,6 +81,7 @@ int CAllReducePlugin::enqueue(int batchSize, const void* const* inputs,
                               void* workspace,
                               cudaStream_t stream) TRT_NOEXCEPT {
   VLOG(3) << "-----------------CAllReducePlugin--------------";
+#if defined(PADDLE_WITH_NCCL)
   const auto& input_dims = this->getInputDims(0);
   size_t numel = 1;
   for (int i = 0; i < input_dims.nbDims; i++) {
@@ -124,6 +125,7 @@ int CAllReducePlugin::enqueue(int batchSize, const void* const* inputs,
   cudaStream_t custream = use_calc_stream_ ? stream : custream = comm->stream();
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
       sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
+#endif
   return (cudaGetLastError() != cudaSuccess);
 }
 
@@ -192,6 +194,7 @@ int CAllReducePluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc* input_desc,
     const nvinfer1::PluginTensorDesc* output_desc, const void* const* inputs,
     void* const* outputs, void* workspace, cudaStream_t stream) TRT_NOEXCEPT {
+#if defined(PADDLE_WITH_NCCL)
   auto input_dims = input_desc[0].dims;
   size_t numel = ProductDim(input_dims);
 
@@ -226,9 +229,10 @@ int CAllReducePluginDynamic::enqueue(
   cudaStream_t custream = use_calc_stream_ ? stream : comm->stream();
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
       sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
+#endif
   return (cudaGetLastError() != cudaSuccess);
 }
-#endif
+
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference

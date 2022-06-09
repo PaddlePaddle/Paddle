@@ -231,7 +231,7 @@ if(NOT WITH_DISTRIBUTE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
   list(REMOVE_ITEM TEST_OPS test_fleet_utils)
   list(REMOVE_ITEM TEST_OPS test_collective_cpu_barrier_with_gloo)
-
+  list(REMOVE_ITEM TEST_OPS test_delete_c_identity_op_pass)
   # TODO: Fix these unittests failed on Windows
   list(REMOVE_ITEM TEST_OPS test_fake_init_op)
 endif()
@@ -244,6 +244,7 @@ endif()
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_complex_matmul)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
+  list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fleet_checkpoint)

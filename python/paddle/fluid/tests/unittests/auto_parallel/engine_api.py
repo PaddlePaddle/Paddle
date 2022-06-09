@@ -14,7 +14,7 @@
 
 import unittest
 import time
-import paddle.fluid as fluid
+import tempfile
 import copy
 import os
 import numpy as np
@@ -133,18 +133,22 @@ def train():
     train_dataset = MyDataset(batch_num * batch_size)
     engine.fit(train_dataset,
                batch_size=batch_size,
-               steps_per_epoch=batch_num * batch_size)
+               steps_per_epoch=batch_num * batch_size,
+               fetch_list=['label'])
 
     # eval
     eval_dataset = MyDataset(batch_size)
-    engine.evaluate(eval_dataset, batch_size)
+    engine.evaluate(eval_dataset, batch_size, fetch_list=['label'])
 
     # predict
     test_dataset = MyDataset(batch_size)
-    engine.predict(test_dataset, batch_size)
+    engine.predict(test_dataset, batch_size, fetch_list=['label'])
 
     # save
-    engine.save('./mlp_inf', training=False, mode='predict')
+    temp_dir = tempfile.TemporaryDirectory()
+    model_filename = os.path.join(temp_dir.name, 'mlp_inf')
+    engine.save(model_filename, training=False, mode='predict')
+    temp_dir.cleanup()
 
 
 if __name__ == "__main__":
