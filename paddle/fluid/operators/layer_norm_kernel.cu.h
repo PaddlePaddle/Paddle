@@ -1028,30 +1028,56 @@ __global__ void LayerNormBackwardComputeGradInput(
     const T *k_dout = dout + i1 * n2;
     constexpr int numx = BDIMX * BDIMY;
     const int thrx = threadIdx.x + threadIdx.y * BDIMX;
+
+    using VecU = phi::AlignedVector<U, 4>;
+    VecT *k_u_dout = static_cast<VecT *>(k_dout);
+    VecT *k_u_input = static_cast<VecT *>(k_input);
+
     if (gamma != NULL) {
       int l = 4 * thrx;
+      using VecGammaT =
+          phi::AlignedVector<LayerNormScaleBiasT<T, U, ScaleBiasSameTypeX>, 4>;
+      VecGammaT *k_u_gamma = static_cast<VecGammaT *>(gamma);
+
       for (; l + 3 < n2; l += 4 * numx) {
+        VecT vec_c_h = k_u_input[threadIdx.x];
+        VecT vec_c_loss = k_u_dout[threadIdx.x];
+        VecGammaT vec_gamma = k_u_gamma[threadIdx.x];
+
         for (int k = 0; k < 4; ++k) {
-          const U c_h = static_cast<U>(k_input[l + k]);
-          const U c_loss = static_cast<U>(k_dout[l + k]);
-          sum_loss1 += c_loss * static_cast<U>(gamma[l + k]);
+          // const U c_h = static_cast<U>(k_input[l + k]);
+          // const U c_loss = static_cast<U>(k_dout[l + k]);
+          // sum_loss1 += c_loss * static_cast<U>(gamma[l + k]);
+          // sum_loss2 +=
+          // c_loss * static_cast<U>(gamma[l + k]) * (c_h - c_mean) * c_invvar;
+          U temp_val =
+              static_cast<U>(vec_c_loss[k]) * static_cast<U>(vec_gamma[k]);
+          sum_loss1 += temp_val;
           sum_loss2 +=
-              c_loss * static_cast<U>(gamma[l + k]) * (c_h - c_mean) * c_invvar;
+              temp_val * (static_cast<U>(vec_c_h[k]) - c_mean) * c_invvar;
         }
       }
       for (; l < n2; ++l) {
         const U c_h = static_cast<U>(k_input[l]);
         const U c_loss = static_cast<U>(k_dout[l]);
-        sum_loss1 += c_loss * static_cast<U>(gamma[l]);
-        sum_loss2 +=
-            c_loss * static_cast<U>(gamma[l]) * (c_h - c_mean) * c_invvar;
+        U temp_val = c_loss * static_cast<U>(gamma[l]);
+
+        sum_loss1 += temp_val;
+        sum_loss2 += temp_val * (c_h - c_mean) * c_invvar;
       }
     } else {
       int l = 4 * thrx;
       for (; l + 3 < n2; l += 4 * numx) {
+        VecT vec_c_h = k_u_input[threadIdx.x];
+        VecT vec_c_loss = k_u_dout[threadIdx.x];
+
         for (int k = 0; k < 4; ++k) {
-          const U c_h = static_cast<U>(k_input[l + k]);
-          const U c_loss = static_cast<U>(k_dout[l + k]);
+          // const U c_h = static_cast<U>(k_input[l + k]);
+          // const U c_loss = static_cast<U>(k_dout[l + k]);
+          // sum_loss1 += c_loss;
+          // sum_loss2 += c_loss * (c_h - c_mean) * c_invvar;
+          const U c_h = static_cast<U>(vec_c_h[k]);
+          const U c_loss = static_cast<U>(vec_c_loss[k]);
           sum_loss1 += c_loss;
           sum_loss2 += c_loss * (c_h - c_mean) * c_invvar;
         }
