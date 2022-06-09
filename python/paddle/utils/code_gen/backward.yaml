@@ -495,22 +495,29 @@
   optional : mask
 
 - backward_api : depthwise_conv2d_grad
-  forward : depthwise_conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu) -> Tensor(out)
-  args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu)
+  forward : depthwise_conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu, bool use_gpudnn) -> Tensor(out)
+  args : (Tensor input, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu, bool use_gpudnn)
   output : Tensor(input_grad), Tensor(filter_grad)
-  invoke : conv2d_grad_impl(input, filter, out_grad,  strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search, input_grad, filter_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [input, filter]
+  kernel :
+    func : depthwise_conv2d_grad
+    param : [input, filter, out_grad, strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search, fuse_relu]
+    use_gpudnn : use_gpudnn
   backward : depthwise_conv2d_grad_grad
 
 - backward_api : depthwise_conv2d_grad_grad
-  forward : depthwise_conv2d_grad (Tensor input, Tensor filter, Tensor grad_out,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu) -> Tensor(grad_input), Tensor(grad_filter)
-  args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  forward : depthwise_conv2d_grad (Tensor input, Tensor filter, Tensor grad_out,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu, bool use_gpudnn) -> Tensor(grad_input), Tensor(grad_filter)
+  args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool use_gpudnn)
   output : Tensor(input_grad), Tensor(filter_grad), Tensor(grad_out_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta
     param: [input, filter, grad_out]
   kernel :
-    func : conv2d_grad_grad
-    use_gpudnn : true
+    func : depthwise_conv2d_grad_grad
+    param : [input, filter, grad_out, grad_input_grad, grad_filter_grad, strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search]
+    use_gpudnn : use_gpudnn
   optional : grad_input_grad, grad_filter_grad
 
 - backward_api : depthwise_conv2d_transpose_grad
