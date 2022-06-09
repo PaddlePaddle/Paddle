@@ -1421,6 +1421,7 @@ class Executor(object):
             compiled = isinstance(program, compiler.CompiledProgram)
             # print("compiled is : {}".format(compiled))
             if compiled:
+                print("yoki: convert compiled program to program!\n")
                 compiled_graph = program._graph
                 ir_graph = framework.IrGraph(compiled_graph, for_test=True)
                 program = ir_graph.to_program()
