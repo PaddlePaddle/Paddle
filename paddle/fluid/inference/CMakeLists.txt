@@ -37,6 +37,7 @@ endif()
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(utils_modules stringpiece pretty_log string_helper benchmark)
 
 add_subdirectory(api)
@@ -59,7 +60,7 @@ if(WIN32 AND WITH_GPU)
                                    ${utils_modules})
 else()
   create_static_lib(paddle_inference ${fluid_modules} ${phi_modules}
-                    ${STATIC_INFERENCE_API} ${utils_modules})
+                    ${phi_kernels} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
 
 if(NOT APPLE)
