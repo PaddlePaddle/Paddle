@@ -21,6 +21,7 @@ import hypothesis.strategies as st
 
 
 class TestDeleteCIdentityPass(PassAutoScanTest):
+
     def sample_predictor_configs(self, program_config):
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
@@ -34,12 +35,12 @@ class TestDeleteCIdentityPass(PassAutoScanTest):
 
     def sample_program_config(self, draw):
         n = draw(st.integers(min_value=1, max_value=2))
-        relu_op = OpConfig(
-            "relu", inputs={"X": ["relu_x"]}, outputs={"Out": ["relu_out"]})
-        c_identity_op = OpConfig(
-            "c_identity",
-            inputs={"X": ["relu_out"]},
-            outputs={"Out": ["id_out"]})
+        relu_op = OpConfig("relu",
+                           inputs={"X": ["relu_x"]},
+                           outputs={"Out": ["relu_out"]})
+        c_identity_op = OpConfig("c_identity",
+                                 inputs={"X": ["relu_out"]},
+                                 outputs={"Out": ["id_out"]})
         program_config = ProgramConfig(
             ops=[relu_op, c_identity_op],
             weights={},
@@ -48,10 +49,9 @@ class TestDeleteCIdentityPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
-            max_examples=2,
-            min_success_num=2,
-            passes=["delete_c_identity_op_pass"])
+        self.run_and_statis(max_examples=2,
+                            min_success_num=2,
+                            passes=["delete_c_identity_op_pass"])
 
 
 if __name__ == "__main__":

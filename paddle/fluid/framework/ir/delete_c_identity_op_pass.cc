@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/ir/delete_c_identity_op_pass.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {

@@ -14,9 +14,11 @@
 
 #include <cuda_runtime.h>
 #include <stdio.h>
+
 #include <cassert>
 #include <cub/cub.cuh>  // NOLINT
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/preln_residual_bias_plugin.h"
 #include "paddle/fluid/operators/fused/fused_dropout_common.h"
