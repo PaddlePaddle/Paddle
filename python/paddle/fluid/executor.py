@@ -1419,7 +1419,7 @@ class Executor(object):
                 program, self.place):
 
             compiled = isinstance(program, compiler.CompiledProgram)
-            # print("compiled is : {}".format(compiled))
+            print("yoki compiled is : {}".format(compiled))
             if compiled:
                 print("yoki: convert compiled program to program!\n")
                 compiled_graph = program._graph
