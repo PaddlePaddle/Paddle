@@ -610,7 +610,7 @@ class FMHAGateRef {
                                      const Tensor* src_mask, Tensor* qk_out,
                                      Tensor* softmax_out) {
     if (nonbatched_bias) {
-      std::vector<const Tensor*> ins = {qk_out, nonbatched_bias, src_mask};
+      std::vector<const Tensor*> ins = {qk_out, src_mask, nonbatched_bias};
       std::vector<Tensor*> outs = {qk_out};
       phi::funcs::BroadcastKernel<phi::ElementwiseType::kTernary, T, T>(
           dev_ctx_, ins, &outs, -1, TernaryAddFunctor<T>());

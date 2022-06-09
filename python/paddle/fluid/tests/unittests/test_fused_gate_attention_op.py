@@ -97,6 +97,13 @@ class TestFusedGateAttentionOp(OpTest):
         self.dout = _random(
             (self.batch_size, self.msa_len, self.res_len, self.q_dim))
 
+    def collect_outputs(self, query, key, softmax_out, fmha_out, gate_out, out):
+        outputs = [
+            softmax_out, fmha_out, gate_out if self.has_gating else None, out,
+            query.grad, None if self.merge_qkv else key.grad
+        ]
+        return outputs
+
     def get_reference_out(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
 
@@ -109,43 +116,84 @@ class TestFusedGateAttentionOp(OpTest):
         src_mask = paddle.to_tensor(self.attn_mask, stop_gradient=True)
 
         c = self.key_dim**(-0.5)
-        # [batch_size, msa_len, num_heads, res_len, key_dim]
+        # [batch_size, msa_len, res_len, q_dim], [q_dim, num_heads, key_dim]
+        #   -> [batch_size, msa_len, res_len, num_heads, key_dim]
         q = paddle.einsum('nbqa,ahc->nbqhc', query, q_weight) * c
-        # [batch_size, msa_len, num_heads, m_size, key_dim]
+        # [batch_size, msa_len, m_size, kv_dim], [kv_dim, num_heads, key_dim]
+        #   -> [batch_size, msa_len, m_size, num_heads, key_dim]
         k = paddle.einsum('nbka,ahc->nbkhc', key, k_weight)
-        # [batch_size, msa_len, num_heads, m_size, key_dim]
+        # [batch_size, msa_len, m_size, kv_dim], [kv_dim, num_heads, key_dim]
+        #   -> [batch_size, msa_len, m_size, num_heads, key_dim]
         v = paddle.einsum('nbka,ahc->nbkhc', key, v_weight)
 
-        # [batch_size, msa_len, num_heads, res_len, m_size]
+        # [batch_size, msa_len, res_len, num_heads, key_dim], [batch_size, msa_len, m_size, num_heads, key_dim]
+        #   -> [batch_size, msa_len, num_heads, res_len, m_size]
         logits = paddle.einsum('nbqhc,nbkhc->nbhqk', q, k)  # qk_out
+        # [batch_size, msa_len, num_heads, res_len, m_size], [batch_size, mas_len, 1, 1, m_size]
+        #   -> [batch_size, msa_len, num_heads, res_len, m_size]
         logits = logits + src_mask
         if self.bias_attr:
             nonbatched_bias = paddle.to_tensor(self.nonbatched_bias,
                                                stop_gradient=False)
+            # [batch_size, msa_len, num_heads, res_len, m_size], [batch_size, 1, num_heads, res_len, m_size]
+            #   -> [batch_size, msa_len, num_heads, res_len, m_size]
             logits = logits + nonbatched_bias
 
-        weights = nn.functional.softmax(logits)  # softmax_out
-        weighted_avg = paddle.einsum('nbhqk,nbkhc->nbqhc', weights, v)
+        # [batch_size, msa_len, num_heads, res_len, m_size]
+        softmax_out = nn.functional.softmax(logits)
+        # [batch_size, msa_len, num_heads, res_len, m_size], [batch_size, msa_len, m_size, num_heads, key_dim]
+        #   -> [batch_size, msa_len, res_len, num_heads, key_dim]
+        # fmha_out = paddle.einsum('nbhqk,nbkhc->nbqhc', softmax_out, v)
+        v_trans = paddle.transpose(v, perm=[0, 1, 3, 2, 4])
+        qktv_out = paddle.matmul(softmax_out, v_trans)
+        fmha_out = paddle.transpose(qktv_out, perm=[0, 1, 3, 2, 4])
 
         if self.has_gating:
             gating_w = paddle.to_tensor(self.gating_w, stop_gradient=False)
             gating_b = paddle.to_tensor(self.gating_b, stop_gradient=False)
-            gate_values = paddle.einsum('nbqc,chv->nbqhv', query,
-                                        gating_w) + gating_b
+            # [batch_size, msa_len, res_len, q_dim], [q_dim, num_heads, key_dim]
+            #   -> [batch_size, msa_len, res_len, num_heads, key_dim]
+            # gate_values = paddle.einsum('nbqc,chv->nbqhv', query,
+            #                             gating_w) + gating_b
+            gating_w_2d = paddle.reshape(
+                gating_w, shape=[self.q_dim, self.num_heads * self.key_dim])
+            gate_values_4d = paddle.matmul(query, gating_w_2d)
+            gate_values = paddle.reshape(
+                gate_values_4d,
+                shape=[
+                    self.batch_size, self.msa_len, self.res_len, self.num_heads,
+                    self.key_dim
+                ]) + gating_b
             gate_values = nn.functional.sigmoid(gate_values)
-            weighted_avg = weighted_avg * gate_values
+            gate_out = fmha_out * gate_values
+        else:
+            gate_out = fmha_out
 
         output_b = paddle.to_tensor(self.output_b, stop_gradient=False)
         output_w = paddle.to_tensor(self.output_w, stop_gradient=False)
 
-        out = paddle.einsum('nbqhc,hco->nbqo', weighted_avg,
-                            output_w) + output_b
+        # [batch_size, msa_len, res_len, num_heads, key_dim], [num_heads, key_dim, out_dim]
+        #   -> [batch_size, msa_len, res_len, out_dim]
+        # out = paddle.einsum('nbqhc,hco->nbqo', gate_out,
+        #                     output_w) + output_b
+        gate_out_2d = paddle.reshape(
+            gate_out,
+            shape=[
+                self.batch_size * self.msa_len * self.res_len,
+                self.num_heads * self.key_dim
+            ])
+        output_w_2d = paddle.reshape(
+            output_w, shape=[self.num_heads * self.key_dim, self.out_dim])
+        out_2d = paddle.matmul(gate_out_2d, output_w_2d)
+        out = paddle.reshape(
+            out_2d,
+            shape=[self.batch_size, self.msa_len, self.res_len, self.out_dim
+                   ]) + output_b
+
         paddle.autograd.backward([out], [paddle.to_tensor(self.dout)],
                                  retain_graph=True)
-        if self.merge_qkv:
-            return out, query.grad, None
-        else:
-            return out, query.grad, key.grad
+        return self.collect_outputs(query, key, softmax_out, fmha_out, gate_out,
+                                    out)
 
     def get_fused_gate_attention_out(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
@@ -181,40 +229,53 @@ class TestFusedGateAttentionOp(OpTest):
         output_w = paddle.to_tensor(self.output_w, stop_gradient=False)
         output_b = paddle.to_tensor(self.output_b, stop_gradient=False)
 
-        _, _, _, _, _, _, _, out = _C_ops.fused_gate_attention(
+        _, _, _, _, softmax_out, fmha_out, gate_out, out = _C_ops.fused_gate_attention(
             query, key, q_weight, k_weight, v_weight, qkv_weight,
             nonbatched_bias, src_mask, gating_w, gating_b, output_w, output_b,
             'has_gating', self.has_gating, 'merge_qkv', self.merge_qkv)
 
         paddle.autograd.backward([out], [paddle.to_tensor(self.dout)],
                                  retain_graph=True)
-        if key is not None:
-            return out, query.grad, key.grad
-        else:
-            return out, query.grad, None
+        return self.collect_outputs(query, key, softmax_out, fmha_out, gate_out,
+                                    out)
 
-    def check_output_and_grad(self, atol, rtol):
+    def check(self, ref, out, atol, rtol, check_equal, name):
 
         def _convert(value):
             if self.dtype == "bfloat16":
                 return convert_uint16_to_float(value)
             return value
 
-        output_names = ["out", "query_grad", "key_grad"]
+        if check_equal:
+            self.assertTrue(
+                np.equal(_convert(ref), _convert(out)).all(),
+                "Checking < {} > failed!".format(name))
+        else:
+            np.testing.assert_allclose(
+                _convert(ref),
+                _convert(out),
+                atol=atol,
+                rtol=rtol,
+                err_msg="Checking < {} > failed!".format(name))
+
+    def check_output_and_grad(self, atol, rtol):
+        num_forward_outputs = 4
+        output_names = [
+            "softmax_out", "fmha_out", "gate_out", "out", "query_grad",
+            "key_grad"
+        ]
         outputs_ref = self.get_reference_out()
         outputs_fused = self.get_fused_gate_attention_out()
-        for i in range(len(outputs_fused)):
+        for i in range(len(output_names)):
             ref_res = outputs_ref[i]
             fused_res = outputs_fused[i]
             if ref_res is not None and fused_res is not None:
-                print("Checking {}".format(output_names[i]))
-                np.testing.assert_allclose(_convert(ref_res),
-                                           _convert(fused_res.numpy()),
-                                           atol=atol,
-                                           rtol=rtol)
+                check_equal = True if i < num_forward_outputs else False
+                self.check(ref_res.numpy(), fused_res.numpy(), atol, rtol,
+                           check_equal, output_names[i])
 
     def test_output_and_grad(self):
-        self.check_output_and_grad(atol=1e-5, rtol=1e-5)
+        self.check_output_and_grad(atol=1e-5, rtol=1e-6)
 
 
 class TestMergeQKVLargeBatchSizeCase(TestFusedGateAttentionOp):
@@ -279,7 +340,7 @@ class TestMergeQKVBF16Case(TestFusedGateAttentionOp):
         self.dtype = "bfloat16"
 
     def test_output_and_grad(self):
-        self.check_output_and_grad(atol=1e-1, rtol=1e-3)
+        self.check_output_and_grad(atol=1e-1, rtol=1e-2)
 
 
 class TestMergeQKVLargeBatchSizeBF16Case(TestMergeQKVBF16Case):
