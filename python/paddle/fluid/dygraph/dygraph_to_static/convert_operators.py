@@ -320,7 +320,7 @@ def convert_var_shape(x, idx=None, in_control_flow=False):
                                     or has_negative(x.shape, idx)):
         return nn.shape(x) if idx is None else nn.shape(x)[idx]
     else:
-        return x.shape if idx is None else x.shape[idx]
+        return list(x.shape) if idx is None else x.shape[idx]
 
 
 def convert_var_shape_simple(x):
@@ -330,7 +330,8 @@ def convert_var_shape_simple(x):
     if isinstance(x, Variable):
         return nn.shape(x)
     else:
-        return x.shape
+        # Use list() to make returned type consistant with dygraph
+        return list(x.shape)
 
 
 def eval_if_exist_else_none(name, global_symbol_table):

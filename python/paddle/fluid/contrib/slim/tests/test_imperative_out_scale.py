@@ -20,6 +20,7 @@ import random
 import unittest
 import logging
 import warnings
+import tempfile
 
 import paddle
 import paddle.fluid as fluid
@@ -111,6 +112,16 @@ class ImperativeLenet(fluid.dygraph.Layer):
 
 class TestImperativeOutSclae(unittest.TestCase):
 
+    def setUp(self):
+        self.root_path = tempfile.TemporaryDirectory()
+        self.param_save_path = os.path.join(self.root_path.name,
+                                            "lenet.pdparams")
+        self.save_path = os.path.join(self.root_path.name,
+                                      "lenet_dynamic_outscale_infer_model")
+
+    def tearDown(self):
+        self.root_path.cleanup()
+
     def func_out_scale_acc(self):
         seed = 1000
         lr = 0.001
@@ -138,46 +149,16 @@ class TestImperativeOutSclae(unittest.TestCase):
             loss_list = train_lenet(lenet, reader, adam)
             lenet.eval()
 
-        param_save_path = "test_save_quantized_model/lenet.pdparams"
         save_dict = lenet.state_dict()
-        paddle.save(save_dict, param_save_path)
-
-        save_path = "./dynamic_outscale_infer_model/lenet"
-        imperative_out_scale.save_quantized_model(
-            layer=lenet,
-            path=save_path,
-            input_spec=[
-                paddle.static.InputSpec(shape=[None, 1, 28, 28],
-                                        dtype='float32')
-            ])
+        paddle.save(save_dict, self.param_save_path)
 
         for i in range(len(loss_list) - 1):
             self.assertTrue(loss_list[i] > loss_list[i + 1],
                             msg='Failed to do the imperative qat.')
 
-    def test_out_scale_acc(self):
-        with _test_eager_guard():
-            self.func_out_scale_acc()
-        self.func_out_scale_acc()
-
-
-class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
-
-    def func_save_quantized_model(self):
-        lr = 0.001
-
-        load_param_path = "test_save_quantized_model/lenet.pdparams"
-        save_path = "./dynamic_outscale_infer_model_from_checkpoint/lenet"
-
-        weight_quantize_type = 'abs_max'
-        activation_quantize_type = 'moving_average_abs_max'
-        imperative_out_scale = ImperativeQuantAware(
-            weight_quantize_type=weight_quantize_type,
-            activation_quantize_type=activation_quantize_type)
-
         with fluid.dygraph.guard():
             lenet = ImperativeLenet()
-            load_dict = paddle.load(load_param_path)
+            load_dict = paddle.load(self.param_save_path)
             imperative_out_scale.quantize(lenet)
             lenet.set_dict(load_dict)
 
@@ -191,7 +172,7 @@ class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
 
         imperative_out_scale.save_quantized_model(
             layer=lenet,
-            path=save_path,
+            path=self.save_path,
             input_spec=[
                 paddle.static.InputSpec(shape=[None, 1, 28, 28],
                                         dtype='float32')
@@ -201,10 +182,10 @@ class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
             self.assertTrue(loss_list[i] > loss_list[i + 1],
                             msg='Failed to do the imperative qat.')
 
-    def test_save_quantized_model(self):
+    def test_out_scale_acc(self):
         with _test_eager_guard():
-            self.func_save_quantized_model()
-        self.func_save_quantized_model()
+            self.func_out_scale_acc()
+        self.func_out_scale_acc()
 
 
 if __name__ == '__main__':
