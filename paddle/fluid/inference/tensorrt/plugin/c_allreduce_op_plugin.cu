@@ -22,7 +22,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
+#if defined(PADDLE_WITH_NCCL)
 inline ncclDataType_t NvInferDtypeToNCCLDType(nvinfer1::DataType type) {
   if (type == nvinfer1::DataType::kFLOAT) {
     return ncclFloat;
@@ -228,7 +228,7 @@ int CAllReducePluginDynamic::enqueue(
       sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
   return (cudaGetLastError() != cudaSuccess);
 }
-
+#endif
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
