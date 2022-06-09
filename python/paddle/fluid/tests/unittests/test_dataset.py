@@ -835,7 +835,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         Test Dataset With Fetch Handler. TestCases.
         """
         slots_vars, out = self.net()
-        files = [filename1, filename2]
+        files = [self.filename1, self.filename2]
         dataset = self.get_dataset(slots_vars, files)
 
         exe = fluid.Executor(fluid.CPUPlace())

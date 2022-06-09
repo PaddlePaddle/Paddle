@@ -23,6 +23,7 @@ import paddle.fluid.layers as layers
 import contextlib
 import math
 import sys
+import os
 import unittest
 import tempfile
 from paddle.fluid.executor import Executor

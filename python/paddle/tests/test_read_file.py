@@ -29,7 +29,7 @@ class TestReadFile(unittest.TestCase):
         fake_img = (np.random.random((400, 300, 3)) * 255).astype('uint8')
         self.temp_dir = tempfile.TemporaryDirectory()
         self.img_path = os.path.join(self.temp_dir.name, 'fake.jpg')
-        cv2.imwrite(img_path, fake_img)
+        cv2.imwrite(self.img_path, fake_img)
 
     def tearDown(self):
         self.temp_dir.cleanup()
