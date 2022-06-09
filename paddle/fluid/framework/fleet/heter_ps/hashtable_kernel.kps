@@ -219,11 +219,22 @@ void HashTable<unsigned long, FeatureValue>::insert(const paddle::platform::Plac
   FeatureValue* d_vals_out = container_->get_vals();
   uint32_t xpu_id = container_->get_xpu_id();
   uint32_t xpu_num = container_->get_xpu_num();
+  // TODO: remove cast.
+  xpu::ctx_guard RAII_GUARD(ctx_xpu);
+  uint32_t* d_keys_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(len);
+  PADDLE_ENFORCE_NOT_NULL(
+      d_keys_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
+  uint32_t* d_keys_out_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(len);
+  PADDLE_ENFORCE_NOT_NULL(
+      d_keys_out_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
+  xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys),
+      reinterpret_cast<int32_t*>(d_keys_in_cast), len);
+
   int r = xpu::insert<unsigned int, ::FeatureValue>(
       ctx_xpu,
-      reinterpret_cast<const unsigned int*>(d_keys),
+      reinterpret_cast<const unsigned int*>(d_keys_in_cast),
       reinterpret_cast<const ::FeatureValue*>(d_vals),
-      reinterpret_cast<unsigned int*>(d_keys_out),
+      reinterpret_cast<unsigned int*>(d_keys_out_in_cast),
       reinterpret_cast<::FeatureValue*>(d_vals_out),
       len,
       xpu_id,
@@ -232,6 +243,10 @@ void HashTable<unsigned long, FeatureValue>::insert(const paddle::platform::Plac
       r, XPU_SUCCESS,
       platform::errors::External("XPU insert kernel return wrong value[%d %s]",
                                   r, XPUAPIErrorMsg[r]));
+  xpu::cast_v2<int32_t, int64_t>(ctx_xpu, reinterpret_cast<int32_t*>(d_keys_out_in_cast),
+    reinterpret_cast<int64_t*>(d_keys_out), len);
+  
+  container_->set_size(len);
 }
 
 template <typename KeyType, typename ValType>
@@ -291,13 +306,26 @@ void HashTable<unsigned long, FeatureValue>::update(const paddle::platform::Plac
   uint32_t xpu_id = container_->get_xpu_id();
   uint32_t xpu_num = container_->get_xpu_num();
   size_t len2 = container_->size();
+  // TODO: remove cast.
+  xpu::ctx_guard RAII_GUARD(ctx_xpu);
+  uint32_t* d_keys_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(len);
+  PADDLE_ENFORCE_NOT_NULL(
+      d_keys_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
+  uint32_t* d_keys_out_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(len2);
+  PADDLE_ENFORCE_NOT_NULL(
+      d_keys_out_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
+  xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys),
+      reinterpret_cast<int32_t*>(d_keys_in_cast), len);
+  xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys_out),
+      reinterpret_cast<int32_t*>(d_keys_out_in_cast), len2);
+      
   int r = xpu::update<unsigned int, ::FeaturePushValue, ::FeatureValue>(
       ctx_xpu,
       reinterpret_cast<const ::OptimizerConfig*>(device_optimizer_config_),
-      reinterpret_cast<const unsigned int*>(d_keys),
+      reinterpret_cast<const unsigned int*>(d_keys_in_cast),
       reinterpret_cast<const ::FeaturePushValue*>(d_grads),
       len,
-      reinterpret_cast<unsigned int*>(d_keys_out),
+      reinterpret_cast<unsigned int*>(d_keys_out_in_cast),
       reinterpret_cast<::FeatureValue*>(d_vals_out),
       len2,
       xpu_id,
