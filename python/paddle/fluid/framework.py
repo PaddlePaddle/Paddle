@@ -82,6 +82,7 @@ global_prog_seed = 0
 _current_pipeline_stage = None
 _already_patch_eager_tensor = False
 _already_patch_varbase = False
+_current_cuda_graph_mode = None
 _global_flags_ = core.globals()
 
 # Some explanation of our execution system 2022.03
@@ -265,16 +266,16 @@ def ipu_shard_guard(index=-1, stage=-1):
     Used to shard the graph on IPUs. Set each Op run on which IPU in the sharding and which stage in the pipelining.
 
     Args:
-        index(int, optional): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
+        index(int, optional): Specify which ipu the Tensor is computed on, (such as '0, 1, 2, 3').
             The default value is -1, which means the Op only run on IPU 0.
-        stage(int, optional): Specify the computation order of the sharded model(such as ‘0, 1, 2, 3’).
+        stage(int, optional): Specify the computation order of the sharded model(such as '0, 1, 2, 3').
             The sharded model will be computed from small to large. The default value is -1, 
             which means no pipelining computation order and run Ops in terms of graph.
     
     **Note**:
-    Only if the enable_manual_shard=True, the ‘index’ is able to be set. Please refer 
+    Only if the enable_manual_shard=True, the 'index' is able to be set not -1. Please refer 
     to :code:`paddle.static.IpuStrategy` . 
-    Only if the enable_pipelining=True, the ‘stage’ is able to be set. Please refer 
+    Only if the enable_pipelining=True, the 'stage' is able to be set not -1. Please refer 
     to :code:`paddle.static.IpuStrategy` .
     A index is allowed to match none stage or a stage. A stage is only allowed to match a new or 
     duplicated index.
@@ -2679,6 +2680,9 @@ class Operator(object):
             if op_attrs is None:
                 op_attrs = dict()
             del attrs
+
+            # attr for static mode cuda graph
+            self._cuda_graph_attr = _current_cuda_graph_mode
 
             op_maker = core.op_proto_and_checker_maker
 
@@ -7073,6 +7077,37 @@ def device_guard(device=None):
         yield
     finally:
         switch_device(pre_device)
+
+
+def _switch_cuda_graph_mode(cuda_graph_attr):
+    global _current_cuda_graph_mode
+    pre_mode = _current_cuda_graph_mode
+    _current_cuda_graph_mode = cuda_graph_attr
+    return pre_mode
+
+
+@signature_safe_contextmanager
+def _cuda_graph_guard(cuda_graph_attr=None):
+    """
+
+    Note:
+        The API only supports static mode.
+
+    A context manager that specifies the cuda_graph_mode which indicating the cuda graph capture under static mode.
+
+    Args:
+        cuda_graph_attr(str|None): The cuda graph attr with the format of:
+                                   cuda_graph_capture_mode;memory_pool_id;cuda_graph_id
+    """
+    assert not _non_static_mode(
+    ), "cuda_graph_guard only works under static mode"
+    assert core.is_compiled_with_cuda(
+    ), "cuda_graph_guard context can be only used when Paddle is compiled with cuda"
+    pre_mode = _switch_cuda_graph_mode(cuda_graph_attr)
+    try:
+        yield
+    finally:
+        _switch_cuda_graph_mode(pre_mode)
 
 
 def set_flags(flags):

@@ -122,10 +122,12 @@ def for_loop_dyfunc_not_support(max_len):
 
 
 def for_break_single_return(max_len):
+    x = 0
     for i in range(3):
         if i == 2:
             break
-    return i
+        x += 1
+    return x
 
 
 def while_loop_bool_op(x):
@@ -324,6 +326,7 @@ class TestTransformWhileLoop(unittest.TestCase):
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
+        print(static_numpy, dygraph_numpy)
         self.assertTrue(np.allclose(dygraph_numpy, static_numpy))
 
 

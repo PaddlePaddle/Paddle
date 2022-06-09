@@ -10,7 +10,7 @@ readonly VERSION="2.12.0"
 version=$(pylint --version | grep 'pylint')
 
 if ! [[ $version == *"$VERSION"* ]]; then
-    pip install pylint==2.12.0 1>nul
+    pip install pylint==2.12.0
 fi
 
 # The trick to remove deleted files: https://stackoverflow.com/a/2413151

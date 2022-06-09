@@ -57,7 +57,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "dnnl.hpp"
+#include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/data_layout.h"
 #endif
 
@@ -915,17 +915,22 @@ class DeviceContextPool {
         const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
   }
 
-  size_t size() const { return device_contexts_.size(); }
+  size_t size() const;
 
   const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
-  device_contexts() const {
-    return device_contexts_;
-  }
+  device_contexts() const;
+
+  static void SetDeviceContexts(
+      const std::map<Place,
+                     std::shared_future<std::unique_ptr<DeviceContext>>>*);
 
  private:
   static DeviceContextPool* pool;
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;
+  static thread_local const std::map<
+      Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+      external_device_contexts_;  // not owned
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

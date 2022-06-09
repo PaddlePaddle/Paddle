@@ -349,9 +349,9 @@ std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
         waiting_for_scale.insert(input_name);
         waiting_for_scale.insert(output_name);
       } else if (in_iter != var_quant_scales->end()) {
-        out_iter->second = in_iter->second;
+        (*var_quant_scales)[output_name] = in_iter->second;
       } else if (out_iter != var_quant_scales->end()) {
-        in_iter->second = out_iter->second;
+        (*var_quant_scales)[input_name] = out_iter->second;
       }
     } else if (op_name == "scale") {
       const std::string output_name = op_node->Op()->Output("Out")[0];
