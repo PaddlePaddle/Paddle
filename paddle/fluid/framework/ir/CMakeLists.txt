@@ -156,6 +156,8 @@ pass_library(add_support_int8_pass inference)
 pass_library(matmul_scale_fuse_pass inference)
 pass_library(gpu_cpu_map_matmul_to_mul_pass inference)
 pass_library(mixed_precision_configure_pass inference)
+pass_library(dense_fc_to_sparse_pass inference)
+pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
 
@@ -379,6 +381,14 @@ if(NOT WIN32)
     test_sync_batch_norm_pass
     SRCS sync_batch_norm_pass_tester.cc
     DEPS sync_batch_norm_pass)
+  cc_test(
+    test_dense_fc_to_sparse_pass_cc
+    SRCS dense_fc_to_sparse_pass_tester.cc
+    DEPS fc_fuse_pass dense_fc_to_sparse_pass framework_proto)
+  cc_test(
+    test_dense_multihead_matmul_to_sparse_pass
+    SRCS dense_multihead_matmul_to_sparse_pass_tester.cc
+    DEPS multihead_matmul_fuse_pass dense_multihead_matmul_to_sparse_pass)
 endif()
 if(WITH_MKLDNN)
   cc_test(

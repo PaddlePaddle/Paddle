@@ -42,6 +42,10 @@ if(TENSORRT_FOUND)
   list(APPEND CUDA_SRCS tensorrt.cc)
 endif()
 
+if(CUSPARSELT_FOUND)
+  list(APPEND CUDA_SRCS cusparseLt.cc)
+endif()
+
 configure_file(cupti_lib_path.h.in ${CMAKE_CURRENT_BINARY_DIR}/cupti_lib_path.h)
 if(CUPTI_FOUND)
   list(APPEND CUDA_SRCS cupti.cc)
