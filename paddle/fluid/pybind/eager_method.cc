@@ -1625,6 +1625,25 @@ static PyObject* tensor__grad_value(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__unset_fake_empty(TensorObject* self, PyObject* args,
+                                          PyObject* kwargs) {
+  EAGER_TRY
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE_EQ(grad != nullptr, true,
+                    platform::errors::InvalidArgument(
+                        "Detected NULL grad. Please check if you have manually "
+                        "cleared the grad inside autograd_meta"));
+
+  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  if (is_leaf) {
+    std::static_pointer_cast<egr::GradNodeAccumulation>(
+        egr::EagerUtils::grad_node(self->tensor))
+        ->SetFakeEmpty(false);
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                                     PyObject* kwargs) {
@@ -1778,6 +1797,8 @@ PyMethodDef variable_methods[] = {
     {"_grad_name", (PyCFunction)(void (*)(void))tensor__grad_name,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_grad_value", (PyCFunction)(void (*)(void))tensor__grad_value,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_unset_fake_empty", (PyCFunction)(void (*)(void))tensor__unset_fake_empty,
      METH_VARARGS | METH_KEYWORDS, NULL},
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva", (PyCFunction)(void (*)(void))tensor_method__uva,
