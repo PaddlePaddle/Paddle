@@ -496,4 +496,9 @@ if(WITH_IPU)
   list(APPEND third_party_deps extern_poplar)
 endif()
 
+if(WITH_CUSPARSELT)
+  include(external/cusparselt) # download, build, install cusparselt
+  list(APPEND third_party_deps extern_cusparselt)
+endif()
+
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})
