@@ -794,10 +794,10 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       feasigns[j].sign().uint64_feasign_ = cache_manager->query_sign2fid(feasigns[j].sign().uint64_feasign_);
     }
   }
-
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
   VLOG(0) << "BuildGPUTask: build_batch_fid_seq";  
   cache_manager->build_batch_fid_seq(vec_data);
-
+#endif
   VLOG(0) << "BuildGPUTask: query sign2fid for device keys";
   // convert feasign to fid in device_keys_
   for (int i = 0; i < device_num; i++) {
