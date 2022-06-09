@@ -3387,8 +3387,10 @@ export NV_CUDNN_VERSION=8.4.0.27
 export NV_CUDNN_PACKAGE_NAME=libcudnn8
 #export NV_CUDNN_PACKAGE=libcudnn8=8.4.0.27-1+cuda10.2
 #export NV_CUDNN_PACKAGE_DEV=libcudnn8-dev=8.4.0.27-1+cuda10.2
-export NV_CUDNN_PACKAGE=libcudnn8=8.1.0.77-1+cuda10.2
-export NV_CUDNN_PACKAGE_DEV=libcudnn8-dev=8.1.0.77-1+cuda10.2
+#export NV_CUDNN_PACKAGE=libcudnn8=8.1.0.77-1+cuda10.2
+export NV_CUDNN_PACKAGE=libcudnn8=8.1.1.33-1+cuda10.2
+#export NV_CUDNN_PACKAGE_DEV=libcudnn8-dev=8.1.0.77-1+cuda10.2
+export NV_CUDNN_PACKAGE_DEV=libcudnn8-dev=8.1.1.33-1+cuda10.2
 export CUDNN_VERSION=8.4.0.27
 
 
