@@ -27,7 +27,6 @@
 
 namespace paddle {
 namespace jit {
-using DenseTensor = phi::DenseTensor;
 static const char PDMODEL_SUFFIX[] = ".pdmodel";
 static const char PDPARAMS_SUFFIX[] = ".pdiparams";
 
@@ -54,7 +53,7 @@ class Deserializer {
     std::vector<std::vector<std::string>> param_names_for_each_program;
     // set is ordered
     std::set<std::string> param_names_set;
-    std::map<std::string, IValue> params_dict;
+    VariableNameMap params_dict;
     for (auto& it : file_name_prefixs) {
       func_names.emplace_back(it.first);
 
@@ -76,9 +75,10 @@ class Deserializer {
     }
 
     // Read from one pdiparams file, refine here
-    auto param_for_program =
+    auto params_for_all_program =
         ReadTensorData(dir_path + "export.forward.pdiparams", param_names_set);
-    params_dict.insert(param_for_program.begin(), param_for_program.end());
+    params_dict.insert(params_for_all_program.begin(),
+                       params_for_all_program.end());
 
     return Layer(func_names, program_descs, param_names_for_each_program,
                  params_dict);
@@ -122,19 +122,20 @@ class Deserializer {
     return file_name_prefixs;
   }
 
-  std::map<std::string, IValue> ReadTensorData(
-      const std::string& file_name,
-      const std::set<std::string>& var_name) const {
+  VariableNameMap ReadTensorData(const std::string& file_name,
+                                 const std::set<std::string>& var_name) const {
     VLOG(3) << "ReadTensorData from: " << file_name;
     std::ifstream fin(file_name, std::ios::binary);
-    std::map<std::string, IValue> res;
+    VariableNameMap res;
     for (auto it = var_name.begin(); it != var_name.end(); it++) {
       VLOG(3) << "load Tensor: " << *it;
       // TODO(dev): support other tensor type
-      Tensor t(std::make_shared<DenseTensor>());
-      LoadTensorFromBuffer(fin, dynamic_cast<DenseTensor*>(t.impl().get()));
-      t.set_name(*it);
-      res[*it] = IValue(t);
+      DenseTensor dense_tensor;
+      LoadTensorFromBuffer(fin, &dense_tensor);
+      Variable v;
+      auto* p = v.GetMutable<DenseTensor>();
+      *p = dense_tensor;
+      res[*it] = v;
     }
     return res;
   }

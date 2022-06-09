@@ -27,6 +27,10 @@
 namespace paddle {
 namespace jit {
 
+using Variable = paddle::framework::Variable;
+using VariableNameMap = std::map<std::string, Variable>;
+using DenseTensor = phi::DenseTensor;
+
 class Argument {
  public:
   explicit Argument(const std::string &name, bool is_out = false)
@@ -78,7 +82,7 @@ class BaseFunction {
  public:
   BaseFunction(const framework::ProgramDesc &program_desc,
                const std::vector<std::string> param_names_for_program,
-               const std::map<std::string, IValue> &params_dict)
+               const VariableNameMap &params_dict)
       : program_desc_(program_desc) {
     // Parse FunctionSchema
     // skip_var_name_ = program_desc_.GetFetchTargetNames();
@@ -96,47 +100,44 @@ class BaseFunction {
   }
   virtual ~BaseFunction() {}
 
-  virtual std::vector<IValue> operator()(const std::vector<IValue> &inputs) = 0;
+  virtual std::vector<Variable> operator()(const VariableNameMap &inputs) = 0;
 
  protected:
-  void FetchOutput(std::vector<IValue> *outs) {
+  void FetchOutput(std::vector<Variable> *outs) {
     for (auto &out_name : schema_.GetOutputArgNames()) {
       VLOG(3) << "fetch out: " << out_name;
       auto *var = scope_.FindVar(out_name);
       auto &src_tensor = var->Get<phi::DenseTensor>();
-      Tensor t(std::make_shared<phi::DenseTensor>());
-      auto *dst_tensor = const_cast<phi::DenseTensor *>(
-          dynamic_cast<const phi::DenseTensor *>(t.impl().get()));
-      *dst_tensor = src_tensor;
-      outs->emplace_back(t);
+      Variable v;
+      auto *p = v.GetMutable<DenseTensor>();
+      *p = src_tensor;
+      outs->emplace_back(v);
     }
   }
 
-  void ShareIntoScope(const std::vector<IValue> &ivals) {
+  void ShareIntoScope(const VariableNameMap &ivals) {
     VLOG(3) << "ivals size: " << ivals.size();
-    for (size_t i = 0; i < ivals.size(); ++i) {
-      auto &tensor = ivals[i].AsTensor();
-      VLOG(3) << "share into scope: " << tensor.name();
-      auto *var = scope_.Var(tensor.name());
-      auto *dst_tensor = var->GetMutable<phi::DenseTensor>();
-      auto t = std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-      *dst_tensor = *t;
+    for (auto it = ivals.begin(); it != ivals.end(); ++it) {
+      VLOG(3) << "share into scope: " << it->first;
+      DenseTensor dense_tensor = it->second.Get<DenseTensor>();
+      auto *var = scope_.Var(it->first);
+      auto *dst_tensor = var->GetMutable<DenseTensor>();
+      *dst_tensor = dense_tensor;
     }
   }
 
   void SharePartialIntoScope(
       const std::vector<std::string> param_names_for_program,
-      const std::map<std::string, IValue> &params_dict) {
+      const VariableNameMap &params_dict) {
     VLOG(3) << "ivals size: " << param_names_for_program.size();
     for (size_t i = 0; i < param_names_for_program.size(); ++i) {
       std::string name = param_names_for_program[i];
-      IValue val = params_dict.find(name)->second;
-      auto &tensor = val.AsTensor();
-      VLOG(3) << "share into scope: " << tensor.name();
-      auto *var = scope_.Var(tensor.name());
-      auto *dst_tensor = var->GetMutable<phi::DenseTensor>();
-      auto t = std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-      *dst_tensor = *t;
+      Variable val = params_dict.find(name)->second;
+      auto &dense_tensor = val.Get<DenseTensor>();
+      VLOG(3) << "share into scope: " << name;
+      auto *var = scope_.Var(name);
+      auto *dst_tensor = var->GetMutable<DenseTensor>();
+      *dst_tensor = dense_tensor;
     }
   }
 

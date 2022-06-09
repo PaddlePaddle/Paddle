@@ -22,6 +22,7 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/jit/serializer.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -45,23 +46,22 @@ PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace jit {
-using Tensor = paddle::experimental::Tensor;
 
-std::vector<IValue> PrepareInputs() {
-  auto temp = std::make_shared<phi::DenseTensor>();
-  temp->Resize(phi::make_ddim({2, 4}));
+VariableNameMap PrepareInputs() {
+  auto temp = DenseTensor();
+  temp.Resize(phi::make_ddim({2, 4}));
   phi::CPUContext cpu_ctx;
   cpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
   cpu_ctx.Init();
-  cpu_ctx.Alloc<float>(temp.get());
-  phi::funcs::set_constant(cpu_ctx, temp.get(), 2.);
-  Tensor t(temp);
+  cpu_ctx.Alloc<float>(&temp);
+  phi::funcs::set_constant(cpu_ctx, &temp, 2.);
+  Variable v;
+  auto *p = v.GetMutable<DenseTensor>();
+  *p = temp;
   // TODO(dev): associate the input name
-  t.set_name("x");
-  IValue iv_t(t);
-  return {iv_t};
+  return {{"x", v}};
 }
 
 TEST(layer, Construct) {
@@ -70,18 +70,16 @@ TEST(layer, Construct) {
   auto inputs = PrepareInputs();
 
   auto outs = layer.forward(inputs);
-  auto out_tensor = outs[0].AsTensor();
-  auto out_dense_tensor =
-      std::dynamic_pointer_cast<phi::DenseTensor>(out_tensor.impl());
-  auto *out_data = out_dense_tensor->data<float>();
+  auto out_vars = outs[0];
+  auto out_dense_tensor = out_vars.Get<DenseTensor>();
+  auto out_data = out_dense_tensor.data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
   auto func = layer.GetFunction("infer");
   outs = (*func)(inputs);
-  out_tensor = outs[0].AsTensor();
-  out_dense_tensor =
-      std::dynamic_pointer_cast<phi::DenseTensor>(out_tensor.impl());
-  out_data = out_dense_tensor->data<float>();
+  out_vars = outs[0];
+  out_dense_tensor = out_vars.Get<DenseTensor>();
+  out_data = out_dense_tensor.data<float>();
   EXPECT_NEAR(out_data[0], 1.41562390, 1e-6);
 }
 

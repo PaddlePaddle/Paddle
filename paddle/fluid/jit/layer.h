@@ -28,6 +28,9 @@
 
 namespace paddle {
 namespace jit {
+using Variable = paddle::framework::Variable;
+using VariableNameMap = std::map<std::string, Variable>;
+using DenseTensor = phi::DenseTensor;
 
 class Layer {
  public:
@@ -38,12 +41,12 @@ class Layer {
       const std::vector<std::string>& func_names,
       const std::vector<framework::ProgramDesc>& program_descs,
       const std::vector<std::vector<std::string>>& param_names_for_each_program,
-      const std::map<std::string, IValue>& params_dict) {
+      const VariableNameMap& params_dict) {
     VLOG(3) << "program size: " << program_descs.size();
     // Layer manage the life time of all parameter.
     for (size_t i = 0; i < func_names.size(); ++i) {
       // TODO(dev): choose exector or pe by flag
-      function_dict[func_names[i]] = std::make_shared<ExectorFunction>(
+      function_dict[func_names[i]] = std::make_shared<PEFunction>(
           program_descs[i], param_names_for_each_program[i], params_dict);
     }
   }
@@ -54,7 +57,7 @@ class Layer {
     return function_dict[name];
   }
 
-  std::vector<IValue> forward(const std::vector<IValue>& inputs) {
+  std::vector<Variable> forward(const VariableNameMap& inputs) {
     auto func = GetFunction("forward");
     return (*func)(inputs);
   }

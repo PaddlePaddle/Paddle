@@ -29,12 +29,12 @@ class PEFunction : public BaseFunction {
  public:
   PEFunction(const framework::ProgramDesc &program_desc,
              const std::vector<std::string> param_names_for_program,
-             const std::map<std::string, IValue> &params_dict)
+             const VariableNameMap &params_dict)
       : BaseFunction(program_desc, param_names_for_program, params_dict) {}
 
   ~PEFunction() {}
 
-  std::vector<IValue> operator()(const std::vector<IValue> &inputs) {
+  std::vector<Variable> operator()(const VariableNameMap &inputs) {
     // bool is_test = true;
     std::string prog_string;
     std::hash<std::string> string_hash;
@@ -72,7 +72,7 @@ class PEFunction : public BaseFunction {
       parallel_executor->RunWithoutFetch(skip_eager_delete_vars);
     }
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
-    std::vector<IValue> res;
+    std::vector<Variable> res;
     FetchOutput(&res);
     return res;
   }

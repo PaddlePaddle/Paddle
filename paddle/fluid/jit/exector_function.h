@@ -24,12 +24,12 @@ class ExectorFunction : public BaseFunction {
  public:
   ExectorFunction(const framework::ProgramDesc &program_desc,
                   const std::vector<std::string> param_names_for_program,
-                  const std::map<std::string, IValue> &params_dict)
+                  const VariableNameMap &params_dict)
       : BaseFunction(program_desc, param_names_for_program, params_dict) {}
 
   ~ExectorFunction() {}
 
-  std::vector<IValue> operator()(const std::vector<IValue> &inputs) {
+  std::vector<Variable> operator()(const VariableNameMap &inputs) {
     if (inner_exe_ == nullptr) {
       // TODO(dev): support other devices
       inner_exe_ = new framework::Executor(phi::CPUPlace());
@@ -42,7 +42,7 @@ class ExectorFunction : public BaseFunction {
                     schema_.GetOutputArgNames());
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
     // fetch outputs
-    std::vector<IValue> res;
+    std::vector<Variable> res;
     FetchOutput(&res);
     return res;
   }
