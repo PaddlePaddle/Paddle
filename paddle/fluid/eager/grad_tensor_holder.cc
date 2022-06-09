@@ -74,6 +74,11 @@ void GradTensorHolder::CopyValueFromTensor(
 void GradTensorHolder::add(size_t slot_id, size_t rank,
                            const paddle::experimental::Tensor& t,
                            bool create_graph) {
+  if (!t.initialized()) {
+    VLOG(6) << "Pass add Tensor for buffer_ slot: " << slot_id
+            << " since grad_out_tensor is not initialized.";
+    return;
+  }
   // TODO(jiabin): We need to deal with empty input_buffer with slot size not
   // empty;
   PADDLE_ENFORCE(slot_id < buffer_.size(),
@@ -105,13 +110,6 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
     buffer_tensor = t;
   } else {
     // Accumulation
-    PADDLE_ENFORCE_EQ(t.initialized(), true,
-                      paddle::platform::errors::Fatal(
-                          "We can only accumulate initialized tensor, but we "
-                          "got tensor: %s is empty please check you network "
-                          "and make sure it creates grads.",
-                          t.name()));
-
     if (t.is_dense_tensor()) {
       if (buffer_tensor.is_dense_tensor()) {
         if (create_graph) {
