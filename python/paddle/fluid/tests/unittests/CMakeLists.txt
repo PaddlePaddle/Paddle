@@ -982,11 +982,13 @@ py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
 # We guess there are some bugs in cuda 10.1 or 10.2,
 # since this unittest is stable in cuda 11 (py3 pipeline) now.
 if(NOT WITH_COVERAGE)
-  py_test_modules(test_parallel_executor_profiler MODULES
-                  test_parallel_executor_profiler)
-  set_tests_properties(test_parallel_executor_profiler
-                       PROPERTIES LABELS "RUN_TYPE=DIST")
-  set_tests_properties(test_parallel_executor_profiler PROPERTIES TIMEOUT 120)
+  if(((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11)) OR (NOT WITH_GPU))
+    py_test_modules(test_parallel_executor_profiler MODULES
+                    test_parallel_executor_profiler)
+    set_tests_properties(test_parallel_executor_profiler
+                         PROPERTIES LABELS "RUN_TYPE=DIST")
+    set_tests_properties(test_parallel_executor_profiler PROPERTIES TIMEOUT 120)
+  endif()
 endif()
 py_test_modules(test_parallel_executor_transformer MODULES
                 test_parallel_executor_transformer)
