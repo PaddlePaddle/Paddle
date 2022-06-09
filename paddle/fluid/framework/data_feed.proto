@@ -37,6 +37,7 @@ message GraphConfig {
   optional int32 debug_mode = 7 [ default = 0 ];
   optional string first_node_type = 8;
   optional string meta_path = 9;
+  optional bool gpu_graph_training = 10 [ default = true ];
 }
 
 message DataFeedDesc {

@@ -32,33 +32,50 @@ void DeviceWorker::SetDataFeed(DataFeed* data_feed) {
 }
 
 template <typename T>
-std::string PrintLodTensorType(Tensor* tensor, int64_t start, int64_t end) {
+std::string PrintLodTensorType(Tensor* tensor, int64_t start, int64_t end,
+                               char separator = ':',
+                               bool need_leading_separator = true) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
     return "access violation";
   }
+  if (start >= end) return "";
   std::ostringstream os;
+  if (!need_leading_separator) {
+    os << tensor->data<T>()[start];
+    start++;
+  }
   for (int64_t i = start; i < end; i++) {
-    os << ":" << tensor->data<T>()[i];
+    // os << ":" << tensor->data<T>()[i];
+    os << separator << tensor->data<T>()[i];
   }
   return os.str();
 }
 
-std::string PrintLodTensorIntType(Tensor* tensor, int64_t start, int64_t end) {
+std::string PrintLodTensorIntType(Tensor* tensor, int64_t start, int64_t end,
+                                  char separator = ':',
+                                  bool need_leading_separator = true) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
     return "access violation";
   }
+  if (start >= end) return "";
   std::ostringstream os;
+  if (!need_leading_separator) {
+    os << static_cast<uint64_t>(tensor->data<int64_t>()[start]);
+    start++;
+  }
   for (int64_t i = start; i < end; i++) {
-    os << ":" << static_cast<uint64_t>(tensor->data<int64_t>()[i]);
+    // os << ":" << static_cast<uint64_t>(tensor->data<int64_t>()[i]);
+    os << separator << static_cast<uint64_t>(tensor->data<int64_t>()[i]);
   }
   return os.str();
 }
 
-std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end) {
+std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end,
+                           char separator, bool need_leading_separator) {
   std::string out_val;
   if (framework::TransToProtoVarType(tensor->dtype()) == proto::VarType::FP32) {
     out_val = PrintLodTensorType<float>(tensor, start, end);
@@ -122,6 +139,11 @@ void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
 }
 
 void DeviceWorker::InitRandomDumpConfig(const TrainerDesc& desc) {
+  bool is_dump_in_sequential_order = desc.is_dump_in_sequential_order();
+  if (is_dump_in_sequential_order) {
+    dump_mode_ = 3;
+    return;
+  }
   bool enable_random_dump = desc.enable_random_dump();
   if (!enable_random_dump) {
     dump_mode_ = 0;
@@ -139,7 +161,8 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
                              int dump_interval) {  // dump_mode: 0: no random,
                                                    // 1: random with insid hash,
                                                    // 2: random with random
-                                                   // number
+  // 3: in sequential order of the records
+  // number
   size_t batch_size = device_reader_->GetCurBatchSize();
   auto& ins_id_vec = device_reader_->GetInsIdVec();
   auto& ins_content_vec = device_reader_->GetInsContentVec();
@@ -163,46 +186,93 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
     }
     hit[i] = true;
   }
-  for (size_t i = 0; i < ins_id_vec.size(); i++) {
-    if (!hit[i]) {
-      continue;
-    }
-    ars[i] += ins_id_vec[i];
-    ars[i] = ars[i] + "\t" + ins_content_vec[i];
-  }
-  for (auto& field : *dump_fields_) {
-    Variable* var = scope.FindVar(field);
-    if (var == nullptr) {
-      VLOG(0) << "Note: field[" << field
-              << "] cannot be find in scope, so it was skipped.";
-      continue;
-    }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    if (!tensor->IsInitialized()) {
-      VLOG(0) << "Note: field[" << field
-              << "] is not initialized, so it was skipped.";
-      continue;
-    }
-    framework::LoDTensor cpu_tensor;
-    if (platform::is_gpu_place(tensor->place())) {
-      TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
-      cpu_tensor.set_lod(tensor->lod());
-      tensor = &cpu_tensor;
-    }
-    if (!CheckValidOutput(tensor, batch_size)) {
-      VLOG(0) << "Note: field[" << field << "] cannot pass check, so it was "
-                                            "skipped. Maybe the dimension is "
-                                            "wrong ";
-      continue;
+  if (dump_mode_ == 3) {
+    std::vector<LoDTensor*> dump_tensors;
+    for (auto& field : *dump_fields_) {
+      Variable* var = scope.FindVar(field);
+      if (var == nullptr) {
+        VLOG(0) << "Note: field[" << field
+                << "] cannot be find in scope, so it was skipped.";
+        continue;
+      }
+      auto cpu_tensor = new LoDTensor();
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (!tensor->IsInitialized()) {
+        VLOG(0) << "Note: field[" << field
+                << "] is not initialized, so it was skipped.";
+        continue;
+      }
+      if (platform::is_gpu_place(tensor->place())) {
+        TensorCopySync(*tensor, platform::CPUPlace(), cpu_tensor);
+        cpu_tensor->set_lod(tensor->lod());
+        // tensor = &cpu_tensor;
+      }
+      if (!CheckValidOutput(cpu_tensor, batch_size)) {
+        VLOG(0) << "Note: field[" << field << "] cannot pass check, so it was "
+                                              "skipped. Maybe the dimension is "
+                                              "wrong ";
+        continue;
+      }
+      dump_tensors.push_back(cpu_tensor);
     }
     for (size_t i = 0; i < batch_size; ++i) {
       if (!hit[i]) {
         continue;
       }
-      auto bound = GetTensorBound(tensor, i);
-      ars[i] = ars[i] + "\t" + field + ":" +
-               std::to_string(bound.second - bound.first);
-      ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
+      for (size_t j = 0; j < dump_tensors.size(); j++) {
+        auto& tensor = dump_tensors[j];
+        auto bound = GetTensorBound(tensor, i);
+        if (i > 0) ars[i] += "\t";
+        ars[i] += PrintLodTensor(tensor, bound.first, bound.second, ' ', false);
+      }
+      if (ars[i].size() > 0) ars[i] += "\n";
+      // ars[i] = ars[i] + "\t" + field + ":" +
+      //         std::to_string(bound.second - bound.first);
+      // ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
+    }
+  } else {
+    for (size_t i = 0; i < ins_id_vec.size(); i++) {
+      if (!hit[i]) {
+        continue;
+      }
+      ars[i] += ins_id_vec[i];
+      ars[i] = ars[i] + "\t" + ins_content_vec[i];
+    }
+    for (auto& field : *dump_fields_) {
+      Variable* var = scope.FindVar(field);
+      if (var == nullptr) {
+        VLOG(0) << "Note: field[" << field
+                << "] cannot be find in scope, so it was skipped.";
+        continue;
+      }
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (!tensor->IsInitialized()) {
+        VLOG(0) << "Note: field[" << field
+                << "] is not initialized, so it was skipped.";
+        continue;
+      }
+      framework::LoDTensor cpu_tensor;
+      if (platform::is_gpu_place(tensor->place())) {
+        TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+        cpu_tensor.set_lod(tensor->lod());
+        tensor = &cpu_tensor;
+      }
+      if (!CheckValidOutput(tensor, batch_size)) {
+        VLOG(0) << "Note: field[" << field << "] cannot pass check, so it was "
+                                              "skipped. Maybe the dimension is "
+                                              "wrong ";
+        continue;
+      }
+
+      for (size_t i = 0; i < batch_size; ++i) {
+        if (!hit[i]) {
+          continue;
+        }
+        auto bound = GetTensorBound(tensor, i);
+        ars[i] = ars[i] + "\t" + field + ":" +
+                 std::to_string(bound.second - bound.first);
+        ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
+      }
     }
   }
   // #pragma omp parallel for

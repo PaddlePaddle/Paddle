@@ -59,7 +59,9 @@ class Scope;
 namespace paddle {
 namespace framework {
 
-std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end);
+std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end,
+                           char separator = ',',
+                           bool need_leading_separator = false);
 std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
 bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
 
