@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gpu/graph_send_e_recv_funcs.h"
-#include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
-#include "paddle/phi/kernels/graph_send_e_recv_grad_kernel.h"
-#include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/gpu/graph_send_e_recv_funcs.h"
+#include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
+#include "paddle/phi/kernels/graph_send_e_recv_grad_kernel.h"
+#include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
 
 namespace phi {
 
@@ -57,43 +56,41 @@ void CalculateXEGradForMinMax(const Context& ctx,
   const dim3 block(ntx, nty);
 
   if (compute_type == "ADD") {
-    ManipulateMinMaxGradCUDAKernelForAdd<
-        T,
-        IndexT><<<grid, block, 0, ctx.stream()>>>(
-        x_data,
-        e_data,
-        out_data,
-        out_grad,
-        d_index,
-        s_index,
-        thrust::raw_pointer_cast(l_bcastoff.data()),
-        thrust::raw_pointer_cast(r_bcastoff.data()),
-        x_grad,
-        e_grad,
-        index_size,
-        bcast_info.l_len,
-        bcast_info.r_len,
-        out_len,
-        bcast_info.use_bcast);
+    ManipulateMinMaxGradCUDAKernelForAdd<T, IndexT>
+        <<<grid, block, 0, ctx.stream()>>>(
+            x_data,
+            e_data,
+            out_data,
+            out_grad,
+            d_index,
+            s_index,
+            thrust::raw_pointer_cast(l_bcastoff.data()),
+            thrust::raw_pointer_cast(r_bcastoff.data()),
+            x_grad,
+            e_grad,
+            index_size,
+            bcast_info.l_len,
+            bcast_info.r_len,
+            out_len,
+            bcast_info.use_bcast);
   } else if (compute_type == "MUL") {
-    ManipulateMinMaxGradCUDAKernelForMul<
-        T,
-        IndexT><<<grid, block, 0, ctx.stream()>>>(
-        x_data,
-        e_data,
-        out_data,
-        out_grad,
-        d_index,
-        s_index,
-        thrust::raw_pointer_cast(l_bcastoff.data()),
-        thrust::raw_pointer_cast(r_bcastoff.data()),
-        x_grad,
-        e_grad,
-        index_size,
-        bcast_info.l_len,
-        bcast_info.r_len,
-        out_len,
-        bcast_info.use_bcast);
+    ManipulateMinMaxGradCUDAKernelForMul<T, IndexT>
+        <<<grid, block, 0, ctx.stream()>>>(
+            x_data,
+            e_data,
+            out_data,
+            out_grad,
+            d_index,
+            s_index,
+            thrust::raw_pointer_cast(l_bcastoff.data()),
+            thrust::raw_pointer_cast(r_bcastoff.data()),
+            x_grad,
+            e_grad,
+            index_size,
+            bcast_info.l_len,
+            bcast_info.r_len,
+            out_len,
+            bcast_info.use_bcast);
   }
 }
 
@@ -126,12 +123,14 @@ void CalculateXGrad(const Context& ctx,
   if (pool_type == "SUM") {
     if (compute_type == "ADD") {
       GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
-      GraphSendRecvCUDAKernel<T,
-                              IndexT,
-                              GraphSendRecvSumCUDAFunctor<
-                                  T,
-                                  IndexT>><<<grid, block, 0, ctx.stream()>>>(
-          out_grad, d_index, s_index, x_grad, index_size, slice_size, functor);
+      GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
+          <<<grid, block, 0, ctx.stream()>>>(out_grad,
+                                             d_index,
+                                             s_index,
+                                             x_grad,
+                                             index_size,
+                                             slice_size,
+                                             functor);
     } else if (compute_type == "MUL") {
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
       thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
@@ -147,25 +146,25 @@ void CalculateXGrad(const Context& ctx,
       const dim3 block_(ntx, nty);
       funcs::MultiplyFunctor<T> mul_functor;
       GraphSendERecvSumCUDAFunctor<T> sum_functor;
-      GraphSendERecvCUDAKernel<
-          T,
-          IndexT,
-          GraphSendERecvSumCUDAFunctor<T>,
-          funcs::MultiplyFunctor<T>><<<grid_, block_, 0, ctx.stream()>>>(
-          out_grad,
-          e_data,
-          d_index,
-          s_index,
-          thrust::raw_pointer_cast(l_bcastoff.data()),
-          thrust::raw_pointer_cast(r_bcastoff.data()),
-          x_grad,
-          index_size,
-          bcast_info.l_len,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast,
-          mul_functor,
-          sum_functor);
+      GraphSendERecvCUDAKernel<T,
+                               IndexT,
+                               GraphSendERecvSumCUDAFunctor<T>,
+                               funcs::MultiplyFunctor<T>>
+          <<<grid_, block_, 0, ctx.stream()>>>(
+              out_grad,
+              e_data,
+              d_index,
+              s_index,
+              thrust::raw_pointer_cast(l_bcastoff.data()),
+              thrust::raw_pointer_cast(r_bcastoff.data()),
+              x_grad,
+              index_size,
+              bcast_info.l_len,
+              bcast_info.r_len,
+              out_len,
+              bcast_info.use_bcast,
+              mul_functor,
+              sum_functor);
     }
   } else if (pool_type == "MEAN") {
     const int* s_count = dst_count->data<int>();
@@ -173,7 +172,11 @@ void CalculateXGrad(const Context& ctx,
       ManipulateMeanGradCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
           out_grad, d_index, s_index, x_grad, index_size, slice_size, s_count);
     } else if (compute_type == "MUL") {
+      const auto& broad_shape = phi::InferBroadcastShape(out_grad_dims, e_dims);
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
+      DenseTensor out_grad_temp;
+      out_grad_temp.Resize(phi::make_ddim(bcast_info));
+      ctx.template Alloc<T>(&out_grad_temp);
       thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
       if (bcast_info.use_bcast) {
         CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
@@ -185,22 +188,21 @@ void CalculateXGrad(const Context& ctx,
       const int nby = (index_size + nty - 1) / nty;
       const dim3 grid_(nbx, nby);
       const dim3 block_(ntx, nty);
-      ManipulateMeanGradCUDAKernelForMulX<
-          T,
-          IndexT><<<grid_, block_, 0, ctx.stream()>>>(
-          out_grad,
-          e_data,
-          d_index,
-          s_index,
-          s_count,
-          thrust::raw_pointer_cast(l_bcastoff.data()),
-          thrust::raw_pointer_cast(r_bcastoff.data()),
-          x_grad,
-          index_size,
-          bcast_info.l_len,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast);
+      ManipulateMeanGradCUDAKernelForMulX<T, IndexT>
+          <<<grid_, block_, 0, ctx.stream()>>>(
+              out_grad,
+              e_data,
+              d_index,
+              s_index,
+              s_count,
+              thrust::raw_pointer_cast(l_bcastoff.data()),
+              thrust::raw_pointer_cast(r_bcastoff.data()),
+              x_grad,
+              index_size,
+              bcast_info.l_len,
+              bcast_info.r_len,
+              out_len,
+              bcast_info.use_bcast);
     }
   }
 }
@@ -235,66 +237,62 @@ void CalculateEGrad(const Context& ctx,
   const dim3 block(ntx, nty);
   if (pool_type == "SUM") {
     if (compute_type == "ADD") {
-      ManipulateSumGradCUDAKernelForAddE<
-          T,
-          IndexT><<<grid, block, 0, ctx.stream()>>>(
-          out_grad,
-          d_index,
-          thrust::raw_pointer_cast(r_bcastoff.data()),
-          e_grad,
-          index_size,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast);
+      ManipulateSumGradCUDAKernelForAddE<T, IndexT>
+          <<<grid, block, 0, ctx.stream()>>>(
+              out_grad,
+              d_index,
+              thrust::raw_pointer_cast(r_bcastoff.data()),
+              e_grad,
+              index_size,
+              bcast_info.r_len,
+              out_len,
+              bcast_info.use_bcast);
     } else if (compute_type == "MUL") {
-      ManipulateSumGradCUDAKernelForMulE<
-          T,
-          IndexT><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          out_grad,
-          s_index,
-          d_index,
-          thrust::raw_pointer_cast(l_bcastoff.data()),
-          thrust::raw_pointer_cast(r_bcastoff.data()),
-          e_grad,
-          index_size,
-          bcast_info.l_len,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast);
+      ManipulateSumGradCUDAKernelForMulE<T, IndexT>
+          <<<grid, block, 0, ctx.stream()>>>(
+              x_data,
+              out_grad,
+              s_index,
+              d_index,
+              thrust::raw_pointer_cast(l_bcastoff.data()),
+              thrust::raw_pointer_cast(r_bcastoff.data()),
+              e_grad,
+              index_size,
+              bcast_info.l_len,
+              bcast_info.r_len,
+              out_len,
+              bcast_info.use_bcast);
     }
   } else if (pool_type == "MEAN") {
     const int* s_count = dst_count->data<int>();
     if (compute_type == "ADD") {
-      ManipulateMeanGradCUDAKernelForAddE<
-          T,
-          IndexT><<<grid, block, 0, ctx.stream()>>>(
-          out_grad,
-          d_index,
-          s_count,
-          thrust::raw_pointer_cast(r_bcastoff.data()),
-          e_grad,
-          index_size,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast);
+      ManipulateMeanGradCUDAKernelForAddE<T, IndexT>
+          <<<grid, block, 0, ctx.stream()>>>(
+              out_grad,
+              d_index,
+              s_count,
+              thrust::raw_pointer_cast(r_bcastoff.data()),
+              e_grad,
+              index_size,
+              bcast_info.r_len,
+              out_len,
+              bcast_info.use_bcast);
     } else if (compute_type == "MUL") {
-      ManipulateMeanGradCUDAKernelForMulE<
-          T,
-          IndexT><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          out_grad,
-          s_index,
-          d_index,
-          s_count,
-          thrust::raw_pointer_cast(l_bcastoff.data()),
-          thrust::raw_pointer_cast(r_bcastoff.data()),
-          e_grad,
-          index_size,
-          bcast_info.l_len,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast);
+      ManipulateMeanGradCUDAKernelForMulE<T, IndexT>
+          <<<grid, block, 0, ctx.stream()>>>(
+              x_data,
+              out_grad,
+              s_index,
+              d_index,
+              s_count,
+              thrust::raw_pointer_cast(l_bcastoff.data()),
+              thrust::raw_pointer_cast(r_bcastoff.data()),
+              e_grad,
+              index_size,
+              bcast_info.l_len,
+              bcast_info.r_len,
+              out_len,
+              bcast_info.use_bcast);
     }
   }
 }
