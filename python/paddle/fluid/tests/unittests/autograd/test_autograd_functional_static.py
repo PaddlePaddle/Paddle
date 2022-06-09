@@ -379,6 +379,39 @@ class TestJacobianFloat32(unittest.TestCase):
         self.run_test_by_rows(pd_f, np_f, [self.D, self.E], batch=True)
         self.run_test_by_entries(pd_f, np_f, [self.D, self.E], batch=True)
 
+    def test_prim_mode(self):
+
+        def fun(x, y):
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                static_x = paddle.static.data('x', x.shape, x.dtype)
+                static_y = paddle.static.data('y', y.shape, y.dtype)
+                jac = paddle.incubate.autograd.Jacobian(paddle.multiply,
+                                                        (static_x, static_y))[:]
+                if paddle.incubate.autograd.prim_enabled():
+                    paddle.incubate.autograd.prim2orig(main.block(0))
+            feed = {'x': x, 'y': y}
+            fetch_list = [jac]
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            [jac] = exe.run(main, feed=feed, fetch_list=fetch_list)
+            return jac
+
+        x = np.random.rand(3, 3).astype(self.np_dtype)
+        y = np.random.rand(3, 3).astype(self.np_dtype)
+
+        paddle.incubate.autograd.disable_prim()
+        orig_jac = fun(x, y)
+        paddle.incubate.autograd.enable_prim()
+        prim_jac = fun(x, y)
+        paddle.incubate.autograd.disable_prim()
+
+        np.testing.assert_allclose(orig_jac,
+                                   prim_jac,
+                                   rtol=self.rtol,
+                                   atol=self.atol)
+
 
 class TestJacobianFloat64(TestJacobianFloat32):
 
@@ -447,6 +480,39 @@ class TestHessianFloat32(unittest.TestCase):
             return np.concatenate((upper, upper), axis=1)
 
         self.run_test_by_fullmatrix(pd_f, self.B, np_hess(self.B))
+
+    def test_prim_mode(self):
+
+        def fun(x, y):
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                static_x = paddle.static.data('x', x.shape, x.dtype)
+                static_y = paddle.static.data('y', y.shape, y.dtype)
+                hessian = paddle.incubate.autograd.Hessian(
+                    lambda x, y: paddle.multiply(x, y), (static_x, static_y))[:]
+                if paddle.incubate.autograd.prim_enabled():
+                    paddle.incubate.autograd.prim2orig(main.block(0))
+            feed = {'x': x, 'y': y}
+            fetch_list = [hessian]
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            [hessian] = exe.run(main, feed=feed, fetch_list=fetch_list)
+            return hessian
+
+        x = np.random.rand(1).astype(self.dtype)
+        y = np.random.rand(1).astype(self.dtype)
+
+        paddle.incubate.autograd.disable_prim()
+        orig_hessian = fun(x, y)
+        paddle.incubate.autograd.enable_prim()
+        prim_hessian = fun(x, y)
+        paddle.incubate.autograd.disable_prim()
+
+        np.testing.assert_allclose(orig_hessian,
+                                   prim_hessian,
+                                   rtol=self.rtol,
+                                   atol=self.atol)
 
 
 class TestHessianFloat64(TestHessianFloat32):
