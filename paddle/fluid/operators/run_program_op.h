@@ -259,7 +259,8 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto output_var_names = ctx.OutputNames("Out");
     std::vector<std::string> dout_var_names;
     if (!dout_vars.empty()) {
-      // DOut is dispensable, may be empty
+      // DOut is a dispensable out, only get the names when it exists.
+      // Otherwise, it will throw a NotFound error.
       dout_var_names = ctx.OutputNames("DOut");
     }
 
@@ -276,14 +277,17 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     // NOTE(chenweihang): In order not to add new variable type, use vector
     // here. Originally, here can use scope directly.
     auto *out_scope_vec = ctx.Output<StepScopeVar>("OutScope");
-    framework::Scope *inner_scope = nullptr;
+    std::unique_ptr<framework::Scope> inner_scope{nullptr};
     if (out_scope_vec->size() == 0) {
-      // for cuda graph usage
-      inner_scope = ctx.Attr<framework::Scope *>("inner_scope");
-      PADDLE_ENFORCE_NE(
-          inner_scope, nullptr,
+      // For cuda graph under static mode usage.
+      // For static mode, we cannot set value of a tensor before any run,
+      // the OutScope variable passed to the op actually contains nothing.
+      // Just create a tmp scope to run the program.
+      PADDLE_ENFORCE_EQ(
+          use_cuda_graph, true,
           platform::errors::InvalidArgument(
-              "If not provide OutScope, inner_scope should be provided."));
+              "If not provide OutScope then must run under cuda graph mode."));
+      inner_scope = std::make_unique<framework::Scope>();
     } else {
       PADDLE_ENFORCE_EQ(
           out_scope_vec->size(), 1,
@@ -299,9 +303,9 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     // scope separately. Otherwise, the gradients can be miscalculated because
     // always using the Tensor data of the last step in forward.
     framework::Scope *global_inner_scope =
-        out_scope_vec->size() == 0 ? inner_scope : out_scope_vec->front();
+        out_scope_vec->size() == 0 ? inner_scope.get() : out_scope_vec->front();
     VLOG(2) << "The number of sub scopes before forward: "
-            << out_scope_vec->front()->kids().size();
+            << global_inner_scope->kids().size();
     framework::Scope &scope = global_inner_scope->NewScope();
 
     // share input_vars & parameters into scope
@@ -356,13 +360,19 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
                                 &scope);
 
     // Debug info: scope info when run end
-    VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
+    framework::Scope *target_scope{nullptr};
+    if (out_scope_vec->size() == 0) {
+      target_scope = inner_scope.get();
+    } else {
+      target_scope = out_scope_vec->front();
+    }
+    VLOG(3) << framework::GenScopeTreeDebugInfo(target_scope);
     // Step 5. Drop all children scopes while testing.
     if (is_test) {
-      out_scope_vec->front()->DropKids();
+      target_scope->DropKids();
     }
     VLOG(2) << "The number of sub scopes after forward: "
-            << out_scope_vec->front()->kids().size();
+            << target_scope->kids().size();
 #ifdef PADDLE_WITH_MKLDNN
     if (FLAGS_use_mkldnn) platform::DontClearMKLDNNCache(ctx.GetPlace());
 #endif

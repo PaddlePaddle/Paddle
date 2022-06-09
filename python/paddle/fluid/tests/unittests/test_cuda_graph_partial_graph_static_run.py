@@ -60,7 +60,6 @@ class TestCudaGraphAttrAll(unittest.TestCase):
         loss = paddle.mean(end_out)
         opt = paddle.optimizer.SGD()
         opt.minimize(loss)
-
         return loss
 
     def run_with_cuda_graph(self, x_data):
@@ -70,10 +69,11 @@ class TestCudaGraphAttrAll(unittest.TestCase):
         start_prog = paddle.static.Program()
 
         with paddle.static.program_guard(main_prog, start_prog):
-            loss = self.get_model(True)
+            loss = self.get_model(use_cuda_graph=True)
 
-        transform_program = cuda_graph_transform(main_prog)
-        block = transform_program.global_block()
+        section_programs = cuda_graph_transform(main_prog)
+        assert len(section_programs) == 4
+        block = main_prog.global_block()
         run_program_op_num = 0
         for op in block.ops:
             if op.type == 'run_program':
@@ -83,9 +83,7 @@ class TestCudaGraphAttrAll(unittest.TestCase):
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         exe.run(start_prog)
         for i in range(10):
-            rst = exe.run(transform_program,
-                          feed={'x': x_data},
-                          fetch_list=[loss])
+            rst = exe.run(main_prog, feed={'x': x_data}, fetch_list=[loss])
         return rst
 
     def normal_run(self, x_data):
