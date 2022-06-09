@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <sstream>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
