@@ -1401,7 +1401,7 @@ class Executor(object):
             # print("compiled is : {}".format(compiled))
             # NOTE(zhiqiu): do not support compiled program now
             if compiled:
-                return False
+                return True
                 # if program._is_data_parallel and len(
                 #         program._get_places(place, program._places)) == 1:
                 #     return True
@@ -1417,6 +1417,14 @@ class Executor(object):
         # use StandaloneExecutor to run the program.
         if self._enable_interpreter_core and _can_use_interpreter_core(
                 program, self.place):
+
+            compiled = isinstance(program, compiler.CompiledProgram)
+            # print("compiled is : {}".format(compiled))
+            if compiled:
+                compiled_graph = program._graph
+                ir_graph = framework.IrGraph(compiled_graph, for_test=True)
+                program = ir_graph.to_program()
+
             inner_program = program._program if isinstance(
                 program, compiler.CompiledProgram) else program
             if not inner_program._is_start_up_program_:
