@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -227,14 +228,14 @@ struct TransposeNormal<phi::GPUContext, T> {
                          : (1 << static_cast<int>(std::log2(elements)));
     int grid_size = elements / block_size;
     grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
-    TransposeNormalKernel<T><<<grid_size, block_size, 0, context.stream()>>>(
-        in_ptr,
-        out_ptr,
-        elements,
-        in_stride_ptr,
-        out_stride_ptr,
-        axis_ptr,
-        rank);
+    TransposeNormalKernel<T>
+        <<<grid_size, block_size, 0, context.stream()>>>(in_ptr,
+                                                         out_ptr,
+                                                         elements,
+                                                         in_stride_ptr,
+                                                         out_stride_ptr,
+                                                         axis_ptr,
+                                                         rank);
   }
 };
 

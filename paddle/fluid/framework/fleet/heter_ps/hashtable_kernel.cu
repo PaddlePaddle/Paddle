@@ -14,6 +14,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include <thread>
+
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 
@@ -366,10 +367,10 @@ template class HashTable<long, long>;
 template class HashTable<long, unsigned long>;
 template class HashTable<long, unsigned int>;
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue>::get<
-    cudaStream_t>(const unsigned long* d_keys,
-                  paddle::framework::FeatureValue* d_vals, size_t len,
-                  cudaStream_t stream);
+template void
+HashTable<unsigned long, paddle::framework::FeatureValue>::get<cudaStream_t>(
+    const unsigned long* d_keys, paddle::framework::FeatureValue* d_vals,
+    size_t len, cudaStream_t stream);
 
 template void
 HashTable<unsigned long, paddle::framework::FeatureValue*>::get<cudaStream_t>(
@@ -395,10 +396,10 @@ template void HashTable<unsigned long, long>::get<cudaStream_t>(
 //    const unsigned long* d_keys, char* d_vals, size_t len, cudaStream_t
 //    stream);
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue>::insert<
-    cudaStream_t>(const unsigned long* d_keys,
-                  const paddle::framework::FeatureValue* d_vals, size_t len,
-                  cudaStream_t stream);
+template void
+HashTable<unsigned long, paddle::framework::FeatureValue>::insert<cudaStream_t>(
+    const unsigned long* d_keys, const paddle::framework::FeatureValue* d_vals,
+    size_t len, cudaStream_t stream);
 
 template void HashTable<unsigned long, paddle::framework::FeatureValue*>::
     insert<cudaStream_t>(const unsigned long* d_keys, size_t len, char* pool,
@@ -438,20 +439,21 @@ template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
               paddle::framework::FeaturePushValue>,
     cudaStream_t>(const unsigned long* d_keys,
                   const paddle::framework::FeaturePushValue* d_grads,
-                  size_t len, Optimizer<paddle::framework::FeatureValue,
-                                        paddle::framework::FeaturePushValue>
-                                  sgd,
-                  cudaStream_t stream);
-
-template void
-HashTable<unsigned long, paddle::framework::FeatureValue*>::update<
-    Optimizer<paddle::framework::FeatureValue,
-              paddle::framework::FeaturePushValue>,
-    cudaStream_t>(const unsigned long* d_keys, const char* d_grads, size_t len,
+                  size_t len,
                   Optimizer<paddle::framework::FeatureValue,
                             paddle::framework::FeaturePushValue>
                       sgd,
                   cudaStream_t stream);
+
+template void HashTable<unsigned long, paddle::framework::FeatureValue*>::
+    update<Optimizer<paddle::framework::FeatureValue,
+                     paddle::framework::FeaturePushValue>,
+           cudaStream_t>(const unsigned long* d_keys, const char* d_grads,
+                         size_t len,
+                         Optimizer<paddle::framework::FeatureValue,
+                                   paddle::framework::FeaturePushValue>
+                             sgd,
+                         cudaStream_t stream);
 
 // template void HashTable<unsigned long,
 // paddle::framework::FeatureValue>::update<

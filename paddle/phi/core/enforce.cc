@@ -14,12 +14,11 @@ limitations under the License. */
 
 #include "paddle/phi/core/enforce.h"
 
+#include <boost/variant.hpp>
 #include <map>
 #include <memory>
 #include <unordered_map>
 #include <vector>
-
-#include <boost/variant.hpp>
 
 // <boost/variant.hpp> is not suitable to be placed in the header file,
 // it will introduce a large number of unnecessary includes, and these type

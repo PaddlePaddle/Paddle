@@ -15,6 +15,7 @@
 #pragma once
 
 #include <error.h>
+
 #include <string>
 
 #include "boost/variant.hpp"

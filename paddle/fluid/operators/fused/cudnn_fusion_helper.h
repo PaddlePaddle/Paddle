@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"

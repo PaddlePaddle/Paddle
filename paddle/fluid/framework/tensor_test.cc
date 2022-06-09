@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/tensor.h"
 
 #include <gtest/gtest.h>
+
 #include <string>
 
 namespace framework = paddle::framework;

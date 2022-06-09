@@ -15,6 +15,7 @@
 #pragma once
 
 #include <NvInfer.h>
+
 #include <cstring>
 #include <string>
 #include <unordered_map>

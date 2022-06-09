@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/stack_grad_kernel.h"
-
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/stack_grad_kernel.h"
 
 namespace phi {
 
@@ -105,27 +104,27 @@ void StackGradKernel(const Context& dev_ctx,
       dev_ctx, dy_pre * split_dim * dy_suf);
 
   if (out.numel() < std::numeric_limits<int32_t>::max()) {
-    UnStackHelperCUDAKernel<T, int32_t><<<config.block_per_grid.x,
-                                          config.thread_per_block.x,
-                                          0,
-                                          dev_ctx.stream()>>>(
-        dy_data,
-        dy_pre,
-        split_dim,
-        dy_suf,
-        split_dim,
-        reinterpret_cast<T**>(tmp_out_data->ptr()));
+    UnStackHelperCUDAKernel<T, int32_t>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(dy_data,
+                               dy_pre,
+                               split_dim,
+                               dy_suf,
+                               split_dim,
+                               reinterpret_cast<T**>(tmp_out_data->ptr()));
   } else {
-    UnStackHelperCUDAKernel<T, int64_t><<<config.block_per_grid.x,
-                                          config.thread_per_block.x,
-                                          0,
-                                          dev_ctx.stream()>>>(
-        dy_data,
-        dy_pre,
-        split_dim,
-        dy_suf,
-        split_dim,
-        reinterpret_cast<T**>(tmp_out_data->ptr()));
+    UnStackHelperCUDAKernel<T, int64_t>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(dy_data,
+                               dy_pre,
+                               split_dim,
+                               dy_suf,
+                               split_dim,
+                               reinterpret_cast<T**>(tmp_out_data->ptr()));
   }
 }
 

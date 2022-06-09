@@ -51,8 +51,8 @@ def _get_image_size(img):
             return img.shape[2:][::-1]  # nchw -> wh
         else:
             raise ValueError(
-                "The dim for input Tensor should be 3-D or 4-D, but received {}".
-                format(len(img.shape)))
+                "The dim for input Tensor should be 3-D or 4-D, but received {}"
+                .format(len(img.shape)))
     else:
         raise TypeError("Unexpected type {}".format(type(img)))
 
@@ -72,8 +72,8 @@ def _check_input(value,
             value[0] = max(value[0], 0)
     elif isinstance(value, (tuple, list)) and len(value) == 2:
         if not bound[0] <= value[0] <= value[1] <= bound[1]:
-            raise ValueError("{} values should be between {}".format(name,
-                                                                     bound))
+            raise ValueError("{} values should be between {}".format(
+                name, bound))
     else:
         raise TypeError(
             "{} should be a single number or a list/tuple with lenght 2.".
@@ -418,8 +418,8 @@ class Resize(BaseTransform):
 
     def __init__(self, size, interpolation='bilinear', keys=None):
         super(Resize, self).__init__(keys)
-        assert isinstance(size, int) or (isinstance(size, Iterable) and
-                                         len(size) == 2)
+        assert isinstance(size, int) or (isinstance(size, Iterable)
+                                         and len(size) == 2)
         self.size = size
         self.interpolation = interpolation
 
@@ -938,8 +938,11 @@ class HueTransform(BaseTransform):
 
     def __init__(self, value, keys=None):
         super(HueTransform, self).__init__(keys)
-        self.value = _check_input(
-            value, 'hue', center=0, bound=(-0.5, 0.5), clip_first_on_zero=False)
+        self.value = _check_input(value,
+                                  'hue',
+                                  center=0,
+                                  bound=(-0.5, 0.5),
+                                  clip_first_on_zero=False)
 
     def _apply_image(self, img):
         if self.value is None:
@@ -986,7 +989,11 @@ class ColorJitter(BaseTransform):
 
     """
 
-    def __init__(self, brightness=0, contrast=0, saturation=0, hue=0,
+    def __init__(self,
+                 brightness=0,
+                 contrast=0,
+                 saturation=0,
+                 hue=0,
                  keys=None):
         super(ColorJitter, self).__init__(keys)
         self.brightness = brightness
@@ -1405,12 +1412,11 @@ class RandomAffine(BaseTransform):
         ret = self._get_param(img_size, self.degrees, self.translate,
                               self.scale, self.shear)
 
-        return F.affine(
-            img,
-            *ret,
-            interpolation=self.interpolation,
-            fill=self.fill,
-            center=self.center)
+        return F.affine(img,
+                        *ret,
+                        interpolation=self.interpolation,
+                        fill=self.fill,
+                        center=self.center)
 
 
 class RandomRotation(BaseTransform):
@@ -1577,14 +1583,17 @@ class RandomPerspective(BaseTransform):
         half_height = height // 2
         half_width = width // 2
         topleft = [
-            int(random.uniform(0, int(distortion_scale * half_width) + 1)),
-            int(random.uniform(0, int(distortion_scale * half_height) + 1)),
+            int(random.uniform(0,
+                               int(distortion_scale * half_width) + 1)),
+            int(random.uniform(0,
+                               int(distortion_scale * half_height) + 1)),
         ]
         topright = [
             int(
                 random.uniform(width - int(distortion_scale * half_width) - 1,
                                width)),
-            int(random.uniform(0, int(distortion_scale * half_height) + 1)),
+            int(random.uniform(0,
+                               int(distortion_scale * half_height) + 1)),
         ]
         botright = [
             int(
@@ -1595,7 +1604,8 @@ class RandomPerspective(BaseTransform):
                                height)),
         ]
         botleft = [
-            int(random.uniform(0, int(distortion_scale * half_width) + 1)),
+            int(random.uniform(0,
+                               int(distortion_scale * half_width) + 1)),
             int(
                 random.uniform(height - int(distortion_scale * half_height) - 1,
                                height)),
@@ -1723,10 +1733,10 @@ class RandomErasing(BaseTransform):
                 ), "scale should be of kind (min, max) and in range [0, 1]"
         assert isinstance(ratio,
                           (tuple, list)), "ratio should be a tuple or list"
-        assert (ratio[0] >= 0 and
-                ratio[0] <= ratio[1]), "ratio should be of kind (min, max)"
-        assert (prob >= 0 and
-                prob <= 1), "The probability should be in range [0, 1]"
+        assert (ratio[0] >= 0
+                and ratio[0] <= ratio[1]), "ratio should be of kind (min, max)"
+        assert (prob >= 0
+                and prob <= 1), "The probability should be in range [0, 1]"
         assert isinstance(
             value, (numbers.Number, str, tuple,
                     list)), "value should be a number, tuple, list or str"
@@ -1772,8 +1782,8 @@ class RandomErasing(BaseTransform):
                 continue
             if F._is_tensor_image(img):
                 if value is None:
-                    v = paddle.normal(
-                        shape=[c, erase_h, erase_w]).astype(img.dtype)
+                    v = paddle.normal(shape=[c, erase_h, erase_w]).astype(
+                        img.dtype)
                 else:
                     v = paddle.to_tensor(value, dtype=img.dtype)[:, None, None]
             else:
@@ -1808,7 +1818,7 @@ class RandomErasing(BaseTransform):
                 raise ValueError(
                     "Value should be a single number or a sequence with length equals to image's channel."
                 )
-            top, left, erase_h, erase_w, v = self._get_param(img, self.scale,
-                                                             self.ratio, value)
+            top, left, erase_h, erase_w, v = self._get_param(
+                img, self.scale, self.ratio, value)
             return F.erase(img, top, left, erase_h, erase_w, v, self.inplace)
         return img

@@ -13,19 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mkldnn/matmul_mkldnn_op.h"
+
 #include <tuple>
+
 #include "paddle/fluid/framework/convert_utils.h"
 
 using dnnl::memory;
 using dnnl::primitive;
 using paddle::framework::DataLayout;
 using paddle::framework::ExecutionContext;
-using phi::vectorize;
 using paddle::platform::GetMKLDNNFormat;
-using paddle::platform::MKLDNNFormatForSize;
 using paddle::platform::MKLDNNDeviceContext;
+using paddle::platform::MKLDNNFormatForSize;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::to_void_cast;
+using phi::vectorize;
 using Tensor = paddle::framework::Tensor;
 
 namespace {
@@ -145,16 +147,10 @@ class MatMulMKLDNNHandler
     this->AcquireForwardPrimitiveDescriptor(attrs, x_md, y_md, out_md);
   }
   // Constructor for FWD MatMul
-  MatMulMKLDNNHandler(const dnnl::engine engine, const ExecutionContext& ctx,
-                      float scale)
+  MatMulMKLDNNHandler(const dnnl::engine engine, const ExecutionContext& ctx)
       : paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul>(
             engine, ctx.GetPlace()) {
-    dnnl::primitive_attr attr;
-    float scale_out = ComputeOutputScale(ctx);
-    if (scale_out != 1.0f) {
-      constexpr unsigned tensor_wide_scale = 0;
-      attr.set_output_scales(tensor_wide_scale, {scale_out});
-    }
+    const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
 
     auto matmul_dims_ = GetMatmulDims(ctx);
     auto x_md = memory::desc(matmul_dims_.x_dims, MKLDNNGetDataType<XT>(),
@@ -163,7 +159,7 @@ class MatMulMKLDNNHandler
                              matmul_dims_.y_strides);
     auto out_md = memory::desc(matmul_dims_.out_dims, MKLDNNGetDataType<OT>(),
                                matmul_dims_.out_strides);
-    this->AcquireForwardPrimitiveDescriptor(attr, x_md, y_md, out_md);
+    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const Tensor* input) {
@@ -427,6 +423,19 @@ class MatMulMKLDNNHandler
     return std::make_tuple(x_offset_, y_offset_, out_offset_);
   }
 
+  dnnl::primitive_attr CreateMatmulAttrs(const ExecutionContext& ctx) {
+    dnnl::primitive_attr matmul_attrs;
+    dnnl::post_ops post_operations;
+
+    float scale_out = ComputeOutputScale(ctx);
+    if (scale_out != 1.0f) {
+      matmul_attrs.set_output_scales(0, {scale_out});
+    }
+
+    matmul_attrs.set_post_ops(post_operations);
+    return matmul_attrs;
+  }
+
  private:
   uint32_t x_offset_;
   uint32_t y_offset_;
@@ -497,23 +506,19 @@ static void ExecuteMatMul(const ExecutionContext& ctx) {
   auto* x = ctx.Input<Tensor>("X");
   auto* y = ctx.Input<Tensor>("Y");
   auto* out = ctx.Output<Tensor>("Out");
-  float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
   const auto& dev_ctx =
       ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
+  const auto& onednn_engine = dev_ctx.GetEngine();
 
   if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
-    MatMulMKLDNNHandler<XT, YT, float>(dev_ctx.GetEngine(), ctx, alpha)
-        .Execute(x, y, out);
+    MatMulMKLDNNHandler<XT, YT, float>(onednn_engine, ctx).Execute(x, y, out);
   } else if (is_bfloat16) {
-    MatMulMKLDNNHandler<XT, YT, paddle::platform::bfloat16>(dev_ctx.GetEngine(),
-                                                            ctx, alpha)
+    MatMulMKLDNNHandler<XT, YT, paddle::platform::bfloat16>(onednn_engine, ctx)
         .Execute(x, y, out);
   } else if (fuse_relu) {
-    MatMulMKLDNNHandler<XT, YT, uint8_t>(dev_ctx.GetEngine(), ctx, alpha)
-        .Execute(x, y, out);
+    MatMulMKLDNNHandler<XT, YT, uint8_t>(onednn_engine, ctx).Execute(x, y, out);
   } else {
-    MatMulMKLDNNHandler<XT, YT, int8_t>(dev_ctx.GetEngine(), ctx, alpha)
-        .Execute(x, y, out);
+    MatMulMKLDNNHandler<XT, YT, int8_t>(onednn_engine, ctx).Execute(x, y, out);
   }
 }
 
