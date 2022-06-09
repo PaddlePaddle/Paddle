@@ -144,7 +144,9 @@ class Engine:
                 labels = [s._create_feed_layer() for s in labels_spec]
                 outputs = to_list(self.model(*inputs))
                 if mode != "predict" and self._loss:
-                    losses = to_list(self._loss(*(outputs + labels)))
+                    losses, losses_details = self._loss(*(outputs + labels))
+                    losses = to_list(losses)
+                    losses_details = to_list(losses_details)
 
                 if mode != "predict":
                     for metric in self._metrics:
@@ -167,6 +169,7 @@ class Engine:
             fetch_vars = {
                 "outputs": flatten(outputs),
                 "loss": losses,
+                "loss_details": losses_details,
                 "metrics": metrics
             }
 
@@ -275,9 +278,13 @@ class Engine:
                 logs, outs = self._train_step(data, use_program_cache,
                                               return_numpy)
                 outputs.append(outs)
+                logs_keys = list(logs.keys())
                 train_logs = {
-                    "train_" + name: val
-                    for name, val in logs.items()
+                    "train_loss: " + str(logs[logs_keys[0]]) + " eq_loss: " +
+                    str(logs[logs_keys[1]]) + " bc_loss: " +
+                    str(logs[logs_keys[2]]) + " ic_loss: " +
+                    str(logs[logs_keys[3]]) + " data_loss: " +
+                    str(logs[logs_keys[4]])
                 }
                 self._logger.info(train_logs)
         return outputs
@@ -330,9 +337,11 @@ class Engine:
 
     def _train_step(self, data, use_program_cache=False, return_numpy=True):
         logs = {}
-        fetch_vars = self._fetch_vars[self.mode]["loss"]
-        fetch_list, usr_fetch_list = self._fetch_list(fetch_vars)
-        fetch_list += usr_fetch_list
+        losses = self._fetch_vars[self.mode]["loss"]
+        fetch_loss, _ = self._fetch_list(losses)
+        loss_details = self._fetch_vars[self.mode]["loss_details"]
+        fetch_loss_details, usr_fetch_list = self._fetch_list(loss_details)
+        fetch_list = fetch_loss + fetch_loss_details + usr_fetch_list
 
         outs = self._executor.run(self.main_program,
                                   fetch_list=fetch_list,
@@ -391,9 +400,13 @@ class Engine:
                 if isinstance(var, str):
                     if var in self.main_program.global_block().vars:
                         usr_fetch_list.append(var)
+                    else:
+                        print("The usr_fetch_var is not existed!")
                 elif isinstance(var, Variable):
                     if var.name in self.main_program.global_block().vars:
                         usr_fetch_list.append(var.name)
+                    else:
+                        print("The usr_fetch_var is not existed!")
         return fetch_list, usr_fetch_list
 
     def _create_dataloader(self,
