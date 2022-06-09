@@ -55,11 +55,11 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
         input_shape = prog_config.inputs["input_x"].shape
         if padding_algorithm == "VALID":
             if ((input_shape[2] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
-            ((input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
+                    ((input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
                 return False
         if padding_algorithm == "EXPLICIT":
             if ((input_shape[2] + paddings[0] + paddings[1] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
-                ((input_shape[3] + paddings[2] + paddings[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
+                    ((input_shape[3] + paddings[2] + paddings[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
                 return False
         if data_format == "NCHW":
             if input_shape[1] != filter_shape[1] * groups:
@@ -101,7 +101,8 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
                      max_size=2))
 
         # 5. Generate legal attr:padding_algorithm of conv2d
-        padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
+        padding_algorithm = draw(
+            st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
 
         # 6. Generate legal attr:padding of conv2d
         padding = draw(

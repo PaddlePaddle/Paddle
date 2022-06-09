@@ -104,8 +104,7 @@ void MainTest(std::string activation) {
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
-  auto pass =
-      PassRegistry::Instance().Get("conv_activation_mkldnn_fuse_pass");
+  auto pass = PassRegistry::Instance().Get("conv_activation_mkldnn_fuse_pass");
 
   int original_nodes_num = graph->Nodes().size();
 

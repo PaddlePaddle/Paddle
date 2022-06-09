@@ -23,8 +23,8 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass(){
-AddOpCompat(OpCompat("conv2d"))
+ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
       .AddInput("Input")
       .IsTensor()
       .End()
@@ -157,12 +157,10 @@ AddOpCompat(OpCompat("conv2d"))
       .End();
 }
 
-
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   std::vector<std::string> act_types = {
-      "relu",         "tanh", "swish", "hard_swish",
-      "hard_sigmoid", "gelu", "relu6", "sigmoid",
-      "leaky_relu",   "mish"};
+      "relu", "tanh",  "swish",   "hard_swish", "hard_sigmoid",
+      "gelu", "relu6", "sigmoid", "leaky_relu", "mish"};
 
   std::vector<std::string> conv_types = {"conv2d"};
 
@@ -172,8 +170,9 @@ void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
     }
 }
 
-void ConvActivationMkldnnFusePass::FuseConvAct(
-    Graph* graph, const std::string& conv_type, std::string& act_type) const {
+void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
+                                               const std::string& conv_type,
+                                               std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
