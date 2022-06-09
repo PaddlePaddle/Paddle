@@ -305,8 +305,6 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 1
         dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        for key in list(_g_process_group_map.keys()):
-            del _g_process_group_map[key]
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()
@@ -324,8 +322,6 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 1
         dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id, True)
-        for key in list(_g_process_group_map.keys()):
-            del _g_process_group_map[key]
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()

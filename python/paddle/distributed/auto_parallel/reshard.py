@@ -946,7 +946,7 @@ class Resharder:
                                         if process_mesh == op_process_mesh:
                                             is_reshard = True
                                             break
-                        else:
+                        elif not dist_tensor.serial_tensor.is_data:
                             is_reshard = True
         else:
             op_output_dims_mapping = op_dist_attr.get_output_dims_mapping(
@@ -1449,8 +1449,6 @@ class Resharder:
                             continue
                         var = get_var_with_recursion(
                             var_name, block, self.auto_parallel_main_prog)
-                        if var.is_data:
-                            continue
                         dist_tensor = self.dist_context.get_dist_tensor_for_program(
                             var)
                         for process_mesh in process_meshes:
