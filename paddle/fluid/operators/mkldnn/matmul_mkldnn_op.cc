@@ -13,19 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mkldnn/matmul_mkldnn_op.h"
+
 #include <tuple>
+
 #include "paddle/fluid/framework/convert_utils.h"
 
 using dnnl::memory;
 using dnnl::primitive;
 using paddle::framework::DataLayout;
 using paddle::framework::ExecutionContext;
-using phi::vectorize;
 using paddle::platform::GetMKLDNNFormat;
-using paddle::platform::MKLDNNFormatForSize;
 using paddle::platform::MKLDNNDeviceContext;
+using paddle::platform::MKLDNNFormatForSize;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::to_void_cast;
+using phi::vectorize;
 using Tensor = paddle::framework::Tensor;
 
 namespace {
@@ -421,7 +423,7 @@ class MatMulMKLDNNHandler
     return std::make_tuple(x_offset_, y_offset_, out_offset_);
   }
 
-dnnl::primitive_attr CreateMatmulAttrs(const ExecutionContext& ctx) {
+  dnnl::primitive_attr CreateMatmulAttrs(const ExecutionContext& ctx) {
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
 
