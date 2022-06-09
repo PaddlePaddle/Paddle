@@ -1061,23 +1061,29 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx, const Tensor& in,
 
   auto ret = TransposeSimple<T>::run(ctx, in, perm, out);
   if (!ret) {
-    auto* tuner = phi::autotune::MakeTransposeTuner<T>(
-        SimplifyThenLaunch<phi::GPUContext, T>);
+    auto* tuner =
+        phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext, T>);
     tuner->AddCallBack(
-        phi::autotune::MakeCallback<T>(TransCompute<phi::GPUContext, T>));
+        phi::autotune::MakeCallback<T>(SimplifyThenLaunch<phi::GPUContext, T>));
 
-    auto key = phi::autotune::TransposeKey(
-        phi::vectorize(in.dims()), perm,
-        paddle::experimental::CppTypeToDataType<T>::Type());
-    auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
-    if (cache.Find(key)) {
-      auto best_idx = cache.Get(key);
-      tuner->RunBestKernel(best_idx, rank, ctx, in, out, perm);
+    bool use_autotune = phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+    if (use_autotune) {
+      auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
+      auto key = phi::autotune::TransposeKey(
+          phi::vectorize(in.dims()), perm,
+          paddle::experimental::CppTypeToDataType<T>::Type());
+
+      if (cache.Find(key)) {
+        auto best_idx = cache.Get(key);
+        tuner->RunBestKernel(best_idx, rank, ctx, in, out, perm);
+      } else {
+        // All avaliable kernels have ran while picking the best kernel,
+        // so there may be no need for another kernel run.
+        auto best_idx = tuner->PickBestKernel(ctx, rank, ctx, in, out, perm);
+        cache.Set(key, best_idx);
+      }
     } else {
-      // All avaliable kernels have ran while picking the best kernel,
-      // so there may be no need for another kernel run.
-      auto best_idx = tuner->PickBestKernel(ctx, rank, ctx, in, out, perm);
-      cache.Set(key, best_idx);
+      tuner->RunDefaultKernel(rank, ctx, in, out, perm);
     }
   }
 }
