@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #include "paddle/phi/kernels/autotune/cache.h"
+#include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 
 namespace paddle {
