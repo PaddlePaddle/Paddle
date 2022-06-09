@@ -73,6 +73,7 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End();
+
   AddOpCompat(OpCompat("leaky_relu"))
       .AddInput("X")
       .IsTensor()
@@ -83,6 +84,7 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
       .AddAttr("alpha")
       .IsType<float>()
       .End();
+
   AddOpCompat(OpCompat("relu6"))
       .AddInput("X")
       .IsTensor()
@@ -93,6 +95,7 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
       .AddAttr("threshold")
       .IsType<float>()
       .End();
+
   AddOpCompat(OpCompat("swish"))
       .AddInput("X")
       .IsTensor()
@@ -103,6 +106,7 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
       .AddAttr("beta")
       .IsType<float>()
       .End();
+
   AddOpCompat(OpCompat("hard_swish"))
       .AddInput("X")
       .IsTensor()
@@ -122,6 +126,7 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
       .IsOptional()
       .IsType<float>()
       .End();
+
   AddOpCompat(OpCompat("mish"))
       .AddInput("X")
       .IsTensor()
@@ -129,6 +134,7 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End();
+
   AddOpCompat(OpCompat("hard_sigmoid"))
       .AddInput("X")
       .IsTensor()
@@ -159,8 +165,8 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   std::vector<std::string> act_types = {
-      "relu", "tanh",  "swish",   "hard_swish", "hard_sigmoid",
-      "gelu", "relu6", "sigmoid", "leaky_relu", "mish"};
+      "relu", "mish",  "swish",   "hard_swish", "hard_sigmoid",
+      "gelu", "relu6", "sigmoid", "leaky_relu"};
 
   std::vector<std::string> conv_types = {"conv2d"};
 
@@ -267,5 +273,4 @@ REGISTER_PASS_CAPABILITY(conv_activation_mkldnn_fuse_pass)
             .EQ("relu", 0)
             .EQ("relu6", 0)
             .EQ("sigmoid", 0)
-            .EQ("swish", 0)
-            .EQ("tanh", 0));
+            .EQ("swish", 0));
