@@ -23,7 +23,6 @@ limitations under the License. */
 
 #include "acl/acl.h"
 #include "acl/acl_op_compiler.h"
-
 #include "paddle/fluid/framework/framework.pb.h"
 
 DECLARE_string(npu_precision_mode);

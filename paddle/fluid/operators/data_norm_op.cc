@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/data_norm_op.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/data_layout.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -163,10 +165,11 @@ class DataNormOp : public framework::OperatorWithKernel {
                       OperatorWithKernel::IndicateVarDataType(ctx, "BatchSum"),
                       platform::errors::InvalidArgument(
                           "BatchSum input should be of float type"));
-    PADDLE_ENFORCE_EQ(dn_param_type, OperatorWithKernel::IndicateVarDataType(
-                                         ctx, "BatchSquareSum"),
-                      platform::errors::InvalidArgument(
-                          "BatchSquareSum input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        dn_param_type,
+        OperatorWithKernel::IndicateVarDataType(ctx, "BatchSquareSum"),
+        platform::errors::InvalidArgument(
+            "BatchSquareSum input should be of float type"));
 
     bool enable_scale_and_shift = ctx.Attr<bool>("enable_scale_and_shift");
     if (enable_scale_and_shift) {
@@ -277,8 +280,9 @@ class DataNormKernel<platform::CPUDeviceContext, T>
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::InvalidArgument(
-                                            "The Input dim size should be 2"));
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 2,
+        platform::errors::InvalidArgument("The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -515,8 +519,9 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::InvalidArgument(
-                                            "The Input dim size should be 2"));
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 2,
+        platform::errors::InvalidArgument("The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -757,10 +762,9 @@ REGISTER_OP_CPU_KERNEL(
     data_norm_grad,
     ops::DataNormGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DataNormGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_VERSION(data_norm)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(data_norm).AddCheckpoint(
+    R"ROC(
               upgrad data_norm op by adding scale_w to support scale and shift.)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewInput(
-            "scale_w",
-            "scale_w is used to do scale duirng data_norm like batchnorm "));
+    paddle::framework::compatible::OpVersionDesc().NewInput(
+        "scale_w",
+        "scale_w is used to do scale duirng data_norm like batchnorm "));

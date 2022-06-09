@@ -77,10 +77,9 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     LinspaceInferShapeFunctor);
 
-REGISTER_OP_VERSION(linspace)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(linspace).AddCheckpoint(
+    R"ROC(
       Upgrade linspace to add a new attribute [dtype].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "dtype", "In order to change output data type ", 5));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "dtype", "In order to change output data type ", 5));

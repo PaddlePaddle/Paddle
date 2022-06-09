@@ -933,6 +933,17 @@
   kernel :
     func : greater_than
 
+- api : group_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int groups, str data_layout)
+  output : Tensor(y), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : GroupNormInferMeta
+  kernel :
+    func : group_norm
+  optional : scale, bias
+  intermediate : mean, variance
+  backward : group_norm_grad
+
 - api : gumbel_softmax
   args : (Tensor x, float temperature, bool hard, int axis)
   output : Tensor
@@ -1029,6 +1040,18 @@
     func : index_select
     data_type : x
   backward : index_select_grad
+
+- api : instance_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon)
+  output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
+  infer_meta :
+    func : InstanceNormInferMeta
+  kernel :
+    func : instance_norm
+    data_type : x
+  optional : scale, bias
+  intermediate : saved_mean, saved_variance
+  backward : instance_norm_grad
 
 # is_empty
 - api : is_empty

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
@@ -38,10 +39,10 @@ class Multiply {
 using paddle::memory::Alloc;
 using paddle::memory::Copy;
 
-using paddle::platform::CPUPlace;
-using paddle::platform::CUDAPlace;
 using paddle::platform::CPUDeviceContext;
+using paddle::platform::CPUPlace;
 using paddle::platform::CUDADeviceContext;
+using paddle::platform::CUDAPlace;
 
 using paddle::platform::Transform;
 

@@ -25,6 +25,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allgather.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 

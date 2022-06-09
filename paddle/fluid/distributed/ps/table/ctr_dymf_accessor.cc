@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
+
 #include <gflags/gflags.h>
+
 #include "glog/logging.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -196,7 +198,7 @@ bool CtrDymfAccessor::NeedExtendMF(float* value) {
   return score >= _config.embedx_threshold();
 }
 
-bool CtrDymfAccessor::HasMF(size_t size) {
+bool CtrDymfAccessor::HasMF(int size) {
   return size > common_feature_value.EmbedxG2SumIndex();
 }
 

@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
@@ -28,8 +29,6 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
-
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"

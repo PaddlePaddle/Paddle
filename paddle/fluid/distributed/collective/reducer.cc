@@ -403,8 +403,9 @@ void EagerReducer::InitializeDenseGroups(
                           "Tensor %s is not initialized.", tensor_name));
     const auto size = tensor.numel();
     PADDLE_ENFORCE_GT(
-        size, 0, platform::errors::PreconditionNotMet(
-                     "The number of tensor %s's elements is 0.", tensor_name));
+        size, 0,
+        platform::errors::PreconditionNotMet(
+            "The number of tensor %s's elements is 0.", tensor_name));
     all_length += size;
 
     p_group->length_.push_back(size);
@@ -773,6 +774,13 @@ void EagerReducer::ProcessUnusedDenseVars() {
       if (group.is_sparse_) {
         continue;
       }
+
+      // NOTE(haohongxiang): Calling SetFakeEmpty here is to make sure that
+      // gradient accumulation can continue normally after clear_gradients()
+      // especiall in cases including complex control flow.
+      std::static_pointer_cast<egr::GradNodeAccumulation>(
+          GetGradNodeFromTensor(&tensors_[var_index]))
+          ->SetFakeEmpty(false);
 
       Tensor grad_value(std::make_shared<phi::DenseTensor>(src_tensor));
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define random functions  
+# TODO: define random functions
 
 from ..framework import core
 from ..framework import convert_np_dtype_to_dtype_, dygraph_only
@@ -76,9 +76,11 @@ def bernoulli(x, name=None):
 
     helper = LayerHelper("randint", **locals())
     out = helper.create_variable_for_type_inference(
-        dtype=x.dtype)  # maybe set out to int32 ? 
-    helper.append_op(
-        type='bernoulli', inputs={"X": x}, outputs={'Out': out}, attrs={})
+        dtype=x.dtype)  # maybe set out to int32 ?
+    helper.append_op(type='bernoulli',
+                     inputs={"X": x},
+                     outputs={'Out': out},
+                     attrs={})
     out.stop_gradient = True
     return out
 
@@ -121,8 +123,10 @@ def poisson(x, name=None):
 
     helper = LayerHelper("poisson", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='poisson', inputs={'X': x}, outputs={'Out': out}, attrs={})
+    helper.append_op(type='poisson',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs={})
     return out
 
 
@@ -189,12 +193,13 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
     helper = LayerHelper("multinomial", **locals())
     out = helper.create_variable_for_type_inference(
         dtype=convert_np_dtype_to_dtype_('int64'))
-    helper.append_op(
-        type='multinomial',
-        inputs={"X": x},
-        outputs={'Out': out},
-        attrs={'num_samples': num_samples,
-               'replacement': replacement})
+    helper.append_op(type='multinomial',
+                     inputs={"X": x},
+                     outputs={'Out': out},
+                     attrs={
+                         'num_samples': num_samples,
+                         'replacement': replacement
+                     })
     out.stop_gradient = True
     return out
 
@@ -239,15 +244,14 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
         place = _current_expected_place()
-        return _C_ops.final_state_gaussian_random(shape,
-                                                  float(mean),
+        return _C_ops.final_state_gaussian_random(shape, float(mean),
                                                   float(std), seed, dtype,
                                                   place)
 
     if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.gaussian_random('shape', shape, 'mean',
-                                      float(mean), 'std',
+        return _C_ops.gaussian_random('shape',
+                                      shape, 'mean', float(mean), 'std',
                                       float(std), 'seed', seed, 'dtype', dtype)
 
     check_shape(shape, op_type_for_check)
@@ -261,16 +265,17 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
         'dtype': dtype,
         'use_mkldnn': False
     }
-    utils.get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type=op_type_for_check)
+    utils.get_shape_tensor_inputs(inputs=inputs,
+                                  attrs=attrs,
+                                  shape=shape,
+                                  op_type=op_type_for_check)
 
     helper = LayerHelper('gaussian', **locals())
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='gaussian_random',
-        inputs=inputs,
-        outputs={'Out': out},
-        attrs=attrs)
+    helper.append_op(type='gaussian_random',
+                     inputs=inputs,
+                     outputs={'Out': out},
+                     attrs=attrs)
     out.stop_gradient = True
     return out
 
@@ -543,23 +548,21 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
-                "uniform/rand only supports [float32, float64], but the default dtype is {}".
-                format(dtype))
+                "uniform/rand only supports [float32, float64], but the default dtype is {}"
+                .format(dtype))
 
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.final_state_uniform_random(shape, dtype,
-                                                 float(min),
+        return _C_ops.final_state_uniform_random(shape, dtype, float(min),
                                                  float(max), seed,
                                                  _current_expected_place())
 
     if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.uniform_random('shape', shape, 'min',
-                                     float(min), 'max',
+        return _C_ops.uniform_random('shape', shape, 'min', float(min), 'max',
                                      float(max), 'seed', seed, 'dtype', dtype)
 
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform/rand')
@@ -567,14 +570,17 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
-    utils.get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform/rand')
+    utils.get_shape_tensor_inputs(inputs=inputs,
+                                  attrs=attrs,
+                                  shape=shape,
+                                  op_type='uniform/rand')
 
     helper = LayerHelper("uniform", **locals())
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="uniform_random", inputs=inputs, attrs=attrs,
-        outputs={"Out": out})
+    helper.append_op(type="uniform_random",
+                     inputs=inputs,
+                     attrs=attrs,
+                     outputs={"Out": out})
     out.stop_gradient = True
     return out
 
@@ -686,8 +692,8 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     if high is None:
         if low <= 0:
             raise ValueError(
-                "If high is None, low must be greater than 0, but received low = {0}.".
-                format(low))
+                "If high is None, low must be greater than 0, but received low = {0}."
+                .format(low))
         high = low
         low = 0
     if dtype is None:
@@ -713,13 +719,17 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
     inputs = dict()
     attrs = {'low': low, 'high': high, 'seed': 0, 'dtype': dtype}
-    utils.get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type='randint')
+    utils.get_shape_tensor_inputs(inputs=inputs,
+                                  attrs=attrs,
+                                  shape=shape,
+                                  op_type='randint')
 
     helper = LayerHelper("randint", **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
-    helper.append_op(
-        type='randint', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    helper.append_op(type='randint',
+                     inputs=inputs,
+                     outputs={'Out': out},
+                     attrs=attrs)
     out.stop_gradient = True
     return out
 
@@ -851,8 +861,8 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
     if high is None:
         if low <= 0:
             raise ValueError(
-                "If high is None, low must be greater than 0, but received low = {0}.".
-                format(low))
+                "If high is None, low must be greater than 0, but received low = {0}."
+                .format(low))
         high = low
         low = 0
     if dtype is None:
@@ -875,8 +885,8 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
 
     check_shape(shape, 'randint_like')
     check_dtype(dtype, 'dtype',
-                ['bool', 'float16', 'float32', 'float64', 'int32',
-                 'int64'], 'randint_like')
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'randint_like')
 
     inputs = dict()
     attrs = {
@@ -885,14 +895,18 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
         'seed': 0,
         'dtype': core.VarDesc.VarType.INT64
     }
-    utils.get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type='randint_like')
+    utils.get_shape_tensor_inputs(inputs=inputs,
+                                  attrs=attrs,
+                                  shape=shape,
+                                  op_type='randint_like')
 
     helper = LayerHelper("randint", **locals())
     out = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.INT64)
-    helper.append_op(
-        type='randint', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    helper.append_op(type='randint',
+                     inputs=inputs,
+                     outputs={'Out': out},
+                     attrs=attrs)
     out.stop_gradient = True
     out = paddle.cast(out, dtype)
     return out
@@ -944,8 +958,10 @@ def randperm(n, dtype="int64", name=None):
     helper = LayerHelper("randperm", **locals())
     out = helper.create_variable_for_type_inference(dtype)
     attrs = {'n': n, 'dtype': dtype, 'seed': 0}
-    helper.append_op(
-        type='randperm', inputs={}, outputs={'Out': out}, attrs=attrs)
+    helper.append_op(type='randperm',
+                     inputs={},
+                     outputs={'Out': out},
+                     attrs=attrs)
     out.stop_gradient = True
     return out
 
@@ -1042,9 +1058,8 @@ def exponential_(x, lam=1.0, name=None):
     check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")
 
     helper = LayerHelper("exponential", **locals())
-    helper.append_op(
-        type='exponential',
-        inputs={"X": x},
-        outputs={'Out': x},
-        attrs={"lambda": lam})
+    helper.append_op(type='exponential',
+                     inputs={"X": x},
+                     outputs={'Out': x},
+                     attrs={"lambda": lam})
     return x

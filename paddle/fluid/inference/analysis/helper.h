@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <sys/stat.h>
+
 #include <cstdio>
 #include <fstream>
 #include <memory>
@@ -72,8 +73,9 @@ struct DataTypeNamer {
   template <typename T>
   const std::string &repr() const {
     auto x = std::type_index(typeid(T));
-    PADDLE_ENFORCE_GT(dic_.count(x), 0, platform::errors::PreconditionNotMet(
-                                            "unknown type for representation"));
+    PADDLE_ENFORCE_GT(dic_.count(x), 0,
+                      platform::errors::PreconditionNotMet(
+                          "unknown type for representation"));
     return dic_.at(x);
   }
 

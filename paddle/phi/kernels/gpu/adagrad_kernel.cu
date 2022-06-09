@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/adagrad_kernel.h"
-
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/adagrad_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/impl/adagrad_kernel_impl.h"
 
@@ -106,19 +105,18 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
     dim3 threads(block_size, 1);
     dim3 grid2(1, merge_rows.size());
     paddle::framework::MixVector<int64_t> mixv_merge_rows(&merge_rows);
-    SparseAdagradFunctorKernel<
-        T,
-        256><<<grid2,
-               threads,
-               0,
-               reinterpret_cast<const phi::GPUContext&>(context).stream()>>>(
-        grad_merge_data,
-        mixv_merge_rows.CUDAMutableData(context.GetPlace()),
-        lr,
-        param_data,
-        moment_data,
-        grad_width,
-        epsilon);
+    SparseAdagradFunctorKernel<T, 256>
+        <<<grid2,
+           threads,
+           0,
+           reinterpret_cast<const phi::GPUContext&>(context).stream()>>>(
+            grad_merge_data,
+            mixv_merge_rows.CUDAMutableData(context.GetPlace()),
+            lr,
+            param_data,
+            moment_data,
+            grad_width,
+            epsilon);
     mixv_merge_rows.CopyToCPU();
   }
 };
