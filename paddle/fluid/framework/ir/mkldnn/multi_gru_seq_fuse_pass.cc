@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/multi_gru_seq_fuse_pass.h"
+
 #include <limits>
 #include <sstream>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/platform/errors.h"

@@ -28,6 +28,7 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <shared_mutex>
+
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/cuda_managed_allocator.h"
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"

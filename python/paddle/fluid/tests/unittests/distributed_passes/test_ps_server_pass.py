@@ -24,6 +24,7 @@ from paddle.fluid.tests.unittests.ps.ps_dnn_trainer import DnnTrainer
 
 
 class TestPsServerPass(PsPassTestBase):
+
     def init(self):
         pass
 

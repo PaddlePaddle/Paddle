@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <NvInfer.h>
+
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -151,7 +152,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
     return dims;
   }
 }
-}  // NOLINT
+}  // namespace
 
 class TRTInt8Calibrator;
 

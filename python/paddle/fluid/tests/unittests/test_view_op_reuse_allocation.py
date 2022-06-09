@@ -28,6 +28,7 @@ from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 # reuse the input varbase's allocation.
 # View APIs include: `squeeze`, `unsqueeze`, `reshape`, `flatten`, `detach`
 class TestDygraphViewReuseAllocation(unittest.TestCase):
+
     def setUp(self):
         self.init_shape()
 
@@ -104,6 +105,7 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
 
 
 class TestUnsqueezeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
+
     def init_shape(self):
         self.input_shape = [2, 3]
         self.output_shape = [2, 3, 1]
@@ -113,6 +115,7 @@ class TestUnsqueezeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
 
 
 class TestReshapeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
+
     def init_shape(self):
         self.input_shape = [3, 4]
         self.output_shape = [2, 2, 3]
@@ -122,6 +125,7 @@ class TestReshapeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
 
 
 class TestFlattenDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
+
     def init_shape(self):
         self.input_shape = [3, 4]
         self.output_shape = [12]

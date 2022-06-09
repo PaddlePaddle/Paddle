@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/var_conv_2d_op.h"
+
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/platform/dynload/mklml.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"

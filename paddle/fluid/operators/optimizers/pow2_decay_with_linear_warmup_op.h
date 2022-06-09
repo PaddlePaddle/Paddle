@@ -47,9 +47,8 @@ struct Pow2DecayWithLinearWarmupFunctor {
       auto new_lr = static_cast<double>(step) / warmup_steps_ * base_lr_;
       *lr_ = static_cast<T>(new_lr);
     } else if (step < total_steps_) {
-      auto factor = 1 -
-                    static_cast<double>(step - warmup_steps_) /
-                        (total_steps_ - warmup_steps_);
+      auto factor = 1 - static_cast<double>(step - warmup_steps_) /
+                            (total_steps_ - warmup_steps_);
       auto new_lr =
           static_cast<double>(base_lr_ - end_lr_) * (factor * factor) + end_lr_;
       *lr_ = static_cast<T>(new_lr);
@@ -76,9 +75,10 @@ class Pow2DecayWithLinearWarmupOpKernel : public framework::OpKernel<T> {
     auto *lr_out = ctx.Output<framework::Tensor>("LearningRateOut");
     auto *step_out = ctx.Output<framework::Tensor>("StepOut");
     PADDLE_ENFORCE_EQ(
-        lr, lr_out, platform::errors::InvalidArgument("Input(LearningRate) and "
-                                                      "Output(LearningRateOut) "
-                                                      "must be the same."));
+        lr, lr_out,
+        platform::errors::InvalidArgument("Input(LearningRate) and "
+                                          "Output(LearningRateOut) "
+                                          "must be the same."));
     PADDLE_ENFORCE_NOT_NULL(lr,
                             platform::errors::InvalidArgument(
                                 "Input(LearingRate) should not be nullptr."));

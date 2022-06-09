@@ -61,8 +61,8 @@ class NestSequence(object):
     def _get_var_ids(self):
         var_ids = []
         for idx, var in enumerate(self.__input_list):
-            if isinstance(var, (framework.Variable, core.VarBase,
-                                core.eager.Tensor)):
+            if isinstance(
+                    var, (framework.Variable, core.VarBase, core.eager.Tensor)):
                 var_ids.append(idx)
 
         return var_ids
@@ -74,8 +74,9 @@ class NestSequence(object):
         if need_check:
             warning_types = set()
             for var in self.__input_list:
-                if not isinstance(var, (framework.Variable, core.VarBase,
-                                        core.eager.Tensor)):
+                if not isinstance(
+                        var,
+                    (framework.Variable, core.VarBase, core.eager.Tensor)):
                     warning_types.add(type(var))
             if warning_types:
                 logging_utils.warn(
@@ -136,7 +137,11 @@ class PartialProgramLayer:
         Layer: A Layer object that run all ops internally in static mode.
     """
 
-    def __init__(self, main_program, inputs, outputs, parameters=None,
+    def __init__(self,
+                 main_program,
+                 inputs,
+                 outputs,
+                 parameters=None,
                  **kwargs):
         super(PartialProgramLayer, self).__init__()
         self._inputs = NestSequence(inputs)
@@ -219,8 +224,9 @@ class PartialProgramLayer:
         """
         infer_pure_fp16_program = self._origin_main_program.clone()
         with program_guard(infer_pure_fp16_program):
-            cast_model_to_fp16(
-                infer_pure_fp16_program, self._amp_list, use_fp16_guard=False)
+            cast_model_to_fp16(infer_pure_fp16_program,
+                               self._amp_list,
+                               use_fp16_guard=False)
 
         return infer_pure_fp16_program
 
@@ -343,9 +349,10 @@ class PartialProgramLayer:
         in_vars, out_vars = self._prepare(inputs)
 
         attrs = [
-            'global_block', self.program.desc.block(0), 'start_op_index', 0,
-            'end_op_index', self._get_end_op_index(), 'is_test',
-            not self.training, 'program_id', self.program_id
+            'global_block',
+            self.program.desc.block(0), 'start_op_index', 0, 'end_op_index',
+            self._get_end_op_index(), 'is_test', not self.training,
+            'program_id', self.program_id
         ]
         if self._cuda_graph_capture_mode:
             attrs.extend(
@@ -354,11 +361,10 @@ class PartialProgramLayer:
 
         self._cast_fp16_if_pure_fp16(in_vars)
 
-        _C_ops.run_program(
-            self._valid_vars(in_vars),
-            self._valid_vars(self._params),
-            self._valid_vars(out_vars), self._tmp_scope_vec, self._double_grads,
-            self._cuda_graph_vec, *attrs)
+        _C_ops.run_program(self._valid_vars(in_vars),
+                           self._valid_vars(self._params),
+                           self._valid_vars(out_vars), self._tmp_scope_vec,
+                           self._double_grads, self._cuda_graph_vec, *attrs)
         self.drop_scope_if_no_grad()
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
@@ -367,9 +373,9 @@ class PartialProgramLayer:
         if _in_pure_fp16_guard():
             for i, var in enumerate(in_vars):
                 name = var.name
-                if (self.program.global_block().has_var(name) and
-                        self.program.global_block().var(name).dtype ==
-                        paddle.float16):
+                if (self.program.global_block().has_var(name)
+                        and self.program.global_block().var(name).dtype
+                        == paddle.float16):
                     in_vars[i] = var.astype('float16')
                     in_vars[i].name = name
 
@@ -418,19 +424,17 @@ class PartialProgramLayer:
             if isinstance(value, np.ndarray):
                 var = None
                 if not framework._in_eager_mode_:
-                    var = core.VarBase(
-                        value=value,
-                        name=self._inputs[i].desc.name(),
-                        persistable=False,
-                        place=expected_place,
-                        zero_copy=True)
+                    var = core.VarBase(value=value,
+                                       name=self._inputs[i].desc.name(),
+                                       persistable=False,
+                                       place=expected_place,
+                                       zero_copy=True)
                 else:
-                    var = core.eager.Tensor(
-                        value=value,
-                        name=self._inputs[i].desc.name(),
-                        persistable=False,
-                        place=expected_place,
-                        zero_copy=True)
+                    var = core.eager.Tensor(value=value,
+                                            name=self._inputs[i].desc.name(),
+                                            persistable=False,
+                                            place=expected_place,
+                                            zero_copy=True)
             elif isinstance(value, (core.VarBase, core.eager.Tensor)):
                 # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
                 # into CUDAPlace when it's as input of multi Ops. so we move it in advance
@@ -452,14 +456,12 @@ class PartialProgramLayer:
             var_desc = var.desc
             varbase = None
             if not framework._in_eager_mode_:
-                var_base = core.VarBase(var_desc.dtype(),
-                                        var_desc.shape(),
+                var_base = core.VarBase(var_desc.dtype(), var_desc.shape(),
                                         var_desc.name(), var_desc.type(), False)
             else:
-                var_base = core.eager.Tensor(var_desc.dtype(),
-                                             var_desc.shape(),
-                                             var_desc.name(),
-                                             var_desc.type(), False)
+                var_base = core.eager.Tensor(var_desc.dtype(), var_desc.shape(),
+                                             var_desc.name(), var_desc.type(),
+                                             False)
             return var_base
 
         # Create VarBase to receive output data.
@@ -522,8 +524,8 @@ class PartialProgramLayer:
             return out_vars
         elif isinstance(out_vars, (tuple, list)):
             if isinstance(out_vars, tuple):
-                res = tuple(
-                    var for var in out_vars if not self._is_no_value(var))
+                res = tuple(var for var in out_vars
+                            if not self._is_no_value(var))
             else:
                 # isinstance(out_vars, list)
                 res = [var for var in out_vars if not self._is_no_value(var)]
@@ -585,8 +587,8 @@ class PartialProgramLayer:
             # self._params constains parameters and buffers with persistable=True.
             if not isinstance(var, (core.VarBase, core.eager.Tensor)):
                 raise TypeError(
-                    'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.
-                    format(i, type(var)))
+                    'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'
+                    .format(i, type(var)))
             param_and_buffer_names_set.add(var.name)
 
         for block in main_program.blocks:
@@ -632,6 +634,7 @@ def partial_program_from(concrete_program):
     if inputs and isinstance(inputs[0], layers.Layer):
         inputs = inputs[1:]
 
-    return PartialProgramLayer(
-        concrete_program.main_program, inputs, concrete_program.outputs,
-        concrete_program.parameters, **concrete_program.kwargs)
+    return PartialProgramLayer(concrete_program.main_program, inputs,
+                               concrete_program.outputs,
+                               concrete_program.parameters,
+                               **concrete_program.kwargs)

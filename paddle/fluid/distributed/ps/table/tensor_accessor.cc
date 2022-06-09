@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/tensor_accessor.h"
+
 #include "Eigen/Dense"
 
 namespace paddle {

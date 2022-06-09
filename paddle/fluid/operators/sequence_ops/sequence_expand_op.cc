@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_expand_op.h"
+
 #include <memory>
 
 namespace paddle {
@@ -64,10 +65,11 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ref_level == -1 ||
               (ref_level >= 0 && ref_level < static_cast<int>(y_lod.size())),
-          true, platform::errors::InvalidArgument(
-                    "Invlid `ref_level`, which should be either equal to -1 "
-                    "or in [0, %d), but received `ref_level` = %u.",
-                    y_lod.size(), ref_level));
+          true,
+          platform::errors::InvalidArgument(
+              "Invlid `ref_level`, which should be either equal to -1 "
+              "or in [0, %d), but received `ref_level` = %u.",
+              y_lod.size(), ref_level));
 
       if (ref_level == -1) ref_level = y_lod.size() - 1;
 

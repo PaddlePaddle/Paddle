@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
@@ -881,6 +882,58 @@ void DropoutInferMeta(const MetaTensor& x,
 
   if (mask != nullptr) {
     mask->set_dims(x_dims);
+    mask->set_dtype(DataType::UINT8);
+  }
+}
+
+void DropoutNdInferMeta(const MetaTensor& x,
+                        const MetaTensor& seed_tensor,
+                        float p,
+                        bool is_test,
+                        const std::string& mode,
+                        int seed,
+                        bool fix_seed,
+                        const std::vector<int>& axis,
+                        MetaTensor* out,
+                        MetaTensor* mask) {
+  auto x_dims = x.dims();
+
+  PADDLE_ENFORCE_LE(
+      axis.size(),
+      x_dims.size(),
+      phi::errors::InvalidArgument(
+          "The length of axis is expected to be less than or equal to the "
+          "dimension size of x. But recieved the length of axis is %d, the "
+          "dimension size of x is %d, x's shape is {%s}.",
+          axis.size(),
+          x_dims.size(),
+          x_dims));
+  for (size_t i = 0; i < axis.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        axis[i] >= 0 && axis[i] <= x_dims.size() - 1,
+        true,
+        phi::errors::InvalidArgument(
+            "The %d-th value of axis is expected to be greater ot "
+            "equal to 0 and less than the dimensions of x. But "
+            "recieved axis is {%s}, the dimension size of x is %d.",
+            i,
+            phi::make_ddim(axis),
+            x_dims.size()));
+  }
+
+  out->set_dims(x_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+
+  if (mask != nullptr) {
+    std::vector<int64_t> mask_dims(x.dims().size(), 1);
+
+    std::for_each(
+        axis.begin(), axis.end(), [&mask_dims, &x_dims](const int64_t& t) {
+          mask_dims[t] = x_dims[t];
+        });
+
+    mask->set_dims(make_ddim(mask_dims));
     mask->set_dtype(DataType::UINT8);
   }
 }

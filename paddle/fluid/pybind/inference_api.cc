@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/inference_api.h"
+
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
+
 #include <cstring>
 #include <functional>
 #include <iostream>
@@ -26,6 +28,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
@@ -75,8 +78,8 @@ using paddle::AnalysisPredictor;
 using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
 using paddle::PaddleBuf;
-using paddle::PaddleDType;
 using paddle::PaddleDataLayout;
+using paddle::PaddleDType;
 using paddle::PaddlePassBuilder;
 using paddle::PaddlePlace;
 using paddle::PaddlePredictor;
@@ -379,13 +382,13 @@ void BindInferenceApi(py::module *m) {
          &paddle::CreatePaddlePredictor<AnalysisConfig>, py::arg("config"));
   m->def("create_paddle_predictor",
          &paddle::CreatePaddlePredictor<NativeConfig>, py::arg("config"));
-  m->def("create_predictor", [](const paddle_infer::Config &config)
-                                 -> std::unique_ptr<paddle_infer::Predictor> {
-                                   auto pred =
-                                       std::unique_ptr<paddle_infer::Predictor>(
-                                           new paddle_infer::Predictor(config));
-                                   return pred;
-                                 });
+  m->def("create_predictor",
+         [](const paddle_infer::Config &config)
+             -> std::unique_ptr<paddle_infer::Predictor> {
+           auto pred = std::unique_ptr<paddle_infer::Predictor>(
+               new paddle_infer::Predictor(config));
+           return pred;
+         });
   m->def("copy_tensor", &CopyPaddleInferTensor);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
@@ -578,11 +581,11 @@ void BindAnalysisConfig(py::module *m) {
       .def(py::init<const std::string &>())
       .def(py::init<const std::string &, const std::string &>())
       .def("summary", &AnalysisConfig::Summary)
-      .def("set_model", (void (AnalysisConfig::*)(const std::string &)) &
+      .def("set_model", (void(AnalysisConfig::*)(const std::string &)) &
                             AnalysisConfig::SetModel)
-      .def("set_model", (void (AnalysisConfig::*)(const std::string &,
-                                                  const std::string &)) &
-                            AnalysisConfig::SetModel)
+      .def("set_model",
+           (void(AnalysisConfig::*)(const std::string &, const std::string &)) &
+               AnalysisConfig::SetModel)
       .def("set_prog_file", &AnalysisConfig::SetProgFile)
       .def("set_params_file", &AnalysisConfig::SetParamsFile)
       .def("model_dir", &AnalysisConfig::model_dir)
@@ -716,11 +719,12 @@ void BindAnalysisConfig(py::module *m) {
            [](AnalysisConfig &self, const std::string &pass) {
              self.pass_builder()->DeletePass(pass);
            })
-      .def("pass_builder",
-           [](AnalysisConfig &self) {
-             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
-           },
-           py::return_value_policy::reference)
+      .def(
+          "pass_builder",
+          [](AnalysisConfig &self) {
+            return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
+          },
+          py::return_value_policy::reference)
       .def("nnadapter", &AnalysisConfig::NNAdapter)
       .def("set_dist_config", &AnalysisConfig::SetDistConfig)
       .def("dist_config", &AnalysisConfig::dist_config);

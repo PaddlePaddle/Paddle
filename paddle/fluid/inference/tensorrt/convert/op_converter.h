@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
@@ -268,14 +269,16 @@ class OpConverter {
           }
         }
         engine->DeclareInput(
-            input, FluidDataType2TRT(
-                       var->Proto()->type().lod_tensor().tensor().data_type()),
+            input,
+            FluidDataType2TRT(
+                var->Proto()->type().lod_tensor().tensor().data_type()),
             Vec2TRT_Dims(input_shape, input, true));
 #endif
       } else {
         engine->DeclareInput(
-            input, FluidDataType2TRT(
-                       var->Proto()->type().lod_tensor().tensor().data_type()),
+            input,
+            FluidDataType2TRT(
+                var->Proto()->type().lod_tensor().tensor().data_type()),
             Vec2TRT_Dims(var_shape, input));
       }
     }

@@ -171,12 +171,11 @@ class RMSProp(Optimizer):
         if not 0.0 <= rho:
             raise ValueError("Invalid value of rho, expect rho >= 0.")
 
-        super(RMSProp, self).__init__(
-            learning_rate=learning_rate,
-            parameters=parameters,
-            weight_decay=weight_decay,
-            grad_clip=grad_clip,
-            name=name)
+        super(RMSProp, self).__init__(learning_rate=learning_rate,
+                                      parameters=parameters,
+                                      weight_decay=weight_decay,
+                                      grad_clip=grad_clip,
+                                      name=name)
 
         self.type = "rmsprop"
         self._rho = rho
@@ -215,29 +214,34 @@ class RMSProp(Optimizer):
                                                 param_and_grad[0])
         mean_grad_acc = self._get_accumulator(self._mean_grad_acc_str,
                                               param_and_grad[0])
-        rmsprop_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "Moment": momentum_acc,
-                "MeanSquare": mean_square_acc,
-                "MeanGrad": mean_grad_acc,
-                "LearningRate": self._create_param_lr(param_and_grad),
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "MomentOut": momentum_acc,
-                "MeanSquareOut": mean_square_acc,
-                "MeanGradOut": mean_grad_acc
-            },
-            attrs={
-                "epsilon": self._epsilon,
-                "decay": self._rho,
-                "momentum": self._momentum,
-                "centered": self._centered
-            },
-            stop_gradient=True)
+        rmsprop_op = block.append_op(type=self.type,
+                                     inputs={
+                                         "Param":
+                                         param_and_grad[0],
+                                         "Grad":
+                                         param_and_grad[1],
+                                         "Moment":
+                                         momentum_acc,
+                                         "MeanSquare":
+                                         mean_square_acc,
+                                         "MeanGrad":
+                                         mean_grad_acc,
+                                         "LearningRate":
+                                         self._create_param_lr(param_and_grad),
+                                     },
+                                     outputs={
+                                         "ParamOut": param_and_grad[0],
+                                         "MomentOut": momentum_acc,
+                                         "MeanSquareOut": mean_square_acc,
+                                         "MeanGradOut": mean_grad_acc
+                                     },
+                                     attrs={
+                                         "epsilon": self._epsilon,
+                                         "decay": self._rho,
+                                         "momentum": self._momentum,
+                                         "centered": self._centered
+                                     },
+                                     stop_gradient=True)
 
         return rmsprop_op
 

@@ -13,28 +13,28 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/backward.h"
+
 #include <deque>
 
+#include "glog/logging.h"
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/fluid/eager/utils.h"
-#include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
-
-#include "glog/logging.h"
-#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 namespace egr {
 
 /*
-* GeneralGrad is Helpper class to implement custom grad operation between
-* outputs and inputs.
-*
-* **/
+ * GeneralGrad is Helpper class to implement custom grad operation between
+ * outputs and inputs.
+ *
+ * **/
 class GeneralGrad {
  public:
   static GeneralGrad& Instance() { return *general_grad_; }
