@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
 import os
 import json
@@ -1968,10 +1969,17 @@ multi_cluster_json = """{
 
 class TestCluster(unittest.TestCase):
 
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_single_machine(self):
         # Build cluster
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        cluster_json_path = os.path.join(file_dir, "auto_parallel_cluster.json")
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster_single.json")
+
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
@@ -1989,14 +1997,10 @@ class TestCluster(unittest.TestCase):
         self.assertTrue(devices == [0, 1, 2, 3])
         self.assertTrue(involved_machine_count == 1)
 
-        # Remove unnecessary files
-        if os.path.exists(cluster_json_path):
-            os.remove(cluster_json_path)
-
     def test_multi_machine(self):
         # Build cluster
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        cluster_json_path = os.path.join(file_dir, "auto_parallel_cluster.json")
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster_multi.json")
         cluster_json_object = json.loads(multi_cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
@@ -2013,10 +2017,6 @@ class TestCluster(unittest.TestCase):
         self.assertTrue(cross_machine)
         self.assertTrue(devices == [5, 6, 7, 10])
         self.assertTrue(involved_machine_count == 2)
-
-        # Remove unnecessary files
-        if os.path.exists(cluster_json_path):
-            os.remove(cluster_json_path)
 
 
 if __name__ == "__main__":
