@@ -25,6 +25,7 @@ np.random.seed(0)
 
 
 class TestLerp(OpTest):
+
     def setUp(self):
         self.op_type = "lerp"
         self.python_api = paddle.lerp
@@ -50,31 +51,37 @@ class TestLerp(OpTest):
 
 
 class TestLerpWithDim2(TestLerp):
+
     def init_shape(self):
         self.shape = [2, 50]
 
 
 class TestLerpWithDim3(TestLerp):
+
     def init_shape(self):
         self.shape = [2, 2, 25]
 
 
 class TestLerpWithDim4(TestLerp):
+
     def init_shape(self):
         self.shape = [2, 2, 5, 5]
 
 
 class TestLerpWithDim5(TestLerp):
+
     def init_shape(self):
         self.shape = [2, 1, 2, 5, 5]
 
 
 class TestLerpWithDim6(TestLerp):
+
     def init_shape(self):
         self.shape = [2, 1, 2, 5, 1, 5]
 
 
 class TestLerpAPI(unittest.TestCase):
+
     def init_dtype(self):
         self.dtype = 'float32'
 
@@ -108,6 +115,7 @@ class TestLerpAPI(unittest.TestCase):
             run(place)
 
     def test_dygraph_api(self):
+
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
@@ -121,6 +129,7 @@ class TestLerpAPI(unittest.TestCase):
             run(place)
 
     def test_inplace_api(self):
+
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
@@ -133,6 +142,7 @@ class TestLerpAPI(unittest.TestCase):
             run(place)
 
     def test_inplace_api_exception(self):
+
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
@@ -159,8 +169,8 @@ class TestLerpAPI(unittest.TestCase):
         x = np.arange(11., 21.).astype(self.dtype).reshape([2, 5])
         y = np.full(20, 7.5).astype(self.dtype).reshape([2, 2, 5])
         w = np.full(40, 0.225).astype(self.dtype).reshape([2, 2, 2, 5])
-        out = paddle.lerp(
-            paddle.to_tensor(x), paddle.to_tensor(y), paddle.to_tensor(w))
+        out = paddle.lerp(paddle.to_tensor(x), paddle.to_tensor(y),
+                          paddle.to_tensor(w))
         res_ref = x + w * (y - x)
         self.assertEqual(np.allclose(res_ref, out.numpy()), True)
         paddle.enable_static()

@@ -28,7 +28,7 @@ from paddle.fluid import program_guard
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.executor import global_scope
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Operator
+from paddle.fluid.framework import Operator, Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet
@@ -48,6 +48,7 @@ from .dist_context import DistributedContext, get_default_distributed_context
 
 
 class Engine:
+
     def __init__(self,
                  model=None,
                  inputs_spec=None,
@@ -88,8 +89,9 @@ class Engine:
                 gradient_scale=True,
                 metrics=None,
                 all_ranks=False):
-        if optimizer and not isinstance(optimizer, (
-                paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
+        if optimizer and not isinstance(
+                optimizer,
+            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
             raise TypeError(
                     "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
                         " or `paddle.fluid.optimizer.Optimizer`."
@@ -194,7 +196,7 @@ class Engine:
             parallelizer.parallel_all()
 
     def _init_dist_context(self, mode):
-        # Init dist_context['mode'] with the first planned dist_context 
+        # Init dist_context['mode'] with the first planned dist_context
         # to guarantee that train/eval/predict mode have same parallel strategy
         dist_context = self._dist_contexts[mode]
         origin_main_prog = dist_context._original_serial_main_program
@@ -212,7 +214,7 @@ class Engine:
                 dist_context.set_op_dist_attr_for_program(op, ref_op_dist_attr)
 
     def _initialize(self, mode):
-        # Get the current content from the distributed context 
+        # Get the current content from the distributed context
         self._serial_main_progs[mode] = self._dist_contexts[
             mode].serial_main_program
         self._serial_startup_progs[mode] = self._dist_contexts[
@@ -254,6 +256,7 @@ class Engine:
             train_data,
             batch_size=1,
             epochs=1,
+            fetch_list=None,
             steps_per_epoch=None,
             use_program_cache=False,
             return_numpy=True):
@@ -264,13 +267,14 @@ class Engine:
             "train model is not ready, please call `engine.prepare()` first."
         train_dataloader = self._create_dataloader(train_data, batch_size,
                                                    epochs, steps_per_epoch)
+        self._usr_fetch_list = fetch_list
 
         outputs = []
         for epoch in range(epochs):
             for step, data in enumerate(train_dataloader):
-                logs, loss = self._train_step(data, use_program_cache,
+                logs, outs = self._train_step(data, use_program_cache,
                                               return_numpy)
-                outputs.append(loss)
+                outputs.append(outs)
                 train_logs = {
                     "train_" + name: val
                     for name, val in logs.items()
@@ -281,86 +285,97 @@ class Engine:
     def evaluate(self,
                  eval_data,
                  batch_size=1,
+                 fetch_list=None,
                  use_program_cache=False,
                  return_numpy=True):
         self.mode = 'eval'
         assert self.mode in self._dist_main_progs, \
             "eval model is not ready, please call `engine.prepare()` first."
         eval_dataloader = self._create_dataloader(eval_data, batch_size)
+        self._usr_fetch_list = fetch_list
 
         for step, data in enumerate(eval_dataloader):
             eval_logs = dict()
-            outs = self._eval_step(data, use_program_cache, return_numpy)
+            logs, outs = self._eval_step(data, use_program_cache, return_numpy)
             eval_logs["eval_loss"] = outs[0] if len(outs) > 0 else []
             for metric in self._metrics:
                 results = metric.accumulate()
                 for i, res in enumerate(to_list(results)):
                     eval_logs["eval_" + metric.name()[i]] = res
+            for name, val in logs.items():
+                eval_logs["eval_" + name] = val
             self._logger.info(eval_logs)
         return eval_logs
 
     def predict(self,
                 test_data,
                 batch_size=1,
+                fetch_list=None,
                 use_program_cache=False,
                 return_numpy=True):
         self.mode = 'predict'
         assert self.mode in self._dist_main_progs, \
             "predict model is not ready, please call `engine.prepare()` first."
         test_dataloader = self._create_dataloader(test_data, batch_size)
+        self._usr_fetch_list = fetch_list
 
         outputs = []
         for step, data in enumerate(test_dataloader):
             logs, outs = self._predict_step(data, use_program_cache,
                                             return_numpy)
             outputs.append(outs)
-            predict_logs = {
-                "predict_" + name: val
-                for name, val in logs.items()
-            }
+            predict_logs = {"pred_" + name: val for name, val in logs.items()}
             self._logger.info(predict_logs)
         return outputs
 
     def _train_step(self, data, use_program_cache=False, return_numpy=True):
         logs = {}
         fetch_vars = self._fetch_vars[self.mode]["loss"]
-        fetch_list = self._fetch_list(fetch_vars)
-
-        loss = self._executor.run(self.main_program,
-                                  fetch_list=fetch_list,
-                                  use_program_cache=use_program_cache,
-                                  return_numpy=return_numpy)
-        logs["loss"] = loss
-        return logs, loss
-
-    def _eval_step(self, data, use_program_cache=False, return_numpy=True):
-        logs = {}
-        metrics = self._fetch_vars[self.mode]["metrics"]
-        losses = self._fetch_vars[self.mode]["loss"]
-        fetch_loss = self._fetch_list(losses)
-        fetch_metrics = self._fetch_list(metrics)
-        fetch_list = fetch_loss + fetch_metrics
-
-        res = self._executor.run(self.main_program,
-                                 fetch_list=fetch_list,
-                                 use_program_cache=use_program_cache,
-                                 return_numpy=return_numpy)
-        if not res[len(fetch_loss):]:
-            return res[:len(fetch_loss)]
-        for metric in self._metrics:
-            metric.update(*res[len(fetch_loss):])
-        return res[:len(fetch_loss)]
-
-    def _predict_step(self, data, use_program_cache=False, return_numpy=True):
-        logs = {}
-        fetch_vars = self._fetch_vars[self.mode]["outputs"]
-        fetch_list = self._fetch_list(fetch_vars)
+        fetch_list, usr_fetch_list = self._fetch_list(fetch_vars)
+        fetch_list += usr_fetch_list
 
         outs = self._executor.run(self.main_program,
                                   fetch_list=fetch_list,
                                   use_program_cache=use_program_cache,
                                   return_numpy=return_numpy)
-        logs["pred"] = outs
+        for i, out in enumerate(outs):
+            logs[fetch_list[i]] = out
+        return logs, outs
+
+    def _eval_step(self, data, use_program_cache=False, return_numpy=True):
+        logs = {}
+        metrics = self._fetch_vars[self.mode]["metrics"]
+        losses = self._fetch_vars[self.mode]["loss"]
+        fetch_loss, usr_fetch_list = self._fetch_list(losses)
+        fetch_metrics, usr_fetch_list = self._fetch_list(metrics)
+        fetch_list = fetch_loss + fetch_metrics
+
+        outs = self._executor.run(self.main_program,
+                                  fetch_list=fetch_list + usr_fetch_list,
+                                  use_program_cache=use_program_cache,
+                                  return_numpy=return_numpy)
+        usr_out = outs[len(fetch_list):]
+        for i, out in enumerate(usr_out):
+            logs[usr_fetch_list[i]] = out
+        outs = outs[:len(fetch_list)]
+        if not outs[len(fetch_loss):]:
+            return logs, outs[:len(fetch_loss)]
+        for metric in self._metrics:
+            metric.update(*outs[len(fetch_loss):])
+        return logs, outs[:len(fetch_loss)]
+
+    def _predict_step(self, data, use_program_cache=False, return_numpy=True):
+        logs = {}
+        fetch_vars = self._fetch_vars[self.mode]["outputs"]
+        fetch_list, usr_fetch_list = self._fetch_list(fetch_vars)
+        fetch_list += usr_fetch_list
+
+        outs = self._executor.run(self.main_program,
+                                  fetch_list=fetch_list,
+                                  use_program_cache=use_program_cache,
+                                  return_numpy=return_numpy)
+        for i, out in enumerate(outs):
+            logs[fetch_list[i]] = out
         return logs, outs
 
     def _fetch_list(self, fetch_vars):
@@ -368,7 +383,18 @@ class Engine:
         for var in fetch_vars:
             if var.name in self.main_program.global_block().vars:
                 fetch_list.append(var.name)
-        return fetch_list
+        usr_fetch_list = []
+        if self._usr_fetch_list:
+            assert isinstance(self._usr_fetch_list,
+                              list), "'fetch_list' type should be list."
+            for var in self._usr_fetch_list:
+                if isinstance(var, str):
+                    if var in self.main_program.global_block().vars:
+                        usr_fetch_list.append(var)
+                elif isinstance(var, Variable):
+                    if var.name in self.main_program.global_block().vars:
+                        usr_fetch_list.append(var.name)
+        return fetch_list, usr_fetch_list
 
     def _create_dataloader(self,
                            dataset,
@@ -380,7 +406,7 @@ class Engine:
         dist_context = self._dist_contexts[self.mode]
         dist_main_block = dist_main_prog.global_block()
 
-        # NOTE: Get feed_list from dist_program, then insert dataloader op 
+        # NOTE: Get feed_list from dist_program, then insert dataloader op
         # with sharded var shape. Because predict_program does not contain
         # labels var, so we will filter dataset's value with length of feed_list.
         inputs_var = self._feed_vars[self.mode]["inputs"]
@@ -389,8 +415,8 @@ class Engine:
         for var in inputs_var + labels_var:
             if var.name in dist_main_block.vars:
                 feed_list.append(dist_main_block.vars[var.name])
-        dp_world_size, dp_rank = self._get_data_parallel_info(feed_list[0],
-                                                              dist_context)
+        dp_world_size, dp_rank = self._get_data_parallel_info(
+            feed_list[0], dist_context)
 
         # remove the first three ops if multi run fit/evaluate/predict
         op_size = len(dist_main_block.ops)
@@ -418,8 +444,9 @@ class Engine:
             op = dist_main_block.ops[new_op_size - 1]
             new_op_desc = dist_main_block.desc._prepend_op()
             new_op_desc.copy_from(op.desc)
-            new_op = Operator(
-                dist_main_block, new_op_desc, type=new_op_desc.type())
+            new_op = Operator(dist_main_block,
+                              new_op_desc,
+                              type=new_op_desc.type())
             dist_main_block.ops.insert(0, new_op)
             dist_op = DistributedOperator(new_op)
             dist_context.add_dist_op_for_program(dist_op)
@@ -442,21 +469,21 @@ class Engine:
     def _set_data_parallel(self, var):
         if self._nranks == 1:
             self._default_strategy = 'serial'
-            auto.shard_tensor(
-                var,
-                dist_attr={
-                    "process_mesh": [0],
-                    "dims_mapping": [-1 for _ in range(len(var.shape))]
-                })
+            auto.shard_tensor(var,
+                              dist_attr={
+                                  "process_mesh": [0],
+                                  "dims_mapping":
+                                  [-1 for _ in range(len(var.shape))]
+                              })
         else:
             self._default_strategy = 'dp'
-            auto.shard_tensor(
-                var,
-                dist_attr={
-                    "process_mesh": list(range(self._nranks)),
-                    "dims_mapping":
-                    [0] + [-1 for _ in range(len(var.shape) - 1)]
-                })
+            auto.shard_tensor(var,
+                              dist_attr={
+                                  "process_mesh":
+                                  list(range(self._nranks)),
+                                  "dims_mapping":
+                                  [0] + [-1 for _ in range(len(var.shape) - 1)]
+                              })
 
         return var
 
@@ -492,22 +519,20 @@ class Engine:
             serial_program = self._serial_main_progs["train"]
             dist_main_prog = self._dist_main_progs["train"][self._cur_rank]
             dist_context = self._dist_contexts["train"]
-            self._saver.save(
-                path,
-                serial_program=serial_program,
-                dist_main_program=dist_main_prog,
-                dist_context=dist_context)
+            self._saver.save(path,
+                             serial_program=serial_program,
+                             dist_main_program=dist_main_prog,
+                             dist_context=dist_context)
         else:
             assert mode, "Please set the 'mode' you want to save."
             feed_vars = self._feed_vars[mode]['inputs']
             fetch_vars = self._fetch_vars[mode]['outputs']
             dist_main_prog = self._dist_main_progs[mode][self._cur_rank]
-            self._saver.save_inference_model(
-                path,
-                feed_vars,
-                fetch_vars,
-                self._executor,
-                program=dist_main_prog)
+            self._saver.save_inference_model(path,
+                                             feed_vars,
+                                             fetch_vars,
+                                             self._executor,
+                                             program=dist_main_prog)
 
     def load(self, path, strict=True, load_optimizer=True, mode=None):
         if not mode:

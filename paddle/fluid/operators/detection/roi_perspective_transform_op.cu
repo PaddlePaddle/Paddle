@@ -13,13 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 using paddle::platform::float16;
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
 namespace paddle {
 namespace operators {
@@ -56,8 +57,8 @@ __device__ T min(T a, T b) {
 }
 
 /*
-* check if (x, y) is in the boundary of roi
-*/
+ * check if (x, y) is in the boundary of roi
+ */
 template <typename T>
 __device__ bool in_quad(T x, T y, T roi_x[], T roi_y[]) {
   for (int i = 0; i < 4; i++) {

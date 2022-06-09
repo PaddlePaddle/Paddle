@@ -21,6 +21,7 @@ from api_gen import ForwardAPI
 
 
 class SparseAPI(ForwardAPI):
+
     def __init__(self, api_item_yaml):
         super(SparseAPI, self).__init__(api_item_yaml)
 
@@ -95,8 +96,10 @@ class SparseAPI(ForwardAPI):
 
     def gen_sparse_kernel_context(self, kernel_output_names):
         input_trans_map = {
-            'const Tensor&': 'const phi::TenseBase&',
-            'const std::vector<Tensor>&': 'const std::vector<phi::TenseBase>&',
+            'const Tensor&':
+            'const phi::TenseBase&',
+            'const std::vector<Tensor>&':
+            'const std::vector<phi::TenseBase>&',
             'const paddle::optional<Tensor>&':
             'paddle::optional<const phi::TenseBase&>'
         }
@@ -150,8 +153,8 @@ class SparseAPI(ForwardAPI):
 
         kernel_context_code = self.gen_sparse_kernel_context(
             kernel_output_names)
-        return_code = "" if len(self.gene_return_code(
-        )) == 0 else "  " + self.gene_return_code()
+        return_code = "" if len(
+            self.gene_return_code()) == 0 else "  " + self.gene_return_code()
         return f"""
     VLOG(6) << "{self.api} api sparse kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
     auto phi_kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
@@ -199,8 +202,8 @@ class SparseAPI(ForwardAPI):
             api_func_name += '_'
         kernel_dispatch_code = f"{self.gene_kernel_select()}\n"
         for kernel_name in self.kernel['func']:
-            kernel_dispatch_code += self.gene_dispatch_code(kernel_name,
-                                                            inplace_flag)
+            kernel_dispatch_code += self.gene_dispatch_code(
+                kernel_name, inplace_flag)
 
         return f"""
 PADDLE_API {self.get_return_type()} {api_func_name}({self.get_define_args()}) {{
@@ -285,20 +288,17 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 def main():
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle C++ Sparse API files')
-    parser.add_argument(
-        '--api_yaml_path',
-        help='path to sparse api yaml file',
-        default='python/paddle/utils/code_gen/sparse_api.yaml')
+    parser.add_argument('--api_yaml_path',
+                        help='path to sparse api yaml file',
+                        default='python/paddle/utils/code_gen/sparse_api.yaml')
 
-    parser.add_argument(
-        '--api_header_path',
-        help='output of generated api header code file',
-        default='paddle/phi/api/include/sparse_api.h')
+    parser.add_argument('--api_header_path',
+                        help='output of generated api header code file',
+                        default='paddle/phi/api/include/sparse_api.h')
 
-    parser.add_argument(
-        '--api_source_path',
-        help='output of generated api source code file',
-        default='paddle/phi/api/lib/sparse_api.cc')
+    parser.add_argument('--api_source_path',
+                        help='output of generated api source code file',
+                        default='paddle/phi/api/lib/sparse_api.cc')
 
     options = parser.parse_args()
 

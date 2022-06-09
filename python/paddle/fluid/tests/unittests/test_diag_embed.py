@@ -24,6 +24,7 @@ import paddle.fluid.core as core
 
 
 class TestDiagEmbedOp(OpTest):
+
     def setUp(self):
         self.op_type = "diag_embed"
         self.init_config()
@@ -40,6 +41,7 @@ class TestDiagEmbedOp(OpTest):
 
 
 class TestDiagEmbedOpCase1(TestDiagEmbedOp):
+
     def init_config(self):
         self.case = np.random.randn(2, 3).astype('float32')
         self.inputs = {'Input': self.case}
@@ -49,6 +51,7 @@ class TestDiagEmbedOpCase1(TestDiagEmbedOp):
 
 
 class TestDiagEmbedAPICase(unittest.TestCase):
+
     def test_case1(self):
         diag_embed = np.random.randn(2, 3, 4).astype('float32')
         data1 = fluid.data(name='data1', shape=[2, 3, 4], dtype='float32')

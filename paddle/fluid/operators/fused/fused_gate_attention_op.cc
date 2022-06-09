@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -213,7 +214,7 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
                    "fused_aate_attention_arad");
 
     if (ctx->Attrs().Get<bool>("has_gating")) {
-      for (auto& name : {"GateWeight", "GateBias", "GateOut"}) {
+      for (auto& name : {"GateWeight", "GateBias"}) {
         ctx->SetOutputDim(framework::GradVarName(name), ctx->GetInputDim(name));
       }
     }
@@ -222,9 +223,6 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(framework::GradVarName("NonbatchedBias"),
                         ctx->GetInputDim("NonbatchedBias"));
     }
-
-    ctx->SetOutputDim(framework::GradVarName("FMHAOut"),
-                      ctx->GetInputDim("FMHAOut"));
 
     ctx->SetOutputDim(framework::GradVarName("OutLinearWeight"),
                       ctx->GetInputDim("OutLinearWeight"));
@@ -269,8 +267,6 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     }
 
     op->SetInput("FMHAOut", this->Output("FMHAOut"));
-    op->SetOutput(framework::GradVarName("FMHAOut"),
-                  this->OutputGrad("FMHAOut"));
 
     if (this->HasInput("NonbatchedBias")) {
       op->SetInput("NonbatchedBias", this->Input("NonbatchedBias"));
@@ -291,8 +287,6 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
                     this->InputGrad("GateBias"));
 
       op->SetInput("GateOut", this->Output("GateOut"));
-      op->SetOutput(framework::GradVarName("GateOut"),
-                    this->OutputGrad("GateOut"));
     }
 
     op->SetInput("OutLinearWeight", this->Input("OutLinearWeight"));

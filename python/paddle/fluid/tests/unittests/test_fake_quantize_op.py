@@ -41,6 +41,7 @@ def get_compute_type(dtype):
 
 
 class TestFakeQuantizeAbsMaxOp(OpTest):
+
     def setUp(self):
         self.op_type = 'fake_quantize_abs_max'
         self.attrs = {'bit_length': 8}
@@ -72,6 +73,7 @@ class TestFakeQuantizeAbsMaxOp(OpTest):
 
 
 class TestFakeChannelWiseQuantizeAbsMaxOp(OpTest):
+
     def setUp(self):
         self.op_type = 'fake_channel_wise_quantize_abs_max'
         self.attrs = {'bit_length': 8}
@@ -82,8 +84,8 @@ class TestFakeChannelWiseQuantizeAbsMaxOp(OpTest):
         input_data = distribution(input_shape).astype(dtype)
         compute_type = get_compute_type(dtype)
         bnt = (1 << (self.attrs['bit_length'] - 1)) - 1
-        compute_axis = tuple(
-            i for i in range(len(input_shape)) if i != quant_axis)
+        compute_axis = tuple(i for i in range(len(input_shape))
+                             if i != quant_axis)
         scale_broadcast = np.amax(input_data, axis=compute_axis, keepdims=True)
         output_data = round_c(bnt * input_data.astype(compute_type) /
                               scale_broadcast)
@@ -105,14 +107,15 @@ class TestFakeChannelWiseQuantizeAbsMaxOp(OpTest):
         for dtype, input_shape_quant_axis in itertools.product(
                 dtype_options, input_shape_quant_axis_options):
             input_shape, quant_axis = input_shape_quant_axis
-            with self.subTest(
-                    dtype=dtype, input_shape=input_shape,
-                    quant_axis=quant_axis):
+            with self.subTest(dtype=dtype,
+                              input_shape=input_shape,
+                              quant_axis=quant_axis):
                 self._fake_channel_wise_quantize_abs_max(
                     dtype, input_shape, quant_axis, np.random.random)
 
 
 class TestFakeQuantizeRangeAbsMaxOp(OpTest):
+
     def setUp(self):
         self.op_type = 'fake_quantize_range_abs_max'
         self.attrs = {'bit_length': 5, 'window_size': 1}
@@ -162,6 +165,7 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
 
 
 class TestMovingAverageAbsMaxScaleOp(OpTest):
+
     def setUp(self):
         self.op_type = 'moving_average_abs_max_scale'
         self.attrs = {'moving_rate': float(0.9), 'is_test': False}
@@ -194,6 +198,7 @@ class TestMovingAverageAbsMaxScaleOp(OpTest):
 
 
 class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
+
     def setUp(self):
         self.op_type = 'fake_quantize_moving_average_abs_max'
         self.attrs = {'bit_length': 5, 'moving_rate': 0.9, 'is_test': False}
@@ -252,14 +257,14 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
                                                    np.random.random)
 
     def test_fake_quantize_dequantize_moving_average_abs_max(self):
-        self._fake_quantize_moving_average_abs_max(
-            np.float32, (8, 16, 7, 7),
-            np.random.random,
-            dequantize=True,
-            with_gradient=True)
+        self._fake_quantize_moving_average_abs_max(np.float32, (8, 16, 7, 7),
+                                                   np.random.random,
+                                                   dequantize=True,
+                                                   with_gradient=True)
 
 
 class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
+
     def setUp(self):
         self.op_type = 'fake_quantize_dequantize_abs_max'
         self.attrs = {'bit_length': 8}
@@ -286,22 +291,24 @@ class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
 
 
 class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
+
     def setUp(self):
         self.op_type = 'fake_channel_wise_quantize_dequantize_abs_max'
         self.attrs = {'bit_length': 8}
 
-    def _fake_channel_wise_quantize_dequantize_abs_max(
-            self, dtype, input_shape, quant_axis, distribution):
+    def _fake_channel_wise_quantize_dequantize_abs_max(self, dtype, input_shape,
+                                                       quant_axis,
+                                                       distribution):
         assert quant_axis in [0, 1], 'quant_axis should be 0 or 1.'
         input_data = distribution(input_shape).astype(dtype)
         compute_type = get_compute_type(dtype)
         bnt = (1 << (self.attrs['bit_length'] - 1)) - 1
         output_data = input_data.copy().astype(compute_type)
-        compute_axis = tuple(
-            i for i in range(len(input_shape)) if i != quant_axis)
+        compute_axis = tuple(i for i in range(len(input_shape))
+                             if i != quant_axis)
         scale_broadcast = np.amax(input_data, axis=compute_axis, keepdims=True)
-        output_data = round_c(bnt * output_data /
-                              scale_broadcast) * scale_broadcast / bnt
+        output_data = round_c(
+            bnt * output_data / scale_broadcast) * scale_broadcast / bnt
         if quant_axis == 1:
             scale_broadcast = np.transpose(scale_broadcast,
                                            (1, ) + compute_axis)
@@ -315,8 +322,9 @@ class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
         self.check_grad(['X'], 'Out', user_defined_grads=gradient)
 
     def test_channel_wise_fake_quant_dequant_abs_max(self):
-        input_shape_quant_axis_options = [[(3, 4, 64, 64), 0], [(
-            15, 20, 5, 5), 1], [(30, 15), 0], [(30, 15), 1]]
+        input_shape_quant_axis_options = [[(3, 4, 64, 64), 0],
+                                          [(15, 20, 5, 5), 1], [(30, 15), 0],
+                                          [(30, 15), 1]]
         for input_shape, quant_axis in input_shape_quant_axis_options:
             with self.subTest(input_shape=input_shape, quant_axis=quant_axis):
                 self._fake_channel_wise_quantize_dequantize_abs_max(
@@ -348,6 +356,7 @@ def channel_wise_quantize_max_abs(x, quant_bit=8, quant_axis=0):
 
 
 class TestChannelWiseQuantizeOp(OpTest):
+
     def set_args(self):
         self.bit_length = 8
         self.data_type = "float32"
@@ -374,6 +383,7 @@ class TestChannelWiseQuantizeOp(OpTest):
 
 
 class TestChannelWiseQuantizeOp1(TestChannelWiseQuantizeOp):
+
     def set_args(self):
         self.bit_length = 8
         self.data_type = "float32"
@@ -381,6 +391,7 @@ class TestChannelWiseQuantizeOp1(TestChannelWiseQuantizeOp):
 
 
 class TestChannelWiseQuantizeOpTrain(OpTest):
+
     def set_args(self):
         self.bit_length = 8
         self.data_type = "float32"
@@ -409,6 +420,7 @@ class TestChannelWiseQuantizeOpTrain(OpTest):
 
 
 class TestquantizeOp(OpTest):
+
     def set_args(self):
         self.bit_length = 8
         self.quant_axis = -1
@@ -435,6 +447,7 @@ class TestquantizeOp(OpTest):
 
 
 class TestquantizeOpTrain(TestquantizeOp):
+
     def set_args(self):
         self.bit_length = 8
         self.quant_axis = -1

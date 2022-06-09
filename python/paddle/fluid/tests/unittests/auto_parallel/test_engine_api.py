@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
 import os
 import sys
@@ -21,6 +22,7 @@ from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
 class TestEngineAPI(unittest.TestCase):
+
     def test_engine_api(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "engine_api.py")
@@ -30,24 +32,17 @@ class TestEngineAPI(unittest.TestCase):
         else:
             coverage_args = []
 
+        tmp_dir = tempfile.TemporaryDirectory()
         cmd = [sys.executable, "-u"] + coverage_args + [
-            "-m", "launch", "--gpus", "0,1", launch_model_path
+            "-m", "launch", "--gpus", "0,1", "--log_dir", tmp_dir.name,
+            launch_model_path
         ]
 
         process = subprocess.Popen(cmd)
         process.wait()
         self.assertEqual(process.returncode, 0)
 
-        # Remove unnecessary files
-        log_path = os.path.join(file_dir, "log")
-        if os.path.exists(log_path):
-            shutil.rmtree(log_path)
-        files_path = [path for path in os.listdir('.') if '.pd' in path]
-        for path in files_path:
-            if os.path.exists(path):
-                os.remove(path)
-        if os.path.exists('rank_mapping.csv'):
-            os.remove('rank_mapping.csv')
+        tmp_dir.cleanup()
 
 
 if __name__ == "__main__":

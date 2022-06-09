@@ -52,7 +52,9 @@ def write_reader_data_to_file(filename, reader):
     with open(filename, 'w') as fid:
         for instance_list in reader():
             for i, instance in enumerate(instance_list):
-                instance = np.reshape(instance, [instance.size, ])
+                instance = np.reshape(instance, [
+                    instance.size,
+                ])
                 fid.write(str(instance.size) + ' ')
                 fid.write(' '.join(map(str, instance)))
                 fid.write(' ')
@@ -61,19 +63,21 @@ def write_reader_data_to_file(filename, reader):
 
 
 def fake_reader(batch_size=BATCH_SIZE, batch_num=BATCH_NUM):
+
     def __reader__():
         iteration = BATCH_SIZE * BATCH_NUM
         iteration = int(iteration + BATCH_SIZE / 2)
         for _ in six.moves.range(iteration):
             image = np.random.random(size=IMAGE_SHAPE).astype('float32')
-            label = np.random.random_integers(
-                size=LABEL_SHAPE, low=0, high=9).astype('int64')
+            label = np.random.random_integers(size=LABEL_SHAPE, low=0,
+                                              high=9).astype('int64')
             yield image, label
 
     return __reader__
 
 
 class DatasetLoaderTestBase(unittest.TestCase):
+
     def setUp(self):
         self.dataset_name = "QueueDataset"
         self.drop_last = False
@@ -86,10 +90,12 @@ class DatasetLoaderTestBase(unittest.TestCase):
         main_prog = fluid.Program()
         startup_prog = fluid.Program()
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.layers.data(
-                name='image', shape=IMAGE_SHAPE, dtype='float32')
-            label = fluid.layers.data(
-                name='label', shape=LABEL_SHAPE, dtype='int64')
+            image = fluid.layers.data(name='image',
+                                      shape=IMAGE_SHAPE,
+                                      dtype='float32')
+            label = fluid.layers.data(name='label',
+                                      shape=LABEL_SHAPE,
+                                      dtype='int64')
 
             simple_fc_net_with_inputs(image, label)
 
@@ -135,8 +141,9 @@ class DatasetLoaderTestBase(unittest.TestCase):
         if self.dataset_name == 'InMemoryDataset':
             dataset.load_into_memory()
 
-        dataloader = fluid.io.DataLoader.from_dataset(
-            dataset=dataset, places=places, drop_last=self.drop_last)
+        dataloader = fluid.io.DataLoader.from_dataset(dataset=dataset,
+                                                      places=places,
+                                                      drop_last=self.drop_last)
         prog = fluid.CompiledProgram(main_prog).with_data_parallel()
         exe = fluid.Executor(place)
 
@@ -159,23 +166,22 @@ class DatasetLoaderTestBase(unittest.TestCase):
                             batch_size = BATCH_SIZE
 
                     self.assertEquals(image.shape()[1:], IMAGE_SHAPE)
-                    self.assertTrue(
-                        image._place()._equals(places[idx]),
-                        msg=get_place_string(image._place()) + ' vs ' +
-                        get_place_string(places[idx]))
+                    self.assertTrue(image._place()._equals(places[idx]),
+                                    msg=get_place_string(image._place()) +
+                                    ' vs ' + get_place_string(places[idx]))
                     if self.drop_last:
                         self.assertEquals(image.shape()[0], BATCH_SIZE)
                     else:
-                        self.assertTrue(image.shape()[0] == BATCH_SIZE or
-                                        image.shape()[0] == BATCH_SIZE / 2)
+                        self.assertTrue(image.shape()[0] == BATCH_SIZE
+                                        or image.shape()[0] == BATCH_SIZE / 2)
 
                     self.assertEquals(label.shape()[1:], LABEL_SHAPE)
                     self.assertTrue(label._place()._equals(places[idx]))
                     if self.drop_last:
                         self.assertEquals(label.shape()[0], BATCH_SIZE)
                     else:
-                        self.assertTrue(label.shape()[0] == BATCH_SIZE or
-                                        label.shape()[0] == BATCH_SIZE / 2)
+                        self.assertTrue(label.shape()[0] == BATCH_SIZE
+                                        or label.shape()[0] == BATCH_SIZE / 2)
 
                     self.assertEquals(image.shape()[0], label.shape()[0])
 
@@ -204,18 +210,21 @@ class DatasetLoaderTestBase(unittest.TestCase):
 
 
 class QueueDatasetTestWithoutDropLast(DatasetLoaderTestBase):
+
     def setUp(self):
         self.dataset_name = "QueueDataset"
         self.drop_last = True
 
 
 class InMemoryDatasetTestWithoutDropLast(DatasetLoaderTestBase):
+
     def setUp(self):
         self.dataset_name = "InMemoryDataset"
         self.drop_last = False
 
 
 class InMemoryDatasetTestWithDropLast(DatasetLoaderTestBase):
+
     def setUp(self):
         self.dataset_name = "InMemoryDataset"
         self.drop_last = True

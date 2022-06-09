@@ -31,8 +31,8 @@ def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
     Returns:
         min_pos: the minimun point between the specified points in the cubic curve.
     """
-    xmin, xmax = paddle.static.nn.cond(x1 <= x2, lambda: (x1, x2),
-                                       lambda: (x2, x1))
+    xmin, xmax = paddle.static.nn.cond(x1 <= x2, lambda: (x1, x2), lambda:
+                                       (x2, x1))
     d1 = g1 + g2 - 3 * (f1 - f2) / (x1 - x2)
     d2_square = d1**2 - g1 * g2
 
@@ -169,8 +169,8 @@ def strong_wolfe(f,
             aj = cubic_interpolation_(a_lo, phi_lo, derphi_lo, a_hi, phi_hi,
                                       derphi_hi)  # 21
             min_change = 0.1 * paddle.abs(a_hi - a_lo)
-            pred = paddle.minimum(
-                paddle.abs(aj - a_lo), paddle.abs(aj - a_hi)) < min_change
+            pred = paddle.minimum(paddle.abs(aj - a_lo),
+                                  paddle.abs(aj - a_hi)) < min_change
             aj = paddle.static.nn.cond(pred, lambda: 0.5 * (a_lo + a_hi),
                                        lambda: aj)
 
@@ -208,13 +208,12 @@ def strong_wolfe(f,
                 derphi_hi
             ]
 
-        paddle.static.nn.while_loop(
-            cond=cond_zoom,
-            body=body_zoom,
-            loop_vars=[
-                j, done_zoom, a_lo, phi_lo, derphi_lo, derf_lo, a_hi, phi_hi,
-                derphi_hi
-            ])
+        paddle.static.nn.while_loop(cond=cond_zoom,
+                                    body=body_zoom,
+                                    loop_vars=[
+                                        j, done_zoom, a_lo, phi_lo, derphi_lo,
+                                        derf_lo, a_hi, phi_hi, derphi_hi
+                                    ])
         # j is the number of object function called in zoom.
         return j
 
@@ -253,8 +252,8 @@ def strong_wolfe(f,
             paddle.assign(derf_1, derf_star)
             paddle.assign(ls_func_calls + j, ls_func_calls)
 
-        pred1 = ~done & ((phi_2 > phi_0 + c1 * a2 * derphi_0) | (
-            (phi_2 >= phi_0) & (i > 1)))
+        pred1 = ~done & ((phi_2 > phi_0 + c1 * a2 * derphi_0) |
+                         ((phi_2 >= phi_0) & (i > 1)))
         paddle.assign(done | pred1, done)
         paddle.static.nn.cond(pred1, true_fn1, None)
 

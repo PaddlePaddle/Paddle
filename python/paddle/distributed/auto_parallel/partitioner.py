@@ -187,8 +187,8 @@ class Partitioner(object):
                 dist_g = None
             else:
                 assert g.name in self._serial2dist_varname_mapping
-                dist_g = self._get_dist_var_by_serial_var(g,
-                                                          partitioned_main_prog)
+                dist_g = self._get_dist_var_by_serial_var(
+                    g, partitioned_main_prog)
             partitioned_params_and_grads.append((dist_p, dist_g))
 
         return partitioned_main_prog, partitioned_params_and_grads
@@ -211,15 +211,15 @@ class Partitioner(object):
         forward_op_id2forward_op = {}
         for idx in range(len(serial_ops)):
             if idx <= last_fwd_op_idx:
-                forward_op_id2forward_op[serial_ops[idx].desc.original_id(
-                )] = serial_ops[idx]
+                forward_op_id2forward_op[
+                    serial_ops[idx].desc.original_id()] = serial_ops[idx]
 
         appended_grad_times = 0
         # partiiton
         for idx, op in enumerate(serial_ops):
 
-            if is_backward_op(op) and (is_forward_op(serial_ops[idx - 1]) or
-                                       is_loss_op(serial_ops[idx - 1])):
+            if is_backward_op(op) and (is_forward_op(serial_ops[idx - 1])
+                                       or is_loss_op(serial_ops[idx - 1])):
                 appended_grad_times += 1
 
             # partititon input variables
@@ -270,8 +270,8 @@ class Partitioner(object):
                 dist_op_impl.backward(self._dist_context, **kinputs, **koutputs)
             else:
                 raise NotImplementedError(
-                    "partitioner only support forward and backward, optimize ops, but got {}".
-                    format(str(op)))
+                    "partitioner only support forward and backward, optimize ops, but got {}"
+                    .format(str(op)))
 
     def _is_valid_annotated_program(self, program):
 
@@ -338,35 +338,33 @@ def _partition_parameter(dist_context, src_var, dst_block, dst_varname,
     copied_kwargs['do_model_average'] = src_var.do_model_average
     copied_kwargs['need_clip'] = src_var.need_clip
 
-    param = Parameter(
-        block=dst_block,
-        type=src_var.type,
-        name=dst_varname,
-        shape=dst_shape,
-        dtype=src_var.dtype,
-        lod_level=src_var.lod_level,
-        error_clip=src_var.error_clip,
-        stop_gradient=src_var.stop_gradient,
-        is_data=src_var.is_data,
-        belong_to_optimizer=src_var.belong_to_optimizer,
-        **copied_kwargs)
+    param = Parameter(block=dst_block,
+                      type=src_var.type,
+                      name=dst_varname,
+                      shape=dst_shape,
+                      dtype=src_var.dtype,
+                      lod_level=src_var.lod_level,
+                      error_clip=src_var.error_clip,
+                      stop_gradient=src_var.stop_gradient,
+                      is_data=src_var.is_data,
+                      belong_to_optimizer=src_var.belong_to_optimizer,
+                      **copied_kwargs)
 
     return param
 
 
 def _partition_intermediate_var(dist_context, src_var, dst_block, dst_varname,
                                 dst_shape):
-    var = dst_block.create_var(
-        type=src_var.type,
-        name=dst_varname,
-        shape=dst_shape,
-        dtype=src_var.dtype,
-        lod_level=src_var.lod_level,
-        persistable=src_var.persistable,
-        error_clip=src_var.error_clip,
-        stop_gradient=src_var.stop_gradient,
-        is_data=src_var.is_data,
-        belong_to_optimizer=src_var.belong_to_optimizer)
+    var = dst_block.create_var(type=src_var.type,
+                               name=dst_varname,
+                               shape=dst_shape,
+                               dtype=src_var.dtype,
+                               lod_level=src_var.lod_level,
+                               persistable=src_var.persistable,
+                               error_clip=src_var.error_clip,
+                               stop_gradient=src_var.stop_gradient,
+                               is_data=src_var.is_data,
+                               belong_to_optimizer=src_var.belong_to_optimizer)
 
     return var
 
@@ -380,11 +378,10 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
 
     if src_var.type in __not_shape_var_type__:
         persist = getattr(src_var, 'persistable', False)
-        new_var = dst_block.create_var(
-            type=src_var.type,
-            name=dst_varname,
-            persistable=persist,
-            stop_gradient=True)
+        new_var = dst_block.create_var(type=src_var.type,
+                                       name=dst_varname,
+                                       persistable=persist,
+                                       stop_gradient=True)
         target_shape = None
     else:
         dist_attr = dist_context.get_tensor_dist_attr_for_program(src_var)
@@ -394,8 +391,9 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
             new_var = _partition_parameter(dist_context, src_var, dst_block,
                                            dst_varname, target_shape)
         else:
-            new_var = _partition_intermediate_var(
-                dist_context, src_var, dst_block, dst_varname, target_shape)
+            new_var = _partition_intermediate_var(dist_context, src_var,
+                                                  dst_block, dst_varname,
+                                                  target_shape)
 
     dist_attr = copy.deepcopy(
         dist_context.get_tensor_dist_attr_for_program(src_var))

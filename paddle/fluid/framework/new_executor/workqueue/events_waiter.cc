@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/workqueue/events_waiter.h"
+
 #include <glog/logging.h>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
