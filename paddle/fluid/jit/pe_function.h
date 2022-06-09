@@ -20,7 +20,6 @@
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/jit/base_function.h"
-#include "paddle/fluid/jit/ivalue.h"
 
 namespace paddle {
 namespace jit {

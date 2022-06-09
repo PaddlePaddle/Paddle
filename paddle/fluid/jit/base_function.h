@@ -19,7 +19,6 @@
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/jit/ivalue.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"
@@ -40,7 +39,7 @@ class Argument {
 
  private:
   std::string name_;
-  // paddle::optional<IValue> default_val_;
+  // paddle::optional<Variable> default_val_;
   bool is_output_;
 };
 
@@ -160,7 +159,7 @@ class BaseFunction {
  protected:
   framework::ProgramDesc program_desc_;
   // TODO(dev): need a better way to share params
-  // std::vector<IValue> &param_for_program_;
+  // std::vector<Variable> &param_for_program_;
   // std::vector<std::string> skip_var_name_;
   FunctionSchema schema_;
   // global_scope place params

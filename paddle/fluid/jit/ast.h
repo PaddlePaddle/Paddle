@@ -18,9 +18,11 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/variable.h"
+
 namespace paddle {
 namespace jit {
-class IValue;
+using Variable = paddle::framework::Variable;
 class BaseFunction;
 class CompilationUnit;
 
@@ -38,15 +40,15 @@ class ClassType {
 
   // const std::vector<Function*> Methods() const;
 
-  // const IValue& GetAttribute(size_t slot) const;
-  // const IValue& GetAttribute(const std::string& name) const;
+  // const Variable& GetAttribute(size_t slot) const;
+  // const Variable& GetAttribute(const std::string& name) const;
 
-  // size_t AddAttribute(const std::string& name, IValue val);
+  // size_t AddAttribute(const std::string& name, Variable val);
 
  private:
   // TODO(dev): disingwish parameter and buffer
   std::vector<std::string> const_names_;
-  std::vector<IValue> const_value_;
+  std::vector<Variable> const_value_;
 
   std::vector<BaseFunction*> methods_;
   std::vector<BaseFunction*> static_method_;

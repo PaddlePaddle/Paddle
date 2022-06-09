@@ -1,8 +1,3 @@
-cc_test(
-  ivalue_test
-  SRCS ivalue_test.cc
-  DEPS phi phi_api_utils phi_tensor_raw)
-
 if(WITH_TESTING AND NOT WIN32)
   add_custom_target(
     dy2st_download_program

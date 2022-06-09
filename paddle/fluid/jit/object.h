@@ -17,7 +17,7 @@
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/jit/ivalue.h"
+#include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace jit {
@@ -39,26 +39,26 @@ class Object {
 
   std::shared_ptr<ClassType> Type() const { return type_; }
 
-  void SetSlot(size_t slot, IValue val) {
+  void SetSlot(size_t slot, Variable val) {
     if (slot >= slots_.size()) {
       slots_.resize(slot);
     }
     slots_[slot] = std::move(val);
   }
 
-  const IValue& GetSlot(size_t slot) {
+  const Variable& GetSlot(size_t slot) {
     // TODO(dev): Add ENFORCE_LT(slot, size());
     return slots_[slot];
   }
 
-  IValue GetAttr(const std::string& name) const;
+  Variable GetAttr(const std::string& name) const;
 
-  void SetAttr(const std::string& name, IValue val);
+  void SetAttr(const std::string& name, Variable val);
 
  private:
   std::shared_ptr<ClassType> type_;
   // Store Tensors and Attributes
-  std::vector<IValue> slots_;
+  std::vector<Variable> slots_;
 };
 
 }  // namespace internal

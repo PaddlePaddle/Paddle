@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/fluid/jit/base_function.h"
-#include "paddle/fluid/jit/ivalue.h"
 
 namespace paddle {
 namespace jit {

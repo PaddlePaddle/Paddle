@@ -22,7 +22,6 @@
 #include "paddle/fluid/jit/base_function.h"
 #include "paddle/fluid/jit/compilation_unit.h"
 #include "paddle/fluid/jit/exector_function.h"
-#include "paddle/fluid/jit/ivalue.h"
 #include "paddle/fluid/jit/object.h"
 #include "paddle/fluid/jit/pe_function.h"
 
@@ -46,7 +45,7 @@ class Layer {
     // Layer manage the life time of all parameter.
     for (size_t i = 0; i < func_names.size(); ++i) {
       // TODO(dev): choose exector or pe by flag
-      function_dict[func_names[i]] = std::make_shared<PEFunction>(
+      function_dict[func_names[i]] = std::make_shared<ExectorFunction>(
           program_descs[i], param_names_for_each_program[i], params_dict);
     }
   }
@@ -66,7 +65,7 @@ class Layer {
   // internal::Object obj_;
   // std::vector<framework::ProgramDesc> all_program_desc_;
   // std::vector<std::vector<std::string>> param_name_for_each_program_;
-  // std::vector<IValue> all_param_;
+  // std::vector<Variable> all_param_;
   std::map<std::string, std::shared_ptr<BaseFunction>> function_dict;
 };
 
