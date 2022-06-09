@@ -1757,14 +1757,30 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "top_k_v2") {
+    if (op_type == "top_k_v2" || op_type == "top_k") {
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << "top_k/top_k_v2 does not support 1-dimensional input in "
+                   "tensorrt";
+        return false;
+      }
       if (desc.HasAttr("axis")) {
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-        if (axis == 0) return false;
+        if (axis == 0) {
+          VLOG(3) << "top_k_v2 does not support axis == 0 in "
+                     "tensorrt";
+          return false;
+        }
       }
       if (desc.HasAttr("sorted")) {
         bool sorted = BOOST_GET_CONST(bool, desc.GetAttr("sorted"));
-        if (!sorted) return false;
+        if (!sorted) {
+          VLOG(3) << "top_k_v2 does not support results not sorted in "
+                     "tensorrt";
+          return false;
+        }
       }
     }
 
