@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstring>
+
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/c_allreduce_op_plugin.h"
 #include "paddle/fluid/platform/collective_helper.h"
@@ -53,11 +54,12 @@ bool CAllReducePlugin::supportsFormat(
 
 nvinfer1::Dims CAllReducePlugin::getOutputDimensions(
     int index, const nvinfer1::Dims* in_dims, int nb_inputs) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(nb_inputs, 1, platform::errors::InvalidArgument(
-                                      "We expect [number of inputs] == 1"
-                                      "in TRT CAllReduce op plugin, but got "
-                                      "[number of inputs] = %d.",
-                                      nb_inputs));
+  PADDLE_ENFORCE_EQ(
+      nb_inputs, 1,
+      platform::errors::InvalidArgument("We expect [number of inputs] == 1"
+                                        "in TRT CAllReduce op plugin, but got "
+                                        "[number of inputs] = %d.",
+                                        nb_inputs));
   PADDLE_ENFORCE_LT(index, this->getNbOutputs(),
                     platform::errors::InvalidArgument(
                         "We expect [index] < [number of outputs]"
@@ -117,10 +119,7 @@ int CAllReducePlugin::enqueue(int batchSize, const void* const* inputs,
       PADDLE_THROW(platform::errors::InvalidArgument("Invalid reduce type: %d",
                                                      red_type_));
   }
-  if (for_test_) {
-    VLOG(4) << "skip communication for unittest.";
-    return 0;
-  }
+
   auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
   cudaStream_t custream = use_calc_stream_ ? stream : custream = comm->stream();
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
@@ -223,10 +222,6 @@ int CAllReducePluginDynamic::enqueue(
                                                      red_type_));
   }
 
-  if (for_test_) {
-    VLOG(4) << "skip communication for unittest.";
-    return 0;
-  }
   auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
   cudaStream_t custream = use_calc_stream_ ? stream : comm->stream();
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
