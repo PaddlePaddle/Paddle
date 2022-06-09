@@ -1159,7 +1159,7 @@ class MLUCnnl {
 
   static void ConvBackpropInput(
       const ExecutionContext& ctx, const cnnlConvolutionDescriptor_t conv_desc,
-      const cnnlTensorDescriptor_t input_desc, const void* filter,
+      const cnnlTensorDescriptor_t filter_desc, const void* filter,
       const cnnlTensorDescriptor_t out_backprop_desc, const void* out_backprop,
       const cnnlTensorDescriptor_t in_backprop_desc, void* in_backprop);
 
