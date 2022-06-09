@@ -620,6 +620,51 @@ class StaticFunction(object):
 
         return getattr(self._class_instance, func_name)
 
+    def __deepcopy__(self, memo):
+        """
+        Customized behavior for copy.deepcopy, return original decorated function instead
+        of a new StaticFunction Object. StaticFunction itself is not copyable becuase it's
+        associated with class_instance.
+
+        We add __deepcopy__ here only for the following usage:
+
+        Example::
+            .. code-block:: python
+
+                import copy
+                import paddle
+
+                class Net(paddle.nn.Layer):
+                    def __init__(self):
+                        super(Net, self).__init__()
+
+                    def forward(self, x, flag=True):
+                        if flag:
+                            out = x + 1
+                        else:
+                            out = x - 1
+                        return out
+
+                x = paddle.randn([10, 1], 'float32')
+                net = paddle.jit.to_static(Net())  # convert into static mode
+
+                copy_net = copy.deepcopy(net)      # deepcopy a new net without @to_static
+        
+        Please attention that original 'net' will unwrap @to_static and rollback into simple Layer.
+        """
+        if self._class_instance is not None:
+            net_name = type(self._class_instance).__name__
+            logging_utils.log(
+                level=-1,
+                msg="Not recommend to deepcopy '{}' decorated with @to_static, it has side effect that will" \
+                    " rollback into original state before @to_static. Please deepcopy '{}' before applying @to_static."
+                .format(net_name, net_name))
+            self.rollback()
+            return self._dygraph_function.__get__(memo[id(
+                self._class_instance)])
+        else:
+            return self._dygraph_function
+
     @property
     def inputs(self):
         """
