@@ -25,10 +25,9 @@ from paddle.inference import create_predictor
 from paddle.inference import PrecisionType
 from paddle.fluid import core
 
-fleet.init(is_collective=True)
-
 
 def run(op_type):
+    fleet.init(is_collective=True)
     paddle.enable_static()
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
@@ -102,7 +101,7 @@ def run(op_type):
 
 
 if __name__ == "__main__":
-    if len(sys.argv[1]) < 2:
+    if len(sys.argv) < 2:
         # This script just be called by test_trt_convert_c_allreduce.py
         sys.exit(0)
     op_type = sys.argv[1]
