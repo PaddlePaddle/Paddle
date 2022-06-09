@@ -137,7 +137,7 @@ class Device(object):
             dev._dtype = DeviceType.IPU
             num = fluid.core.get_ipu_device_count()
             # For IPUs, 'labels' is a list which contains the available numbers of IPU devices.
-            dev._labels = [str(x) for x in range(0, num+1)]
+            dev._labels = [str(x) for x in range(0, num + 1)]
             return dev
 
         if num == 0:
