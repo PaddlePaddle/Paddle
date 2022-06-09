@@ -17,8 +17,11 @@ import sys
 import argparse
 
 from .collective import CollectiveController, ControleMode
+from paddle.distributed.launch.job.container import Container
+
 
 class IPUController(CollectiveController):
+
     @classmethod
     def enable(cls, ctx):
         if ctx.args.training_script == "ipu":
@@ -34,24 +37,23 @@ class IPUController(CollectiveController):
             "--hosts",
             type=str,
             help="The hosts for IPU PopRun distributd computing.")
-        parser.add_argument(
-            "--nproc_per_host",
-            type=int,
-            help="The number of processes per host.")    
-        parser.add_argument(
-            "--ipus_per_replica",
-            type=int,
-            help="The number of IPUs per replica.")
-        parser.add_argument(
-            "--ipu_partition", type=str, help="The partition name of IPU.")
-        parser.add_argument(
-            "--vipu_server",
-            type=str,
-            help="The vipu server host to enable vipu.")
+        parser.add_argument("--nproc_per_host",
+                            type=int,
+                            help="The number of processes per host.")
+        parser.add_argument("--ipus_per_replica",
+                            type=int,
+                            help="The number of IPUs per replica.")
+        parser.add_argument("--ipu_partition",
+                            type=str,
+                            help="The partition name of IPU.")
+        parser.add_argument("--vipu_server",
+                            type=str,
+                            help="The vipu server host to enable vipu.")
         parser.add_argument(
             "training_script",
             type=str,
-            help="The full path to the single IPU replica training program/script to be launched in parallel."
+            help=
+            "The full path to the single IPU replica training program/script to be launched in parallel."
         )
         parser.add_argument('training_script_args', nargs=argparse.REMAINDER)
         return parser.parse_args(args_list)
@@ -60,18 +62,20 @@ class IPUController(CollectiveController):
         # IPU distributed computing is based on PopRun which is a wrapper of MPI.
         self.ctx.args.training_script = "poprun"
         poprun_args = self.parse_ipu_args(self.ctx.args.training_script_args)
-        
+
         num_ipus = int(self.ctx.args.devices)
-         # The number of replicas for data parallel
+        # The number of replicas for data parallel
         assert (num_ipus % poprun_args.ipus_per_replica) == 0, \
                     "The number of IPUs:{} mod the number of IPUs per replica:{} must == 0".format(num_ipus, poprun_args.ipus_per_replica)
         num_replicas = num_ipus // poprun_args.ipus_per_replica
-        self.ctx.logger.info("The number of total replicas is {}.".format(num_replicas))
+        self.ctx.logger.info(
+            "The number of total replicas is {}.".format(num_replicas))
 
         # The number of processes
         num_nodes = len(poprun_args.hosts.split(','))
         num_procs = num_nodes * poprun_args.nproc_per_host
-        self.ctx.logger.info("The number of total processes is {}.".format(num_procs))
+        self.ctx.logger.info(
+            "The number of total processes is {}.".format(num_procs))
         assert (num_replicas % num_procs) == 0, \
                     "The number of replicas:{} mod the number of processes:{} must == 0".format(num_replicas, num_procs)
 
@@ -87,8 +91,10 @@ class IPUController(CollectiveController):
         poprun_command.append('--ipus-per-replica={}'.format(
             poprun_args.ipus_per_replica))
         poprun_command.append('--host={}'.format(','.join(hosts)))
-        poprun_command.append('--vipu-partition={}'.format(poprun_args.ipu_partition))
-        poprun_command.append('--vipu-server-host={}'.format(poprun_args.vipu_server))
+        poprun_command.append('--vipu-partition={}'.format(
+            poprun_args.ipu_partition))
+        poprun_command.append('--vipu-server-host={}'.format(
+            poprun_args.vipu_server))
 
         poprun_command.extend([
             '--update-partition=no', '--vipu-server-timeout=120',
@@ -110,8 +116,8 @@ class IPUController(CollectiveController):
             cur_endpoint = endpoints[idx // poprun_args.nproc_per_host]
             rank_in_node = idx % poprun_args.nproc_per_host
             poprun_command.append(
-                '--instance-mpi-local-args={}:\"-x PADDLE_TRAINER_ID={} -x PADDLE_CURRENT_ENDPOINT={} -x PADDLE_RANK_IN_NODE={}\"'.
-                format(idx, idx, cur_endpoint, rank_in_node))
+                '--instance-mpi-local-args={}:\"-x PADDLE_TRAINER_ID={} -x PADDLE_CURRENT_ENDPOINT={} -x PADDLE_RANK_IN_NODE={}\"'
+                .format(idx, idx, cur_endpoint, rank_in_node))
 
         # executor
         poprun_command.append(sys.executable)
@@ -136,6 +142,22 @@ class IPUController(CollectiveController):
         entrypoint.extend(self.ctx.args.training_script_args)
         entrypoint = [" ".join(entrypoint)]
         return entrypoint
+
+    def new_container(self,
+                      entrypoint=None,
+                      envs={},
+                      use_ctx_env=True,
+                      out=None,
+                      err=None):
+        c = Container(
+            entrypoint=(entrypoint or self._get_entrypoint()),
+            env=(self.ctx.get_envs() if use_ctx_env else {}),
+        )
+        c.outfile, c.errfile = self._get_out_err_file(out, err)
+        c.update_env(envs)
+        # Need subprocess.Popen(shell=True) for PopRun command
+        c.shell = True
+        return c
 
     def run(self):
         # Replace the training script with the PopRun command
