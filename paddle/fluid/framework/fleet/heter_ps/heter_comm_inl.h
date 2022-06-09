@@ -479,18 +479,31 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
   auto d_num_runs_out_mem = memory::Alloc(place, sizeof(int));
   int* d_num_runs_out = reinterpret_cast<int*>(d_num_runs_out_mem->ptr());
 
+#if defined(PADDLE_WITH_CUDA)
   heter_comm_kernel_->reduce_by_key(NULL, temp_storage_bytes, d_merge_keys_ptr,
                                     d_keys, d_merge_grads_ptr, d_grads,
                                     d_num_runs_out, len, stream, false);
+#elif defined(PADDLE_WITH_XPU_KP)
+  heter_comm_kernel_->reduce_by_key(place, NULL, temp_storage_bytes,
+                                    d_merge_keys_ptr, d_keys, d_merge_grads_ptr,
+                                    d_grads, d_num_runs_out, len, stream,
+                                    false);
+#endif
 
   if (d_temp_storage->size() < temp_storage_bytes) {
     d_temp_storage = NULL;
     d_temp_storage = memory::Alloc(place, temp_storage_bytes);
   }
 
+#if defined(PADDLE_WITH_CUDA)
   heter_comm_kernel_->reduce_by_key(
       d_temp_storage->ptr(), temp_storage_bytes, d_merge_keys_ptr, d_keys,
       d_merge_grads_ptr, d_grads, d_num_runs_out, len, stream, false);
+#elif defined(PADDLE_WITH_XPU_KP)
+  heter_comm_kernel_->reduce_by_key(
+      place, d_temp_storage->ptr(), temp_storage_bytes, d_merge_keys_ptr,
+      d_keys, d_merge_grads_ptr, d_grads, d_num_runs_out, len, stream, false);
+#endif
 
   auto dst_place = platform::CPUPlace();
   auto src_place = place;
@@ -696,10 +709,17 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     AnyDeviceGuard guard(resource_->dev_id(i));
 
     tables_[i]->rwlock_->RDLock();
+#if defined(PADDLE_WITH_CUDA)
     tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
                     reinterpret_cast<ValType*>(node.val_storage),
                     h_right[i] - h_left[i] + 1,
                     resource_->remote_stream(i, num));
+#elif defined(PADDLE_WITH_XPU_KP)
+    tables_[i]->get(place, reinterpret_cast<KeyType*>(node.key_storage),
+                    reinterpret_cast<ValType*>(node.val_storage),
+                    h_right[i] - h_left[i] + 1,
+                    resource_->remote_stream(i, num));
+#endif
   }
 
   for (int i = 0; i < total_device; ++i) {
@@ -927,7 +947,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   GradType* d_shard_grads_ptr =
       reinterpret_cast<GradType*>(d_shard_grads->ptr());
 
-  int uniq_len = len;x
+  int uniq_len = len;
   merge_grad(dev_num, d_keys, d_grads, len, uniq_len);
 
   // int grid_size = (uniq_len - 1) / block_size_ + 1;

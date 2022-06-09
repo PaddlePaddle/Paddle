@@ -32,8 +32,6 @@ namespace framework {
 
 #if defined(PADDLE_WITH_XPU_KP)
 
-//typedef uint64_t FeatureKey;
-
 class CacheManager {
  public:
   struct CacheMeta {
@@ -52,7 +50,7 @@ class CacheManager {
   uint64_t query_sign2fid(const FeatureKey & key);
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
-  void build_batch_fid_seq(const Record * recs, int size);
+  void build_batch_fid_seq(std::deque<Record> & recs);
   void prepare_current_batch_fid_seq();
   std::shared_ptr<std::vector<uint64_t>>  get_current_batch_fid_seq();
   void convert_fid2bfid(const uint64_t * fids, int * out_bfids, int size);

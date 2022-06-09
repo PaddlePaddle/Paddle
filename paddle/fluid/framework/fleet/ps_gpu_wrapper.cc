@@ -761,7 +761,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 
 #ifdef PADDLE_WITH_XPU_KP
   // build cachemanager
-  // dangerous down cast the type of HeterPs_ is HeterPsBase*
   auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
   auto data_readers = dataset_->GetReaders(); 
   CHECK(data_readers.size() > 0);
@@ -780,8 +779,8 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
   CHECK(dataset != nullptr) << "only support MultiSlotDataset";
   auto input_channel = dataset->GetInputChannel();
-  VLOG(0) << "BuildGPUTask: query sign2fid for dataset";
 
+  VLOG(0) << "BuildGPUTask: query sign2fid for dataset";
   // dangerous, the return value of GetData is unmutable in general
   //std::deque<SlotRecord>& vec_data = const_cast<std::deque<SlotRecord>&>(input_channel->GetData());
   std::deque<Record>& vec_data = const_cast<std::deque<Record>&>(input_channel->GetData());
@@ -790,17 +789,21 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     //for (unsigned int j = 0; j < feasign.size(); j++) {
     //  feasign[j] = cache_manager->query_sign2fid(feasign[j]);
     //}
-    auto & feasign = it->uint64_feasigns_;
-    for (unsigned int j = 0; j < feasign.size(); j++) {
-      feasign[j].sign().uint64_feasign_ = cache_manager->query_sign2fid(feasign[j].sign().uint64_feasign_);
+    auto & feasigns = it->uint64_feasigns_;
+    for (unsigned int j = 0; j < feasigns.size(); j++) {
+      feasigns[j].sign().uint64_feasign_ = cache_manager->query_sign2fid(feasigns[j].sign().uint64_feasign_);
     }
   }
+
+  VLOG(0) << "BuildGPUTask: build_batch_fid_seq";  
+  cache_manager->build_batch_fid_seq(vec_data);
+
   VLOG(0) << "BuildGPUTask: query sign2fid for device keys";
   // convert feasign to fid in device_keys_
   for (int i = 0; i < device_num; i++) {
-    auto& feasign = gpu_task->device_keys_[i];
-    for (unsigned int j = 0; j < feasign.size(); j++) {
-      feasign[j] = cache_manager->query_sign2fid(feasign[j]);
+    auto& feasigns = gpu_task->device_keys_[i];
+    for (unsigned int j = 0; j < feasigns.size(); j++) {
+      feasigns[j] = cache_manager->query_sign2fid(feasigns[j]);
     }
   }
   VLOG(0) << "BuildGPUTask: exit PADDLE_WITH_XPU_KP";

@@ -81,6 +81,7 @@ class HeterCommKernel {
                   bool debug_synchronous = false);
 #endif
 
+#if defined(PADDLE_WITH_CUDA)
   template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
             typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
             typename NumRunsOutputIteratorT, typename StreamType>
@@ -91,8 +92,22 @@ class HeterCommKernel {
                      ValuesInputIteratorT d_values_in,
                      AggregatesOutputIteratorT d_aggregates_out,
                      NumRunsOutputIteratorT d_num_runs_out, int num_items,
-
                      StreamType stream = NULL, bool debug_synchronous = false);
+#elif defined(PADDLE_WITH_XPU_KP)
+  template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
+            typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
+            typename NumRunsOutputIteratorT, typename StreamType>
+  void reduce_by_key(const paddle::platform::Place& place,
+                     void* d_temp_storage,
+                     size_t& temp_storage_bytes,  // NOLINT
+                     KeysInputIteratorT d_keys_in,
+                     UniqueOutputIteratorT d_unique_out,
+                     ValuesInputIteratorT d_values_in,
+                     AggregatesOutputIteratorT d_aggregates_out,
+                     NumRunsOutputIteratorT d_num_runs_out, int num_items,
+                     StreamType stream = NULL, bool debug_synchronous = false);
+#endif
+
   template <typename KeyT, typename ValueT>
   void merge_grad(KeyT* d_keys, ValueT* d_vals_in, int len, ValueT* d_vals_out);
 
