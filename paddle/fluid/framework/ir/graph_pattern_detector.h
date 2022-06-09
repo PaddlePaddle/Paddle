@@ -559,7 +559,7 @@ struct MatmulActivation : public PatternBase {
 
   PATTERN_DECL_NODE(matmul_op);
   PATTERN_DECL_NODE(matmul_out);
-  PATTERN_DECL_NODE(activation);
+  PATTERN_DECL_NODE(activation_op);
   PATTERN_DECL_NODE(activation_out);
 };
 
