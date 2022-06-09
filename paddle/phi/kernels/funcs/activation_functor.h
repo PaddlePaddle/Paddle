@@ -15,14 +15,14 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
-#include <cmath>
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
@@ -986,9 +986,9 @@ struct BReluGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout *
-                   ((x > static_cast<T>(t_min)) * (x < static_cast<T>(t_max)))
-                       .template cast<T>();
+    dx.device(d) =
+        dout * ((x > static_cast<T>(t_min)) * (x < static_cast<T>(t_max)))
+                   .template cast<T>();
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -1054,11 +1054,10 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
           GET_DATA_SAFELY(X, "Input", "X", "LeakyReluGradGrad"));
       auto ddout = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DOut", "LeakyReluGradGrad"));
-      ddout.device(*d) =
-          ddx *
-          ((x > static_cast<T>(0)).template cast<T>() +
-           static_cast<T>(alpha) * (x <= static_cast<T>(0)).template cast<T>())
-              .template cast<T>();
+      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
+                                static_cast<T>(alpha) *
+                                    (x <= static_cast<T>(0)).template cast<T>())
+                                   .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -1290,11 +1289,10 @@ struct ELUGradGradFunctor : public BaseActivationFunctor<T> {
     if (ddOut) {
       auto ddout = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DDOut", "ELUGradGrad"));
-      ddout.device(*d) = ddx *
-                         ((x > static_cast<T>(0)).template cast<T>() +
-                          static_cast<T>(alpha) * x.exp() *
-                              (x <= static_cast<T>(0)).template cast<T>())
-                             .template cast<T>();
+      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
+                                static_cast<T>(alpha) * x.exp() *
+                                    (x <= static_cast<T>(0)).template cast<T>())
+                                   .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -1988,11 +1986,10 @@ struct CELUGradGradFunctor : public BaseActivationFunctor<T> {
     if (ddOut) {
       auto ddout = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DDOut", "CELUGradGrad"));
-      ddout.device(*d) = ddx *
-                         ((x > static_cast<T>(0)).template cast<T>() +
-                          (x / static_cast<T>(alpha)).exp() *
-                              (x <= static_cast<T>(0)).template cast<T>())
-                             .template cast<T>();
+      ddout.device(*d) = ddx * ((x > static_cast<T>(0)).template cast<T>() +
+                                (x / static_cast<T>(alpha)).exp() *
+                                    (x <= static_cast<T>(0)).template cast<T>())
+                                   .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

@@ -16,8 +16,10 @@ limitations under the License. */
 // HIP not support cusolver
 
 #include <thrust/device_vector.h>
+
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/svd_op.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"

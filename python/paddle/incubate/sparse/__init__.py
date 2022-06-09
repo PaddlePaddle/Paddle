@@ -12,12 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .creation import sparse_coo_tensor
+from .creation import sparse_csr_tensor
+
+from .unary import sqrt
+from .unary import sin
+from .unary import tanh
+
 from .math import add
 from .math import divide
 from .math import multiply
 from .math import subtract
 
+from . import nn
+
 __all__ = [  # noqa
+    'sparse_coo_tensor',
+    'sparse_csr_tensor',
+    'sqrt',
+    'sin',
+    'tanh',
     'add',
     'subtract',
     'multiply',

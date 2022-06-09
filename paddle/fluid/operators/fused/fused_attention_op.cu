@@ -13,20 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <cuda_fp16.h>
+
 #include <cub/cub.cuh>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-
-#include "paddle/phi/kernels/funcs/broadcast_function.h"
-#include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
 #include "paddle/fluid/operators/fused/attention_layer_norm.h"
 #include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -109,7 +109,7 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     const float ln_epsilon = ctx.Attr<float>("ln_epsilon");
 
     float attn_dropout_rate = ctx.Attr<float>("attn_dropout_rate");
-    bool is_test_1 = ctx.Attr<bool>("attn_dropout_is_test");
+    bool is_test_1 = ctx.Attr<bool>("is_test");
     auto &dropout_implementation_1 =
         ctx.Attr<std::string>("attn_dropout_implementation");
     bool is_upscale_in_train_1 =
@@ -280,7 +280,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     const float ln2epsilon = ctx.Attr<float>("ln_epsilon");
 
     float attn_dropout_prob = ctx.Attr<float>("attn_dropout_rate");
-    bool is_test_1 = ctx.Attr<bool>("attn_dropout_is_test");
+    bool is_test_1 = ctx.Attr<bool>("is_test");
     auto &dropout_implementation_1 =
         ctx.Attr<std::string>("attn_dropout_implementation");
     bool is_upscale_in_train_1 =
@@ -463,11 +463,13 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
       auto *bias_dropout_residual_out_data =
           bias_dropout_residual_out->data<T>();
       auto *d_ln_2_scale_data =
-          (d_ln_2_scale == nullptr ? nullptr : d_ln_2_scale->mutable_data<U>(
-                                                   ctx.GetPlace()));
+          (d_ln_2_scale == nullptr
+               ? nullptr
+               : d_ln_2_scale->mutable_data<U>(ctx.GetPlace()));
       auto *d_ln_2_bias_data =
-          (d_ln_2_bias == nullptr ? nullptr : d_ln_2_bias->mutable_data<U>(
-                                                  ctx.GetPlace()));
+          (d_ln_2_bias == nullptr
+               ? nullptr
+               : d_ln_2_bias->mutable_data<U>(ctx.GetPlace()));
       auto *d_bias_dropout_residual_out_data =
           d_bias_dropout_residual_out->mutable_data<T>(ctx.GetPlace());
 

@@ -17,6 +17,7 @@ limitations under the License. */
  */
 
 #include <glog/logging.h>
+
 #include "gflags/gflags.h"
 #include "utils.h"  // NOLINT
 

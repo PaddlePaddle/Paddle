@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/share_data_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -31,8 +32,9 @@ class ShareDataOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         in_type == framework::proto::VarType::LOD_TENSOR ||
             in_type == framework::proto::VarType::SELECTED_ROWS,
-        true, platform::errors::InvalidArgument(
-                  "Type of Variable[X] must be LoDTensor or SelectedRows!"));
+        true,
+        platform::errors::InvalidArgument(
+            "Type of Variable[X] must be LoDTensor or SelectedRows!"));
     PADDLE_ENFORCE_EQ(
         in_type, out_type,
         platform::errors::InvalidArgument(

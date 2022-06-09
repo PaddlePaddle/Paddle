@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/quant_dequant_mkldnn_pass.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -36,7 +38,7 @@ void QuantDequantMkldnnPass::MarkSkipQuantizedOps(
         for (auto* node_input : op_node->inputs) {
           for (auto* node_input_input : node_input->inputs) {
             if (!node_input_input->IsOp()) continue;
-            if (node_input_input->Name().find("quantize_dequantize") ==
+            if (node_input_input->Name().find("quantize") ==
                 std::string::npos) {
               is_quantized_op = false;
               break;
@@ -124,10 +126,11 @@ void QuantDequantMkldnnPass::CollectInputScalesFromFake(
       auto* op_desc = op_node->Op();
       const int bit_length =
           BOOST_GET_CONST(int, op_desc->GetAttr("bit_length"));
-      PADDLE_ENFORCE_EQ(bit_length, 8, platform::errors::InvalidArgument(
-                                           "Unsupported number quantization "
-                                           "bits: %d, only 8 is supported now.",
-                                           bit_length));
+      PADDLE_ENFORCE_EQ(bit_length, 8,
+                        platform::errors::InvalidArgument(
+                            "Unsupported number quantization "
+                            "bits: %d, only 8 is supported now.",
+                            bit_length));
 
       auto x_var_name = op_desc->Input("X")[0];
       auto scale_name = op_desc->Input("InScale")[0];
@@ -489,14 +492,6 @@ void QuantDequantMkldnnPass::UpdateActivations(ir::Graph* graph) const {
         std::string activation;
         if (op_desc->GetAttrIfExists<bool>("fuse_relu")) {
           activation = "relu";
-        } else if (op_desc->GetAttrIfExists<bool>("fuse_brelu")) {
-          activation = "relu6";
-          float alpha = 6.0;
-          if (op_desc->HasAttr("fuse_brelu_threshold")) {
-            alpha = BOOST_GET_CONST(float,
-                                    op_desc->GetAttr("fuse_brelu_threshold"));
-          }
-          op_node->Op()->SetAttr("fuse_alpha", alpha);
         }
         op_node->Op()->SetAttr("fuse_activation", activation);
       }

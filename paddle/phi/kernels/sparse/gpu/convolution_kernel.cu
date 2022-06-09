@@ -157,37 +157,37 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
     set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
     config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n * out_channels, 1);
-    phi::funcs::ScatterCUDAKernel<T, IntT><<<config.block_per_grid,
-                                             config.thread_per_block,
-                                             0,
-                                             dev_ctx.stream()>>>(
-        out_features_ptr,
-        rulebook_ptr + 2 * n,
-        out_values_ptr,
-        n,
-        out_channels,
-        false);
+    phi::funcs::ScatterCUDAKernel<T, IntT>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           dev_ctx.stream()>>>(out_features_ptr,
+                               rulebook_ptr + 2 * n,
+                               out_values_ptr,
+                               n,
+                               out_channels,
+                               false);
   } else {
     config = phi::backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, out->nnz() * out_channels, 1);
-    phi::funcs::sparse::ScatterKernel<T><<<config.block_per_grid.x,
-                                           config.thread_per_block.x,
-                                           0,
-                                           dev_ctx.stream()>>>(
-        out_features_ptr,
-        unique_value.data<int>(),
-        out_index.data<int>(),
-        out->nnz(),
-        n,
-        out_channels,
-        out_values_ptr);
+    phi::funcs::sparse::ScatterKernel<T>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(out_features_ptr,
+                               unique_value.data<int>(),
+                               out_index.data<int>(),
+                               out->nnz(),
+                               n,
+                               out_channels,
+                               out_values_ptr);
   }
 }
 /**
  * x: (N, D, H, W, C)
  * kernel: (D, H, W, C, OC)
  * out: (N, D, H, W, OC)
-**/
+ **/
 template <typename T, typename Context>
 void Conv3dKernel(const Context& dev_ctx,
                   const SparseCooTensor& x,

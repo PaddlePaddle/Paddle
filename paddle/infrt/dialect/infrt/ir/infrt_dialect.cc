@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// clang-format off
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 
 #include <llvm/ADT/TypeSwitch.h>
@@ -60,6 +61,7 @@ void InfrtDialect::initialize() {
 #include "paddle/infrt/dialect/infrt/ir/test_kernels.cpp.inc"
       >();
 }
+// clang-format on
 
 /// Parse a type registered to this dialect.
 mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {

@@ -168,12 +168,11 @@ class ModelAverage(Optimizer):
                  min_average_window=10000,
                  max_average_window=10000,
                  name=None):
-        super(ModelAverage, self).__init__(
-            learning_rate=0.0,
-            parameters=parameters,
-            weight_decay=None,
-            grad_clip=None,
-            name=name)
+        super(ModelAverage, self).__init__(learning_rate=0.0,
+                                           parameters=parameters,
+                                           weight_decay=None,
+                                           grad_clip=None,
+                                           name=name)
 
         self.helper = LayerHelper(self.__class__.__name__)
         self.average_window = average_window_rate
@@ -208,12 +207,18 @@ class ModelAverage(Optimizer):
             self._add_accumulator('sum_2', param)
             self._add_accumulator('sum_3', param)
             self._add_accumulator('restore', param)
-            self._add_accumulator(
-                'num_accumulates', param, dtype='int64', shape=[1])
-            self._add_accumulator(
-                'old_num_accumulates', param, dtype='int64', shape=[1])
-            self._add_accumulator(
-                'num_updates', param, dtype='int64', shape=[1])
+            self._add_accumulator('num_accumulates',
+                                  param,
+                                  dtype='int64',
+                                  shape=[1])
+            self._add_accumulator('old_num_accumulates',
+                                  param,
+                                  dtype='int64',
+                                  shape=[1])
+            self._add_accumulator('num_updates',
+                                  param,
+                                  dtype='int64',
+                                  shape=[1])
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -262,12 +267,11 @@ class ModelAverage(Optimizer):
             "out_num_updates": num_updates,
         }
 
-        average_accumulates_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True)
+        average_accumulates_op = block.append_op(type=self.type,
+                                                 inputs=inputs,
+                                                 outputs=outputs,
+                                                 attrs=attrs,
+                                                 stop_gradient=True)
 
         return average_accumulates_op
 
@@ -425,8 +429,8 @@ class ModelAverage(Optimizer):
                 total_param = sum_1 + sum_2 + sum_3
                 total_accumulates = num_accumulates + old_num_accumulates
                 total_param = paddle.cast(total_param, dtype='float32')
-                total_accumulates = paddle.cast(
-                    total_accumulates, dtype='float32')
+                total_accumulates = paddle.cast(total_accumulates,
+                                                dtype='float32')
                 average_param = total_param / total_accumulates
                 paddle.assign(average_param, param)
             try:

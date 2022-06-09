@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/flip_kernel.h"
-
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/flip_kernel.h"
 
 namespace phi {
 
@@ -115,15 +114,15 @@ void FlipKernel(const Context& dev_ctx,
                        bytes,
                        dev_ctx.stream());
 
-  flip_cuda_kernel<T><<<dim_grid, dim_block, 0, dev_ctx.stream()>>>(
-      N,
-      in_data,
-      out_data,
-      x_shape_array_gpu,
-      x_strides_array_gpu,
-      flip_dims_array_gpu,
-      flip_dims_size,
-      total_dims);
+  flip_cuda_kernel<T>
+      <<<dim_grid, dim_block, 0, dev_ctx.stream()>>>(N,
+                                                     in_data,
+                                                     out_data,
+                                                     x_shape_array_gpu,
+                                                     x_strides_array_gpu,
+                                                     flip_dims_array_gpu,
+                                                     flip_dims_size,
+                                                     total_dims);
 }
 }  // namespace phi
 

@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/distributed/store/tcp_store.h"
+
 #include <chrono>
 #include <iostream>
 #include <thread>
 
-#include "paddle/fluid/distributed/store/tcp_store.h"
 #include "paddle/fluid/distributed/store/tcp_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/flags.h"

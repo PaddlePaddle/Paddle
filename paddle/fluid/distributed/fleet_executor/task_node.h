@@ -26,7 +26,7 @@ namespace paddle {
 namespace framework {
 class OperatorBase;
 class OpDesc;
-}
+}  // namespace framework
 namespace distributed {
 
 class TaskNode final {

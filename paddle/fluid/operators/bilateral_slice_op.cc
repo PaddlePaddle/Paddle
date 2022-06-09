@@ -10,9 +10,11 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/bilateral_slice_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
