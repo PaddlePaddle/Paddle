@@ -354,8 +354,13 @@ cc_library(
 cc_library(
   phi_function_api
   SRCS ${api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform
-       api_custom_impl)
+  DEPS phi_tensor_raw
+       phi
+       kernel_dispatch
+       api_gen_utils
+       phi_data_transform
+       api_custom_impl
+       flags)
 cc_library(
   phi_bw_function_api
   SRCS ${bw_api_source_file}
@@ -367,7 +372,8 @@ cc_library(
        phi_data_transform
        phi_function_api
        api_custom_impl
-       global_utils)
+       global_utils
+       flags)
 cc_library(
   sparse_api
   SRCS ${sparse_api_source_file}
