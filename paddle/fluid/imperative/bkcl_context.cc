@@ -99,6 +99,11 @@ void BKCLParallelContext::Init() {
     platform::BKCLCommContext::Instance().CreateComm(
         &bkcl_ids[ring_id], strategy_.nranks_, strategy_.local_rank_, xpu_id,
         ring_id);
+
+    compute_events_.emplace_back(
+        platform::XpuEventResourcePool::Instance().New(place_.device));
+    comm_events_.emplace_back(
+        platform::XpuEventResourcePool::Instance().New(place_.device));
   }
 }
 
@@ -122,6 +127,11 @@ void BKCLParallelContext::InitWithRingID(int ring_id) {
   // it will assign bkcl_comm in XPUDeviceContext within ring_id
   platform::BKCLCommContext::Instance().CreateComm(
       &bkcl_ids[0], strategy_.nranks_, strategy_.local_rank_, xpu_id, ring_id);
+
+  compute_events_.emplace_back(
+      platform::XpuEventResourcePool::Instance().New(place_.device));
+  comm_events_.emplace_back(
+      platform::XpuEventResourcePool::Instance().New(place_.device));
 }
 
 void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
@@ -189,9 +199,16 @@ void BKCLParallelContext::WaitCompute(int ring_id) {
       platform::errors::OutOfRange("Ring id expected < nrings,"
                                    "but got ring id = %d, nrings = %d",
                                    ring_id, strategy_.nrings_));
-  auto compute_dev_ctx = static_cast<platform::XPUDeviceContext *>(
-      platform::DeviceContextPool::Instance().Get(place_));
-  compute_dev_ctx->Wait();
+  auto compute_stream = static_cast<platform::XPUDeviceContext *>(
+                            platform::DeviceContextPool::Instance().Get(place_))
+                            ->stream();
+  auto comm_stream = platform::BKCLCommContext::Instance().Get(ring_id, place_)
+                        ->dev_context()->stream();
+  auto event = compute_events_[ring_id].get();
+
+// compute_stream-->event-->comm_stream
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_event_record(event, compute_stream));
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_wait_event(comm_stream, event));
 }
 
 void BKCLParallelContext::WaitComm(int ring_id) {
@@ -203,9 +220,16 @@ void BKCLParallelContext::WaitComm(int ring_id) {
       platform::errors::OutOfRange("Ring id expected < nrings,"
                                    "but got ring id = %d, nrings = %d",
                                    ring_id, strategy_.nrings_));
-  auto comm_dev_ctx =
-      platform::BKCLCommContext::Instance().Get(ring_id, place_)->dev_context();
-  comm_dev_ctx->Wait();
+  auto comm_stream = platform::BKCLCommContext::Instance().Get(ring_id, place_)
+                        ->dev_context()->stream();
+  auto compute_stream = static_cast<platform::XPUDeviceContext *>(
+                            platform::DeviceContextPool::Instance().Get(place_))
+                            ->stream();
+  auto event = compute_events_[ring_id].get();
+
+// comm_stream-->event-->compute_stream
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_event_record(event, comm_stream));
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_wait_event(compute_stream, event));
 }
 
 void BKCLParallelContext::SynchronizeCompute() {

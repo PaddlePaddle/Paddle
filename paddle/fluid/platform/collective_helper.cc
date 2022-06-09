@@ -326,6 +326,9 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(BKCLContext_t comm, int nranks,
                                           int rank, int dev_id, int ring_id) {
   std::unique_ptr<XPUDeviceContext> dev_ctx(
       new XPUDeviceContext(XPUPlace(dev_id)));
+  XPUStream stream;
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&stream));
+  dev_ctx->SetXPUStream(stream);
 
   BKCLCommImpl* c = new BKCLCommImpl;
   c->set_ring_id(ring_id);

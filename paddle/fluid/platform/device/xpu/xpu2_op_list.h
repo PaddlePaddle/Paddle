@@ -57,6 +57,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"bilinear_interp_v2_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"broadcast", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"cast", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                              pOpKernelType(vartype::FP16, XPUPlace()),
                              pOpKernelType(vartype::BOOL, XPUPlace()),

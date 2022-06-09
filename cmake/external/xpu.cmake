@@ -75,9 +75,19 @@ endif()
 set(XPU_XRE_URL
     "${XPU_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
-set(XPU_XCCL_URL
-    "${XPU_BASE_URL_WITHOUT_DATE}/20220411/${XPU_XCCL_DIR_NAME}.tar.gz"
-    CACHE STRING "" FORCE)
+if(WITH_AARCH64)
+    set(XPU_XCCL_URL
+        "${XPU_BASE_URL_WITHOUT_DATE}/20220411/${XPU_XCCL_DIR_NAME}.tar.gz"
+        CACHE STRING "" FORCE)
+elseif(WITH_SUNWAY)
+    set(XPU_XCCL_URL
+        "${XPU_BASE_URL_WITHOUT_DATE}/20220411/${XPU_XCCL_DIR_NAME}.tar.gz"
+        CACHE STRING "" FORCE)
+else()
+    SET(XPU_XCCL_URL
+        "https://klx-sdk-release-public.su.bcebos.com/xccl/release/1.0.1/xccl-bdcentos_x86_64.tar.gz"
+        CACHE STRING "" FORCE)
+endif()
 set(XPU_PACK_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/pack_paddle_depence.sh"
     CACHE STRING "" FORCE)
