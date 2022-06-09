@@ -389,12 +389,12 @@ void SparseCooToCsrGPUKernel(const GPUContext& dev_ctx,
   phi::backends::gpu::GpuMemcpyAsync(csr_cols_data,
                                      coo_cols_data,
                                      sizeof(IntT) * non_zero_num,
-                                     cudaMemcpyDeviceToDevice,
+                                     gpuMemcpyDeviceToDevice,
                                      dev_ctx.stream());
   phi::backends::gpu::GpuMemcpyAsync(csr_values_data,
                                      coo_values_data,
                                      sizeof(T) * non_zero_num,
-                                     cudaMemcpyDeviceToDevice,
+                                     gpuMemcpyDeviceToDevice,
                                      dev_ctx.stream());
   out->SetMember(non_zero_crows, non_zero_cols, non_zero_elements, x_dims);
 }
