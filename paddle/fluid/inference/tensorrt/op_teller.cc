@@ -98,6 +98,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "stack",
       "transpose2",
       "transpose",
+      "top_k",
+      "top_k_v2",
       "flatten2",
       "flatten",
       "gather",
@@ -169,6 +171,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "stack",
       "transpose2",
       "transpose",
+      "top_k",
+      "top_k_v2",
       "flatten2",
       "flatten",
       "gather",
@@ -1750,6 +1754,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                      "tensorrt";
           return false;
         }
+      }
+    }
+
+    if (op_type == "top_k_v2") {
+      if (desc.HasAttr("axis")) {
+        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+        if (axis == 0) return false;
+      }
+      if (desc.HasAttr("sorted")) {
+        bool sorted = BOOST_GET_CONST(bool, desc.GetAttr("sorted"));
+        if (!sorted) return false;
       }
     }
 

@@ -60,6 +60,7 @@ nv_library(
        transformer_input_convert_op.cc
        remove_padding_op.cc
        recover_padding_op.cc
+       top_k_op.cc
   DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto
        op_registry)
 

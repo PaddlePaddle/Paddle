@@ -1960,6 +1960,8 @@ USE_TRT_CONVERTER(strided_slice)
 USE_TRT_CONVERTER(transformer_input_convert)
 USE_TRT_CONVERTER(recover_padding)
 USE_TRT_CONVERTER(remove_padding)
+USE_TRT_CONVERTER(top_k)
+USE_TRT_CONVERTER(top_k_v2)
 #endif
 
 namespace paddle_infer {
