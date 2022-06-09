@@ -622,10 +622,10 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   // h_fid_seq memcpy to d_fid_seq
   auto d_fid_seq = memory::Alloc(place, h_fid_seq -> size() * sizeof(FidType));
-  VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_fids " << len * sizeof(FidType);
+  VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_fids " << h_fid_seq -> size() * sizeof(FidType);
 
   FidType* d_fid_seq_ptr = reinterpret_cast<FidType*>(d_fid_seq->ptr());
-  memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(), len * sizeof(FidType), stream);
+  memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(), h_fid_seq -> size() * sizeof(FidType), stream);
   VLOG(0) << "heter comm inl pull sparse memory copy d_fid_seq from cpu to xpu";
 
   // alloc d_shard_vals
@@ -658,8 +658,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   }
 
   // fill to d_val
-  heter_comm_kernel_->fill_dvals(d_all_values_ptr, d_vals, d_bfids_ptr, len,
-                                 stream);
+  heter_comm_kernel_->fill_dvals(d_all_values_ptr, d_vals, d_bfids_ptr, len, stream);
   VLOG(0) << "heter comm inl pull sparse fill d_all_values to d_vals";
 #else
   int total_device = resource_->total_device();
