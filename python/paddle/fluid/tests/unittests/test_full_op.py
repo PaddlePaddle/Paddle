@@ -206,7 +206,7 @@ class TestFullOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
 
 
-# just for check coverage-eager-Test
+# just for check coverage-eager-Test, ignore other ci
 class TestEagerMode(unittest.TestCase):
 
     def test_eager(self):
