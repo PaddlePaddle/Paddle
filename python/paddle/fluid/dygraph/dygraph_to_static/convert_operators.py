@@ -316,8 +316,8 @@ def convert_var_shape(x, idx=None, in_control_flow=False):
     #      # Assume x.shape=[3, -1] in static mode
     #      y = paddle.reshape(x, shape=[1, x.shape[1]])
     #      ```
-    if isinstance(x, Variable) and (in_control_flow
-                                    or has_negative(x.shape, idx)):
+    if isinstance(x, Variable) and in_control_flow and has_negative(
+            x.shape, idx):
         return nn.shape(x) if idx is None else nn.shape(x)[idx]
     else:
         return list(x.shape) if idx is None else x.shape[idx]
