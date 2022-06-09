@@ -1094,8 +1094,8 @@ OpRole = core.op_proto_and_checker_maker.OpRole
 
 
 def is_forward_op(op):
-    ref_role1 = int(core.op_proto_and_checker_maker.OpRole.Forward)
-    ref_role2 = int(core.op_proto_and_checker_maker.OpRole.Loss)
+    ref_role1 = int(OpRole.Forward)
+    ref_role2 = int(OpRole.Loss)
     op_role = int(op.attr('op_role'))
     return OP_ROLE_KEY in op.attr_names and (op_role == ref_role1
                                              or op_role == ref_role2)
@@ -1111,9 +1111,14 @@ def is_optimize_op(op):
             int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize)
 
 
+def is_lr_sched_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize.LRSched)
+
+
 def is_loss_op(op):
     return OP_ROLE_KEY in op.attr_names and \
-        int(op.all_attrs()[OP_ROLE_KEY]) == (int(core.op_proto_and_checker_maker.OpRole.Forward) | int(core.op_proto_and_checker_maker.OpRole.Loss))
+        int(op.all_attrs()[OP_ROLE_KEY]) == (int(OpRole.Forward) | int(OpRole.Loss))
 
 
 def is_prim_op(op):

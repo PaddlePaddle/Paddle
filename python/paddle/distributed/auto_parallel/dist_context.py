@@ -121,6 +121,9 @@ class DistributedContext:
         # flag whether scale gradient with dp size
         self._gradient_scale = True
 
+        # record upstream and downstream of cur rank
+        self._up_down_streams = UpDownStream()
+
     @property
     def serial_main_program(self):
         return self._serial_main_program
@@ -197,6 +200,10 @@ class DistributedContext:
     @gradient_scale.setter
     def gradient_scale(self, gs):
         self._gradient_scale = gs
+
+    @property
+    def up_down_streams(self):
+        return self._up_down_streams
 
     def _backup_serial_info(self, mode):
         self._backup_serial_main_program_stack.append(
@@ -988,3 +995,45 @@ class BlockState(object):
             self.nblock += 1
 
         assert self.nblock == len(program.blocks)
+
+
+class UpDownStream:
+
+    def __init__(self):
+        self._ups = dict()
+        self._downs = dict()
+
+    def add_up_stream(self, rank, up_stream):
+        ups = self._ups.get(rank, None)
+        if not ups:
+            self._ups[rank] = [up_stream]
+        elif up_stream != -1:
+            ups = list(filter(lambda a: a != -1, ups))
+            ups.append(up_stream)
+            self._ups[rank] = ups
+
+    def add_down_stream(self, rank, down_stream):
+        downs = self._downs.get(rank, None)
+        if not downs:
+            self._downs[rank] = [down_stream]
+        elif down_stream != -1:
+            downs = list(filter(lambda a: a != -1, downs))
+            downs.append(down_stream)
+            self._downs[rank] = downs
+
+    def add_pair_stream(self, up, down):
+
+        self.add_up_stream(up, -1)
+        self.add_up_stream(down, up)
+        self.add_down_stream(up, down)
+        self.add_down_stream(down, -1)
+
+    def ups(self, rank):
+        ups = self._ups.get(rank, None)
+        if not ups: return None
+        return list(set(ups))
+
+    def downs(self, rank):
+        downs = self._downs.get(rank, None)
+        if not downs: return None
+        return list(set(downs))

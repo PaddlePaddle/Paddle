@@ -269,6 +269,14 @@ class Engine:
                                                    epochs, steps_per_epoch)
         self._usr_fetch_list = fetch_list
 
+        if self.strategy.pipeline:
+            config = copy.deepcopy(self.strategy.pipeline_configs)
+            config["dist_context"] = self.dist_context
+            auto_parallel_pipeline_pass = new_pass("auto_parallel_pipeline",
+                                                   config)
+            auto_parallel_pipeline_pass.apply([self.main_program],
+                                              [self.startup_program], None)
+
         outputs = []
         for epoch in range(epochs):
             for step, data in enumerate(train_dataloader):
@@ -338,6 +346,8 @@ class Engine:
                                   fetch_list=fetch_list,
                                   use_program_cache=use_program_cache,
                                   return_numpy=return_numpy)
+        if not outs:
+            return logs, []
         for i, out in enumerate(outs):
             logs[fetch_list[i]] = out
         return logs, outs

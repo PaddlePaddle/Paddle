@@ -177,6 +177,14 @@ class AutoParallelizer:
                                                     [startup_program],
                                                     self._pass_context)
 
+        if self._dist_strategy.pipeline:
+            config = copy.deepcopy(self._dist_strategy.pipeline_configs)
+            config["dist_context"] = self._dist_context
+            auto_parallel_pipeline_pass = new_pass("auto_parallel_pipeline",
+                                                   config)
+            auto_parallel_pipeline_pass.apply([main_program], [startup_program],
+                                              self._pass_context)
+
     def _get_dist_program(self, rank, dist_context=None, relaunch_phase=False):
         completed_main_program = None
         serial_main_program = self._main_program.clone()
