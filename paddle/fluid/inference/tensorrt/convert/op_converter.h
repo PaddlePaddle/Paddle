@@ -292,6 +292,79 @@ class OpConverter {
     engine->ClearWeights();
   }
 
+  // rank(result) = rank(input)
+  nvinfer1::ITensor* Gather(nvinfer1::ITensor* input,
+                            const std::vector<int32_t> indices, int axis = 0) {
+    auto* indices_tensor = Add1DConstantLayer(indices, " ");
+    auto* result =
+        TRT_ENGINE_ADD_LAYER(engine_, Gather, *input, *indices_tensor, axis)
+            ->getOutput(0);
+    return result;
+  }
+
+  nvinfer1::ITensor* Shape(nvinfer1::ITensor* input) {
+    return TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
+  }
+
+  // Concat not make rank changed
+  nvinfer1::ITensor* Concat(const std::vector<nvinfer1::ITensor*>& inputs,
+                            int axis = 0) {
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, inputs.data(),
+                                       inputs.size());
+    if (axis != 0) layer->setAxis(axis);
+    nvinfer1::ITensor* c = layer->getOutput(0);
+    return c;
+  }
+
+  nvinfer1::ITensor* Sum(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
+    nvinfer1::ITensor* c =
+        TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *a, *b,
+                             nvinfer1::ElementWiseOperation::kSUM)
+            ->getOutput(0);
+    return c;
+  }
+
+  nvinfer1::ITensor* Prod(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
+    nvinfer1::ITensor* c =
+        TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *a, *b,
+                             nvinfer1::ElementWiseOperation::kPROD)
+            ->getOutput(0);
+    return c;
+  }
+
+  nvinfer1::ITensor* Act(nvinfer1::ITensor* a,
+                         nvinfer1::ActivationType act_type) {
+    nvinfer1::ITensor* c =
+        TRT_ENGINE_ADD_LAYER(engine_, Activation, *a, act_type)->getOutput(0);
+    return c;
+  }
+
+  // Create and add Multi-D constant float layer
+  nvinfer1::ITensor* AddConstantLayer(const float* data,
+                                      const std::vector<int32_t>& weight_dims,
+                                      const std::string& weight_name) {
+    std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+    int data_size = std::accumulate(weight_dims.begin(), weight_dims.end(), 1,
+                                    std::multiplies<int>());
+    tmp_tensor->Resize({data_size});
+    auto* tmp_data = tmp_tensor->mutable_data<float>(platform::CPUPlace());
+    for (int i = 0; i < data_size; i++) {
+      tmp_data[i] = data[i];
+    }
+    engine_->SetWeights(weight_name, std::move(tmp_tensor));
+
+    TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
+                                  static_cast<void*>(tmp_data),
+                                  static_cast<size_t>(data_size)};
+    nvinfer1::Dims trt_dims;
+    trt_dims.nbDims = weight_dims.size();
+    for (size_t i = 0; i < weight_dims.size(); i++)
+      trt_dims.d[i] = weight_dims[i];
+    auto const_layer =
+        TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims, weight.get());
+    return const_layer->getOutput(0);
+  }
+
   // Create and add 1D constant float layer
   nvinfer1::ITensor* Add1DConstantLayer(const std::vector<float>& data,
                                         const std::string& weight_name,
