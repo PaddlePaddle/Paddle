@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/expand_as_op.h"
+
 #include <memory>
 #include <vector>
 

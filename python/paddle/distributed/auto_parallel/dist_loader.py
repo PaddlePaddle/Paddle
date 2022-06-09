@@ -21,6 +21,7 @@ from paddle.io import DataLoader, DistributedBatchSampler
 
 
 class DistributedDataLoader(metaclass=abc.ABCMeta):
+
     def __init__(self,
                  dataset,
                  batch_size=1,
@@ -47,6 +48,7 @@ class DistributedDataLoader(metaclass=abc.ABCMeta):
 
 
 class NonIterableGeneratorLoader(DistributedDataLoader):
+
     def __init__(self,
                  dataset,
                  feed_list,
@@ -63,9 +65,10 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
         self.dp_world_size = 1 if data_parallel_world_size is None else data_parallel_world_size
         self.dp_rank = 0 if data_parallel_rank is None else data_parallel_rank
 
-        super(NonIterableGeneratorLoader, self).__init__(
-            dataset, batch_size, epochs, data_parallel_world_size,
-            data_parallel_rank, drop_last)
+        super(NonIterableGeneratorLoader,
+              self).__init__(dataset, batch_size, epochs,
+                             data_parallel_world_size, data_parallel_rank,
+                             drop_last)
         self._inner_dataloader = self._create_inner_dataloader()
         self._steps = self._infer_steps()
 
@@ -96,6 +99,7 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
         return steps_per_epoch
 
     def _create_inner_dataloader(self):
+
         def sample_data_generator():
             batch_data = None
             for step, data in enumerate(self.dataset):

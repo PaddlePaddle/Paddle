@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import tempfile
 import unittest
 import os
 import json
@@ -375,6 +376,7 @@ cluster_json = """
 
 
 class MLPLayer(nn.Layer):
+
     def __init__(self,
                  hidden_size=64,
                  intermediate_size=4 * 64,
@@ -392,54 +394,57 @@ class MLPLayer(nn.Layer):
         weight_attr2 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr2))
         weight_attr3 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr3))
         bias_attr = None
-        self.linear0 = nn.Linear(
-            d_model, dim_feedforward, weight_attr0, bias_attr=bias_attr)
-        self.linear1 = nn.Linear(
-            dim_feedforward, d_model, weight_attr1, bias_attr=bias_attr)
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr0,
+                                 bias_attr=bias_attr)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr1,
+                                 bias_attr=bias_attr)
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
-        self.linear2 = nn.Linear(
-            d_model, dim_feedforward, weight_attr2, bias_attr=bias_attr)
-        self.linear3 = nn.Linear(
-            dim_feedforward, d_model, weight_attr3, bias_attr=bias_attr)
+        self.linear2 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr2,
+                                 bias_attr=bias_attr)
+        self.linear3 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr3,
+                                 bias_attr=bias_attr)
 
     def forward(self, input):
         if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(
-                self.linear0.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh[0],
-                    "dims_mapping": [-1, 1]
-                })
-            auto.shard_tensor(
-                self.linear1.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh[0],
-                    "dims_mapping": [1, -1]
-                })
-            auto.shard_tensor(
-                self.linear2.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh[1],
-                    "dims_mapping": [-1, 1]
-                })
-            auto.shard_tensor(
-                self.linear3.weight,
-                dist_attr={
-                    "process_mesh": _global_process_mesh[1],
-                    "dims_mapping": [1, -1]
-                })
+            auto.shard_tensor(self.linear0.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh[0],
+                                  "dims_mapping": [-1, 1]
+                              })
+            auto.shard_tensor(self.linear1.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh[0],
+                                  "dims_mapping": [1, -1]
+                              })
+            auto.shard_tensor(self.linear2.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh[1],
+                                  "dims_mapping": [-1, 1]
+                              })
+            auto.shard_tensor(self.linear3.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh[1],
+                                  "dims_mapping": [1, -1]
+                              })
 
         out = self.norm(input)
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
         out = self.linear1(out)
 
-        auto.shard_tensor(
-            out,
-            dist_attr={
-                "process_mesh": _global_process_mesh[1],
-                "dims_mapping": [0, -1]
-            })
+        auto.shard_tensor(out,
+                          dist_attr={
+                              "process_mesh": _global_process_mesh[1],
+                              "dims_mapping": [0, -1]
+                          })
         out = self.linear2(out)
         out = F.gelu(out, approximate=True)
         out = self.linear3(out)
@@ -451,22 +456,22 @@ def mlp_forward(train_program, start_program):
         utils.unique_name.guard():
         batch_size = 4
         hidden_size = 64
-        input = static.data(
-            name="input", shape=[batch_size, hidden_size], dtype='float32')
-        label = static.data(
-            name="label", shape=[batch_size, 1], dtype='float32')
+        input = static.data(name="input",
+                            shape=[batch_size, hidden_size],
+                            dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, 1],
+                            dtype='float32')
 
         if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(
-                input,
-                dist_attr={
-                    "process_mesh": _global_process_mesh[0],
-                    "dims_mapping": [0, -1]
-                })
-        mlp = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            initializer_range=0.02)
+            auto.shard_tensor(input,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh[0],
+                                  "dims_mapping": [0, -1]
+                              })
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       initializer_range=0.02)
         predict = mlp(input)
         error_cost = paddle.nn.functional.square_error_cost(predict, label)
         loss = paddle.mean(error_cost)
@@ -487,13 +492,12 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     complete_train_program = completer.complete_forward_annotation(
         train_program)
     dist_context.block_state.parse_forward_blocks(complete_train_program)
-    params_grads = parallelizer._generate_backward(
-        complete_train_program,
-        startup_program,
-        loss,
-        parameter_list=None,
-        no_grad_set=None,
-        callbacks=None)
+    params_grads = parallelizer._generate_backward(complete_train_program,
+                                                   startup_program,
+                                                   loss,
+                                                   parameter_list=None,
+                                                   no_grad_set=None,
+                                                   callbacks=None)
 
     partitioner = Partitioner(dist_context, rank_id)
     dist_train_program, dist_startup_prog, dist_params_grads = partitioner.partition(
@@ -523,14 +527,21 @@ def get_device_local_ids(machine):
 
 
 class TestAutoParallelMapper(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_mapper_dp_mp_pp(self):
-        cluster_json_file = ""
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster.json")
         cluster_json_object = json.loads(cluster_json)
-        with open("./auto_parallel_cluster.json", "w") as cluster_json_file:
+        with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
         cluster = Cluster()
-        cluster.build_from_file("./auto_parallel_cluster.json")
-        os.remove("./auto_parallel_cluster.json")
+        cluster.build_from_file(cluster_json_path)
 
         global _global_parallel_strategy
         _global_parallel_strategy = "dp_mp_pp"
@@ -564,8 +575,8 @@ class TestAutoParallelMapper(unittest.TestCase):
                 self.assertTrue(is_in_machine(device_ids[0], machine))
                 machine_mapped_ranks.add(rank)
                 machine_mapped_device_local_ids.add(device_ids[0])
-            self.assertEqual(
-                len(machine_mapped_ranks), len(machine_mapped_device_local_ids))
+            self.assertEqual(len(machine_mapped_ranks),
+                             len(machine_mapped_device_local_ids))
             all_mapped_ranks.update(machine_mapped_ranks)
         self.assertEqual(set(processes), all_mapped_ranks)
 
@@ -596,24 +607,30 @@ class TestAutoParallelMapper(unittest.TestCase):
             broadcast_op = train_program.global_block().append_op(
                 type="c_broadcast",
                 inputs={'X': input},
-                attrs={'ring_id': ring_id,
-                       'root': root_id},
+                attrs={
+                    'ring_id': ring_id,
+                    'root': root_id
+                },
                 outputs={'Out': output})
             self.assertEqual(get_comm_volume(broadcast_op, 0, 1), 400)
             self.assertEqual(get_comm_volume(broadcast_op, 1, 0), None)
             allgather_op = train_program.global_block().append_op(
                 type="c_allgather",
                 inputs={'X': input},
-                attrs={'ring_id': ring_id,
-                       'nranks': nranks},
+                attrs={
+                    'ring_id': ring_id,
+                    'nranks': nranks
+                },
                 outputs={'Out': output})
             self.assertEqual(get_comm_volume(allgather_op, 0, 1), 400)
             self.assertEqual(get_comm_volume(allgather_op, 0, 0), None)
             reduce_op = train_program.global_block().append_op(
                 type="c_reduce_sum",
                 inputs={'X': input},
-                attrs={'ring_id': ring_id,
-                       'root_id': root_id},
+                attrs={
+                    'ring_id': ring_id,
+                    'root_id': root_id
+                },
                 outputs={'Out': output})
             self.assertEqual(get_comm_volume(reduce_op, 0, 1), None)
             self.assertEqual(get_comm_volume(reduce_op, 1, 0), 400)

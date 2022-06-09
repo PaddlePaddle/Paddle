@@ -16,6 +16,7 @@
 #include <cfloat>
 #include <string>
 #include <vector>
+
 #include "cub/cub.cuh"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/activation_op.h"
@@ -181,8 +182,9 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
                 ctx.GetPlace()),
             variance_out->template mutable_data<BatchNormParamType<T>>(
                 ctx.GetPlace()),
-            epsilon, saved_mean->template mutable_data<BatchNormParamType<T>>(
-                         ctx.GetPlace()),
+            epsilon,
+            saved_mean->template mutable_data<BatchNormParamType<T>>(
+                ctx.GetPlace()),
             saved_variance->template mutable_data<BatchNormParamType<T>>(
                 ctx.GetPlace()),
             activation_desc_, workspace_ptr, workspace_size, reserve_space_ptr,
@@ -343,10 +345,12 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
             /*dBnScaleBiasDesc=*/bn_param_desc_,
             /*bnScaleData=*/scale->template data<BatchNormParamType<T>>(),
             /*bnBiasData=*/bias->template data<BatchNormParamType<T>>(),
-            /*dBnScaleData=*/d_scale
-                ->template mutable_data<BatchNormParamType<T>>(ctx.GetPlace()),
-            /*dBnBiasData=*/d_bias
-                ->template mutable_data<BatchNormParamType<T>>(ctx.GetPlace()),
+            /*dBnScaleData=*/
+            d_scale->template mutable_data<BatchNormParamType<T>>(
+                ctx.GetPlace()),
+            /*dBnBiasData=*/
+            d_bias->template mutable_data<BatchNormParamType<T>>(
+                ctx.GetPlace()),
             /*epsilon=*/epsilon,
             /*savedMean=*/saved_mean_data,
             /*savedInvVariance=*/saved_var_data,

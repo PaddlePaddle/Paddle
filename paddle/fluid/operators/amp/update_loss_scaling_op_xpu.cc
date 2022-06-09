@@ -13,12 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 #include <cstring>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -59,10 +60,11 @@ class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
         r = xpu::constant(dev_ctx.x_context(),
                           reinterpret_cast<XPUTyp*>(out_data), num,
                           XPUTyp(0.0));
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(constant) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_EQ(
+            r, XPU_SUCCESS,
+            platform::errors::External("XPU API(constant) return wrong "
+                                       "value[%d %s]",
+                                       r, XPUAPIErrorMsg[r]));
       }
     }
     const bool stop_update = ctx.Attr<bool>("stop_update");

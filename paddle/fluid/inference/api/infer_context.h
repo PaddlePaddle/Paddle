@@ -25,21 +25,21 @@ class InferCPUContext : public phi::CPUContext {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class InferGPUContext : public phi::GPUContext {
  public:
-  using phi::GPUContext::SetStream;
-  using phi::GPUContext::SetEigenDevice;
   using phi::GPUContext::SetBlasHandle;
   using phi::GPUContext::SetBlasTensorCoreHandle;
   using phi::GPUContext::SetBlasTF32Handle;
   using phi::GPUContext::SetDnnHandle;
+  using phi::GPUContext::SetEigenDevice;
   using phi::GPUContext::SetSolverHandle;
   using phi::GPUContext::SetSparseHandle;
+  using phi::GPUContext::SetStream;
   // using phi::GPUContext::SetDnnWorkspaceHandle;
   using phi::GPUContext::SetComputeCapability;
+  using phi::GPUContext::SetDriverVersion;
+  using phi::GPUContext::SetMaxGridDimSize;
+  using phi::GPUContext::SetMaxThreadsPerBlock;
   using phi::GPUContext::SetMaxThreadsPerMultiProcessor;
   using phi::GPUContext::SetMultiProcessors;
-  using phi::GPUContext::SetMaxThreadsPerBlock;
-  using phi::GPUContext::SetMaxGridDimSize;
-  using phi::GPUContext::SetDriverVersion;
   using phi::GPUContext::SetRuntimeVersion;
 };
 #endif

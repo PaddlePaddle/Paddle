@@ -36,11 +36,11 @@ struct functor_storage : Functor {
   functor_storage() = default;
   functor_storage(const Functor &functor) : Functor(functor) {}
   template <typename... Args>
-  Result operator()(Args &&... args) {
+  Result operator()(Args &&...args) {
     return static_cast<Functor &>(*this)(std::forward<Args>(args)...);
   }
   template <typename... Args>
-  Result operator()(Args &&... args) const {
+  Result operator()(Args &&...args) const {
     return static_cast<const Functor &>(*this)(std::forward<Args>(args)...);
   }
 };
@@ -136,7 +136,7 @@ struct sherwood_v3_entry {
   bool is_empty() const { return distance_from_desired < 0; }
   bool is_at_desired_position() const { return distance_from_desired <= 0; }
   template <typename... Args>
-  void emplace(int8_t distance, Args &&... args) {
+  void emplace(int8_t distance, Args &&...args) {
     new (std::addressof(value)) T(std::forward<Args>(args)...);
     distance_from_desired = distance;
   }
@@ -317,9 +317,7 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
   }
   sherwood_v3_table(sherwood_v3_table &&other,
                     const ArgumentAlloc &alloc) noexcept
-      : EntryAlloc(alloc),
-        Hasher(std::move(other)),
-        Equal(std::move(other)) {
+      : EntryAlloc(alloc), Hasher(std::move(other)), Equal(std::move(other)) {
     swap_pointers(other);
   }
   sherwood_v3_table &operator=(const sherwood_v3_table &other) {
@@ -476,7 +474,7 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
   }
 
   template <typename Key, typename... Args>
-  std::pair<iterator, bool> emplace(Key &&key, Args &&... args) {
+  std::pair<iterator, bool> emplace(Key &&key, Args &&...args) {
     size_t index =
         hash_policy.index_for_hash(hash_object(key), num_slots_minus_one);
     EntryPointer current_entry = entries + ptrdiff_t(index);
@@ -499,7 +497,7 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
     return emplace(std::move(value));
   }
   template <typename... Args>
-  iterator emplace_hint(const_iterator, Args &&... args) {
+  iterator emplace_hint(const_iterator, Args &&...args) {
     return emplace(std::forward<Args>(args)...).first;
   }
   iterator insert(const_iterator, const value_type &value) {
@@ -702,7 +700,7 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
   emplace_new_key(int8_t distance_from_desired,
                   EntryPointer current_entry,
                   Key &&key,
-                  Args &&... args) {
+                  Args &&...args) {
     using std::swap;
     if (num_slots_minus_one == 0 || distance_from_desired == max_lookups ||
         num_elements + 1 >
@@ -789,7 +787,7 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
     }
   };
 };
-}
+}  // namespace detailv3
 
 struct prime_number_hash_policy {
   static size_t mod0(size_t) { return 0llu; }
@@ -1708,7 +1706,7 @@ class flat_hash_set
   flat_hash_set() {}
 
   template <typename... Args>
-  std::pair<typename Table::iterator, bool> emplace(Args &&... args) {
+  std::pair<typename Table::iterator, bool> emplace(Args &&...args) {
     return Table::emplace(T(std::forward<Args>(args)...));
   }
   std::pair<typename Table::iterator, bool> emplace(const key_type &arg) {

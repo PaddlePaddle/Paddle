@@ -42,14 +42,14 @@ class TestReorderLoDTensor(unittest.TestCase):
 
     @classmethod
     def set_program(cls):
-        dat = fluid.layers.data(
-            name=cls.data_desc[0][0], shape=cls.data_desc[0][1])
+        dat = fluid.layers.data(name=cls.data_desc[0][0],
+                                shape=cls.data_desc[0][1])
         dat.stop_gradient = False
-        rank_dat = fluid.layers.data(
-            name=cls.data_desc[1][0], shape=cls.data_desc[1][1])
+        rank_dat = fluid.layers.data(name=cls.data_desc[1][0],
+                                     shape=cls.data_desc[1][1])
         table = lod_rank_table(rank_dat)
-        new_dat = fluid.layers.reorder_lod_tensor_by_rank(
-            x=dat, rank_table=table)
+        new_dat = fluid.layers.reorder_lod_tensor_by_rank(x=dat,
+                                                          rank_table=table)
         loss = fluid.layers.reduce_sum(new_dat)
         fluid.backward.append_backward(loss=loss)
         cls.fetch_list = [new_dat, cls.data_desc[0][0] + '@GRAD']
@@ -86,8 +86,8 @@ class TestReorderLoDTensor(unittest.TestCase):
                     size=self.num_seq if i == 0 else sum(lod_level_i)).tolist()
                 data_lod.append(lod_level_i)
             data_value = numpy.random.random(
-                size=[sum(data_lod[-1]) if data_lod else self.num_seq
-                      ] + data_shape).astype('float32')
+                size=[sum(data_lod[-1]) if data_lod else self.num_seq] +
+                data_shape).astype('float32')
             self.data[data_name] = (data_value, data_lod)
 
     def set_inputs(self, place):
@@ -106,8 +106,8 @@ class TestReorderLoDTensor(unittest.TestCase):
         rank_table = []  # list of (index, length)
         for i in range(len(ref_lod)):
             rank_table.append((i, ref_lod[i]))
-        rank_table = sorted(
-            rank_table, key=functools.cmp_to_key(lambda x, y: y[1] - x[1]))
+        rank_table = sorted(rank_table,
+                            key=functools.cmp_to_key(lambda x, y: y[1] - x[1]))
 
         # compute the input sequence info according to input_lod
         input_value, input_lod = self.data[self.data_desc[0][0]]
@@ -122,8 +122,8 @@ class TestReorderLoDTensor(unittest.TestCase):
                 for lod_level_i in offset_lod[level:]:
                     sub_lod_i = []
                     for idx in range(start_idx, end_idx):
-                        sub_lod_i.append(lod_level_i[idx + 1] - lod_level_i[
-                            idx])
+                        sub_lod_i.append(lod_level_i[idx + 1] -
+                                         lod_level_i[idx])
                     sub_lod.append(sub_lod_i)
                     start_idx = lod_level_i[start_idx]
                     end_idx = lod_level_i[end_idx]
@@ -158,8 +158,9 @@ class TestReorderLoDTensor(unittest.TestCase):
         expect_output, expect_output_lod = self.reorder()
         for actual_output in self.actual_outputs:
             self.assertTrue(
-                numpy.allclose(
-                    numpy.array(actual_output), expect_output, atol=0.001))
+                numpy.allclose(numpy.array(actual_output),
+                               expect_output,
+                               atol=0.001))
             self.assertEqual(expect_output_lod,
                              actual_output.recursive_sequence_lengths())
         # check gradient
@@ -167,8 +168,9 @@ class TestReorderLoDTensor(unittest.TestCase):
         expect_grad_lod = self.data[self.data_desc[0][0]][1]
         for actual_grad in self.actual_grads:
             self.assertTrue(
-                numpy.allclose(
-                    numpy.array(actual_grad), expect_grad, atol=0.001))
+                numpy.allclose(numpy.array(actual_grad),
+                               expect_grad,
+                               atol=0.001))
             self.assertEqual(expect_grad_lod,
                              actual_grad.recursive_sequence_lengths())
 
@@ -180,8 +182,9 @@ class TestReorderLoDTensor(unittest.TestCase):
         expect_output, expect_output_lod = self.reorder()
         for actual_output in self.actual_outputs:
             self.assertTrue(
-                numpy.allclose(
-                    numpy.array(actual_output), expect_output, atol=0.001))
+                numpy.allclose(numpy.array(actual_output),
+                               expect_output,
+                               atol=0.001))
             self.assertEqual(expect_output_lod,
                              actual_output.recursive_sequence_lengths())
         # check gradient
@@ -189,8 +192,9 @@ class TestReorderLoDTensor(unittest.TestCase):
         expect_grad_lod = self.data[self.data_desc[0][0]][1]
         for actual_grad in self.actual_grads:
             self.assertTrue(
-                numpy.allclose(
-                    numpy.array(actual_grad), expect_grad, atol=0.001))
+                numpy.allclose(numpy.array(actual_grad),
+                               expect_grad,
+                               atol=0.001))
             self.assertEqual(expect_grad_lod,
                              actual_grad.recursive_sequence_lengths())
 
@@ -206,19 +210,21 @@ class TestReorderLoDTensor(unittest.TestCase):
         self.run_program()
         for actual_output in self.actual_outputs:
             self.assertTrue(
-                numpy.allclose(
-                    numpy.array(actual_output), expect_output, atol=0.001))
+                numpy.allclose(numpy.array(actual_output),
+                               expect_output,
+                               atol=0.001))
 
 
 class TestReorderLoDTensorError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program()):
 
             def test_Variable():
                 # The input must be Variable.
                 x1 = numpy.array([0.9383, 0.1983, 3.2, 1.2]).astype("float64")
-                table1 = numpy.array(
-                    [0.9383, 0.1983, 3.2, 1.2]).astype("float64")
+                table1 = numpy.array([0.9383, 0.1983, 3.2,
+                                      1.2]).astype("float64")
                 new_dat = fluid.layers.reorder_lod_tensor_by_rank(
                     x=x1, rank_table=table1)
 
@@ -226,8 +232,9 @@ class TestReorderLoDTensorError(unittest.TestCase):
 
             def test_type():
                 x2 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
-                table2 = fluid.layers.data(
-                    name='table2', shape=[4], dtype='int32')
+                table2 = fluid.layers.data(name='table2',
+                                           shape=[4],
+                                           dtype='int32')
                 new_dat2 = fluid.layers.reorder_lod_tensor_by_rank(
                     x=x2, rank_table=table2)
 

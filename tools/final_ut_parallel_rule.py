@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -60,7 +60,7 @@ def classify_cases_by_mem(rootPath):
         'test_parallel_dygraph_sync_batch_norm',
         'test_conv3d_op',
         'test_quant2_int8_resnet50_range_mkldnn',
-    ]  # always timeout 
+    ]  # always timeout
 
     f = open(case_filename)
     lines = f.readlines()
@@ -99,6 +99,8 @@ def classify_cases_by_mem(rootPath):
                 continue
             if case in case_always_timeout:
                 no_parallel_case = no_parallel_case + '|^' + case + '$'
+                continue
+
             if case not in new_lastest_mem:
                 continue
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define statistical functions of a tensor  
+# TODO: define statistical functions of a tensor
 
 import numpy as np
 from ..static import Variable
@@ -107,8 +107,10 @@ def mean(x, axis=None, keepdim=False, name=None):
     helper = LayerHelper('mean', **locals())
     attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
     out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='reduce_mean', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
+    helper.append_op(type='reduce_mean',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs=attrs)
     return out
 
 
@@ -305,8 +307,8 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
         )
 
     for i in range(len(axis)):
-        if not isinstance(axis[i], int) or not (axis[i] < dims and
-                                                axis[i] >= -dims):
+        if not isinstance(axis[i], int) or not (axis[i] < dims
+                                                and axis[i] >= -dims):
             raise ValueError(
                 "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
             )
@@ -329,12 +331,13 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
     attrs = {'axis': axis, 'keepdim': keepdim}
     out = helper.create_variable_for_type_inference(x.dtype)
     medians = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='nanmedian',
-        inputs={'X': x},
-        outputs={'Out': out,
-                 'MedianIndex': medians},
-        attrs=attrs)
+    helper.append_op(type='nanmedian',
+                     inputs={'X': x},
+                     outputs={
+                         'Out': out,
+                         'MedianIndex': medians
+                     },
+                     attrs=attrs)
     return out
 
 
@@ -412,13 +415,13 @@ def median(x, axis=None, keepdim=False, name=None):
                 tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1])
         out_tensor = paddle.cast(out_tensor, dtype=dtype) / 2
     else:
-        out_tensor = paddle.cast(
-            paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]),
-            dtype=dtype)
+        out_tensor = paddle.cast(paddle.slice(tensor_topk,
+                                              axes=[axis],
+                                              starts=[kth],
+                                              ends=[kth + 1]),
+                                 dtype=dtype)
     out_tensor = out_tensor + paddle.sum(
-        paddle.cast(
-            paddle.isnan(x), dtype=dtype) * x, axis=axis, keepdim=True)
+        paddle.cast(paddle.isnan(x), dtype=dtype) * x, axis=axis, keepdim=True)
     if not keepdim or is_flatten:
         if not is_flatten:
             newshape = x.shape[:axis] + x.shape[axis + 1:]
@@ -537,14 +540,15 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     for index in indices:
         indices_below = paddle.floor(index).astype(paddle.int32)
         indices_upper = paddle.ceil(index).astype(paddle.int32)
-        tensor_upper = paddle.take_along_axis(
-            sorted_tensor, indices_upper, axis=axis)
-        tensor_below = paddle.take_along_axis(
-            sorted_tensor, indices_below, axis=axis)
+        tensor_upper = paddle.take_along_axis(sorted_tensor,
+                                              indices_upper,
+                                              axis=axis)
+        tensor_below = paddle.take_along_axis(sorted_tensor,
+                                              indices_below,
+                                              axis=axis)
         weights = (index - indices_below.astype('float64'))
-        out = paddle.lerp(
-            tensor_below.astype('float64'),
-            tensor_upper.astype('float64'), weights)
+        out = paddle.lerp(tensor_below.astype('float64'),
+                          tensor_upper.astype('float64'), weights)
         if not keepdim:
             out = paddle.squeeze(out, axis=axis)
         else:
