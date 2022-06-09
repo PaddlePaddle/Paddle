@@ -586,34 +586,51 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   // int grid_size = (len - 1) / block_size_ + 1;
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
+
+  typedef int BfidType;
+  typedef uint64_t FidType;
+  auto cpu_place = platform::CPUPlace();
+
+  cache_mgr_ -> prepare_current_batch_fid_seq();
+  VLOG(0) << "heter comm inl pull sparse prepare_current_batch_fid_seq success";
+
   // d_keys memcpy to cpu h_keys
   std::unique_ptr<KeyType[]> h_keys(new KeyType[len]);
-  auto cpu_place = platform::CPUPlace();
-  memory_copy(cpu_place, &h_keys[0], place, d_keys,
-              len * sizeof(KeyType), stream);
+  VLOG(0) << "heter comm inl pull sparse malloc h_keys on cpu";
+
+  memory_copy(cpu_place, &h_keys[0], place, d_keys, len * sizeof(KeyType), stream);
+  VLOG(0) << "heter comm inl pull sparse memory copy " << len << " d_keys to h_keys";
 
   // cachemanager convert h_keys to h_bfids
-  std::unique_ptr<int[]> h_bfids(new int[len]);
+  std::unique_ptr<int[]> h_bfids(new BfidType[len]);
+  VLOG(0) << "heter comm inl pull sparse malloc h_bfids on cpu";
+
   cache_mgr_->convert_fid2bfid(&h_keys[0], &h_bfids[0], len);
+  VLOG(0) << "heter comm inl pull sparse convert fid2bfid";
 
   // h_bfids memcpy to d_bfids
-  auto d_bfids = memory::Alloc(place, len * sizeof(int));
-  int* d_bfids_ptr = reinterpret_cast<int*>(d_bfids->ptr());
+  auto d_bfids = memory::Alloc(place, len * sizeof(BfidType));
+  VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_bfids " << len * sizeof(BfidType);
+  BfidType* d_bfids_ptr = reinterpret_cast<BfidType*>(d_bfids->ptr());
 
-  memory_copy(place, d_bfids_ptr, cpu_place, &h_bfids[0],
-              len * sizeof(int), stream);
+  memory_copy(place, d_bfids_ptr, cpu_place, &h_bfids[0], len * sizeof(BfidType), stream);
+  VLOG(0) << "heter comm inl pull sparse memory copy d_bfids from cpu to xpu";
 
   // cachemanager get fid_seq
   std::shared_ptr<std::vector<uint64_t>> h_fid_seq = cache_mgr_ -> get_current_batch_fid_seq();
+  VLOG(0) << "heter comm inl pull sparse batch fid seq " << h_fid_seq->size();
 
   // h_fid_seq memcpy to d_fid_seq
-  auto d_fid_seq = memory::Alloc(place, h_fid_seq -> size() * sizeof(uint64_t));
-  uint64_t* d_fid_seq_ptr = reinterpret_cast<uint64_t*>(d_fid_seq->ptr());
-  memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(),
-              len * sizeof(uint64_t), stream);
+  auto d_fid_seq = memory::Alloc(place, h_fid_seq -> size() * sizeof(FidType));
+  VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_fids " << len * sizeof(FidType);
+
+  FidType* d_fid_seq_ptr = reinterpret_cast<FidType*>(d_fid_seq->ptr());
+  memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(), len * sizeof(FidType), stream);
+  VLOG(0) << "heter comm inl pull sparse memory copy d_fid_seq from cpu to xpu";
 
   // alloc d_shard_vals
   auto d_shard_vals = memory::Alloc(place, len * sizeof(ValType));
+  VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_bfids " << h_fid_seq->size() * sizeof(ValType);
   ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
 
   // local search
@@ -621,19 +638,29 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                        reinterpret_cast<ValType*>(d_shard_vals_ptr),
                        len,
                        stream);
+  VLOG(0) << "heter comm inl pull sparse fill d_shard_val by table->get";
+
   // allreduce
   auto d_all_values = memory::Alloc(place, h_fid_seq->size() * sizeof(ValType));
+  VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
   ValType* d_all_values_ptr = reinterpret_cast<ValType*>(d_all_values->ptr());
 
-  auto comm = platform::BKCLCommContext::Instance().Get(dev_id, place);
-  bkcl_all_reduce(comm->comm(), d_shard_vals_ptr, d_all_values_ptr,
-      h_fid_seq -> size() * sizeof(ValType) / sizeof(float),
-      BKCL_FLOAT, BKCL_ADD, stream);
+  VLOG(0) << "heter comm inl pull sparse use " << resource_->total_device() << " device";
+  if (resource_->total_device() > 1) {
+    auto comm = platform::BKCLCommContext::Instance().Get(dev_id, place);
+    VLOG(0) << "heter comm inl pull sparse all reduce start";
+    bkcl_all_reduce(comm->comm(), d_shard_vals_ptr, d_all_values_ptr,
+        h_fid_seq -> size() * sizeof(ValType) / sizeof(float),
+        BKCL_FLOAT, BKCL_ADD, stream);
+    VLOG(0) << "heter comm inl pull sparse all reduce finish";
+  } else {
+    VLOG(0) << "unnecessary all reduce";
+  }
 
   // fill to d_val
   heter_comm_kernel_->fill_dvals(d_all_values_ptr, d_vals, d_bfids_ptr, len,
                                  stream);
-
+  VLOG(0) << "heter comm inl pull sparse fill d_all_values to d_vals";
 #else
   int total_device = resource_->total_device();
   int h_left[total_device];   // NOLINT
