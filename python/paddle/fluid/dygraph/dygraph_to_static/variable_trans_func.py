@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import six
+import paddle
 from paddle.utils import gast
 from paddle.fluid import core
 from paddle.fluid import unique_name
