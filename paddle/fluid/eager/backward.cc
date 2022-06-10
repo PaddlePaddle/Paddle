@@ -110,18 +110,20 @@ class GeneralGrad {
     while (!queue.empty()) {
       auto* target_node = queue.front();
       queue.pop_front();
+      if (IsPotentialStopNodes(target_node)) {
+        potential_stop_nodes_.erase(target_node);
+      }
       if (!(depending_nodes_)[target_node].empty()) {
         auto precedding_nodes = (depending_nodes_)[target_node];
         for (auto pre_nodes : precedding_nodes) {
           queue.push_back(pre_nodes);
-          if (potential_stop_nodes_.find(pre_nodes) !=
-              potential_stop_nodes_.end()) {
+          if (IsPotentialStopNodes(pre_nodes)) {
             potential_stop_nodes_.erase(pre_nodes);
           }
         }
       } else {  // startup_ops have no precedding nodes
         VLOG(6) << "Emplace startup_ops";
-        startup_ops.emplace(node);
+        startup_ops.emplace(target_node);
       }
     }
     // Purify potential_startup_nodes_ again, remove some
