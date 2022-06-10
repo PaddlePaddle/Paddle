@@ -14,6 +14,9 @@
 
 from __future__ import print_function
 
+import os
+import numpy as np
+import tempfile
 import unittest
 
 import paddle.fluid as fluid
@@ -21,12 +24,11 @@ import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
 import paddle.fluid.core as core
 import paddle.compat as cpt
-import numpy as np
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard, convert_np_dtype_to_dtype_
 import paddle
 from paddle.io import Dataset
-import numpy
+
 paddle.enable_static()
 
 
@@ -1121,9 +1123,15 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
     Master weights will be saved by optimizer::state_dict.
     '''
 
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def check_with_opt_state_dict(self, use_save_load=True):
         paddle.seed(100)
-        numpy.random.seed(100)
+        np.random.seed(100)
 
         class SimpleNet(paddle.nn.Layer):
             def __init__(self, input_size, output_size):
@@ -1147,8 +1155,8 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
                 self.num_samples = num_samples
 
             def __getitem__(self, idx):
-                data = numpy.random.random([input_size]).astype('float16')
-                label = numpy.random.random([output_size]).astype('float16')
+                data = np.random.random([input_size]).astype('float16')
+                label = np.random.random([output_size]).astype('float16')
                 return data, label
 
             def __len__(self):
@@ -1182,10 +1190,12 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
             optimizer.clear_grad(set_to_zero=False)
 
             if use_save_load and i == 5:
-                paddle.save(model.state_dict(), "model.pdparams")
-                paddle.save(optimizer.state_dict(), "opt.pdopt")
-                model.set_state_dict(paddle.load("model.pdparams"))
-                optimizer.set_state_dict(paddle.load("opt.pdopt"))
+                model_path = os.path.join(self.temp_dir.name, "model.pdparams")
+                optimizer_path = os.path.join(self.temp_dir.name, "opt.pdopt")
+                paddle.save(model.state_dict(), model_path)
+                paddle.save(optimizer.state_dict(), optimizer_path)
+                model.set_state_dict(paddle.load(model_path))
+                optimizer.set_state_dict(paddle.load(optimizer_path))
 
         return loss.numpy()
 
