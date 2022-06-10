@@ -949,7 +949,7 @@ function fetch_upstream_develop_if_not_exist() {
 }
 
 function check_whl_size() {
-    if [ ${BRANCH} != 'develop' ];
+    if [ ${BRANCH} != 'develop' ];then
         echo 1111,${BRANCH}
         return
     fi
@@ -1095,7 +1095,7 @@ function check_approvals_of_unittest() {
             fi
         fi
     elif [ $check_times == 3 ]; then
-    if [ ${BRANCH} != 'develop' ];
+    if [ ${BRANCH} != 'develop' ];then
         echo 1111,${BRANCH}
         return
     fi
@@ -2985,7 +2985,7 @@ function build_develop() {
 
 
 function check_coverage_build() {
-    if [ ${BRANCH} != 'develop' ];
+    if [ ${BRANCH} != 'develop' ];then
         return
     fi
 
