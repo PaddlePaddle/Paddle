@@ -354,7 +354,11 @@ class ShardingStage3(nn.Layer):
         param_shape = param.shape
         origin_state = param.stop_gradient
         param.stop_gradient = True
-        param.flatten_()
+
+        dev_id = paddle.distributed.ParallelEnv().dev_id
+        with device_guard(dev_id=dev_id, device="gpu"):
+            param.flatten_()
+
         param.stop_gradient = origin_state
         start, end = self._param2buffer[param.name][self._rank]
 

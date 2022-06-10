@@ -114,7 +114,7 @@ class ShardingClipGrad:
         global_norm_var = global_norm_fp16 + global_norm_fp32 + 1.0 / self._group.nranks * global_unslice_var
 
         # add all reduce to get global norm of distributed params_and_grads
-        dev_id = int(self._device.split(":")[1])
+        dev_id = paddle.distributed.ParallelEnv().dev_id
         with device_guard(dev_id, "gpu"):
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
 
