@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/utils.h"
 
+#include <sstream>
 #include <vector>
 
 #include "glog/logging.h"
@@ -21,11 +22,35 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
+
+template <>
+std::string json_vector<std::string>(
+    const std::vector<std::string> type_vector) {
+  std::ostringstream res_stream;
+  auto count = type_vector.size();
+  res_stream << "[";
+  for (auto it = type_vector.begin(); it != type_vector.end(); it++) {
+    if (count > 1) {
+      res_stream << "\"" << (*it) << "\""
+                 << ",";
+    } else {
+      res_stream << "\"" << (*it) << "\"";
+    }
+    count--;
+  }
+  res_stream << "]";
+  return res_stream.str();
+}
+
 #ifdef PADDLE_WITH_CUPTI
-float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
+float CalculateEstOccupancy(uint32_t DeviceId,
+                            uint16_t RegistersPerThread,
                             int32_t StaticSharedMemory,
-                            int32_t DynamicSharedMemory, int32_t BlockX,
-                            int32_t BlockY, int32_t BlockZ, float BlocksPerSm) {
+                            int32_t DynamicSharedMemory,
+                            int32_t BlockX,
+                            int32_t BlockY,
+                            int32_t BlockZ,
+                            float BlocksPerSm) {
   float occupancy = 0.0;
   std::vector<int> device_ids = GetSelectedDevices();
   if (DeviceId < device_ids.size()) {
@@ -42,9 +67,13 @@ float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
     size_t dynamicSmemSize = DynamicSharedMemory;
     cudaOccResult occ_result;
     cudaOccDeviceProp prop(device_property);
-    cudaOccError status = cudaOccMaxActiveBlocksPerMultiprocessor(
-        &occ_result, &prop, &occFuncAttr, &occDeviceState, blockSize,
-        dynamicSmemSize);
+    cudaOccError status =
+        cudaOccMaxActiveBlocksPerMultiprocessor(&occ_result,
+                                                &prop,
+                                                &occFuncAttr,
+                                                &occDeviceState,
+                                                blockSize,
+                                                dynamicSmemSize);
     if (status == CUDA_OCC_SUCCESS) {
       if (occ_result.activeBlocksPerMultiprocessor < BlocksPerSm) {
         BlocksPerSm = occ_result.activeBlocksPerMultiprocessor;
@@ -60,6 +89,31 @@ float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
   return occupancy;
 }
 #endif
+
+const char* StringTracerMemEventType(TracerMemEventType type) {
+  static const char* categary_name_[] = {"Allocate", "Free"};
+  return categary_name_[static_cast<int>(type)];
+}
+
+const char* StringTracerEventType(TracerEventType type) {
+  static const char* categary_name_[] = {"Operator",
+                                         "Dataloader",
+                                         "ProfileStep",
+                                         "CudaRuntime",
+                                         "Kernel",
+                                         "Memcpy",
+                                         "Memset",
+                                         "UserDefined",
+                                         "OperatorInner",
+                                         "Forward",
+                                         "Backward",
+                                         "Optimization",
+                                         "Communication",
+                                         "PythonOp",
+                                         "PythonUserDefined",
+                                         "MluRuntime"};
+  return categary_name_[static_cast<int>(type)];
+}
 
 }  // namespace platform
 }  // namespace paddle
