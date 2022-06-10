@@ -96,6 +96,7 @@ class MLPLayer(nn.Layer):
                                                      PP_MESH_1})(out)[0]
         out = self.dropout(out)
         out = self.linear2(out)
+        self.out = out
         return out
 
 
@@ -118,7 +119,6 @@ def train():
     dist_strategy.amp = False
     dist_strategy.pipeline = False
     dist_strategy.recompute = False
-    # init parallel optimizer
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
 
@@ -129,20 +129,23 @@ def train():
                     strategy=dist_strategy)
     engine.prepare(optimizer, loss, metrics=paddle.metric.Accuracy())
 
+    # fetch
+    fetches = {'out': mlp.out}
+
     # train
     train_dataset = MyDataset(batch_num * batch_size)
     engine.fit(train_dataset,
                batch_size=batch_size,
                steps_per_epoch=batch_num * batch_size,
-               fetch_list=['label'])
+               fetches=fetches)
 
     # eval
     eval_dataset = MyDataset(batch_size)
-    engine.evaluate(eval_dataset, batch_size, fetch_list=['label'])
+    engine.evaluate(eval_dataset, batch_size, fetches=fetches)
 
     # predict
     test_dataset = MyDataset(batch_size)
-    engine.predict(test_dataset, batch_size, fetch_list=['label'])
+    engine.predict(test_dataset, batch_size, fetches=fetches)
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
