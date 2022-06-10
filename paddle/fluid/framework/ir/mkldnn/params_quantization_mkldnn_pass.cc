@@ -143,8 +143,8 @@ ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {
       .End();
 }
 
-void ParamsQuantizationMkldnnPass::Conv(ir::Graph* graph,
-                                        bool with_residual_data) const {
+void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
+                                                bool with_residual_data) const {
   GraphPatternDetector gpd;
   patterns::ConvResidual conv_pattern(gpd.mutable_pattern(), name_scope_);
   conv_pattern(with_residual_data);
@@ -196,8 +196,8 @@ void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   FusePassBase::Init(name_scope_, graph);
-  Conv(graph, true);
-  Conv(graph, false);
+  QuantizeConv(graph, true /*with_residual_data*/);
+  QuantizeConv(graph, false /*with_residual_data*/);
 }
 
 }  // namespace ir
