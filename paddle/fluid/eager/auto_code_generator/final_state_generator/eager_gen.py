@@ -411,6 +411,7 @@ def GenerateCoreOpInfoDefinition():
 ## Generator Class ##
 #####################
 class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
+
     def __init__(self, forward_api_contents, grad_api_contents, namespace):
         self.forward_api_contents = forward_api_contents
         # Members from Parent:
@@ -532,8 +533,8 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             max_input_position = max(max_input_position, pos)
 
         for _, _, _, pos in forward_attrs_list:
-            assert pos > max_input_position, AssertMessage(pos,
-                                                           max_input_position)
+            assert pos > max_input_position, AssertMessage(
+                pos, max_input_position)
 
     def BackwardValidationCheck(self):
         backward_forward_inputs_map = self.backward_forward_inputs_map
@@ -678,7 +679,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         # Node Construction
         num_backward_inputs = len(forward_outputs_position_map.keys())
         num_backward_outputs = len(forward_inputs_position_map.keys())
-        grad_node_name = GetGradNodeName(forward_api_name)
+        grad_node_name = GetGradNodeName(self.backward_api_name)
 
         # Helper
         indent = GetIndent(2)
@@ -845,6 +846,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
 
 class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
+
     def __init__(self, forward_api_contents, grad_api_contents, namespace):
         DygraphFunctionGeneratorBase.__init__(self, forward_api_contents,
                                               grad_api_contents, namespace)
@@ -947,12 +949,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         if is_inplaced and len(forward_outputs_position_map) == 1:
             api_out_type = "auto&"
         forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
-        num_outputs = len(forward_outputs_position_map.keys()) - len(
-            intermediate_outputs)
+        num_outputs = len(
+            forward_outputs_position_map.keys()) - len(intermediate_outputs)
 
         # Check Nan and Inf
-        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE.format(function_name,
-                                                              "api_result")
+        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE.format(
+            function_name, "api_result")
 
         # Get Outputs
         get_outputs_str = ""
@@ -1007,8 +1009,8 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 if pos == corresponding_pos:
                     has_corresponding_grad_output = True
             if has_corresponding_grad_output or (
-                    name in forward_inplace_map and
-                    forward_api_name not in inplace_check_blacklist):
+                    name in forward_inplace_map
+                    and forward_api_name not in inplace_check_blacklist):
                 input_autograd_meta_name = GetAutoGradMetaName(name)
                 if IsPlainTensorType(ttype):
                     input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({name});"
@@ -1116,17 +1118,20 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         forward_outputs_position_map = self.forward_outputs_position_map
         forward_attrs_list = self.forward_attrs_list
 
-        num_args = len(forward_inputs_position_map.keys()) + len(
-            forward_attrs_list)
+        num_args = len(
+            forward_inputs_position_map.keys()) + len(forward_attrs_list)
         num_returns = len(forward_outputs_position_map.keys())
 
         final_state_fwd_api_name = "final_state_" + forward_api_name
-        core_ops_returns_info[
-            final_state_fwd_api_name] = ["" for i in range(num_returns)]
-        core_ops_args_info[
-            final_state_fwd_api_name] = ["" for i in range(num_args)]
-        core_ops_args_type_info[
-            final_state_fwd_api_name] = ["" for i in range(num_args)]
+        core_ops_returns_info[final_state_fwd_api_name] = [
+            "" for i in range(num_returns)
+        ]
+        core_ops_args_info[final_state_fwd_api_name] = [
+            "" for i in range(num_args)
+        ]
+        core_ops_args_type_info[final_state_fwd_api_name] = [
+            "" for i in range(num_args)
+        ]
 
         for name, (ttype, pos) in forward_inputs_position_map.items():
             core_ops_args_info[final_state_fwd_api_name][pos] = name
@@ -1159,6 +1164,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
 
 
 class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
+
     def __init__(self,
                  forward_api_contents,
                  grad_api_contents,
@@ -1167,7 +1173,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         DygraphFunctionGeneratorBase.__init__(self, forward_api_contents,
                                               grad_api_contents, namespace)
 
-        # Record name mapping from forward_api_name to grad_api_names
+        # Record name mapping from forward_var_name to grad_var_names
         self.to_next_grad_name_mapping = {}  # {name : name}
 
         # Generated Results
@@ -1281,7 +1287,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
                     RemoveConstAndReference(atype), saved_attr_name)
 
-        grad_node_name = GetGradNodeName(forward_op_name)
+        grad_node_name = GetGradNodeName(self.backward_api_name)
         self.node_declaration_str = NODE_DECLARATION_TEMPLATE.format(
             grad_node_name, grad_node_name, grad_node_name, grad_node_name,
             grad_node_name, clear_tensor_wrapper_str, grad_node_name,
@@ -1447,8 +1453,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"""
 
         # Check Nan and Inf
-        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE.format(backward_api_name,
-                                                              "returns")
+        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE.format(
+            backward_api_name, "returns")
 
         # Prepare for Node Creation if Necessary
         inputs_autograd_meta_str = ""
@@ -1533,7 +1539,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         returns_str = f"{indent}if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
         returns_str += f"{indent}return returns;\n"
 
-        grad_node_name = GetGradNodeName(forward_api_name)
+        grad_node_name = GetGradNodeName(self.backward_api_name)
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name, fill_zero_str, get_grad_in_args_str, grad_node_name,
@@ -1560,6 +1566,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
 
 class DygraphForwardAndNodesGenerator(GeneratorBase):
+
     def __init__(self, api_yaml_path, backward_yaml_path):
         # Parent members:
         # self.namespace
@@ -1617,9 +1624,10 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                 next_grad_api_contents = self.GetBackwardAPIContents(
                     backward_api_contents)
 
-                node_generator = DygraphNodeGenerator(
-                    forward_api_contents, backward_api_contents, namespace,
-                    next_grad_api_contents)
+                node_generator = DygraphNodeGenerator(forward_api_contents,
+                                                      backward_api_contents,
+                                                      namespace,
+                                                      next_grad_api_contents)
                 node_generator.run()
                 self.node_declaration_str += node_generator.node_declaration_str + "\n"
                 self.node_definition_str += node_generator.node_definition_str + "\n"
