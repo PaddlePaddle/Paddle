@@ -56,6 +56,10 @@ if(WITH_CRYPTO)
   list(APPEND paddle_inference_api_deps paddle_crypto)
 endif()
 
+if(WITH_ONNXRUNTIME)
+  list(APPEND paddle_inference_api_deps onnxruntime)
+endif()
+
 cc_library(
   paddle_inference_api
   SRCS api.cc api_impl.cc helper.cc

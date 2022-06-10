@@ -41,4 +41,4 @@ endif(WITH_ONNXRUNTIME)
 cc_test(
   zero_copy_tensor_test
   SRCS zero_copy_tensor_test.cc
-  DEPS paddle_inference_api)
+  DEPS zero_copy_tensor paddle_inference_api)
