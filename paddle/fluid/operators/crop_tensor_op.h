@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
@@ -72,11 +73,12 @@ static framework::DDim ValidateShape(const std::vector<int> shape,
                             "The value (%d) of the %uth element for shape of "
                             "Op(crop_tensor) should not be zero.",
                             shape[i], i));
-      PADDLE_ENFORCE_EQ(shape[i], -1, platform::errors::InvalidArgument(
-                                          "When the value (%d) of the %uth "
-                                          "element for shape of Op(crop_tensor)"
-                                          " is negative, only -1 is supported.",
-                                          shape[i], i));
+      PADDLE_ENFORCE_EQ(shape[i], -1,
+                        platform::errors::InvalidArgument(
+                            "When the value (%d) of the %uth "
+                            "element for shape of Op(crop_tensor)"
+                            " is negative, only -1 is supported.",
+                            shape[i], i));
       output_shape[i] = in_dims[i] - offsets[i];
     } else {
       output_shape[i] = static_cast<int64_t>(shape[i]);
@@ -226,11 +228,12 @@ class CropTensorKernel : public framework::OpKernel<T> {
             "value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
-        rank, 6, platform::errors::InvalidArgument(
-                     "The number of dimensions of the input 'x' for "
-                     "Op(crop_tensor) must be less than or equal to 6, but the "
-                     "value received is %d.",
-                     rank));
+        rank, 6,
+        platform::errors::InvalidArgument(
+            "The number of dimensions of the input 'x' for "
+            "Op(crop_tensor) must be less than or equal to 6, but the "
+            "value received is %d.",
+            rank));
     switch (rank) {
       case 1:
         CropTensorFunction<DeviceContext, T, 1>(context);

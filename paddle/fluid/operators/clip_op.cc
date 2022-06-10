@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -179,14 +180,13 @@ REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad, ops::ClipGradInplaceInferer,
                   ops::ClipDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ClipDoubleGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_VERSION(clip)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(clip).AddCheckpoint(
+    R"ROC(
               Upgrade clip add a new input [Min])ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewInput("Min",
-                      "Pass the mix, min value as input, not attribute. Min is "
-                      "dispensable.")
-            .NewInput("Max",
-                      "Pass the mix, min value as input, not attribute. Max is "
-                      "dispensable."));
+    paddle::framework::compatible::OpVersionDesc()
+        .NewInput("Min",
+                  "Pass the mix, min value as input, not attribute. Min is "
+                  "dispensable.")
+        .NewInput("Max",
+                  "Pass the mix, min value as input, not attribute. Max is "
+                  "dispensable."));

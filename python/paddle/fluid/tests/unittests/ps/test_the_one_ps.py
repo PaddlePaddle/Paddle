@@ -31,6 +31,7 @@ from google.protobuf import text_format
 
 
 class TestTheOnePs(PsPassTestBase):
+
     def setUp(self):
         pass
 

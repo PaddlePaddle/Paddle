@@ -14,11 +14,10 @@
 
 #include "paddle/phi/kernels/assign_kernel.h"
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/utils/optional.h"
-
-#include "paddle/fluid/framework/tensor_util.h"
 
 namespace phi {
 
@@ -26,7 +25,7 @@ template <typename Context>
 void AssignKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) {
-  Copy<Context>(dev_ctx, x, x.place(), false, out);
+  paddle::framework::TensorCopy(x, x.place(), out);
 }
 
 template <typename Context>

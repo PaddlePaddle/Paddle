@@ -24,6 +24,7 @@ from paddle.fluid.executor import Executor
 
 
 class TestSquareErrorCost(unittest.TestCase):
+
     def test_square_error_cost(self):
         input_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
         label_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
@@ -41,15 +42,19 @@ class TestSquareErrorCost(unittest.TestCase):
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
             result = exe.run(fluid.default_main_program(),
-                             feed={"input": input_val,
-                                   "label": label_val},
+                             feed={
+                                 "input": input_val,
+                                 "label": label_val
+                             },
                              fetch_list=[output])
 
             self.assertTrue(np.isclose(np_result, result).all())
 
 
 class TestSquareErrorInvalidInput(unittest.TestCase):
+
     def test_error(self):
+
         def test_invalid_input():
             input = [256, 3]
             label = fluid.data(name='label1', shape=[None, 3], dtype='float32')

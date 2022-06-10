@@ -145,10 +145,10 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 MetaTensor* dx);
 
 void InstanceNormGradInferMeta(const MetaTensor& x,
-                               const MetaTensor& y_grad,
                                const MetaTensor& scale,
                                const MetaTensor& saved_mean,
                                const MetaTensor& saved_variance,
+                               const MetaTensor& y_grad,
                                float epsilon,
                                MetaTensor* x_grad,
                                MetaTensor* scale_grad,
@@ -190,6 +190,13 @@ void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
 void MultiplexGradInferMeta(const MetaTensor& ids,
                             const MetaTensor& out_grad,
                             std::vector<MetaTensor*> ins_grad);
+
+void NanmedianGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& median_index,
+                            const MetaTensor& out_grad,
+                            const IntArray& axes,
+                            bool keep_dim,
+                            MetaTensor* x_grad);
 
 void NllLossGradInferMeta(const MetaTensor& input,
                           const MetaTensor& label,

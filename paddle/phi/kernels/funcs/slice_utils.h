@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <paddle/phi/core/ddim.h>
+
 #include <string>
 #include <vector>
 

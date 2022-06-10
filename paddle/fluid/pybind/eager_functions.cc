@@ -20,9 +20,6 @@ typedef SSIZE_T ssize_t;
 #include <string>
 #include <vector>
 
-#include "pybind11/numpy.h"
-#include "pybind11/pybind11.h"
-
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -51,6 +48,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "pybind11/numpy.h"
+#include "pybind11/pybind11.h"
 
 namespace paddle {
 namespace pybind {

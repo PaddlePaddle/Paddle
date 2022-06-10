@@ -64,8 +64,7 @@ class SlicePlugin : public PluginTensorRT {
   std::vector<int> ends_;
   std::vector<int> axes_;
   int* offset_temp_data_{nullptr};
-  cudaEvent_t copy_event_;
-  cudaStream_t copy_stream_;
+  std::vector<int> offset_info_;
 };
 
 class SlicePluginCreator : public TensorRTPluginCreator {
@@ -144,8 +143,7 @@ class SlicePluginDynamic : public DynamicPluginTensorRT {
   std::vector<int> axes_;
   int decrease_axis_;
   int* offset_temp_data_{nullptr};
-  cudaEvent_t copy_event_;
-  cudaStream_t copy_stream_;
+  std::vector<int> offset_info_;
 };
 
 class SlicePluginDynamicCreator : public TensorRTPluginCreator {

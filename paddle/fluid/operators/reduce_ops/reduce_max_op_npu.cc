@@ -112,6 +112,8 @@ class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
     auto* x = context.Input<Tensor>("X");
     auto* out = context.Input<Tensor>("Out");
     auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto reduce_dims = context.Attr<std::vector<int>>("dim");
+    bool reduce_all = context.Attr<bool>("reduce_all");
     int in_dtype = context.Attr<int>("in_dtype");
 
     PADDLE_ENFORCE_EQ(
@@ -129,12 +131,33 @@ class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
 
     // broadcast
     auto x_dims_vec = phi::vectorize(x->dims());
+    if (reduce_all) {
+      reduce_dims.clear();
+      for (size_t d = 0; d < x_dims_vec.size(); ++d) {
+        reduce_dims.push_back(static_cast<int>(d));
+      }
+    }
+
+    Tensor tmp_out, tmp_out_grad;
+    auto tmp_out_dims_vec = x_dims_vec;
+    for (auto d : reduce_dims) {
+      if (d < 0) {
+        d += x_dims_vec.size();
+      }
+      tmp_out_dims_vec[d] = 1;
+    }
+
+    tmp_out.ShareDataWith(*out);
+    tmp_out.Resize(phi::make_ddim(tmp_out_dims_vec));
+    tmp_out_grad.ShareDataWith(*out_grad);
+    tmp_out_grad.Resize(phi::make_ddim(tmp_out_dims_vec));
+
     Tensor transformed_out(x->type());
     transformed_out.Resize(phi::make_ddim(x_dims_vec));
     transformed_out.mutable_data<T>(place);
     NpuOpRunner r_brd_out;
     r_brd_out.SetType("BroadcastTo")
-        .AddInput(*out)
+        .AddInput(tmp_out)
         .AddInput(std::move(x_dims_vec))
         .AddOutput(transformed_out)
         .Run(stream);
@@ -143,7 +166,7 @@ class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
     transformed_out_grad.mutable_data<T>(place);
     NpuOpRunner r_brd_out_grad;
     r_brd_out_grad.SetType("BroadcastTo")
-        .AddInput(*out_grad)
+        .AddInput(tmp_out_grad)
         .AddInput(std::move(x_dims_vec))
         .AddOutput(transformed_out_grad)
         .Run(stream);

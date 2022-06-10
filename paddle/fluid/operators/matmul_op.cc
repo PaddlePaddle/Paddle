@@ -12,6 +12,7 @@ limitations under the License. */
 #include <algorithm>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -258,13 +259,14 @@ class MatMulGradKernel : public framework::OpKernel<T> {
       MatMul(context, a, trans_a, b, trans_b, out);
     } else {
       auto &ctx = context.template device_context<DeviceContext>();
-      MatMul(context, is_fold_init_dims_a
-                          ? FoldInitDims(a)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
-             trans_a, is_fold_init_dims_b
-                          ? FoldInitDims(b)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
-             trans_b, out);
+      MatMul(
+          context,
+          is_fold_init_dims_a ? FoldInitDims(a)
+                              : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
+          trans_a,
+          is_fold_init_dims_b ? FoldInitDims(b)
+                              : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
+          trans_b, out);
     }
   }
 
@@ -425,13 +427,14 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
       MatMul(context, a, trans_a, b, trans_b, flag, out);
     } else {
       auto &ctx = context.template device_context<DeviceContext>();
-      MatMul(context, is_fold_init_dims_a
-                          ? FoldInitDims(a)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
-             trans_a, is_fold_init_dims_b
-                          ? FoldInitDims(b)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
-             trans_b, flag, out);
+      MatMul(
+          context,
+          is_fold_init_dims_a ? FoldInitDims(a)
+                              : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
+          trans_a,
+          is_fold_init_dims_b ? FoldInitDims(b)
+                              : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
+          trans_b, flag, out);
     }
   }
 
@@ -602,12 +605,13 @@ class MatMulOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
               mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0,
-          true, platform::errors::InvalidArgument(
-                    "The batch size of the two matrices should be equal, or "
-                    "at least one is zero.\n"
-                    "But received X's shape: %s, Y's shape: %s.",
-                    DumpMatrixShape(mat_dim_x).c_str(),
-                    DumpMatrixShape(mat_dim_y).c_str()));
+          true,
+          platform::errors::InvalidArgument(
+              "The batch size of the two matrices should be equal, or "
+              "at least one is zero.\n"
+              "But received X's shape: %s, Y's shape: %s.",
+              DumpMatrixShape(mat_dim_x).c_str(),
+              DumpMatrixShape(mat_dim_y).c_str()));
     }
     int64_t dim_out_y = mat_dim_y.width_;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
@@ -996,13 +1000,12 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>);
 #endif
 
-REGISTER_OP_VERSION(matmul)
-    .AddCheckpoint(
-        R"ROC(Register matmul for adding the attribute of
+REGISTER_OP_VERSION(matmul).AddCheckpoint(
+    R"ROC(Register matmul for adding the attribute of
        fused_reshape_Y)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "fused_reshape_Y",
-            "In order to support the function of fused the input Y "
-            " and input X into the input X when "
-            "using the operator of matmul, and get raw shape of input Y.",
-            std::vector<int>{}));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "fused_reshape_Y",
+        "In order to support the function of fused the input Y "
+        " and input X into the input X when "
+        "using the operator of matmul, and get raw shape of input Y.",
+        std::vector<int>{}));

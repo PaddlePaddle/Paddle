@@ -15,6 +15,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/reduce.h>
 #include <thrust/scan.h>
+
 #include <functional>
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
@@ -859,11 +860,10 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     constexpr int TILE_SIZE = BLOCK_WARPS * 16;
     const dim3 block(WARP_SIZE, BLOCK_WARPS);
     const dim3 grid((shard_len + TILE_SIZE - 1) / TILE_SIZE);
-    neighbor_sample_example_v2<
-        WARP_SIZE, BLOCK_WARPS,
-        TILE_SIZE><<<grid, block, 0, resource_->remote_stream(i, gpu_id)>>>(
-        graph, id_array, actual_size_array, sample_array, sample_size,
-        shard_len, default_value);
+    neighbor_sample_example_v2<WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
+        <<<grid, block, 0, resource_->remote_stream(i, gpu_id)>>>(
+            graph, id_array, actual_size_array, sample_array, sample_size,
+            shard_len, default_value);
   }
 
   for (int i = 0; i < total_gpu; ++i) {
@@ -946,12 +946,12 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
       constexpr int TILE_SIZE_ = BLOCK_WARPS_ * 16;
       const dim3 block2(WARP_SIZE_, BLOCK_WARPS_);
       const dim3 grid2((number_on_cpu + TILE_SIZE_ - 1) / TILE_SIZE_);
-      copy_buffer_ac_to_final_place<WARP_SIZE_, BLOCK_WARPS_,
-                                    TILE_SIZE_><<<grid2, block2, 0, stream>>>(
-          gpu_buffers_ptr, gpu_ac_ptr, val, actual_sample_size,
-          thrust::raw_pointer_cast(t_index.data()) + 1,
-          thrust::raw_pointer_cast(cumsum_gpu_ac.data()), number_on_cpu,
-          sample_size);
+      copy_buffer_ac_to_final_place<WARP_SIZE_, BLOCK_WARPS_, TILE_SIZE_>
+          <<<grid2, block2, 0, stream>>>(
+              gpu_buffers_ptr, gpu_ac_ptr, val, actual_sample_size,
+              thrust::raw_pointer_cast(t_index.data()) + 1,
+              thrust::raw_pointer_cast(cumsum_gpu_ac.data()), number_on_cpu,
+              sample_size);
 
       delete[] merge_buffers;
       delete[] cpu_keys;
@@ -1027,13 +1027,13 @@ NodeQueryResult GpuPsGraphTable::query_node_list(int gpu_id, int start,
   local_begin_pos = [0,3]
   sample_size = [2,3]
   */
-  std::function<int(int, int, int, int, int&, int&)> range_check = [](
-      int x, int y, int x1, int y1, int& x2, int& y2) {
-    if (y <= x1 || x >= y1) return 0;
-    y2 = min(y, y1);
-    x2 = max(x1, x);
-    return y2 - x2;
-  };
+  std::function<int(int, int, int, int, int&, int&)> range_check =
+      [](int x, int y, int x1, int y1, int& x2, int& y2) {
+        if (y <= x1 || x >= y1) return 0;
+        y2 = min(y, y1);
+        x2 = max(x1, x);
+        return y2 - x2;
+      };
   auto graph = gpu_graph_list[gpu_id];
   if (graph.node_size == 0) {
     return result;
@@ -1106,6 +1106,6 @@ NodeQueryResult GpuPsGraphTable::query_node_list(int gpu_id, int start,
   return result;
   */
 }
-}
-};
+}  // namespace framework
+};  // namespace paddle
 #endif

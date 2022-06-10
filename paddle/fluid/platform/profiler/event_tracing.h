@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
 
@@ -70,10 +71,11 @@ class RecordEvent {
    * @param level: Used to filter events, works like glog VLOG(level).
    * RecordEvent will works if HostTraceLevel >= level.
    */
-  explicit RecordEvent(const char* name, const TracerEventType type =
-                                             TracerEventType::UserDefined,
-                       uint32_t level = kDefaultTraceLevel,
-                       const EventRole role = EventRole::kOrdinary);
+  explicit RecordEvent(
+      const char* name,
+      const TracerEventType type = TracerEventType::UserDefined,
+      uint32_t level = kDefaultTraceLevel,
+      const EventRole role = EventRole::kOrdinary);
 
   RecordEvent(const std::string& name, const std::string& attr,
               const TracerEventType type = TracerEventType::UserDefined,

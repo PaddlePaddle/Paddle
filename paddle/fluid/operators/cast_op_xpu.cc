@@ -19,9 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/platform/float16.h"
-#include "xpu/refactor/math.h"
-
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "xpu/refactor/math.h"
 
 namespace paddle {
 namespace operators {

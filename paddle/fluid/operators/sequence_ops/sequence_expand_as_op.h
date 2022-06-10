@@ -17,6 +17,7 @@ limitations under the License. */
 #include <numeric>  // std::iota
 #include <sstream>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_registry.h"
 

@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/lod_tensor.h"
+
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/phi/core/lod_utils.h"
 
 namespace paddle {
