@@ -636,7 +636,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   // local search
   tables_[dev_id]->get(place, reinterpret_cast<KeyType*>(d_fid_seq_ptr),
                        reinterpret_cast<ValType*>(d_shard_vals_ptr),
-                       len,
+                       h_fid_seq->size(),
                        stream);
   VLOG(0) << "heter comm inl pull sparse fill d_shard_val by table->get";
 
