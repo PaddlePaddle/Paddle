@@ -32,6 +32,11 @@
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
+#endif
+
+#ifdef PADDLE_WITH_RCCL
+#include "paddle/fluid/platform/dynload/rccl.h"
+#else
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 
