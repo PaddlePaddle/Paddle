@@ -100,7 +100,7 @@ class MLPLayer(nn.Layer):
         return out
 
 
-def train():
+def train(fetch):
     mlp = MLPLayer(hidden_size=hidden_size,
                    intermediate_size=4 * hidden_size,
                    dropout_ratio=0.1,
@@ -130,7 +130,10 @@ def train():
     engine.prepare(optimizer, loss, metrics=paddle.metric.Accuracy())
 
     # fetch
-    fetches = {'out': mlp.out}
+    if fetch:
+        fetches = {'out': mlp.out}
+    else:
+        fetches = None
 
     # train
     train_dataset = MyDataset(batch_num * batch_size)
@@ -155,4 +158,5 @@ def train():
 
 
 if __name__ == "__main__":
-    train()
+    train(fetch=True)
+    train(fetch=False)

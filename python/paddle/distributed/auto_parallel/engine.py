@@ -369,6 +369,8 @@ class Engine:
         return var_name in self.main_program.global_block().vars
 
     def _to_map_fetch(self, fetches):
+        if not fetches:
+            return {}
         if isinstance(fetches, dict):
             fetch_var_names = list(map(_to_name_str, fetches.values()))
             usr_fetches = dict(zip(fetch_var_names, list(fetches.keys())))
