@@ -474,6 +474,7 @@ static void PreparedOpRunImpl(
     platform::RecordEvent record_event("compute",
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
+
     struct timeval t1;
     struct timeval t2;
     if(std::getenv("XPU_PADDLE_DEBUG")!=nullptr){
@@ -481,9 +482,9 @@ static void PreparedOpRunImpl(
       std::cout<<"op_name:"<<op.Type()<<"  start"<<std::endl;
     }
 
-
     func(DygraphExecutionContext<VarType>(op, empty_scope, *dev_ctx, ctx, ins,
                                           outs, attrs, default_attrs));
+  
     if(std::getenv("XPU_PADDLE_DEBUG")!=nullptr){
       if(platform::is_xpu_place(dev_ctx->GetPlace())){
          int r = xpu_wait();

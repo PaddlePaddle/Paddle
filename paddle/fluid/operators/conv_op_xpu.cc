@@ -9,6 +9,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/conv_op.h"
+#include <iostream>
+#include <unistd.h>
+#include <sys/syscall.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -156,6 +159,9 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
         r, XPU_SUCCESS,
         platform::errors::External("XPU conv kernel return wrong value[%d %s]",
                                    r, XPUAPIErrorMsg[r]));
+    //int tid = syscall(SYS_gettid);
+    //std::cout<<"14. conv 2d grad:" << dev_ctx.x_context() << " " << dev_ctx.x_context()->xpu_stream <<  " "
+    //	                              << (int)dev_ctx.x_context()->dev().type() << " " << dev_ctx.x_context()->dev().id() << " tid:" << tid << std::endl;
   }
 };
 }  // namespace operators
