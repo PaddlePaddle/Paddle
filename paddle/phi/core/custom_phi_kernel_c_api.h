@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-typedef struct PD_Context PD_Context;
+typedef struct PD_DeviceContext PD_DeviceContext;
 
 typedef struct PD_ExecutionContext PD_ExecutionContext;
 
@@ -47,6 +47,10 @@ typedef struct PD_KernelKey PD_KernelKey;
 typedef struct PD_Kernel PD_Kernel;
 
 typedef struct PD_Place PD_Place;
+
+typedef struct PD_KernelArgsDef PD_KernelArgsDef;
+
+typedef struct PD_TensorArgDef PD_TensorArgDef;
 
 typedef struct {
   size_t size;
@@ -93,10 +97,12 @@ void PD_RegisterPhiKernel(const char *kernel_name_cstr,
                           PD_ArgumentType *attr_args_type,
                           size_t out_nargs,
                           PD_ArgumentType *out_args_type,
+                          void (*args_def_fn)(const PD_KernelKey *,
+                                              PD_Kernel *),
                           void (*fn)(PD_ExecutionContext *),
                           void *variadic_kernel_fn);
 
-PD_Context *PD_OriginGetContext(PD_ExecutionContext *ctx);
+PD_DeviceContext *PD_OriginGetDeviceContext(PD_ExecutionContext *ctx);
 
 PD_Tensor *PD_OriginInputAt(PD_ExecutionContext *ctx, size_t index);
 
@@ -108,50 +114,81 @@ PD_Tensor *PD_OriginOutputAt(PD_ExecutionContext *ctx, size_t index);
 
 PD_List PD_OriginMultiOutputAt(PD_ExecutionContext *ctx, size_t index);
 
+/**
+ * Attribute
+ */
+
 bool PD_BoolAttrAt(PD_ExecutionContext *ctx, size_t index);
+
 int32_t PD_Int32AttrAt(PD_ExecutionContext *ctx, size_t index);
+
 int64_t PD_Int64AttrAt(PD_ExecutionContext *ctx, size_t index);
+
 float PD_FloatAttrAt(PD_ExecutionContext *ctx, size_t index);
+
 double PD_DoubleAttrAt(PD_ExecutionContext *ctx, size_t index);
+
 PD_Scalar *PD_ScalarAttrAt(PD_ExecutionContext *ctx, size_t index);
+
 PD_IntArray *PD_IntArrayAttrAt(PD_ExecutionContext *ctx, size_t index);
+
 PD_DataType PD_DataTypeAttrAt(PD_ExecutionContext *ctx, size_t index);
+
 PD_DataLayout PD_DataLayoutAttrAt(PD_ExecutionContext *ctx, size_t index);
+
 char *PD_StringAttrAt(PD_ExecutionContext *ctx, size_t index);
+
 PD_List PD_ListBoolAttrAt(PD_ExecutionContext *ctx, size_t index);
+
 PD_List PD_ListInt32AttrAt(PD_ExecutionContext *ctx, size_t index);
+
 PD_List PD_ListInt64AttrAt(PD_ExecutionContext *ctx, size_t index);
+
 PD_List PD_ListFloatAttrAt(PD_ExecutionContext *ctx, size_t index);
+
 PD_List PD_ListDoubleAttrAt(PD_ExecutionContext *ctx, size_t index);
+
 PD_List PD_ListStringAttrAt(PD_ExecutionContext *ctx, size_t index);
+
 PD_List PD_ListScalarAttrAt(PD_ExecutionContext *ctx, size_t index);
+
 PD_Place *PD_PlaceAttrAt(PD_ExecutionContext *ctx, size_t index);
 
-PD_Stream PD_GetStream(const PD_Context *ctx, PD_Status *status);
+/**
+ * DeviceContext
+ */
 
-void *PD_AllocateTensor(const PD_Context *ctx,
-                        PD_Tensor *tensor,
-                        size_t size,
-                        PD_DataType dtype,
-                        PD_Status *status);
+PD_Stream PD_DeviceContextGetStream(const PD_DeviceContext *ctx,
+                                    PD_Status *status);
 
-PD_DataType PD_GetTensorType(const PD_Tensor *tensor, PD_Status *status);
+void *PD_DeviceContextAllocateTensor(const PD_DeviceContext *ctx,
+                                     PD_Tensor *tensor,
+                                     size_t size,
+                                     PD_DataType dtype,
+                                     PD_Status *status);
 
-PD_DataLayout PD_GetTensorLayout(const PD_Tensor *tensor, PD_Status *status);
+/**
+ * Tensor
+ */
 
-int64_t PD_GetTensorByteSize(const PD_Tensor *tensor, PD_Status *status);
+PD_DataType PD_TensorGetDataType(const PD_Tensor *tensor, PD_Status *status);
 
-void *PD_GetTensorData(const PD_Tensor *tensor, PD_Status *status);
+PD_DataLayout PD_TensorGetDataLayout(const PD_Tensor *tensor,
+                                     PD_Status *status);
 
-int64_t PD_GetTensorElementCount(const PD_Tensor *tensor, PD_Status *status);
+int64_t PD_TensorGetByteSize(const PD_Tensor *tensor, PD_Status *status);
 
-int64_t PD_GetTensorNumDims(const PD_Tensor *tensor, PD_Status *status);
+void *PD_TensorGetDataPointer(const PD_Tensor *tensor, PD_Status *status);
 
-int64_t PD_GetTensorDim(const PD_Tensor *tensor,
+int64_t PD_TensorGetElementCount(const PD_Tensor *tensor, PD_Status *status);
+
+int64_t PD_TensorGetNumDims(const PD_Tensor *tensor, PD_Status *status);
+
+int64_t PD_TensorGetDim(const PD_Tensor *tensor,
                         size_t index,
                         PD_Status *status);
 
-void PD_GetTensorLoD(const PD_Tensor *tensor,
+void PD_TensorGetLoD(const PD_Tensor *tensor,
                      PD_List *data,
                      PD_List *offset,
                      PD_Status *status);
@@ -160,20 +197,22 @@ bool PD_TensorIsInitialized(const PD_Tensor *tensor, PD_Status *status);
 
 bool PD_TensorIsValid(const PD_Tensor *tensor, PD_Status *status);
 
-void *PD_GetTensorHolder(const PD_Tensor *tensor, PD_Status *status);
+void *PD_TensorGetHolder(const PD_Tensor *tensor, PD_Status *status);
 
-void PD_SetTensorDims(PD_Tensor *tensor,
+void PD_TensorSetDims(PD_Tensor *tensor,
                       int64_t ndims,
                       const int64_t *dims,
                       PD_Status *status);
 
-void PD_SetTensorType(PD_Tensor *tensor, PD_DataType dtype, PD_Status *status);
+void PD_TensorSetDataType(PD_Tensor *tensor,
+                          PD_DataType dtype,
+                          PD_Status *status);
 
-void PD_SetTensorLayout(PD_Tensor *tensor,
-                        PD_DataLayout layout,
-                        PD_Status *status);
+void PD_TensorSetDataLayout(PD_Tensor *tensor,
+                            PD_DataLayout layout,
+                            PD_Status *status);
 
-void PD_ResetTensorLoD(PD_Tensor *tensor,
+void PD_TensorResetLoD(PD_Tensor *tensor,
                        PD_List data,
                        PD_List offset,
                        PD_Status *status);
@@ -182,39 +221,109 @@ PD_Tensor *PD_NewTensor();
 
 void PD_DeleteTensor(PD_Tensor *tensor);
 
-void PD_ShareDataWith(PD_Tensor *dst, const PD_Tensor *src, PD_Status *status);
-void PD_ShareLoDWith(PD_Tensor *dst, const PD_Tensor *src, PD_Status *status);
+void PD_TensorShareDataWith(PD_Tensor *dst,
+                            const PD_Tensor *src,
+                            PD_Status *status);
 
-bool PD_GetScalarBoolData(PD_Scalar *scalar);
-int8_t PD_GetScalarInt8Data(PD_Scalar *scalar);
-int16_t PD_GetScalarInt16Data(PD_Scalar *scalar);
-int32_t PD_GetScalarInt32Data(PD_Scalar *scalar);
-int64_t PD_GetScalarInt64Data(PD_Scalar *scalar);
-uint8_t PD_GetScalarUInt8Data(PD_Scalar *scalar);
-uint16_t PD_GetScalarUInt16Data(PD_Scalar *scalar);
-uint32_t PD_GetScalarUInt32Data(PD_Scalar *scalar);
-uint64_t PD_GetScalarUInt64Data(PD_Scalar *scalar);
-float PD_GetScalarFloat32Data(PD_Scalar *scalar);
-double PD_GetScalarFloat64Data(PD_Scalar *scalar);
+void PD_TensorShareLoDWith(PD_Tensor *dst,
+                           const PD_Tensor *src,
+                           PD_Status *status);
 
-PD_DataType PD_GetScalarType(PD_Scalar *scalar);
+/**
+ * Scalar
+ */
 
-PD_List PD_GetIntArrayData(PD_IntArray *int_array);
+bool PD_ScalarGetBoolData(PD_Scalar *scalar);
 
-size_t PD_GetIntArraySize(PD_IntArray *int_array);
+int8_t PD_ScalarGetInt8Data(PD_Scalar *scalar);
+
+int16_t PD_ScalarGetInt16Data(PD_Scalar *scalar);
+
+int32_t PD_ScalarGetInt32Data(PD_Scalar *scalar);
+
+int64_t PD_ScalarGetInt64Data(PD_Scalar *scalar);
+
+uint8_t PD_ScalarGetUInt8Data(PD_Scalar *scalar);
+
+uint16_t PD_ScalarGetUInt16Data(PD_Scalar *scalar);
+
+uint32_t PD_ScalarGetUInt32Data(PD_Scalar *scalar);
+
+uint64_t PD_ScalarGetUInt64Data(PD_Scalar *scalar);
+
+float PD_ScalarGetFloat32Data(PD_Scalar *scalar);
+
+double PD_ScalarGetFloat64Data(PD_Scalar *scalar);
+
+PD_DataType PD_ScalarGetDataType(PD_Scalar *scalar);
+
+/**
+ * IntArray
+ */
+
+PD_List PD_IntArrayGetDataPointer(PD_IntArray *int_array);
+
+size_t PD_IntArrayGetElementCount(PD_IntArray *int_array);
+
+/**
+ * PD_List
+ */
 
 void PD_DeleteList(PD_List list);
 
 void PD_DeleteUInt8List(PD_List list);
 
 void PD_DeleteInt64List(PD_List list);
+
 void PD_DeleteInt32List(PD_List list);
+
 void PD_DeleteFloat64List(PD_List list);
+
 void PD_DeleteFloat32List(PD_List list);
+
+/**
+ * Place
+ */
 
 bool PD_PlaceIsHost(PD_Place *place);
 
 int8_t PD_PlaceGetDeviceId(PD_Place *place);
+
+/**
+ * TensorArgDef
+ */
+
+void PD_TensorArgDefSetDataLayout(PD_TensorArgDef *def,
+                                  PD_DataLayout layout,
+                                  PD_Status *status);
+
+void PD_TensorArgDefSetDataType(PD_TensorArgDef *def,
+                                PD_DataType dtype,
+                                PD_Status *status);
+
+/**
+ * KernelArgsDef
+ */
+
+PD_List PD_KernelArgsDefGetInputArgDefs(PD_KernelArgsDef *def,
+                                        PD_Status *status);
+
+PD_List PD_KernelArgsDefGetOutputArgDefs(PD_KernelArgsDef *def,
+                                         PD_Status *status);
+
+/**
+ * KernelKey
+ */
+
+PD_DataLayout PD_KernelKeyGetLayout(PD_KernelKey *key, PD_Status *status);
+
+PD_DataType PD_KernelKeyGetDataType(PD_KernelKey *key, PD_Status *status);
+
+/**
+ * Kernel
+ */
+
+PD_KernelArgsDef *PD_KernelGetArgsDef(PD_Kernel *kernel, PD_Status *status);
 
 #ifdef __cplusplus
 }  // extern "C"

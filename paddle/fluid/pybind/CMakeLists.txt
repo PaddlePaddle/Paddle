@@ -123,7 +123,7 @@ set(PYBIND_SRCS
     communication.cc
     cuda_streams_py.cc)
 
-if (WITH_CUSTOM_DEVICE)
+if(WITH_CUSTOM_DEVICE)
   set(PYBIND_SRCS ${PYBIND_SRCS} custom_phi_kernel_c_api.cc)
 endif()
 

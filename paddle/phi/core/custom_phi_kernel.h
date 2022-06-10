@@ -32,13 +32,13 @@
 
 #define PD_CHECK_STATUS(status) PD_CHECK(status == C_SUCCESS)
 
-inline std::vector<int64_t> PD_GetTensorDims(PD_Tensor* tensor,
+inline std::vector<int64_t> PD_TensorGetDims(PD_Tensor* tensor,
                                              PD_Status* status) {
-  int64_t ndims = PD_GetTensorNumDims(tensor, status);
+  int64_t ndims = PD_TensorGetNumDims(tensor, status);
   if (ndims > 0) {
     std::vector<int64_t> shape(ndims);
     for (int64_t i = 0; i < ndims; ++i) {
-      shape[i] = PD_GetTensorDim(tensor, i, status);
+      shape[i] = PD_TensorGetDim(tensor, i, status);
     }
     return shape;
   }
@@ -89,70 +89,86 @@ CPP_TYPE_TO_PD_DTYPE_REGISTER(PD_DTYPE_TO_CPP_TYPE)
 
 namespace custom_kernel {
 
-class DenseTensor {
+template <typename T>
+class WrapperBase {
  public:
-  DenseTensor() : c_tensor(PD_NewTensor()), own_data(true) {}
+  explicit WrapperBase(T* ptr, bool own = false) : data_(ptr), own_(own) {}
 
-  explicit DenseTensor(PD_Tensor* tensor) : c_tensor(tensor), own_data(false) {}
+  inline T* raw_data() const { return data_; }
+
+  inline bool own_data() const { return own_; }
+
+  inline void reset(const T* ptr) { data_ = ptr; }
+
+ private:
+  T* data_;
+  bool own_;
+};
+
+class DenseTensor : public WrapperBase<PD_Tensor> {
+ public:
+  DenseTensor() : WrapperBase(PD_NewTensor(), true) {}
+
+  explicit DenseTensor(PD_Tensor* tensor) : WrapperBase(tensor, false) {}
 
   ~DenseTensor() {
-    if (own_data) {
-      PD_DeleteTensor(c_tensor);
+    if (own_data()) {
+      PD_DeleteTensor(raw_data());
     }
   }
 
   bool valid() const {
     C_Status status;
-    auto ret = PD_TensorIsValid(c_tensor, &status);
+    auto ret = PD_TensorIsValid(raw_data(), &status);
     PD_CHECK_STATUS(status);
     return ret;
   }
 
   bool initialized() const {
     C_Status status;
-    auto ret = PD_TensorIsInitialized(c_tensor, &status);
+    auto ret = PD_TensorIsInitialized(raw_data(), &status);
     PD_CHECK_STATUS(status);
     return ret;
   }
 
   void* Holder() const {
     C_Status status;
-    auto holder = PD_GetTensorHolder(c_tensor, &status);
+    auto holder = PD_TensorGetHolder(raw_data(), &status);
     PD_CHECK_STATUS(status);
     return holder;
   }
 
   std::vector<int64_t> dims() const {
     C_Status status;
-    auto dimension = PD_GetTensorDims(c_tensor, &status);
+    auto dimension = PD_TensorGetDims(raw_data(), &status);
     PD_CHECK_STATUS(status);
     return dimension;
   }
 
   PD_DataType dtype() const {
     C_Status status;
-    auto data_type = PD_GetTensorType(c_tensor, &status);
+    auto data_type = PD_TensorGetDataType(raw_data(), &status);
     PD_CHECK_STATUS(status);
     return data_type;
   }
 
   PD_DataLayout layout() const {
     C_Status status;
-    auto data_layout = PD_GetTensorLayout(c_tensor, &status);
+    auto data_layout = PD_TensorGetDataLayout(raw_data(), &status);
     PD_CHECK_STATUS(status);
     return data_layout;
   }
 
   int64_t numel() const {
     C_Status status;
-    auto element_count = PD_GetTensorElementCount(c_tensor, &status);
+    auto element_count = PD_TensorGetElementCount(raw_data(), &status);
     PD_CHECK_STATUS(status);
     return element_count;
   }
 
   int64_t memory_size() const {
     C_Status status;
-    auto byte_size = PD_GetTensorByteSize(c_tensor, &status);
+    auto byte_size = PD_TensorGetByteSize(raw_data(), &status);
     PD_CHECK_STATUS(status);
     return byte_size;
   }
@@ -160,7 +176,7 @@ class DenseTensor {
   LoD lod() const {
     PD_List data, offset;
     C_Status status;
-    PD_GetTensorLoD(c_tensor, &data, &offset, &status);
+    PD_TensorGetLoD(raw_data(), &data, &offset, &status);
     PD_CHECK_STATUS(status);
     LoD lod_;
     auto ptr = static_cast<size_t*>(data.data);
@@ -185,79 +201,77 @@ class DenseTensor {
     offset_list = PDListFromVector(&offset);
 
     C_Status status;
-    PD_ResetTensorLoD(c_tensor, data_list, offset_list, &status);
+    PD_TensorResetLoD(raw_data(), data_list, offset_list, &status);
     PD_CHECK_STATUS(status);
   }
 
   void Resize(const std::vector<int64_t>& dims) {
     C_Status status;
-    PD_SetTensorDims(c_tensor, dims.size(), dims.data(), &status);
+    PD_TensorSetDims(raw_data(), dims.size(), dims.data(), &status);
     PD_CHECK_STATUS(status);
   }
 
   void set_dtype(PD_DataType data_type) {
     C_Status status;
-    PD_SetTensorType(c_tensor, data_type, &status);
+    PD_TensorSetDataType(raw_data(), data_type, &status);
     PD_CHECK_STATUS(status);
   }
 
   void set_layout(PD_DataLayout data_layout) {
     C_Status status;
-    PD_SetTensorLayout(c_tensor, data_layout, &status);
+    PD_TensorSetDataLayout(raw_data(), data_layout, &status);
     PD_CHECK_STATUS(status);
   }
 
   template <typename T>
   T* data() const {
     C_Status status;
-    auto ptr = PD_GetTensorData(c_tensor, &status);
+    auto ptr = PD_TensorGetDataPointer(raw_data(), &status);
     PD_CHECK_STATUS(status);
     return static_cast<T*>(ptr);
   }
 
   template <typename T>
-  T* mutable_data(int64_t size = 0, const PD_Context* ctx = nullptr) {
+  T* mutable_data(int64_t size = 0, const PD_DeviceContext* ctx = nullptr) {
     C_Status status;
-    auto ptr = PD_AllocateTensor(
-        ctx, c_tensor, size, phi::CppTypeToPDType<T>::Type(), &status);
+    auto ptr = PD_DeviceContextAllocateTensor(
+        ctx, raw_data(), size, phi::CppTypeToPDType<T>::Type(), &status);
     PD_CHECK_STATUS(status);
     return static_cast<T*>(ptr);
   }
 
   void* mutable_data(PD_DataType data_type,
                      int64_t size = 0,
-                     const PD_Context* ctx = nullptr) {
+                     const PD_DeviceContext* ctx = nullptr) {
     C_Status status;
-    auto ptr = PD_AllocateTensor(ctx, c_tensor, size, data_type, &status);
+    auto ptr = PD_DeviceContextAllocateTensor(
+        ctx, raw_data(), size, data_type, &status);
     PD_CHECK_STATUS(status);
     return static_cast<void*>(ptr);
   }
 
   DenseTensor& ShareDataWith(const DenseTensor& src) {
     C_Status status;
-    PD_ShareDataWith(c_tensor, src.c_tensor, &status);
+    PD_TensorShareDataWith(raw_data(), src.raw_data(), &status);
     PD_CHECK_STATUS(status);
     return *this;
   }
 
   void share_lod(const DenseTensor& src) {
     C_Status status;
-    PD_ShareLoDWith(c_tensor, src.c_tensor, &status);
+    PD_TensorShareLoDWith(raw_data(), src.raw_data(), &status);
     PD_CHECK_STATUS(status);
   }
-
- private:
-  PD_Tensor* c_tensor;
-  bool own_data;
 };
 
-class DeviceContext {
+class DeviceContext : public WrapperBase<PD_DeviceContext> {
  public:
-  explicit DeviceContext(PD_Context* context) : c_context(context) {}
+  explicit DeviceContext(PD_DeviceContext* context)
+      : WrapperBase<PD_DeviceContext>(context) {}
 
   void* stream() const {
     C_Status status;
-    auto stream_ = PD_GetStream(c_context, &status);
+    auto stream_ = PD_DeviceContextGetStream(raw_data(), &status);
     PD_CHECK_STATUS(status);
     return stream_;
   }
@@ -265,12 +279,12 @@ class DeviceContext {
   void* Alloc(DenseTensor* tensor,
               PD_DataType dtype,
               int64_t requested_size = 0) const {
-    return tensor->mutable_data(dtype, requested_size, c_context);
+    return tensor->mutable_data(dtype, requested_size, raw_data());
   }
 
   template <typename T>
   T* Alloc(DenseTensor* tensor, int64_t requested_size = 0) const {
-    return tensor->mutable_data<T>(requested_size, c_context);
+    return tensor->mutable_data<T>(requested_size, raw_data());
   }
 
   void* HostAlloc(DenseTensor* tensor,
@@ -283,106 +297,192 @@ class DeviceContext {
   T* HostAlloc(DenseTensor* tensor, int64_t requested_size = 0) const {
     return tensor->mutable_data<T>(requested_size);
   }
-
- private:
-  PD_Context* c_context;
 };
 
-class Scalar {
+class Scalar : public WrapperBase<PD_Scalar> {
  public:
-  explicit Scalar(PD_Scalar* scalar) : c_scalar(scalar) {}
+  explicit Scalar(PD_Scalar* scalar) : WrapperBase<PD_Scalar>(scalar) {}
 
-  PD_DataType dtype() const { return PD_GetScalarType(c_scalar); }
+  PD_DataType dtype() const { return PD_ScalarGetDataType(raw_data()); }
 
   template <typename T>
   inline T to() const;
-
- private:
-  PD_Scalar* c_scalar;
 };
 
 template <>
 inline bool Scalar::to<bool>() const {
-  return PD_GetScalarBoolData(c_scalar);
+  return PD_ScalarGetBoolData(raw_data());
 }
 
 template <>
 inline float Scalar::to<float>() const {
-  return PD_GetScalarFloat32Data(c_scalar);
+  return PD_ScalarGetFloat32Data(raw_data());
 }
 
 template <>
 inline double Scalar::to<double>() const {
-  return PD_GetScalarFloat64Data(c_scalar);
+  return PD_ScalarGetFloat64Data(raw_data());
 }
 
 template <>
 inline uint8_t Scalar::to<uint8_t>() const {
-  return PD_GetScalarUInt8Data(c_scalar);
+  return PD_ScalarGetUInt8Data(raw_data());
 }
 
 template <>
 inline uint16_t Scalar::to<uint16_t>() const {
-  return PD_GetScalarUInt16Data(c_scalar);
+  return PD_ScalarGetUInt16Data(raw_data());
 }
 
 template <>
 inline uint32_t Scalar::to<uint32_t>() const {
-  return PD_GetScalarUInt32Data(c_scalar);
+  return PD_ScalarGetUInt32Data(raw_data());
 }
 
 template <>
 inline uint64_t Scalar::to<uint64_t>() const {
-  return PD_GetScalarUInt64Data(c_scalar);
+  return PD_ScalarGetUInt64Data(raw_data());
 }
 
 template <>
 inline int8_t Scalar::to<int8_t>() const {
-  return PD_GetScalarInt8Data(c_scalar);
+  return PD_ScalarGetInt8Data(raw_data());
 }
 
 template <>
 inline int16_t Scalar::to<int16_t>() const {
-  return PD_GetScalarInt16Data(c_scalar);
+  return PD_ScalarGetInt16Data(raw_data());
 }
 
 template <>
 inline int32_t Scalar::to<int32_t>() const {
-  return PD_GetScalarInt32Data(c_scalar);
+  return PD_ScalarGetInt32Data(raw_data());
 }
 
 template <>
 inline int64_t Scalar::to<int64_t>() const {
-  return PD_GetScalarInt64Data(c_scalar);
+  return PD_ScalarGetInt64Data(raw_data());
 }
 
-class IntArray {
+class IntArray : WrapperBase<PD_IntArray> {
  public:
-  explicit IntArray(PD_IntArray* int_array) : c_int_array(int_array) {}
+  explicit IntArray(PD_IntArray* int_array)
+      : WrapperBase<PD_IntArray>(int_array) {}
 
-  size_t size() const { return PD_GetIntArraySize(c_int_array); }
+  size_t size() const { return PD_IntArrayGetElementCount(raw_data()); }
 
   std::vector<int64_t> GetData() const {
-    auto list = PD_GetIntArrayData(c_int_array);
+    auto list = PD_IntArrayGetDataPointer(raw_data());
     auto data = reinterpret_cast<int64_t*>(list.data);
     std::vector<int64_t> ret(data, data + list.size);
     return ret;
   }
-
- private:
-  PD_IntArray* c_int_array;
 };
 
-class Place {
+class Place : WrapperBase<PD_Place> {
  public:
-  explicit Place(PD_Place* place) : c_place(place) {}
+  explicit Place(PD_Place* place) : WrapperBase<PD_Place>(place) {}
 
-  bool is_host() { return PD_PlaceIsHost(c_place); }
+  bool is_host() { return PD_PlaceIsHost(raw_data()); }
 
-  int8_t GetDeviceID() { return PD_PlaceGetDeviceId(c_place); }
+  int8_t GetDeviceID() { return PD_PlaceGetDeviceId(raw_data()); }
+};
 
- private:
-  PD_Place* c_place;
+class TensorArgDef : WrapperBase<PD_TensorArgDef> {
+ public:
+  explicit TensorArgDef(PD_TensorArgDef* tensor_arg_def)
+      : WrapperBase<PD_TensorArgDef>(tensor_arg_def) {}
+
+  // TensorArgDef& SetBackend() {
+  //   return *this;
+  // }
+
+  TensorArgDef& SetDataLayout(PD_DataLayout in_layout) {
+    C_Status status;
+    PD_TensorArgDefSetDataLayout(raw_data(), in_layout, &status);
+    PD_CHECK_STATUS(status);
+    return *this;
+  }
+
+  TensorArgDef& SetDataType(PD_DataType in_dtype) {
+    C_Status status;
+    PD_TensorArgDefSetDataType(raw_data(), in_dtype, &status);
+    PD_CHECK_STATUS(status);
+    return *this;
+  }
+};
+
+class KernelArgsDef : WrapperBase<PD_KernelArgsDef> {
+ public:
+  explicit KernelArgsDef(PD_KernelArgsDef* kernel_args_def)
+      : WrapperBase<PD_KernelArgsDef>(kernel_args_def) {}
+
+  std::vector<TensorArgDef> input_defs() {
+    C_Status status;
+    auto list = PD_KernelArgsDefGetInputArgDefs(raw_data(), &status);
+    PD_CHECK_STATUS(status);
+    auto ptr = reinterpret_cast<PD_TensorArgDef**>(list.data);
+    std::vector<TensorArgDef> ret;
+    for (size_t i = 0; i < list.size; ++i) {
+      ret.emplace_back(ptr[i]);
+    }
+    PD_DeleteList(list);
+    return ret;
+  }
+
+  std::vector<TensorArgDef> output_defs() {
+    C_Status status;
+    auto list = PD_KernelArgsDefGetOutputArgDefs(raw_data(), &status);
+    PD_CHECK_STATUS(status);
+    auto ptr = reinterpret_cast<PD_TensorArgDef**>(list.data);
+    std::vector<TensorArgDef> ret;
+    for (size_t i = 0; i < list.size; ++i) {
+      ret.emplace_back(ptr[i]);
+    }
+    PD_DeleteList(list);
+    return ret;
+  }
+
+  // std::vector<AttributeArgDef>
+  // attribute_defs() {
+  // }
+};
+
+class KernelKey : WrapperBase<PD_KernelKey> {
+ public:
+  explicit KernelKey(PD_KernelKey* kernel_key)
+      : WrapperBase<PD_KernelKey>(kernel_key) {}
+
+  // Backend backend() const { return backend_; }
+  PD_DataLayout layout() const {
+    PD_Status status;
+    auto layout_ = PD_KernelKeyGetLayout(raw_data(), &status);
+    PD_CHECK_STATUS(status);
+    return layout_;
+  }
+
+  PD_DataType dtype() const {
+    PD_Status status;
+    auto dtype_ = PD_KernelKeyGetDataType(raw_data(), &status);
+    PD_CHECK_STATUS(status);
+    return dtype_;
+  }
+};
+
+class Kernel : WrapperBase<PD_Kernel> {
+ public:
+  explicit Kernel(PD_Kernel* kernel) : WrapperBase<PD_Kernel>(kernel) {}
+
+  KernelArgsDef args_def() const {
+    C_Status status;
+    auto ptr = PD_KernelGetArgsDef(raw_data(), &status);
+    PD_CHECK_STATUS(status);
+    return KernelArgsDef(ptr);
+  }
+
+  TensorArgDef InputAt(size_t idx) { return args_def().input_defs()[idx]; }
+
+  TensorArgDef OutputAt(size_t idx) { return args_def().input_defs()[idx]; }
 };
 
 }  // namespace custom_kernel
@@ -450,6 +550,9 @@ CPP_TYPE_TO_PD_ARG_TYPE_REGISTER(PD_ARG_TYPE_TO_CPP_TYPE)
                             layout,                                 \
                             meta_kernel_fn,                         \
                             ...)                                    \
+  static void                                                       \
+      __CUSTOM_adefs_CFN_##kernel_name##_##backend##_##layout(   \
+          const PD_KernelKey* kernel_key, PD_Kernel* kernel);       \
   template <typename kernel_type>                                   \
   struct __##kernel_name##_##backend##_##layout##__ {               \
     __##kernel_name##_##backend##_##layout##__() {                  \
@@ -467,6 +570,7 @@ CPP_TYPE_TO_PD_ARG_TYPE_REGISTER(PD_ARG_TYPE_TO_CPP_TYPE)
           parser.attr_args_type.data(),                             \
           parser.out_args_type.size(),                              \
           parser.out_args_type.data(),                              \
+          __CUSTOM_adefs_CFN_##kernel_name##_##backend##_##layout,  \
           CUSTOM_PHI_KERNEL(meta_kernel_fn<kernel_type>),           \
           CUSTOM_PHI_VARIADIC_KERNEL(                               \
             meta_kernel_fn<kernel_type>));                          \
@@ -477,8 +581,9 @@ CPP_TYPE_TO_PD_ARG_TYPE_REGISTER(PD_ARG_TYPE_TO_CPP_TYPE)
       CUSTOM_tp_ns_check_##kernel_name##_##backend##_##layout,      \
       "PD_BUILD_KERNEL must be called in global namespace.");       \
   static void                                                       \
-      __CUSTOM_args_def_FN_##kernel_name##_##backend##_##layout(    \
-          const PD_KernelKey* kernel_key, PD_Kernel* kernel);       \
+      __CUSTOM_adefs_FN_##kernel_name##_##backend##_##layout(       \
+          const ::phi::custom_kernel::KernelKey &kernel_key,        \
+          ::phi::custom_kernel::Kernel* kernel);                    \
   _PD_BUILD_PHI_KERNEL(__##kernel_name##_##backend##_##layout##__,  \
                        kernel_name,                                 \
                        backend,                                     \
@@ -486,8 +591,18 @@ CPP_TYPE_TO_PD_ARG_TYPE_REGISTER(PD_ARG_TYPE_TO_CPP_TYPE)
                        meta_kernel_fn,                              \
                        __VA_ARGS__)                                 \
   void                                                              \
-      __CUSTOM_args_def_FN_##kernel_name##_##backend##_##layout(    \
-          const PD_KernelKey* kernel_key, PD_Kernel* kernel)
+      __CUSTOM_adefs_CFN_##kernel_name##_##backend##_##layout(      \
+          const PD_KernelKey* kernel_key, PD_Kernel* kernel) {      \
+          auto cc_kernel = ::phi::custom_kernel::Kernel(kernel);    \
+          __CUSTOM_adefs_FN_##kernel_name##_##backend##_##layout(   \
+            ::phi::custom_kernel::KernelKey(                        \
+              const_cast<PD_KernelKey*>(kernel_key)),               \
+            &cc_kernel);                                            \
+      }                                                             \
+  void                                                              \
+      __CUSTOM_adefs_FN_##kernel_name##_##backend##_##layout(       \
+          const ::phi::custom_kernel::KernelKey &kernel_key,        \
+          ::phi::custom_kernel::Kernel* kernel)
 
 // clang-format on
 

@@ -130,11 +130,16 @@ void PD_KernelArgsParseFn(const phi::KernelKey& default_key,
     } else if (arg_type == PD_ArgumentType::PD_ARG_TYPE_OPTIONAL_TENSOR) {
       args_def->AppendInput(
           default_key.backend(), default_tensor_layout, default_key.dtype(),
-          std::type_index(typeid(paddle::optional<const phi::DenseTensor&>)));
+          std::type_index(typeid(const paddle::optional<phi::DenseTensor>&)));
     } else if (arg_type == PD_ArgumentType::PD_ARG_TYPE_LIST_TENSOR) {
       args_def->AppendInput(
           default_key.backend(), default_tensor_layout, default_key.dtype(),
           std::type_index(typeid(const std::vector<const phi::DenseTensor*>&)));
+    } else if (arg_type == PD_ArgumentType::PD_ARG_TYPE_OPTIONAL_MULTI_TENSOR) {
+      args_def->AppendInput(
+          default_key.backend(), default_tensor_layout, default_key.dtype(),
+          std::type_index(typeid(
+              const paddle::optional<std::vector<const phi::DenseTensor*>>&)));
     } else {
       PADDLE_THROW(phi::errors::Unavailable(
           "PD_ArgumentType %d is not supported.", arg_type));
@@ -208,10 +213,14 @@ void PD_RegisterPhiKernel(const char* kernel_name_cstr,
                           PD_ArgumentType* in_args_type, size_t attr_nargs,
                           PD_ArgumentType* attr_args_type, size_t out_nargs,
                           PD_ArgumentType* out_args_type,
+                          void (*args_def_fn)(const PD_KernelKey*, PD_Kernel*),
                           void (*fn)(PD_ExecutionContext*),
                           void* variadic_kernel_fn) {
-  phi::KernelArgsDefFn args_def_fn = [](const phi::KernelKey& kernel_key,
-                                        phi::Kernel* kernel) {};
+  auto args_def_fn_wrapper = [args_def_fn](const phi::KernelKey& kernel_key,
+                                           phi::Kernel* kernel) {
+    args_def_fn(reinterpret_cast<const PD_KernelKey*>(&kernel_key),
+                reinterpret_cast<PD_Kernel*>(kernel));
+  };
   phi::KernelFn kernel_fn = [fn](phi::KernelContext* ctx) {
     fn(reinterpret_cast<PD_ExecutionContext*>(ctx));
   };
@@ -227,29 +236,29 @@ void PD_RegisterPhiKernel(const char* kernel_name_cstr,
                        in_args_type, attr_nargs, attr_args_type, out_nargs,
                        out_args_type);
 
-  args_def_fn(kernel_key, &kernel);
+  args_def_fn_wrapper(kernel_key, &kernel);
   phi::KernelFactory::Instance().kernels()[kernel_name][kernel_key] = kernel;
 }
 
-PD_Context* PD_OriginGetContext(PD_ExecutionContext* ctx) {
+PD_DeviceContext* PD_OriginGetDeviceContext(PD_ExecutionContext* ctx) {
   auto kernel_context = reinterpret_cast<phi::KernelContext*>(ctx);
   auto dev_ctx_type = kernel_context->GetDeviceContext<phi::DeviceContext>()
                           .GetPlace()
                           .GetType();
   if (dev_ctx_type == phi::AllocationType::CUSTOM) {
-    return reinterpret_cast<PD_Context*>(const_cast<phi::CustomContext*>(
+    return reinterpret_cast<PD_DeviceContext*>(const_cast<phi::CustomContext*>(
         &kernel_context->GetDeviceContext<phi::CustomContext>()));
   } else if (dev_ctx_type == phi::AllocationType::CPU) {
-    return reinterpret_cast<PD_Context*>(const_cast<phi::CPUContext*>(
+    return reinterpret_cast<PD_DeviceContext*>(const_cast<phi::CPUContext*>(
         &kernel_context->GetDeviceContext<phi::CPUContext>()));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (dev_ctx_type == phi::AllocationType::GPU) {
-    return reinterpret_cast<PD_Context*>(const_cast<phi::GPUContext*>(
+    return reinterpret_cast<PD_DeviceContext*>(const_cast<phi::GPUContext*>(
         &kernel_context->GetDeviceContext<phi::GPUContext>()));
 #endif
 #ifdef PADDLE_WITH_XPU
   } else if (dev_ctx_type == phi::AllocationType::XPU) {
-    return reinterpret_cast<PD_Context*>(const_cast<phi::XPUContext*>(
+    return reinterpret_cast<PD_DeviceContext*>(const_cast<phi::XPUContext*>(
         &kernel_context->GetDeviceContext<phi::XPUContext>()));
 #endif
   } else {
@@ -263,16 +272,6 @@ PD_Tensor* PD_OriginInputAt(PD_ExecutionContext* ctx, size_t index) {
   const std::pair<int, int>& range = kernel_context->InputRangeAt(index);
   return reinterpret_cast<PD_Tensor*>(const_cast<phi::DenseTensor*>(
       &kernel_context->InputAt<phi::DenseTensor>(range.first)));
-}
-
-PD_Tensor* PD_OriginOptionalInputAt(PD_ExecutionContext* ctx, size_t index) {
-  auto kernel_context = reinterpret_cast<phi::KernelContext*>(ctx);
-  const std::pair<int, int>& range = kernel_context->InputRangeAt(index);
-  auto tensor = kernel_context->OptionalInputAt<phi::DenseTensor>(range.first);
-  if (tensor.is_initialized()) {
-    return reinterpret_cast<PD_Tensor*>(tensor.get_ptr());
-  }
-  return nullptr;
 }
 
 PD_List PD_OriginMultiInputAt(PD_ExecutionContext* ctx, size_t index) {
@@ -438,7 +437,8 @@ PD_DataLayout PD_DataLayoutAttrAt(PD_ExecutionContext* ctx, size_t index) {
   return ToPDDataLayout(kernel_context->AttrAt<phi::DataLayout>(index));
 }
 
-PD_Stream PD_GetStream(const PD_Context* ctx, PD_Status* status) {
+PD_Stream PD_DeviceContextGetStream(const PD_DeviceContext* ctx,
+                                    PD_Status* status) {
   if (status) {
     if (!ctx) {
       *status = C_FAILED;
@@ -468,8 +468,9 @@ PD_Stream PD_GetStream(const PD_Context* ctx, PD_Status* status) {
   }
 }
 
-void* PD_AllocateTensor(const PD_Context* ctx, PD_Tensor* tensor, size_t size,
-                        PD_DataType dtype, PD_Status* status) {
+void* PD_DeviceContextAllocateTensor(const PD_DeviceContext* ctx,
+                                     PD_Tensor* tensor, size_t size,
+                                     PD_DataType dtype, PD_Status* status) {
   if (status) {
     if (!tensor) {
       *status = C_FAILED;
@@ -489,7 +490,7 @@ void* PD_AllocateTensor(const PD_Context* ctx, PD_Tensor* tensor, size_t size,
   }
 }
 
-PD_DataType PD_GetTensorType(const PD_Tensor* tensor, PD_Status* status) {
+PD_DataType PD_TensorGetDataType(const PD_Tensor* tensor, PD_Status* status) {
   if (status) {
     if (!tensor) {
       *status = C_FAILED;
@@ -501,7 +502,8 @@ PD_DataType PD_GetTensorType(const PD_Tensor* tensor, PD_Status* status) {
   return ToPDDataType(cc_tensor->dtype());
 }
 
-PD_DataLayout PD_GetTensorLayout(const PD_Tensor* tensor, PD_Status* status) {
+PD_DataLayout PD_TensorGetDataLayout(const PD_Tensor* tensor,
+                                     PD_Status* status) {
   if (status) {
     if (!tensor) {
       *status = C_FAILED;
@@ -513,7 +515,7 @@ PD_DataLayout PD_GetTensorLayout(const PD_Tensor* tensor, PD_Status* status) {
   return ToPDDataLayout(cc_tensor->layout());
 }
 
-int64_t PD_GetTensorByteSize(const PD_Tensor* tensor, PD_Status* status) {
+int64_t PD_TensorGetByteSize(const PD_Tensor* tensor, PD_Status* status) {
   if (status) {
     if (!tensor) {
       *status = C_FAILED;
@@ -526,7 +528,7 @@ int64_t PD_GetTensorByteSize(const PD_Tensor* tensor, PD_Status* status) {
   return cc_tensor->memory_size();
 }
 
-void* PD_GetTensorData(const PD_Tensor* tensor, PD_Status* status) {
+void* PD_TensorGetDataPointer(const PD_Tensor* tensor, PD_Status* status) {
   if (status) {
     if (!tensor) {
       *status = C_FAILED;
@@ -538,7 +540,7 @@ void* PD_GetTensorData(const PD_Tensor* tensor, PD_Status* status) {
   return const_cast<void*>(cc_tensor->data());
 }
 
-int64_t PD_GetTensorElementCount(const PD_Tensor* tensor, PD_Status* status) {
+int64_t PD_TensorGetElementCount(const PD_Tensor* tensor, PD_Status* status) {
   if (status) {
     if (!tensor) {
       *status = C_FAILED;
@@ -551,7 +553,7 @@ int64_t PD_GetTensorElementCount(const PD_Tensor* tensor, PD_Status* status) {
   return cc_tensor->numel();
 }
 
-int64_t PD_GetTensorNumDims(const PD_Tensor* tensor, PD_Status* status) {
+int64_t PD_TensorGetNumDims(const PD_Tensor* tensor, PD_Status* status) {
   if (status) {
     if (!tensor) {
       *status = C_FAILED;
@@ -564,7 +566,7 @@ int64_t PD_GetTensorNumDims(const PD_Tensor* tensor, PD_Status* status) {
   return cc_tensor->dims().size();
 }
 
-int64_t PD_GetTensorDim(const PD_Tensor* tensor, size_t index,
+int64_t PD_TensorGetDim(const PD_Tensor* tensor, size_t index,
                         PD_Status* status) {
   auto cc_tensor = reinterpret_cast<const phi::DenseTensor*>(tensor);
 
@@ -579,7 +581,7 @@ int64_t PD_GetTensorDim(const PD_Tensor* tensor, size_t index,
   return cc_tensor->dims()[index];
 }
 
-void PD_GetTensorLoD(const PD_Tensor* tensor, PD_List* data, PD_List* offset,
+void PD_TensorGetLoD(const PD_Tensor* tensor, PD_List* data, PD_List* offset,
                      PD_Status* status) {
   auto cc_tensor = reinterpret_cast<const phi::DenseTensor*>(tensor);
 
@@ -638,7 +640,7 @@ bool PD_TensorIsValid(const PD_Tensor* tensor, PD_Status* status) {
   return cc_tensor->valid();
 }
 
-void* PD_GetTensorHolder(const PD_Tensor* tensor, PD_Status* status) {
+void* PD_TensorGetHolder(const PD_Tensor* tensor, PD_Status* status) {
   if (status) {
     if (!tensor) {
       *status = C_FAILED;
@@ -651,7 +653,7 @@ void* PD_GetTensorHolder(const PD_Tensor* tensor, PD_Status* status) {
   return cc_tensor->Holder().get();
 }
 
-void PD_SetTensorDims(PD_Tensor* tensor, int64_t ndims, const int64_t* dims,
+void PD_TensorSetDims(PD_Tensor* tensor, int64_t ndims, const int64_t* dims,
                       PD_Status* status) {
   if (status) {
     if (!tensor) {
@@ -665,7 +667,8 @@ void PD_SetTensorDims(PD_Tensor* tensor, int64_t ndims, const int64_t* dims,
   cc_tensor->Resize(phi::make_ddim(shape));
 }
 
-void PD_SetTensorType(PD_Tensor* tensor, PD_DataType dtype, PD_Status* status) {
+void PD_TensorSetDataType(PD_Tensor* tensor, PD_DataType dtype,
+                          PD_Status* status) {
   if (status) {
     if (!tensor) {
       *status = C_FAILED;
@@ -678,8 +681,8 @@ void PD_SetTensorType(PD_Tensor* tensor, PD_DataType dtype, PD_Status* status) {
   cc_tensor->set_type(ToPhiDataType(dtype));
 }
 
-void PD_SetTensorLayout(PD_Tensor* tensor, PD_DataLayout layout,
-                        PD_Status* status) {
+void PD_TensorSetDataLayout(PD_Tensor* tensor, PD_DataLayout layout,
+                            PD_Status* status) {
   if (status) {
     if (!tensor) {
       *status = C_FAILED;
@@ -692,7 +695,7 @@ void PD_SetTensorLayout(PD_Tensor* tensor, PD_DataLayout layout,
   cc_tensor->set_layout(ToPhiDataLayout(layout));
 }
 
-void PD_ResetTensorLoD(PD_Tensor* tensor, PD_List data, PD_List offset,
+void PD_TensorResetLoD(PD_Tensor* tensor, PD_List data, PD_List offset,
                        PD_Status* status) {
   if (status) {
     if (!tensor) {
@@ -722,7 +725,8 @@ void PD_DeleteTensor(PD_Tensor* tensor) {
   delete cc_tensor;
 }
 
-void PD_ShareDataWith(PD_Tensor* dst, const PD_Tensor* src, PD_Status* status) {
+void PD_TensorShareDataWith(PD_Tensor* dst, const PD_Tensor* src,
+                            PD_Status* status) {
   if (status) {
     if (!dst || !src) {
       *status = C_FAILED;
@@ -736,7 +740,8 @@ void PD_ShareDataWith(PD_Tensor* dst, const PD_Tensor* src, PD_Status* status) {
   cc_dst_tensor->ShareDataWith(*cc_src_tensor);
 }
 
-void PD_ShareLoDWith(PD_Tensor* dst, const PD_Tensor* src, PD_Status* status) {
+void PD_TensorShareLoDWith(PD_Tensor* dst, const PD_Tensor* src,
+                           PD_Status* status) {
   if (status) {
     if (!dst || !src) {
       *status = C_FAILED;
@@ -754,67 +759,75 @@ void PD_ShareLoDWith(PD_Tensor* dst, const PD_Tensor* src, PD_Status* status) {
   meta_dst.share_lod(meta_src);
 }
 
-PD_DataType PD_GetScalarType(PD_Scalar* scalar) {
+/**
+ * PD_Scalar
+ */
+
+PD_DataType PD_ScalarGetType(PD_Scalar* scalar) {
   auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
   return ToPDDataType(cc_scalar->dtype());
 }
 
-bool PD_GetScalarBoolData(PD_Scalar* scalar) {
+bool PD_ScalarGetBoolData(PD_Scalar* scalar) {
   auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
   return cc_scalar->to<bool>();
 }
 
-int8_t PD_GetScalarInt8Data(PD_Scalar* scalar) {
+int8_t PD_ScalarGetInt8Data(PD_Scalar* scalar) {
   auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
   return cc_scalar->to<int8_t>();
 }
 
-int16_t PD_GetScalarInt16Data(PD_Scalar* scalar) {
+int16_t PD_ScalarGetInt16Data(PD_Scalar* scalar) {
   auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
   return cc_scalar->to<int16_t>();
 }
 
-int32_t PD_GetScalarInt32Data(PD_Scalar* scalar) {
+int32_t PD_ScalarGetInt32Data(PD_Scalar* scalar) {
   auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
   return cc_scalar->to<int32_t>();
 }
 
-int64_t PD_GetScalarInt64Data(PD_Scalar* scalar) {
+int64_t PD_ScalarGetInt64Data(PD_Scalar* scalar) {
   auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
   return cc_scalar->to<int64_t>();
 }
 
-uint8_t PD_GetScalarUInt8Data(PD_Scalar* scalar) {
+uint8_t PD_ScalarGetUInt8Data(PD_Scalar* scalar) {
   auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
   return cc_scalar->to<uint8_t>();
 }
 
-uint16_t PD_GetScalarUInt16Data(PD_Scalar* scalar) {
+uint16_t PD_ScalarGetUInt16Data(PD_Scalar* scalar) {
   auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
   return cc_scalar->to<uint16_t>();
 }
 
-uint32_t PD_GetScalarUInt32Data(PD_Scalar* scalar) {
+uint32_t PD_ScalarGetUInt32Data(PD_Scalar* scalar) {
   auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
   return cc_scalar->to<uint32_t>();
 }
 
-uint64_t PD_GetScalarUInt64Data(PD_Scalar* scalar) {
+uint64_t PD_ScalarGetUInt64Data(PD_Scalar* scalar) {
   auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
   return cc_scalar->to<uint64_t>();
 }
 
-float PD_GetScalarFloat32Data(PD_Scalar* scalar) {
+float PD_ScalarGetFloat32Data(PD_Scalar* scalar) {
   auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
   return cc_scalar->to<float>();
 }
 
-double PD_GetScalarFloat64Data(PD_Scalar* scalar) {
+double PD_ScalarGetFloat64Data(PD_Scalar* scalar) {
   auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
   return cc_scalar->to<double>();
 }
 
-PD_List PD_GetIntArrayData(PD_IntArray* int_array) {
+/**
+ * PD_IntArray
+ */
+
+PD_List PD_IntArrayGetDataPointer(PD_IntArray* int_array) {
   auto cc_int_array = reinterpret_cast<phi::IntArray*>(int_array);
   const auto& data = cc_int_array->GetData();
   PD_List list;
@@ -823,24 +836,28 @@ PD_List PD_GetIntArrayData(PD_IntArray* int_array) {
   return list;
 }
 
-size_t PD_GetIntArraySize(PD_IntArray* int_array) {
+size_t PD_IntArrayGetSize(PD_IntArray* int_array) {
   auto cc_int_array = reinterpret_cast<phi::IntArray*>(int_array);
   return cc_int_array->size();
 }
 
+/**
+ * PD_List
+ */
+
 void PD_DeleteList(PD_List list) {
   auto data = reinterpret_cast<void**>(list.data);
-  delete[] data;
+  if (data) delete[] data;
 }
 
 void PD_DeleteUInt8List(PD_List list) {
   auto data = reinterpret_cast<uint8_t*>(list.data);
-  delete[] data;
+  if (data) delete[] data;
 }
 
 void PD_DeleteInt64List(PD_List list) {
   auto data = reinterpret_cast<int64_t*>(list.data);
-  delete[] data;
+  if (data) delete[] data;
 }
 
 void PD_DeleteInt32List(PD_List list) {
@@ -850,12 +867,12 @@ void PD_DeleteInt32List(PD_List list) {
 
 void PD_DeleteFloat64List(PD_List list) {
   auto data = reinterpret_cast<double*>(list.data);
-  delete[] data;
+  if (data) delete[] data;
 }
 
 void PD_DeleteFloat32List(PD_List list) {
   auto data = reinterpret_cast<float*>(list.data);
-  delete[] data;
+  if (data) delete[] data;
 }
 
 bool PD_PlaceIsHost(PD_Place* place) {
@@ -866,4 +883,131 @@ bool PD_PlaceIsHost(PD_Place* place) {
 int8_t PD_PlaceGetDeviceId(PD_Place* place) {
   auto cc_place = reinterpret_cast<phi::Place*>(place);
   return cc_place->GetDeviceId();
+}
+
+/**
+ * TensorArgDef
+ */
+
+void PD_TensorArgDefSetDataLayout(PD_TensorArgDef* def, PD_DataLayout layout,
+                                  PD_Status* status) {
+  if (status) {
+    if (!def) {
+      *status = C_FAILED;
+      return;
+    }
+    *status = C_SUCCESS;
+  }
+
+  auto cc_def = reinterpret_cast<phi::TensorArgDef*>(def);
+  cc_def->SetDataLayout(ToPhiDataLayout(layout));
+}
+
+void PD_TensorArgDefSetDataType(PD_TensorArgDef* def, PD_DataType dtype,
+                                PD_Status* status) {
+  if (status) {
+    if (!def) {
+      *status = C_FAILED;
+      return;
+    }
+    *status = C_SUCCESS;
+  }
+
+  auto cc_def = reinterpret_cast<phi::TensorArgDef*>(def);
+  cc_def->SetDataType(ToPhiDataType(dtype));
+}
+
+/**
+ * KernelArgsDef
+ */
+
+PD_List PD_KernelArgsDefGetInputArgDefs(PD_KernelArgsDef* def,
+                                        PD_Status* status) {
+  PD_List list;
+  if (status) {
+    if (!def) {
+      *status = C_FAILED;
+      list.size = 0;
+      list.data = nullptr;
+      return list;
+    }
+    *status = C_SUCCESS;
+  }
+  auto cc_def = reinterpret_cast<phi::KernelArgsDef*>(def);
+  auto& arg_defs = cc_def->input_defs();
+  list.size = arg_defs.size();
+  auto ptr = new PD_TensorArgDef*[list.size];
+  list.data = ptr;
+  for (size_t i = 0; i < list.size; ++i) {
+    ptr[i] = reinterpret_cast<PD_TensorArgDef*>(&arg_defs[i]);
+  }
+  return list;
+}
+
+PD_List PD_KernelArgsDefGetOutputArgDefs(PD_KernelArgsDef* def,
+                                         PD_Status* status) {
+  PD_List list;
+  if (status) {
+    if (!def) {
+      *status = C_FAILED;
+      list.size = 0;
+      list.data = nullptr;
+      return list;
+    }
+    *status = C_SUCCESS;
+  }
+  auto cc_def = reinterpret_cast<phi::KernelArgsDef*>(def);
+  auto& arg_defs = cc_def->output_defs();
+  list.size = arg_defs.size();
+  auto ptr = new PD_TensorArgDef*[list.size];
+  list.data = ptr;
+  for (size_t i = 0; i < list.size; ++i) {
+    ptr[i] = reinterpret_cast<PD_TensorArgDef*>(&arg_defs[i]);
+  }
+  return list;
+}
+
+/**
+ * KernelKey
+ */
+
+PD_DataLayout PD_KernelKeyGetLayout(PD_KernelKey* key, PD_Status* status) {
+  if (status) {
+    if (!key) {
+      *status = C_FAILED;
+      return PD_DataLayout::ALL_LAYOUT;
+    }
+    *status = C_SUCCESS;
+  }
+  auto cc_key = reinterpret_cast<phi::KernelKey*>(key);
+  return ToPDDataLayout(cc_key->layout());
+}
+
+PD_DataType PD_KernelKeyGetDataType(PD_KernelKey* key, PD_Status* status) {
+  if (status) {
+    if (!key) {
+      *status = C_FAILED;
+      return PD_DataType::UNDEFINED;
+    }
+    *status = C_SUCCESS;
+  }
+  auto cc_key = reinterpret_cast<phi::KernelKey*>(key);
+  return ToPDDataType(cc_key->dtype());
+}
+
+/**
+ * Kernel
+ */
+
+PD_KernelArgsDef* PD_KernelGetArgsDef(PD_Kernel* kernel, PD_Status* status) {
+  if (status) {
+    if (!kernel) {
+      *status = C_FAILED;
+      return nullptr;
+    }
+    *status = C_SUCCESS;
+  }
+  auto cc_kernel = reinterpret_cast<phi::Kernel*>(kernel);
+  return reinterpret_cast<PD_KernelArgsDef*>(
+      const_cast<phi::KernelArgsDef*>(&cc_kernel->args_def()));
 }

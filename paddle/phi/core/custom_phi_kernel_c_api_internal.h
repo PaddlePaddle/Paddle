@@ -15,9 +15,9 @@
 #pragma once
 
 // cpp wrapper
-inline phi::custom_kernel::DeviceContext PD_GetContext(
+inline phi::custom_kernel::DeviceContext PD_GetDeviceContext(
     PD_ExecutionContext *ctx) {
-  return phi::custom_kernel::DeviceContext(PD_OriginGetContext(ctx));
+  return phi::custom_kernel::DeviceContext(PD_OriginGetDeviceContext(ctx));
 }
 
 inline phi::custom_kernel::DenseTensor PD_InputAt(PD_ExecutionContext *ctx,
@@ -27,10 +27,11 @@ inline phi::custom_kernel::DenseTensor PD_InputAt(PD_ExecutionContext *ctx,
 
 inline paddle::optional<phi::custom_kernel::DenseTensor> PD_OptionalInputAt(
     PD_ExecutionContext *ctx, size_t index) {
-  auto tensor = PD_OriginOptionalInputAt(ctx, index);
+  auto tensor = PD_OriginInputAt(ctx, index);
   return tensor
              ? paddle::optional<phi::custom_kernel::DenseTensor>(
-                   phi::custom_kernel::DenseTensor(tensor))
+                   phi::custom_kernel::DenseTensor(
+                       reinterpret_cast<PD_Tensor *>(tensor)))
              : paddle::optional<phi::custom_kernel::DenseTensor>(paddle::none);
 }
 
@@ -57,6 +58,15 @@ inline std::vector<phi::custom_kernel::DenseTensor> PD_MultiOutputAt(
   auto data = reinterpret_cast<PD_Tensor **>(list.data);
   for (size_t i = 0; i < list.size; ++i) {
     ret.emplace_back(data[i]);
+  }
+  return ret;
+}
+
+template <typename T>
+inline std::vector<T *> PD_GetPointerVector(std::vector<T> *vec) {
+  std::vector<T *> ret;
+  for (auto &item : vec) {
+    ret.push_back(&item);
   }
   return ret;
 }
@@ -203,29 +213,6 @@ inline std::vector<bool> PD_AttrAt<std::vector<bool>>(PD_ExecutionContext *ctx,
   PD_DeleteUInt8List(c_list);
   return list;
 }
-
-template <typename T>
-struct CustomKernelCppWrapper;
-
-template <>
-struct CustomKernelCppWrapper<PD_Tensor> {
-  using type = phi::custom_kernel::DenseTensor;
-};
-
-template <>
-struct CustomKernelCppWrapper<PD_Context> {
-  using type = phi::custom_kernel::DeviceContext;
-};
-
-template <>
-struct CustomKernelCppWrapper<PD_IntArray> {
-  using type = phi::custom_kernel::IntArray;
-};
-
-template <>
-struct CustomKernelCppWrapper<PD_Scalar> {
-  using type = phi::custom_kernel::Scalar;
-};
 
 #define PD_CUSTOM_PHI_KERNEL_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg) \
   _PD_CUSTOM_PHI_KERNEL_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)
@@ -669,260 +656,161 @@ struct CustomKernelCppWrapper<PD_Scalar> {
                                                    meta_kernel_fn,      \
                                                    __VA_ARGS__))
 
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_DEVICE_CONTEXT_C_API(dev_ctx) \
-  template <typename... Tail>                                                  \
-  struct CustomKernelCallHelper<const dev_ctx *, Tail...> {                    \
-    template <int dev_ctx_idx,                                                 \
-              int in_idx,                                                      \
-              int attr_idx,                                                    \
-              int out_idx,                                                     \
-              typename... PreviousArgs>                                        \
-    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &... pargs) {   \
-      static_assert(in_idx == 0,                                               \
-                    "Kernel's DeviceContext should appear before Inputs.");    \
-      static_assert(                                                           \
-          attr_idx == 0,                                                       \
-          "Kernel's DeviceContext should appear before Attributes.");          \
-      static_assert(out_idx == 0,                                              \
-                    "Kernel's DeviceContext should appear before Outputs.");   \
-      const dev_ctx *arg = PD_OriginGetContext(ctx);                           \
-      CustomKernelCallHelper<Tail...>::                                        \
-          template Compute<dev_ctx_idx + 1, in_idx, attr_idx, out_idx>(        \
-              ctx, pargs..., arg);                                             \
-    }                                                                          \
-  }
-
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_DEVICE_CONTEXT(dev_ctx)       \
-  template <typename... Tail>                                                  \
-  struct CustomKernelCallHelper<const CustomKernelCppWrapper<dev_ctx>::type &, \
-                                Tail...> {                                     \
-    template <int dev_ctx_idx,                                                 \
-              int in_idx,                                                      \
-              int attr_idx,                                                    \
-              int out_idx,                                                     \
-              typename... PreviousArgs>                                        \
-    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &... pargs) {   \
-      static_assert(in_idx == 0,                                               \
-                    "Kernel's DeviceContext should appear before Inputs.");    \
-      static_assert(                                                           \
-          attr_idx == 0,                                                       \
-          "Kernel's DeviceContext should appear before Attributes.");          \
-      static_assert(out_idx == 0,                                              \
-                    "Kernel's DeviceContext should appear before Outputs.");   \
-      dev_ctx *arg = PD_OriginGetContext(ctx);                                 \
-      CustomKernelCppWrapper<dev_ctx>::type arg_wrapper(arg);                  \
-      CustomKernelCallHelper<Tail...>::                                        \
-          template Compute<dev_ctx_idx + 1, in_idx, attr_idx, out_idx>(        \
-              ctx, pargs..., arg_wrapper);                                     \
-    }                                                                          \
-  }
-
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_INPUT_C_API(tensor_type)    \
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_DEVICE_CONTEXT(dev_ctx)     \
   template <typename... Tail>                                                \
-  struct CustomKernelCallHelper<const tensor_type *, Tail...> {              \
+  struct CustomKernelCallHelper<const dev_ctx &, Tail...> {                  \
     template <int dev_ctx_idx,                                               \
               int in_idx,                                                    \
               int attr_idx,                                                  \
               int out_idx,                                                   \
               typename... PreviousArgs>                                      \
-    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &... pargs) { \
-      static_assert(attr_idx == 0,                                           \
-                    "Kernel's Input should appear before Attributes.");      \
+    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &...pargs) {  \
+      static_assert(in_idx == 0,                                             \
+                    "Kernel's DeviceContext should appear before Inputs.");  \
+      static_assert(                                                         \
+          attr_idx == 0,                                                     \
+          "Kernel's DeviceContext should appear before Attributes.");        \
       static_assert(out_idx == 0,                                            \
-                    "Kernel's Input should appear before Outputs.");         \
-      const tensor_type *arg = PD_OriginInputAt(ctx, in_idx);                \
+                    "Kernel's DeviceContext should appear before Outputs."); \
+      dev_ctx arg = PD_GetDeviceContext(ctx);                                \
       CustomKernelCallHelper<Tail...>::                                      \
-          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
+          template Compute<dev_ctx_idx + 1, in_idx, attr_idx, out_idx>(      \
               ctx, pargs..., arg);                                           \
     }                                                                        \
   }
 
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_INPUT(tensor_type)          \
-  template <typename... Tail>                                                \
-  struct CustomKernelCallHelper<                                             \
-      const CustomKernelCppWrapper<tensor_type>::type &,                     \
-      Tail...> {                                                             \
-    template <int dev_ctx_idx,                                               \
-              int in_idx,                                                    \
-              int attr_idx,                                                  \
-              int out_idx,                                                   \
-              typename... PreviousArgs>                                      \
-    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &... pargs) { \
-      static_assert(attr_idx == 0,                                           \
-                    "Kernel's Input should appear before Attributes.");      \
-      static_assert(out_idx == 0,                                            \
-                    "Kernel's Input should appear before Outputs.");         \
-      tensor_type *arg = PD_OriginInputAt(ctx, in_idx);                      \
-      CustomKernelCppWrapper<tensor_type>::type arg_wrapper(arg);            \
-      CustomKernelCallHelper<Tail...>::                                      \
-          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
-              ctx, pargs..., arg_wrapper);                                   \
-    }                                                                        \
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_INPUT(tensor_type)         \
+  template <typename... Tail>                                               \
+  struct CustomKernelCallHelper<const tensor_type &, Tail...> {             \
+    template <int dev_ctx_idx,                                              \
+              int in_idx,                                                   \
+              int attr_idx,                                                 \
+              int out_idx,                                                  \
+              typename... PreviousArgs>                                     \
+    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &...pargs) { \
+      static_assert(attr_idx == 0,                                          \
+                    "Kernel's Input should appear before Attributes.");     \
+      static_assert(out_idx == 0,                                           \
+                    "Kernel's Input should appear before Outputs.");        \
+      const tensor_type arg = PD_InputAt(ctx, in_idx);                      \
+      CustomKernelCallHelper<Tail...>::                                     \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(     \
+              ctx, pargs..., arg);                                          \
+    }                                                                       \
   }
 
 #define PD_SPECIALIZE_CustomKernelCallHelper_FOR_OPTIONAL_INPUT(tensor_type) \
   template <typename... Tail>                                                \
-  struct CustomKernelCallHelper<                                             \
-      paddle::optional<const CustomKernelCppWrapper<tensor_type>::type &>,   \
-      Tail...> {                                                             \
-    template <int dev_ctx_idx,                                               \
-              int in_idx,                                                    \
-              int attr_idx,                                                  \
-              int out_idx,                                                   \
-              typename... PreviousArgs>                                      \
-    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &... pargs) { \
-      static_assert(attr_idx == 0,                                           \
-                    "Kernel's Input should appear before Attributes.");      \
-      static_assert(out_idx == 0,                                            \
-                    "Kernel's Input should appear before Outputs.");         \
-      auto *arg = PD_OriginOptionalInputAt(ctx, in_idx);                     \
-      CustomKernelCppWrapper<tensor_type>::type tmp_arg(arg);                \
-      paddle::optional<const CustomKernelCppWrapper<tensor_type>::type &>    \
-      arg_wrapper(                                                           \
-          arg ? static_cast<const paddle::optional<                          \
-                    const CustomKernelCppWrapper<tensor_type>::type &>>(     \
-                    tmp_arg)                                                 \
-              : paddle::none);                                               \
-      CustomKernelCallHelper<Tail...>::                                      \
-          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
-              ctx, pargs..., arg_wrapper);                                   \
-    }                                                                        \
-  }
-
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_OUTPUT_C_API(tensor_type)   \
-  template <typename... Tail>                                                \
-  struct CustomKernelCallHelper<tensor_type *, Tail...> {                    \
-    template <int dev_ctx_idx,                                               \
-              int in_idx,                                                    \
-              int attr_idx,                                                  \
-              int out_idx,                                                   \
-              typename... PreviousArgs>                                      \
-    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &... pargs) { \
-      tensor_type *arg = PD_OriginOutputAt(ctx, out_idx);                    \
-      CustomKernelCallHelper<Tail...>::                                      \
-          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(      \
-              ctx, pargs..., arg);                                           \
-    }                                                                        \
-  }
-
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_OUTPUT(tensor_type)         \
-  template <typename... Tail>                                                \
-  struct CustomKernelCallHelper<CustomKernelCppWrapper<tensor_type>::type *, \
+  struct CustomKernelCallHelper<const paddle::optional<tensor_type> &,       \
                                 Tail...> {                                   \
     template <int dev_ctx_idx,                                               \
               int in_idx,                                                    \
               int attr_idx,                                                  \
               int out_idx,                                                   \
               typename... PreviousArgs>                                      \
-    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &... pargs) { \
-      tensor_type *arg = PD_OriginOutputAt(ctx, out_idx);                    \
-      CustomKernelCppWrapper<tensor_type>::type arg_wrapper(arg);            \
-      CustomKernelCppWrapper<tensor_type>::type *arg_wrapper_ref =           \
-          arg ? &arg_wrapper : nullptr;                                      \
-      CustomKernelCallHelper<Tail...>::                                      \
-          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(      \
-              ctx, pargs..., arg_wrapper_ref);                               \
-    }                                                                        \
-  }
-
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_ATTRIBUTE(attr_type)        \
-  template <typename... Tail>                                                \
-  struct CustomKernelCallHelper<attr_type, Tail...> {                        \
-    template <int dev_ctx_idx,                                               \
-              int in_idx,                                                    \
-              int attr_idx,                                                  \
-              int out_idx,                                                   \
-              typename... PreviousArgs>                                      \
-    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &... pargs) { \
+    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &...pargs) {  \
+      static_assert(attr_idx == 0,                                           \
+                    "Kernel's Input should appear before Attributes.");      \
       static_assert(out_idx == 0,                                            \
-                    "Kernel's Attributes should appear before Outputs.");    \
-      attr_type arg = PD_AttrAt<attr_type>(ctx, attr_idx);                   \
+                    "Kernel's Input should appear before Outputs.");         \
+      auto arg = PD_OptionalInputAt(ctx, in_idx);                            \
       CustomKernelCallHelper<Tail...>::                                      \
-          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(      \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
               ctx, pargs..., arg);                                           \
     }                                                                        \
   }
 
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_CONST_ATTRIBUTE_REF(        \
-    attr_type)                                                               \
-  template <typename... Tail>                                                \
-  struct CustomKernelCallHelper<const attr_type &, Tail...> {                \
-    template <int dev_ctx_idx,                                               \
-              int in_idx,                                                    \
-              int attr_idx,                                                  \
-              int out_idx,                                                   \
-              typename... PreviousArgs>                                      \
-    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &... pargs) { \
-      static_assert(out_idx == 0,                                            \
-                    "Kernel's Attributes should appear before Outputs.");    \
-      attr_type arg = PD_AttrAt<attr_type>(ctx, attr_idx);                   \
-      CustomKernelCallHelper<Tail...>::                                      \
-          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(      \
-              ctx, pargs..., arg);                                           \
-    }                                                                        \
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_MULTI_INPUT(tensor_type)   \
+  template <typename... Tail>                                               \
+  struct CustomKernelCallHelper<const std::vector<const tensor_type *> &,   \
+                                Tail...> {                                  \
+    template <int dev_ctx_idx,                                              \
+              int in_idx,                                                   \
+              int attr_idx,                                                 \
+              int out_idx,                                                  \
+              typename... PreviousArgs>                                     \
+    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &...pargs) { \
+      static_assert(attr_idx == 0,                                          \
+                    "Kernel's Input should appear before Attributes.");     \
+      static_assert(out_idx == 0,                                           \
+                    "Kernel's Input should appear before Outputs.");        \
+      auto arg = PD_MultiInputAt(ctx, in_idx);                              \
+      auto arg_wrapper = PD_GetPointerVector(&arg);                         \
+      CustomKernelCallHelper<Tail...>::                                     \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(     \
+              ctx, pargs..., arg_wrapper);                                  \
+    }                                                                       \
   }
 
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_MULTI_INPUT(tensor_type)     \
-  template <typename... Tail>                                                 \
-  struct CustomKernelCallHelper<                                              \
-      const std::vector<const CustomKernelCppWrapper<tensor_type>::type *> &, \
-      Tail...> {                                                              \
-    template <int dev_ctx_idx,                                                \
-              int in_idx,                                                     \
-              int attr_idx,                                                   \
-              int out_idx,                                                    \
-              typename... PreviousArgs>                                       \
-    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &... pargs) {  \
-      static_assert(attr_idx == 0,                                            \
-                    "Kernel's Input should appear before Attributes.");       \
-      static_assert(out_idx == 0,                                             \
-                    "Kernel's Input should appear before Outputs.");          \
-      PD_List list = PD_OriginMultiInputAt(ctx, in_idx);                      \
-      std::vector<CustomKernelCppWrapper<tensor_type>::type> arg;             \
-      for (size_t i = 0; i < list.size; ++i) {                                \
-        arg.push_back(CustomKernelCppWrapper<tensor_type>::type(              \
-            reinterpret_cast<PD_Tensor **>(list.data)[i]));                   \
-      }                                                                       \
-      std::vector<const CustomKernelCppWrapper<tensor_type>::type *>          \
-          arg_wrapper;                                                        \
-      for (auto &item : arg) {                                                \
-        arg_wrapper.push_back(&item);                                         \
-      }                                                                       \
-      CustomKernelCallHelper<Tail...>::                                       \
-          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(       \
-              ctx, pargs..., arg_wrapper);                                    \
-    }                                                                         \
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_ATTRIBUTE(attr_type)       \
+  template <typename... Tail>                                               \
+  struct CustomKernelCallHelper<attr_type, Tail...> {                       \
+    template <int dev_ctx_idx,                                              \
+              int in_idx,                                                   \
+              int attr_idx,                                                 \
+              int out_idx,                                                  \
+              typename... PreviousArgs>                                     \
+    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &...pargs) { \
+      static_assert(out_idx == 0,                                           \
+                    "Kernel's Attributes should appear before Outputs.");   \
+      attr_type arg = PD_AttrAt<attr_type>(ctx, attr_idx);                  \
+      CustomKernelCallHelper<Tail...>::                                     \
+          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(     \
+              ctx, pargs..., arg);                                          \
+    }                                                                       \
   }
 
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_MULTI_OUTPUT(tensor_type)     \
-  template <typename... Tail>                                                  \
-  struct CustomKernelCallHelper<                                               \
-      std::vector<CustomKernelCppWrapper<tensor_type>::type *>,                \
-      Tail...> {                                                               \
-    template <int dev_ctx_idx,                                                 \
-              int in_idx,                                                      \
-              int attr_idx,                                                    \
-              int out_idx,                                                     \
-              typename... PreviousArgs>                                        \
-    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &... pargs) {   \
-      static_assert(attr_idx == 0,                                             \
-                    "Kernel's Input should appear before Attributes.");        \
-      static_assert(out_idx == 0,                                              \
-                    "Kernel's Input should appear before Outputs.");           \
-      PD_List list = PD_OriginMultiOutputAt(ctx, in_idx);                      \
-      std::vector<CustomKernelCppWrapper<tensor_type>::type> arg;              \
-      std::vector<const CustomKernelCppWrapper<tensor_type>::type *>           \
-          arg_wrapper;                                                         \
-      for (size_t i = 0; i < list.size; ++i) {                                 \
-        arg.push_back(CustomKernelCppWrapper<tensor_type>::type(               \
-            reinterpret_cast<PD_Tensor **>(list.data)[i]));                    \
-        arg_wrapper.push_back(                                                 \
-            reinterpret_cast<PD_Tensor **>(list.data)[i] ? &arg[i] : nullptr); \
-      }                                                                        \
-      CustomKernelCallHelper<Tail...>::                                        \
-          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(        \
-              ctx, pargs..., arg_wrapper);                                     \
-    }                                                                          \
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_CONST_ATTRIBUTE_REF(       \
+    attr_type)                                                              \
+  template <typename... Tail>                                               \
+  struct CustomKernelCallHelper<const attr_type &, Tail...> {               \
+    template <int dev_ctx_idx,                                              \
+              int in_idx,                                                   \
+              int attr_idx,                                                 \
+              int out_idx,                                                  \
+              typename... PreviousArgs>                                     \
+    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &...pargs) { \
+      static_assert(out_idx == 0,                                           \
+                    "Kernel's Attributes should appear before Outputs.");   \
+      attr_type arg = PD_AttrAt<attr_type>(ctx, attr_idx);                  \
+      CustomKernelCallHelper<Tail...>::                                     \
+          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(     \
+              ctx, pargs..., arg);                                          \
+    }                                                                       \
+  }
+
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_OUTPUT(tensor_type)        \
+  template <typename... Tail>                                               \
+  struct CustomKernelCallHelper<tensor_type *, Tail...> {                   \
+    template <int dev_ctx_idx,                                              \
+              int in_idx,                                                   \
+              int attr_idx,                                                 \
+              int out_idx,                                                  \
+              typename... PreviousArgs>                                     \
+    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &...pargs) { \
+      auto arg = PD_OutputAt(ctx, out_idx);                                 \
+      tensor_type *ptr = (arg.raw_data() ? &arg : nullptr);                 \
+      CustomKernelCallHelper<Tail...>::                                     \
+          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(     \
+              ctx, pargs..., ptr);                                          \
+    }                                                                       \
+  }
+
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_MULTI_OUTPUT(tensor_type)  \
+  template <typename... Tail>                                               \
+  struct CustomKernelCallHelper<std::vector<tensor_type *>, Tail...> {      \
+    template <int dev_ctx_idx,                                              \
+              int in_idx,                                                   \
+              int attr_idx,                                                 \
+              int out_idx,                                                  \
+              typename... PreviousArgs>                                     \
+    static void Compute(PD_ExecutionContext *ctx, PreviousArgs &...pargs) { \
+      auto arg = PD_MultiOutputAt(ctx, out_idx);                            \
+      auto arg_wrapper = PD_GetPointerVector(&arg);                         \
+      CustomKernelCallHelper<Tail...>::                                     \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(     \
+              ctx, pargs..., arg_wrapper);                                  \
+    }                                                                       \
   }
 
 namespace phi {
@@ -943,11 +831,6 @@ struct CustomKernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
         template Compute<0, 0, 0, 0>(ctx);
   }
 
-  // static void VariadicCompute(const PD_Context *dev_ctx, Args... args) {
-  //   return kernel_fn(static_cast<DevCtx>(dev_ctx),
-  //   std::forward<Args>(args)...);
-  // }
-
   static void VariadicCompute(const phi::custom_kernel::DeviceContext &dev_ctx,
                               Args... args) {
     return kernel_fn(static_cast<DevCtx>(dev_ctx), std::forward<Args>(args)...);
@@ -959,15 +842,17 @@ struct CustomKernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   /* DeviceContext Helpers */
 
-  // PD_SPECIALIZE_CustomKernelCallHelper_FOR_DEVICE_CONTEXT_C_API(PD_Context);
-  PD_SPECIALIZE_CustomKernelCallHelper_FOR_DEVICE_CONTEXT(PD_Context);
+  PD_SPECIALIZE_CustomKernelCallHelper_FOR_DEVICE_CONTEXT(
+      phi::custom_kernel::DeviceContext);
 
   /* Input Helpers */
 
-  // PD_SPECIALIZE_CustomKernelCallHelper_FOR_INPUT_C_API(PD_Tensor);
-  PD_SPECIALIZE_CustomKernelCallHelper_FOR_INPUT(PD_Tensor);
-  PD_SPECIALIZE_CustomKernelCallHelper_FOR_OPTIONAL_INPUT(PD_Tensor);
-  PD_SPECIALIZE_CustomKernelCallHelper_FOR_MULTI_INPUT(PD_Tensor);
+  PD_SPECIALIZE_CustomKernelCallHelper_FOR_INPUT(
+      phi::custom_kernel::DenseTensor);
+  PD_SPECIALIZE_CustomKernelCallHelper_FOR_OPTIONAL_INPUT(
+      phi::custom_kernel::DenseTensor);
+  PD_SPECIALIZE_CustomKernelCallHelper_FOR_MULTI_INPUT(
+      phi::custom_kernel::DenseTensor);
 
   /* Attribute Helpers */
 
@@ -1001,9 +886,10 @@ struct CustomKernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   /* Output Helpers */
 
-  // PD_SPECIALIZE_CustomKernelCallHelper_FOR_OUTPUT_C_API(PD_Tensor);
-  PD_SPECIALIZE_CustomKernelCallHelper_FOR_OUTPUT(PD_Tensor);
-  PD_SPECIALIZE_CustomKernelCallHelper_FOR_MULTI_OUTPUT(PD_Tensor);
+  PD_SPECIALIZE_CustomKernelCallHelper_FOR_OUTPUT(
+      phi::custom_kernel::DenseTensor);
+  PD_SPECIALIZE_CustomKernelCallHelper_FOR_MULTI_OUTPUT(
+      phi::custom_kernel::DenseTensor);
 
   /* End case */
   template <typename T>
@@ -1011,7 +897,7 @@ struct CustomKernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
     template <int dev_ctx_idx, int in_idx, int attr_idx, int out_idx>
     static void Compute(PD_ExecutionContext *ctx,
                         DevCtx dev_ctx,
-                        Args &... args) {
+                        Args &...args) {
       static_assert(dev_ctx_idx > 0,
                     "Kernel should pass DeviceContext as argument.");
       static_assert(out_idx > 0, "Kernel should have output argument.");
@@ -1035,21 +921,27 @@ struct CustomKernelArgsParseFunctor<Return_ (*)(Args_...)> {
     auto args_type = ParseArgType(Indices{});
 
     for (auto arg_type : args_type) {
-      if (arg_type == std::type_index(typeid(const PD_Context *))) {
-      } else if (arg_type == std::type_index(typeid(const PD_Tensor *)) ||
-                 arg_type == std::type_index(typeid(
+      if (arg_type ==
+          std::type_index(typeid(const phi::custom_kernel::DeviceContext *))) {
+      } else if (arg_type == std::type_index(typeid(
                                  const phi::custom_kernel::DenseTensor &))) {
         in_args_type.push_back(PD_ArgumentType::PD_ARG_TYPE_TENSOR);
       } else if (arg_type ==
-                 std::type_index(
-                     typeid(paddle::optional<
-                            const phi::custom_kernel::DenseTensor &>))) {
+                 std::type_index(typeid(
+                     const paddle::optional<phi::custom_kernel::DenseTensor>
+                         &))) {
         in_args_type.push_back(PD_ArgumentType::PD_ARG_TYPE_OPTIONAL_TENSOR);
       } else if (arg_type ==
                  std::type_index(typeid(
                      const std::vector<const phi::custom_kernel::DenseTensor *>
                          &))) {
         in_args_type.push_back(PD_ArgumentType::PD_ARG_TYPE_LIST_TENSOR);
+      } else if (arg_type ==
+                 std::type_index(
+                     typeid(const paddle::optional<std::vector<
+                                const phi::custom_kernel::DenseTensor *>> &))) {
+        in_args_type.push_back(
+            PD_ArgumentType::PD_ARG_TYPE_OPTIONAL_MULTI_TENSOR);
       } else if (arg_type == std::type_index(typeid(bool))) {
         attr_args_type.push_back(PD_ArgumentType::PD_ARG_TYPE_BOOL);
       } else if (arg_type == std::type_index(typeid(float))) {
@@ -1099,9 +991,8 @@ struct CustomKernelArgsParseFunctor<Return_ (*)(Args_...)> {
         attr_args_type.push_back(PD_ArgumentType::PD_ARG_TYPE_DATA_LAYOUT);
       } else if (arg_type == std::type_index(typeid(PD_DataLayout))) {
         attr_args_type.push_back(PD_ArgumentType::PD_ARG_TYPE_PLACE);
-      } else if (arg_type == std::type_index(typeid(PD_Tensor *)) ||
-                 arg_type == std::type_index(
-                                 typeid(phi::custom_kernel::DenseTensor *))) {
+      } else if (arg_type ==
+                 std::type_index(typeid(phi::custom_kernel::DenseTensor *))) {
         out_args_type.push_back(PD_ArgumentType::PD_ARG_TYPE_TENSOR);
       } else if (arg_type ==
                  std::type_index(

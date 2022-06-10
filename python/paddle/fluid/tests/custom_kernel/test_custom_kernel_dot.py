@@ -57,6 +57,7 @@ class TestCustomKernelDot(unittest.TestCase):
 
 
 class TestCustomKernelDotC(unittest.TestCase):
+
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -84,8 +85,8 @@ class TestCustomKernelDotC(unittest.TestCase):
 
         self.assertTrue(
             np.array_equal(out.numpy(), result),
-            "custom kernel dot out: {},\n numpy dot out: {}".format(out.numpy(),
-                                                                    result))
+            "custom kernel dot out: {},\n numpy dot out: {}".format(
+                out.numpy(), result))
 
     def tearDown(self):
         del os.environ['CUSTOM_DEVICE_ROOT']
