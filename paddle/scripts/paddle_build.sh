@@ -949,11 +949,6 @@ function fetch_upstream_develop_if_not_exist() {
 }
 
 function check_whl_size() {
-    if [ ${BRANCH} != 'develop' ];then
-        echo 1111,${BRANCH}
-        return
-    fi
-
     if [ ! "${pr_whl_size}" ];then
         echo "pr whl size not found "         
         exit 1
@@ -1095,11 +1090,6 @@ function check_approvals_of_unittest() {
             fi
         fi
     elif [ $check_times == 3 ]; then
-    if [ ${BRANCH} != 'develop' ];then
-        echo 1111,${BRANCH}
-        return
-    fi
-
         rm -f fluidInference_so_size
         curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
         oriBuildSize=`cat fluidInference_so_size`
@@ -2985,10 +2975,6 @@ function build_develop() {
 
 
 function check_coverage_build() {
-    if [ ${BRANCH} != 'develop' ];then
-        return
-    fi
-
     if [ ! "${buildSize}" ];then
         echo "build size not found"
         exit 1
