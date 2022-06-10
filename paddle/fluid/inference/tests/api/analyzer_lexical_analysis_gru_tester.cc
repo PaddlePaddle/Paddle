@@ -203,7 +203,7 @@ std::vector<double> Lexical_Test(
   std::vector<double> acc_res(3);
   PADDLE_ENFORCE_GT(outputs->size(), 0,
                     platform::errors::InvalidArgument(
-                        "Size of output must be greater than 0"));
+                        "Number of outputs must be greater than 0"));
   if (FLAGS_with_accuracy_layer) {
     EXPECT_EQ(3UL, (*outputs)[0].size());
     std::vector<int64_t> acc_sum(3);
