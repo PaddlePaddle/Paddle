@@ -26,6 +26,7 @@ using paddle::platform::MemcpyEventInfo;
 using paddle::platform::MemsetEventInfo;
 using paddle::platform::MemTraceEvent;
 using paddle::platform::MemTraceEventNode;
+using paddle::platform::NodeTrees;
 using paddle::platform::OperatorSupplementEvent;
 using paddle::platform::OperatorSupplementEventNode;
 using paddle::platform::RuntimeTraceEvent;
