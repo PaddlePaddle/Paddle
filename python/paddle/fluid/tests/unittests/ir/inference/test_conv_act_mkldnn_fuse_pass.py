@@ -155,10 +155,7 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
 
         # 11. Generate legal act type of conv2d
         act_type = draw(
-            st.sampled_from([
-                "relu", "leaky_relu", "relu6", "hard_sigmoid", "gelu", "mish",
-                "swish", "hard_swish"
-            ]))
+            st.sampled_from(["relu", "leaky_relu", "relu6", "swish"]))
 
         conv2d_op = OpConfig("conv2d",
                              inputs=inputs,
@@ -173,53 +170,29 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
 
         # 11. Generate legal attr of act
         act_op = None
+        self.passes = ["conv_activation_mkldnn_fuse_pass"]
         if act_type == "relu6":
             threshold = draw(st.floats(min_value=1.0, max_value=10.0))
             act_op = OpConfig("relu6",
                               inputs={"X": ["conv2d_out"]},
                               outputs={"Out": ["relu_out"]},
                               threshold=threshold)
-        elif act_type == "leaky_relu":
+        if act_type == "leaky_relu":
             alpha = draw(st.floats(min_value=0.1, max_value=1.0))
             act_op = OpConfig("leaky_relu",
                               inputs={"X": ["conv2d_out"]},
                               outputs={"Out": ["relu_out"]},
                               alpha=alpha)
-        elif act_type == "relu":
+        if act_type == "relu":
             act_op = OpConfig("relu",
                               inputs={"X": ["conv2d_out"]},
                               outputs={"Out": ["relu_out"]})
-        elif act_type == "swish":
+        if act_type == "swish":
             beta = draw(st.floats(min_value=0.1, max_value=1.0))
             act_op = OpConfig("swish",
                               inputs={"X": ["conv2d_out"]},
                               outputs={"Out": ["swish_out"]},
                               beta=beta)
-        elif act_type == "gelu":
-            approximate = draw(st.booleans())
-            act_op = OpConfig("gelu",
-                              inputs={"X": ["conv2d_out"]},
-                              outputs={"Out": ["gelu_out"]},
-                              approximate=approximate)
-        elif act_type == "mish":
-            act_op = OpConfig("mish",
-                              inputs={"X": ["conv2d_out"]},
-                              outputs={"Out": ["mish_out"]})
-        elif act_type == "hard_sigmoid":
-            slope = draw(st.floats(min_value=0, max_value=10))
-            offset = draw(st.floats(min_value=0, max_value=10))
-            act_op = OpConfig("hard_sigmoid",
-                              inputs={"X": ["conv2d_out"]},
-                              outputs={"Out": ["sigmoid_out"]},
-                              slope=slope,
-                              offset=offset)
-        elif act_type == "hard_swish":
-            act_op = OpConfig("gelu",
-                              inputs={"X": ["conv2d_out"]},
-                              outputs={"Out": ["gelu_out"]},
-                              threshold=6.0,
-                              scale=6.0,
-                              offset=3.0)
 
         ops = [conv2d_op, act_op]
 
@@ -235,10 +208,7 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(quant=False,
-                            max_examples=500,
-                            passes=["conv_activation_mkldnn_fuse_pass"])
-
+        self.run_and_statis(quant=False, max_examples=300, passes=self.passes)
 
 if __name__ == "__main__":
     unittest.main()
