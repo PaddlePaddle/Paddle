@@ -2909,7 +2909,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
     The cumulative sum of the elements along a given axis. 
     
     **Note**:
-    The first element of the result is the same of the first element of the input. 
+    The first element of the result is the same as the first element of the input. 
 
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
@@ -2969,6 +2969,79 @@ def cumsum(x, axis=None, dtype=None, name=None):
             kwargs[name] = val
     _cum_sum_ = generate_layer_fn('cumsum')
     return _cum_sum_(**kwargs)
+
+
+def logcumsumexp(x, axis=None, dtype=None, name=None):
+    r"""
+    The logarithm of the cumulative summation of the exponentiation of the elements along a given axis. 
+
+    For summation index j given by `axis` and other indices i, the result is
+
+    .. math::
+
+        logcumsumexp(x)_{ij} = log \sum_{i=0}^{j}exp(x_{ij})
+    
+    Note:
+        The first element of the result is the same as the first element of the input.
+
+    Args:
+        x (Tensor): The input tensor.
+        axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
+        dtype (str, optional): The data type of the output tensor, can be float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None. 
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the result of logcumsumexp operator. 
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+            
+            data = paddle.arange(12, dtype='float64')
+            data = paddle.reshape(data, (3, 4))
+
+            y = paddle.logcumsumexp(data)
+            # [ 0.         1.3132617  2.4076061  3.4401898  4.4519143  5.4561934
+            #   6.4577627  7.4583397  8.458551   9.45863   10.458658  11.458669 ]
+
+            y = paddle.logcumsumexp(data, axis=0)
+            # [[ 0.        1.        2.        3.      ]
+            #  [ 4.01815   5.01815   6.01815   7.01815 ]
+            #  [ 8.018479  9.018479 10.018479 11.018479]]
+            
+            y = paddle.logcumsumexp(data, axis=-1)
+            # [[ 0.         1.3132617  2.4076061  3.4401898]
+            #  [ 4.         5.3132615  6.407606   7.44019  ]
+            #  [ 8.         9.313262  10.407606  11.440189 ]]
+
+            y = paddle.logcumsumexp(data, dtype='float64')
+            print(y.dtype)
+            # paddle.float64
+    """
+    if axis is None:
+        flatten = True
+    else:
+        flatten = False
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = cast(x, dtype)
+
+    if in_dygraph_mode():
+        if axis is None: axis = -1
+        return _C_ops.final_state_logcumsumexp(x, axis, flatten, False, False)
+    if _in_legacy_dygraph():
+        if axis is None:
+            return _C_ops.logcumsumexp(x, 'flatten', flatten)
+        else:
+            return _C_ops.logcumsumexp(x, 'axis', axis, 'flatten', flatten)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "logcumsumexp")
+
+    helper = LayerHelper('logcumsumexp', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='logcumsumexp', inputs={'X': x}, outputs={'Out': out}, attrs={'axis': axis, 'flatten': flatten})
+    return out
+
 
 def cumprod(x, dim=None, dtype=None, name=None):
     """

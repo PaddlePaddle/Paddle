@@ -684,6 +684,7 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
+set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
                 FLAGS_inner_op_parallelism=4)
 if(WITH_GPU

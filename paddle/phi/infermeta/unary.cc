@@ -235,12 +235,12 @@ void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
-void CumsumInferMeta(const MetaTensor& x,
-                     int axis,
-                     bool flatten,
-                     bool exclusive,
-                     bool reverse,
-                     MetaTensor* out) {
+void CumInferMeta(const MetaTensor& x,
+                  int axis,
+                  bool flatten,
+                  bool exclusive,
+                  bool reverse,
+                  MetaTensor* out) {
   auto x_dims = x.dims();
   if (flatten) {
     out->set_dims(phi::make_ddim({phi::product(x_dims)}));

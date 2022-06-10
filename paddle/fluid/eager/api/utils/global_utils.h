@@ -57,7 +57,7 @@ class Controller {
   }
   bool HasGrad() const { return tracer_->HasGrad(); }
   void SetHasGrad(bool has_grad) { tracer_->SetHasGrad(has_grad); }
-  std::string GenerateUniqueName(std::string key = "eager_tmp") {
+  std::string GenerateUniqueName(std::string key = "eager_in_tmp") {
     return tracer_->GenerateUniqueName(key);
   }
   const std::shared_ptr<paddle::imperative::Tracer>& GetCurrentTracer() {
