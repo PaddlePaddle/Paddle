@@ -33,27 +33,26 @@ class IPUController(CollectiveController):
 
     def parse_ipu_args(self, args_list):
         parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "--hosts",
-            type=str,
-            help="The hosts for IPU PopRun distributd computing.")
+        parser.add_argument("--hosts",
+                            type=str,
+                            help="The hosts for IPU distributd training.")
         parser.add_argument("--nproc_per_host",
                             type=int,
-                            help="The number of processes per host.")
+                            help="The number of processes launched per host.")
         parser.add_argument("--ipus_per_replica",
                             type=int,
-                            help="The number of IPUs per replica.")
+                            help="The number of IPUs requested per replica.")
         parser.add_argument("--ipu_partition",
                             type=str,
-                            help="The partition name of IPU.")
+                            help="The partition name of IPU devices.")
         parser.add_argument("--vipu_server",
                             type=str,
-                            help="The vipu server host to enable vipu.")
+                            help="The ip of the IPU device manager.")
         parser.add_argument(
             "training_script",
             type=str,
             help=
-            "The full path to the single IPU replica training program/script to be launched in parallel."
+            "The full path to the IPU distributed training program/script to be launched in parallel. e.g., ``training.py``."
         )
         parser.add_argument('training_script_args', nargs=argparse.REMAINDER)
         return parser.parse_args(args_list)

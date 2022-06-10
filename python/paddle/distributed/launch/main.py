@@ -52,9 +52,9 @@ def launch():
 
         - ``--job_id``: The job unique id, it affects the log files' name. e.g., ``--job_id=job1``. Default ``--job_id=default``.
 
-        - ``--devices``: The selected accelerate devices on nodes, can be gpu/xpu/npu/mlu etc.. e.g., ``--devices=0,1,2,3`` will launch four training processes each bound to one device. For ipu, the `devices` is the number of devices. e.g., ``--devices=4`` will launch the training program on four devices.
+        - ``--devices``: The selected accelerate devices on nodes, can be gpu/xpu/npu/mlu etc.. e.g., ``--devices=0,1,2,3`` will launch four training processes each bound to one device.
 
-        - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``training.py``
+        - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``training.py``.
 
         - ``training_script_args``: The args of training_script. e.g., ``--lr=0.1``
 
@@ -91,6 +91,26 @@ def launch():
 
         - ``--elastic_timeout``: Seconds to wait before elastic job begin to train. Default ``--elastic_timeout=30``.
 
+    IPU Parameters:
+        **Note: IPU distributed launch only requires and allowes three arguments ``--devices``, ``training_script`` and ``training_script_args``.
+        The ``--devices`` is the number of IPU devices. e.g., ``--devices=4`` will launch the training program with four IPU devices.
+        The ``training_script`` is only allowed to set as `ipu`. 
+        The ``training_script_args`` includes arguments required by IPU distributed launch and illustrated as below.
+        ``Examples 10`` has provided a example of paddle.distributed.launch with IPUs.
+
+        - ``--hosts``: The hosts for IPU distributd training.
+        
+        - ``--nproc_per_host``: The number of processes launched per host.
+
+        - ``--ipus_per_replica``: The number of IPUs requested per replica.
+
+        - ``--ipu_partition``: The partition name of IPU devices.
+
+        - ``--vipu_server``: The ip of the IPU device manager.
+
+        - ``training_script``: The full path to the IPU distributed training program/script to be launched in parallel. e.g., ``training.py``.
+
+        - ``training_script_args``: The args of the IPU distributed training program/script.
 
     Returns:
         - ``None``
