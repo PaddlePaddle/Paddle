@@ -452,8 +452,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
   const int r = bidx * ROWS_PER_CTA + warp_m;
   const int c = warp_n * THREADS_PER_WARP + lane;
 
-  static_assert(ELTS_PER_ROW == THREADS_PER_ROW * LDGS * VecSize,
-                "Invalid template value setting.");
+  static_assert(ELTS_PER_ROW == THREADS_PER_ROW * LDGS * VecSize, "");
 
   // smem for column reduction
   __shared__ U smem_[ROWS_PER_CTA * ELTS_PER_ROW];
