@@ -38,9 +38,9 @@ size_t ConvKey(const std::vector<int64_t>& x_dims,
 
 size_t TransposeKey(const std::vector<int64_t>& x_dims,
                     const std::vector<int32_t>& perm,
-                    const phi::DataType dtype) {
-  const int rank = perm.size();
-  return GetKey(x_dims, perm, rank, dtype);
+                    phi::DataType dtype) {
+  const auto rank = perm.size();
+  return GetKey(x_dims, perm, rank, static_cast<int64_t>(dtype));
 }
 
 std::string AlgorithmTypeString(int64_t algo_type) {

@@ -70,7 +70,7 @@ size_t ConvKey(const std::vector<int64_t>& x_dims,
 
 size_t TransposeKey(const std::vector<int64_t>& x_dims,
                     const std::vector<int32_t>& perm,
-                    const phi::DataType dtype);
+                    phi::DataType dtype);
 
 template <typename AlgorithmT>
 class AlgorithmsCache {
