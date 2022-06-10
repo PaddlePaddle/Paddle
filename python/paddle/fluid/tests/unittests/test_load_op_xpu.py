@@ -50,6 +50,9 @@ class TestLoadOpXpu(unittest.TestCase):
         fluid.io.save_persistables(
             exe, dirname=self.model_path, main_program=main_prog)
 
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_load_xpu(self):
         main_prog = fluid.Program()
         start_prog = fluid.Program()
