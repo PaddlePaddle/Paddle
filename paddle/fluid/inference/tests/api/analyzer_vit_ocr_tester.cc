@@ -108,7 +108,7 @@ TEST(Analyzer_vit_ocr, fuse_status) {
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
 
   CHECK_EQ(fuse_status.at("fc_mkldnn_pass"), 33);
-  CHECK_EQ(fuse_status.at("conv_activation_mkldnn_fuse"), 2);
+  CHECK_EQ(fuse_status.at("conv2d_gelu_mkldnn_fuse_pass"), 2);
   CHECK_EQ(fuse_status.at("fc_elementwise_add_mkldnn_fuse"), 16);
 }
 #endif
