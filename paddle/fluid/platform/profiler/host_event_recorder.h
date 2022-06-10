@@ -21,7 +21,6 @@
 #include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/os_info.h"
-#include "paddle/fluid/platform/profiler/common_event.h"
 
 namespace paddle {
 namespace platform {
@@ -182,12 +181,14 @@ char *EventContainer<EventType>::GetStringStorage(size_t sz) {
   return storage;
 }
 
+template <typename EventType>
 struct ThreadEventSection {
   std::string thread_name;
   uint64_t thread_id;
-  std::vector<CommonEvent> events;
+  std::vector<EventType> events;
 };
 
+template <typename EventType>
 class ThreadEventRecorder {
  public:
   ThreadEventRecorder() {
@@ -204,8 +205,8 @@ class ThreadEventRecorder {
     base_evt_cntr_.Record(std::forward<Args>(args)...);
   }
 
-  ThreadEventSection GatherEvents() {
-    ThreadEventSection thr_sec;
+  ThreadEventSection<EventType> GatherEvents() {
+    ThreadEventSection<EventType> thr_sec;
     thr_sec.thread_name = thread_name_;
     thr_sec.thread_id = thread_id_;
     thr_sec.events = std::move(base_evt_cntr_.Reduce());
@@ -215,15 +216,17 @@ class ThreadEventRecorder {
  private:
   uint64_t thread_id_;
   std::string thread_name_;
-  EventContainer<CommonEvent> base_evt_cntr_;
+  EventContainer<EventType> base_evt_cntr_;
 };
 
+template <typename EventType>
 struct HostEventSection {
   std::string process_name;
   uint64_t process_id;
-  std::vector<ThreadEventSection> thr_sections;
+  std::vector<ThreadEventSection<EventType>> thr_sections;
 };
 
+template <typename EventType>
 class HostEventRecorder {
  public:
   // singleton
@@ -244,10 +247,10 @@ class HostEventRecorder {
 
   // thread-unsafe, make sure make sure there is no running tracing.
   // Poor performance, call it at the ending
-  HostEventSection GatherEvents() {
+  HostEventSection<EventType> GatherEvents() {
     auto thr_recorders =
         ThreadEventRecorderRegistry::GetInstance().GetAllThreadDataByRef();
-    HostEventSection host_sec;
+    HostEventSection<EventType> host_sec;
     host_sec.process_id = GetProcessId();
     host_sec.thr_sections.reserve(thr_recorders.size());
     for (auto &kv : thr_recorders) {
@@ -260,12 +263,12 @@ class HostEventRecorder {
 
  private:
   using ThreadEventRecorderRegistry =
-      framework::ThreadDataRegistry<ThreadEventRecorder>;
+      framework::ThreadDataRegistry<ThreadEventRecorder<EventType>>;
 
   HostEventRecorder() = default;
   DISABLE_COPY_AND_ASSIGN(HostEventRecorder);
 
-  ThreadEventRecorder *GetThreadLocalRecorder() {
+  ThreadEventRecorder<EventType> *GetThreadLocalRecorder() {
     return ThreadEventRecorderRegistry::GetInstance()
         .GetMutableCurrentThreadData();
   }

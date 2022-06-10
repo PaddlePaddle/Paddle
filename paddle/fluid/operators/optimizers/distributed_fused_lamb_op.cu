@@ -806,23 +806,24 @@ static void LaunchScaleKernel(const platform::CUDADeviceContext &dev_ctx,
 #undef PD_LAMB_VEC_SCALE_KERNEL_CASE
 }
 
-template <typename T>
-static void NCCLReduceScatterWithScale(
-    const T *sendbuff, T *recvbuff, size_t recvcount, size_t nranks,
-    ncclComm_t comm, gpuStream_t stream,
-    const platform::CUDADeviceContext &dev_ctx, const T *scale = nullptr) {
+template <typename T, bool UseReduceScatter>
+static void NCCLSumWithScaleBase(const T *sendbuff, T *recvbuff,
+                                 size_t recvcount, size_t nranks,
+                                 ncclComm_t comm, gpuStream_t stream,
+                                 const platform::CUDADeviceContext &dev_ctx,
+                                 const T *scale = nullptr) {
   static_assert(std::is_same<T, float>::value ||
                     std::is_same<T, platform::float16>::value,
                 "T must be either float32 or float16.");
   if (recvcount == 0) return;
 
+  auto numel = UseReduceScatter ? (recvcount * nranks) : recvcount;
   if (comm == nullptr) {
     if (scale != nullptr) {
       PADDLE_ENFORCE_EQ(nranks, 1,
                         platform::errors::InvalidArgument(
                             "nranks must be 1 when scale != nullptr."));
-      LaunchScaleKernel(dev_ctx, sendbuff, scale, recvbuff, recvcount * nranks,
-                        stream);
+      LaunchScaleKernel(dev_ctx, sendbuff, scale, recvbuff, numel, stream);
     }
     return;
   }
@@ -834,14 +835,18 @@ static void NCCLReduceScatterWithScale(
       scale && CreatePreMulScaleOpIfSupported(dtype, comm, scale, &op);
   memory::Buffer buffer(dev_ctx.GetPlace());
   if (scale && !should_destroy_op) {
-    size_t numel = recvcount * nranks;
     T *new_sendbuff = buffer.Alloc<T>(numel);
     LaunchScaleKernel(dev_ctx, sendbuff, scale, new_sendbuff, numel, stream);
     sendbuff = new_sendbuff;
   }
 
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduceScatter(
-      sendbuff, recvbuff, recvcount, dtype, op, comm, stream));
+  if (UseReduceScatter) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduceScatter(
+        sendbuff, recvbuff, recvcount, dtype, op, comm, stream));
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        sendbuff, recvbuff, recvcount, dtype, op, comm, stream));
+  }
 
 #if NCCL_VERSION_CODE >= 21100
   if (should_destroy_op) {
@@ -851,6 +856,26 @@ static void NCCLReduceScatterWithScale(
   }
 #endif
 }
+
+template <typename T>
+static void NCCLReduceScatterWithScale(
+    const T *sendbuff, T *recvbuff, size_t recvcount, size_t nranks,
+    ncclComm_t comm, gpuStream_t stream,
+    const platform::CUDADeviceContext &dev_ctx, const T *scale = nullptr) {
+  NCCLSumWithScaleBase<T, true>(sendbuff, recvbuff, recvcount, nranks, comm,
+                                stream, dev_ctx, scale);
+}
+
+template <typename T>
+static void NCCLAllReduceWithScale(const T *sendbuff, T *recvbuff,
+                                   size_t recvcount, size_t nranks,
+                                   ncclComm_t comm, gpuStream_t stream,
+                                   const platform::CUDADeviceContext &dev_ctx,
+                                   const T *scale = nullptr) {
+  NCCLSumWithScaleBase<T, false>(sendbuff, recvbuff, recvcount, nranks, comm,
+                                 stream, dev_ctx, scale);
+}
+
 #endif
 
 template <typename InputIteratorT, typename OutputIteratorT, typename ReduceOpT,
@@ -1193,7 +1218,9 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
 
       platform::float16 *fp16_acc_grad = nullptr;
       float *master_acc_grad = nullptr;
+      bool use_master_acc_grad = false;
       if (has_fp16_param) {
+        use_master_acc_grad = ctx.Attr<bool>("use_master_acc_grad");
         auto *fp16_acc_grad_t =
             ctx.Output<framework::Tensor>("FP16AccFusedGrad");
         PADDLE_ENFORCE_NOT_NULL(
@@ -1201,13 +1228,18 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                                  "Output(FP16AccFusedGrad) cannot be nullptr "
                                  "when Attr(acc_steps) > 1."));
         if (!fp16_acc_grad_t->IsInitialized()) {
-          fp16_acc_grad_t->Resize({static_cast<int64_t>(3 * fp16_numel)});
+          auto acc_grad_size =
+              use_master_acc_grad ? (3 * fp16_numel) : fp16_numel;
+          fp16_acc_grad_t->Resize({static_cast<int64_t>(acc_grad_size)});
           fp16_acc_grad =
               fp16_acc_grad_t->mutable_data<platform::float16>(place);
         } else {
           fp16_acc_grad = fp16_acc_grad_t->data<platform::float16>();
         }
-        master_acc_grad = reinterpret_cast<float *>(fp16_acc_grad + fp16_numel);
+        if (use_master_acc_grad) {
+          master_acc_grad =
+              reinterpret_cast<float *>(fp16_acc_grad + fp16_numel);
+        }
       }
 
       // Inplace addto
@@ -1222,8 +1254,8 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
       }
 
       if (has_fp16_param) {
-        if (acc_steps == 2) {
-          if (rounded_step == 0) {
+        if (acc_steps == 2 || !use_master_acc_grad) {
+          if (rounded_step != 1) {
             LaunchElementwiseAddWithCastKernel(dev_ctx, fp16_acc_grad,
                                                fp16_grad, fp16_acc_grad,
                                                fp16_numel, stream);
@@ -1314,6 +1346,9 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                           "exactly by the element number %d of Moment1.",
                           numel, partial_numel));
 
+    // The num_devices means the number of devices that shard a complete set
+    // of all parameters. It may be num_devices < nranks or num_devices ==
+    // nranks.
     int64_t num_devices = numel / partial_numel;
     VLOG(1) << "num_devices = " << num_devices
             << " , partial_numel = " << partial_numel;
@@ -1347,22 +1382,43 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     auto epsilon = ctx.Attr<float>("epsilon");
     auto max_global_grad_norm = ctx.Attr<float>("max_global_grad_norm");
     auto clip_after_allreduce = ctx.Attr<bool>("clip_after_allreduce");
-    auto ring_id = ctx.Attr<int>("ring_id");
+    auto nranks = ctx.Attr<int64_t>("nranks");
+    PADDLE_ENFORCE_GE(nranks, num_devices,
+                      phi::errors::InvalidArgument(
+                          "The nranks must be not less than num_devices."));
+    PADDLE_ENFORCE_EQ(
+        nranks % num_devices, 0,
+        phi::errors::InvalidArgument(
+            "The nranks must be exactly divided by num_devices."));
+    bool local_shard = (nranks > num_devices);
+
+    const auto &ring_ids = ctx.Attr<std::vector<int>>("ring_id");
     auto use_master_param_norm = ctx.Attr<bool>("use_master_param_norm");
     auto is_grad_scaled_by_nranks = ctx.Attr<bool>("is_grad_scaled_by_nranks");
     VLOG(10) << "max_global_grad_norm = " << max_global_grad_norm
              << " , clip_after_allreduce = " << clip_after_allreduce
              << " , use_master_param_norm = " << use_master_param_norm
-             << " , is_grad_scaled_by_nranks = " << is_grad_scaled_by_nranks;
+             << " , is_grad_scaled_by_nranks = " << is_grad_scaled_by_nranks
+             << " , local_shard = " << local_shard;
 
     // Step 6: allreduce + global norm gradient clip
-    int rank = 0;
-    ncclComm_t comm = nullptr;
-    if (num_devices > 1) {
+    int64_t global_rank = 0, local_rank = 0;
+    ncclComm_t global_comm = nullptr, local_comm = 0;
+    if (nranks > 1) {
       auto *nccl_comm_handle =
-          platform::NCCLCommContext::Instance().Get(ring_id, place);
-      comm = nccl_comm_handle->comm();
-      rank = nccl_comm_handle->rank();
+          platform::NCCLCommContext::Instance().Get(ring_ids[0], place);
+      global_comm = nccl_comm_handle->comm();
+      global_rank = nccl_comm_handle->rank();
+
+      if (local_shard) {
+        auto *local_nccl_comm_handle =
+            platform::NCCLCommContext::Instance().Get(ring_ids[1], place);
+        local_comm = local_nccl_comm_handle->comm();
+        local_rank = local_nccl_comm_handle->rank();
+      } else {
+        local_comm = global_comm;
+        local_rank = global_rank;
+      }
     }
 
     memory::Buffer grad_norm_square_buffer(place);
@@ -1374,8 +1430,15 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     platform::float16 *fp16_sum_grad;
     auto fp32_numel_each_device = fp32_numel / num_devices;
     auto fp16_numel_each_device = fp16_numel / num_devices;
-    if (num_devices > 1 ||
-        (max_global_grad_norm > 0 && !clip_after_allreduce)) {
+    if (local_shard) {
+      auto ptr = sum_grad_buffer.Alloc<uint8_t>(
+          fp32_numel * sizeof(float) + fp16_numel * sizeof(platform::float16));
+      fp32_sum_grad = has_fp32_param ? reinterpret_cast<float *>(ptr) : nullptr;
+      fp16_sum_grad = has_fp16_param ? reinterpret_cast<platform::float16 *>(
+                                           ptr + fp32_numel * sizeof(float))
+                                     : nullptr;
+    } else if (nranks > 1 ||
+               (max_global_grad_norm > 0 && !clip_after_allreduce)) {
       auto ptr = sum_grad_buffer.Alloc<uint8_t>(
           fp32_numel_each_device * sizeof(float) +
           fp16_numel_each_device * sizeof(platform::float16));
@@ -1397,18 +1460,27 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
 
     float rescale_grad = 1.0f;
     if (!is_grad_scaled_by_nranks) {
-      rescale_grad /= num_devices;
+      rescale_grad /= nranks;
     }
 
     if (max_global_grad_norm > 0) {
       if (clip_after_allreduce) {
         // (1) ReduceScater first
-        NCCLReduceScatterWithScale(fp32_grad, fp32_sum_grad,
-                                   fp32_numel_each_device, num_devices, comm,
-                                   stream, dev_ctx);
-        NCCLReduceScatterWithScale(fp16_grad, fp16_sum_grad,
-                                   fp16_numel_each_device, num_devices, comm,
-                                   stream, dev_ctx);
+        if (local_shard) {
+          NCCLAllReduceWithScale(fp32_grad, fp32_sum_grad, fp32_numel, nranks,
+                                 global_comm, stream, dev_ctx);
+          NCCLAllReduceWithScale(fp16_grad, fp16_sum_grad, fp16_numel, nranks,
+                                 global_comm, stream, dev_ctx);
+          fp32_sum_grad += (local_rank * fp32_numel_each_device);
+          fp16_sum_grad += (local_rank * fp16_numel_each_device);
+        } else {
+          NCCLReduceScatterWithScale(fp32_grad, fp32_sum_grad,
+                                     fp32_numel_each_device, nranks,
+                                     global_comm, stream, dev_ctx);
+          NCCLReduceScatterWithScale(fp16_grad, fp16_sum_grad,
+                                     fp16_numel_each_device, nranks,
+                                     global_comm, stream, dev_ctx);
+        }
         // (2) Calculate the global grad norm
         GetSquareGradNorm(fp32_sum_grad, fp32_numel_each_device, fp16_sum_grad,
                           fp16_numel_each_device, fp32_square_grad_norm, stream,
@@ -1418,7 +1490,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         if (num_devices > 1) {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
               fp32_square_grad_norm, fp32_square_grad_norm, 1, ncclFloat32,
-              ncclSum, comm, stream));
+              ncclSum, local_comm, stream));
         }
         VLOG(1) << "Grad square norm after all reduce: "
                 << FlattenToString(fp32_square_grad_norm, 1, place);
@@ -1445,7 +1517,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
 
         float clip_scale = 1.0f;
         if (is_grad_scaled_by_nranks) {
-          clip_scale *= num_devices;
+          clip_scale *= nranks;
         }
         CalcGradNormClipBeforeAllReduceScale<float, platform::float16>
             <<<1, 1, 0, stream>>>(global_scale, max_global_grad_norm,
@@ -1456,36 +1528,54 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         } else {
           VLOG(1) << "Grad scale: " << FlattenToString(fp16_scale, 1, place);
         }
-        if (num_devices > 1) {
+        if (nranks > 1) {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
               fp32_square_grad_norm, fp32_square_grad_norm, 1, ncclFloat32,
-              ncclSum, comm, stream));
+              ncclSum, global_comm, stream));
         }
         // (3) Do ReduceScatter with scale
-        NCCLReduceScatterWithScale(fp32_grad, fp32_sum_grad,
-                                   fp32_numel_each_device, num_devices, comm,
-                                   stream, dev_ctx, fp32_scale);
-        NCCLReduceScatterWithScale(fp16_grad, fp16_sum_grad,
-                                   fp16_numel_each_device, num_devices, comm,
-                                   stream, dev_ctx, fp16_scale);
+        if (local_shard) {
+          NCCLAllReduceWithScale(fp32_grad, fp32_sum_grad, fp32_numel, nranks,
+                                 global_comm, stream, dev_ctx, fp32_scale);
+          NCCLAllReduceWithScale(fp16_grad, fp16_sum_grad, fp16_numel, nranks,
+                                 global_comm, stream, dev_ctx, fp16_scale);
+          fp32_sum_grad += (local_rank * fp32_numel_each_device);
+          fp16_sum_grad += (local_rank * fp16_numel_each_device);
+        } else {
+          NCCLReduceScatterWithScale(fp32_grad, fp32_sum_grad,
+                                     fp32_numel_each_device, nranks,
+                                     global_comm, stream, dev_ctx, fp32_scale);
+          NCCLReduceScatterWithScale(fp16_grad, fp16_sum_grad,
+                                     fp16_numel_each_device, nranks,
+                                     global_comm, stream, dev_ctx, fp16_scale);
+        }
         // (4) mark max_global_grad_norm as 0, meaning that clip has been
         // already performed
         max_global_grad_norm = 0;
       }
     } else {
-      NCCLReduceScatterWithScale(fp32_grad, fp32_sum_grad,
-                                 fp32_numel_each_device, num_devices, comm,
-                                 stream, dev_ctx);
-      NCCLReduceScatterWithScale(fp16_grad, fp16_sum_grad,
-                                 fp16_numel_each_device, num_devices, comm,
-                                 stream, dev_ctx);
+      if (local_shard) {
+        NCCLAllReduceWithScale(fp32_grad, fp32_sum_grad, fp32_numel, nranks,
+                               global_comm, stream, dev_ctx);
+        NCCLAllReduceWithScale(fp16_grad, fp16_sum_grad, fp16_numel, nranks,
+                               global_comm, stream, dev_ctx);
+        fp32_sum_grad += (local_rank * fp32_numel_each_device);
+        fp16_sum_grad += (local_rank * fp16_numel_each_device);
+      } else {
+        NCCLReduceScatterWithScale(fp32_grad, fp32_sum_grad,
+                                   fp32_numel_each_device, num_devices,
+                                   global_comm, stream, dev_ctx);
+        NCCLReduceScatterWithScale(fp16_grad, fp16_sum_grad,
+                                   fp16_numel_each_device, num_devices,
+                                   global_comm, stream, dev_ctx);
+      }
       CheckHasNanInfGrad(fp32_sum_grad, fp32_numel_each_device, fp16_sum_grad,
                          fp16_numel_each_device, fp32_square_grad_norm, stream,
                          &cub_tmp_buffer);
       if (num_devices > 1) {
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
             fp32_square_grad_norm, fp32_square_grad_norm, 1, ncclFloat32,
-            ncclSum, comm, stream));
+            ncclSum, local_comm, stream));
       }
       max_global_grad_norm = 0;
     }
@@ -1519,8 +1609,8 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
 
     memory::Buffer trust_ratio_div_buffer(place);
     auto *trust_ratio_div = trust_ratio_div_buffer.Alloc<float>(partial_numel);
-    auto fp32_offset = rank * fp32_numel_each_device;
-    auto fp16_offset = rank * fp16_numel_each_device;
+    auto fp32_offset = local_rank * fp32_numel_each_device;
+    auto fp16_offset = local_rank * fp16_numel_each_device;
     if (has_fp32_param) {
       VLOG(10) << "Update FP32 Moment and TrustRatioDiv starts";
       MultiTensorUpdateLambMomentAndTrustRatioDiv(
@@ -1591,12 +1681,12 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
             param_square_norm + fp32_global_param_num,
             param_square_norm + fp32_global_param_num,
-            2 * param_num - fp32_global_param_num, ncclFloat32, ncclSum, comm,
-            stream));
+            2 * param_num - fp32_global_param_num, ncclFloat32, ncclSum,
+            local_comm, stream));
       } else {
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
             trust_ratio_div_square_norm, trust_ratio_div_square_norm, param_num,
-            ncclFloat32, ncclSum, comm, stream));
+            ncclFloat32, ncclSum, local_comm, stream));
       }
       VLOG(10) << "ncclAllReduce done";
     }
@@ -1616,7 +1706,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         // ncclAllGather
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
             fp32_param + fp32_offset, fp32_param, fp32_numel_each_device,
-            ncclFloat32, comm, stream));
+            ncclFloat32, local_comm, stream));
       }
 
       beta1pow = nullptr;
@@ -1634,7 +1724,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         // ncclAllGather
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
             fp16_param + fp16_offset, fp16_param, fp16_numel_each_device,
-            ncclFloat16, comm, stream));
+            ncclFloat16, local_comm, stream));
       }
     }
     VLOG(10) << "Update Param done";

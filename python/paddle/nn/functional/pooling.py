@@ -1273,24 +1273,20 @@ def max_pool3d(x,
 
 def adaptive_avg_pool1d(x, output_size, name=None):
     """
-    This API implements adaptive average pooling 1d operation.
-    See more details in :ref:`api_nn_pooling_AdaptiveAvgPool1d` .
+    Adaptive average pooling 1d operation on :attr:`x` according to :attr:`output_size`. 
+    
+    Notes:
+        See more details in :ref:`api_nn_pooling_AdaptiveAvgPool1d` .
 
     Args:
-        x (Tensor): The input tensor of pooling operator, which is a 3-D tensor
-                              with shape [N, C, L].  The format of input tensor is NCL,
-                              where N is batch size, C is the number of channels, L is the
-                              length of the feature. The data type is float32 or float64.
-        output_size (int): The target output size. It must be an integer.
-        name(str, optional): For detailed information, please refer
-                                 to :ref:`api_guide_Name`. Usually name is no need to set and
-                                 None by default.
+        x (Tensor): The input Tensor of pooling, which is a 3-D tensor with shape :math:`[N, C, L]`, where :math:`N` is batch size, :math:`C` is the number of channels and :math:`L` is the length of the feature. The data type is float32 or float64.
+        output_size (int): The target output size. Its data type must be int.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
     Returns:
-            Tensor: The output tensor of adaptive average pooling result. The data type is same
-                      as input tensor.
+        Tensor: The result of 1D adaptive average pooling. Its data type is same as input.
     Examples:
         .. code-block:: python
-          :name: code-example1
+          :name: adaptive_avg_pool1d-example
 
               # average adaptive pool1d
               # suppose input data in shape of [N, C, L], `output_size` is m or [m],
