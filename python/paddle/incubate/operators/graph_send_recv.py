@@ -119,9 +119,10 @@ def graph_send_recv(x,
                                                       pool_type.upper(), 0)
     else:
         if _in_legacy_dygraph():
-            out, tmp = _C_ops.graph_send_recv(
-                x, src_index, dst_index, 'pool_type',
-                pool_type.upper(), 'out_size', out_size)
+            out, tmp = _C_ops.graph_send_recv(x, src_index,
+                                              dst_index, 'pool_type',
+                                              pool_type.upper(), 'out_size',
+                                              out_size)
             return out
         if in_dygraph_mode():
             if isinstance(out_size, core.eager.Tensor):
@@ -143,17 +144,22 @@ def graph_send_recv(x,
 
     helper = LayerHelper("graph_send_recv", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    dst_count = helper.create_variable_for_type_inference(
-        dtype="int32", stop_gradient=True)
-    helper.append_op(
-        type="graph_send_recv",
-        inputs={"X": x,
-                "Src_index": src_index,
-                "Dst_index": dst_index},
-        outputs={"Out": out,
-                 "Dst_count": dst_count},
-        attrs={
-            "pool_type": pool_type.upper(),
-            "out_size": 0 if out_size is None or out_size <= 0 else out_size
-        })
+    dst_count = helper.create_variable_for_type_inference(dtype="int32",
+                                                          stop_gradient=True)
+    helper.append_op(type="graph_send_recv",
+                     inputs={
+                         "X": x,
+                         "Src_index": src_index,
+                         "Dst_index": dst_index
+                     },
+                     outputs={
+                         "Out": out,
+                         "Dst_count": dst_count
+                     },
+                     attrs={
+                         "pool_type":
+                         pool_type.upper(),
+                         "out_size":
+                         0 if out_size is None or out_size <= 0 else out_size
+                     })
     return out

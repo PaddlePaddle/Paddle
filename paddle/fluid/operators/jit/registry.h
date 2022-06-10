@@ -18,6 +18,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>  // for std::move
+
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/operators/jit/kernel_pool.h"
 #include "paddle/fluid/platform/place.h"

@@ -16,12 +16,12 @@
 
 #include <string>
 #include <vector>
-#include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/imperative/prepared_operator.h"
-#include "paddle/fluid/imperative/tracer.h"
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/prepared_operator.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/operators/py_layer_op.h"
 
 namespace paddle {

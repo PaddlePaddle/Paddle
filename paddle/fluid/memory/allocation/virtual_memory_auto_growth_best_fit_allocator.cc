@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
+
 #include <mutex>
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
-#include "paddle/fluid/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
 
 namespace paddle {
 namespace memory {

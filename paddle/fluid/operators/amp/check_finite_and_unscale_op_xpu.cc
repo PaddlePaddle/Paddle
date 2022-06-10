@@ -65,13 +65,15 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
         int r = xpu::isfinite(dev_ctx.x_context(),
                               reinterpret_cast<const XPUTyp*>(x->data<T>()),
                               is_finite.data<bool>(), x->numel());
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(isfinite) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
-        r = xpu::logical_not(dev_ctx.x_context(), reinterpret_cast<const bool*>(
-                                                      is_finite.data<bool>()),
-                             is_finite.data<bool>(), x->numel());
+        PADDLE_ENFORCE_EQ(
+            r, XPU_SUCCESS,
+            platform::errors::External("XPU API(isfinite) return wrong "
+                                       "value[%d %s]",
+                                       r, XPUAPIErrorMsg[r]));
+        r = xpu::logical_not(
+            dev_ctx.x_context(),
+            reinterpret_cast<const bool*>(is_finite.data<bool>()),
+            is_finite.data<bool>(), x->numel());
         PADDLE_ENFORCE_EQ(
             r, XPU_SUCCESS,
             platform::errors::External("XPU API(logical_not) return wrong "
@@ -79,10 +81,11 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
                                        r, XPUAPIErrorMsg[r]));
         r = xpu::any(dev_ctx.x_context(), is_finite.data<bool>(),
                      found_inf_data, x->numel());
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(any) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_EQ(
+            r, XPU_SUCCESS,
+            platform::errors::External("XPU API(any) return wrong "
+                                       "value[%d %s]",
+                                       r, XPUAPIErrorMsg[r]));
         if (dev_ctx.x_context()->xpu_stream) {
           dev_ctx.Wait();
         }
@@ -106,36 +109,40 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
         int r = xpu::cast_v2(dev_ctx.x_context(),
                              reinterpret_cast<const float16*>(x->data<T>()),
                              float_x.data<MPDType>(), x->numel());
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(cast_v2) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_EQ(
+            r, XPU_SUCCESS,
+            platform::errors::External("XPU API(cast_v2) return wrong "
+                                       "value[%d %s]",
+                                       r, XPUAPIErrorMsg[r]));
 
         r = xpu::scale(dev_ctx.x_context(), float_x.data<MPDType>(),
                        float_out.data<MPDType>(), x->numel(), false,
                        inverse_scale, 0.0);
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(scale) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_EQ(
+            r, XPU_SUCCESS,
+            platform::errors::External("XPU API(scale) return wrong "
+                                       "value[%d %s]",
+                                       r, XPUAPIErrorMsg[r]));
 
         r = xpu::cast_v2(dev_ctx.x_context(), float_out.data<MPDType>(),
                          reinterpret_cast<float16*>(out->data<T>()),
                          out->numel());
 
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(cast_v2) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_EQ(
+            r, XPU_SUCCESS,
+            platform::errors::External("XPU API(cast_v2) return wrong "
+                                       "value[%d %s]",
+                                       r, XPUAPIErrorMsg[r]));
       } else {
         int r = xpu::scale(dev_ctx.x_context(),
                            reinterpret_cast<const XPUTyp*>(x->data<T>()),
                            reinterpret_cast<XPUTyp*>(out->data<T>()),
                            x->numel(), false, inverse_scale, 0.0);
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(scale) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_EQ(
+            r, XPU_SUCCESS,
+            platform::errors::External("XPU API(scale) return wrong "
+                                       "value[%d %s]",
+                                       r, XPUAPIErrorMsg[r]));
       }
     }
     if (dev_ctx.x_context()->xpu_stream) {

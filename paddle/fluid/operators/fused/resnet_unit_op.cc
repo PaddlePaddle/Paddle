@@ -115,13 +115,14 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
       bn_param_shape = {1, 1, 1, bn_param_shape[0]};
     }
     framework::DDim bn_param_dims = phi::make_ddim(bn_param_shape);
-    PADDLE_ENFORCE_EQ(x_dims.size(), 4, platform::errors::InvalidArgument(
-                                            "The dimensions of input "
-                                            "must equal to 4."
-                                            "But received: the shape of input "
-                                            "= [%s], the dimension of input = "
-                                            "[%d]",
-                                            x_dims, x_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 4,
+        platform::errors::InvalidArgument("The dimensions of input "
+                                          "must equal to 4."
+                                          "But received: the shape of input "
+                                          "= [%s], the dimension of input = "
+                                          "[%d]",
+                                          x_dims, x_dims.size()));
     PADDLE_ENFORCE_EQ(w_dims.size(), 4,
                       platform::errors::InvalidArgument(
                           "The dimensions of filter "
@@ -180,14 +181,16 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     // and var tensors should be float when input tensor's dtype is float16.
     auto bn_param_type = framework::proto::VarType::FP32;
 
-    PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
-                                         ctx.Input<Tensor>("ScaleX")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Scale input should be of float type"));
-    PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
-                                         ctx.Input<Tensor>("BiasX")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Bias input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("ScaleX")->dtype()),
+        platform::errors::InvalidArgument(
+            "Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("BiasX")->dtype()),
+        platform::errors::InvalidArgument(
+            "Bias input should be of float type"));
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,

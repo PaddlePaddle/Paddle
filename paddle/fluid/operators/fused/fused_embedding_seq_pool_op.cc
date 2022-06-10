@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_embedding_seq_pool_op.h"
+
 #include <memory>
+
 #include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {

@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/shuffle_channel_op.h"
+
 #include <memory>
 #include <string>
 
@@ -61,8 +62,9 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("group", "the number of groups.")
         .SetDefault(1)
         .AddCustomChecker([](const int& group) {
-          PADDLE_ENFORCE_GE(group, 1, platform::errors::InvalidArgument(
-                                          "group should be larger than 0."));
+          PADDLE_ENFORCE_GE(group, 1,
+                            platform::errors::InvalidArgument(
+                                "group should be larger than 0."));
         });
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")

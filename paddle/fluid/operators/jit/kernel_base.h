@@ -14,6 +14,7 @@
 
 #pragma once
 #include <cstdint>
+
 #include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/platform/macros.h"
 

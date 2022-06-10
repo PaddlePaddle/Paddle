@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/mv_grad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/mv_grad_kernel.h"
 
 namespace phi {
 
@@ -58,9 +57,9 @@ void MvGradKernel(const Context &dev_ctx,
   if (dx) {
     T *dx_data = dev_ctx.template Alloc<T>(dx);
 
-    MVGradDxCUDAKernel<
-        T><<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-        m, n, dout_data, vec_data, dx_data);
+    MVGradDxCUDAKernel<T>
+        <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
+            m, n, dout_data, vec_data, dx_data);
   }
 
   if (dvec) {

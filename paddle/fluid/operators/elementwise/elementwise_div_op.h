@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 
 namespace paddle {

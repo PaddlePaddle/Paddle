@@ -25,9 +25,11 @@
 #endif
 
 #include <stddef.h>
+
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -95,9 +97,9 @@ struct GpuLaunchConfig {
 };
 
 /* According to NVIDIA, if number of threads per block is 64/128/256/512,
-  * cuda performs better. And number of blocks should be greater (at least
-  * 2x~4x) than number of SMs. Hence, SM count is took into account within
-  * this function to determine the right number of threads per block. */
+ * cuda performs better. And number of blocks should be greater (at least
+ * 2x~4x) than number of SMs. Hence, SM count is took into account within
+ * this function to determine the right number of threads per block. */
 inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
                                             int64_t numel,
                                             int vec_size = 1) {
