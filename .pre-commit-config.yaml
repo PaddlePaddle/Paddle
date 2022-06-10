@@ -158,33 +158,15 @@ repos:
                 paddle/fluid/eager/api/generated/fluid_generated/forwards/CMakeLists.txt|
                 paddle/fluid/framework/io/CMakeLists.txt|
                 paddle/fluid/imperative/tests/CMakeLists.txt|
-                paddle/fluid/inference/analysis/CMakeLists.txt|
-                paddle/fluid/inference/tests/infer_ut/external-cmake/gtest-cpp.cmake|
-                paddle/fluid/memory/allocation/CMakeLists.txt|
-                paddle/fluid/memory/CMakeLists.txt|
-                paddle/fluid/operators/cinn/CMakeLists.txt|
                 paddle/fluid/operators/collective/CMakeLists.txt|
                 paddle/fluid/operators/ipu/CMakeLists.txt|
                 paddle/fluid/operators/jit/CMakeLists.txt|
                 paddle/fluid/operators/pscore/CMakeLists.txt|
                 paddle/fluid/platform/device/ipu/CMakeLists.txt|
                 paddle/fluid/platform/dynload/CMakeLists.txt|
-                paddle/infrt/external_kernels/CMakeLists.txt|
-                paddle/infrt/kernel/phi/CMakeLists.txt|
                 paddle/phi/backends/dynload/CMakeLists.txt|
                 paddle/phi/CMakeLists.txt|
                 paddle/phi/kernels/CMakeLists.txt|
                 paddle/phi/tests/core/CMakeLists.txt|
-                python/CMakeLists.txt|
-                python/paddle/fluid/contrib/slim/tests/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/autograd/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/distribution/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/dygraph_to_static/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/fft/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/ipu/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/mkldnn/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/npu/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/ps/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/rnn/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/sequence/CMakeLists.txt
+                python/CMakeLists.txt
             )$

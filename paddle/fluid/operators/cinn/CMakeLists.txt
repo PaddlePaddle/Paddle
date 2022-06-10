@@ -45,8 +45,8 @@ if(WITH_TESTING)
                                                            "RUN_TYPE=CINN")
 
   set(CINN_RUN_ENVIRONMENT
-      "OMP_NUM_THREADS=1;runtime_include_dir=${PADDLE_BINARY_DIR}/third_party/CINN/src/external_cinn/cinn/runtime/cuda"
-  )
+      "OMP_NUM_THREADS=1;runtime_include_dir=${PADDLE_BINARY_DIR} \
+      /third_party/CINN/src/external_cinn/cinn/runtime/cuda")
   cc_test(
     cinn_launch_op_test
     SRCS cinn_launch_op_test.cc

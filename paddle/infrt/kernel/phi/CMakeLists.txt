@@ -8,8 +8,8 @@ gather_srcs(infrt_src SRCS registry.cc dense_tensor_kernels.cc
             context_kernels.cc)
 
 set(infrt_register_phi_kernels_gen_source_file
-    ${CMAKE_SOURCE_DIR}/paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.cc
-)
+    "${CMAKE_SOURCE_DIR}/paddle/infrt/ \
+  kernel/phi/infershaped/infershaped_kernel_launchers.cc")
 set(infrt_register_phi_kernels_gen_file
     ${CMAKE_SOURCE_DIR}/tools/infrt/get_phi_kernel_function.sh)
 set(wrapped_infermeta_header_file
