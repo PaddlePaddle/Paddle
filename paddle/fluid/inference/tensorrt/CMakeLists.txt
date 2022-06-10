@@ -1,4 +1,5 @@
-# Compiling with WITH_PYTHON=ON and WITH_TENSORRT=ON failed on windows. Temporarily add paddle_inference_api dependency to solve the problem
+# Compiling with WITH_PYTHON=ON and WITH_TENSORRT=ON failed on windows.
+# Temporarily add paddle_inference_api dependency to solve the problem
 if(WIN32)
   nv_library(
     tensorrt_engine
@@ -9,7 +10,8 @@ else()
   nv_library(
     tensorrt_engine
     SRCS engine.cc trt_int8_calibrator.cc
-    DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context boost)
+    DEPS zero_copy_tensor ${GLOB_OPERATOR_DEPS} framework_proto device_context
+         boost)
 endif()
 nv_library(
   tensorrt_op_teller

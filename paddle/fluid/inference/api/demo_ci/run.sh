@@ -186,6 +186,30 @@ for WITH_STATIC_LIB in ON OFF; do
         EXIT_CODE=1
       fi
     fi
+
+    # --------onnxruntime mobilenetv2 on windows------
+    if [ $WITH_ONNXRUNTIME == ON ]; then
+      rm -rf *
+      cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
+        -DWITH_MKL=$TURN_ON_MKL \
+        -DDEMO_NAME=onnxruntime_mobilenet_demo \
+        -DWITH_GPU=$TEST_GPU_CPU \
+        -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
+        -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
+        -DUSE_TENSORRT=$USE_TENSORRT \
+        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
+        -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCUDA_LIB="$CUDA_LIB"
+      ninja
+      ./onnxruntime_mobilenet_demo \
+        --modeldir=$DATA_DIR/MobileNetV2/MobileNetV2 \
+        --data=$DATA_DIR/MobileNetV2/MobileNetV2/data.txt
+      if [ $? -ne 0 ]; then
+        echo "onnxruntime_mobilenet_demo runs windows failed " >> ${current_dir}/test_summary.txt
+        EXIT_CODE=1
+      fi
+    fi
   else
     # -----simple_on_word2vec on linux/mac-----
     rm -rf *
@@ -265,7 +289,8 @@ for WITH_STATIC_LIB in ON OFF; do
         -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
       make -j$(nproc)
       ./onnxruntime_mobilenet_demo \
-        --modeldir=$DATA_DIR/MobileNetV2/MobileNetV2
+        --modeldir=$DATA_DIR/MobileNetV2/MobileNetV2 \
+        --data=$DATA_DIR/MobileNetV2/MobileNetV2/data.txt
       if [ $? -ne 0 ]; then
         echo "onnxruntime_mobilenet_demo runs failed " >> ${current_dir}/test_summary.txt
         EXIT_CODE=1

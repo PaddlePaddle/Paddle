@@ -138,6 +138,21 @@ elseif(WIN32)
          --dirname=${WORD2VEC_MODEL_DIR})
 endif()
 
+if(WITH_ONNXRUNTIME)
+  if(NOT APPLE AND NOT WIN32)
+    cc_test(
+      test_onnxruntime_predictor
+      SRCS onnxruntime_predictor_tester.cc
+      DEPS paddle_inference_shared ARGS --dirname=${MOBILENETV2_MODEL_DIR})
+  elseif(WIN32)
+    cc_test(
+      test_onnxruntime_predictor
+      SRCS onnxruntime_predictor_tester.cc
+      DEPS analysis_predictor benchmark ${inference_deps} ARGS
+           --dirname=${MOBILENETV2_MODEL_DIR})
+  endif()
+endif()
+
 if(WITH_TESTING AND WITH_MKLDNN)
   if(NOT APPLE AND NOT WIN32)
     cc_test(

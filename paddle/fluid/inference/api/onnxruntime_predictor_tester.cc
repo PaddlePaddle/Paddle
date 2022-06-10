@@ -50,6 +50,11 @@ TEST(ONNXRuntimePredictor, onnxruntime_on) {
 
   ASSERT_TRUE(predictor);
   ASSERT_TRUE(!predictor->Clone());
+  PaddleTensor test_tensor;
+  std::vector<PaddleTensor> test_inputs(1, test_tensor);
+  std::vector<PaddleTensor> test_outputs;
+  ASSERT_TRUE(!predictor->Run(test_inputs, &test_outputs));
+
   // Dummy Input Data
   std::vector<int64_t> input_shape = {-1, 3, 224, 224};
   std::vector<float> input_data(1 * 3 * 224 * 224, 1.0);

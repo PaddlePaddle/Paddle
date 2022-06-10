@@ -13,11 +13,11 @@
 # limitations under the License.
 #
 
-cc_library(
-  reset_tensor_array
-  SRCS reset_tensor_array.cc
-  DEPS lod_tensor scope)
 if(WITH_ONNXRUNTIME)
+  cc_library(
+    reset_tensor_array
+    SRCS reset_tensor_array.cc
+    DEPS lod_tensor scope onnxruntime)
   cc_library(
     zero_copy_tensor
     SRCS zero_copy_tensor.cc
@@ -27,6 +27,10 @@ if(WITH_ONNXRUNTIME)
     SRCS zero_copy_tensor_dummy.cc
     DEPS onnxruntime)
 else(WITH_ONNXRUNTIME)
+  cc_library(
+    reset_tensor_array
+    SRCS reset_tensor_array.cc
+    DEPS lod_tensor scope)
   cc_library(
     zero_copy_tensor
     SRCS zero_copy_tensor.cc
