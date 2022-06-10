@@ -4,9 +4,9 @@ else()
   set(INFERENCE_EXTRA_DEPS paddle_inference_shared)
 endif()
 
-if(WITH_GPU AND TENSORRT_FOUND)
-  set(INFERENCE_EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps})
-endif()
+#if(WITH_GPU AND TENSORRT_FOUND)
+#set(INFERENCE_EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps})
+#endif()
 
 function(download_data install_dir data_file check_sum)
   string(REGEX MATCH "[^/\\]+$" file_name ${data_file})

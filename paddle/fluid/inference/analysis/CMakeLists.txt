@@ -49,10 +49,10 @@ function(inference_analysis_test_build TARGET)
       SRCS
       ${analysis_test_SRCS}
       DEPS
+      ${analysis_test_EXTRA_DEPS}
       analysis
       pass
-      ${GLOB_PASS_LIB}
-      ${analysis_test_EXTRA_DEPS})
+      ${GLOB_PASS_LIB})
   endif()
 endfunction()
 
@@ -75,15 +75,8 @@ function(inference_analysis_test TARGET)
     set(multiValueArgs SRCS ARGS EXTRA_DEPS)
     cmake_parse_arguments(analysis_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    inference_base_test_build(
-      ${TARGET}
-      SRCS
-      ${analysis_test_SRCS}
-      DEPS
-      analysis
-      pass
-      ${GLOB_PASS_LIB}
-      ${analysis_test_EXTRA_DEPS})
+    inference_base_test_build(${TARGET} SRCS ${analysis_test_SRCS} DEPS
+                              ${analysis_test_EXTRA_DEPS})
     inference_base_test_run(${TARGET} COMMAND ${TARGET} ARGS
                             ${analysis_test_ARGS})
   endif()
