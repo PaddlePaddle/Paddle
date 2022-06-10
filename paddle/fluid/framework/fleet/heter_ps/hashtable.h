@@ -76,12 +76,13 @@ class XPUCacheArray {
   }
 
   void print() {}
-  KeyType* get_keys() {return keys;}
-  ValType* get_vals() {return vals;}
   void set_xpu_id(uint32_t xpu_id) { xpu_id_ = xpu_id; }
   void set_xpu_num(uint32_t xpu_num) { xpu_num_ = xpu_num; }
+  void set_size(long long size) { size_ = size; }
   uint32_t get_xpu_id() {return xpu_id_;}
   uint32_t get_xpu_num() {return xpu_num_;}
+  KeyType* get_keys() {return keys;}
+  ValType* get_vals() {return vals;}
 
   int prefetch(const int dev_id, XPUStream stream = NULL) { return 0; }
   size_t size() { return size_; }
