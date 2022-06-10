@@ -77,9 +77,9 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     // calculate unactivated gate outputs
     if (bias) {
       auto b = framework::EigenMatrix<T>::From(*bias);
-      g.device(place) = x +
-                        b.reshape(Eigen::array<int, 2>({{1, frame_size * 3}}))
-                            .broadcast(Eigen::array<int, 2>({{batch_size, 1}}));
+      g.device(place) =
+          x + b.reshape(Eigen::array<int, 2>({{1, frame_size * 3}}))
+                  .broadcast(Eigen::array<int, 2>({{batch_size, 1}}));
     } else {
       g.device(place) = x;
     }

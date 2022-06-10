@@ -14,9 +14,8 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/compare_kernel.h"
-
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/compare_kernel.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 
 namespace phi {

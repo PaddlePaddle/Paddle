@@ -33,6 +33,7 @@ LOADED_VAR_SUFFIX = ".load_0"
 
 
 def while_softmax_regression(img):
+
     def cond(i, times, pred):
         return i < times
 
@@ -44,12 +45,14 @@ def while_softmax_regression(img):
     i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
     times = fluid.layers.fill_constant(shape=[1], dtype='int64', value=5)
     pred = fluid.layers.fc(input=img, size=10, act='softmax')
-    i, times, pred = fluid.layers.while_loop(
-        cond=cond, body=body, loop_vars=[i, times, pred])
+    i, times, pred = fluid.layers.while_loop(cond=cond,
+                                             body=body,
+                                             loop_vars=[i, times, pred])
     return pred
 
 
 class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
+
     def setUp(self):
         self.seed = 90
         self.batch_size = 32
@@ -59,6 +62,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
         self.params_filename = None
 
     def _random_batch_reader(self):
+
         def _get_random_images_and_labels(image_shape, label_shape):
             image = np.random.random(size=image_shape).astype('float32')
             label = np.random.random(size=label_shape).astype('int64')
@@ -87,29 +91,29 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
         optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         optimizer.minimize(avg_loss)
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
 
         exe = fluid.Executor(place)
         exe.run(startup_program)
 
-        loader = fluid.io.DataLoader.from_generator(
-            feed_list=[img, label], capacity=5, iterable=True)
+        loader = fluid.io.DataLoader.from_generator(feed_list=[img, label],
+                                                    capacity=5,
+                                                    iterable=True)
         loader.set_batch_generator(self._random_batch_reader(), places=place)
 
         for data in loader():
             exe.run(main_program, feed=data, fetch_list=[avg_loss])
 
-        fluid.io.save_inference_model(
-            self.save_dirname, ["img"], [pred],
-            exe,
-            model_filename=self.model_filename,
-            params_filename=self.params_filename,
-            clip_extra=False)
+        fluid.io.save_inference_model(self.save_dirname, ["img"], [pred],
+                                      exe,
+                                      model_filename=self.model_filename,
+                                      params_filename=self.params_filename,
+                                      clip_extra=False)
 
     def load_and_train_dygraph(self):
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             fluid.default_startup_program().random_seed = self.seed
             fluid.default_main_program().random_seed = self.seed
@@ -127,8 +131,8 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
                                       parameter_list=while_net.parameters())
 
             train_loader = fluid.io.DataLoader.from_generator(capacity=10)
-            train_loader.set_batch_generator(
-                self._random_batch_reader(), places=place)
+            train_loader.set_batch_generator(self._random_batch_reader(),
+                                             places=place)
 
             while_net.train()
 
@@ -170,17 +174,16 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
             optimizer = fluid.optimizer.SGD(learning_rate=0.001)
             optimizer.minimize(avg_loss)
 
-            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
 
-            fluid.io.load_params(
-                exe,
-                self.save_dirname,
-                main_program=fluid.default_main_program(),
-                filename=self.params_filename)
+            fluid.io.load_params(exe,
+                                 self.save_dirname,
+                                 main_program=fluid.default_main_program(),
+                                 filename=self.params_filename)
 
             static_param_init_value = {}
             static_param_name_list = []
@@ -189,10 +192,11 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
                 static_param_init_value[param.name] = fluid.executor._fetch_var(
                     param.name)
 
-            loader = fluid.io.DataLoader.from_generator(
-                feed_list=[img, label], capacity=5, iterable=True)
-            loader.set_batch_generator(
-                self._random_batch_reader(), places=place)
+            loader = fluid.io.DataLoader.from_generator(feed_list=[img, label],
+                                                        capacity=5,
+                                                        iterable=True)
+            loader.set_batch_generator(self._random_batch_reader(),
+                                       places=place)
 
             for data in loader():
                 fetch_list = [avg_loss.name]

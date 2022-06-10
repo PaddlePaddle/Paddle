@@ -28,6 +28,7 @@
 #include <dlfcn.h>  // dladdr
 #include <sys/stat.h>
 #include <sys/time.h>
+
 #include <algorithm>  // std::accumulate
 #else
 #ifndef NOMINMAX
@@ -40,6 +41,7 @@
 #include <stdio.h>
 #include <windows.h>
 #include <winsock.h>
+
 #include <numeric>  // std::accumulate in msvc
 #ifndef S_ISDIR     // windows port for sys/stat.h
 #define S_ISDIR(mode) (((mode)&S_IFMT) == S_IFDIR)

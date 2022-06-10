@@ -15,6 +15,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #ifdef PADDLE_WITH_XPU
 namespace paddle {

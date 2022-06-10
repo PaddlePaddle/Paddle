@@ -22,6 +22,7 @@ from test_dist_fleet_base import TestFleetBase
 
 @unittest.skip(reason="Skip unstable ut, need paddle sync mode fix")
 class TestDistMnistSync2x2(TestFleetBase):
+
     def _setup_config(self):
         self._mode = "sync"
         self._reader = "pyreader"
@@ -52,12 +53,14 @@ class TestDistMnistSync2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
-        self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=False)
 
 
 # @unittest.skip(reason="Skip unstable ut, reader need to be rewrite")
 class TestDistMnistAsyncDataset2x2(TestFleetBase):
+
     def _setup_config(self):
         self._mode = "async"
         self._reader = "dataset"
@@ -91,8 +94,9 @@ class TestDistMnistAsyncDataset2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
-        self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=False)
 
 
 if __name__ == "__main__":

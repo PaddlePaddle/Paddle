@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
@@ -27,7 +28,7 @@ namespace sparse {
  * x: (N, D, H, W, C)
  * kernel: (D, H, W, C, OC)
  * out: (N, D, H, W, OC)
-**/
+ **/
 template <typename T, typename IntT = int>
 void MaxPoolCPUKernel(const CPUContext& dev_ctx,
                       const SparseCooTensor& x,

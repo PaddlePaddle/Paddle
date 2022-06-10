@@ -261,6 +261,15 @@ NodeQueryResult GraphGpuWrapper::query_node_list(int gpu_id, int start,
   return ((GpuPsGraphTable *)graph_table)
       ->query_node_list(gpu_id, start, query_size);
 }
-#endif
+void GraphGpuWrapper::load_node_weight(int type_id, int idx, std::string path) {
+  return ((GpuPsGraphTable *)graph_table)
+      ->cpu_graph_table->load_node_weight(type_id, idx, path);
 }
-};
+
+void GraphGpuWrapper::export_partition_files(int idx, std::string file_path) {
+  return ((GpuPsGraphTable *)graph_table)
+      ->cpu_graph_table->export_partition_files(idx, file_path);
+}
+#endif
+}  // namespace framework
+};  // namespace paddle

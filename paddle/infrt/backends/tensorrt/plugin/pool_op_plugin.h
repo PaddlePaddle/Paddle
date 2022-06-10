@@ -114,10 +114,10 @@ class PoolPlugin : public nvinfer1::IPluginV2IOExt {
   char const* getPluginNamespace() const noexcept override;
 
   // IPluginV2Ext methods
-  nvinfer1::DataType getOutputDataType(int32_t index,
-                                       nvinfer1::DataType const* inputTypes,
-                                       int32_t nbInputs) const
-      noexcept override;
+  nvinfer1::DataType getOutputDataType(
+      int32_t index,
+      nvinfer1::DataType const* inputTypes,
+      int32_t nbInputs) const noexcept override;
   bool isOutputBroadcastAcrossBatch(int32_t outputIndex,
                                     bool const* inputIsBroadcasted,
                                     int32_t nbInputs) const noexcept override;

@@ -14,6 +14,7 @@
 
 #include <sstream>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -24,6 +25,9 @@
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
 #include "paddle/fluid/framework/convert_utils.h"
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -65,6 +69,13 @@ struct FillConstantVisitor {
           context_.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
       runner.Run(stream);
+    } else {
+      phi::funcs::SetConstant<DeviceContext, T> set_constant;
+      set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
+    }
+#elif defined(PADDLE_WITH_MLU)
+    if (platform::is_mlu_place(context_.GetPlace())) {
+      FillMLUTensorWithHostValue<T>(context_, static_cast<T>(value_), tensor_);
     } else {
       phi::funcs::SetConstant<DeviceContext, T> set_constant;
       set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
@@ -255,11 +266,10 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
           ->ShareDataWith(fused_tensor->Slice(
               static_cast<int64_t>(offset), static_cast<int64_t>(offset + len)))
           .Resize(dim);
-      len = use_align
-                ? platform::Alignment(len * size_of_dtype, context.GetPlace(),
-                                      align_size) /
-                      size_of_dtype
-                : len;
+      len = use_align ? platform::Alignment(len * size_of_dtype,
+                                            context.GetPlace(), align_size) /
+                            size_of_dtype
+                      : len;
       ss << "output(" << out_var_names[i] << ")  dim:(" << dim << ")"
          << " address: " << out_tensors[i]->data() << " len: " << len << ", ";
       offset += len;
@@ -294,12 +304,11 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
           size, 0,
           platform::errors::InvalidArgument(
               "The number of tensor `%s`'s elements is 0.", var_names[i]));
-      auto len =
-          use_align
-              ? platform::Alignment(static_cast<size_t>(size) * size_of_dtype,
-                                    place, align_size) /
-                    size_of_dtype
-              : static_cast<size_t>(size);
+      auto len = use_align ? platform::Alignment(
+                                 static_cast<size_t>(size) * size_of_dtype,
+                                 place, align_size) /
+                                 size_of_dtype
+                           : static_cast<size_t>(size);
       const void *ptr =
           lod_tensors[i]->IsInitialized() ? lod_tensors[i]->data() : nullptr;
       VLOG(4) << size << " " << len;
@@ -507,6 +516,15 @@ REGISTER_OP_NPU_KERNEL(
     ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext,
                                 plat::float16>,
     ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, double>);
+#endif
+
+#if defined(PADDLE_WITH_MLU)
+REGISTER_OP_MLU_KERNEL(
+    coalesce_tensor,
+    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext,
+                                plat::float16>,
+    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, float>);
 #endif
 
 REGISTER_OP_VERSION(coalesce_tensor)

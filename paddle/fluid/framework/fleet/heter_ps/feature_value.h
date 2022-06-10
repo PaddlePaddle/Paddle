@@ -32,16 +32,32 @@ struct FeatureValue {
   float lr;
   float lr_g2sum;
   int mf_size;
-  float mf[MF_DIM + 1];
+  int mf_dim;
   uint64_t cpu_ptr;
+  float mf[0];
 
   friend std::ostream& operator<<(std::ostream& out, FeatureValue& val) {
     out << "show: " << val.show << " clk: " << val.clk << " slot: " << val.slot
-        << " lr: " << val.lr << " mf_size: " << val.mf_size << " mf:";
-    for (int i = 0; i < val.mf_size; ++i) {
+        << " lr: " << val.lr << " mf_dim: " << val.mf_dim
+        << "cpuptr: " << val.cpu_ptr << " mf_size: " << val.mf_size << " mf:";
+    for (int i = 0; i < val.mf_dim + 1; ++i) {
       out << " " << val.mf[i];
     }
     return out;
+  }
+  __device__ __forceinline__ void operator=(const FeatureValue& in) {
+    delta_score = in.delta_score;
+    show = in.show;
+    clk = in.clk;
+    slot = in.slot;
+    lr = in.lr;
+    lr_g2sum = in.lr_g2sum;
+    mf_size = in.mf_size;
+    mf_dim = in.mf_dim;
+    cpu_ptr = in.cpu_ptr;
+    for (int i = 0; i < mf_dim + 1; i++) {
+      mf[i] = in.mf[i];
+    }
   }
 };
 
@@ -50,20 +66,33 @@ struct FeaturePushValue {
   float clk;
   int slot;
   float lr_g;
-  float mf_g[MF_DIM];
+  int mf_dim;
+  float mf_g[0];
 
-  // __device__ __forceinline__ FeaturePushValue
-  // operator+(const FeaturePushValue& a) const {
-  //  FeaturePushValue out;
-  //  out.slot = a.slot;
-  //  out.show = a.show + show;
-  //  out.clk = a.clk + clk;
-  //  out.lr_g = a.lr_g + lr_g;
-  //  for (int i = 0; i < MF_DIM; ++i) {
-  //    out.mf_g[i] = a.mf_g[i] + mf_g[i];
-  //  }
-  //  return out;
-  // }
+  __device__ __forceinline__ FeaturePushValue
+  operator+(const FeaturePushValue& a) const {
+    FeaturePushValue out;
+    out.slot = a.slot;
+    out.mf_dim = a.mf_dim;
+    out.show = a.show + show;
+    out.clk = a.clk + clk;
+    out.lr_g = a.lr_g + lr_g;
+    // out.mf_g = a.mf_g;
+    for (int i = 0; i < out.mf_dim; ++i) {
+      out.mf_g[i] = a.mf_g[i] + mf_g[i];
+    }
+    return out;
+  }
+  __device__ __forceinline__ void operator=(const FeaturePushValue& in) {
+    show = in.show;
+    clk = in.clk;
+    slot = in.slot;
+    lr_g = in.lr_g;
+    mf_dim = in.mf_dim;
+    for (int i = 0; i < mf_dim; i++) {
+      mf_g[i] = in.mf_g[i];
+    }
+  }
 };
 
 }  // end namespace framework

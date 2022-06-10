@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -50,6 +50,7 @@ def ref_complex_grad(x, y, dout):
 
 
 class TestComplexOp(OpTest):
+
     def init_spec(self):
         self.x_shape = [10, 10]
         self.y_shape = [10, 10]
@@ -73,12 +74,11 @@ class TestComplexOp(OpTest):
         dout = self.out_grad
         dx, dy = ref_complex_grad(self.inputs['X'], self.inputs['Y'],
                                   self.out_grad)
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            user_defined_grads=[dx, dy],
-            user_defined_grad_outputs=[dout],
-            check_eager=True)
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=[dx, dy],
+                        user_defined_grad_outputs=[dout],
+                        check_eager=True)
 
     def test_check_grad_ignore_x(self):
         dout = self.out_grad
@@ -86,28 +86,27 @@ class TestComplexOp(OpTest):
                                   self.out_grad)
         self.assertTupleEqual(dx.shape, tuple(self.x_shape))
         self.assertTupleEqual(dy.shape, tuple(self.y_shape))
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set('X'),
-            user_defined_grads=[dy],
-            user_defined_grad_outputs=[dout],
-            check_eager=True)
+        self.check_grad(['Y'],
+                        'Out',
+                        no_grad_set=set('X'),
+                        user_defined_grads=[dy],
+                        user_defined_grad_outputs=[dout],
+                        check_eager=True)
 
     def test_check_grad_ignore_y(self):
         dout = self.out_grad
         dx, dy = ref_complex_grad(self.inputs['X'], self.inputs['Y'],
                                   self.out_grad)
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-            user_defined_grads=[dx],
-            user_defined_grad_outputs=[dout],
-            check_eager=True)
+        self.check_grad(['X'],
+                        'Out',
+                        no_grad_set=set('Y'),
+                        user_defined_grads=[dx],
+                        user_defined_grad_outputs=[dout],
+                        check_eager=True)
 
 
 class TestComplexOpBroadcast1(TestComplexOp):
+
     def init_spec(self):
         self.x_shape = [10, 3, 1, 4]
         self.y_shape = [100, 1]
@@ -115,6 +114,7 @@ class TestComplexOpBroadcast1(TestComplexOp):
 
 
 class TestComplexOpBroadcast2(TestComplexOp):
+
     def init_spec(self):
         self.x_shape = [100, 1]
         self.y_shape = [10, 3, 1, 4]
@@ -122,6 +122,7 @@ class TestComplexOpBroadcast2(TestComplexOp):
 
 
 class TestComplexOpBroadcast3(TestComplexOp):
+
     def init_spec(self):
         self.x_shape = [1, 100]
         self.y_shape = [100]
@@ -129,6 +130,7 @@ class TestComplexOpBroadcast3(TestComplexOp):
 
 
 class TestComplexAPI(unittest.TestCase):
+
     def setUp(self):
         self.x = np.random.randn(10, 10)
         self.y = np.random.randn(10, 10)
@@ -151,8 +153,10 @@ class TestComplexAPI(unittest.TestCase):
         exe = static.Executor()
         exe.run(sp)
         [out_np] = exe.run(mp,
-                           feed={"x": self.x,
-                                 "y": self.y},
+                           feed={
+                               "x": self.x,
+                               "y": self.y
+                           },
                            fetch_list=[out])
         self.assertTrue(np.allclose(self.out, out_np))
 

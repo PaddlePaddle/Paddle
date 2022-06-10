@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
@@ -28,8 +29,6 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
-
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -279,16 +278,14 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     if (it == ins.end()) {
       if (LIKELY(input_defs[i].type_index ==
-                 std::type_index(
-                     typeid(paddle::optional<const phi::DenseTensor&>)))) {
+                 std::type_index(typeid(paddle::optional<phi::DenseTensor>)))) {
         kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
         auto end_idx = start_idx + 1;
         kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
         continue;
       } else if (input_defs[i].type_index ==
-                 std::type_index(
-                     typeid(paddle::optional<
-                            const std::vector<const phi::DenseTensor*>>))) {
+                 std::type_index(typeid(
+                     paddle::optional<std::vector<const phi::DenseTensor*>>))) {
         kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
         auto end_idx = start_idx + 1;
         kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);

@@ -207,8 +207,8 @@ def summary(net, input_size=None, dtypes=None, input=None):
             elif isinstance(item, numbers.Number):
                 if item <= 0:
                     raise ValueError(
-                        "Expected element in input size greater than zero, but got {}".
-                        format(item))
+                        "Expected element in input size greater than zero, but got {}"
+                        .format(item))
             new_shape.append(item)
         return tuple(new_shape)
 
@@ -231,6 +231,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
 @paddle.no_grad()
 def summary_string(model, input_size=None, dtypes=None, input=None):
+
     def _all_is_numper(items):
         for item in items:
             if not isinstance(item, numbers.Number):
@@ -271,6 +272,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
         return output_shape
 
     def register_hook(layer):
+
         def hook(layer, input, output):
             class_name = str(layer.__class__).split(".")[-1].split("'")[0]
 
@@ -301,23 +303,27 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             else:
                 layer_state_dict = layer.state_dict()
 
+            summary[m_key]["trainable_params"] = 0
+            trainable_flag = False
             for k, v in layer_state_dict.items():
                 params += np.prod(v.shape)
 
                 try:
                     if (getattr(getattr(layer, k), 'trainable')) and (
                             not getattr(getattr(layer, k), 'stop_gradient')):
+                        summary[m_key]["trainable_params"] += np.prod(v.shape)
                         summary[m_key]["trainable"] = True
-                    else:
+                        trainable_flag = True
+                    elif not trainable_flag:
                         summary[m_key]["trainable"] = False
                 except:
                     summary[m_key]["trainable"] = True
 
             summary[m_key]["nb_params"] = params
 
-        if (not isinstance(layer, nn.Sequential) and
-                not isinstance(layer, nn.LayerList) and
-            (not (layer == model) or depth < 1)):
+        if (not isinstance(layer, nn.Sequential)
+                and not isinstance(layer, nn.LayerList)
+                and (not (layer == model) or depth < 1)):
 
             hooks.append(layer.register_forward_post_hook(hook))
         # For rnn, gru and lstm layer
@@ -412,22 +418,20 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             str(summary[layer]["input_shape"]),
             table_width['input_shape_width'],
             str(summary[layer]["output_shape"]),
-            table_width['output_shape_width'],
-            "{0:,}".format(summary[layer]["nb_params"]),
-            table_width['params_width'])
+            table_width['output_shape_width'], "{0:,}".format(
+                summary[layer]["nb_params"]), table_width['params_width'])
         total_params += summary[layer]["nb_params"]
 
         try:
             total_output += np.sum(
-                np.prod(
-                    summary[layer]["output_shape"], axis=-1))
+                np.prod(summary[layer]["output_shape"], axis=-1))
         except:
             for output_shape in summary[layer]["output_shape"]:
                 total_output += np.sum(np.prod(output_shape, axis=-1))
 
         if "trainable" in summary[layer]:
             if summary[layer]["trainable"] == True:
-                trainable_params += summary[layer]["nb_params"]
+                trainable_params += summary[layer]["trainable_params"]
         summary_str += line_new + "\n"
 
     def _get_input_size(input_size, size):

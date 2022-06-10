@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <cncl.h>
+
 #include <string>
 
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -21,9 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
-
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {

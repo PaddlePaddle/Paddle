@@ -32,11 +32,14 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
       local_scopes_(local_scopes),
       local_exec_scopes_(local_exec_scopes),
       places_(places),
-      fetch_ctxs_(places),
       strategy_(strategy),
       prepare_pool_(1),
       pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
                                        : nullptr) {
+  platform::EmplaceDeviceContexts(
+      &fetch_ctxs_, places,
+      /*disable_setting_default_stream_for_allocator=*/true);
+
   if (strategy_.num_iteration_per_run_ > 1) {
     int read_op_num = 0;
     for (auto *node : graph_->Nodes()) {
@@ -207,7 +210,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {
-      op->SetDeviceContext(p, fetch_ctxs_.Get(p));
+      op->SetDeviceContext(p, fetch_ctxs_[p].get().get());
     }
 
     for (auto *var : vars) {

@@ -21,6 +21,7 @@ from api_base import BaseAPI
 
 
 class BackwardAPI(BaseAPI):
+
     def __init__(self, backward_item_yaml):
         super(BackwardAPI, self).__init__(backward_item_yaml)
         self.check_args(backward_item_yaml['forward'])
@@ -172,8 +173,8 @@ class BackwardAPI(BaseAPI):
         return kernel_output, output_names, output_create
 
     def gene_invoke_code(self, invoke_code, params_code):
-        inveke_func_name = invoke_code.split('(')[0].strip()
-        if inveke_func_name.endswith('_grad') or inveke_func_name.endswith(
+        invoke_func_name = invoke_code.split('(')[0].strip()
+        if invoke_func_name.endswith('_grad') or invoke_func_name.endswith(
                 '_grad_impl'):
             return f"""
 PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
@@ -209,7 +210,6 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/infermeta/backward.h"
@@ -237,8 +237,13 @@ namespace experimental {
 def generate_backward_api(backward_yaml_path, header_file_path,
                           source_file_path):
 
-    with open(backward_yaml_path, 'r') as f:
-        bw_apis = yaml.load(f, Loader=yaml.FullLoader)
+    bw_apis = []
+    for each_api_yaml in backward_yaml_path:
+        with open(each_api_yaml, 'r') as f:
+            api_list = yaml.load(f, Loader=yaml.FullLoader)
+            if api_list:
+                bw_apis.extend(api_list)
+
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
 
@@ -267,19 +272,17 @@ def generate_backward_api(backward_yaml_path, header_file_path,
 def main():
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle C++ backward API files')
-    parser.add_argument(
-        '--backward_yaml_path',
-        help='path to backward yaml file',
-        default='python/paddle/utils/code_gen/backward.yaml')
-    parser.add_argument(
-        '--backward_header_path',
-        help='output of generated backward header code file',
-        default='paddle/phi/api/backward/backward_api.h')
+    parser.add_argument('--backward_yaml_path',
+                        help='path to backward yaml file',
+                        nargs='+',
+                        default='python/paddle/utils/code_gen/backward.yaml')
+    parser.add_argument('--backward_header_path',
+                        help='output of generated backward header code file',
+                        default='paddle/phi/api/backward/backward_api.h')
 
-    parser.add_argument(
-        '--backward_source_path',
-        help='output of generated backward source code file',
-        default='paddle/phi/api/lib/backward_api.cc')
+    parser.add_argument('--backward_source_path',
+                        help='output of generated backward source code file',
+                        default='paddle/phi/api/lib/backward_api.cc')
 
     options = parser.parse_args()
 

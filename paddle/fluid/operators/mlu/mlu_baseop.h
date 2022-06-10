@@ -34,17 +34,6 @@ using ExecutionContext = framework::ExecutionContext;
 using DeviceContextPool = platform::DeviceContextPool;
 using MLUDeviceContext = platform::MLUDeviceContext;
 
-enum MLULogicMethod {
-  CNNL_LOGIC_OP_EQ = 0,
-  CNNL_LOGIC_OP_NE = 1,
-  CNNL_LOGIC_OP_GT = 2,
-  CNNL_LOGIC_OP_GE = 3,
-  CNNL_LOGIC_OP_LT = 4,
-  CNNL_LOGIC_OP_LE = 5,
-  CNNL_LOGIC_OP_AND = 6,
-  CNNL_LOGIC_OP_OR = 7,
-};
-
 const std::map<std::string, cnnlReduceOp_t> MLUReduceOpMap = {
     {"reduce_all", CNNL_REDUCE_AND},  {"reduce_any", CNNL_REDUCE_OR},
     {"reduce_max", CNNL_REDUCE_MAX},  {"reduce_mean", CNNL_REDUCE_AVG},
@@ -74,6 +63,9 @@ inline cnnlDataType_t ToCnnlDataType(
       break;
     case DataType::FLOAT32:
       type = CNNL_DTYPE_FLOAT;
+      break;
+    case DataType::FLOAT64:
+      type = CNNL_DTYPE_DOUBLE;
       break;
     case DataType::INT8:
       type = CNNL_DTYPE_INT8;
@@ -175,6 +167,10 @@ const std::map<std::pair<VT::Type, VT::Type>, cnnlCastDataType_t>
 
 cnnlCastDataType_t GetCastDataType(const VT::Type& src_type,
                                    const VT::Type& dst_type);
+
+cnnlCastDataType_t GetCastDataType(const DataType& src_type,
+                                   const DataType& dst_type);
+
 bool MLUSupportsCast(const VT::Type& src_type, const VT::Type& dst_type);
 
 cnnlDeviceType_t GetCnnlDev(int dev_ordinal);
@@ -638,8 +634,7 @@ class MLUCnnl {
                                const cnnlTensorDescriptor_t output_desc,
                                void* output);
 
-  static void Logic(const ExecutionContext& ctx,
-                    const MLULogicMethod log_method,
+  static void Logic(const ExecutionContext& ctx, const cnnlLogicOp_t log_method,
                     const cnnlTensorDescriptor_t input1_desc,
                     const void* input1,
                     const cnnlTensorDescriptor_t input2_desc,
@@ -1164,7 +1159,7 @@ class MLUCnnl {
 
   static void ConvBackpropInput(
       const ExecutionContext& ctx, const cnnlConvolutionDescriptor_t conv_desc,
-      const cnnlTensorDescriptor_t input_desc, const void* filter,
+      const cnnlTensorDescriptor_t filter_desc, const void* filter,
       const cnnlTensorDescriptor_t out_backprop_desc, const void* out_backprop,
       const cnnlTensorDescriptor_t in_backprop_desc, void* in_backprop);
 
@@ -1202,11 +1197,13 @@ class MLUCnnl {
                      const void* k, const int k_int,
                      const cnnlTensorDescriptor_t output_desc, void* output);
 
-  static void ScatterNd(const ExecutionContext& ctx,
+  static void ScatterNd(const ExecutionContext& ctx, cnnlScatterNdMode_t mode,
                         const cnnlTensorDescriptor_t indices_desc,
                         const void* indices,
                         const cnnlTensorDescriptor_t updates_desc,
                         const void* updates,
+                        const cnnlTensorDescriptor_t input_desc,
+                        const void* input,
                         const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void BitWise(const ExecutionContext& ctx,
@@ -1227,6 +1224,12 @@ class MLUCnnl {
                          const void* input,
                          const cnnlTensorDescriptor_t output_desc,
                          void* output);
+
+  static void EmbeddingBackward(
+      const ExecutionContext& ctx, int padding_idx, bool scale_grad_by_freq,
+      const cnnlTensorDescriptor_t indices_desc, const void* indices,
+      const cnnlTensorDescriptor_t diff_desc, const void* diff,
+      const cnnlTensorDescriptor_t output_desc, void* output);
 };
 
 template <typename T>
