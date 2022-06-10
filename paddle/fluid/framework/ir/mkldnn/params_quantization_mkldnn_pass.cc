@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/params_quantization_mkldnn_pass.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
@@ -71,6 +72,7 @@ bool HasBias(ir::Node* conv_op) {
 
 bool ShouldSkipConv(ir::Node* conv_op, Scope* scope, ir::Node* conv_filter) {
   if (!platform::HasOpINT8DataType(conv_op->Op())) {
+    VLOG(4) << "Skipping non-int8 convolution (id: " << conv_op->id() << ").";
     return true;
   }
 
