@@ -89,6 +89,12 @@ class TestElementwiseMaxFp16(OpTest):
         self.check_output_with_place(self.place)
 
 
+class TestElementwiseMaxInt32(OpTest):
+
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
 class TestTestElementwiseMax_Vector(TestElementwiseMax):
 
     def setUp(self):
