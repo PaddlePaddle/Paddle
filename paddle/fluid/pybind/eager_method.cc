@@ -1641,6 +1641,7 @@ static PyObject* tensor__unset_fake_empty(TensorObject* self, PyObject* args,
         egr::EagerUtils::grad_node(self->tensor))
         ->SetFakeEmpty(false);
   }
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
