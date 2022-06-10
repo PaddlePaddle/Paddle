@@ -195,6 +195,8 @@ void SerializationLogger::LogHostTraceEventNode(
         dtype_vector_proto->add_dtype(*dtype_it);
       }
     }
+    current_op_supplement_event_node_proto_->set_allocated_op_supplement_event(
+        op_supplement_event_proto);
   }
 }
 
