@@ -220,7 +220,7 @@ class TestPSPassWithBow(unittest.TestCase):
             "test_in_memory_dataset_run_a.txt",
             "test_in_memory_dataset_run_b.txt"
         ])
-        
+
         os.remove("./test_in_memory_dataset_run_a.txt")
         os.remove("./test_in_memory_dataset_run_b.txt")
 
