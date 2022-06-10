@@ -71,23 +71,29 @@ def TestDistTraining():
             exe.run(startup_prog)
 
             ipu_strategy = paddle.static.IpuStrategy()
-            ipu_strategy.set_graph_config(
-                num_ipus=64, is_training=True, enable_manual_shard=True)
+            ipu_strategy.set_graph_config(num_ipus=64,
+                                          is_training=True,
+                                          enable_manual_shard=True)
             ipu_strategy.set_pipelining_config(
                 enable_pipelining=True,
                 batches_per_step=1,
                 enable_gradient_accumulation=True,
                 accumulation_factor=4)
             ipu_strategy.set_options({
-                "enable_distribution": True,
-                "enable_replicated_graphs": True,
-                "replicated_graph_count": 32,
-                "enable_distributed_replicated_graphs": True,
+                "enable_distribution":
+                True,
+                "enable_replicated_graphs":
+                True,
+                "replicated_graph_count":
+                32,
+                "enable_distributed_replicated_graphs":
+                True,
                 "global_replica_offset":
                 # Paddle : int(os.environ.get("PADDLE_TRAINER_ID")) * 32
                 # PopRun : int(os.environ.get("POPDIST_REPLICA_INDEX_OFFSET"))
                 int(os.environ.get("PADDLE_TRAINER_ID")) * 32,
-                "global_replication_factor": 64,
+                "global_replication_factor":
+                64,
                 "location_optimizer": {
                     "on_chip": False,
                     "use_replicated_tensor_sharding": True

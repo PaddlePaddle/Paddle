@@ -92,13 +92,18 @@ def Test(use_dist, file_name):
                 ipu_strategy.set_graph_config(num_ipus=2, is_training=True)
                 # Set distributed envs
                 ipu_strategy.set_options({
-                    "enable_distribution": True,
-                    "enable_replicated_graphs": True,
-                    "replicated_graph_count": 2,
-                    "enable_distributed_replicated_graphs": True,
+                    "enable_distribution":
+                    True,
+                    "enable_replicated_graphs":
+                    True,
+                    "replicated_graph_count":
+                    2,
+                    "enable_distributed_replicated_graphs":
+                    True,
                     "global_replica_offset":
                     int(os.environ.get("PADDLE_TRAINER_ID")) * 2,
-                    "global_replication_factor": 4
+                    "global_replication_factor":
+                    4
                 })
             else:
                 ipu_strategy.set_graph_config(num_ipus=4, is_training=True)
@@ -114,10 +119,10 @@ def Test(use_dist, file_name):
             if use_dist:
                 if os.environ.get("PADDLE_TRAINER_ID") == "0":
                     input_data = np.concatenate([
-                        np.array([[[1], [3]], [[2], [4]], [[4], [127]]])
-                        .astype(np.int32), np.array(
-                            [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(
-                                np.int32)
+                        np.array([[[1], [3]], [[2], [4]],
+                                  [[4], [127]]]).astype(np.int32),
+                        np.array([[[1], [3]], [[2], [4]],
+                                  [[4], [127]]]).astype(np.int32)
                     ])
                 else:
                     input_data = np.concatenate([
@@ -128,12 +133,14 @@ def Test(use_dist, file_name):
                     ])
             else:
                 input_data = np.concatenate([
-                    np.array([[[1], [3]], [[2], [4]], [[4], [127]]]).astype(
-                        np.int32), np.array([[[1], [3]], [[2], [4]],
-                                             [[4], [127]]]).astype(np.int32),
-                    np.array([[[8], [60]], [[50], [77]], [[90], [13]]]).astype(
-                        np.int32), np.array([[[8], [60]], [[50], [77]],
-                                             [[90], [13]]]).astype(np.int32)
+                    np.array([[[1], [3]], [[2], [4]],
+                              [[4], [127]]]).astype(np.int32),
+                    np.array([[[1], [3]], [[2], [4]],
+                              [[4], [127]]]).astype(np.int32),
+                    np.array([[[8], [60]], [[50], [77]],
+                              [[90], [13]]]).astype(np.int32),
+                    np.array([[[8], [60]], [[50], [77]],
+                              [[90], [13]]]).astype(np.int32)
                 ])
             feed_data = {"x": input_data}
 
