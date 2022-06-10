@@ -60,12 +60,12 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
-void CumsumInferMeta(const MetaTensor& x,
-                     int axis,
-                     bool flatten,
-                     bool exclusive,
-                     bool reverse,
-                     MetaTensor* out);
+void CumInferMeta(const MetaTensor& x,
+                  int axis,
+                  bool flatten,
+                  bool exclusive,
+                  bool reverse,
+                  MetaTensor* out);
 
 void DiagInferMeta(const MetaTensor& x,
                    int offset,
