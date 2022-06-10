@@ -36,6 +36,7 @@ namespace paddle {
 namespace pybind {
 
 extern PyTypeObject* p_tensor_type;
+extern PyTypeObject* p_string_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;
 extern PyTypeObject* g_vartype_pytype;
@@ -75,6 +76,8 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
       return pybind11::detail::NPY_COMPLEX64;
     case phi::DataType::COMPLEX128:
       return pybind11::detail::NPY_COMPLEX128;
+    case phi::DataType::PSTRING:
+      return pybind11::detail::npy_api::NPY_UNICODE_;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Unknow phi::DataType, the int value = %d.",
@@ -198,7 +201,9 @@ bool IsEagerTensor(PyObject* obj) {
 }
 
 paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type)) ||
+      PyObject_IsInstance(obj,
+                          reinterpret_cast<PyObject*>(p_string_tensor_type))) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -508,7 +513,14 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
     Py_INCREF(Py_None);
     return Py_None;
   }
-  PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
+  PyObject* obj = nullptr;
+  if (value.initialized() && value.is_string_tensor()) {
+    // In order to return the core.eager.StringTensor, there is need
+    // to use p_string_tensor_type to create a python obj.
+    obj = p_string_tensor_type->tp_alloc(p_string_tensor_type, 0);
+  } else {
+    obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
+  }
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
     new (&(v->tensor)) paddle::experimental::Tensor();
@@ -752,6 +764,9 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
   }
 
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return reinterpret_cast<TensorObject*>(obj)->tensor;
+  } else if (PyObject_IsInstance(
+                 obj, reinterpret_cast<PyObject*>(p_string_tensor_type))) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -998,6 +1013,45 @@ paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj) {
   return reinterpret_cast<TensorObject*>(obj)->tensor;
 }
 
+paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
+                                              const std::string& op_type,
+                                              ssize_t arg_pos) {
+  PyTypeObject* type = obj->ob_type;
+  auto type_name = std::string(type->tp_name);
+  VLOG(1) << "type_name: " << type_name;
+  if (type_name == "numpy.ndarray" && PySequence_Check(obj)) {
+    PyObject* item = nullptr;
+    item = PySequence_GetItem(obj, 0);
+    if (PyObject_CheckFloatOrToFloat(&item)) {
+      float value = static_cast<float>(PyFloat_AsDouble(item));
+      return paddle::experimental::Scalar(value);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) is numpy.ndarry, the inner elements "
+          "must be "
+          "numpy.float32/float64 now, but got %s",
+          op_type, arg_pos + 1, type_name));  // NOLINT
+    }
+  } else if (type_name == "numpy.float64") {
+    double value = CastPyArg2Double(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
+  } else if (type_name == "numpy.float32") {
+    float value = CastPyArg2Float(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
+  } else if (type_name == "numpy.int64") {
+    int64_t value = CastPyArg2Long(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
+  } else if (type_name == "numpy.int32") {
+    int value = CastPyArg2Int(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "numpy.float32/float64, numpy.int32/int64, but got %s",
+        op_type, arg_pos + 1, type_name));  // NOLINT
+  }
+}
+
 paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
                                               const std::string& op_type,
                                               ssize_t arg_pos) {
@@ -1012,22 +1066,25 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   // obj could be: int, float, bool, paddle.Tensor
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  if (type_name == "int") {
-    int value = CastPyArg2Int(obj, op_type, arg_pos);
-    return paddle::experimental::Scalar(value);
-  } else if (type_name == "float") {
-    float value = CastPyArg2Float(obj, op_type, arg_pos);
-    return paddle::experimental::Scalar(value);
-
-  } else if (type_name == "bool") {
+  VLOG(1) << "type_name: " << type_name;
+  if (PyBool_Check(obj)) {
     bool value = CastPyArg2Boolean(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
-
-  } else if (type_name == "Tensor") {
+  } else if (PyLong_Check(obj)) {
+    int64_t value = CastPyArg2Long(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
+  } else if (PyFloat_Check(obj)) {
+    float value = CastPyArg2Float(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
+  } else if (IsEagerTensor(obj)) {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::Scalar(value);
-
+  } else if (type_name.find("numpy") != std::string::npos) {
+    return CastNumpy2Scalar(obj, op_type, arg_pos);
+  } else if (PyObject_CheckLongOrToLong(&obj)) {
+    int value = CastPyArg2Int(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1057,7 +1114,8 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
   // obj could be: int, float, bool, paddle.Tensor
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  if (type_name == "list" || type_name == "tuple") {
+  if (type_name == "list" || type_name == "tuple" ||
+      type_name == "numpy.ndarray") {
     std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
     return paddle::experimental::IntArray(value);
 
@@ -1146,11 +1204,7 @@ paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos) {
   if (obj == Py_None) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "%s(): argument (position %d) must be "
-        "data_type, but got %s",
-        op_type, arg_pos + 1,
-        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+    return paddle::experimental::DataType::UNDEFINED;
   }
 
   framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);

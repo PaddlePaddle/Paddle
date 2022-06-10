@@ -40,8 +40,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using KernelSignature = phi::KernelSignature;
-
 /* Kernel Key translate */
 
 OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key);
@@ -55,9 +53,9 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 class KernelArgsNameMaker {
  public:
   virtual ~KernelArgsNameMaker() {}
-  virtual const paddle::SmallVector<std::string>& GetInputArgsNames() = 0;
-  virtual const paddle::SmallVector<std::string>& GetOutputArgsNames() = 0;
-  virtual const paddle::SmallVector<std::string>& GetAttrsArgsNames() = 0;
+  virtual const paddle::SmallVector<const char*>& GetInputArgsNames() = 0;
+  virtual const paddle::SmallVector<const char*>& GetOutputArgsNames() = 0;
+  virtual const paddle::SmallVector<const char*>& GetAttrsArgsNames() = 0;
 };
 
 void InitDefaultKernelSignatureMap();

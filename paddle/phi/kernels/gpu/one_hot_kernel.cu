@@ -29,7 +29,14 @@ __global__ void FillOutputKernel(const InT* p_in_data,
                                  const int64_t numel,
                                  const int depth) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < numel && p_in_data[idx] >= 0 && p_in_data[idx] < depth) {
+  if (idx < numel) {
+    PADDLE_ENFORCE(p_in_data[idx] >= 0 && p_in_data[idx] < depth,
+                   "Illegal index value, Input(input) value should be "
+                   "greater than or equal to 0, and less than depth [%d], "
+                   "but received [%lld].",
+                   depth,
+                   p_in_data[idx]);
+
     *(p_out_data + (idx * depth) + p_in_data[idx]) = 1.0;
   }
 }
@@ -66,18 +73,19 @@ struct OneHotV2OpCUDAFunctor {
 template <typename T, typename Context>
 void OneHotRawKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     int32_t depth,
+                     const Scalar& depth,
                      DataType dtype,
                      bool allow_out_of_range,
                      DenseTensor* out) {
+  auto depth_v = depth.to<int>();
   auto out_dims = out->dims();
   if (out_dims[out_dims.size() - 1] == -1) {
-    out_dims[out_dims.size() - 1] = depth;
+    out_dims[out_dims.size() - 1] = depth_v;
     out->Resize(out_dims);
   }
 
   phi::VisitDataType(
-      dtype, OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth, dev_ctx));
+      dtype, OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth_v, dev_ctx));
 }
 
 }  // namespace phi

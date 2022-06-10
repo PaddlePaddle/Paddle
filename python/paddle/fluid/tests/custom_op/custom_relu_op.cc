@@ -108,7 +108,6 @@ std::vector<paddle::Tensor> relu_cuda_double_backward(
     const paddle::Tensor& out, const paddle::Tensor& ddx);
 
 std::vector<paddle::Tensor> ReluForward(const paddle::Tensor& x) {
-  // TODO(chenweihang): Check Input
   if (x.place() == paddle::PlaceType::kCPU) {
     return relu_cpu_forward(x);
   } else if (x.place() == paddle::PlaceType::kGPU) {

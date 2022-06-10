@@ -9,6 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
+
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 #include <Python.h>
 
 #include <string>
@@ -554,32 +560,32 @@ static PyObject* eager_api_async_read(PyObject* self, PyObject* args,
       src.is_gpu_pinned(), true,
       platform::errors::InvalidArgument("Required `src` device should be "
                                         "CUDAPinnedPlace, but received %d.",
-                                        src.inner_place()));
+                                        src.place()));
   PADDLE_ENFORCE_EQ(
       dst.is_gpu(), true,
       platform::errors::InvalidArgument(
           "Required `dst` device should be CUDAPlace, but received %d.",
-          dst.inner_place()));
+          dst.place()));
   PADDLE_ENFORCE_EQ(
       index.is_cpu(), true,
       platform::errors::InvalidArgument(
           "Required `index` device should be CPUPlace, but received %d.",
-          index.inner_place()));
+          index.place()));
   PADDLE_ENFORCE_EQ(buffer.is_gpu_pinned(), true,
                     platform::errors::InvalidArgument(
                         "Required `buffer` device should be CUDAPinnedPlace, "
                         "but received %d.",
-                        buffer.inner_place()));
+                        buffer.place()));
   PADDLE_ENFORCE_EQ(
       offset.is_cpu(), true,
       platform::errors::InvalidArgument(
           "Required `offset` device should be CPUPlace, but received %d.",
-          offset.inner_place()));
+          offset.place()));
   PADDLE_ENFORCE_EQ(
       count.is_cpu(), true,
       platform::errors::InvalidArgument(
           "Required `count` device should be CPUPlace, but received %d.",
-          count.inner_place()));
+          count.place()));
 
   auto& src_tensor = src;
   auto* dst_tensor = &dst;
@@ -701,22 +707,22 @@ static PyObject* eager_api_async_write(PyObject* self, PyObject* args,
       src.is_gpu(), true,
       platform::errors::InvalidArgument(
           "Required `src` device should be CUDAPlace, but received %d. ",
-          src.inner_place()));
+          src.place()));
   PADDLE_ENFORCE_EQ(dst.is_gpu_pinned(), true,
                     platform::errors::InvalidArgument(
                         "Required `dst` device should be CUDAPinnedPlace, "
                         "but received %d. ",
-                        dst.inner_place()));
+                        dst.place()));
   PADDLE_ENFORCE_EQ(
       offset.is_cpu(), true,
       platform::errors::InvalidArgument("Required `offset` device should "
                                         "be CPUPlace, but received %d. ",
-                                        offset.inner_place()));
+                                        offset.place()));
   PADDLE_ENFORCE_EQ(
       count.is_cpu(), true,
       platform::errors::InvalidArgument(
           "Required `count` device should be CPUPlace, but received %d. ",
-          count.inner_place()));
+          count.place()));
 
   // TODO(daisiming): In future, add index as arguments following
   // async_read.

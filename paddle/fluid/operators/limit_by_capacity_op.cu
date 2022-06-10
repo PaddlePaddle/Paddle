@@ -11,6 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// The file has been adapted from the two files:
+//     https://github.com/laekov/fastmoe/blob/master/cuda/balancing.cu
+//     https://github.com/laekov/fastmoe/blob/master/cuda/balancing.cuh
+//     Git commit hash: 295a615aacce7e54a37e7935274ba15e901c78e4
+// We retain the following license from the original files:
+//      Copyright 2021, Jiaao He. All rights reserved.
+//  Licensed under the Apache License, Version 2.0 (the "License").
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/limit_by_capacity_op.h"

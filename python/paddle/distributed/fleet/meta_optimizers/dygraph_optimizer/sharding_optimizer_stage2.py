@@ -11,9 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#Taken and modified for fairscale from:
-#    https://github.com/facebookresearch/fairscale/blob/main/fairscale/optim/oss.py
-#Commit: 8acbec718f3c70a6b9785470bb9e05cd84fc3f8e
+
+# The file has been adapted from fairscale file:
+# https://github.com/facebookresearch/fairscale/blob/main/fairscale/optim/oss.py
+# Git commit hash: 8acbec718f3c70a6b9785470bb9e05cd84fc3f8e
+# We retain the following license from the original files:
+
+# Copyright (c) Facebook, Inc. and its affiliates. All rights reserved.
+#
+# This source code is licensed under the BSD license found in the
+# LICENSE file in the root directory of this source tree.
 
 import copy
 import logging

@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(cudnn_deterministic);
 
@@ -35,7 +36,7 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               int64_t stride,
                                               int64_t size,
                                               int64_t delta) {
-  CUDA_KERNEL_LOOP(idx, N) {
+  CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     int64_t pre_idx = idx / (stride * size);
     int64_t dim_idx = idx % (stride * size) / stride;
     IndexT src_dim_idx = index[dim_idx];
@@ -43,15 +44,6 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
     paddle::platform::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
   }
-}
-
-template <typename T>
-__global__ void index_select_grad_init(T* input_grad, int64_t N) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= N) {
-    return;
-  }
-  input_grad[idx] = 0.0;
 }
 
 template <typename T, typename Context>
@@ -97,8 +89,8 @@ void IndexSelectGradKernel(const Context& ctx,
   dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
   paddle::platform::LimitGridDim(ctx, &grid_dim);
 
-  index_select_grad_init<T><<<grid_dim, block_dim, 0, stream>>>(in_grad_data,
-                                                                numel);
+  phi::funcs::SetConstant<phi::GPUContext, T> index_select_grad_init;
+  index_select_grad_init(ctx, x_grad, static_cast<T>(0));
 
   if (FLAGS_cudnn_deterministic) {
     VLOG(2) << "Run grad kernel of index_select with single thread.";

@@ -50,7 +50,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG 4ab64daecc11fbf74fffdc6a4733f388472e7d5d)
+    set(LITE_GIT_TAG 81ef66554099800c143a0feff6e0a491b3b0d12e)
   endif()
 
   if(NOT CUDA_ARCH_NAME)
@@ -86,7 +86,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
       GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
       GIT_TAG             ${LITE_GIT_TAG}
       PREFIX              ${LITE_PREFIX_DIR}
-      PATCH_COMMAND       mkdir -p ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc && sed -i "/aarch64-linux-gnu-gcc/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake && sed -i "/aarch64-linux-gnu-g++/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake
+      PATCH_COMMAND       mkdir -p ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc && sed -i "/aarch64-linux-gnu-gcc/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/os/armlinux.cmake && sed -i "/aarch64-linux-gnu-g++/d" ${LITE_PREFIX_DIR}/src/extern_lite/cmake/os/armlinux.cmake
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND     ""
@@ -106,7 +106,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   else()
     set(LITE_BUILD_COMMAND $(MAKE) publish_inference -j)
     set(LITE_OPTIONAL_ARGS -DWITH_MKL=ON
-                           -DLITE_WITH_CUDA=${WITH_GPU}
+                           -DLITE_WITH_CUDA=OFF
                            -DWITH_MKLDNN=OFF
                            -DLITE_WITH_X86=ON
                            -DLITE_WITH_PROFILE=OFF
@@ -115,9 +115,6 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DWITH_PYTHON=OFF
                            -DWITH_TESTING=OFF
                            -DLITE_BUILD_EXTRA=ON
-                           -DCUDNN_ROOT=${CUDNN_ROOT}
-                           -DLITE_WITH_STATIC_CUDA=OFF
-                           -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME}
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
                            -DXPU_SDK_URL=${XPU_BASE_URL}
                            -DXPU_SDK_ENV=${XPU_SDK_ENV}

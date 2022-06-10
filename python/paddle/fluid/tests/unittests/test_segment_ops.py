@@ -73,6 +73,17 @@ def compute_segment_min_max(x, segment_ids, pooltype="MAX"):
     return results, gradient / results.size
 
 
+def segment_pool_split(X, SegmentIds, pooltype):
+    if pooltype == "SUM":
+        return paddle.incubate.tensor.segment_sum(X, SegmentIds)
+    elif pooltype == "MEAN":
+        return paddle.incubate.tensor.segment_mean(X, SegmentIds)
+    elif pooltype == "MIN":
+        return paddle.incubate.tensor.segment_min(X, SegmentIds)
+    elif pooltype == "MAX":
+        return paddle.incubate.tensor.segment_max(X, SegmentIds)
+
+
 class TestSegmentOps(OpTest):
     def set_data(self):
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -90,6 +101,8 @@ class TestSegmentOps(OpTest):
 
     def prepare(self):
         self.op_type = "segment_pool"
+        self.python_api = segment_pool_split
+        self.python_out_sig = ["Out"]
         self.dtype = np.float64
         self.shape = [30, 15]
         self.attrs = {"pooltype": "SUM"}
@@ -105,10 +118,10 @@ class TestSegmentOps(OpTest):
         self.outputs = {'Out': result.astype(self.dtype)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=True)
 
 
 class TestSegmentSum2(TestSegmentOps):
@@ -259,4 +272,5 @@ class API_SegmentOpsTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

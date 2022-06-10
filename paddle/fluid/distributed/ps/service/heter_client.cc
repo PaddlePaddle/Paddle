@@ -286,8 +286,7 @@ int HeterClient::Send(int group_id, const std::vector<std::string>& var_names,
     request.add_vars_len(var_len);
   }
   auto& request_buffer = closure->cntl.request_attachment();
-  request_buffer.append(reinterpret_cast<void*>(data_ptr),
-                        data_size * sizeof(float));
+  request_buffer.append(reinterpret_cast<void*>(data_ptr), data_size);
   auto promise = std::make_shared<std::promise<int32_t>>();
   closure->add_promise(promise);
   std::future<int> fut = promise->get_future();
@@ -387,7 +386,7 @@ int HeterClient::Recv(int group_id, const std::vector<std::string>& var_names,
     if (xpu_channels_.size() < 2) {
       LOG(ERROR) << "xpu_channels_ is null";
     }
-    recv_switch_channels_.push_back(xpu_channels_[1]);
+    recv_switch_channels_.push_back(xpu_channels_[0]);
   }
   brpc::Channel* channel = recv_switch_channels_[0].get();
   ::paddle::distributed::PsService_Stub stub(channel);

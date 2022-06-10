@@ -24,9 +24,9 @@ KernelSignature HuberLossOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature HuberLossGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("huber_loss_grad",
-                         {"Residual", GradVarName("Out")},
+                         {"Residual", "Out@GRAD"},
                          {"delta"},
-                         {GradVarName("X"), GradVarName("Y")});
+                         {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi

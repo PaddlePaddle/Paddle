@@ -41,13 +41,12 @@ KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature ReshapeGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "reshape_grad", {GradVarName("Out")}, {}, {GradVarName("X")});
+  return KernelSignature("reshape_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 KernelSignature ReshapeDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("reshape_double_grad", {"DDX"}, {}, {"DDOut"});
+  return KernelSignature("reshape_double_grad", {"DOut", "DDX"}, {}, {"DDOut"});
 }
 
 }  // namespace phi

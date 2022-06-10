@@ -25,6 +25,11 @@ class DenseTensorUtils {
     return &(tensor->meta_);
   }
 
+  static const std::shared_ptr<phi::Allocation>& GetHolder(
+      const DenseTensor& tensor) {
+    return tensor.holder_;
+  }
+
   static DenseTensor Slice(const DenseTensor& tensor,
                            int64_t begin_idx,
                            int64_t end_idx) {

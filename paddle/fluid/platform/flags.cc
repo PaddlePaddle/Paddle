@@ -32,9 +32,6 @@ ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
 }  // namespace platform
 }  // namespace paddle
 
-PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
-                             "number of threads for inner op");
-
 /**
  * NOTE(paddle-dev): This file is designed to define all public FLAGS.
  */
@@ -161,10 +158,9 @@ PADDLE_DEFINE_EXPORTED_bool(
  * increased.
  *       Users need to balance memory and speed.
  */
-PADDLE_DEFINE_EXPORTED_uint64(
-    conv_workspace_size_limit,
-    paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
-    "cuDNN convolution workspace limit in MB unit.");
+PADDLE_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
+                             paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
+                             "cuDNN convolution workspace limit in MB unit.");
 
 /**
  * CUDNN related FLAG
@@ -364,11 +360,7 @@ PADDLE_DEFINE_EXPORTED_double(
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */
-#ifdef PADDLE_ON_INFERENCE
-static constexpr char kDefaultAllocatorStrategy[] = "naive_best_fit";
-#else
 static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
-#endif
 PADDLE_DEFINE_EXPORTED_string(
     allocator_strategy, kDefaultAllocatorStrategy,
     "The allocation strategy, enum in [naive_best_fit, auto_growth]. "
@@ -538,6 +530,11 @@ PADDLE_DEFINE_EXPORTED_double(
     "each CUDAPlace. If you don't need to limit the memory, "
     "you should set FLAGS_local_exe_sub_scope_limit=-1. "
     "The default value is 256 MBytes.");
+
+PADDLE_DEFINE_EXPORTED_bool(
+    reader_queue_speed_test_mode, false,
+    "If set true, the queue.pop will only get data from queue but not "
+    "remove the data from queue for speed testing");
 
 /**
  * MKLDNN related FLAG
@@ -753,6 +750,32 @@ PADDLE_DEFINE_EXPORTED_string(allow_cinn_ops, "",
  */
 PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops, "",
                               "It controls the cinn op subset to be not used.");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_enable_pe_launch_cinn
+ * Since Version: 2.3
+ * Value Range: bool, default=true
+ * Example: FLAGS_enable_pe_launch_cinn=true would execute the CINN compiled
+ * instructions of a paddle graph with ParallelExecutor, otherwise with the
+ * CINN compiled runtime program in sequential order.
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_pe_launch_cinn, true,
+                            "It controls whether to execute cinn compiled "
+                            "program with ParallelExecutor");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_enable_cinn_auto_tune
+ * Since Version: 2.3
+ * Value Range: bool, default=false
+ * Example: FLAGS_enable_cinn_auto_tune=true would use CINN with its
+ * auto-tune feature enabled
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_cinn_auto_tune, false,
+                            "It controls whether to use cinn with "
+                            "its auto-tune feature enabled");
+
 #endif
 
 DEFINE_int32(record_pool_max_size, 2000000,
@@ -776,3 +799,12 @@ DEFINE_bool(enable_ins_parser_file, false,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 #endif
+
+/**
+ * Autotune related FLAG
+ * Name: FLAGS_use_autotune
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");

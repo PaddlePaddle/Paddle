@@ -32,11 +32,11 @@ struct alignas(sizeof(T) * VecSize) VectorType {
  * must be [dim1, dim0].
  */
 #pragma pack(4)
-template <int kDims>
 struct BroadcastConfig {
   int strides_in[phi::DDim::kMaxRank];
   int strides_out[phi::DDim::kMaxRank];
   int in_dim[phi::DDim::kMaxRank];
+  int kDims;
 
   HOSTDEVICE BroadcastConfig() {}
 
@@ -58,6 +58,7 @@ struct BroadcastConfig {
       dim_tmp[i] = in_dims[i];
     }
 
+    kDims = dim_size;
     memcpy(strides_in, strides_in_tmp.data(), kDims * sizeof(int));
     memcpy(strides_out, strides_out_tmp.data(), kDims * sizeof(int));
     memcpy(in_dim, dim_tmp.data(), kDims * sizeof(int));
@@ -328,16 +329,11 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename T,
-          int NX,
-          int NY,
-          int BlockSize,
-          int Rank,
-          bool IsBoundary = false>
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __inline__ void ReadDataBc(T* dst,
                                       const T _global_ptr_* src,
                                       uint32_t block_offset,
-                                      details::BroadcastConfig<Rank> config,
+                                      details::BroadcastConfig config,
                                       int total_num_output,
                                       int stride_nx,
                                       int stride_ny) {
@@ -643,18 +639,12 @@ __device__ __inline__ void Init(T* dst, T* init_data, int num) {
  * coordinate mapping relationship between output data and input data.
  * total_num_output: Total number of original output.
  */
-template <typename T,
-          int NX,
-          int NY,
-          int BlockSize,
-          int Rank,
-          bool IsBoundary = false>
-__device__ __inline__ void ReadDataBc(
-    T* dst,
-    const T _global_ptr_* src,
-    uint32_t block_offset,
-    const details::BroadcastConfig<Rank>& config,
-    int total_num_output) {
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+__device__ __inline__ void ReadDataBc(T* dst,
+                                      const T _global_ptr_* src,
+                                      uint32_t block_offset,
+                                      const details::BroadcastConfig& config,
+                                      int total_num_output) {
   int thread_offset = block_offset + core_id() * NX;
   int index_src = 0;
 

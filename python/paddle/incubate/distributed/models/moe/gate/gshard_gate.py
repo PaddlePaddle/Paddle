@@ -11,6 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# The file has been adapted from the file:
+#     https://github.com/laekov/fastmoe/blob/master/fmoe/gates/gshard_gate.py
+#     Git commit hash: 295a615aacce7e54a37e7935274ba15e901c78e4
+# We retain the following license from the original files:
+#     Copyright 2021, Jiaao He. All rights reserved.
+#   Licensed under the Apache License, Version 2.0 (the "License").
 
 import math
 import paddle
@@ -62,6 +69,6 @@ class GShardGate(NaiveGate):
         if self.random_routing:
             rand_routing_prob = paddle.rand(
                 shape=[gate_score.shape[0]], dtype="float32")
-            topk_idx = paddle.distributed.utils.random_routing(
+            topk_idx = paddle.distributed.models.moe.utils._random_routing(
                 topk_idx, topk_val, rand_routing_prob)
         return topk_val, topk_idx

@@ -154,6 +154,8 @@ class Scope : public ScopeBase {
 
   void DelListener(const std::shared_ptr<ScopeListener>& listener);
 
+  bool HasListener(const std::shared_ptr<ScopeListener>& listener);
+
  protected:
   struct KeyHasher {
     std::size_t operator()(const std::string& key) const {

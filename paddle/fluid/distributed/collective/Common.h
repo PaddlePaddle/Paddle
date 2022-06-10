@@ -16,18 +16,18 @@
 
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 namespace paddle {
 namespace distributed {
 
-using Tensor = paddle::experimental::Tensor;
-
 using Place = paddle::platform::Place;
 // Get the list of devices from list of tensors
-std::vector<Place> GetPlaceList(const std::vector<Tensor>& tensors);
+std::vector<Place> GetPlaceList(const std::vector<phi::DenseTensor>& tensors);
 // Get the deviceList String from the list of devices
 std::string GetKeyFromPlaces(const std::vector<Place>& places);
 
-bool CheckTensorsInCudaPlace(const std::vector<Tensor>& tensors);
+bool CheckTensorsInCudaPlace(const std::vector<phi::DenseTensor>& tensors);
 
 }  //  namespace distributed
 }  //  namespace paddle

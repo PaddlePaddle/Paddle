@@ -34,6 +34,10 @@ from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, 
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
+try:
+    from collections.abc import Iterable
+except:
+    from collections import Iterable
 
 __all__ = []
 
@@ -424,7 +428,7 @@ def _parse_every_object(obj, condition_func, convert_func):
     elif type(obj) == set:
         return set(_parse_every_object(list(obj), condition_func, convert_func))
     else:
-        if isinstance(obj, collections.Iterable) and not isinstance(
+        if isinstance(obj, Iterable) and not isinstance(
                 obj,
             (str, np.ndarray, core.VarBase, core.eager.Tensor, core.LoDTensor)):
             raise NotImplementedError(
