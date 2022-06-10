@@ -257,9 +257,10 @@ class DGCModel(layers.Layer):
                             comm_param, comm_grad):
                     k_var, comm_encoded_var, comm_gather_var = self._dgc_vars[
                         comm_param.name]
-                    comm_grad = paddle.distributed.utils.dgc_comm(
-                        comm_encoded_var, comm_gather_var, comm_grad,
-                        int(k_var[0]), self.new_group)
+                    comm_grad = _C_ops.dgc_comm(
+                        comm_encoded_var, comm_gather_var, comm_grad, 'nranks',
+                        self.new_group.nranks, 'k_var',
+                        int(k_var[0]), 'ring_id', self.new_group.id)
                 else:
                     with paddle.no_grad():
                         paddle.distributed.all_reduce(

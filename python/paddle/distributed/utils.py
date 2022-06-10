@@ -51,36 +51,7 @@ __all__ = [     #noqa
            'pull_worker_log',
            'global_scatter',
            'global_gather',
-           'dgc_comm'
 ]
-
-
-def dgc_comm(x, gather, grad, k_var, group):
-    """
-    dgc comm in dgc.
-
-    Args:
-        x (Tensor): Tensor. the encoded grad in dgc.
-        gather (Tensor): the tensor of result of allgather in dgc. 
-        grad (Tensor): the grad of param.
-        k_var (Tensor): the topk of grad.
-        group (Group): dgc comm group.
-    
-    Returns:
-        out (Tensor): The data received from all experts. 
-    """
-    assert group is not None, "please input a group for dgc."
-    assert x.numel() == 2 * k_var, "k_var does not match the numel of input."
-    nranks = group.nranks
-    ring_id = group.id
-
-    assert _non_static_mode(), "dgc comm op do not support static graph now."
-
-    return _C_ops.dgc_comm(x, gather, \
-                                grad,  \
-                                'nranks', nranks, \
-                                'k_var', k_var, \
-                                'ring_id', ring_id)
 
 
 def global_scatter(x,
