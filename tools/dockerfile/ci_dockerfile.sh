@@ -15,7 +15,7 @@
 # limitations under the License.
 
 function make_ubuntu_dockerfile(){
-  dockerfile_name="Dockerfile.cuda10_cudnn7_gcc82_ubuntu16"
+  dockerfile_name="Dockerfile.cuda10.2_cudnn8_gcc82_ubuntu16"
   sed "s/<baseimg>/10.1-cudnn7-devel-ubuntu16.04/g" ./Dockerfile.ubuntu >${dockerfile_name}
   sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')

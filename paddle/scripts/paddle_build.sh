@@ -3303,6 +3303,7 @@ function check_coverage_build() {
 
 
 function update_cuda() {
+    return || exit 0
 #apt-get remove -y --no-install-recommends     cuda-cudart-10-1=${NV_CUDA_CUDART_VERSION}     cuda-compat-10-1
 #
 #apt-get remove -y --no-install-recommends     cuda-libraries-10-1=${NV_CUDA_LIB_VERSION}     cuda-npp-10-1=${NV_LIBNPP_VERSION}     cuda-nvtx-10-1=${NV_NVTX_VERSION}     cuda-cusparse-10-1=${NV_LIBCUSPARSE_VERSION}     ${NV_LIBCUBLAS_PACKAGE}
