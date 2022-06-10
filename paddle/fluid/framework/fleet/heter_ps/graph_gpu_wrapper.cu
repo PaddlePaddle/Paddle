@@ -160,6 +160,7 @@ void GraphGpuWrapper::init_search_level(int level) { search_level = level; }
 
 void GraphGpuWrapper::init_service() {
   table_proto.set_task_pool_size(24);
+  table_proto.set_shard_num(1000);
   table_proto.set_search_level(search_level);
   table_proto.set_table_name("cpu_graph_table_");
   table_proto.set_use_cache(false);

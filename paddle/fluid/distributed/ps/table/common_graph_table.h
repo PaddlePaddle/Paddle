@@ -601,6 +601,7 @@ class GraphTable : public Table {
   std::vector<std::vector<GraphShard *>> edge_shards, feature_shards;
   size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
   int task_pool_size_ = 24;
+  int load_thread_num = 150;
   const int random_sample_nodes_ranges = 3;
 
   std::vector<std::vector<std::unordered_map<uint64_t, double>>> node_weight;
@@ -615,6 +616,7 @@ class GraphTable : public Table {
 
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
   std::vector<std::shared_ptr<std::mt19937_64>> _shards_task_rng_pool;
+  std::vector<std::shared_ptr<::ThreadPool>> load_node_edge_task_pool;
   std::shared_ptr<ScaledLRU<SampleKey, SampleResult>> scaled_lru;
   std::unordered_set<uint64_t> extra_nodes;
   std::unordered_map<uint64_t, size_t> extra_nodes_to_thread_index;

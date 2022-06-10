@@ -475,18 +475,20 @@ void DatasetImpl<T>::LoadIntoMemory() {
       }
       cnt++;
     }
-    for (auto& iter : node_to_id) {
-      int node_idx = iter.second;
-      auto gpu_graph_device_keys =
-          gpu_graph_ptr->get_all_feature_ids(1, node_idx, thread_num_);
-      for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
-        VLOG(2) << "node type: " << node_idx << ", gpu_graph_device_keys[" << i
-                << "] = " << gpu_graph_device_keys[i].size();
-        for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
-          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
-        }
-      }
-    }
+    //TODO(huwei02): open it when slot fea ready
+    //for (auto& iter : node_to_id) {
+    //  int node_idx = iter.second;
+    //  auto gpu_graph_device_keys =
+    //      gpu_graph_ptr->get_all_feature_ids(1, node_idx, thread_num_);
+    //  for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
+    //    VLOG(2) << "node type: " << node_idx << ", gpu_graph_device_keys[" << i
+    //            << "] = " << gpu_graph_device_keys[i].size();
+    //    for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
+    //      gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
+    //    }
+    //  }
+    //}
+
     // FIX: trick for iterate edge table
     for (auto& iter : edge_to_id) {
       int edge_idx = iter.second;
