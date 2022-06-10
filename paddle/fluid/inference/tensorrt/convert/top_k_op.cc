@@ -88,14 +88,19 @@ class TopKv2OpConverter : public OpConverter {
     auto flag =
         largest ? nvinfer1::TopKOperation::kMAX : nvinfer1::TopKOperation::kMIN;
     nvinfer1::ITopKLayer* layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
+    if (axis == -1) {
+      nvinfer1::Dims input_dims = input_tensor->getDimensions();
       layer = TRT_ENGINE_ADD_LAYER(engine_, TopK, *input_tensor, flag, k,
-                                   1 << axis);
+                                   1 << (input_dims.nbDims - 1));
     } else {
-      layer = TRT_ENGINE_ADD_LAYER(engine_, TopK, *input_tensor, flag, k,
-                                   1 << (axis - 1));
+      if (engine_->with_dynamic_shape()) {
+        layer = TRT_ENGINE_ADD_LAYER(engine_, TopK, *input_tensor, flag, k,
+                                     1 << axis);
+      } else {
+        layer = TRT_ENGINE_ADD_LAYER(engine_, TopK, *input_tensor, flag, k,
+                                     1 << (axis - 1));
+      }
     }
-
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Out").front());
     output_names.push_back(op_desc.Output("Indices").front());

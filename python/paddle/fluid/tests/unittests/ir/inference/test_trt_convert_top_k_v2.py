@@ -48,7 +48,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         for dims in [2, 3, 4]:
             for batch in [1, 4]:
                 for k in [1, 3]:
-                    for axis in [1, 2, 3]:
+                    for axis in [-1, 1, 2, 3]:
                         for largest in [True, False]:
                             self.dims = dims
                             dics = [{
