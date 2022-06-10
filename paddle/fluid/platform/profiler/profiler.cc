@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/profiler.h"
+
 #include "glog/logging.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>

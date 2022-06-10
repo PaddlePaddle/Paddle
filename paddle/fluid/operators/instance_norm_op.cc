@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/instance_norm_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -38,16 +40,18 @@ framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
     in_param_type = framework::proto::VarType::FP64;
   }
   if (ctx.HasInput("Scale")) {
-    PADDLE_ENFORCE_EQ(in_param_type, framework::TransToProtoVarType(
-                                         ctx.Input<Tensor>("Scale")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        in_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
+        platform::errors::InvalidArgument(
+            "Scale input should be of float type"));
   }
   if (ctx.HasInput("Bias")) {
-    PADDLE_ENFORCE_EQ(in_param_type, framework::TransToProtoVarType(
-                                         ctx.Input<Tensor>("Bias")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Bias input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        in_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
+        platform::errors::InvalidArgument(
+            "Bias input should be of float type"));
   }
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace());

@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/platform/profiler/host_tracer.h"
+
 #include <sstream>
+
 #include "glog/logging.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/common_event.h"
@@ -130,7 +132,6 @@ void HostTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::READY || state_ == TracerState::STOPED, true,
       platform::errors::PreconditionNotMet("TracerState must be READY"));
-  HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
   HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
   HostTraceLevel::GetInstance().SetLevel(options_.trace_level);
   state_ = TracerState::STARTED;

@@ -15,9 +15,11 @@
 #pragma once
 
 #include <Eigen/src/Core/util/Constants.h>
+
 #include <Eigen/Dense>
 #include <Eigen/SVD>
 #include <iostream>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/diag_op.h"
@@ -101,20 +103,22 @@ struct RealMulComplexFunctor {
   // y: complex number (c+0j) pretend to be a real number
   // out: complex number (ac+bcj)
   inline HOSTDEVICE T operator()(T x, T y) {
-    PADDLE_ENFORCE_LT(y.imag, 1e-6, platform::errors::InvalidArgument(
-                                        "The image part of y must to be 0"
-                                        "but got [%d]",
-                                        y.imag));
+    PADDLE_ENFORCE_LT(
+        y.imag, 1e-6,
+        platform::errors::InvalidArgument("The image part of y must to be 0"
+                                          "but got [%d]",
+                                          y.imag));
     return platform::complex<phi::dtype::Real<T>>(x.real * y.real,
                                                   x.imag * y.real);
   }
 };
 
 static std::vector<int> GetBroadcastShape(InTensors ins) {
-  PADDLE_ENFORCE_EQ(ins.size(), 2, platform::errors::InvalidArgument(
-                                       "GetBroadcastShape Receive 2 tensors"
-                                       "but got [%d]",
-                                       ins.size()));
+  PADDLE_ENFORCE_EQ(
+      ins.size(), 2,
+      platform::errors::InvalidArgument("GetBroadcastShape Receive 2 tensors"
+                                        "but got [%d]",
+                                        ins.size()));
   auto x_dim = ins[0]->dims();
   auto y_dim = ins[1]->dims();
   std::vector<int> broadcast_shape =
@@ -596,8 +600,9 @@ struct DeviceIndependenceTensorOperations {
     attrs["lower"] = lower;
     NameInTensorMap inputs({{"X", {&x}}});
     int x_rank = x.dims().size();
-    PADDLE_ENFORCE_GE(x_rank, 2, platform::errors::InvalidArgument(
-                                     "Rank must be at least 2."));
+    PADDLE_ENFORCE_GE(
+        x_rank, 2,
+        platform::errors::InvalidArgument("Rank must be at least 2."));
     std::vector<int> out_shape = phi::vectorize<int>(x.dims());
     return CreateOpRunAndReturnTensor("tril_triu", inputs, attrs, out_shape);
   }

@@ -89,8 +89,8 @@ class UserInfo(object):
 
     def __str__(self):
         return "<UserInfo id(%d), gender(%s), age(%d), job(%d)>" % (
-            self.index, "M"
-            if self.is_male else "F", age_table[self.age], self.job_id)
+            self.index, "M" if self.is_male else "F", age_table[self.age],
+            self.job_id)
 
     def __repr__(self):
         return str(self)
@@ -142,8 +142,10 @@ def __initialize_meta_info__():
                     for line in user_file:
                         line = cpt.to_text(line, encoding='latin')
                         uid, gender, age, job, _ = line.strip().split("::")
-                        USER_INFO[int(uid)] = UserInfo(
-                            index=uid, gender=gender, age=age, job_id=job)
+                        USER_INFO[int(uid)] = UserInfo(index=uid,
+                                                       gender=gender,
+                                                       age=age,
+                                                       job_id=job)
     return fn
 
 

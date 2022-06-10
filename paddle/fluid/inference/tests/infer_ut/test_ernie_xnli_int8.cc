@@ -68,7 +68,11 @@ std::shared_ptr<Predictor> InitPredictor() {
   config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
                                 opt_input_shape);
   // erinie varlen must be used with oss
-  config.EnableTensorRtOSS();
+  config.EnableVarseqlen();
+  paddle_infer::experimental::InternalUtils::SetTransformerPosid(&config,
+                                                                 input_name2);
+  paddle_infer::experimental::InternalUtils::SetTransformerMaskid(&config,
+                                                                  input_name3);
 
   return CreatePredictor(config);
 }

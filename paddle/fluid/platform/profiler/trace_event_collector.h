@@ -17,6 +17,7 @@ limitations under the License. */
 #include <list>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/fluid/platform/profiler/trace_event.h"
 
 namespace paddle {

@@ -10,11 +10,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/event_node.h"
+
 #include <limits.h>
+
 #include <algorithm>
 #include <deque>
 #include <set>
 #include <stack>
+
 #include "paddle/fluid/platform/profiler/utils.h"
 
 namespace paddle {

@@ -30,11 +30,11 @@ class MKLDNNDeviceContext;
 namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
-using framework::Tensor;
 using dnnl::memory;
 using dnnl::primitive;
 using dnnl::stream;
+using framework::DataLayout;
+using framework::Tensor;
 using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::to_void_cast;

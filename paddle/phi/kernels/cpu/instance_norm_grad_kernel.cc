@@ -17,6 +17,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -42,10 +43,10 @@ using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
 template <typename T, typename Context>
 void InstanceNormGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const DenseTensor& d_y,
                             const paddle::optional<DenseTensor>& scale,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
+                            const DenseTensor& d_y,
                             float epsilon,
                             DenseTensor* d_x,
                             DenseTensor* d_scale,
@@ -142,12 +143,11 @@ void InstanceNormGradKernel(const Context& dev_ctx,
   dx_arr.device(*place) = scale_arr.broadcast(bcast_param) *
                           inv_var_arr.broadcast(bcast) *
                           (dy_arr - dy_mean -
-                           tmp *
-                               (dy_arr * tmp)
-                                   .mean(mean_rdims)
-                                   .reshape(NxC_shape)
-                                   .eval()
-                                   .broadcast(bcast));
+                           tmp * (dy_arr * tmp)
+                                     .mean(mean_rdims)
+                                     .reshape(NxC_shape)
+                                     .eval()
+                                     .broadcast(bcast));
 }
 
 template <typename T, typename Context>

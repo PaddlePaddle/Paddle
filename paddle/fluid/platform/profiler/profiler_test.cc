@@ -14,6 +14,7 @@
 
 #include <set>
 #include <string>
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #ifdef PADDLE_WITH_CUDA
@@ -29,11 +30,11 @@
 #include "paddle/fluid/platform/profiler/profiler.h"
 
 TEST(ProfilerTest, TestHostTracer) {
-  using paddle::platform::ProfilerOptions;
   using paddle::platform::Profiler;
+  using paddle::platform::ProfilerOptions;
+  using paddle::platform::ProfilerResult;
   using paddle::platform::RecordInstantEvent;
   using paddle::platform::TracerEventType;
-  using paddle::platform::ProfilerResult;
   ProfilerOptions options;
   options.trace_level = 2;
   options.trace_switch = 3;
@@ -60,8 +61,8 @@ TEST(ProfilerTest, TestHostTracer) {
 }
 
 TEST(ProfilerTest, TestCudaTracer) {
-  using paddle::platform::ProfilerOptions;
   using paddle::platform::Profiler;
+  using paddle::platform::ProfilerOptions;
   using paddle::platform::ProfilerResult;
   ProfilerOptions options;
   options.trace_level = 0;
@@ -96,17 +97,17 @@ TEST(ProfilerTest, TestCudaTracer) {
 }
 
 TEST(ProfilerTest, TestHostTracerForMem) {
-  using paddle::platform::ProfilerOptions;
+  using paddle::platform::CPUPlace;
+  using paddle::platform::EnableHostEventRecorder;
+  using paddle::platform::MemTraceEventNode;
   using paddle::platform::Profiler;
+  using paddle::platform::ProfilerOptions;
+  using paddle::platform::ProfilerResult;
+  using paddle::platform::RecordEvent;
   using paddle::platform::RecordInstantEvent;
+  using paddle::platform::RecordMemEvent;
   using paddle::platform::TracerEventType;
   using paddle::platform::TracerMemEventType;
-  using paddle::platform::ProfilerResult;
-  using paddle::platform::RecordMemEvent;
-  using paddle::platform::CPUPlace;
-  using paddle::platform::MemTraceEventNode;
-  using paddle::platform::RecordEvent;
-  using paddle::platform::EnableHostEventRecorder;
   ProfilerOptions options;
   options.trace_level = 1;
   options.trace_switch = 3;

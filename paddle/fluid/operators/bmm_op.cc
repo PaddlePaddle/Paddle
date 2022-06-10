@@ -13,6 +13,7 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/operators/bmm_op.h"
+
 #include <vector>
 
 namespace paddle {

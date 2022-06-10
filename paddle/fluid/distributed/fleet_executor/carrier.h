@@ -35,7 +35,7 @@ namespace paddle {
 namespace framework {
 class Scope;
 class ProgramDesc;
-}
+}  // namespace framework
 
 namespace distributed {
 

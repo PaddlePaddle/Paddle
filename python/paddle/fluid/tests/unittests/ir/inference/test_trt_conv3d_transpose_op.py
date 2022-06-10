@@ -24,11 +24,13 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TensorRTSubgraphPassConv3dTransposeTest(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 4, 4, 32, 32], dtype="float32")
+            data = fluid.data(name="data",
+                              shape=[-1, 4, 4, 32, 32],
+                              dtype="float32")
             conv_out = fluid.layers.conv3d_transpose(
                 input=data,
                 num_filters=self.conv_num_filters,
@@ -64,6 +66,7 @@ class TensorRTSubgraphPassConv3dTransposeTest(InferencePassTest):
 
 class TensorRTSubgraphPassConv3dTransposeSamePaddingTest(
         TensorRTSubgraphPassConv3dTransposeTest):
+
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -74,6 +77,7 @@ class TensorRTSubgraphPassConv3dTransposeSamePaddingTest(
 
 class TensorRTSubgraphPassConv3dTransposeMultigroupTest(
         TensorRTSubgraphPassConv3dTransposeTest):
+
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -83,11 +87,13 @@ class TensorRTSubgraphPassConv3dTransposeMultigroupTest(
 
 
 class DynamicShapeTensorRTSubgraphPassConv3dTransposeTest(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 6, -1, -1, -1], dtype="float32")
+            data = fluid.data(name="data",
+                              shape=[-1, 6, -1, -1, -1],
+                              dtype="float32")
             conv_out = fluid.layers.conv3d_transpose(
                 input=data,
                 num_filters=self.conv_num_filters,

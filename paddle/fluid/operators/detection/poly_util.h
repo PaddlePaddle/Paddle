@@ -16,6 +16,7 @@ limitations under the License. */
 #define POLY_UTIL_H_
 
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/gpc.h"
 

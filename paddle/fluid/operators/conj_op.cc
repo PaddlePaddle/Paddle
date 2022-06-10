@@ -74,8 +74,9 @@ REGISTER_OPERATOR(conj, ops::ConjOp, ops::ConjOpMaker,
                   ConjInferShapeFunctor);
 
 REGISTER_OP_CPU_KERNEL(
-    conj, ops::ConjKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex<float>>,
+    conj,
+    ops::ConjKernel<paddle::platform::CPUDeviceContext,
+                    paddle::platform::complex<float>>,
     ops::ConjKernel<paddle::platform::CPUDeviceContext,
                     paddle::platform::complex<double>>,
     ops::ConjKernel<paddle::platform::CPUDeviceContext, float>,
