@@ -80,7 +80,7 @@ class StaticCode1():
 
         x_v = _jst.convert_ifelse(
             fluid.layers.mean(x_v)[0] > 5, true_fn_0, false_fn_0, (x_v, ),
-            (x_v, ), (x_v, ))
+            (x_v, ))
         __return_0 = _jst.create_bool_as_type(label is not None, False)
 
         def true_fn_1(__return_0, __return_value_0, label, x_v):
@@ -95,7 +95,7 @@ class StaticCode1():
         __return_0, __return_value_0 = _jst.convert_ifelse(
             label is not None, true_fn_1, false_fn_1,
             (__return_0, __return_value_0, label, x_v),
-            (__return_0, __return_value_0), (__return_0, __return_value_0))
+            (__return_0, __return_value_0))
 
         def true_fn_2(__return_0, __return_value_0, x_v):
             __return_1 = _jst.create_bool_as_type(
@@ -108,8 +108,7 @@ class StaticCode1():
 
         __return_value_0 = _jst.convert_ifelse(
             _jst.convert_logical_not(__return_0), true_fn_2, false_fn_2,
-            (__return_0, __return_value_0, x_v), (__return_value_0, ),
-            (__return_value_0, ))
+            (__return_0, __return_value_0, x_v), (__return_value_0, ))
         return __return_value_0
 
 
@@ -130,7 +129,7 @@ class StaticCode2():
 
         x_v = _jst.convert_ifelse(
             fluid.layers.mean(x_v)[0] > 5, true_fn_3, false_fn_3, (x_v, ),
-            (x_v, ), (x_v, ))
+            (x_v, ))
         __return_2 = _jst.create_bool_as_type(label is not None, False)
 
         def true_fn_4(__return_2, __return_value_1, label, x_v):
@@ -145,7 +144,7 @@ class StaticCode2():
         __return_2, __return_value_1 = _jst.convert_ifelse(
             label is not None, true_fn_4, false_fn_4,
             (__return_2, __return_value_1, label, x_v),
-            (__return_2, __return_value_1), (__return_2, __return_value_1))
+            (__return_2, __return_value_1))
 
         def true_fn_5(__return_2, __return_value_1, x_v):
             __return_3 = _jst.create_bool_as_type(
@@ -158,8 +157,7 @@ class StaticCode2():
 
         __return_value_1 = _jst.convert_ifelse(
             _jst.convert_logical_not(__return_2), true_fn_5, false_fn_5,
-            (__return_2, __return_value_1, x_v), (__return_value_1, ),
-            (__return_value_1, ))
+            (__return_2, __return_value_1, x_v), (__return_value_1, ))
         return __return_value_1
 
 

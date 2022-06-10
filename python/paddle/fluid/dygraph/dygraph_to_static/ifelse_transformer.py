@@ -59,8 +59,8 @@ class IfElseTransformer(gast.NodeTransformer):
         new_vars_stmts, true_func_node, false_func_node, return_name_ids = transform_if_else(
             node, self.root)
 
-        new_node = create_convert_ifelse_node(return_name_ids, node.test,
-                                              true_func_node, false_func_node)
+        new_node = create_convert_ifelse_node(node.test, true_func_node,
+                                              false_func_node)
 
         return new_vars_stmts + [true_func_node, false_func_node] + [new_node]
 
@@ -79,8 +79,8 @@ class IfElseTransformer(gast.NodeTransformer):
         """
         self.generic_visit(node)
 
-        new_node = create_convert_ifelse_node(None, node.test, node.body,
-                                              node.orelse, True)
+        new_node = create_convert_ifelse_node(node.test, node.body, node.orelse,
+                                              True)
         # Note: A blank line will be added separately if transform gast.Expr
         # into source code. Using gast.Expr.value instead to avoid syntax error
         # in python.
@@ -500,14 +500,10 @@ def transform_if_else(node, root):
     return create_new_vars_in_parent_stmts, true_func_node, false_func_node, return_name_ids
 
 
-def create_convert_ifelse_node(return_name_ids,
-                               pred,
-                               true_func,
-                               false_func,
-                               is_if_expr=False):
+def create_convert_ifelse_node(pred, true_func, false_func, is_if_expr=False):
     """
     Create `paddle.jit.dy2static.convert_ifelse(
-            pred, true_fn, false_fn, true_args, false_args, return_vars)`
+            pred, true_fn, false_fn, true_args, false_args)`
     to replace original `python if/else` statement.
     """
 
@@ -535,17 +531,14 @@ def create_convert_ifelse_node(return_name_ids,
         true_func_source = true_func.name
         false_func_source = false_func.name
 
-    return_vars = create_name_nodes(return_name_ids)
-
     convert_ifelse_layer = gast.parse(
         '_jst.convert_ifelse('
-        '{pred}, {true_fn}, {false_fn}, {true_args}, {false_args}, {return_vars})'
-        .format(pred=ast_to_source_code(pred),
-                true_fn=true_func_source,
-                false_fn=false_func_source,
-                true_args=ast_to_source_code(true_args),
-                false_args=ast_to_source_code(false_args),
-                return_vars=ast_to_source_code(return_vars))).body[0].value
+        '{pred}, {true_fn}, {false_fn}, {true_args}, {false_args})'.format(
+            pred=ast_to_source_code(pred),
+            true_fn=true_func_source,
+            false_fn=false_func_source,
+            true_args=ast_to_source_code(true_args),
+            false_args=ast_to_source_code(false_args))).body[0].value
 
     if return_name_ids:
         _, cond_node = create_assign_node(return_name_ids, convert_ifelse_layer)
