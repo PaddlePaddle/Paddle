@@ -201,10 +201,8 @@ std::vector<double> Lexical_Test(
       reinterpret_cast<const PaddlePredictor::Config *>(config),
       input_slots_all, outputs, FLAGS_use_analysis);
   std::vector<double> acc_res(3);
-  PADDLE_ENFORCE_GT(outputs->size(), 0,
-                    platform::errors::InvalidArgument(
-                        "Number of outputs must be greater than 0"));
   if (FLAGS_with_accuracy_layer) {
+    EXPECT_GT(outputs->size(), 0UL);
     EXPECT_EQ(3UL, (*outputs)[0].size());
     std::vector<int64_t> acc_sum(3);
     for (size_t i = 0; i < outputs->size(); i++) {
@@ -234,6 +232,7 @@ std::vector<double> Lexical_Test(
     acc_res = {precision, recall, f1_score};
     // return acc_res;
   } else {
+    EXPECT_GT(outputs->size(), 0UL);
     EXPECT_GT(outputs[0].size(), 0UL);
     LOG(INFO) << "No accuracy result. To get accuracy result provide a model "
                  "with accuracy layers in it and use --with_accuracy_layer "

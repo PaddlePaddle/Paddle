@@ -417,6 +417,10 @@ if(WITH_MKLDNN)
     SRCS mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc
     DEPS int8_scale_calculation_mkldnn_pass pass_test_util)
   cc_test(
+    test_params_quantization_mkldnn_pass
+    SRCS mkldnn/params_quantization_mkldnn_pass_tester.cc
+    DEPS params_quantization_mkldnn_pass)
+  cc_test(
     test_fc_elementwise_add_mkldnn_fuse_pass
     SRCS mkldnn/fc_elementwise_add_mkldnn_fuse_pass_tester.cc
     DEPS fc_elementwise_add_mkldnn_fuse_pass pass_test_util)
@@ -515,9 +519,4 @@ if(WITH_MKLDNN)
     test_fc_rnn_mkldnn_fuse_pass
     SRCS mkldnn/mkldnn_fc_rnn_fuse_pass_tester.cc
     DEPS ${TEST_FC_RNN_PASS_DEPS})
-  cc_test(
-    test_params_quantization_mkldnn_pass
-    SRCS mkldnn/params_quantization_mkldnn_pass_tester.cc
-    DEPS params_quantization_mkldnn_pass)
-  )
 endif()
