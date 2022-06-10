@@ -14,7 +14,10 @@
 
 import collections
 import numpy as np
-from tqdm import tqdm
+try:
+    from tqdm import tqdm
+except:
+    from .utils import tqdm
 from ..... import compat as cpt
 from .... import core
 from ....framework import IrGraph
