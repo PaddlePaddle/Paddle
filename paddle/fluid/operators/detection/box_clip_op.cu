@@ -12,6 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/box_clip_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"

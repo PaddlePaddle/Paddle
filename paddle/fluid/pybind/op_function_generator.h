@@ -40,6 +40,8 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
      {"X", "LnScale", "LnBias", "QKVW", "QKVBias", "CacheKV", "TimeStep",
       "SrcMask", "OutLinearW", "OutLinearBias", "FFNLnScale", "FFNLnBias",
       "FFN1Weight", "FFN1Bias", "FFN2Weight", "FFN2Bias"}},
+    {"fused_bias_dropout_residual_layer_norm",
+     {"X", "Residual", "Bias", "LnScale", "LnBias"}},
     {"instance_norm", {"X", "Scale", "Bias"}},
     {"gru_unit", {"Input", "HiddenPrev", "Weight", "Bias"}},
     {"label_smooth", {"X", "PriorDist"}},
@@ -123,6 +125,11 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
      {"X", "Scale", "Bias", "Mean", "Variance", "MomentumTensor"}},
     {"inplace_abn",
      {"X", "Scale", "Bias", "Mean", "Variance", "MomentumTensor"}},
+    {"linear_interp", {"X", "OutSize"}},
+    {"bilinear_interp", {"X", "OutSize"}},
+    {"trilinear_interp", {"X", "OutSize"}},
+    {"nearest_interp", {"X", "OutSize"}},
+    {"bicubic_interp", {"X", "OutSize"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -152,6 +159,8 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
                          "DropoutMaskOut", "Ln2Mean",
                          "Ln2Variance",    "BiasDropoutResidualOut",
                          "CacheKVOut",     "Y"}},
+    {"fused_bias_dropout_residual_layer_norm",
+     {"BiasDropoutResidualOut", "DropoutMaskOut", "LnMean", "LnVariance", "Y"}},
     {"fused_gate_attention",
      {"QueryTransposeOut", "KeyTransposeOut", "ValueTransposeOut",
       "QKVTransposeOut", "SoftmaxOut", "FMHAOut", "GateOut", "Out"}},
@@ -173,7 +182,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"merged_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"sparse_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
-    {"run_program", {"DOut"}},
+    {"run_program", {"DOut", "CUDAGraph"}},
     {"adam",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
       "MasterParamOut"}},
@@ -258,7 +267,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"moving_average_abs_max_scale",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"rnn", {"DropoutState"}},
-    {"run_program", {"Out", "DOut", "OutScope"}},
+    {"run_program", {"Out", "DOut", "OutScope", "CUDAGraph"}},
     {"clear_float_status", {"FloatStatusOut"}},
     {"get_float_status", {"FloatStatusOut"}},
     {"assign", {"Out"}},
@@ -266,6 +275,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"split", {"Out"}},
     {"concat", {"Out"}},
     {"fused_multi_transformer", {"CacheKVOut"}},
+    {"group_norm", {"Mean", "Variance"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.

@@ -17,6 +17,7 @@ import numpy as np
 import paddle
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
+
 paddle.enable_static()
 
 
@@ -36,19 +37,18 @@ def multiclass_nms(bboxes,
     inputs = {'BBoxes': bboxes, 'Scores': scores}
     outputs = {'Out': output, 'Index': index, 'NmsRoisNum': nms_rois_num}
 
-    helper.append_op(
-        type="multiclass_nms3",
-        inputs=inputs,
-        attrs={
-            'background_label': background_label,
-            'score_threshold': score_threshold,
-            'nms_top_k': nms_top_k,
-            'nms_threshold': nms_threshold,
-            'keep_top_k': keep_top_k,
-            'nms_eta': nms_eta,
-            'normalized': normalized
-        },
-        outputs=outputs)
+    helper.append_op(type="multiclass_nms3",
+                     inputs=inputs,
+                     attrs={
+                         'background_label': background_label,
+                         'score_threshold': score_threshold,
+                         'nms_top_k': nms_top_k,
+                         'nms_threshold': nms_threshold,
+                         'keep_top_k': keep_top_k,
+                         'nms_eta': nms_eta,
+                         'normalized': normalized
+                     },
+                     outputs=outputs)
     output.stop_gradient = True
     index.stop_gradient = True
 
@@ -56,6 +56,7 @@ def multiclass_nms(bboxes,
 
 
 class TestYoloBoxPass(unittest.TestCase):
+
     def test_yolo_box_pass(self):
         program = paddle.static.Program()
         with paddle.static.program_guard(program):

@@ -12,13 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/mkldnn/axpy_handler.h"
+
 #include <cinttypes>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "dnnl.hpp"
-#include "paddle/fluid/operators/mkldnn/axpy_handler.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -82,7 +83,7 @@ static void naive_axpy(int n, T alpha, const T *x, T *y) {
   }
 }
 
-}  // anonnymouse namespace
+}  // namespace
 
 template <typename T>
 class OneDNNAXPYHandler<T>::Impl {

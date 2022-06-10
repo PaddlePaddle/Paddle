@@ -38,6 +38,7 @@ def conv2d_residual_naive(out, residual):
 
 
 class TestConv2DMKLDNNOp(TestConv2DOp):
+
     def init_group(self):
         self.groups = 1
 
@@ -61,7 +62,6 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
         self.fuse_activation = ""
         self.fuse_alpha = 0
         self.fuse_beta = 0
-        self.fuse_brelu_threshold = 6.0
         self.fuse_residual_connection = False
         self.input_residual_size = None
 
@@ -99,7 +99,6 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
         self.attrs['fuse_activation'] = self.fuse_activation
         self.attrs['fuse_alpha'] = self.fuse_alpha
         self.attrs['fuse_beta'] = self.fuse_beta
-        self.attrs['fuse_brelu_threshold'] = self.fuse_brelu_threshold
         self.attrs['fuse_residual_connection'] = self.fuse_residual_connection
 
         self.outputs['Output'] = output
@@ -108,6 +107,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
 @skip_check_grad_ci(
     reason="Fusion is for inference only, check_grad is not required.")
 class TestWithbreluFusion(TestConv2DMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DMKLDNNOp.init_test_case(self)
         self.fuse_activation = "relu6"
@@ -118,6 +118,7 @@ class TestWithbreluFusion(TestConv2DMKLDNNOp):
 @skip_check_grad_ci(
     reason="Fusion is for inference only, check_grad is not required.")
 class TestWithFuse(TestConv2DMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
@@ -128,6 +129,7 @@ class TestWithFuse(TestConv2DMKLDNNOp):
 
 
 class TestWithPadWithBias(TestConv2DMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
@@ -135,6 +137,7 @@ class TestWithPadWithBias(TestConv2DMKLDNNOp):
 
 
 class TestWithStride(TestConv2DMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
@@ -143,6 +146,7 @@ class TestWithStride(TestConv2DMKLDNNOp):
 
 
 class TestWithGroup(TestConv2DMKLDNNOp):
+
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -156,12 +160,14 @@ class TestWithGroup(TestConv2DMKLDNNOp):
 
 
 class TestWith1x1(TestConv2DMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DMKLDNNOp.init_test_case(self)
         self.filter_size = [40, 3, 1, 1]
 
 
 class TestWithInput1x1Filter1x1(TestConv2DMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DMKLDNNOp.init_test_case(self)
         self.input_size = [2, 60, 1, 1]  # NCHW
@@ -174,6 +180,7 @@ class TestWithInput1x1Filter1x1(TestConv2DMKLDNNOp):
 
 
 class TestConv2DOp_AsyPadding_MKLDNN(TestConv2DOp_v2):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
@@ -184,18 +191,21 @@ class TestConv2DOp_AsyPadding_MKLDNN(TestConv2DOp_v2):
 
 
 class TestConv2DOp_Same_MKLDNN(TestConv2DOp_AsyPadding_MKLDNN):
+
     def init_paddings(self):
         self.pad = [0, 0]
         self.padding_algorithm = "SAME"
 
 
 class TestConv2DOp_Valid_MKLDNN(TestConv2DOp_AsyPadding_MKLDNN):
+
     def init_paddings(self):
         self.pad = [1, 1]
         self.padding_algorithm = "VALID"
 
 
 class TestConv2DOp_Valid_NHWC_MKLDNN(TestConv2DOp_Valid_MKLDNN):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -205,18 +215,21 @@ class TestConv2DOp_Valid_NHWC_MKLDNN(TestConv2DOp_Valid_MKLDNN):
 
 
 class TestConv2DOp_Same_NHWC_MKLDNN(TestConv2DOp_Valid_NHWC_MKLDNN):
+
     def init_paddings(self):
         self.pad = [0, 0]
         self.padding_algorithm = "SAME"
 
 
 class TestConv2DOp_AsyPadding_NHWC_MKLDNN(TestConv2DOp_Valid_NHWC_MKLDNN):
+
     def init_paddings(self):
         self.pad = [0, 0, 1, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
 class TestMKLDNNDilations(TestConv2DMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DMKLDNNOp.init_test_case(self)
         self.pad = [0, 0]
@@ -236,6 +249,7 @@ class TestMKLDNNDilations(TestConv2DMKLDNNOp):
 # TODO(chenweihang): To solve the coverage problem, add this unittest,
 # remove this unittest after new executor set to default executor
 class TestConv2dMKLDNNByNewExecutor(TestConv2DMKLDNNOp):
+
     def test_check_output_by_new_executor(self):
         os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
         self.test_check_output()

@@ -23,6 +23,7 @@ from decorator_helper import *
 
 
 class Memory(object):
+
     def __init__(self, shape, dtype='float32'):
         self.ex = numpy.zeros(shape=shape, dtype=dtype)
         self.cur = None
@@ -45,6 +46,7 @@ class Memory(object):
 
 
 class Output(object):
+
     def __init__(self):
         self.outs = []
 
@@ -59,6 +61,7 @@ class Output(object):
 
 
 class BaseRNN(object):
+
     def __init__(self, ins, mems, params, outs, num_seq=5, max_seq_len=15):
         self.num_seq = num_seq
         self.inputs = collections.defaultdict(list)
@@ -211,6 +214,7 @@ class BaseRNN(object):
 
 
 class SeedFixedTestCase(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         """Fix random seeds to remove randomness from tests"""
@@ -235,17 +239,17 @@ class TestSimpleMul(SeedFixedTestCase):
     OUT_NAME = 'Out'
 
     class SimpleMul(BaseRNN):
+
         def __init__(self):
             base = TestSimpleMul
-            super(base.SimpleMul, self).__init__({
-                base.DATA_NAME: {
-                    'shape': [base.DATA_WIDTH]
-                }
-            }, {}, {
-                base.PARAM_NAME: {
-                    'shape': [base.DATA_WIDTH, base.HIDDEN_WIDTH]
-                }
-            }, [base.OUT_NAME])
+            super(base.SimpleMul,
+                  self).__init__({base.DATA_NAME: {
+                      'shape': [base.DATA_WIDTH]
+                  }}, {}, {
+                      base.PARAM_NAME: {
+                          'shape': [base.DATA_WIDTH, base.HIDDEN_WIDTH]
+                      }
+                  }, [base.OUT_NAME])
 
         def step(self, X, W, Out):
             Out.out(numpy.matmul(X, W))
@@ -255,8 +259,9 @@ class TestSimpleMul(SeedFixedTestCase):
     @prog_scope()
     def test_forward_backward(self):
         py_rnn = TestSimpleMul.SimpleMul()
-        dat = fluid.layers.data(
-            name=self.DATA_NAME, shape=[self.DATA_WIDTH], lod_level=1)
+        dat = fluid.layers.data(name=self.DATA_NAME,
+                                shape=[self.DATA_WIDTH],
+                                lod_level=1)
         dat.stop_gradient = False
 
         rnn = fluid.layers.DynamicRNN()
@@ -277,11 +282,12 @@ class TestSimpleMul(SeedFixedTestCase):
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
         out, w_g, i_g = list(
-            map(numpy.array,
+            map(
+                numpy.array,
                 exe.run(feed=py_rnn.to_feed(cpu),
                         fetch_list=[
-                            out, self.PARAM_NAME + "@GRAD", self.DATA_NAME +
-                            "@GRAD"
+                            out, self.PARAM_NAME + "@GRAD",
+                            self.DATA_NAME + "@GRAD"
                         ],
                         return_numpy=False)))
         out_by_python = py_rnn.exe()[self.OUT_NAME]
@@ -301,21 +307,23 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
     PARAM_NAME = 'W'
 
     class SimpleMulWithMemory(BaseRNN):
+
         def __init__(self):
-            super(TestSimpleMulWithMemory.SimpleMulWithMemory, self).__init__({
-                TestSimpleMulWithMemory.DATA_NAME: {
-                    'shape': [TestSimpleMulWithMemory.DATA_WIDTH]
-                }
-            }, {'Mem': {
-                'shape': [TestSimpleMulWithMemory.HIDDEN_WIDTH]
-            }}, {
-                TestSimpleMulWithMemory.PARAM_NAME: {
-                    'shape': [
-                        TestSimpleMulWithMemory.DATA_WIDTH,
-                        TestSimpleMulWithMemory.HIDDEN_WIDTH
-                    ]
-                }
-            }, ['Out'])
+            super(TestSimpleMulWithMemory.SimpleMulWithMemory, self).__init__(
+                {
+                    TestSimpleMulWithMemory.DATA_NAME: {
+                        'shape': [TestSimpleMulWithMemory.DATA_WIDTH]
+                    }
+                }, {'Mem': {
+                    'shape': [TestSimpleMulWithMemory.HIDDEN_WIDTH]
+                }}, {
+                    TestSimpleMulWithMemory.PARAM_NAME: {
+                        'shape': [
+                            TestSimpleMulWithMemory.DATA_WIDTH,
+                            TestSimpleMulWithMemory.HIDDEN_WIDTH
+                        ]
+                    }
+                }, ['Out'])
 
         def step(self, X, Mem, W, Out):
             o = numpy.matmul(X, W)
@@ -330,8 +338,9 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
     @prog_scope()
     def test_forward_backward(self):
         py_rnn = TestSimpleMulWithMemory.SimpleMulWithMemory()
-        data = fluid.layers.data(
-            name=self.DATA_NAME, shape=[self.DATA_WIDTH], lod_level=1)
+        data = fluid.layers.data(name=self.DATA_NAME,
+                                 shape=[self.DATA_WIDTH],
+                                 lod_level=1)
         data.stop_gradient = False
         rnn = fluid.layers.DynamicRNN()
         with rnn.block():
@@ -355,11 +364,12 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
         exe = fluid.Executor(cpu)
         feed = py_rnn.to_feed(cpu)
         last_np, w_g, i_g = list(
-            map(numpy.array,
+            map(
+                numpy.array,
                 exe.run(feed=feed,
                         fetch_list=[
-                            last, self.PARAM_NAME + "@GRAD", self.DATA_NAME +
-                            "@GRAD"
+                            last, self.PARAM_NAME + "@GRAD",
+                            self.DATA_NAME + "@GRAD"
                         ],
                         return_numpy=False)))
         last_by_py, = list(py_rnn.exe().values())

@@ -24,9 +24,9 @@ limitations under the License. */
 namespace paddle {
 namespace memory {
 
-using phi::Allocation;
-using allocation::Allocator;
 using allocation::AllocationPtr;
+using allocation::Allocator;
+using phi::Allocation;
 
 extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                                size_t size);

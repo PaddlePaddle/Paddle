@@ -42,8 +42,8 @@ struct Linspace<paddle::platform::CUDADeviceContext, T> {
     auto stream = ctx.cuda_device_context().stream();
     int block = 512;
     int grid = (count + block - 1) / block;
-    LinspaceKernel<T><<<grid, block, 0, stream>>>(start, slice, count,
-                                                  number_data);
+    LinspaceKernel<T>
+        <<<grid, block, 0, stream>>>(start, slice, count, number_data);
   }
 };
 

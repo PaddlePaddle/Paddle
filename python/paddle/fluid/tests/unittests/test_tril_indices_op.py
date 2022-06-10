@@ -24,6 +24,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTrilIndicesOp(OpTest):
+
     def setUp(self):
         self.op_type = "tril_indices"
         self.inputs = {}
@@ -42,6 +43,7 @@ class TestTrilIndicesOp(OpTest):
 
 
 class TestTrilIndicesOpCase1(TestTrilIndicesOp):
+
     def init_config(self):
         self.attrs = {'rows': 0, 'cols': 0, 'offset': 0}
         self.target = np.tril_indices(0, 0, 0)
@@ -49,6 +51,7 @@ class TestTrilIndicesOpCase1(TestTrilIndicesOp):
 
 
 class TestTrilIndicesOpCase2(TestTrilIndicesOp):
+
     def init_config(self):
         self.attrs = {'rows': 4, 'cols': 4, 'offset': 2}
         self.target = np.tril_indices(self.attrs['rows'], self.attrs['offset'],
@@ -57,6 +60,7 @@ class TestTrilIndicesOpCase2(TestTrilIndicesOp):
 
 
 class TestTrilIndicesAPICaseStatic(unittest.TestCase):
+
     def test_static(self):
         places = [
             paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)
@@ -73,6 +77,7 @@ class TestTrilIndicesAPICaseStatic(unittest.TestCase):
 
 
 class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
+
     def test_dygraph(self):
         places = [
             paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)
@@ -89,7 +94,9 @@ class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
 
 
 class TestTrilIndicesAPICaseError(unittest.TestCase):
+
     def test_case_error(self):
+
         def test_num_rows_type_check():
             out1 = paddle.tril_indices(1.0, 1, 2)
 
@@ -107,6 +114,7 @@ class TestTrilIndicesAPICaseError(unittest.TestCase):
 
 
 class TestTrilIndicesAPICaseDefault(unittest.TestCase):
+
     def test_default_CPU(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),

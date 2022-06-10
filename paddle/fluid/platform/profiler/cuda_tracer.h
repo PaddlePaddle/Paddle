@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <mutex>
 #include <vector>
+
 #include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/profiler/tracer_base.h"

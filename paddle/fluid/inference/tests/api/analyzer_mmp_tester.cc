@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <random>
+
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
-
-#include <random>
 
 // Here add missing commands
 DEFINE_string(infer_model2, "", "model path");
@@ -96,8 +96,9 @@ void compare(bool use_mkldnn = false) {
       xx_output.begin(), xx_output.end(), xx2_output.begin(),
       [](const float& l, const float& r) { return fabs(l - r) < 1e-4; });
 
-  PADDLE_ENFORCE_EQ(result, true, paddle::platform::errors::Fatal(
-                                      "Results of model run independently "
+  PADDLE_ENFORCE_EQ(
+      result, true,
+      paddle::platform::errors::Fatal("Results of model run independently "
                                       "differs from results of the same model "
                                       "run as a sequence of models"));
 }

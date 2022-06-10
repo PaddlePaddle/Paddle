@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/set_value_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {

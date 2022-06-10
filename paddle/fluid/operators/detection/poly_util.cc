@@ -16,13 +16,14 @@ limitations under the License. */
 #define POLY_UTIL_CC_
 
 #include "paddle/fluid/operators/detection/poly_util.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-using gpc::gpc_polygon_clip;
 using gpc::gpc_free_polygon;
+using gpc::gpc_polygon_clip;
 
 template <class T>
 void Array2PointVec(const T*& box, const size_t box_size,

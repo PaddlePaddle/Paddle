@@ -334,7 +334,7 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
   }
 
   GraphNodeSet need_feed_vars;
-  std::unordered_set<Node *> param_vars, output_vars;
+  std::unordered_set<Node*> param_vars, output_vars;
   // the subgraph is independently, so here we only need link
   // to the node in new subgraph, and discard the link to
   // out-graph.
@@ -386,18 +386,18 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
                subgraph.get());
   // Save lists of input variables, internal variables and output variables
   // of the cluster as attributes of the subgraph for convenience.
-  auto collect_names_fn = [](
-      const GraphNodeSet& nodes,
-      const std::unordered_set<std::string>& ignore_names) {
-    auto result = std::make_unique<std::vector<std::string>>();
-    for (auto* node : nodes) {
-      if (!node->Var() || ignore_names.count(node->Name())) {
-        continue;
-      }
-      result->emplace_back(node->Name());
-    }
-    return result;
-  };
+  auto collect_names_fn =
+      [](const GraphNodeSet& nodes,
+         const std::unordered_set<std::string>& ignore_names) {
+        auto result = std::make_unique<std::vector<std::string>>();
+        for (auto* node : nodes) {
+          if (!node->Var() || ignore_names.count(node->Name())) {
+            continue;
+          }
+          result->emplace_back(node->Name());
+        }
+        return result;
+      };
   subgraph->Set<std::vector<std::string>>(
       kInternalVars, collect_names_fn(cluster_internals, {}).release());
   subgraph->Set<std::vector<std::string>>(

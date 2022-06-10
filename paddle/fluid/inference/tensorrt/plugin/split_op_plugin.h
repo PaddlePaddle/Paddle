@@ -15,9 +15,11 @@
 #pragma once
 
 #include <thrust/device_vector.h>
+
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
 namespace paddle {

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+
 #include "paddle/phi/kernels/norm_kernel.h"
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -22,11 +23,9 @@
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/phi/common/float16.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
@@ -118,8 +117,8 @@ void NormKernel(const Context& ctx,
   int max_threads = ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(max_threads / block, 1);
   int grid = std::min(max_blocks, pre * post);
-  Normalize<T, block><<<grid, block, 0, ctx.stream()>>>(
-      x_ptr, pre, n, post, eps, y, norm_ptr);
+  Normalize<T, block>
+      <<<grid, block, 0, ctx.stream()>>>(x_ptr, pre, n, post, eps, y, norm_ptr);
 }
 
 }  // namespace phi

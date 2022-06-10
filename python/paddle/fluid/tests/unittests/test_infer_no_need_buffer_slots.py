@@ -23,6 +23,7 @@ import paddle.fluid.core as core
 
 
 class TestInferNoNeedBufferSlots(unittest.TestCase):
+
     def net(self):
         x1 = fluid.default_main_program().global_block().create_var(
             dtype="float32", shape=[1], lod_level=0, name="x1")

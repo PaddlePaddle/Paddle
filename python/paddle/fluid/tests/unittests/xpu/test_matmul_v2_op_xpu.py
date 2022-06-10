@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import sys
+
 sys.path.append("..")
 import unittest
 import numpy as np
@@ -59,6 +60,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
 
 
 class XPUTestMatmulV2Op(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = "matmul_v2"
         self.use_dynamic_create_class = False
