@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/refer/refer.h"
+
 #include "paddle/fluid/operators/jit/registry.h"
 
 namespace refer = paddle::operators::jit::refer;

@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/svd_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/phi/core/ddim.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"

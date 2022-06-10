@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -106,11 +107,11 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
       int block = 512;
       int grid = (param->numel() + block - 1) / block;
 
-      SGDKernelMT<
-          T, MPDType><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
-          param->data<T>(), grad->data<T>(), learning_rate->data<T>(),
-          param->numel(), param_out->mutable_data<T>(ctx.GetPlace()),
-          master_in_data, master_out_data);
+      SGDKernelMT<T, MPDType>
+          <<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
+              param->data<T>(), grad->data<T>(), learning_rate->data<T>(),
+              param->numel(), param_out->mutable_data<T>(ctx.GetPlace()),
+              master_in_data, master_out_data);
 
     } else if (grad_var->IsType<phi::SelectedRows>()) {
       // TODO(qijun): In Sparse SGD operator, in-place update is enforced.

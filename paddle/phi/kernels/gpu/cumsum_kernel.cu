@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/cumsum_kernel.h"
-
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
+
+#include "paddle/phi/kernels/cumsum_kernel.h"
 #ifdef __NVCC__
 #include <cub/cub.cuh>
 #endif
@@ -263,8 +263,9 @@ void CumsumKernel(const Context& dev_ctx,
   dim3 blocks(32, 8);
   dim3 transpose_grids((width + tile_size - 1) / tile_size,
                        (height + tile_size - 1) / tile_size);
-  out->Resize(out_dims);
-  auto* tmp_data = out->data<T>();
+  DenseTensor tmp_tensor;
+  tmp_tensor.Resize(out_dims);
+  auto* tmp_data = dev_ctx.template Alloc<T>(&tmp_tensor);
 
   T* next_in_data = out_data;
   T* next_out_data = tmp_data;
@@ -302,13 +303,13 @@ void CumsumKernel(const Context& dev_ctx,
         out_data, in_data, outer_size, inner_size, scan_size, exclusive);
 
   } else {
-    BlockScanKernel<T, 128, 4><<<scan_grid, 128, 0, dev_ctx.stream()>>>(
-        next_out_data,
-        next_in_data,
-        outer_size,
-        inner_size,
-        scan_size,
-        exclusive);
+    BlockScanKernel<T, 128, 4>
+        <<<scan_grid, 128, 0, dev_ctx.stream()>>>(next_out_data,
+                                                  next_in_data,
+                                                  outer_size,
+                                                  inner_size,
+                                                  scan_size,
+                                                  exclusive);
   }
   swap_ptr(next_in_data, next_out_data);
   if (reverse) {

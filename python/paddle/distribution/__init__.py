@@ -28,18 +28,9 @@ from paddle.distribution.transformed_distribution import \
 from paddle.distribution.uniform import Uniform
 
 __all__ = [  # noqa
-    'Beta',
-    'Categorical',
-    'Dirichlet',
-    'Distribution',
-    'ExponentialFamily',
-    'Multinomial',
-    'Normal',
-    'Uniform',
-    'kl_divergence',
-    'register_kl',
-    'Independent',
-    'TransformedDistribution'
+    'Beta', 'Categorical', 'Dirichlet', 'Distribution', 'ExponentialFamily',
+    'Multinomial', 'Normal', 'Uniform', 'kl_divergence', 'register_kl',
+    'Independent', 'TransformedDistribution'
 ]
 
 __all__.extend(transform.__all__)

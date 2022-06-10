@@ -87,6 +87,8 @@ namespace operators {
 
 class CudnnRNNCache;
 
+class CUDAGraphWithInOuts;
+
 namespace reader {
 class LoDTensorBlockingQueueHolder;
 class OrderedMultiDeviceLoDTensorBlockingQueueHolder;
@@ -189,7 +191,8 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #if defined(PADDLE_WITH_CNCL)
     cnclCliqueId,
 #endif
-    int, float, Vocab>;
+    std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>, int, float,
+    Vocab>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");

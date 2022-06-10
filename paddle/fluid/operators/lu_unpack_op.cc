@@ -53,8 +53,9 @@ class LU_UnpackOp : public framework::OperatorWithKernel {
 
     auto x_dims = context->GetInputDim("X");
     int x_rank = x_dims.size();
-    PADDLE_ENFORCE_GE(x_rank, 2, platform::errors::InvalidArgument(
-                                     "the rank of input must greater than 2"));
+    PADDLE_ENFORCE_GE(x_rank, 2,
+                      platform::errors::InvalidArgument(
+                          "the rank of input must greater than 2"));
 
     // context->SetOutputDim("Out", x_dims);
     int m = x_dims[x_rank - 1];

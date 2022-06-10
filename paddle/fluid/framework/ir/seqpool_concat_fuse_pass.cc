@@ -44,8 +44,8 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
            is_concat_op_with_inputs(x->outputs[0], num_inputs);
   };
 
-  auto is_seqpool_op_with_pootype_of_nth_input_of_concat = [=](
-      Node* x, const std::string& type, int idx) -> bool {
+  auto is_seqpool_op_with_pootype_of_nth_input_of_concat =
+      [=](Node* x, const std::string& type, int idx) -> bool {
     bool this_is_seqpool_op =
         x && x->IsOp() && x->Op()->Type() == "sequence_pool" &&
         x->Op()->HasAttr("pooltype") &&

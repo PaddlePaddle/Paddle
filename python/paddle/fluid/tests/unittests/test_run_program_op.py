@@ -41,7 +41,7 @@ def program_scope_guard():
                 yield
 
 
-# NOTE: Because RunProgramOp has a special output of type std::vector<Scope *>, 
+# NOTE: Because RunProgramOp has a special output of type std::vector<Scope *>,
 # the OpTest cannot be used in RunProgramOp. The variable type cannot be specified
 # when creating output variables in OpTest, default type is LoDTensor
 # NOTE: the gradient test method in OpTest also cannot be used for RunProgramOp,
@@ -49,6 +49,7 @@ def program_scope_guard():
 # when create Operator, so here compare gradients with static graph
 # NOTE: Here rewrite a simple unittest framework for RunProgramOp
 class RunProgramOpTest(unittest.TestCase):
+
     def build_model(self):
         raise NotImplementedError(
             "RunProgramOp test should implement build_model")
@@ -126,13 +127,18 @@ class RunProgramOpTest(unittest.TestCase):
             self.assertTrue(np.allclose(expect_v, actual_v, atol=1e-5))
 
     def prepare_dygraph_input(self, place, return_param_list=False):
+
         def create_var_base(is_input, name, np_value, stop_gradient):
             if _in_eager_mode_:
-                var = core.eager.Tensor(
-                    value=np_value, name=name, place=place, zero_copy=True)
+                var = core.eager.Tensor(value=np_value,
+                                        name=name,
+                                        place=place,
+                                        zero_copy=True)
             else:
-                var = core.VarBase(
-                    value=np_value, name=name, place=place, zero_copy=True)
+                var = core.VarBase(value=np_value,
+                                   name=name,
+                                   place=place,
+                                   zero_copy=True)
             var.stop_gradient = stop_gradient
             return var
 
@@ -155,6 +161,7 @@ class RunProgramOpTest(unittest.TestCase):
         return inputs
 
     def prepare_dygraph_output(self):
+
         def create_var_base(is_input, name):
             var = framework._varbase_creator(dtype=None, shape=None, name=name)
             var.stop_gradient = False
@@ -188,7 +195,7 @@ class RunProgramOpTest(unittest.TestCase):
             outputs = self.prepare_dygraph_output()
 
             _C_ops.run_program(inputs['X'], inputs['Params'], outputs['Out'],
-                               outputs['OutScope'], outputs['DOut'],
+                               outputs['OutScope'], outputs['DOut'], None,
                                *self.attrs)
             return outputs['Out']
 
@@ -202,7 +209,7 @@ class RunProgramOpTest(unittest.TestCase):
             outputs = self.prepare_dygraph_output()
 
             _C_ops.run_program(inputs['X'], inputs['Params'], outputs['Out'],
-                               outputs['OutScope'], outputs['DOut'],
+                               outputs['OutScope'], outputs['DOut'], None,
                                *self.attrs)
 
             for param in input_param_list:
@@ -234,6 +241,7 @@ class RunProgramOpTest(unittest.TestCase):
 
 
 class TestRunProgramOpWithFC(RunProgramOpTest):
+
     def setUp(self):
         self.op_type = "run_program"
         self.dtype = np.float32
@@ -245,14 +253,14 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
 
         self.inputs = {
             'X': {
-                self.input_names['X'][0]: np.random.random((32, 1, 28, 28))
-                .astype(self.dtype)
+                self.input_names['X'][0]:
+                np.random.random((32, 1, 28, 28)).astype(self.dtype)
             },
             'Params': {
-                self.input_names['Params'][0]: np.random.random(
-                    (784, 10)).astype(self.dtype),
-                self.input_names['Params'][1]: np.random.random(
-                    (32, 10)).astype(self.dtype)
+                self.input_names['Params'][0]:
+                np.random.random((784, 10)).astype(self.dtype),
+                self.input_names['Params'][1]:
+                np.random.random((32, 10)).astype(self.dtype)
             }
         }
 
@@ -264,21 +272,20 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
 
     def build_model(self):
         # 1. simple model
-        img = fluid.data(
-            name=self.input_names['X'][0],
-            shape=[None, 1, 28, 28],
-            dtype='float32')
+        img = fluid.data(name=self.input_names['X'][0],
+                         shape=[None, 1, 28, 28],
+                         dtype='float32')
         weight_attr = fluid.ParamAttr(
             name=self.input_names['Params'][0],
             learning_rate=0.5,
-            initializer=fluid.initializer.NumpyArrayInitializer(self.inputs[
-                'Params'][self.input_names['Params'][0]]),
+            initializer=fluid.initializer.NumpyArrayInitializer(
+                self.inputs['Params'][self.input_names['Params'][0]]),
             trainable=True)
         bias_attr = fluid.ParamAttr(
             name=self.input_names['Params'][1],
             learning_rate=0.5,
-            initializer=fluid.initializer.NumpyArrayInitializer(self.inputs[
-                'Params'][self.input_names['Params'][1]]),
+            initializer=fluid.initializer.NumpyArrayInitializer(
+                self.inputs['Params'][self.input_names['Params'][1]]),
             trainable=True)
         pred = fluid.layers.fc(input=img,
                                size=10,
@@ -294,6 +301,7 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
 
 
 class TestRunProgramOpWithEmbedding(RunProgramOpTest):
+
     def setUp(self):
         self.op_type = "run_program"
         self.dtype = np.float32
@@ -313,7 +321,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         self.check_output()
 
     def test_check_grad(self):
-        # NOTE: fecth not support SelectedRows, catnot compare 
+        # NOTE: fecth not support SelectedRows, catnot compare
         # sparse gradients with staic mode, only run dygraph
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -324,16 +332,17 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
 
     def build_model(self):
         # 1. simple model
-        x = fluid.layers.data(
-            name=self.input_names['X'][0], shape=[5], dtype='int64')
+        x = fluid.layers.data(name=self.input_names['X'][0],
+                              shape=[5],
+                              dtype='int64')
         emb = fluid.input.embedding(
             input=x,
             size=[10, 16],
             param_attr=fluid.ParamAttr(
                 name="emb_weight",
                 learning_rate=10,
-                initializer=fluid.initializer.NumpyArrayInitializer(self.inputs[
-                    'Params'][self.input_names['Params'][0]])),
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    self.inputs['Params'][self.input_names['Params'][0]])),
             is_sparse=True)
         y = fluid.layers.reduce_sum(emb, dim=-1)
         # 2. get forward op num
@@ -345,6 +354,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
 
 
 class Net(paddle.nn.Layer):
+
     def __init__(self):
         super(Net, self).__init__()
         self.fc1 = paddle.nn.Linear(10, 10)
@@ -358,6 +368,7 @@ class Net(paddle.nn.Layer):
 
 
 class TestParametersWithStopGradient(unittest.TestCase):
+
     def setUp(self):
         self.seed = 2021
         self.iter = 5

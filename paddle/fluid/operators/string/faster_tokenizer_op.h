@@ -26,15 +26,14 @@ namespace operators {
 
 using std::endl;
 using std::int64_t;
+using std::shared_ptr;
 using std::size_t;
 using std::string;
-using std::shared_ptr;
-using std::vector;
 using std::unordered_map;
 using std::unordered_set;
 using std::vector;
-using std::wstring;
 using std::wcout;
+using std::wstring;
 
 inline bool IsControl(const wchar_t& ch);
 inline bool IsChineseChar(const wchar_t& ch);

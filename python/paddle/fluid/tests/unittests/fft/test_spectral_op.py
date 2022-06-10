@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,6 +26,7 @@ import paddle.fluid.dygraph as dg
 import paddle.static as static
 from numpy.random import random as rand
 from paddle.fluid import Program, program_guard
+
 sys.path.append("../")
 from op_test import OpTest
 
@@ -72,22 +73,22 @@ def class_name(cls, num, params_dict):
     return "{}_{}{}".format(cls.__name__, num, suffix and "_" + suffix)
 
 
-@parameterize((TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward'), [
-    ('test_axes_is_sqe_type', (np.random.random(
-        (12, 14)) + 1j * np.random.random((12, 14))).astype(np.complex128),
-     [0, 1], 'forward', True), ('test_axis_not_last', (np.random.random(
-         (4, 4, 4)) + 1j * np.random.random((4, 4, 4))).astype(np.complex128),
-                                (0, 1), "backward", False),
-    ('test_norm_forward', (np.random.random((12, 14)) + 1j * np.random.random(
-        (12, 14))).astype(np.complex128), (0, ), "forward",
-     False), ('test_norm_backward', (np.random.random(
-         (12, 14)) + 1j * np.random.random((12, 14))).astype(np.complex128),
-              (0, ), "backward", True), ('test_norm_ortho', (np.random.random(
-                  (12, 14)) + 1j * np.random.random(
-                      (12, 14))).astype(np.complex128), (1, ), "ortho", True)
-])
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward'),
+    [('test_axes_is_sqe_type', (np.random.random(
+        (12, 14)) + 1j * np.random.random(
+            (12, 14))).astype(np.complex128), [0, 1], 'forward', True),
+     ('test_axis_not_last', (np.random.random(
+         (4, 4, 4)) + 1j * np.random.random(
+             (4, 4, 4))).astype(np.complex128), (0, 1), "backward", False),
+     ('test_norm_forward', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (0, ), "forward", False),
+     ('test_norm_backward', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (0, ), "backward", True),
+     ('test_norm_ortho', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (1, ), "ortho", True)])
 class TestFFTC2COp(OpTest):
-    # Because framwork not support complex numerial gradient, we skip gradient check. 
+    # Because framwork not support complex numerial gradient, we skip gradient check.
     no_need_check_grad = True
 
     def setUp(self):
@@ -110,19 +111,19 @@ class TestFFTC2COp(OpTest):
 @parameterize(
     (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward', 'last_dim_size'),
     [('test_axes_is_sqe_type', (np.random.random(
-        (12, 14)) + 1j * np.random.random((12, 14))).astype(np.complex128),
-      [0, 1], 'forward', True, 26), ('test_axis_not_last', (np.random.random(
-          (4, 4, 4)) + 1j * np.random.random((4, 4, 4))).astype(np.complex128),
-                                     (0, 1), "backward", False, None),
+        (12, 14)) + 1j * np.random.random(
+            (12, 14))).astype(np.complex128), [0, 1], 'forward', True, 26),
+     ('test_axis_not_last', (np.random.random(
+         (4, 4, 4)) + 1j * np.random.random((4, 4, 4))).astype(np.complex128),
+      (0, 1), "backward", False, None),
      ('test_norm_forward', (np.random.random((12, 14)) + 1j * np.random.random(
          (12, 14))).astype(np.complex128), (0, ), "forward", False, 22),
      ('test_norm_backward', (np.random.random((12, 14)) + 1j * np.random.random(
-         (12, 14))).astype(np.complex128), (0, ), "backward", True,
-      22), ('test_norm_ortho', (np.random.random(
-          (12, 14)) + 1j * np.random.random((12, 14))).astype(np.complex128),
-            (1, ), "ortho", True, 26)])
+         (12, 14))).astype(np.complex128), (0, ), "backward", True, 22),
+     ('test_norm_ortho', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (1, ), "ortho", True, 26)])
 class TestFFTC2ROp(OpTest):
-    # Because framwork not support complex numerial gradient, we skip gradient check. 
+    # Because framwork not support complex numerial gradient, we skip gradient check.
     no_need_check_grad = True
 
     def setUp(self):
@@ -147,17 +148,17 @@ class TestFFTC2ROp(OpTest):
 @parameterize(
     (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward', 'onesided'),
     [('test_axes_is_sqe_type', np.random.randn(12, 14).astype(np.float64),
-      (0, 1), 'forward', True,
-      True), ('test_axis_not_last', np.random.randn(4, 4, 4).astype(np.float64),
-              (0, 1), "backward", False, True),
-     ('test_norm_forward', np.random.randn(12, 14).astype(np.float64), (0, 1),
-      "forward", False, False),
-     ('test_norm_backward', np.random.randn(12, 14).astype(np.float64), (0, ),
-      "backward", True, False), ('test_norm_ortho',
-                                 np.random.randn(12, 14).astype(np.float64),
-                                 (1, ), "ortho", True, False)])
+      (0, 1), 'forward', True, True),
+     ('test_axis_not_last', np.random.randn(4, 4, 4).astype(np.float64),
+      (0, 1), "backward", False, True),
+     ('test_norm_forward', np.random.randn(12, 14).astype(np.float64),
+      (0, 1), "forward", False, False),
+     ('test_norm_backward', np.random.randn(12, 14).astype(np.float64),
+      (0, ), "backward", True, False),
+     ('test_norm_ortho', np.random.randn(12, 14).astype(np.float64),
+      (1, ), "ortho", True, False)])
 class TestFFTR2COp(OpTest):
-    # Because framwork not support complex numerial gradient, we skip gradient check. 
+    # Because framwork not support complex numerial gradient, we skip gradient check.
     no_need_check_grad = True
 
     def setUp(self):

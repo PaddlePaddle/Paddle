@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/ddim.h"

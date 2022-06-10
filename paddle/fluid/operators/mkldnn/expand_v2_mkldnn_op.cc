@@ -18,11 +18,11 @@ limitations under the License. */
 
 namespace {
 
-using paddle::framework::Tensor;
-using phi::vectorize;
-using paddle::framework::GradVarName;
 using paddle::framework::ExecutionContext;
+using paddle::framework::GradVarName;
+using paddle::framework::Tensor;
 using paddle::platform::MKLDNNDeviceContext;
+using phi::vectorize;
 
 template <typename T>
 class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
@@ -45,19 +45,17 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
       out_new_dims[i] = out_new_dims[i] > 0 ? out_new_dims[i] : x_vec_dims[i];
     }
 
-    dnnl::memory::desc x_mem_desc = x->mem_desc();
     if (x_vec_dims.size() != out_new_dims.size()) {
-      x_mem_desc = GetExtendedMemoryDescriptor(x_mem_desc, x_vec_dims,
-                                               out_new_dims.size());
+      x_vec_dims = GetExtendedXDims(x_vec_dims, out_new_dims.size());
     }
 
     out->Resize(phi::make_ddim(out_new_dims));
     paddle::platform::BroadcastDataMKLDNNHandler<T> handler(
-        dnnl::algorithm::binary_add, onednn_engine, ctx.GetPlace(), out, x,
-        0.0f, 1.0f, x_mem_desc);
+        dnnl::algorithm::binary_add, onednn_engine, ctx.GetPlace(), x, out,
+        0.0f, 1.0f, x_vec_dims);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
-    auto dst_memory_p = handler.AcquireDstMemory(out);  // acquires zeroed mem
+    auto dst_memory_p = handler.AcquireZeroedDstMemory(out);
     auto binary_p = handler.AcquireForwardPrimitive();
 
     const std::unordered_map<int, dnnl::memory> args = {
@@ -73,14 +71,13 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
   }
 
  private:
-  dnnl::memory::desc GetExtendedMemoryDescriptor(
-      const dnnl::memory::desc& x_mem_desc,
-      const std::vector<int64_t>& x_vec_dims, int new_size) const {
-    std::vector<int64_t> new_dims(new_size, 1);
+  std::vector<int64_t> GetExtendedXDims(const std::vector<int64_t>& x_vec_dims,
+                                        int new_size) const {
+    std::vector<int64_t> extended_x_dims(new_size, 1);
     std::copy(x_vec_dims.begin(), x_vec_dims.end(),
-              new_dims.begin() + new_size - x_vec_dims.size());
+              extended_x_dims.begin() + new_size - x_vec_dims.size());
 
-    return x_mem_desc.reshape(new_dims);
+    return extended_x_dims;
   }
 };
 

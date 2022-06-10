@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 #include <math.h>
 #include <stdlib.h>
+
 #include <iostream>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -108,9 +110,8 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
 
     // update parameters
     for (int64_t i = 0; i < grad->numel(); ++i) {
-      out_data[i] =
-          param_data[i] -
-          lr[0] * (grad_data[i] / scale + gaussian_noise / batch_size);
+      out_data[i] = param_data[i] - lr[0] * (grad_data[i] / scale +
+                                             gaussian_noise / batch_size);
     }
     // CCS16 - Deep Learning with Differential Privacy.
     // [https://arxiv.org/abs/1607.00133]

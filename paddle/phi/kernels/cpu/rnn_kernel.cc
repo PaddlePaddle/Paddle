@@ -49,7 +49,8 @@ struct Cell {
 };
 
 template <typename T,
-          template <typename> class EigenActivationFunctor,
+          template <typename>
+          class EigenActivationFunctor,
           funcs::detail::ActivationType act_type>
 struct SimpleRNNCell : Cell<T> {
   void operator()(const CPUContext* dev_ctx,
@@ -819,7 +820,7 @@ void RnnKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<const DenseTensor*>& pre_state,
                const std::vector<const DenseTensor*>& weight_list,
-               paddle::optional<const DenseTensor&> sequence_length,
+               const paddle::optional<DenseTensor>& sequence_length,
                float dropout_prob,
                bool is_bidirec,
                int input_size,

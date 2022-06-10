@@ -124,14 +124,15 @@ def filter_boxes(boxes, min_size, im_shape, pixel_offset=True):
     if pixel_offset:
         x_ctr = boxes[:, 0] + ws / 2.
         y_ctr = boxes[:, 1] + hs / 2.
-        keep = np.where((ws >= min_size) & (hs >= min_size) & (x_ctr < im_shape[
-            1]) & (y_ctr < im_shape[0]))[0]
+        keep = np.where((ws >= min_size) & (hs >= min_size)
+                        & (x_ctr < im_shape[1]) & (y_ctr < im_shape[0]))[0]
     else:
         keep = np.where((ws >= min_size) & (hs >= min_size))[0]
     return keep
 
 
 class TestGenerateProposalsV2Op(OpTest):
+
     def set_data(self):
         self.init_test_params()
         self.init_test_input()
@@ -202,6 +203,7 @@ class TestGenerateProposalsV2Op(OpTest):
 
 
 class TestGenerateProposalsV2OutLodOp(TestGenerateProposalsV2Op):
+
     def set_data(self):
         self.init_test_params()
         self.init_test_input()
@@ -226,12 +228,12 @@ class TestGenerateProposalsV2OutLodOp(TestGenerateProposalsV2Op):
         self.outputs = {
             'RpnRois': (self.rpn_rois[0], [self.rois_num]),
             'RpnRoiProbs': (self.rpn_roi_probs[0], [self.rois_num]),
-            'RpnRoisNum': (np.asarray(
-                self.rois_num, dtype=np.int32))
+            'RpnRoisNum': (np.asarray(self.rois_num, dtype=np.int32))
         }
 
 
 class TestGenerateProposalsV2OpNoBoxLeft(TestGenerateProposalsV2Op):
+
     def init_test_params(self):
         self.pre_nms_topN = 12000  # train 12000, test 2000
         self.post_nms_topN = 5000  # train 6000, test 1000
@@ -242,6 +244,7 @@ class TestGenerateProposalsV2OpNoBoxLeft(TestGenerateProposalsV2Op):
 
 
 class TestGenerateProposalsV2OpNoOffset(TestGenerateProposalsV2Op):
+
     def init_test_params(self):
         self.pre_nms_topN = 12000  # train 12000, test 2000
         self.post_nms_topN = 5000  # train 6000, test 1000

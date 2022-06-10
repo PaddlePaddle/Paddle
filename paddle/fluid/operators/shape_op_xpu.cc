@@ -11,6 +11,7 @@
 
 #ifdef PADDLE_WITH_XPU
 #include <algorithm>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {

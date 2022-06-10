@@ -285,6 +285,7 @@ def trans_lod(lod):
 
 
 class TestGenerateMaskLabels(OpTest):
+
     def set_data(self):
         self.init_test_case()
         self.make_generate_proposal_labels_out()
@@ -362,8 +363,9 @@ class TestGenerateMaskLabels(OpTest):
                 lod1.append(poly_num)
                 pts = []
                 for j in range(poly_num):
-                    poly_size = np.random.randint(
-                        min_poly_size, max_poly_size, size=1)[0]
+                    poly_size = np.random.randint(min_poly_size,
+                                                  max_poly_size,
+                                                  size=1)[0]
                     x = np.random.rand(poly_size, 1) * w
                     y = np.random.rand(poly_size, 1) * h
                     xy = np.concatenate((x, y), axis=1)

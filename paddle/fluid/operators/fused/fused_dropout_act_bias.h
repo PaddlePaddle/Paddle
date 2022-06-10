@@ -109,15 +109,15 @@ void LaunchDropoutActBias(Functor act_functor, const uint64_t seed,
   const int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
   const auto config = Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
   if (cols % VecSize == 0) {
-    FusedDropoutActBias<T, MaskType, VecSize, Functor><<<
-        config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
-        act_functor, seed, rows, cols, increment, dropout_prob,
-        is_upscale_in_train, is_test, src, bias, dst, mask_data);
+    FusedDropoutActBias<T, MaskType, VecSize, Functor>
+        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+            act_functor, seed, rows, cols, increment, dropout_prob,
+            is_upscale_in_train, is_test, src, bias, dst, mask_data);
   } else {
-    FusedDropoutActBias<T, MaskType, 1, Functor><<<
-        config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
-        act_functor, seed, rows, cols, increment, dropout_prob,
-        is_upscale_in_train, is_test, src, bias, dst, mask_data);
+    FusedDropoutActBias<T, MaskType, 1, Functor>
+        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+            act_functor, seed, rows, cols, increment, dropout_prob,
+            is_upscale_in_train, is_test, src, bias, dst, mask_data);
   }
 }
 
@@ -231,28 +231,28 @@ void LaunchDropoutActBiasGrad(Functor act_functor, const T *dout,
     dim3 block_dim(threads, 128, 1);
     dim3 grid_dim(blocks, 1, 1);
     if (cols % VecSize == 0) {
-      FusedDropoutActBiasGrad<
-          T, MaskType, 8, 128, VecSize,
-          Functor><<<grid_dim, block_dim, 0, ctx.stream()>>>(
-          act_functor, dout, mask, src, bias, factor, rows, cols, dx, dbias);
+      FusedDropoutActBiasGrad<T, MaskType, 8, 128, VecSize, Functor>
+          <<<grid_dim, block_dim, 0, ctx.stream()>>>(act_functor, dout, mask,
+                                                     src, bias, factor, rows,
+                                                     cols, dx, dbias);
     } else {
-      FusedDropoutActBiasGrad<
-          T, MaskType, 8, 128, 1,
-          Functor><<<grid_dim, block_dim, 0, ctx.stream()>>>(
-          act_functor, dout, mask, src, bias, factor, rows, cols, dx, dbias);
+      FusedDropoutActBiasGrad<T, MaskType, 8, 128, 1, Functor>
+          <<<grid_dim, block_dim, 0, ctx.stream()>>>(act_functor, dout, mask,
+                                                     src, bias, factor, rows,
+                                                     cols, dx, dbias);
     }
   } else {
     const uint64_t n = rows * cols;
     platform::GpuLaunchConfig config =
         platform::GetGpuLaunchConfig1D(ctx, n / real_vec_size);
     if (n % VecSize == 0) {
-      FusedDropoutActGrad<T, MaskType, VecSize, Functor><<<
-          config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
-          act_functor, dout, mask, src, factor, n, dx);
+      FusedDropoutActGrad<T, MaskType, VecSize, Functor>
+          <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+              act_functor, dout, mask, src, factor, n, dx);
     } else {
-      FusedDropoutActGrad<T, MaskType, 1, Functor><<<
-          config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
-          act_functor, dout, mask, src, factor, n, dx);
+      FusedDropoutActGrad<T, MaskType, 1, Functor>
+          <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+              act_functor, dout, mask, src, factor, n, dx);
     }
   }
 }

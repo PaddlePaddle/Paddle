@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/math/tree2col.h"
+
 #include <deque>
 #include <stack>
 
@@ -53,7 +54,7 @@ std::vector<TreeNode> Tree2ColUtil::construct_patch(
 void Tree2ColUtil::construct_tree(const framework::Tensor &EdgeSet,
                                   std::vector<std::vector<int>> *tr,
                                   size_t *node_count) {
-  auto edge_set_dims = EdgeSet.dims();
+  const auto &edge_set_dims = EdgeSet.dims();
   PADDLE_ENFORCE_EQ(edge_set_dims[1], 2,
                     platform::errors::InvalidArgument(
                         "The second dimension of the EdgeSet shall be 2, but "
@@ -89,7 +90,7 @@ class Tree2ColFunctor<platform::CPUDeviceContext, T> {
                   const framework::Tensor &node_features,
                   framework::Tensor *patch, int max_depth) {
     std::vector<std::vector<int>> tr;
-    auto feature_dims = node_features.dims();
+    const auto &feature_dims = node_features.dims();
     auto cpu_place = context.GetPlace();
     phi::funcs::SetConstant<platform::CPUDeviceContext, T> constant;
     int64_t feature_size = feature_dims[1];
@@ -142,7 +143,7 @@ class Col2TreeFunctor<platform::CPUDeviceContext, T> {
                   const framework::Tensor &out_grad, framework::Tensor *in_grad,
                   int max_depth) {
     std::vector<std::vector<int>> tr;
-    auto output_dims = out_grad.dims();
+    const auto &output_dims = out_grad.dims();
     auto cpu_place = context.GetPlace();
     phi::funcs::SetConstant<platform::CPUDeviceContext, T> constant;
     int64_t output_size = output_dims[1];

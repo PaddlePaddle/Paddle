@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_meta.h"
 
 /* @jim19930609: Move to MKLDNN_Tensor in the future
-    */
+ */
 #ifdef PADDLE_WITH_MKLDNN
 #include "dnnl.hpp"
 #endif
