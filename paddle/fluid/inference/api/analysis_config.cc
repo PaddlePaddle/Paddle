@@ -100,6 +100,24 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
   Update();
 }
 
+void AnalysisConfig::SetExecStream(void *stream) {
+  PADDLE_ENFORCE_NOT_NULL(stream, platform::errors::InvalidArgument(
+                                      "`stream` should not be nullptr"));
+  exec_stream_ = stream;
+  use_external_stream_ = true;
+  Update();
+}
+
+void *AnalysisConfig::GetExecStream() const {
+  PADDLE_ENFORCE_NOT_NULL(exec_stream_, platform::errors::InvalidArgument(
+                                            "`stream` should not be nullptr"));
+  return exec_stream_;
+}
+
+bool AnalysisConfig::external_stream_enabled() const {
+  return use_external_stream_;
+}
+
 void AnalysisConfig::DisableGpu() {
   use_gpu_ = false;
 
@@ -239,6 +257,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_fc_padding_);
   // GPU related.
   CP_MEMBER(use_gpu_);
+  CP_MEMBER(use_external_stream_);
+  CP_MEMBER(exec_stream_);
   CP_MEMBER(use_cudnn_);
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
@@ -787,6 +807,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
+  ss << use_external_stream_;
+  ss << exec_stream_;
   ss << use_gpu_fp16_;
   for (auto &item : gpu_fp16_disabled_op_types_) ss << item;
   ss << use_fc_padding_;
@@ -985,6 +1007,8 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
+    os.InsertRow(
+        {"use_external_stream", use_external_stream_ ? "true" : "false"});
     os.InsertRow(
         {"thread_local_stream", thread_local_stream_ ? "true" : "false"});
 

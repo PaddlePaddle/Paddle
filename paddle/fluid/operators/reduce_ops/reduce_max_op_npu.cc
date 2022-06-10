@@ -141,6 +141,9 @@ class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
     Tensor tmp_out, tmp_out_grad;
     auto tmp_out_dims_vec = x_dims_vec;
     for (auto d : reduce_dims) {
+      if (d < 0) {
+        d += x_dims_vec.size();
+      }
       tmp_out_dims_vec[d] = 1;
     }
 
