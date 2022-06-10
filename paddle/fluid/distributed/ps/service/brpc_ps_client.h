@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ThreadPool.h>
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -218,6 +219,20 @@ class BrpcPsClient : public PSClient {
   // for local save sparse
   virtual int32_t RecvAndSaveTable(const uint64_t table_id,
                                    const std::string &path);
+
+  std::future<int32_t> CacheShuffle(
+      uint32_t table_id, const std::string &path, const std::string &mode,
+      const std::string &cache_threshold) override;
+
+  std::future<int32_t> CacheShuffleMultiTable(
+      std::vector<int> tables, const std::string &path, const std::string &mode,
+      const std::string &cache_threshold);
+
+  std::future<int32_t> SaveCache(uint32_t table_id, const std::string &path,
+                                 const std::string &mode) override;
+
+  std::future<int32_t> GetCacheThreshold(uint32_t table_id,
+                                         double &cache_threshold) override;
 
   void PrintQueueSize();
   void PrintQueueSizeThread();

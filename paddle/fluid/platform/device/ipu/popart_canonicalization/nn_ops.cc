@@ -35,20 +35,20 @@ Node *conv2d_handler(Graph *graph, Node *node) {
   auto stride_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("strides"));
   auto stride = std::vector<int64_t>{stride_.begin(), stride_.end()};
   if (!op->Input("Bias").empty()) {
-    return CreateConv(
-        graph, node,
-        {
-            GetInputVarNode("Input", node), GetInputVarNode("Filter", node),
-            GetInputVarNode("Bias", node),
-        },
-        node->outputs, dilations, group_, {}, pads, stride);
+    return CreateConv(graph, node,
+                      {
+                          GetInputVarNode("Input", node),
+                          GetInputVarNode("Filter", node),
+                          GetInputVarNode("Bias", node),
+                      },
+                      node->outputs, dilations, group_, {}, pads, stride);
   } else {
-    return CreateConv(
-        graph, node,
-        {
-            GetInputVarNode("Input", node), GetInputVarNode("Filter", node),
-        },
-        node->outputs, dilations, group_, {}, pads, stride);
+    return CreateConv(graph, node,
+                      {
+                          GetInputVarNode("Input", node),
+                          GetInputVarNode("Filter", node),
+                      },
+                      node->outputs, dilations, group_, {}, pads, stride);
   }
 }
 
@@ -148,15 +148,16 @@ Node *pool2d_handler(Graph *graph, Node *node) {
     auto dilations = std::vector<int64_t>{};
     int64_t storage_order = 0;
     return CreateBaseOp(graph, node, "popart_maxpool", node->inputs,
-                        node->outputs, {
-                                           {"num_outputs", num_outputs},
-                                           {"kernel_shape", kernel_shape},
-                                           {"ceil_mode", ceil_mode},
-                                           {"dilations", dilations},
-                                           {"pads", pads},
-                                           {"storage_order", storage_order},
-                                           {"strides", strides},
-                                       });
+                        node->outputs,
+                        {
+                            {"num_outputs", num_outputs},
+                            {"kernel_shape", kernel_shape},
+                            {"ceil_mode", ceil_mode},
+                            {"dilations", dilations},
+                            {"pads", pads},
+                            {"storage_order", storage_order},
+                            {"strides", strides},
+                        });
   } else if (pooling_type == "avg") {
     int64_t count_include_pad = 0;
     return CreateBaseOp(graph, node, "popart_averagepool", node->inputs,
@@ -299,7 +300,7 @@ Node *dropout_handler(Graph *graph, Node *node) {
           CreateConst(graph, node, {}, {},
                       {{"value", std::vector<float>{1 - dropout_prob_}},
                        {"dims", std::vector<int64_t>{1}},
-                       {"dtype", GetOutputVarDtype(node)}});
+                       {"dtype", GetOutputVarDType(node)}});
       return CreateBaseOp(graph, node, "popart_mul",
                           {GetInputVarNode("X", node), scale->outputs[0]},
                           {GetOutputVarNode("Out", node)}, {});

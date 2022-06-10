@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +21,7 @@ from paddle.distributed.launch.job.pod import Pod
 from paddle.distributed.launch.job.container import Container
 
 from .master import Master
+from .watcher import Watcher
 
 import time
 
@@ -31,6 +32,7 @@ class ControleMode:
 
 
 class ControllerBase(object):
+
     def __init__(self, ctx):
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGABRT, self.signal_handler)
@@ -38,6 +40,8 @@ class ControllerBase(object):
 
         self.ctx = ctx
         self.master = Master.factory(self.ctx)
+
+        self.watcher = Watcher(self.ctx)
 
         self.job = Job(nnodes=self.ctx.args.nnodes,
                        mode=self.ctx.args.run_mode,
@@ -107,13 +111,16 @@ class ControllerBase(object):
                     return False
 
             # peer failure
-            if self.ctx.status.is_restarting() and self.master.get_status(
-            ) != self.ctx.status.COMPLETED:
+            if self.ctx.status.is_restarting(
+            ) and self.master.get_status() != self.ctx.status.COMPLETED:
                 self.pod.stop()
                 return False
 
     def stop(self, sigint=None):
         self.ctx.logger.debug("Controller stop")
+
+        self.watcher.stop()
+
         self.master.stop()
         self.pod.stop(sigint)
 
@@ -128,14 +135,15 @@ class ControllerBase(object):
         self.ctx.logger.info("Terminating with signal {}".format(sigint))
 
         if hasattr(self, 'sigint'):
-            time.sleep(5)
+            self.ctx.logger.info("Force quit in 10 seconds...")
+            time.sleep(11)
             sys.exit(sigint)
 
         self.sigint = sigint
         self.ctx.status.done()
         self.stop(sigint)
         time.sleep(1)
-        self.ctx.logger.debug("Exit with signal {}".format(sigint))
+        self.ctx.logger.info("Exit with signal {}".format(sigint))
         sys.exit(sigint)
 
 
@@ -178,7 +186,8 @@ class Controller(ControllerBase):
                       err=None):
         c = Container(
             entrypoint=(entrypoint or self._get_entrypoint()),
-            env=(self.ctx.get_envs() if use_ctx_env else {}), )
+            env=(self.ctx.get_envs() if use_ctx_env else {}),
+        )
         c.outfile, c.errfile = self._get_out_err_file(out, err)
         c.update_env(envs)
         return c
@@ -196,8 +205,10 @@ class Controller(ControllerBase):
             log_file = None
 
         if not container:
-            container = self.new_container(
-                entrypoint=entrypoint, envs=envs, out=log_file, err=log_file)
+            container = self.new_container(entrypoint=entrypoint,
+                                           envs=envs,
+                                           out=log_file,
+                                           err=log_file)
 
         if is_init:
             self.pod.add_init_container(container)

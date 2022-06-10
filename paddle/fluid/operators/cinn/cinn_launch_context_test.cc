@@ -13,9 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
+
 #include <memory>
 #include <set>
 #include <utility>
+
+#include "cinn/auto_schedule/auto_tuner.h"
 #include "cinn/common/target.h"
 #include "cinn/common/type.h"
 #include "cinn/hlir/framework/graph_compiler.h"
@@ -37,11 +40,11 @@ USE_OP(cinn_instruction_run);
 namespace paddle {
 namespace operators::details {
 
-using framework::OpDesc;
-using framework::ProgramDesc;
 using framework::LoDTensor;
-using framework::ir::Graph;
+using framework::OpDesc;
 using framework::ParallelExecutor;
+using framework::ProgramDesc;
+using framework::ir::Graph;
 using framework::paddle2cinn::Name2VarInfoMap;
 using CinnShape = ::cinn::hlir::framework::Shape;
 using CinnInstruction = ::cinn::hlir::framework::Instruction;

@@ -21,6 +21,10 @@ from paddle.utils import gast
 from paddle.fluid import core
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
 from paddle.fluid.framework import Program
+try:
+    from collections.abc import Sequence
+except:
+    from collections import Sequence
 
 # NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
 ORIGI_INFO = "Original information of source code for ast node."
@@ -34,7 +38,8 @@ class Location(object):
     __slots__ = (
         "filepath",
         "lineno",
-        "col_offset", )
+        "col_offset",
+    )
 
     def __init__(self, filepath, lineno, col_offset=None):
         self.filepath = filepath
@@ -57,7 +62,8 @@ class OriginInfo(object):
     __slots__ = (
         "location",
         "function_name",
-        "source_code", )
+        "source_code",
+    )
 
     def __init__(self, location, function_name, source_code):
         self.location = location
@@ -214,7 +220,7 @@ def ast_walk(transformed_node, static_node):
     def _as_list(x):
         if x is None:
             return []
-        return list(x) if isinstance(x, collections.Sequence) else [x]
+        return list(x) if isinstance(x, Sequence) else [x]
 
     transformed_node_list = _as_list(transformed_node)
     static_node_list = _as_list(static_node)

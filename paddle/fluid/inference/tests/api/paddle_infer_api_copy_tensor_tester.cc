@@ -14,8 +14,10 @@ limitations under the License. */
 
 #include <cuda_runtime.h>
 #include <gtest/gtest.h>
+
 #include <cstring>
 #include <numeric>
+
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
@@ -30,7 +32,10 @@ class InferApiTesterUtils {
       const std::string &name, PlaceType place, void *p_scope) {
     auto var = static_cast<paddle::framework::Scope *>(p_scope)->Var(name);
     var->GetMutable<paddle::framework::LoDTensor>();
-    std::unique_ptr<Tensor> res(new Tensor(p_scope));
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    const auto &dev_ctxs = pool.device_contexts();
+    std::unique_ptr<Tensor> res(new Tensor(p_scope, &dev_ctxs));
     res->input_or_output_ = true;
     res->SetName(name);
     res->SetPlace(place, 0 /*device id*/);

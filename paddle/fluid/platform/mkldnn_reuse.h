@@ -616,42 +616,20 @@ class BinaryMKLDNNHandler
  public:
   BinaryMKLDNNHandler(const dnnl::algorithm algo, const int axis,
                       const dnnl::engine engine, platform::Place cpu_place,
-                      const Tensor* x, const Tensor* y, Tensor* z,
-                      float scale_x, float scale_y, float scale_z,
+                      const Tensor* x, const Tensor* y, Tensor* out,
+                      float scale_x, float scale_y, float scale_out,
                       const dnnl::post_ops& post_ops = dnnl::post_ops{})
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument(
-            "Wrong layout set for X tensor. Expected: %d (kMKLDNN), Actual: %d",
-            DataLayout::kMKLDNN, x->layout()));
-    PADDLE_ENFORCE_NE(x->format(), MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Wrong format set for X tensor : %d (undef)",
-                          static_cast<unsigned int>(x->format())));
-
-    PADDLE_ENFORCE_EQ(
-        y->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument(
-            "Wrong layout set for Y tensor. Expected: %d (kMKLDNN), Actual: %d",
-            DataLayout::kMKLDNN, y->layout()));
-    PADDLE_ENFORCE_NE(y->format(), MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Wrong format set for Y tensor : %d (undef)",
-                          static_cast<unsigned int>(y->format())));
-
     const auto src_x_tz = phi::vectorize(x->dims());
     const auto src_y_tz = phi::vectorize(y->dims());
     // if output tensor(z) is nullptr then we are computing into oneDNN
     // managed buffer
     auto rankdiff = x->dims().size() - y->dims().size();
-    const auto dst_tz = (z == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
-                                       : phi::vectorize(z->dims());
+    const auto dst_tz = (out == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
+                                         : phi::vectorize(out->dims());
 
-    auto src0_md = dnnl::memory::desc(
-        src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
-    auto src1_md = dnnl::memory::desc(
-        src_y_tz, platform::MKLDNNGetDataType<T>(), y->format());
+    auto src0_md = x->mem_desc();
+    auto src1_md = y->mem_desc();
     if (rankdiff > 0) {  // Second input is of smaller rank than first
       std::vector<int64_t> dims1_ex(rankdiff, 1);
       dims1_ex.insert(next(dims1_ex.begin(), (axis == -1 ? rankdiff : axis)),
@@ -677,7 +655,7 @@ class BinaryMKLDNNHandler
                                      MKLDNNMemoryFormat::any);
 
     auto attributes =
-        CreateAttributes(algo, scale_x, scale_y, scale_z, post_ops);
+        CreateAttributes(algo, scale_x, scale_y, scale_out, post_ops);
 
     this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
                                             dst_md);
@@ -691,7 +669,7 @@ class BinaryMKLDNNHandler
 
  private:
   static inline dnnl::primitive_attr CreateAttributes(
-      dnnl::algorithm op, float scale_x, float scale_y, float scale_z,
+      dnnl::algorithm op, float scale_x, float scale_y, float scale_out,
       dnnl::post_ops post_ops = dnnl::post_ops{}) {
     // Scales set in attributes for inputs contibute to the output equation
     // in the following way (assuming no broadcasting takes place):
@@ -709,9 +687,9 @@ class BinaryMKLDNNHandler
     // For mul operation on the other hand
     // output = (scale_out / scale_x) * x * (1.0 / scale_y) * y
     //                <scale_0>                 <scale_1>
-    float scale_0 = scale_z / scale_x;
+    float scale_0 = scale_out / scale_x;
     float scale_1 =
-        op == dnnl::algorithm::binary_add ? scale_z / scale_y : 1.0 / scale_y;
+        op == dnnl::algorithm::binary_add ? scale_out / scale_y : 1.0 / scale_y;
     dnnl::primitive_attr attributes;
     attributes.set_scales(/* input_x_id = */ DNNL_ARG_SRC_0, /* mask = */ 0,
                           {scale_0});
@@ -728,23 +706,15 @@ class BroadcastDataMKLDNNHandler
  public:
   BroadcastDataMKLDNNHandler(const dnnl::algorithm algo,
                              const dnnl::engine engine,
-                             platform::Place cpu_place, const Tensor* out,
-                             const Tensor* x, float scale_x, float scale_y,
-                             const std::vector<int64_t>& input_dims)
+                             platform::Place cpu_place, const Tensor* x,
+                             Tensor* out, float scale_x, float scale_y,
+                             const std::vector<int64_t>& extended_x_dims)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
-    PADDLE_ENFORCE_NE(
-        x->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for X tensor."));
-
     const auto src0_tz = phi::vectorize(out->dims());
-
-    const auto src0_md = dnnl::memory::desc(
-        src0_tz, platform::MKLDNNGetDataType<T>(), out->format());
-    const auto src1_md = dnnl::memory::desc(
-        input_dims, platform::MKLDNNGetDataType<T>(), out->format());
+    const auto src0_md =
+        dnnl::memory::desc(src0_tz, platform::MKLDNNGetDataType<T>(),
+                           platform::GetPlainMKLDNNFormat(src0_tz.size()));
+    const auto src1_md = x->mem_desc().reshape(extended_x_dims);
 
     dnnl::primitive_attr attributes;
     attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
@@ -755,9 +725,9 @@ class BroadcastDataMKLDNNHandler
   }
 
   template <typename T_out = T>
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(framework::Tensor* output) {
-    T_out* ptr = output->mutable_data<T_out>(
-        this->place_, this->fwd_pd_->dst_desc().get_size());
+  std::shared_ptr<dnnl::memory> AcquireZeroedDstMemory(framework::Tensor* out) {
+    T_out* ptr = out->mutable_data<T_out>(this->place_,
+                                          this->fwd_pd_->dst_desc().get_size());
     memset(ptr, 0, this->fwd_pd_->dst_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
@@ -770,28 +740,19 @@ class ReductionMKLDNNHandler
   ReductionMKLDNNHandler(const dnnl::algorithm algo, const float p,
                          const float eps, const dnnl::engine engine,
                          platform::Place cpu_place, const Tensor* x,
-                         const Tensor* y, std::vector<int64_t> y_tz,
-                         const dnnl::primitive_attr& attr = NULL)
+                         const Tensor* out, std::vector<int64_t> out_tz,
+                         const dnnl::primitive_attr& attrs = NULL)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction>(engine,
                                                               cpu_place) {
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
-    PADDLE_ENFORCE_NE(
-        x->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for X tensor."));
+    const auto out_md = memory::desc(out_tz, platform::MKLDNNGetDataType<T>(),
+                                     dnnl::memory::format_tag::any);
 
-    const auto x_tz = phi::vectorize(x->dims());
-
-    const auto x_md =
-        dnnl::memory::desc(x_tz, platform::MKLDNNGetDataType<T>(), x->format());
-    const auto y_md =
-        memory::desc(y_tz, platform::MKLDNNGetDataType<T>(), x->format());
-
-    if (attr)
-      this->AcquireForwardPrimitiveDescriptor(attr, algo, x_md, y_md, p, eps);
+    if (attrs)
+      this->AcquireForwardPrimitiveDescriptor(attrs, algo, x->mem_desc(),
+                                              out_md, p, eps);
     else
-      this->AcquireForwardPrimitiveDescriptor(algo, x_md, y_md, p, eps);
+      this->AcquireForwardPrimitiveDescriptor(algo, x->mem_desc(), out_md, p,
+                                              eps);
   }
 };
 
@@ -911,7 +872,7 @@ class ActivationMKLDNNHandler
   ActivationMKLDNNHandler(dnnl::algorithm algorithm,
                           const framework::ExecutionContext& ctx,
                           const dnnl::engine engine, Place cpu_place,
-                          const framework::Tensor* in_x)
+                          const framework::Tensor* x)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::eltwise_forward,
                                           dnnl::eltwise_backward>(engine,
                                                                   cpu_place) {
@@ -946,25 +907,15 @@ class ActivationMKLDNNHandler
       }
     }
 
-    PADDLE_ENFORCE(in_x->dims().size() >= 1 || in_x->dims().size() <= 6,
-                   platform::errors::Unimplemented(
-                       "Input dimension size can be 1, 2, 3, 4, "
-                       "5, or 6, but now the dimension size is",
-                       in_x->dims().size()));
-
-    auto src_tz = phi::vectorize<int64_t>(in_x->dims());
-    auto src_fmt = src_tz.size() == 2 ? MKLDNNMemoryFormat::nc : in_x->format();
-    auto md =
-        dnnl::memory::desc(src_tz, platform::MKLDNNGetDataType<T>(), src_fmt);
-
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            algorithm, md, alpha, beta);
+                                            algorithm, x->mem_desc(), alpha,
+                                            beta);
   }
 
   ActivationMKLDNNHandler(dnnl::algorithm algorithm,
                           const framework::ExecutionContext& ctx,
                           const dnnl::engine engine, Place cpu_place,
-                          const framework::Tensor* in_x, const Tensor* out_grad)
+                          const framework::Tensor* x, const Tensor* dout)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::eltwise_forward,
                                           dnnl::eltwise_backward>(engine,
                                                                   cpu_place) {
@@ -985,23 +936,11 @@ class ActivationMKLDNNHandler
                                  : ctx.Attr<float>("max");
     }
 
-    auto diff_dst_tz = phi::vectorize<int64_t>(out_grad->dims());
-
-    auto src_fmt =
-        diff_dst_tz.size() == 2 ? MKLDNNMemoryFormat::nc : in_x->format();
-    auto diff_fmt =
-        diff_dst_tz.size() == 2 ? MKLDNNMemoryFormat::nc : out_grad->format();
-
-    auto dims = phi::vectorize(in_x->dims());
-    auto diff_dst_md = platform::MKLDNNMemDesc(
-        dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
-    auto src_md = platform::MKLDNNMemDesc(
-        dims, platform::MKLDNNGetDataType<T>(), src_fmt);
-
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            algorithm, src_md, alpha, beta);
-    this->AcquireBackwardPrimitiveDescriptor(algorithm, diff_dst_md, src_md,
-                                             alpha, beta);
+                                            algorithm, x->mem_desc(), alpha,
+                                            beta);
+    this->AcquireBackwardPrimitiveDescriptor(algorithm, dout->mem_desc(),
+                                             x->mem_desc(), alpha, beta);
   }
 
   std::shared_ptr<dnnl::memory> AcquireBackwardSrcMemory(
@@ -1036,6 +975,11 @@ class ReorderMKLDNNHandler {
         dtype_dst_(dtype_dst),
         engine_(engine) {}
 
+  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const dnnl::memory::desc& md,
+                                                 void* ptr) {
+    return std::make_shared<dnnl::memory>(md, engine_, ptr);
+  }
+
   std::shared_ptr<dnnl::memory> AcquireSrcMemory(const MKLDNNMemoryFormat& fmt,
                                                  void* ptr) {
     auto md = dnnl::memory::desc(dims_, dtype_, fmt);
@@ -1061,6 +1005,22 @@ class ReorderMKLDNNHandler {
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
+      framework::Tensor* output, const dnnl::memory::desc& src_md,
+      platform::Place place) {
+    if (vtype_dst_ == vtype_) {
+      auto dst_data = output->mutable_data(
+          place, framework::TransToPhiDataType(vtype_dst_), src_md.get_size());
+      return std::make_shared<dnnl::memory>(src_md, engine_, dst_data);
+    } else {
+      auto dst_md = src_md;
+      dst_md.data.data_type = static_cast<dnnl_data_type_t>(dtype_dst_);
+      auto dst_data = output->mutable_data(
+          place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
+      return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
+    }
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(
       framework::Tensor* output, const std::vector<int64_t>& dims,
       const MKLDNNMemoryFormat& fmt, platform::Place place) {
     auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
@@ -1073,6 +1033,14 @@ class ReorderMKLDNNHandler {
       std::shared_ptr<dnnl::memory> dst_memory_p,
       std::shared_ptr<dnnl::memory> src_memory_p) {
     return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p));
+  }
+
+  std::shared_ptr<dnnl::reorder> AcquireReorder(
+      std::shared_ptr<dnnl::memory> dst_memory_p,
+      std::shared_ptr<dnnl::memory> src_memory_p,
+      const dnnl::primitive_attr& attrs) {
+    return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p),
+                                           attrs);
   }
 
  private:
@@ -1093,16 +1061,18 @@ static void SetDstMemoryQuantized(
   const size_t dst_dims = dst_tz.size();
   MKLDNNMemoryFormat dst_fmt;
 
-  PADDLE_ENFORCE_LE(dst_dims, 5, platform::errors::InvalidArgument(
-                                     "Dst memory for quantization can not have "
-                                     "dims > 5. But received dst_dims is %d.",
-                                     dst_dims));
+  PADDLE_ENFORCE_LE(dst_dims, 5,
+                    platform::errors::InvalidArgument(
+                        "Dst memory for quantization can not have "
+                        "dims > 5. But received dst_dims is %d.",
+                        dst_dims));
   dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
 
-  auto tmp_dst_md = platform::MKLDNNMemDesc(
-      {dst_tz}, paddle::framework::ToMKLDNNDataType(
-                    framework::DataTypeTrait<T>::DataType()),
-      dst_fmt);
+  auto tmp_dst_md =
+      platform::MKLDNNMemDesc({dst_tz},
+                              paddle::framework::ToMKLDNNDataType(
+                                  framework::DataTypeTrait<T>::DataType()),
+                              dst_fmt);
   dst_md.reset(new dnnl::memory::desc(tmp_dst_md));
   dst_memory.reset(
       new dnnl::memory(*dst_md, engine, to_void_cast<T>(output_data)));

@@ -12,6 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_node.h"
 
 #include <limits.h>
+
 #include <algorithm>
 #include <deque>
 #include <set>
@@ -51,7 +52,7 @@ void NodeTrees::BuildTrees(
     const std::vector<HostTraceEventNode*>& host_event_nodes,
     std::vector<CudaRuntimeTraceEventNode*>& runtime_event_nodes,
     const std::vector<DeviceTraceEventNode*>& device_event_nodes) {
-  // seperate Host Event Nodes into different threads
+  // separate Host Event Nodes into different threads
   std::map<uint64_t, std::vector<HostTraceEventNode*>>
       thread2host_event_nodes;  // used to store HostTraceEventNodes per thread
   std::map<uint64_t, std::vector<CudaRuntimeTraceEventNode*>>

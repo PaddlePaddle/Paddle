@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <mlir/IR/Operation.h>
+
 #include <unordered_map>
+
 #include "paddle/infrt/dialect/pd/common/pd_ops_info.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 
@@ -41,6 +43,7 @@ class ProtoArgumentMappingContext : public ::phi::ArgumentMappingContext {
   size_t OutputSize(const std::string& name) const override;
 
   bool IsDenseTensorInput(const std::string& name) const override;
+  bool IsDenseTensorInputs(const std::string& name) const override;
   bool IsSelectedRowsInput(const std::string& name) const override;
   bool IsDenseTensorVectorInput(const std::string& name) const override;
 

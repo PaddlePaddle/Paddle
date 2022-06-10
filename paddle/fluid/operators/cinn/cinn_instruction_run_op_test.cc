@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <stdlib.h>
+
 #include <string>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
@@ -30,7 +32,7 @@ USE_OP_ITSELF(elementwise_add);
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 #ifdef PADDLE_WITH_CUDA
-PD_DECLARE_KERNEL(add, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
 #endif
 
 namespace paddle::operators {

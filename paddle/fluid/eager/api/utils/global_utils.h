@@ -17,10 +17,13 @@
 
 #include <atomic>
 #include <memory>
+
+#include "paddle/fluid/eager/type_defs.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
-namespace egr {
+#include "paddle/utils/small_vector.h"
 
+namespace egr {
 class UniqueNameGenerator {
  public:
   explicit UniqueNameGenerator(std::string prefix = "") : prefix_(prefix) {}
@@ -71,12 +74,14 @@ class Controller {
     return op_meta_info_map_;
   }
 
-  void MergeOpMetaInfoMap(const std::unordered_map<
-                          std::string, std::vector<paddle::OpMetaInfo>>& map) {
+  void MergeOpMetaInfoMap(
+      const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
+          map) {
     op_meta_info_map_.insert(map.begin(), map.end());
   }
 
-  std::unordered_map<std::string, std::vector<std::unordered_map<int, int>>>&
+  std::unordered_map<std::string,
+                     std::vector<std::vector<std::unordered_map<int, int>>>>&
   GetCustomEdgesSlotMap() {
     return custom_edges_slot_map_;
   }
@@ -88,8 +93,10 @@ class Controller {
       new paddle::imperative::Tracer()};
   std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>
       op_meta_info_map_;
-  /* op_type : {{grad_outputs}, {grad_inputs}, {input}, {output}, {attrs}}*/
-  std::unordered_map<std::string, std::vector<std::unordered_map<int, int>>>
+  /* op_type : {{{grad_outputs}, {grad_inputs}, {input}, {output}, {attrs}},
+   * {{grad_outputs}, {grad_inputs}, {input}, {output}, {attrs}}}*/
+  std::unordered_map<std::string,
+                     std::vector<std::vector<std::unordered_map<int, int>>>>
       custom_edges_slot_map_;
   DISABLE_COPY_AND_ASSIGN(Controller);
 };

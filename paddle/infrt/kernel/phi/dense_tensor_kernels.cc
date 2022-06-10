@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
+
 #include <memory>
+
 #include "llvm/Support/ErrorHandling.h"
 #include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/infrt/common/string.h"
@@ -62,7 +64,7 @@ namespace phi {
           ::phi::make_ddim(dims.get()),
           ConvertLayoutToPhi(layout.get()),
           {}));
-  float* a_data = dense_tensor.mutable_data<float>(::phi::CPUPlace());
+  float* a_data = dense_tensor.mutable_data<float>(context.GetPlace());
   for (int64_t i = 0; i < dense_tensor.numel(); ++i) {
     a_data[i] = value.get();
   }
@@ -256,6 +258,43 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
     ::infrt::paddle::DeserializeFromStream(param_file, tensor.get(), ctx);
     map.SetDenseTensor(var, std::move(tensor));
   }
+
+  return map;
+}
+
+::infrt::phi::DenseTensorMap LoadCombinedParamsToGpu(
+    const std::string& model_path, const std::string& params_path) {
+  ::infrt::phi::DenseTensorMap map;
+
+  auto pb_proto_prog = paddle::LoadProgram(model_path);
+  auto main_block = pb_proto_prog->blocks(0);
+
+  std::ifstream param_file(params_path, std::ios::binary);
+
+  std::set<std::string> tmp;
+  for (auto& var : main_block.vars()) {
+    if (var.name() == "feed" || var.name() == "fetch" || !var.persistable()) {
+      continue;
+    }
+    if (var.type().type() ==
+        ::paddle::framework::proto::VarType_Type_LOD_TENSOR) {
+      tmp.emplace(var.name());
+    } else {
+      llvm_unreachable("the tensor type is illegal.");
+    }
+  }
+
+#ifdef INFRT_WITH_GPU
+  ::phi::GPUContext ctx;
+  ctx.PartialInitWithoutAllocator();
+
+  for (auto& var : tmp) {
+    std::unique_ptr<::phi::DenseTensor> tensor{
+        std::make_unique<::phi::DenseTensor>()};
+    ::paddle::framework::DeserializeFromStream(param_file, tensor.get(), ctx);
+    map.SetDenseTensor(var, std::move(tensor));
+  }
+#endif
 
   return map;
 }

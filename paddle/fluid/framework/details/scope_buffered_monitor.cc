@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/scope_buffered_monitor.h"
+
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {

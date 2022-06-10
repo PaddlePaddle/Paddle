@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
+
 #include <unordered_set>
+
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/event_garbage_collector.h"
@@ -22,6 +24,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/kernel_context.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -121,12 +124,18 @@ paddle::framework::FetchList InterpreterCore::Run(
   Prepare(feed_names, feed_tensors, is_build);
 
   if (is_build) {
+    // add listener before run and is_build=true
+    global_scope_->ResetListener();
+
     ExecuteInstructionList(vec_instruction_);
   }
 
   if (create_local_scope_) {
     ClearLoDTensorArrayInLocalScope();
   }
+
+  // clear the listener after run
+  global_scope_->ClearListener();
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
@@ -162,12 +171,18 @@ paddle::framework::FetchList InterpreterCore::Run(
     Convert(&op_func_nodes);
 
   } else {
+    // add listener before run and is_build=true
+    global_scope_->ResetListener();
+
     ExecuteInstructionList(vec_instruction_);
   }
 
   if (create_local_scope_) {
     ClearLoDTensorArrayInLocalScope();
   }
+
+  // clear the listener after run
+  global_scope_->ClearListener();
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
@@ -264,7 +279,7 @@ void InterpreterCore::Convert(
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    // checkout ouput
+    // checkout output
     for (auto& item : vec_instruction_[i].Outputs()) {
       for (auto var_id : item.second) {
         if (input_var2op_info_.at(var_id).size() == 0) {
@@ -416,8 +431,17 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
     }
     outs_map.emplace(var_name_item.first, std::move(out_vars));
   }
+
   // set runtime_ctx and infershape_ctx_
-  instr_node->ResetContext(ins_map, outs_map);
+  if (instr_node->OpBase()->Type() == "cinn_launch") {  // OP use scope in
+                                                        // kernel
+    Scope* local_scope = create_local_scope_
+                             ? global_scope_->GetMutableLocalScope()
+                             : global_scope_->GetMutableScope();
+    instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
+  } else {
+    instr_node->ResetContext(ins_map, outs_map);
+  }
 }
 
 void InterpreterCore::BuildSkipShareLoDInfo() {
@@ -563,10 +587,12 @@ void InterpreterCore::ExecuteInstructionList(
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      async_work_queue_->AddTask(vec_instr.at(i).KernelType(), [
-        this, i, atomic_deps = atomic_deps.get(),
-        atomic_var_ref = atomic_var_ref.get()
-      ] { RunInstructionAsync(i, atomic_deps, atomic_var_ref); });
+      async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
+                                 [this, i, atomic_deps = atomic_deps.get(),
+                                  atomic_var_ref = atomic_var_ref.get()] {
+                                   RunInstructionAsync(i, atomic_deps,
+                                                       atomic_var_ref);
+                                 });
     }
   }
 
@@ -670,10 +696,10 @@ void InterpreterCore::RunInstructionAsync(
     ready_ops.pop();
     auto& instr_node = vec_instruction_.at(instr_id);
     VLOG(5) << __func__ << " OP id:" << instr_node.Id()
-            << " name:" << instr_node.OpBase()->Type()
-            << " type:" << (instr_node.KernelType() == OpFuncType::kQueueSync
-                                ? "kQueueSync"
-                                : "kQueueAsync")
+            << " name:" << instr_node.OpBase()->Type() << " type:"
+            << (instr_node.KernelType() == OpFuncType::kQueueSync
+                    ? "kQueueSync"
+                    : "kQueueAsync")
             << " runs on " << platform::GetCurrentThreadName();
 
     auto* op = instr_node.OpBase();

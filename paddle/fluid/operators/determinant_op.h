@@ -18,11 +18,12 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/complex_kernel.h"
-#include "paddle/phi/kernels/elementwise_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"

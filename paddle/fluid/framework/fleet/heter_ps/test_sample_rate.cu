@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <unistd.h>
+
+#include <chrono>
 #include <condition_variable>  // NOLINT
 #include <fstream>
 #include <iomanip>
@@ -20,31 +22,29 @@
 #include <thread>  // NOLINT
 #include <unordered_set>
 #include <vector>
-#include "google/protobuf/text_format.h"
 
-#include <chrono>
+#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_sampler.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 using namespace paddle::framework;
 namespace platform = paddle::platform;
@@ -86,6 +86,7 @@ void testSampleRate() {
   int start = 0;
   pthread_rwlock_t rwlock;
   pthread_rwlock_init(&rwlock, NULL);
+
   {
     ::paddle::distributed::GraphParameter table_proto;
     // table_proto.set_gpups_mode(false);
@@ -93,9 +94,9 @@ void testSampleRate() {
     table_proto.set_task_pool_size(24);
     std::cerr << "initializing begin";
     distributed::GraphTable graph_table;
-    graph_table.initialize(table_proto);
+    graph_table.Initialize(table_proto);
     std::cerr << "initializing done";
-    graph_table.load(input_file, std::string("e>"));
+    graph_table.Load(input_file, std::string("e>"));
     int sample_actual_size = -1;
     int step = fixed_key_size, cur = 0;
     while (sample_actual_size != 0) {
@@ -263,6 +264,8 @@ void testSampleRate() {
     res[i].push_back(result);
   }
   */
+
+  // g.graph_neighbor_sample
   start = 0;
   auto func = [&rwlock, &g, &start, &ids](int i) {
     int st = 0;
@@ -287,8 +290,37 @@ void testSampleRate() {
   auto end1 = std::chrono::steady_clock::now();
   auto tt =
       std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
-  std::cerr << "total time cost without cache is "
+  std::cerr << "total time cost without cache for v1 is "
             << tt.count() / exe_count / gpu_num1 << " us" << std::endl;
+
+  // g.graph_neighbor_sample_v2
+  start = 0;
+  auto func2 = [&rwlock, &g, &start, &ids](int i) {
+    int st = 0;
+    int size = ids.size();
+    for (int k = 0; k < exe_count; k++) {
+      st = 0;
+      while (st < size) {
+        int len = std::min(fixed_key_size, (int)ids.size() - st);
+        auto r = g.graph_neighbor_sample_v2(i, (int64_t *)(key[i] + st),
+                                            sample_size, len, false);
+        st += len;
+        delete r;
+      }
+    }
+  };
+  auto start2 = std::chrono::steady_clock::now();
+  std::thread thr2[gpu_num1];
+  for (int i = 0; i < gpu_num1; i++) {
+    thr2[i] = std::thread(func2, i);
+  }
+  for (int i = 0; i < gpu_num1; i++) thr2[i].join();
+  auto end2 = std::chrono::steady_clock::now();
+  auto tt2 =
+      std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2);
+  std::cerr << "total time cost without cache for v2 is "
+            << tt2.count() / exe_count / gpu_num1 << " us" << std::endl;
+
   for (int i = 0; i < gpu_num1; i++) {
     cudaFree(key[i]);
   }

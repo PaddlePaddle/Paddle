@@ -22,10 +22,9 @@
 
 #include <chrono>
 #include <iostream>
-#include <string>
-
 #include <map>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -63,6 +62,7 @@ class AsyncWorkQueue {
     group_options.emplace_back(/*name*/ "HostTasks",
                                /*num_threads*/ host_num_threads,
                                /*allow_spinning*/ true,
+                               /*always_spinning*/ false,
                                /*track_task*/ false,
                                /*detached*/ true,
                                /*events_waiter*/ waiter);
@@ -70,6 +70,7 @@ class AsyncWorkQueue {
     group_options.emplace_back(/*name*/ "DeviceKernelLaunch",
                                /*num_threads*/ deivce_num_threads,
                                /*allow_spinning*/ true,
+                               /*always_spinning*/ true,
                                /*track_task*/ false,
                                /*detached*/ true,
                                /*events_waiter*/ waiter);
@@ -77,6 +78,7 @@ class AsyncWorkQueue {
     group_options.emplace_back(/*name*/ "Prepare",
                                /*num_threads*/ 1,
                                /*allow_spinning*/ true,
+                               /*always_spinning*/ false,
                                /*track_task*/ false,
                                /*detached*/ true,
                                /*events_waiter*/ waiter);

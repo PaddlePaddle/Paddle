@@ -18,6 +18,7 @@ limitations under the License. */
 #include <functional>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/dot_op.h"

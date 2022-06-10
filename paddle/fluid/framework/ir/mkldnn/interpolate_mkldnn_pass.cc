@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/interpolate_mkldnn_pass.h"
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

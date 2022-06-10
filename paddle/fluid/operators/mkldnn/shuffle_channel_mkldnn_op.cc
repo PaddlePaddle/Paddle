@@ -29,11 +29,8 @@ class ShuffleChannelMKLDNNHandler
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::shuffle_forward>(engine,
                                                                     cpu_place) {
     static constexpr int channel_axis = 1;
-    const auto md = dnnl::memory::desc(phi::vectorize(x->dims()),
-                                       MKLDNNGetDataType<T>(), x->format());
-
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            md, channel_axis, group);
+                                            x->mem_desc(), channel_axis, group);
   }
 };
 
@@ -64,8 +61,7 @@ class ShuffleChannelMKLDNNKernel : public framework::OpKernel<T> {
                                  {DNNL_ARG_DST, *dst_memory_p}});
     astream.wait();
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(x->format());
+    out->set_mem_desc(dst_memory_p->get_desc());
   }
 };
 }  // namespace operators

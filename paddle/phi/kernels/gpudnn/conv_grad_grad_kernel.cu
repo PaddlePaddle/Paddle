@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/conv_grad_grad_kernel.h"
-
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/conv_grad_grad_kernel.h"
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/operators/conv_miopen_helper.h"
 #else
@@ -28,16 +26,13 @@
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/kernels/funcs/padding.h"
-
-#include "paddle/phi/kernels/cpu/conv_util.h"
-#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
-
-#include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
-
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/padding.h"
+#include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
 namespace phi {
 
@@ -47,8 +42,8 @@ void ConvCudnnGradGradKernel(
     const DenseTensor& input,
     const DenseTensor& filter,
     const DenseTensor& out_grad,
-    paddle::optional<const DenseTensor&> input_grad_grad,
-    paddle::optional<const DenseTensor&> filter_grad_grad,
+    const paddle::optional<DenseTensor>& input_grad_grad,
+    const paddle::optional<DenseTensor>& filter_grad_grad,
     const std::vector<int>& strides,
     const std::vector<int>& paddings_t,
     const std::string& padding_algorithm,
@@ -670,8 +665,8 @@ void ConvCudnnGradGradKernel(
 template <typename T, typename Context>
 void DepthwiseConvCudnnGradGradKernel(
     const Context& ctx,
-    paddle::optional<const DenseTensor&> input_grad_grad,
-    paddle::optional<const DenseTensor&> filter_grad_grad,
+    const paddle::optional<DenseTensor>& input_grad_grad,
+    const paddle::optional<DenseTensor>& filter_grad_grad,
     const DenseTensor& out_grad,
     const DenseTensor& input,
     const DenseTensor& filter,
@@ -711,11 +706,11 @@ void DepthwiseConvCudnnGradGradKernel(
 template <typename T, typename Context>
 void Conv3DCudnnGradGradKernel(
     const Context& ctx,
-    paddle::optional<const DenseTensor&> input_grad_grad,
-    paddle::optional<const DenseTensor&> filter_grad_grad,
-    const DenseTensor& out_grad,
     const DenseTensor& input,
     const DenseTensor& filter,
+    const DenseTensor& out_grad,
+    const paddle::optional<DenseTensor>& input_grad_grad,
+    const paddle::optional<DenseTensor>& filter_grad_grad,
     const std::vector<int>& strides,
     const std::vector<int>& paddings_t,
     const std::string& padding_algorithm,
@@ -725,9 +720,9 @@ void Conv3DCudnnGradGradKernel(
     bool use_addto,
     int workspace_size_MB,
     bool exhaustive_search_t,
-    DenseTensor* out_grad_grad,
     DenseTensor* input_grad,
-    DenseTensor* filter_grad) {
+    DenseTensor* filter_grad,
+    DenseTensor* out_grad_grad) {
   ConvCudnnGradGradKernel<T>(ctx,
                              input,
                              filter,

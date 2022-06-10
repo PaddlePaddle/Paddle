@@ -83,10 +83,12 @@ static void GetParamGradShardInfo(const std::vector<ParamGradInfo> &infos,
   VLOG(10) << "start_size = " << start_size << " , end_size = " << end_size;
 
   if (infos.empty()) {
-    PADDLE_ENFORCE_EQ(start_size, 0, platform::errors::InvalidArgument(
-                                         "start_size should be 0."));
-    PADDLE_ENFORCE_EQ(end_size, 0, platform::errors::InvalidArgument(
-                                       "end_size should be 0."));
+    PADDLE_ENFORCE_EQ(
+        start_size, 0,
+        platform::errors::InvalidArgument("start_size should be 0."));
+    PADDLE_ENFORCE_EQ(
+        end_size, 0,
+        platform::errors::InvalidArgument("end_size should be 0."));
     *start_idx = 0;
     *end_idx = 0;
     *start_numel_offset = 0;
@@ -104,15 +106,17 @@ static void GetParamGradShardInfo(const std::vector<ParamGradInfo> &infos,
       infos.begin());
   if (i == n || infos[i].numel_offset != start_size) {
     PADDLE_ENFORCE_GT(
-        i, 0, platform::errors::InvalidArgument(
-                  "Cannot find suitable sharding which is between [%d, %d)",
-                  start_size, end_size));
+        i, 0,
+        platform::errors::InvalidArgument(
+            "Cannot find suitable sharding which is between [%d, %d)",
+            start_size, end_size));
     --i;
   }
   PADDLE_ENFORCE_LT(
-      i, n, platform::errors::InvalidArgument(
-                "Cannot find suitable sharding which is between [%d, %d)",
-                start_size, end_size));
+      i, n,
+      platform::errors::InvalidArgument(
+          "Cannot find suitable sharding which is between [%d, %d)", start_size,
+          end_size));
   *start_idx = i;
   *start_numel_offset = start_size - infos[i].numel_offset;
   auto j = static_cast<size_t>(
@@ -450,8 +454,9 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
                       platform::errors::InvalidArgument(
                           "The attr(alignment) should be the power of 2."));
     PADDLE_ENFORCE_GE(
-        rank, 0, platform::errors::InvalidArgument(
-                     "The attr(rank) should be equal to or larger than 0."));
+        rank, 0,
+        platform::errors::InvalidArgument(
+            "The attr(rank) should be equal to or larger than 0."));
     PADDLE_ENFORCE_LT(
         rank, nranks,
         platform::errors::InvalidArgument(

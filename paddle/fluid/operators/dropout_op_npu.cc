@@ -54,7 +54,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    // only achive the default `upscale_in_train` method
+    // only achieve the default `upscale_in_train` method
     if (!is_test) {
       Tensor tmp_x(x->dtype());
       Tensor tmp_out(out->dtype());

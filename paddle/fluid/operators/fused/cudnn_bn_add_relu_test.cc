@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/cudnn_bn_stats_finalize.cu.h"
 #include "paddle/fluid/operators/fused/cudnn_scale_bias_add_relu.cu.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
@@ -33,6 +34,7 @@ namespace op = paddle::operators;
 using Tensor = paddle::framework::Tensor;
 
 USE_OP_ITSELF(batch_norm);
+PD_DECLARE_KERNEL(batch_norm, GPU, ALL_LAYOUT);
 USE_CUDA_ONLY_OP(fused_bn_add_activation);
 USE_CUDA_ONLY_OP(fused_bn_add_activation_grad);
 
@@ -101,7 +103,7 @@ void ComputeSumAndSquareSum(const framework::Tensor &cpu_x,
                             framework::Tensor *cpu_sum,
                             framework::Tensor *cpu_sum_of_square) {
   // x is in NHWC format.
-  auto dims = cpu_x.dims();
+  const auto &dims = cpu_x.dims();
   int64_t c = dims[3];
 
   const T *cpu_x_ptr = cpu_x.data<T>();
@@ -180,19 +182,20 @@ void ComputeBatchNormForward(const platform::CUDADeviceContext &ctx,
   std::string data_layout = "NHWC";
   attrs.insert({"data_layout", data_layout});
 
-  auto op = framework::OpRegistry::CreateOp(
-      "batch_norm", {{"X", {"X"}},
-                     {"Scale", {"Scale"}},
-                     {"Bias", {"Bias"}},
-                     {"Mean", {"Mean"}},
-                     {"Variance", {"Variance"}}},
-      {{"Y", {"Y"}},
-       {"MeanOut", {"Mean"}},
-       {"VarianceOut", {"Variance"}},
-       {"SavedMean", {"SavedMean"}},
-       {"SavedVariance", {"SavedVariance"}},
-       {"ReserveSpace", {"ReserveSpace"}}},
-      attrs);
+  auto op =
+      framework::OpRegistry::CreateOp("batch_norm",
+                                      {{"X", {"X"}},
+                                       {"Scale", {"Scale"}},
+                                       {"Bias", {"Bias"}},
+                                       {"Mean", {"Mean"}},
+                                       {"Variance", {"Variance"}}},
+                                      {{"Y", {"Y"}},
+                                       {"MeanOut", {"Mean"}},
+                                       {"VarianceOut", {"Variance"}},
+                                       {"SavedMean", {"SavedMean"}},
+                                       {"SavedVariance", {"SavedVariance"}},
+                                       {"ReserveSpace", {"ReserveSpace"}}},
+                                      attrs);
   op->Run(scope, ctx.GetPlace());
 
   paddle::framework::TensorCopySync(*y, platform::CPUPlace(), cpu_y);
@@ -312,8 +315,9 @@ void ComputeFusedBNAddReluBackward(
   attrs.insert({"epsilon", epsilon});
   attrs.insert({"act_type", act_type});
 
-  auto op = framework::OpRegistry::CreateOp(
-      "fused_bn_add_activation_grad", {{"X", {"X"}},
+  auto op =
+      framework::OpRegistry::CreateOp("fused_bn_add_activation_grad",
+                                      {{"X", {"X"}},
                                        {"Y", {"Y"}},
                                        {"Y@GRAD", {"Y@GRAD"}},
                                        {"Scale", {"Scale"}},
@@ -321,11 +325,11 @@ void ComputeFusedBNAddReluBackward(
                                        {"SavedMean", {"SavedMean"}},
                                        {"SavedVariance", {"SavedVariance"}},
                                        {"ReserveSpace", {"ReserveSpace"}}},
-      {{"X@GRAD", {"X@GRAD"}},
-       {"Z@GRAD", {"Z@GRAD"}},
-       {"Scale@GRAD", {"Scale@GRAD"}},
-       {"Bias@GRAD", {"Bias@GRAD"}}},
-      attrs);
+                                      {{"X@GRAD", {"X@GRAD"}},
+                                       {"Z@GRAD", {"Z@GRAD"}},
+                                       {"Scale@GRAD", {"Scale@GRAD"}},
+                                       {"Bias@GRAD", {"Bias@GRAD"}}},
+                                      attrs);
   op->Run(scope, ctx.GetPlace());
 
   paddle::framework::TensorCopySync(*dx, platform::CPUPlace(), cpu_dx);

@@ -16,18 +16,15 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
-
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/tensor_meta.h"
-
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
@@ -137,12 +134,16 @@ TEST(Forward, LinearNodes) {
 
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
     // 3. NextEdges: Node 1 -> Node 0
-    const std::vector<std::vector<Edge>>& node1_edges = grad_node1->GetEdges();
-    const auto& node1_edge = node1_edges[0];
+    const paddle::small_vector<std::vector<GradSlotMeta>,
+                               egr::kSlotSmallVectorSize>& node1_metas =
+        grad_node1->OutputMeta();
+    const auto& node1_meta = node1_metas[0];
 
-    CHECK_EQ(static_cast<int>(node1_edge[0].GetEdgeRankInfo().first), 0);
-    CHECK_EQ(static_cast<int>(node1_edge[0].GetEdgeRankInfo().second), 0);
-    CHECK_EQ(node1_edge[0].GetGradNode(), grad_node0);
+    CHECK_EQ(static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().first),
+             0);
+    CHECK_EQ(static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().second),
+             0);
+    CHECK_EQ(node1_meta[0].GetEdge().GetGradNode(), grad_node0);
   }
 }
 
@@ -232,16 +233,19 @@ TEST(Forward, BranchedNodes) {
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
     // 3. NextEdges
     // Node 1 -> Node 0
-    const std::vector<std::vector<Edge>>& node1_edges = grad_node1->GetEdges();
-    const Edge& node1_edge = node1_edges[0][0];
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        node1_metas = grad_node1->OutputMeta();
+    const Edge& node1_edge = node1_metas[0][0].GetEdge();
 
     CHECK_EQ(static_cast<int>(node1_edge.GetEdgeRankInfo().first), 0);
     CHECK_EQ(static_cast<int>(node1_edge.GetEdgeRankInfo().second), 0);
     CHECK_EQ(node1_edge.GetGradNode(), grad_node0);
 
     // Node 2 -> Node 0
-    const std::vector<std::vector<Edge>>& node2_edges = grad_node2->GetEdges();
-    const Edge& node2_edge = node2_edges[0][0];
+    const paddle::small_vector<std::vector<egr::GradSlotMeta>,
+                               egr::kSlotSmallVectorSize>& node2_metas =
+        grad_node2->OutputMeta();
+    const Edge& node2_edge = node2_metas[0][0].GetEdge();
 
     CHECK_EQ(static_cast<int>(node2_edge.GetEdgeRankInfo().first), 0);
     CHECK_EQ(static_cast<int>(node2_edge.GetEdgeRankInfo().second), 0);

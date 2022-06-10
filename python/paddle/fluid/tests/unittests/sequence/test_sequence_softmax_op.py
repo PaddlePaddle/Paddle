@@ -18,12 +18,14 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 import sys
+
 sys.path.append("../")
 from op_test import OpTest
 from test_softmax_op import stable_softmax
 
 
 class TestSequenceSoftmaxOp(OpTest):
+
     def setUp(self):
         self.op_type = "sequence_softmax"
         self.use_cudnn = False
@@ -45,7 +47,9 @@ class TestSequenceSoftmaxOp(OpTest):
 
         self.inputs = {"X": (x, self.lod)}
         self.outputs = {"Out": out}
-        self.attrs = {'use_cudnn': self.use_cudnn, }
+        self.attrs = {
+            'use_cudnn': self.use_cudnn,
+        }
 
     def init_lod(self):
         self.lod = [[40, 10, 30, 30]]
@@ -72,21 +76,25 @@ class TestSequenceSoftmaxOp(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestSequenceSoftmaxCUDNNOp(TestSequenceSoftmaxOp):
+
     def init_op_type(self):
         self.use_cudnn = True
 
 
 class TestSequenceSoftmaxOpSeqLen0Case0(TestSequenceSoftmaxOp):
+
     def init_lod(self):
         self.lod = [[40, 0, 40, 30]]
 
 
 class TestSequenceSoftmaxOpSeqLen0Case1(TestSequenceSoftmaxOp):
+
     def init_lod(self):
         self.lod = [[0, 40, 70, 0]]
 
 
 class TestSequenceSoftmaxOpSeqLen0Case2(TestSequenceSoftmaxOp):
+
     def init_lod(self):
         self.lod = [[0, 0, 0, 110]]
 

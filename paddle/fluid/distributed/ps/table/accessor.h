@@ -15,8 +15,10 @@
 #pragma once
 #include <stdint.h>
 #include <stdio.h>
+
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/distributed/common/afs_warpper.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps.pb.h"
@@ -117,6 +119,11 @@ class ValueAccessor {
   virtual bool Save(float* value, int param) = 0;
   // update delta_score and unseen_days after save
   virtual void UpdateStatAfterSave(float* value, int param) {}
+  // 判断该value是否保存到ssd
+  virtual bool SaveSSD(float* value) = 0;
+  //
+  virtual bool SaveCache(float* value, int param,
+                         double global_cache_threshold) = 0;
 
   // keys不存在时，为values生成随机值
   virtual int32_t Create(float** value, size_t num) = 0;

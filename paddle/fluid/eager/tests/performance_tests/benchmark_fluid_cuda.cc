@@ -23,7 +23,6 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/tests/performance_tests/benchmark_utils.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/basic_engine.h"
@@ -41,7 +40,7 @@
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_grad, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sum, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);

@@ -43,9 +43,10 @@ class QueueGeneratorOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
     std::vector<std::string> names = Attr<std::vector<std::string>>("names");
-    PADDLE_ENFORCE_GT(names.size(), 0, platform::errors::InvalidArgument(
-                                           "The attribute 'names' for "
-                                           "Op(queue_generator) must be set."));
+    PADDLE_ENFORCE_GT(
+        names.size(), 0,
+        platform::errors::InvalidArgument("The attribute 'names' for "
+                                          "Op(queue_generator) must be set."));
 
     int capacity = Attr<int>("capacity");
     PADDLE_ENFORCE_GT(capacity, 0,

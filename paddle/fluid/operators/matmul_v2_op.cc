@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/matmul_v2_op.h"
+
 #include <string>
 #include <vector>
 
@@ -77,20 +78,6 @@ static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
           shape[i] = dim.at(i);
         }
       }
-    }
-
-    // if "-1" is present then one of reshape dims must be infered
-    auto it_negative = std::find(shape.begin(), shape.end(), -1);
-    if (it_negative != shape.end()) {
-      int64_t dim_product = 1;
-      for (int i = 0; i < dim.size(); i++) {
-        dim_product *= dim.at(i);
-      }
-
-      int64_t shape_product = std::accumulate(shape.begin(), shape.end(), -1,
-                                              std::multiplies<int>());
-      int index = std::distance(shape.begin(), it_negative);
-      shape[index] = dim_product / shape_product;
     }
 
     dim = dim.reshape(shape).transpose(axis);
@@ -176,77 +163,12 @@ class MatMulV2Op : public framework::OperatorWithKernel {
         ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
 
     if (!reshape_out.empty() && !transpose_out.empty()) {
-      auto reshape_out_size = reshape_out.size();
-      auto transpose_out_size = transpose_out.size();
-      PADDLE_ENFORCE_EQ(transpose_out_size, 4,
-                        platform::errors::InvalidArgument(
-                            "transpose_out supported rank is 4, "
-                            "received %d",
-                            transpose_out_size));
-      const std::vector<int> supported_axis{0, 2, 1, 3};
-      const bool supported_transpose_axis = std::equal(
-          transpose_out.begin(), transpose_out.end(), supported_axis.begin());
-      PADDLE_ENFORCE_EQ(
-          supported_transpose_axis, true,
-          platform::errors::InvalidArgument(
-              "supported transpose axis for the fuse are {0, 2, 1, 3}"));
-      PADDLE_ENFORCE_EQ(
-          reshape_out_size, 3,
-          platform::errors::InvalidArgument("reshape_out supported rank is 3, "
-                                            "received %d",
-                                            reshape_out_size));
-
-      // int num_negative = std::count(reshape_out.begin(), reshape_out.end(),
-      // -1);
-      // PADDLE_ENFORCE_LE(num_negative, 1,
-      //                   platform::errors::InvalidArgument(
-      //                       "The max number of -1 in fused_reshape_Out is 1 "
-      //                       "but received %d.",
-      //                       num_negative));
-
-      // auto it_zero = std::find(reshape_out.begin(), reshape_out.end(), 0);
-      // if (it_zero != reshape_out.end()) {
-      //   for (uint64_t i = 0; i < reshape_out.size(); i++) {
-      //     if (reshape_out[i] == 0) {
-      //       PADDLE_ENFORCE_LT(
-      //           i, ddim_out.size(),
-      //           platform::errors::InvalidArgument(
-      //               "The index of 0 in fused_reshape_Out ",
-      //               "should be less than output dim size, ",
-      //               "but the index is %d and output dim size is %d", i,
-      //               ddim_out.size()));
-      //       reshape_out[i] = ddim_out.at(i);
-      //     }
-      //   }
-      // }
-
-      // if "-1" is present then one of reshape dims must be infered
-      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
-      if (it != reshape_out.end()) {
-        int index = std::distance(reshape_out.begin(), it);
-
-        auto ddim_out_vec = phi::vectorize(ddim_out);
-
-        int ddim_out_product =
-            std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,
-                            std::multiplies<int>());
-        int reshape_out_product = std::accumulate(
-            reshape_out.begin(), reshape_out.end(), -1, std::multiplies<int>());
-
-        reshape_out[index] = ddim_out_product / reshape_out_product;
-      }
-
-      framework::DDim shape_out =
-          ddim_out.transpose(transpose_out).reshape(reshape_out);
-      ctx->SetOutputDim("Out", shape_out);
-    } else {
-      ctx->SetOutputDim("Out", ddim_out);
+      ddim_out = ddim_out.transpose(transpose_out).reshape(reshape_out);
     }
-#else
-    ctx->SetOutputDim("Out", ddim_out);
 #endif
 
-    ctx->ShareLoD("X", /* --> */ "Out");
+    ctx->SetOutputDim("Out", ddim_out);
+    ctx->ShareLoD("X", "Out");
   }
 
  protected:
@@ -274,6 +196,22 @@ class MatMulV2Op : public framework::OperatorWithKernel {
           framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
           tensor.layout());
     } else {
+#ifdef PADDLE_WITH_MKLDNN
+      // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
+      // op
+      // previously)
+      // then we also need to rotate shape NHWC -> NCWH
+      if ((expected_kernel_type.data_layout_ ==
+           framework::DataLayout::kMKLDNN) &&
+          (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+          paddle::platform::MKLDNNDeviceContext::tls()
+                  .get_cur_paddle_data_layout() ==
+              framework::DataLayout::kNHWC) {
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(),
+                                       framework::DataLayout::kNHWC);
+      }
+#endif
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
     }

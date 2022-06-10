@@ -30,10 +30,11 @@ class ExpandAsV2NPUKernel : public framework::OpKernel<T> {
                           "expand_as_v2 op must be greater than or equal to "
                           "the rank (%d) of the input 'x'.",
                           target_rank, rank));
-    PADDLE_ENFORCE_GE(rank, 1, platform::errors::InvalidArgument(
-                                   "The rank (%d) of the input 'x' for "
-                                   "expand_as_v2 op must be positive.",
-                                   rank));
+    PADDLE_ENFORCE_GE(
+        rank, 1,
+        platform::errors::InvalidArgument("The rank (%d) of the input 'x' for "
+                                          "expand_as_v2 op must be positive.",
+                                          rank));
     PADDLE_ENFORCE_LE(target_rank, MAX_RANK_SUPPORTED,
                       platform::errors::InvalidArgument(
                           "The rank (%d) of the input 'target_tensor' for "

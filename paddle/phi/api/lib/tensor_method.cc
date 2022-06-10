@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// clang-format off
 #include "paddle/phi/api/include/tensor.h"
 
 #include "paddle/phi/common/int_array.h"
@@ -22,18 +23,19 @@ limitations under the License. */
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/infermeta/unary.h"
+// clang-format off
 
 namespace paddle {
 namespace experimental {
 // declare cast api
 Tensor cast(const Tensor &x, DataType out_dtype);
-Tensor copy_to(const Tensor &x, Place place, bool blocking);
+Tensor copy_to(const Tensor &x, const Place &place, bool blocking);
 
 Tensor Tensor::cast(DataType target_type) const {
   return experimental::cast(*this, target_type);
 }
 
-Tensor Tensor::copy_to(Place place, bool blocking) const {
+Tensor Tensor::copy_to(const Place &place, bool blocking) const {
   return experimental::copy_to(*this, place, blocking);
 }
 

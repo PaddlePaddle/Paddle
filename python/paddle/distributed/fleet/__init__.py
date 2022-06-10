@@ -30,17 +30,11 @@ from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
 
-__all__ = [ #noqa
-      "CommunicateTopology",
-      "UtilBase",
-      "HybridCommunicateGroup",
-      "MultiSlotStringDataGenerator",
-      "UserDefinedRoleMaker",
-      "DistributedStrategy",
-      "Role",
-      "MultiSlotDataGenerator",
-      "PaddleCloudRoleMaker",
-      "Fleet"
+__all__ = [  #noqa
+    "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
+    "MultiSlotStringDataGenerator", "UserDefinedRoleMaker",
+    "DistributedStrategy", "Role", "MultiSlotDataGenerator",
+    "PaddleCloudRoleMaker", "Fleet"
 ]
 
 fleet = Fleet()
@@ -79,6 +73,7 @@ save_inference_model = fleet.save_inference_model
 save_persistables = fleet.save_persistables
 save_one_table = fleet.save_one_table
 save_dense_params = fleet.save_dense_params
+save_cache_model = fleet.save_cache_model
 load_model = fleet.load_model
 load_inference_model = fleet.load_inference_model
 load_one_table = fleet.load_one_table

@@ -22,6 +22,7 @@ from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 
 
 class ElementwiseDivOp(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -49,21 +50,26 @@ class ElementwiseDivOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.05)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.05, no_grad_set=set("X"))
+        self.check_grad(['Y'],
+                        'Out',
+                        max_relative_error=0.05,
+                        no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.05, no_grad_set=set('Y'))
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=0.05,
+                        no_grad_set=set('Y'))
 
     def init_dtype(self):
         pass
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
-    "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
+@unittest.skipIf(not core.is_compiled_with_cuda()
+                 or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+                 "core is not compiled with CUDA and not support the bfloat16")
 class TestElementwiseDivOpBF16(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -100,6 +106,7 @@ class TestElementwiseDivOpBF16(OpTest):
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseDivOp_scalar(ElementwiseDivOp):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -111,6 +118,7 @@ class TestElementwiseDivOp_scalar(ElementwiseDivOp):
 
 
 class TestElementwiseDivOp_Vector(ElementwiseDivOp):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -122,6 +130,7 @@ class TestElementwiseDivOp_Vector(ElementwiseDivOp):
 
 
 class TestElementwiseDivOp_broadcast_0(ElementwiseDivOp):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -132,12 +141,13 @@ class TestElementwiseDivOp_broadcast_0(ElementwiseDivOp):
 
         self.attrs = {'axis': 0}
         self.outputs = {
-            'Out':
-            np.divide(self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1))
+            'Out': np.divide(self.inputs['X'],
+                             self.inputs['Y'].reshape(100, 1, 1))
         }
 
 
 class TestElementwiseDivOp_broadcast_1(ElementwiseDivOp):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -148,12 +158,13 @@ class TestElementwiseDivOp_broadcast_1(ElementwiseDivOp):
 
         self.attrs = {'axis': 1}
         self.outputs = {
-            'Out':
-            np.divide(self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1))
+            'Out': np.divide(self.inputs['X'],
+                             self.inputs['Y'].reshape(1, 100, 1))
         }
 
 
 class TestElementwiseDivOp_broadcast_2(ElementwiseDivOp):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -163,12 +174,13 @@ class TestElementwiseDivOp_broadcast_2(ElementwiseDivOp):
         }
 
         self.outputs = {
-            'Out':
-            np.divide(self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100))
+            'Out': np.divide(self.inputs['X'],
+                             self.inputs['Y'].reshape(1, 1, 100))
         }
 
 
 class TestElementwiseDivOp_broadcast_3(ElementwiseDivOp):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -185,6 +197,7 @@ class TestElementwiseDivOp_broadcast_3(ElementwiseDivOp):
 
 
 class TestElementwiseDivOp_broadcast_4(ElementwiseDivOp):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -196,6 +209,7 @@ class TestElementwiseDivOp_broadcast_4(ElementwiseDivOp):
 
 
 class TestElementwiseDivOp_broadcast_5(ElementwiseDivOp):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -207,6 +221,7 @@ class TestElementwiseDivOp_broadcast_5(ElementwiseDivOp):
 
 
 class TestElementwiseDivOp_commonuse_1(ElementwiseDivOp):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -218,6 +233,7 @@ class TestElementwiseDivOp_commonuse_1(ElementwiseDivOp):
 
 
 class TestElementwiseDivOp_commonuse_2(ElementwiseDivOp):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -229,6 +245,7 @@ class TestElementwiseDivOp_commonuse_2(ElementwiseDivOp):
 
 
 class TestElementwiseDivOp_xsize_lessthan_ysize(ElementwiseDivOp):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -243,16 +260,15 @@ class TestElementwiseDivOp_xsize_lessthan_ysize(ElementwiseDivOp):
 
 
 class TestElementwiseDivOp_INT(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
         self.dtype = np.int32
         self.init_dtype()
         self.inputs = {
-            'X': np.random.randint(
-                1, 5, size=[13, 17]).astype(self.dtype),
-            'Y': np.random.randint(
-                1, 5, size=[13, 17]).astype(self.dtype)
+            'X': np.random.randint(1, 5, size=[13, 17]).astype(self.dtype),
+            'Y': np.random.randint(1, 5, size=[13, 17]).astype(self.dtype)
         }
         self.outputs = {'Out': self.inputs['X'] // self.inputs['Y']}
 
@@ -266,6 +282,7 @@ class TestElementwiseDivOp_INT(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestElementwiseDivOpFp16(ElementwiseDivOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -273,19 +290,25 @@ class TestElementwiseDivOpFp16(ElementwiseDivOp):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=1)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=1, no_grad_set=set("X"))
+        self.check_grad(['Y'],
+                        'Out',
+                        max_relative_error=1,
+                        no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=1, no_grad_set=set('Y'))
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=1,
+                        no_grad_set=set('Y'))
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
+
     def test_shape_with_batch_sizes(self):
         with fluid.program_guard(fluid.Program()):
-            x_var = fluid.data(
-                name='x', dtype='float32', shape=[None, 3, None, None])
+            x_var = fluid.data(name='x',
+                               dtype='float32',
+                               shape=[None, 3, None, None])
             one = 2.
             out = one / x_var
             exe = fluid.Executor(fluid.CPUPlace())
@@ -295,6 +318,7 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
 
 
 class TestDivideOp(unittest.TestCase):
+
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")
@@ -316,6 +340,7 @@ class TestDivideOp(unittest.TestCase):
 
 
 class TestComplexElementwiseDivOp(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_div"
         self.python_api = paddle.divide
@@ -352,30 +377,28 @@ class TestComplexElementwiseDivOp(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=[self.grad_x, self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['Y'],
+                        'Out',
+                        no_grad_set=set("X"),
+                        user_defined_grads=[self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['X'],
+                        'Out',
+                        no_grad_set=set('Y'),
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out])
 
 
 class TestRealComplexElementwiseDivOp(TestComplexElementwiseDivOp):
+
     def init_input_output(self):
         self.x = np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.y = np.random.random(

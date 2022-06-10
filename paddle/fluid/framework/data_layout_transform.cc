@@ -134,15 +134,6 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                                     const Tensor& in, Tensor* out,
                                     platform::Place place, bool always_copy) {
-  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::undef,
-                    platform::errors::InvalidArgument(
-                        "Input tensor format is invalid. Input tensor should "
-                        "have specified memory format."));
-  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::any,
-                    platform::errors::InvalidArgument(
-                        "Input tensor format is invalid. Input tensor should "
-                        "have specified memory format."));
-
   // Set default as NCHW in case not specified
   out_layout =
       out_layout == DataLayout::kAnyLayout ? DataLayout::kNCHW : out_layout;
@@ -162,22 +153,24 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
           "Input tensor type (%s) is not supported.",
           DataTypeToString(framework::TransToProtoVarType(in.dtype()))));
 
-  auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
   auto out_format =
       platform::MKLDNNFormatForSize(in_tz.size(), ToMKLDNNFormat(out_layout));
+  dnnl::memory::desc out_mem_desc(out_tz, in_type, out_format);
 
   // output tensor has the same dims as input. Reorder don't change dims
+  out->set_mem_desc(out_mem_desc);
   out->Resize(in.dims());
 
-  if ((in_format != out_format) || always_copy) {
+  if ((in.mem_desc() != out->mem_desc()) || always_copy) {
     void* in_data = GetDataFromTensor(in, in_type);
 
     platform::ReorderMKLDNNHandler handler(
         in_tz, framework::TransToProtoVarType(in.dtype()), in_type, cpu_engine);
 
-    auto reorder_src_memory_p = handler.AcquireSrcMemory(in_format, in_data);
+    auto reorder_src_memory_p =
+        handler.AcquireSrcMemory(in.mem_desc(), in_data);
     auto reorder_dst_memory_p =
-        handler.AcquireDstMemory(out, out_format, place);
+        handler.AcquireDstMemory(out, out->mem_desc(), place);
     auto reorder_p =
         handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
 

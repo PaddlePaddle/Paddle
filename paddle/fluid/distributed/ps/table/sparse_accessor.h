@@ -15,7 +15,9 @@
 #pragma once
 #include <stdint.h>
 #include <stdio.h>
+
 #include <vector>
+
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
@@ -128,13 +130,18 @@ class SparseAccessor : public ValueAccessor {
   // 判断该value是否保存到ssd
   // virtual bool save_ssd(float* value);
   virtual bool NeedExtendMF(float* value);
-  virtual bool HasMF(size_t size);
+  virtual bool HasMF(int size);
   // 判断该value是否在save阶段dump,
   // param作为参数用于标识save阶段，如downpour的xbox与batch_model
   // param = 0, save all feature
   // param = 1, save delta feature
   // param = 2, save xbox base feature
   bool Save(float* value, int param) override;
+
+  bool SaveCache(float* value, int param, double global_cache_threshold) {
+    return false;
+  }
+  bool SaveSSD(float* value) { return false; }
   // update delta_score and unseen_days after save
   void UpdateStatAfterSave(float* value, int param) override;
   // keys不存在时，为values生成随机值

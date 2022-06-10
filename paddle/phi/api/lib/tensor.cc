@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// clang-format off
 #include "paddle/phi/api/include/tensor.h"
 
 #include <memory>
@@ -34,6 +35,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 
 #include "paddle/fluid/platform/stream/cuda_stream.h"
+// clang-format off
 
 namespace paddle {
 namespace experimental {
@@ -110,7 +112,7 @@ int64_t Tensor::numel() const { return impl_->numel(); }
 
 int64_t Tensor::size() const { return impl_->numel(); }
 
-phi::DDim Tensor::dims() const { return impl_->dims(); }
+const phi::DDim &Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
   auto dims = impl_->dims();
@@ -158,7 +160,7 @@ bool Tensor::is_string_tensor() const {
 }
 /* Part 3: Device and Backend methods */
 
-Place Tensor::place() const {
+const Place &Tensor::place() const {
   PADDLE_ENFORCE_NOT_NULL(
       impl_,
       phi::errors::PermissionDenied(
@@ -341,7 +343,11 @@ bool Tensor::is_initialized() const {
   return defined() && impl_->initialized();
 }
 
-void Tensor::reset() { impl_.reset(); }
+void Tensor::reset() {
+  impl_.reset();
+  autograd_meta_.reset();
+  name_ = "";
+}
 
 /* Part 6: Operator overloading */
 
@@ -390,8 +396,8 @@ uint32_t Tensor::current_inplace_version() {
         static_cast<phi::DenseTensor *>(impl_.get())->InplaceVersionCounter();
     return inplace_version_counter.CurrentVersion();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "current_inplace_version is only supported on DenseTensor now."));
+    LOG_FIRST_N(WARNING, 1)
+        << "current_inplace_version is only supported on DenseTensor now.";
   }
   return 0;
 }
