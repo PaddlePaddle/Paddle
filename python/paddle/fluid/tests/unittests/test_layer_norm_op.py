@@ -247,7 +247,6 @@ class TestLayerNormOp(unittest.TestCase):
 
     def test_check_forward_backward_with_scale_and_bias(self):
         self.check_forward_backward(shape=[1, 3, 4, 5], begin_norm_axis=1)
-
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(shape=[2, 3, 4, 5],
                                     begin_norm_axis=1,
@@ -290,6 +289,10 @@ class TestLayerNormOp(unittest.TestCase):
                                     has_bias=True)
         self.check_forward_backward(shape=[1, 128, 256, 256],
                                     begin_norm_axis=3,
+                                    has_scale=True,
+                                    has_bias=True)
+        self.check_forward_backward(shape=[1, 256, 384],
+                                    begin_norm_axis=2,
                                     has_scale=True,
                                     has_bias=True)
 

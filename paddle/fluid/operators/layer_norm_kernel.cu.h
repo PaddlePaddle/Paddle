@@ -807,7 +807,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx, const int rows,
                                T factor = static_cast<T>(0),
                                T *d_dropout_src_ptr = nullptr) {
   auto stream = dev_ctx.stream();
-  if (cols == 1024 || cols == 256) {
+  if (cols == 1024 || cols == 384 || cols == 256) {
     // step-1: compute dx and reduced part results of dscale and dbias.
     const int WARPS_M = 4;  // how many rows delt in a cta.
     const int WARPS_N = 1;  // how many warps to deal with a row.
@@ -854,6 +854,9 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx, const int rows,
         LAUNCH_MASK_FUSED_LN_BWD_FAST_KERNEL(VecSize, 1024);
       } else {
         switch (cols) {
+          case 384:
+            LAUNCH_MASK_FUSED_LN_BWD_FAST_KERNEL(1, 384);
+            break;
           case 256:
             LAUNCH_MASK_FUSED_LN_BWD_FAST_KERNEL(VecSize, 256);
             break;
@@ -873,6 +876,9 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx, const int rows,
         LAUNCH_FUSED_LN_BWD_FAST_KERNEL(VecSize, 1024);
       } else {
         switch (cols) {
+          case 384:
+            LAUNCH_FUSED_LN_BWD_FAST_KERNEL(1, 384);
+            break;
           case 256:
             LAUNCH_FUSED_LN_BWD_FAST_KERNEL(VecSize, 256);
             break;
@@ -914,6 +920,9 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx, const int rows,
         LAUNCH_LN_BWD_BETA_GAMMMA_KERNEL(VecSize_2, 1024);
       } else {
         switch (cols) {
+          case 384:
+            LAUNCH_LN_BWD_BETA_GAMMMA_KERNEL(1, 384);
+            break;
           case 256:
             LAUNCH_LN_BWD_BETA_GAMMMA_KERNEL(VecSize_2, 256);
             break;
@@ -1530,7 +1539,9 @@ static void LayerNormBackward(
 #ifdef PADDLE_WITH_CUDA
       bool can_call_fast_kernel = false;
       // todo: rule out double type.
-      if ((feature_size == 1024 || feature_size == 256) && sizeof(T) <= 4) {
+      if ((feature_size == 1024 || feature_size == 384 ||
+           feature_size == 256) &&
+          sizeof(T) <= 4) {
         can_call_fast_kernel = true;
       }
 
