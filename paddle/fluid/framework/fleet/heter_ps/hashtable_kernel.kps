@@ -333,6 +333,8 @@ void HashTable<unsigned long, FeatureValue>::update(const paddle::platform::Plac
       r, XPU_SUCCESS,
       platform::errors::External("XPU update kernel return wrong value[%d %s]",
                                   r, XPUAPIErrorMsg[r]));
+  xpu::cast_v2<int32_t, int64_t>(ctx_xpu, reinterpret_cast<int32_t*>(d_keys_out_in_cast),
+  reinterpret_cast<int64_t*>(d_keys_out), len2);
 }
 
 template <typename KeyType, typename ValType>
