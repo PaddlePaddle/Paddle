@@ -109,7 +109,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         ]
 
         # for static_shape
-        #clear_dynamic_shape()
+        clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False), 1e-5
