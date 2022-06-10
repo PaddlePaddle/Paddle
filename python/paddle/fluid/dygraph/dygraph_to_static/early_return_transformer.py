@@ -14,10 +14,6 @@
 
 from __future__ import print_function
 
-import six
-import copy
-from collections import defaultdict
-
 from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 
@@ -50,43 +46,43 @@ class EarlyReturnTransformer(gast.NodeTransformer):
                 return True
         return False
 
-    def visit_stmt_block(self, nodes):
-        result = []
-        node_destination = result
+    def visit_block_nodes(self, nodes):
+        result_nodes = []
+        destination_nodes = result_nodes
         for node in nodes:
-            replacement = self.visit(node)
+            rewritten_node = self.visit(node)
 
-            if isinstance(replacement, (list, tuple)):
-                node_destination.extend(replacement)
+            if isinstance(rewritten_node, (list, tuple)):
+                destination_nodes.extend(rewritten_node)
             else:
-                node_destination.append(replacement)
+                destination_nodes.append(rewritten_node)
 
             # append other nodes to if.orelse even though if.orelse is not empty
             if isinstance(node, gast.If) and self.is_define_return_in_if(node):
-                node_destination = node.orelse
+                destination_nodes = node.orelse
                 # handle stmt like `if/elif`
                 if len(node.orelse) > 0 and \
                     isinstance(node.orelse[0], gast.If) and \
                         self.is_define_return_in_if(node.orelse[0]):
-                    node_destination = node.orelse[0].orelse
+                    destination_nodes = node.orelse[0].orelse
 
-        return result
+        return result_nodes
 
     def visit_If(self, node):
-        node.body = self.visit_stmt_block(node.body)
-        node.orelse = self.visit_stmt_block(node.orelse)
+        node.body = self.visit_block_nodes(node.body)
+        node.orelse = self.visit_block_nodes(node.orelse)
         return node
 
     def visit_While(self, node):
-        node.body = self.visit_stmt_block(node.body)
-        node.orelse = self.visit_stmt_block(node.orelse)
+        node.body = self.visit_block_nodes(node.body)
+        node.orelse = self.visit_block_nodes(node.orelse)
         return node
 
     def visit_For(self, node):
-        node.body = self.visit_stmt_block(node.body)
-        node.orelse = self.visit_stmt_block(node.orelse)
+        node.body = self.visit_block_nodes(node.body)
+        node.orelse = self.visit_block_nodes(node.orelse)
         return node
 
     def visit_FunctionDef(self, node):
-        node.body = self.visit_stmt_block(node.body)
+        node.body = self.visit_block_nodes(node.body)
         return node

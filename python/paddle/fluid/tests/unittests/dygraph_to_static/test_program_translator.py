@@ -167,15 +167,6 @@ class TestDygraphToStaticCode(unittest.TestCase):
         self.assertEqual(answer, code)
 
 
-class TestDygraphToStaticIfElseEarlyReturn(unittest.TestCase):
-
-    def test_ifelse_early_return1(self):
-        answer = np.ones([2, 2])
-        static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
-        out = static_func()
-        self.assertTrue(np.allclose(answer, out.numpy()))
-
-
 class TestEnableDeclarative(unittest.TestCase):
 
     def setUp(self):
@@ -339,6 +330,15 @@ class TestFunctionTrainEvalMode(unittest.TestCase):
         self.assertEqual(net.training, False)
         with self.assertRaises(RuntimeError):
             net.foo.train()
+
+
+class TestIfElseEarlyReturn(unittest.TestCase):
+
+    def test_ifelse_early_return1(self):
+        answer = np.ones([2, 2])
+        static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
+        out = static_func()
+        self.assertTrue(np.allclose(answer, out.numpy()))
 
 
 class TestRemoveCommentInDy2St(unittest.TestCase):
