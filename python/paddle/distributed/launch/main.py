@@ -92,7 +92,7 @@ def launch():
         - ``--elastic_timeout``: Seconds to wait before elastic job begin to train. Default ``--elastic_timeout=30``.
 
     IPU Parameters:
-        **Note: IPU distributed launch only requires and allowes three arguments ``--devices``, ``training_script`` and ``training_script_args``.
+        IPU distributed launch only requires and allowes three arguments ``--devices``, ``training_script`` and ``training_script_args``.
         The ``--devices`` is the number of IPU devices. e.g., ``--devices=4`` will launch the training program with four IPU devices.
         The ``training_script`` is only allowed to set as `ipu`. 
         The ``training_script_args`` includes arguments required by IPU distributed launch and illustrated as below.
