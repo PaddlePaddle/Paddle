@@ -3365,6 +3365,23 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::automatic_reference)
       .def("save", &paddle::platform::ProfilerResult::Save)
       .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo);
+  
+  py::class_<paddle::platform::MemPythonNode>(m, "MemPythonNode")
+      .def(py::init<>())
+      .def_readwrite("timestamp_ns", &paddle::platform::MemPythonNode::timestamp_ns)
+      .def_readwrite("addr", &paddle::platform::MemPythonNode::addr)
+      .def_readwrite("type", &paddle::platform::MemPythonNode::type)
+      .def_readwrite("process_id", &paddle::platform::MemPythonNode::process_id)
+      .def_readwrite("thread_id",
+                     &paddle::platform::MemPythonNode::thread_id)
+      .def_readwrite("increase_bytes",
+                     &paddle::platform::MemPythonNode::increase_bytes)
+      .def_readwrite("place",
+                     &paddle::platform::MemPythonNode::place)
+      .def_readwrite("current_allocated",
+                     &paddle::platform::MemPythonNode::current_allocated)
+      .def_readwrite("current_reserved",
+                     &paddle::platform::MemPythonNode::current_reserved);
 
   py::class_<paddle::platform::DevicePythonNode>(m, "DevicePythonNode")
       .def(py::init<>())
@@ -3388,12 +3405,18 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("process_id",
                      &paddle::platform::HostPythonNode::process_id)
       .def_readwrite("thread_id", &paddle::platform::HostPythonNode::thread_id)
+      .def_readwrite("input_shapes", &paddle::platform::HostPythonNode::input_shapes)
+      .def_readwrite("dtypes", &paddle::platform::HostPythonNode::dtypes)
+      .def_readwrite("callstack", &paddle::platform::HostPythonNode::callstack)
       .def_readwrite("children_node",
                      &paddle::platform::HostPythonNode::children_node_ptrs)
       .def_readwrite("runtime_node",
                      &paddle::platform::HostPythonNode::runtime_node_ptrs)
       .def_readwrite("device_node",
-                     &paddle::platform::HostPythonNode::device_node_ptrs);
+                     &paddle::platform::HostPythonNode::device_node_ptrs)
+      .def_readwrite("mem_node",
+                     &paddle::platform::HostPythonNode::mem_node_ptrs);
+
 
   py::class_<paddle::platform::Profiler>(m, "_Profiler")
       .def("create", &paddle::platform::Profiler::Create,
