@@ -22,6 +22,7 @@ import paddle.fluid as fluid
 from paddle.jit import to_static
 from paddle.utils.cpp_extension import load
 from paddle.optimizer.lr import LRScheduler
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramCache
 
 SEED = 2022
 
@@ -86,13 +87,36 @@ class TestBase(unittest.TestCase):
 
             result.append(loss)
 
+        if use_ipu:
+            ipu_strategy.release_patch()
+
         return np.array(result)
 
     def test_training(self):
-        cpu_loss = self._test(False).flatten()
         ipu_loss = self._test(True).flatten()
+        cpu_loss = self._test(False).flatten()
 
         self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-4))
+
+
+class TestPatch(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        paddle.disable_static()
+
+    def test(self, use_ipu=False):
+        old_getter = ProgramCache.__getitem__
+        old_step = LRScheduler.step
+
+        ipu_strategy = paddle.static.IpuStrategy()
+        ipu_strategy.release_patch()
+
+        reset_getter = ProgramCache.__getitem__
+        reset_step = LRScheduler.step
+
+        self.assertTrue(reset_getter is old_getter)
+        self.assertTrue(reset_step is old_step)
 
 
 if __name__ == "__main__":

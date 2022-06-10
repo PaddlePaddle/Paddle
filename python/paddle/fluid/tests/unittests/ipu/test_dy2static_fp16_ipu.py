@@ -23,7 +23,7 @@ import paddle.fluid as fluid
 from paddle.jit import to_static
 from paddle.utils.cpp_extension import load
 from paddle.optimizer.lr import LRScheduler
-import shutil
+import tempfile
 
 SEED = 2022
 
@@ -57,14 +57,11 @@ class TestBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         paddle.disable_static()
-        cls.save_path = os.path.join(os.getcwd(), "temp_save")
+        cls.save_path = tempfile.TemporaryDirectory()
 
     @classmethod
     def tearDownClass(cls):
-        try:
-            shutil.rmtree(cls.save_path)
-        except Exception as e:
-            print("Failed to delete {} due to {}".format(cls.save_path, str(e)))
+        cls.save_path.cleanup()
 
     def _test(self, use_ipu=False):
         paddle.seed(SEED)

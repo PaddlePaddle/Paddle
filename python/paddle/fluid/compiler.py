@@ -504,6 +504,8 @@ class IpuDynamicPatcher(object):
     Patcher for IPU dynamic2static support.
     """
 
+    patcher_cache = []
+
     def __init__(self):
         pass
 
@@ -620,6 +622,8 @@ class IpuDynamicPatcher(object):
         from ..fluid.dygraph.dygraph_to_static.program_translator import MAX_TRACED_PROGRAM_COUNT
         from ..fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
 
+        old_getter = ProgramCache.__getitem__
+
         def patch_getter(self, item):
             if not isinstance(item, CacheKey):
                 raise ValueError(
@@ -653,6 +657,8 @@ class IpuDynamicPatcher(object):
             return self._caches[item_id]
 
         setattr(ProgramCache, '__getitem__', patch_getter)
+        IpuDynamicPatcher.patcher_cache.append(
+            [ProgramCache, '__getitem__', old_getter])
 
     @staticmethod
     def patch_lr_scheduler(ipu_strategy):
@@ -666,6 +672,17 @@ class IpuDynamicPatcher(object):
             ipu_strategy.set_options({"lr": self.last_lr})
 
         setattr(LRScheduler, 'step', patch_step)
+        IpuDynamicPatcher.patcher_cache.append([LRScheduler, 'step', old_step])
+
+    @staticmethod
+    def register_patch(ipu_strategy):
+        IpuDynamicPatcher.patch_program_cache(ipu_strategy)
+        IpuDynamicPatcher.patch_lr_scheduler(ipu_strategy)
+
+    @staticmethod
+    def release_patch():
+        for module, key, attr in IpuDynamicPatcher.patcher_cache:
+            setattr(module, key, attr)
 
 
 class IpuStrategy(object):
@@ -711,8 +728,13 @@ class IpuStrategy(object):
             )
         from paddle import in_dynamic_mode
         if in_dynamic_mode():
-            IpuDynamicPatcher.patch_program_cache(self)
-            IpuDynamicPatcher.patch_lr_scheduler(self)
+            self.register_patch()
+
+    def register_patch(self):
+        IpuDynamicPatcher.register_patch(self)
+
+    def release_patch(self):
+        IpuDynamicPatcher.release_patch()
 
     def set_optimizer(self, optimizer):
         from paddle import in_dynamic_mode
