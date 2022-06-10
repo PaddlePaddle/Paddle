@@ -100,6 +100,16 @@ def dyfunc_with_if_else3(x):
     return x
 
 
+def dyfunc_with_if_else_early_return1():
+    x = paddle.to_tensor([10])
+    if x == 0:
+        a = paddle.zeros([2, 2])
+        b = paddle.zeros([3, 3])
+        return a, b
+    a = paddle.ones([2, 2])
+    return a
+
+
 def dyfunc_with_if_else_with_list_geneator(x):
     if 10 > 5:
         y = paddle.add_n(

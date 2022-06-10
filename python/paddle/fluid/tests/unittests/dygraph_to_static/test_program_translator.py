@@ -29,7 +29,7 @@ from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 import paddle.jit.dy2static as _jst
 
-from ifelse_simple_func import dyfunc_with_if_else
+from ifelse_simple_func import dyfunc_with_if_else, dyfunc_with_if_else_early_return1
 
 np.random.seed(0)
 
@@ -165,6 +165,15 @@ class TestDygraphToStaticCode(unittest.TestCase):
         program_translator = ProgramTranslator()
         code = program_translator.get_code(dyfunc_with_if_else)
         self.assertEqual(answer, code)
+
+
+class TestDygraphToStaticIfElseEarlyReturn(unittest.TestCase):
+
+    def test_ifelse_early_return1(self):
+        answer = np.ones([2, 2])
+        static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
+        out = static_func()
+        self.assertTrue(np.allclose(answer, out.numpy()))
 
 
 class TestEnableDeclarative(unittest.TestCase):
