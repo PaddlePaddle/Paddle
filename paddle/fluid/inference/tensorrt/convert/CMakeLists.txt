@@ -65,6 +65,7 @@ nv_library(
        shape_op.cc
        rnn_op.cc
        fill_constant_batch_size_like_op.cc
+       bilinear_interp_v2_op.cc
   DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto
        op_registry)
 

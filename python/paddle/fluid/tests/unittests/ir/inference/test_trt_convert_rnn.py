@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,41 +22,42 @@ import unittest
 
 
 class TrtConvertSliceTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
-        for hidden_size in [16]:
-            for input_size in [32]:
-                for batch in [8]:
-                    for seq_len in [25]:
-                        for num_layers in [2]:
+        for hidden_size in [32, 64]:
+            for input_size in [288]:
+                for batch in [16]:
+                    for seq_len in [30]:
+                        for num_layers in [1]:
 
                             def generate_input1():
-                                return np.random.random(
-                                    [batch, seq_len, input_size]).astype(
-                                        np.float32) * 2 - 1
+                                return np.random.random([
+                                    batch, seq_len, input_size
+                                ]).astype(np.float32) * 2 - 1
 
                             def generate_w0():
-                                return np.random.random(
-                                    [4 * hidden_size, input_size]).astype(
-                                        np.float32) * 2 - 1
+                                return np.random.random([
+                                    4 * hidden_size, input_size
+                                ]).astype(np.float32) * 2 - 1
 
                             def generate_w1():
-                                return np.random.random(
-                                    [4 * hidden_size, 2 * hidden_size]).astype(
-                                        np.float32) * 2 - 1
+                                return np.random.random([
+                                    4 * hidden_size, 2 * hidden_size
+                                ]).astype(np.float32) * 2 - 1
 
                             def generate_w2():
-                                return np.random.random(
-                                    [4 * hidden_size, hidden_size]).astype(
-                                        np.float32) * 2 - 1
+                                return np.random.random([
+                                    4 * hidden_size, hidden_size
+                                ]).astype(np.float32) * 2 - 1
 
                             def generate_b():
-                                return np.random.random(
-                                    [4 * hidden_size]).astype(
-                                        np.float32) * 2 - 1
+                                return np.random.random([
+                                    4 * hidden_size
+                                ]).astype(np.float32) * 2 - 1
 
                             dics = []
                             dics.append({
@@ -76,11 +77,15 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                             if (dics[0]["is_bidirec"]):
                                 K = 2
                             dics.append({
-                                "dtype": 5,
-                                "input_dim_idx": 0,
-                                "str_value": "0.0",
+                                "dtype":
+                                5,
+                                "input_dim_idx":
+                                0,
+                                "str_value":
+                                "0.0",
                                 "shape": [K * num_layers, -1, hidden_size],
-                                "output_dim_idx": 1,
+                                "output_dim_idx":
+                                1,
                             })
                             dics.append({"axis": [1, 0, 2]})
                             # set  weights
@@ -155,18 +160,17 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                 ops=ops,
                                 weights=weights,
                                 inputs={
-                                    "input_data": TensorConfig(
+                                    "input_data":
+                                    TensorConfig(
                                         data_gen=partial(generate_input1))
                                 },
                                 outputs=["rnn_output_data"])
 
                             yield program_config
 
-    def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
+    def sample_predictor_configs(self, program_config) -> (paddle_infer.Config, List[int], float):
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         num_layers = attrs[3]["num_layers"]
         hidden_size = attrs[3]["hidden_size"]
@@ -198,8 +202,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             return 1, 2
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         self.trt_param.max_batch_size = 16
         # for static_shape
@@ -214,11 +217,11 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 7e-2
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 7e-2
 
     def test(self):
         self.run_test()

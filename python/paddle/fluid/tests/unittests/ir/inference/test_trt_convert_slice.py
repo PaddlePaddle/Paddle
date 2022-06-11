@@ -58,7 +58,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
 
         def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.ones([6, 6, 64, 64]).astype(np.float32)
+            return np.random.random([6, 6, 64, 64]).astype(np.float32)
 
         for axes in [[0, 1], [1, 3], [2, 3]]:
             for starts in [[0, 1]]:

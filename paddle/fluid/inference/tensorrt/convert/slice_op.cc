@@ -73,7 +73,7 @@ class SliceOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(8034)
+#if IS_TRT_VERSION_GE(8000)
       auto nchw_input_dims = input->getDimensions();
       nvinfer1::Dims trt_start_dims;
       trt_start_dims.nbDims = nchw_input_dims.nbDims;
@@ -92,63 +92,37 @@ class SliceOpConverter : public OpConverter {
       for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
 
       // input : [N,C,H,W]
+      bool has_neg_indices = false;
       for (size_t i = 0; i < axes.size(); i++) {
         int trt_axis = axes[i];
         trt_start_dims.d[trt_axis] = starts[i];
         trt_end_dims.d[trt_axis] = ends[i];
-        PADDLE_ENFORCE_GE(starts[i], 0,
-                          platform::errors::InvalidArgument(
-                              "Attr(starts) should be >= 0 in slice op in "
-                              "TensorRT dynamic shape,"
-                              "but received starts = %d.",
-                              starts[i]));
-        PADDLE_ENFORCE_GE(ends[i], 0,
-                          platform::errors::InvalidArgument(
-                              "Attr(ends) should be >= 0 in slice op in "
-                              "TensorRT dynamic shape,"
-                              "but received ends = %d.",
-                              ends[i]));
+        if (starts[i] < 0 || ends[i] < 0) has_neg_indices = true;
+      }
+      auto* shape_tensor = Shape(input);
+      auto* start_tensor = Add1DConstantLayer(trt_start_dims);
+      auto* end_tensor = Add1DConstantLayer(trt_end_dims);
+      if (has_neg_indices)
+      {
+        start_tensor = FixNegIndices(shape_tensor, start_tensor);
+        end_tensor = FixNegIndices(shape_tensor, end_tensor);
       }
 
-      auto start_tensor = Add1DConstantLayer(
-          trt_start_dims, output_name + "_add_slice_op_" + "starts");
-      auto end_tensor = Add1DConstantLayer(
-          trt_end_dims, output_name + "_add_slice_op_" + "ends");
-
-      auto shape_tensor =
-          TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
-      auto real_end_tensor =
-          TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *shape_tensor, *end_tensor,
-                               nvinfer1::ElementWiseOperation::kMIN)
-              ->getOutput(0);
-
-      auto size_tensor =
-          TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *real_end_tensor,
-                               *start_tensor,
-                               nvinfer1::ElementWiseOperation::kSUB)
-              ->getOutput(0);
+      end_tensor = Min (shape_tensor, end_tensor);
+      auto* size_tensor = Sub(end_tensor,start_tensor);
 
       layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                    trt_size_dims, trt_step_dims);
       layer->setInput(1, *start_tensor);
       layer->setInput(2, *size_tensor);
       if (decrease_axises.size() > 0) {
-        int decrease_axis = decrease_axises[0];
         std::vector<int32_t> gather_indices;
         for (int i = 0; i < trt_size_dims.nbDims; i++) {
-          if (i == decrease_axis) continue;
+          if (decrease_axises.end() != std::find(decrease_axises.begin(), decrease_axises.end(), i) ) continue;
           gather_indices.push_back(i);
         }
-        if (gather_indices.empty()) gather_indices.push_back(decrease_axis);
-        auto gather_indices_tensor = Add1DConstantLayer(
-            gather_indices, output_name + "_add_slice_op_" + "gather_indices");
-        auto shape_tensor =
-            TRT_ENGINE_ADD_LAYER(engine_, Shape, *layer->getOutput(0))
-                ->getOutput(0);
-        auto real_size_tensor =
-            TRT_ENGINE_ADD_LAYER(engine_, Gather, *shape_tensor,
-                                 *gather_indices_tensor, 0)
-                ->getOutput(0);
+        if (gather_indices.empty()) gather_indices.push_back(decrease_axises[0]);
+        auto real_size_tensor = Gather(size_tensor, gather_indices);
         layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
         layer->setInput(1, *real_size_tensor);
       }
@@ -161,7 +135,7 @@ class SliceOpConverter : public OpConverter {
       layer = engine_->AddDynamicPlugin(&input, 1, plugin);
 #endif
     } else {
-#if IS_TRT_VERSION_GE(8034)
+#if IS_TRT_VERSION_GE(8000)
       auto chw_input_dims = input->getDimensions();
       nvinfer1::Dims trt_start_dims;
       trt_start_dims.nbDims = chw_input_dims.nbDims;

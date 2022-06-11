@@ -57,52 +57,34 @@ class SplitOpConverter : public OpConverter {
     }
 
     nvinfer1::ILayer* layer = nullptr;
-#if IS_TRT_VERSION_GE(8034)
+
+#if IS_TRT_VERSION_GE(8000)
     if (engine_->with_dynamic_shape()) {
       nvinfer1::Dims trt_step_dims;
       trt_step_dims.nbDims = input->getDimensions().nbDims;
       for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
 
-      auto shape_tensor =
-          TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
+      auto* shape_tensor = Shape(input);
 
       std::vector<int32_t> gather_indices;
       gather_indices.resize(trt_step_dims.nbDims);
       std::iota(gather_indices.begin(), gather_indices.end(), 0);
       gather_indices[axis] = gather_indices.size();
-      std::string name = "_add_split_op_";
-      auto gather_indices_tensor =
-          Add1DConstantLayer(gather_indices, name + "gather_indices");
       std::vector<int32_t> zeros(trt_step_dims.nbDims, 0);
-      auto zeros_tensor = Add1DConstantLayer(zeros, name + "zeros");
+      auto* zeros_tensor = Add1DConstantLayer(zeros);
       // input : [N,C,H,W]
+      int start_point = 0;
       for (size_t i = 0; i < output_num; i++) {
-        auto this_len_tensor =
-            Add1DConstantLayer(output_lengths[i], name + "this_len_tensor");
-        auto start_point_tensor =
-            Add1DConstantLayer(std::accumulate(output_lengths.begin(),
-                                               output_lengths.begin() + i, 0),
-                               name + "start_point_tensor");
+        auto* this_len_tensor = Add1DConstantLayer(output_lengths[i]);
+        auto* start_point_tensor = Add1DConstantLayer(start_point);
+        start_point += output_lengths[i];
 
         std::vector<nvinfer1::ITensor*> concat_inputs1 = {zeros_tensor,
                                                           start_point_tensor};
         std::vector<nvinfer1::ITensor*> concat_inputs2 = {shape_tensor,
                                                           this_len_tensor};
-        auto start_tensor =
-            TRT_ENGINE_ADD_LAYER(engine_, Gather,
-                                 *TRT_ENGINE_ADD_LAYER(engine_, Concatenation,
-                                                       concat_inputs1.data(), 2)
-                                      ->getOutput(0),
-                                 *gather_indices_tensor, 0)
-                ->getOutput(0);
-        auto size_tensor =
-            TRT_ENGINE_ADD_LAYER(engine_, Gather,
-                                 *TRT_ENGINE_ADD_LAYER(engine_, Concatenation,
-                                                       concat_inputs2.data(), 2)
-                                      ->getOutput(0),
-                                 *gather_indices_tensor, 0)
-                ->getOutput(0);
-
+        auto* start_tensor = Gather(Concat(concat_inputs1), gather_indices);
+        auto* size_tensor = Gather(Concat(concat_inputs2), gather_indices);
         layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_step_dims,
                                      trt_step_dims, trt_step_dims);
         layer->setInput(1, *start_tensor);
