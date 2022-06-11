@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <map>  // NOLINT
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/include/tensor.h"

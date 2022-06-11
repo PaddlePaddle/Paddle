@@ -107,7 +107,8 @@ register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combin
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
-op_library(quantize_linear_op DEPS cast_kernel)
+target_link_libraries(run_program_op cuda_graph_with_memory_pool)
+op_library(quantize_linear_op DEPS phi)
 op_library(save_combine_op DEPS string_array)
 op_library(load_combine_op DEPS string_array)
 

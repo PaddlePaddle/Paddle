@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/table/ctr_accessor.h"
+
 #include <cmath>
 #include <iostream>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps.pb.h"
@@ -61,7 +63,7 @@ TableAccessorParameter gen_param() {
   naive_param->add_weight_bounds(-10.0);
   naive_param->add_weight_bounds(10.0);
 
-  return std::move(param);
+  return param;
 }
 
 TEST(downpour_feature_value_accessor_test, test_shrink) {
@@ -196,9 +198,10 @@ TEST(downpour_feature_value_accessor_test, test_update) {
         ptr[idx + j] = embedx_w[j];
       }
       idx += 8;
-      for (auto j = 0u; j < 0; ++j) {
-        ptr[idx + j] = embedx_g2sum[j];
-      }
+      //      NaiveSGD has no embedx_g2sum
+      //      for (auto j = 0u; j < 0; ++j) {
+      //        ptr[idx + j] = embedx_g2sum[j];
+      //      }
     }
   };
   struct DownpourSparsePushValueTest {

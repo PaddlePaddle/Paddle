@@ -24,10 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
-
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -69,9 +68,10 @@ class GenBKCLIdOp : public framework::OperatorBase {
     int trainer_id = Attr<int>("trainer_id");
     std::string endpoint = trainers[trainer_id];
 
-    PADDLE_ENFORCE_GE(trainer_id, 0, platform::errors::InvalidArgument(
-                                         "trainer_id %d is less than 0. Its "
-                                         "valid range is [0, trainer_size)"));
+    PADDLE_ENFORCE_GE(
+        trainer_id, 0,
+        platform::errors::InvalidArgument("trainer_id %d is less than 0. Its "
+                                          "valid range is [0, trainer_size)"));
     PADDLE_ENFORCE_LT(
         trainer_id, static_cast<int>(trainers.size()),
         platform::errors::OutOfRange("trainer_id %d is out of range. Its valid "

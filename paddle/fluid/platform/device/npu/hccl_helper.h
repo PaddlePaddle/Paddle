@@ -17,6 +17,7 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 
 #include <stdio.h>
+
 #include <memory>
 #include <string>
 #include <thread>  // NOLINT
@@ -24,11 +25,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/platform/device/npu/dynload/hccl.h"
-#include "paddle/fluid/platform/device/npu/enforce_npu.h"
-
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/npu/dynload/hccl.h"
+#include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/float16.h"
 
 #define HCCL_ID_VARNAME "HCCLID"

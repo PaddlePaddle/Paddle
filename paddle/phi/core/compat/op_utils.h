@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
+#include "glog/logging.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -86,6 +87,14 @@ class DefaultKernelSignatureMap {
     return it->second;
   }
 
+  const KernelSignature* GetNullable(const std::string& op_type) const {
+    auto it = map_.find(op_type);
+    if (it != map_.end()) {
+      return &it->second;
+    }
+    return nullptr;
+  }
+
   void Insert(std::string op_type, KernelSignature signature) {
     PADDLE_ENFORCE_NE(
         Has(op_type),
@@ -148,16 +157,13 @@ class OpUtilsMap {
     }
   }
 
-  ArgumentMappingFn GetArgumentMappingFn(const std::string& op_type) const {
+  const ArgumentMappingFn* GetArgumentMappingFn(
+      const std::string& op_type) const {
     auto it = arg_mapping_fn_map_.find(op_type);
     if (it == arg_mapping_fn_map_.end()) {
-      auto func =
-          [&op_type](const ArgumentMappingContext& ctx) -> KernelSignature {
-        return DefaultKernelSignatureMap::Instance().Get(op_type);
-      };
-      return func;
+      return nullptr;
     } else {
-      return it->second;
+      return &it->second;
     }
   }
 

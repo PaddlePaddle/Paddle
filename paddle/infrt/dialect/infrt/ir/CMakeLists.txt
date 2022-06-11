@@ -1,10 +1,6 @@
 core_gather_headers()
 
-gather_srcs(infrt_src SRCS
-    infrt_dialect.cc
-    basic_kernels.cc
-    test_kernels.cc
-    )
+gather_srcs(infrt_src SRCS infrt_dialect.cc basic_kernels.cc test_kernels.cc)
 
 add_mlir_dialect(infrt_ops infrt)
 

@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/inference_api.h"
+
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
+
 #include <cstring>
 #include <functional>
 #include <iostream>
@@ -26,6 +28,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
@@ -75,8 +78,8 @@ using paddle::AnalysisPredictor;
 using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
 using paddle::PaddleBuf;
-using paddle::PaddleDType;
 using paddle::PaddleDataLayout;
+using paddle::PaddleDType;
 using paddle::PaddlePassBuilder;
 using paddle::PaddlePlace;
 using paddle::PaddlePredictor;
@@ -379,13 +382,13 @@ void BindInferenceApi(py::module *m) {
          &paddle::CreatePaddlePredictor<AnalysisConfig>, py::arg("config"));
   m->def("create_paddle_predictor",
          &paddle::CreatePaddlePredictor<NativeConfig>, py::arg("config"));
-  m->def("create_predictor", [](const paddle_infer::Config &config)
-                                 -> std::unique_ptr<paddle_infer::Predictor> {
-                                   auto pred =
-                                       std::unique_ptr<paddle_infer::Predictor>(
-                                           new paddle_infer::Predictor(config));
-                                   return pred;
-                                 });
+  m->def("create_predictor",
+         [](const paddle_infer::Config &config)
+             -> std::unique_ptr<paddle_infer::Predictor> {
+           auto pred = std::unique_ptr<paddle_infer::Predictor>(
+               new paddle_infer::Predictor(config));
+           return pred;
+         });
   m->def("copy_tensor", &CopyPaddleInferTensor);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
@@ -578,11 +581,11 @@ void BindAnalysisConfig(py::module *m) {
       .def(py::init<const std::string &>())
       .def(py::init<const std::string &, const std::string &>())
       .def("summary", &AnalysisConfig::Summary)
-      .def("set_model", (void (AnalysisConfig::*)(const std::string &)) &
+      .def("set_model", (void(AnalysisConfig::*)(const std::string &)) &
                             AnalysisConfig::SetModel)
-      .def("set_model", (void (AnalysisConfig::*)(const std::string &,
-                                                  const std::string &)) &
-                            AnalysisConfig::SetModel)
+      .def("set_model",
+           (void(AnalysisConfig::*)(const std::string &, const std::string &)) &
+               AnalysisConfig::SetModel)
       .def("set_prog_file", &AnalysisConfig::SetProgFile)
       .def("set_params_file", &AnalysisConfig::SetParamsFile)
       .def("model_dir", &AnalysisConfig::model_dir)
@@ -601,6 +604,14 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_xpu_device_id", &AnalysisConfig::SetXpuDeviceId,
            py::arg("device_id") = 0)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
+      .def("enable_ipu", &AnalysisConfig::EnableIpu,
+           py::arg("ipu_device_num") = 1, py::arg("ipu_micro_batch_size") = 1,
+           py::arg("ipu_enable_pipelining") = false,
+           py::arg("ipu_batches_per_step") = 1)
+      .def("set_ipu_config", &AnalysisConfig::SetIpuConfig,
+           py::arg("ipu_enable_fp16") = false, py::arg("ipu_replica_num") = 1,
+           py::arg("ipu_available_memory_proportion") = 1.0,
+           py::arg("ipu_enable_half_partial") = false)
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("enable_onnxruntime", &AnalysisConfig::EnableONNXRuntime)
       .def("disable_onnxruntime", &AnalysisConfig::DisableONNXRuntime)
@@ -649,8 +660,9 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("disable_trt_plugin_fp16") = false)
       .def("tensorrt_dynamic_shape_enabled",
            &AnalysisConfig::tensorrt_dynamic_shape_enabled)
-      .def("enable_tensorrt_oss", &AnalysisConfig::EnableTensorRtOSS)
-      .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
+      .def("enable_tensorrt_varseqlen", &AnalysisConfig::EnableVarseqlen)
+      .def("tensorrt_varseqlen_enabled",
+           &AnalysisConfig::tensorrt_varseqlen_enabled)
       .def("collect_shape_range_info", &AnalysisConfig::CollectShapeRangeInfo)
       .def("shape_range_info_path", &AnalysisConfig::shape_range_info_path)
       .def("shape_range_info_collected",
@@ -707,11 +719,12 @@ void BindAnalysisConfig(py::module *m) {
            [](AnalysisConfig &self, const std::string &pass) {
              self.pass_builder()->DeletePass(pass);
            })
-      .def("pass_builder",
-           [](AnalysisConfig &self) {
-             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
-           },
-           py::return_value_policy::reference)
+      .def(
+          "pass_builder",
+          [](AnalysisConfig &self) {
+            return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
+          },
+          py::return_value_policy::reference)
       .def("nnadapter", &AnalysisConfig::NNAdapter)
       .def("set_dist_config", &AnalysisConfig::SetDistConfig)
       .def("dist_config", &AnalysisConfig::dist_config);
@@ -765,10 +778,7 @@ void BindMkldnnQuantizerConfig(py::module *m) {
              return;
            })
       .def("set_quant_batch_size", &MkldnnQuantizerConfig::SetWarmupBatchSize)
-      .def(
-          "set_enabled_op_types",
-          (void (MkldnnQuantizerConfig::*)(std::unordered_set<std::string> &)) &
-              MkldnnQuantizerConfig::SetEnabledOpTypes);
+      .def("set_enabled_op_types", &MkldnnQuantizerConfig::SetEnabledOpTypes);
 }
 #endif
 

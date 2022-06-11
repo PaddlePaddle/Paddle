@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
+
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
@@ -25,19 +26,21 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       startup_prog_(startup_prog),
       main_prog_(main_prog),
       global_scope_(VariableScope(scope)) {
-  // NOTE(zhiqiu): it is needed to sync thhe variables in scope to
-  // variable_scope,
-  // since the some variable only exists in startup program, e.g,
-  // lod_tensor_blocking_queue_0 used in dataloader.
-  // These variables may be created in scope during runing startup program with
-  // original executor.
+  // NOTE(zhiqiu): it is needed to sync the variables in scope to
+  // variable_scope, since the some variable only exists in scope.
+  // For example, 'lod_tensor_blocking_queue_0' used in dataloader.
+  // These variables may be created in scope, and it is not existed as
+  // variable in program.
   if (scope) {
-    auto name_list = scope->LocalVarNames();
-    for (auto name : name_list) {
-      VLOG(4) << "Sync Variable from variable scope: " << name;
-      auto v = scope->Var(name);
-      if (!global_scope_.HasVar(name)) {
-        global_scope_.AddVar(name, *v);
+    const std::string blocking_queue_prefix = "lod_tensor_blocking_queue";
+    auto vars = scope->LocalVarNames();
+    for (const auto& name : vars) {
+      if (name.find(blocking_queue_prefix) != std::string::npos) {
+        if (!global_scope_.HasVar(name)) {
+          auto* v = scope->Var(name);
+          VLOG(4) << "Sync Variable from scope to variable scope: " << name;
+          global_scope_.AddVar(name, *v);
+        }
       }
     }
   }

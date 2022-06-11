@@ -76,7 +76,7 @@ void CoalescedGPUKernel(const GPUContext& dev_ctx,
   // 2. get the address of each non-zero values
   const T* x_values_ptr = x_values.data<T>();
   const int64_t stride =
-      x.dims().size() == sparse_dim ? 1 : x.dims().size() - sparse_dim;
+      x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
   DenseTensor values_indexs = phi::Empty(
       dev_ctx, DenseTensorMeta(DataType::INT32, {nnz}, DataLayout::NCHW));
   int* values_indexs_ptr = values_indexs.data<int>();
@@ -133,17 +133,15 @@ void CoalescedGPUKernel(const GPUContext& dev_ctx,
 
   // 5. scatter the values
   config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nnz * stride, 1);
-  phi::funcs::sparse::ScatterKernel<T><<<config.block_per_grid,
-                                         config.thread_per_block,
-                                         0,
-                                         dev_ctx.stream()>>>(
-      x_values_ptr,
-      public_indexs.data<int>(),
-      values_indexs_ptr,
-      out_nnz,
-      nnz,
-      stride,
-      out_values.data<T>());
+  phi::funcs::sparse::ScatterKernel<T>
+      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
+          x_values_ptr,
+          public_indexs.data<int>(),
+          values_indexs_ptr,
+          out_nnz,
+          nnz,
+          stride,
+          out_values.data<T>());
 
   // 6. convert index to coordinate
   Dim<DDim::kMaxRank> const_dims;

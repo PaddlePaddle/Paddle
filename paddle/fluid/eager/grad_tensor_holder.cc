@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/grad_tensor_holder.h"
-#include "paddle/fluid/imperative/gradient_accumulator.h"
 
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace egr {
@@ -72,7 +72,8 @@ void GradTensorHolder::CopyValueFromTensor(
 }
 
 void GradTensorHolder::add(size_t slot_id, size_t rank,
-                           const paddle::experimental::Tensor& t) {
+                           const paddle::experimental::Tensor& t,
+                           bool create_graph) {
   // TODO(jiabin): We need to deal with empty input_buffer with slot size not
   // empty;
   PADDLE_ENFORCE(slot_id < buffer_.size(),
@@ -113,8 +114,12 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
 
     if (t.is_dense_tensor()) {
       if (buffer_tensor.is_dense_tensor()) {
-        buffer_tensor = add_final_state_dygraph_function(t, buffer_tensor);
-
+        if (create_graph) {
+          buffer_tensor = add_final_state_dygraph_function(t, buffer_tensor);
+        } else {
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
+              t, &buffer_tensor);
+        }
       } else {
         // TODO(jiabin): Support Other TensorBase later
         // TODO(zhanlve): Replace SelectedRowsAddTensor with

@@ -13,7 +13,9 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/more/intrinsic/layer_norm.h"
+
 #include <limits>
+
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 

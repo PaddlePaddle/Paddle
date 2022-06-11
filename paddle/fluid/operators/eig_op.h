@@ -15,13 +15,17 @@
 #pragma once
 
 #include <math.h>
+
 #include <algorithm>
 #include <complex>
+
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/complex_kernel.h"
-#include "paddle/phi/kernels/elementwise_kernel.h"
+#include "paddle/phi/kernels/elementwise_divide_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
+#include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps.h"
+
 #include <vector>
 
 #ifdef PADDLE_WITH_HETERPS
@@ -47,12 +48,21 @@ int HeterPs::get_index_by_devid(int devid) {
   return comm_->get_index_by_devid(devid);
 }
 
+void HeterPs::set_sparse_sgd(const OptimizerConfig& optimizer_config) {
+  comm_->set_sparse_sgd(optimizer_config);
+}
+
+void HeterPs::set_embedx_sgd(const OptimizerConfig& optimizer_config) {
+  comm_->set_embedx_sgd(optimizer_config);
+}
+
 void HeterPs::end_pass() { comm_->end_pass(); }
 
 void HeterPs::show_one_table(int gpu_num) { comm_->show_one_table(gpu_num); }
 
 void HeterPs::push_sparse(int num, FeatureKey* d_keys,
                           FeaturePushValue* d_grads, size_t len) {
+  comm_->push_sparse(num, d_keys, d_grads, len);
   // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
 }
 

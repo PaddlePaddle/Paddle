@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
 #include <Python.h>
 
 #include <fstream>

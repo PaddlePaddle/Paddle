@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/amp_auto_cast.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -220,6 +222,7 @@ inline bool NeedCast(const std::shared_ptr<VarType>& var) {
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
       paddle::platform::is_mlu_place(place) ||
+      paddle::platform::is_custom_place(place) ||
       paddle::platform::is_npu_place(place) ||
       paddle::platform::is_npu_pinned_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
@@ -301,9 +304,8 @@ static inline framework::proto::VarType::Type GetPromoteType(
   // dtype of input(X)
   if (op_type == "moving_average_abs_max_scale") {
     for (const auto& pair : ins) {
-      if (pair.first == "X" &&
-          GetDataType<VarType>(pair.second.front()) ==
-              framework::proto::VarType::FP16) {
+      if (pair.first == "X" && GetDataType<VarType>(pair.second.front()) ==
+                                   framework::proto::VarType::FP16) {
         dst_type = framework::proto::VarType::FP16;
       }
     }

@@ -54,8 +54,7 @@ class ScaleMKLDNNKernel : public framework::OpKernel<T> {
                                     {DNNL_ARG_TO, *dst_memory_p}});
     astream.wait();
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
+    out->set_mem_desc(dst_memory_p->get_desc());
   }
 };
 }  // namespace operators

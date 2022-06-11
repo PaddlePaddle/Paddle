@@ -5,6 +5,7 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
+
 #include "paddle/fluid/framework/new_executor/workqueue/nonblocking_threadpool.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -21,6 +22,10 @@ void WorkQueueOptions::Validate() const {
       name.find('_'), std::string::npos,
       platform::errors::InvalidArgument(
           "WorkQueueOptions.name shouldn't contain an underline"));
+  PADDLE_ENFORCE_EQ(
+      allow_spinning == false && always_spinning == true, false,
+      platform::errors::InvalidArgument("WorkQueueOptions.allow_spinning must "
+                                        "be true when always_spinning is set"));
 }
 
 namespace {
@@ -40,7 +45,8 @@ class WorkQueueImpl : public WorkQueue {
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
     queue_ = new NonblockingThreadPool(options_.name, options_.num_threads,
-                                       options_.allow_spinning);
+                                       options_.allow_spinning,
+                                       options_.always_spinning);
   }
 
   virtual ~WorkQueueImpl() {
@@ -59,11 +65,8 @@ class WorkQueueImpl : public WorkQueue {
                                  platform::TracerEventType::UserDefined,
                                  10 /*level*/);
     if (tracker_ != nullptr) {
-      fn = [
-        task = std::move(fn), raii = CounterGuard<TaskTracker>(tracker_)
-      ]() mutable {
-        task();
-      };
+      fn = [task = std::move(fn),
+            raii = CounterGuard<TaskTracker>(tracker_)]() mutable { task(); };
     }
     queue_->AddTask(std::move(fn));
   }
@@ -127,8 +130,9 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
       destruct_notifier_ =
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
-    queues_[idx] = new (&queues_storage_[idx]) NonblockingThreadPool(
-        options.name, options.num_threads, options.allow_spinning);
+    queues_[idx] = new (&queues_storage_[idx])
+        NonblockingThreadPool(options.name, options.num_threads,
+                              options.allow_spinning, options.always_spinning);
   }
 }
 
@@ -152,11 +156,8 @@ void WorkQueueGroupImpl::AddTask(size_t queue_idx, std::function<void()> fn) {
                                10 /*level*/);
   assert(queue_idx < queues_.size());
   if (queues_options_.at(queue_idx).track_task) {
-    fn = [
-      task = std::move(fn), raii = CounterGuard<TaskTracker>(tracker_)
-    ]() mutable {
-      task();
-    };
+    fn = [task = std::move(fn),
+          raii = CounterGuard<TaskTracker>(tracker_)]() mutable { task(); };
   }
   queues_[queue_idx]->AddTask(std::move(fn));
 }

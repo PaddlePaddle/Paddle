@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/renorm_op.h"
-
 #include <algorithm>
 #include <cstdio>
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/fluid/operators/renorm_op.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
@@ -107,10 +106,10 @@ __global__ void RenormGradKernelFunc2(const T* x_data, const T* dout_data,
   __syncthreads();
   if (i < size) {
     dx_data[i] = dim_value[dim_index] * dout_data[i];
-    dx_data[i] = dx_data[i] +
-                 weight_derivative[dim_index] * dim_power_sum[dim_index] *
-                     pow(abs(x_data[i]), T(p - 1.0)) *
-                     (x_data[i] >= 0 ? 1 : -1);
+    dx_data[i] = dx_data[i] + weight_derivative[dim_index] *
+                                  dim_power_sum[dim_index] *
+                                  pow(abs(x_data[i]), T(p - 1.0)) *
+                                  (x_data[i] >= 0 ? 1 : -1);
   }
 }
 

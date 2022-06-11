@@ -53,6 +53,12 @@ class BrpcPsServer : public PSServer {
   }
   int32_t Port();
 
+  virtual int32_t StartS2S() override;
+  virtual ::std::future<int32_t> SendPServer2PServerMsg(
+      int msg_type, int to_pserver_id, const std::string &msg) override;
+  virtual int32_t ReceiveFromPServer(int msg_type, int pserver_id,
+                                     const std::string &msg) override;
+
  private:
   virtual int32_t Initialize();
   mutable std::mutex mutex_;
@@ -122,6 +128,16 @@ class BrpcPsService : public PsBaseService {
 
   int32_t PushGlobalStep(Table *table, const PsRequestMessage &request,
                          PsResponseMessage &response, brpc::Controller *cntl);
+
+  int32_t CacheShuffle(Table *table, const PsRequestMessage &request,
+                       PsResponseMessage &response, brpc::Controller *cntl);
+
+  int32_t SaveCacheTable(Table *table, const PsRequestMessage &request,
+                         PsResponseMessage &response, brpc::Controller *cntl);
+
+  int32_t GetCacheThreshold(Table *table, const PsRequestMessage &request,
+                            PsResponseMessage &response,
+                            brpc::Controller *cntl);
 
   bool _is_initialize_shard_info;
   std::mutex _initialize_shard_mutex;

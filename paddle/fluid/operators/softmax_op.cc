@@ -61,8 +61,9 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()) ||
                             platform::is_xpu_place(ctx.GetPlace()),
-                        true, platform::errors::InvalidArgument(
-                                  "float16 can only be used on GPU/XPU place"));
+                        true,
+                        platform::errors::InvalidArgument(
+                            "float16 can only be used on GPU/XPU place"));
     }
 #endif
 

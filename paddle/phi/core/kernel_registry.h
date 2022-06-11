@@ -22,12 +22,11 @@
 #include <vector>
 
 #include "paddle/phi/core/custom_kernel.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_utils.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/type_defs.h"
-
-#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 
@@ -58,16 +57,13 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
     for (auto arg_type : args_type) {
       if (arg_type == std::type_index(typeid(const CPUContext&))
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-          ||
-          arg_type == std::type_index(typeid(const GPUContext&))) {
+          || arg_type == std::type_index(typeid(const GPUContext&))) {
 #elif defined(PADDLE_WITH_XPU)
-          ||
-          arg_type == std::type_index(typeid(const XPUContext&))) {
+          || arg_type == std::type_index(typeid(const XPUContext&))) {
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
-          ||
-          arg_type == std::type_index(typeid(const CustomContext&))) {
+          || arg_type == std::type_index(typeid(const CustomContext&))) {
 #else
-              ) {
+      ) {
 #endif
         // do nothing, skip context arg now
       } else if (arg_type == std::type_index(typeid(const DenseTensor&))) {
@@ -76,20 +72,20 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                               default_key.dtype(),
                               arg_type);
       } else if (arg_type == std::type_index(typeid(
-                                 paddle::optional<const DenseTensor&>))) {
+                                 const paddle::optional<DenseTensor>&))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
+      } else if (arg_type ==
+                 std::type_index(typeid(const paddle::optional<
+                                        std::vector<const DenseTensor*>>&))) {
         args_def->AppendInput(default_key.backend(),
                               default_tensor_layout,
                               default_key.dtype(),
                               arg_type);
       } else if (arg_type == std::type_index(typeid(
-                                 paddle::optional<
-                                     const std::vector<const DenseTensor*>>))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(
-                                 paddle::optional<const SelectedRows&>))) {
+                                 const paddle::optional<SelectedRows>&))) {
         args_def->AppendInput(default_key.backend(),
                               default_tensor_layout,
                               default_key.dtype(),
@@ -101,6 +97,11 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                               default_key.dtype(),
                               arg_type);
       } else if (arg_type == std::type_index(typeid(const SelectedRows&))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
+      } else if (arg_type == std::type_index(typeid(const StringTensor&))) {
         args_def->AppendInput(default_key.backend(),
                               default_tensor_layout,
                               default_key.dtype(),
@@ -153,11 +154,56 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                                default_tensor_layout,
                                default_key.dtype(),
                                arg_type);
+      } else if (arg_type == std::type_index(typeid(StringTensor*))) {
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
+      } else if (arg_type == std::type_index(typeid(bool))) {
+        args_def->AppendAttribute(AttributeType::BOOL);
+      } else if (arg_type == std::type_index(typeid(int))) {
+        args_def->AppendAttribute(AttributeType::INT32);
+      } else if (arg_type == std::type_index(typeid(int64_t))) {
+        args_def->AppendAttribute(AttributeType::INT64);
+      } else if (arg_type == std::type_index(typeid(float))) {
+        args_def->AppendAttribute(AttributeType::FLOAT32);
+      } else if (arg_type == std::type_index(typeid(double))) {
+        args_def->AppendAttribute(AttributeType::FLOAT64);
+      } else if (arg_type == std::type_index(typeid(std::string))) {
+        args_def->AppendAttribute(AttributeType::STRING);
+      } else if (arg_type ==
+                 std::type_index(typeid(const std::vector<bool>&))) {
+        args_def->AppendAttribute(AttributeType::BOOLS);
+      } else if (arg_type == std::type_index(typeid(const std::vector<int>&))) {
+        args_def->AppendAttribute(AttributeType::INT32S);
+      } else if (arg_type ==
+                 std::type_index(typeid(const std::vector<int64_t>&))) {
+        args_def->AppendAttribute(AttributeType::INT64S);
+      } else if (arg_type ==
+                 std::type_index(typeid(const std::vector<float>&))) {
+        args_def->AppendAttribute(AttributeType::FLOAT32S);
+      } else if (arg_type ==
+                 std::type_index(typeid(const std::vector<double>&))) {
+        args_def->AppendAttribute(AttributeType::FLOAT64S);
+      } else if (arg_type ==
+                 std::type_index(typeid(const std::vector<std::string>&))) {
+        args_def->AppendAttribute(AttributeType::STRINGS);
+      } else if (arg_type == std::type_index(typeid(const Scalar&))) {
+        args_def->AppendAttribute(AttributeType::SCALAR);
+      } else if (arg_type ==
+                 std::type_index(typeid(const std::vector<Scalar>&))) {
+        args_def->AppendAttribute(AttributeType::SCALARS);
+      } else if (arg_type == std::type_index(typeid(const IntArray&))) {
+        args_def->AppendAttribute(AttributeType::INT_ARRAY);
+      } else if (arg_type == std::type_index(typeid(DataType))) {
+        args_def->AppendAttribute(AttributeType::DATA_TYPE);
+      } else if (arg_type == std::type_index(typeid(DataLayout))) {
+        args_def->AppendAttribute(AttributeType::DATA_LAYOUT);
+      } else if (arg_type == std::type_index(typeid(Place))) {
+        args_def->AppendAttribute(AttributeType::PLACE);
       } else {
-        // Attribute deal with
-        // TODO(chenweihang): now here allow any types of attribute, maybe
-        // should add limits here
-        args_def->AppendAttribute(arg_type);
+        PADDLE_THROW(phi::errors::Unavailable(
+            "Unsupported kernel argument type `%s`.", arg_type.name()));
       }
     }
   }
@@ -370,93 +416,93 @@ struct KernelRegistrar {
   PD_CONCATENATE(_PD_KERNEL_INSTANTIATION_, N)                             \
   (meta_kernel_fn, backend, context, __VA_ARGS__)
 
-#define _PD_KERNEL_INSTANTIATION_1(              \
-    meta_kernel_fn, backend, context, cpp_dtype) \
-  template decltype(                             \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>
-#define _PD_KERNEL_INSTANTIATION_2(                                           \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_1(                                       \
+#define _PD_KERNEL_INSTANTIATION_1(                     \
+    meta_kernel_fn, backend, context, cpp_dtype)        \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>
+#define _PD_KERNEL_INSTANTIATION_2(                     \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_1(                 \
       meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_3(                                           \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_2(                                       \
+#define _PD_KERNEL_INSTANTIATION_3(                     \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_2(                 \
       meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_4(                                           \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_3(                                       \
+#define _PD_KERNEL_INSTANTIATION_4(                     \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_3(                 \
       meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_5(                                           \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_4(                                       \
+#define _PD_KERNEL_INSTANTIATION_5(                     \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_4(                 \
       meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_6(                                           \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_5(                                       \
+#define _PD_KERNEL_INSTANTIATION_6(                     \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_5(                 \
       meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_7(                                           \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_6(                                       \
+#define _PD_KERNEL_INSTANTIATION_7(                     \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_6(                 \
       meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_8(                                           \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_7(                                       \
+#define _PD_KERNEL_INSTANTIATION_8(                     \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_7(                 \
       meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_9(                                           \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_8(                                       \
+#define _PD_KERNEL_INSTANTIATION_9(                     \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_8(                 \
       meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_10(                                          \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_9(                                       \
+#define _PD_KERNEL_INSTANTIATION_10(                    \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_9(                 \
       meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_11(                                          \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_10(                                      \
+#define _PD_KERNEL_INSTANTIATION_11(                    \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_10(                \
       meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_12(                                          \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_11(                                      \
+#define _PD_KERNEL_INSTANTIATION_12(                    \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_11(                \
       meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_13(                                          \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_12(                                      \
+#define _PD_KERNEL_INSTANTIATION_13(                    \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_12(                \
       meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_14(                                          \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_13(                                      \
+#define _PD_KERNEL_INSTANTIATION_14(                    \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_13(                \
       meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_15(                                          \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)                         \
-  template decltype(                                                          \
-      meta_kernel_fn<cpp_dtype, context>) meta_kernel_fn<cpp_dtype, context>; \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_14(                                      \
+#define _PD_KERNEL_INSTANTIATION_15(                    \
+    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
+  template decltype(meta_kernel_fn<cpp_dtype, context>) \
+      meta_kernel_fn<cpp_dtype, context>;               \
+  PD_EXPAND(_PD_KERNEL_INSTANTIATION_14(                \
       meta_kernel_fn, backend, context, __VA_ARGS__))
 
 #define PD_KERNEL_REGISTRAR_INIT(reg_type,                   \
@@ -519,8 +565,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -542,8 +588,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -573,8 +619,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -604,8 +650,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -635,8 +681,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -666,8 +712,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -697,8 +743,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -728,8 +774,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -759,8 +805,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -790,8 +836,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -821,8 +867,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -852,8 +898,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -883,8 +929,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -914,8 +960,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
@@ -945,8 +991,8 @@ struct KernelRegistrar {
       #backend,                                                               \
       DATALAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),           \
-      ::phi::KernelArgsParseFunctor<decltype(                                 \
-          &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
+      ::phi::KernelArgsParseFunctor<                                          \
+          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,              \
       args_def_fn,                                                            \
       PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
       PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \

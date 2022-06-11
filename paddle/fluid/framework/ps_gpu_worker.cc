@@ -18,7 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/string/string_helper.h"
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
+     defined PADDLE_WITH_XPU_BKCL) &&                        \
     (defined PADDLE_WITH_PSLIB)
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -132,8 +133,11 @@ void PSGPUWorker::TrainFiles() {
   device_reader_->Start();
   int cur_batch;
   int batch_cnt = 0;
-
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   platform::SetDeviceId(thread_id_);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+  platform::SetXPUDeviceId(thread_id_);
+#endif
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
     for (auto& op : ops_) {
@@ -230,7 +234,11 @@ void PSGPUWorker::TrainFilesWithProfiler() {
   int total_ins_num = 0;
   int cur_batch;
   timeline.Start();
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   platform::SetDeviceId(thread_id_);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+  platform::SetXPUDeviceId(thread_id_);
+#endif
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
     timeline.Pause();

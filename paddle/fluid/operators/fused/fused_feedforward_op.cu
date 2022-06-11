@@ -14,12 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/matmul_v2_op.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
-
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
+#include "paddle/fluid/operators/matmul_v2_op.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -345,9 +345,8 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     ins[1] = d_x;
     outs[0] = d_x;
     int elewise_add_axis = -1;
-    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
-                                                   T>(
-        ctx, ins, &outs, elewise_add_axis, AddFunctor<T>());
+    phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+        ctx, ins, &outs, elewise_add_axis, phi::funcs::AddFunctor<T>());
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
@@ -387,20 +386,19 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
         !pre_layer_norm ? context.Input<framework::Tensor>("Ln2Bias") : nullptr;
 
     auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* d_ln1_scale = pre_layer_norm
-                            ? context.Output<framework::Tensor>(
-                                  framework::GradVarName("Ln1Scale"))
-                            : nullptr;
-    auto* d_ln1_bias = pre_layer_norm
-                           ? context.Output<framework::Tensor>(
-                                 framework::GradVarName("Ln1Bias"))
-                           : nullptr;
-    auto* d_ln2_scale =
-        pre_layer_norm ? nullptr : context.Output<framework::Tensor>(
-                                       framework::GradVarName("Ln2Scale"));
-    auto* d_ln2_bias =
-        pre_layer_norm ? nullptr : context.Output<framework::Tensor>(
-                                       framework::GradVarName("Ln2Bias"));
+    auto* d_ln1_scale = pre_layer_norm ? context.Output<framework::Tensor>(
+                                             framework::GradVarName("Ln1Scale"))
+                                       : nullptr;
+    auto* d_ln1_bias = pre_layer_norm ? context.Output<framework::Tensor>(
+                                            framework::GradVarName("Ln1Bias"))
+                                      : nullptr;
+    auto* d_ln2_scale = pre_layer_norm
+                            ? nullptr
+                            : context.Output<framework::Tensor>(
+                                  framework::GradVarName("Ln2Scale"));
+    auto* d_ln2_bias = pre_layer_norm ? nullptr
+                                      : context.Output<framework::Tensor>(
+                                            framework::GradVarName("Ln2Bias"));
     auto* d_linear1_weight = context.Output<framework::Tensor>(
         framework::GradVarName("Linear1Weight"));
     auto* d_linear1_bias = context.Output<framework::Tensor>(

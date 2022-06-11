@@ -33,12 +33,15 @@ namespace paddle {
 namespace framework {
 class Scope;
 class GarbageCollector;
-}
+}  // namespace framework
 namespace distributed {
 
 class TaskNode;
 class Carrier;
 class TaskLoop;
+
+constexpr int64_t SOURCE_ID = -1;
+constexpr int64_t SINK_ID = -2;
 
 class Interceptor {
  public:

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/mlu/cnpapi_data_process.h"
+
 #include <cstdio>
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
 
@@ -202,6 +204,7 @@ CnpapiRuntimeCbidStr::CnpapiRuntimeCbidStr() {
   REGISTER_RUNTIME_CBID_STR(cnCtxSetCurrent);
   REGISTER_RUNTIME_CBID_STR(cnCtxGetDevice);
   REGISTER_RUNTIME_CBID_STR(cnCtxSync);
+  REGISTER_RUNTIME_CBID_STR(cnInvokeHostFunc);
 #undef REGISTER_RUNTIME_CBID_STR
 }
 

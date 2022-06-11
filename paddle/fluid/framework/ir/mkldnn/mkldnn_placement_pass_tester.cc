@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"
-
 #include <gtest/gtest.h>
+
 #include <boost/logic/tribool.hpp>
+
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"
 
 namespace paddle {
 namespace framework {

@@ -70,8 +70,10 @@ void TransformData(const OpKernelType &expected_kernel_type,
           paddle::platform::MKLDNNDeviceContext::tls()
               .set_cur_paddle_data_layout(lin);
         }
-        out.set_layout(DataLayout::kMKLDNN);
-        out.set_format(out_format);
+        dnnl::memory::desc out_mem_desc(
+            vectorize(out.dims()),
+            ToMKLDNNDataType(TransToProtoVarType(in.type())), out_format);
+        out.set_mem_desc(out_mem_desc);
       } else {
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
@@ -121,7 +123,7 @@ void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
     tran_lod_tensor->set_lod(in_lod_tensor.lod());
     tran_lod_tensor->set_layout(in_lod_tensor.layout());
 #ifdef PADDLE_WITH_MKLDNN
-    tran_lod_tensor->set_format(in_lod_tensor.format());
+    tran_lod_tensor->set_mem_desc(in_lod_tensor.mem_desc());
 #endif
     tran_lod_tensor->ShareDataWith(tensor);
   } else if (in_var.IsType<phi::SelectedRows>()) {

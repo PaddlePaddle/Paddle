@@ -26,12 +26,13 @@ namespace paddle {
 namespace framework {
 class OperatorBase;
 class OpDesc;
-}
+}  // namespace framework
 namespace distributed {
 
 class TaskNode final {
  public:
   using OperatorBase = paddle::framework::OperatorBase;
+  TaskNode(int64_t rank, int64_t task_id, int64_t max_run_times);
   TaskNode(int32_t role, int64_t rank, int64_t task_id, int64_t max_run_times,
            int64_t max_slot_nums);
   TaskNode(int32_t role, const std::vector<framework::OpDesc*>& op_descs,

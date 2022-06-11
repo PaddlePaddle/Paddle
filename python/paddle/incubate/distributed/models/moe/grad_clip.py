@@ -158,7 +158,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         normal_params_grads = []
         moe_params_grads = []
 
-        # seperate moe params from normal params
+        # separate moe params from normal params
         if self.moe_group is not None and self.moe_group.nranks > 1:
             for p, g in params_grads:
                 if self.is_expert_param_func(p):
@@ -178,10 +178,9 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
             global_norm_var_moe, _ \
                 = self.get_l2_norm_pow(moe_params_grads, sum_dtype)
             if global_norm_var_moe is not None:
-                collective.all_reduce(
-                    global_norm_var_moe,
-                    op=collective.ReduceOp.SUM,
-                    group=self.moe_group)
+                collective.all_reduce(global_norm_var_moe,
+                                      op=collective.ReduceOp.SUM,
+                                      group=self.moe_group)
 
         if global_norm_var_normal is None and global_norm_var_moe is None:
             return params_grads
@@ -199,12 +198,13 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
 
         params_and_grads = []
         global_norm_var = layers.sqrt(global_norm_var)
-        max_global_norm = layers.fill_constant(
-            shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
-        clip_var = layers.elementwise_div(
-            x=max_global_norm,
-            y=layers.elementwise_max(
-                x=global_norm_var, y=max_global_norm))
+        max_global_norm = layers.fill_constant(shape=[1],
+                                               dtype=global_norm_var.dtype,
+                                               value=self.clip_norm)
+        clip_var = layers.elementwise_div(x=max_global_norm,
+                                          y=layers.elementwise_max(
+                                              x=global_norm_var,
+                                              y=max_global_norm))
         for p, g in params_grads:
             if g is None:
                 continue

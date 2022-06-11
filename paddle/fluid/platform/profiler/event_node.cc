@@ -12,10 +12,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_node.h"
 
 #include <limits.h>
+
 #include <algorithm>
 #include <deque>
 #include <set>
 #include <stack>
+
+#include "paddle/fluid/platform/profiler/utils.h"
 
 namespace paddle {
 namespace platform {
@@ -49,15 +52,26 @@ NodeTrees::~NodeTrees() {
 
 void NodeTrees::BuildTrees(
     const std::vector<HostTraceEventNode*>& host_event_nodes,
-    std::vector<CudaRuntimeTraceEventNode*>& runtime_event_nodes,
-    const std::vector<DeviceTraceEventNode*>& device_event_nodes) {
-  // seperate Host Event Nodes into different threads
+    const std::vector<CudaRuntimeTraceEventNode*>& runtime_event_nodes,
+    const std::vector<DeviceTraceEventNode*>& device_event_nodes,
+    const std::vector<MemTraceEventNode*>& mem_event_nodes,
+    const std::vector<OperatorSupplementEventNode*>& op_supplement_events) {
+  // separate Host Event Nodes into different threads
   std::map<uint64_t, std::vector<HostTraceEventNode*>>
       thread2host_event_nodes;  // used to store HostTraceEventNodes per thread
   std::map<uint64_t, std::vector<CudaRuntimeTraceEventNode*>>
       thread2runtime_event_nodes;  // used to store CudaRuntimeTraceEventNode
                                    // per
                                    // thread
+  std::map<uint64_t, std::vector<MemTraceEventNode*>>
+      thread2mem_event_nodes;  // used to store MemTraceEventNode
+                               // per
+                               // thread
+  std::map<uint64_t, std::vector<OperatorSupplementEventNode*>>
+      thread2op_supplement_event_nodes;  // used to store
+                                         // OperatorSupplementEventNode
+                                         // per
+                                         // thread
   std::map<uint32_t, CudaRuntimeTraceEventNode*>
       correlation_id2runtime_event_node;  // used to store the relation between
                                           // correlation id and runtime node
@@ -83,6 +97,15 @@ void NodeTrees::BuildTrees(
         platform::errors::NotFound("Unknown device events, "
                                    "no corresponding cuda runtime events"));
     dst_iter->second->AddDeviceTraceEventNode(*it);
+  }
+  // construct thread2mem_event_nodes
+  for (auto it = mem_event_nodes.begin(); it != mem_event_nodes.end(); ++it) {
+    thread2mem_event_nodes[(*it)->ThreadId()].push_back(*it);
+  }
+  // construct thread2op_supplement_event_nodes
+  for (auto it = op_supplement_events.begin(); it != op_supplement_events.end();
+       ++it) {
+    thread2op_supplement_event_nodes[(*it)->ThreadId()].push_back(*it);
   }
   // sort host event nodes and runtime event nodes according to start_ns and
   // end_ns
@@ -118,6 +141,29 @@ void NodeTrees::BuildTrees(
           return false;
         });
   }
+  // sort mem event nodes and operator supplement event nodes
+  for (auto it = thread2mem_event_nodes.begin();
+       it != thread2mem_event_nodes.end(); ++it) {
+    std::sort(it->second.begin(), it->second.end(),
+              [](MemTraceEventNode* node1, MemTraceEventNode* node2) {
+                if (node1->TimeStampNs() <= node2->TimeStampNs()) {
+                  return true;
+                }
+                return false;
+              });
+  }
+
+  for (auto it = thread2op_supplement_event_nodes.begin();
+       it != thread2op_supplement_event_nodes.end(); ++it) {
+    std::sort(it->second.begin(), it->second.end(),
+              [](OperatorSupplementEventNode* node1,
+                 OperatorSupplementEventNode* node2) {
+                if (node1->TimeStampNs() <= node2->TimeStampNs()) {
+                  return true;
+                }
+                return false;
+              });
+  }
 
   // construct trees
   std::set<uint64_t> thread_set;
@@ -130,16 +176,27 @@ void NodeTrees::BuildTrees(
        it != thread2runtime_event_nodes.end(); ++it) {
     thread_set.insert(it->first);
   }
+  for (auto it = thread2mem_event_nodes.begin();
+       it != thread2mem_event_nodes.end(); ++it) {
+    thread_set.insert(it->first);
+  }
+  for (auto it = thread2op_supplement_event_nodes.begin();
+       it != thread2op_supplement_event_nodes.end(); ++it) {
+    thread_set.insert(it->first);
+  }
 
   for (auto it = thread_set.begin(); it != thread_set.end(); ++it) {
     thread_event_trees_map_[*it] = BuildTreeRelationship(
-        thread2host_event_nodes[*it], thread2runtime_event_nodes[*it]);
+        thread2host_event_nodes[*it], thread2runtime_event_nodes[*it],
+        thread2mem_event_nodes[*it], thread2op_supplement_event_nodes[*it]);
   }
 }
 
 HostTraceEventNode* NodeTrees::BuildTreeRelationship(
     std::vector<HostTraceEventNode*> host_event_nodes,
-    std::vector<CudaRuntimeTraceEventNode*> runtime_event_nodes) {
+    std::vector<CudaRuntimeTraceEventNode*> runtime_event_nodes,
+    std::vector<MemTraceEventNode*> mem_event_nodes,
+    std::vector<OperatorSupplementEventNode*> op_supplement_events) {
   // a stack used for analyse relationship
   auto node_stack = std::vector<HostTraceEventNode*>();
   // root node, top level
@@ -225,6 +282,99 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
     }
     node_stack.pop_back();
   }
+
+  // build relationship between host event node and mem event node
+  // First, post-order traverse the tree. Then, insert the memory and op
+  // supplement node into correct host nodes.
+  auto stack = std::stack<HostTraceEventNode*>();
+  auto flag_stack = std::stack<int32_t>();
+  auto post_order_nodes = std::vector<HostTraceEventNode*>();
+  stack.push(root_node);
+  flag_stack.push(0);
+  while (!stack.empty()) {
+    auto current_node = stack.top();
+    stack.pop();
+    auto flag = flag_stack.top();
+    flag_stack.pop();
+    if (flag == 0) {
+      stack.push(current_node);
+      flag_stack.push(1);
+      for (auto child = current_node->GetChildren().rbegin();
+           child != current_node->GetChildren().rend(); ++child) {
+        stack.push(*child);
+        flag_stack.push(0);
+      }
+    } else {
+      post_order_nodes.push_back(current_node);
+    }
+  }
+
+  for (auto it = post_order_nodes.begin(); it < post_order_nodes.end(); ++it) {
+    bool hasenter = false;
+    std::vector<MemTraceEventNode*>::iterator firstposition;
+    std::vector<MemTraceEventNode*>::iterator lastposition =
+        mem_event_nodes.end();
+    for (auto mem_it = mem_event_nodes.begin(); mem_it < mem_event_nodes.end();
+         ++mem_it) {
+      if ((*mem_it)->TimeStampNs() >= (*it)->StartNs() &&
+          (*mem_it)->TimeStampNs() <= (*it)->EndNs()) {
+        (*it)->AddMemNode(*mem_it);
+        if (!hasenter) {
+          firstposition = mem_it;
+          hasenter = true;
+        }
+      } else {
+        if ((*mem_it)->TimeStampNs() > (*it)->EndNs()) {
+          lastposition = mem_it;
+          break;
+        }
+      }
+    }
+    if (hasenter) {
+      mem_event_nodes.erase(firstposition, lastposition);
+    }
+  }
+
+  // build relationship between host event node and op supplement node
+  for (auto it = post_order_nodes.begin(); it < post_order_nodes.end(); ++it) {
+    int op_supplement_count = 0;
+    bool hasenter = false;
+    std::vector<OperatorSupplementEventNode*>::iterator firstposition;
+    std::vector<OperatorSupplementEventNode*>::iterator lastposition =
+        op_supplement_events.end();
+    for (auto op_supplement_it = op_supplement_events.begin();
+         op_supplement_it < op_supplement_events.end(); ++op_supplement_it) {
+      if ((*op_supplement_it)->TimeStampNs() >= (*it)->StartNs() &&
+          (*op_supplement_it)->TimeStampNs() <= (*it)->EndNs()) {
+        if (!hasenter) {
+          firstposition = op_supplement_it;
+          hasenter = true;
+        }
+        (*it)->SetOperatorSupplementNode(*op_supplement_it);
+        PADDLE_ENFORCE_EQ((*it)->Type(), TracerEventType::Operator,
+                          platform::errors::PreconditionNotMet(
+                              "Operator supplement events should be embraced "
+                              "by event of type TracerEventType::Operator, "
+                              "but got type TracerEventType::%s",
+                              StringTracerEventType((*it)->Type())));
+        op_supplement_count += 1;
+      } else {
+        if ((*op_supplement_it)->TimeStampNs() > (*it)->EndNs()) {
+          PADDLE_ENFORCE_LE(op_supplement_count, 1,
+                            platform::errors::PreconditionNotMet(
+                                "One event of TracerEventType::Operator has no "
+                                "more than 1 op supplement event, but got %d.",
+                                op_supplement_count));
+          lastposition = op_supplement_it;
+          break;
+        }
+      }
+    }
+    if (hasenter) {
+      op_supplement_events.erase(firstposition, lastposition);
+    }
+  }
+
   return root_node;
 }
 
@@ -262,8 +412,8 @@ std::map<uint64_t, std::vector<HostTraceEventNode*>> NodeTrees::Traverse(
         auto current_node = stack.top();
         stack.pop();
         thread2host_event_nodes[thread_id].push_back(current_node);
-        for (auto child = current_node->GetChildren().begin();
-             child != current_node->GetChildren().end(); ++child) {
+        for (auto child = current_node->GetChildren().rbegin();
+             child != current_node->GetChildren().rend(); ++child) {
           stack.push(*child);
         }
       }
@@ -277,7 +427,10 @@ void NodeTrees::LogMe(BaseLogger* logger) { logger->LogNodeTrees(*this); }
 void NodeTrees::HandleTrees(
     std::function<void(HostTraceEventNode*)> host_event_node_handle,
     std::function<void(CudaRuntimeTraceEventNode*)> runtime_event_node_handle,
-    std::function<void(DeviceTraceEventNode*)> device_event_node_handle) {
+    std::function<void(DeviceTraceEventNode*)> device_event_node_handle,
+    std::function<void(MemTraceEventNode*)> mem_event_node_handle,
+    std::function<void(OperatorSupplementEventNode*)>
+        op_supplement_node_handle) {
   // using different user-defined function to handle different nodes
   const std::map<uint64_t, std::vector<HostTraceEventNode*>>
       thread2host_event_nodes = Traverse(true);
@@ -298,6 +451,15 @@ void NodeTrees::HandleTrees(
              ++devicenode) {
           device_event_node_handle(*devicenode);
         }
+      }
+      for (auto memeventnode = (*hostnode)->GetMemTraceEventNodes().begin();
+           memeventnode != (*hostnode)->GetMemTraceEventNodes().end();
+           ++memeventnode) {
+        mem_event_node_handle(*memeventnode);
+      }
+      if ((*hostnode)->GetOperatorSupplementEventNode()) {
+        op_supplement_node_handle(
+            (*hostnode)->GetOperatorSupplementEventNode());
       }
     }
   }

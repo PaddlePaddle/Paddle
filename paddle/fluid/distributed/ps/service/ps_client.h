@@ -20,6 +20,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
@@ -109,7 +110,7 @@ class PSClient {
                                          size_t table_id) = 0;  // 保留
 
   // firstly push dense param for parameter server
-  // this is neccessary because dense weight initialized in trainer on cold
+  // this is necessary because dense weight initialized in trainer on cold
   // start
   virtual std::future<int32_t> PushDenseParam(const Region *regions,
                                               size_t region_num,
@@ -198,6 +199,7 @@ class PSClient {
     _msg_handler_map[msg_type] = handler;
     return 0;
   }
+
   virtual int HandleClient2ClientMsg(int msg_type, int from_client_id,
                                      const std::string &msg) {
     auto itr = _msg_handler_map.find(msg_type);
@@ -238,6 +240,46 @@ class PSClient {
   virtual std::future<int32_t> PushSparse(size_t table_id, const uint64_t *keys,
                                           const float **update_values,
                                           size_t num) = 0;
+
+  // for save cache
+  virtual std::future<int32_t> CacheShuffle(
+      uint32_t table_id, const std::string &path, const std::string &mode,
+      const std::string &cache_threshold) {
+    VLOG(0) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+
+  virtual std::future<int32_t> CacheShuffleMultiTable(
+      std::vector<int> tables, const std::string &path, const std::string &mode,
+      const std::string &cache_threshold) {
+    VLOG(0) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+
+  virtual std::future<int32_t> SaveCache(uint32_t table_id,
+                                         const std::string &path,
+                                         const std::string &mode) {
+    VLOG(0) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+
+  virtual std::future<int32_t> GetCacheThreshold(uint32_t table_id,
+                                                 double &cache_threshold) {
+    VLOG(0) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
 
  protected:
   virtual int32_t Initialize() = 0;

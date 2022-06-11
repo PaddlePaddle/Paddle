@@ -18,7 +18,7 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle
 from .. import functional as F
-from paddle.fluid.framework import _varbase_creator
+from paddle.fluid.framework import _varbase_creator, in_dygraph_mode, _in_legacy_dygraph
 from .. import Layer
 from paddle import in_dynamic_mode
 
@@ -394,16 +394,15 @@ class CrossEntropyLoss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        ret = paddle.nn.functional.cross_entropy(
-            input,
-            label,
-            weight=self.weight,
-            ignore_index=self.ignore_index,
-            reduction=self.reduction,
-            soft_label=self.soft_label,
-            axis=self.axis,
-            use_softmax=self.use_softmax,
-            name=self.name)
+        ret = paddle.nn.functional.cross_entropy(input,
+                                                 label,
+                                                 weight=self.weight,
+                                                 ignore_index=self.ignore_index,
+                                                 reduction=self.reduction,
+                                                 soft_label=self.soft_label,
+                                                 axis=self.axis,
+                                                 use_softmax=self.use_softmax,
+                                                 name=self.name)
 
         return ret
 
@@ -465,14 +464,18 @@ class HSigmoidLoss(Layer):
             import paddle
             paddle.set_device('cpu')
 
-            input = paddle.uniform([2, 3])
-            # [[-0.2820413   0.9528898  -0.81638825] # random
-            #  [-0.6733154  -0.33866507  0.25770962]] # random
+            input = paddle.uniform([4, 3])
+            # [[0.56194401  -0.22450298  -0.10741806] # random
+            #  [0.36136317  0.23556745  0.88748658] # random
+            #  [0.18151939  0.80947340  -0.31078976] # random
+            #  [0.68886101  -0.14239830  -0.41297770]] # random
             label = paddle.to_tensor([0, 1, 4, 5])
             m = paddle.nn.HSigmoidLoss(3, 5)
             out = m(input, label)
-            # [[2.4543471]
-            #  [1.9359267]]
+            # [[2.42524505]
+            #  [1.74917245]
+            #  [3.14571381]
+            #  [2.34564662]]
     """
 
     def __init__(self,
@@ -508,25 +511,25 @@ class HSigmoidLoss(Layer):
               " small parameter prefetch may cause speed down")
 
         C = self._num_classes if is_custom else self._num_classes - 1
-        self.weight = self.create_parameter(
-            [C, self._feature_size],
-            attr=self._weight_attr,
-            is_bias=False,
-            dtype=self._dtype)
-        self.bias = self.create_parameter(
-            [C, 1], attr=self._bias_attr, is_bias=True, dtype=self._dtype)
+        self.weight = self.create_parameter([C, self._feature_size],
+                                            attr=self._weight_attr,
+                                            is_bias=False,
+                                            dtype=self._dtype)
+        self.bias = self.create_parameter([C, 1],
+                                          attr=self._bias_attr,
+                                          is_bias=True,
+                                          dtype=self._dtype)
 
     def forward(self, input, label, path_table=None, path_code=None):
-        out = F.hsigmoid_loss(
-            input,
-            label,
-            self._num_classes,
-            self.weight,
-            self.bias,
-            path_table=path_table,
-            path_code=path_code,
-            is_sparse=self._is_sparse,
-            name=self._name)
+        out = F.hsigmoid_loss(input,
+                              label,
+                              self._num_classes,
+                              self.weight,
+                              self.bias,
+                              path_table=path_table,
+                              path_code=path_code,
+                              is_sparse=self._is_sparse,
+                              name=self._name)
         return out
 
 
@@ -592,12 +595,18 @@ class MSELoss(Layer):
 
     def forward(self, input, label):
         if not in_dynamic_mode():
-            fluid.data_feeder.check_variable_and_dtype(
-                input, 'input', ['float32', 'float64'], 'MSELoss')
-            fluid.data_feeder.check_variable_and_dtype(
-                label, 'label', ['float32', 'float64'], 'MSELoss')
+            fluid.data_feeder.check_variable_and_dtype(input, 'input',
+                                                       ['float32', 'float64'],
+                                                       'MSELoss')
+            fluid.data_feeder.check_variable_and_dtype(label, 'label',
+                                                       ['float32', 'float64'],
+                                                       'MSELoss')
 
-        square_out = paddle.square(paddle.subtract(input, label))
+        if in_dygraph_mode():
+            square_out = paddle._C_ops.final_state_square(
+                paddle.subtract(input, label))
+        else:
+            square_out = paddle.square(paddle.subtract(input, label))
         if self.reduction == 'none':
             return square_out
 
@@ -683,8 +692,10 @@ class L1Loss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        return paddle.nn.functional.l1_loss(
-            input, label, self.reduction, name=self.name)
+        return paddle.nn.functional.l1_loss(input,
+                                            label,
+                                            self.reduction,
+                                            name=self.name)
 
 
 class BCELoss(Layer):
@@ -772,8 +783,10 @@ class BCELoss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        out = paddle.nn.functional.binary_cross_entropy(
-            input, label, self.weight, self.reduction, self.name)
+        out = paddle.nn.functional.binary_cross_entropy(input, label,
+                                                        self.weight,
+                                                        self.reduction,
+                                                        self.name)
         return out
 
 
@@ -880,13 +893,12 @@ class NLLLoss(Layer):
         self._name = name
 
     def forward(self, input, label):
-        return F.nll_loss(
-            input,
-            label,
-            weight=self._weight,
-            ignore_index=self._ignore_index,
-            reduction=self._reduction,
-            name=self._name)
+        return F.nll_loss(input,
+                          label,
+                          weight=self._weight,
+                          ignore_index=self._ignore_index,
+                          reduction=self._reduction,
+                          name=self._name)
 
 
 class KLDivLoss(Layer):
@@ -1029,8 +1041,10 @@ class MarginRankingLoss(Layer):
         self.name = name
 
     def forward(self, input, other, label):
-        out = paddle.nn.functional.margin_ranking_loss(
-            input, other, label, self.margin, self.reduction, self.name)
+        out = paddle.nn.functional.margin_ranking_loss(input, other, label,
+                                                       self.margin,
+                                                       self.reduction,
+                                                       self.name)
         return out
 
 
@@ -1120,14 +1134,13 @@ class CTCLoss(Layer):
                 input_lengths,
                 label_lengths,
                 norm_by_times=False):
-        return paddle.nn.functional.ctc_loss(
-            log_probs,
-            labels,
-            input_lengths,
-            label_lengths,
-            self.blank,
-            self.reduction,
-            norm_by_times=norm_by_times)
+        return paddle.nn.functional.ctc_loss(log_probs,
+                                             labels,
+                                             input_lengths,
+                                             label_lengths,
+                                             self.blank,
+                                             self.reduction,
+                                             norm_by_times=norm_by_times)
 
 
 class SmoothL1Loss(Layer):
@@ -1197,12 +1210,11 @@ class SmoothL1Loss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        return F.smooth_l1_loss(
-            input,
-            label,
-            reduction=self.reduction,
-            delta=self.delta,
-            name=self.name)
+        return F.smooth_l1_loss(input,
+                                label,
+                                reduction=self.reduction,
+                                delta=self.delta,
+                                name=self.name)
 
 
 class HingeEmbeddingLoss(Layer):
@@ -1292,9 +1304,99 @@ class HingeEmbeddingLoss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        return F.hinge_embedding_loss(
-            input,
-            label,
-            reduction=self.reduction,
-            margin=self.margin,
-            name=self.name)
+        return F.hinge_embedding_loss(input,
+                                      label,
+                                      reduction=self.reduction,
+                                      margin=self.margin,
+                                      name=self.name)
+
+
+class CosineEmbeddingLoss(Layer):
+    r"""
+    This interface is used to construct a callable object of the ``CosineEmbeddingLoss`` class.
+    The CosineEmbeddingLoss layer measures the cosine_embedding loss between input predictions ``input1``, ``input2``
+    and target labels ``label`` with values 1 or 0. This is used for measuring whether two inputs are similar or
+    dissimilar and is typically used for learning nonlinear embeddings or semi-supervised learning.
+    The cosine embedding loss can be described as:
+
+    If label = 1, then the loss value can be calculated as follow:
+
+    .. math::
+        Out = 1 - cos(input1, input2)
+
+    If label = -1, then the loss value can be calculated as follow:
+
+    .. math::
+        Out = max(0, cos(input1, input2)) - margin
+
+    The operator cos can be described as follow:
+     .. math::
+        cos(x1, x2) = \frac{x1 \cdot{} x2}{\Vert x1 \Vert_2 * \Vert x2 \Vert_2}
+
+    Parameters:
+        margin (float, optional): Should be a number from :math:`-1` to :math:`1`,
+            :math:`0` to :math:`0.5` is suggested. If :attr:`margin` is missing, the
+            default value is :math:`0`.
+        reduction (string, optional): Specifies the reduction to apply to the output:
+            ``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction will be applied,
+            ``'mean'``: the sum of the output will be divided by the number of
+            elements in the output, ``'sum'``: the output will be summed.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+                         Available dtypes are float32, float64.
+        input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+                         Available dtypes are float32, float64.
+        label (Tensor): tensor with shape: [N] or [1]. The target labels values should be -1 or 1.
+                         Available dtypes are int32, int64, float32, float64.
+        output (Tensor): Tensor, the cosine embedding Loss of Tensor ``input1`` ``input2`` and ``label``.
+                         If `reduction` is ``'none'``, the shape of output loss is [N], the same as ``input`` .
+                         If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+
+    Examples:
+        .. code-block:: python
+          :name: code-example1
+
+            import paddle
+
+            input1 = paddle.to_tensor([[1.6, 1.2, -0.5], [3.2, 2.6, -5.8]], 'float32')
+            input2 = paddle.to_tensor([[0.5, 0.5, -1.8], [2.3, -1.4, 1.1]], 'float32')
+            label = paddle.to_tensor([1, -1], 'int64')
+
+            cosine_embedding_loss = paddle.nn.CosineEmbeddingLoss(margin=0.5, reduction='mean')
+            output = cosine_embedding_loss(input1, input2, label)
+            print(output) # [0.21155193]
+
+            cosine_embedding_loss = paddle.nn.CosineEmbeddingLoss(margin=0.5, reduction='sum')
+            output = cosine_embedding_loss(input1, input2, label)
+            print(output) # [0.42310387]
+
+            cosine_embedding_loss = paddle.nn.CosineEmbeddingLoss(margin=0.5, reduction='none')
+            output = cosine_embedding_loss(input1, input2, label)
+            print(output) # [0.42310387, 0.        ]
+
+    """
+
+    def __init__(self, margin=0, reduction='mean', name=None):
+        if margin > 1 or margin < -1:
+            raise ValueError(
+                "The value of 'margin' should be in the interval of [-1, 1], but received %f, which is not allowed."
+                % margin)
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' should be 'sum', 'mean' or "
+                "'none', but received %s, which is not allowed." % reduction)
+        super(CosineEmbeddingLoss, self).__init__()
+        self.margin = margin
+        self.reduction = reduction
+        self.name = name
+
+    def forward(self, input1, input2, label):
+        return F.cosine_embedding_loss(input1,
+                                       input2,
+                                       label,
+                                       margin=self.margin,
+                                       reduction=self.reduction,
+                                       name=self.name)

@@ -213,9 +213,6 @@ std::ostream& operator<<(std::ostream&, const Place&);
 namespace paddle {
 namespace experimental {
 using AllocationType = phi::AllocationType;
-using Place = phi::Place;
-using CPUPlace = phi::CPUPlace;
-using GPUPlace = phi::GPUPlace;
 using GPUPinnedPlace = phi::GPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
 using NPUPlace = phi::NPUPlace;

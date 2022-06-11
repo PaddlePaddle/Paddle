@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
+
 #include <memory>
 #include <sstream>
 #include <string>
 
-#include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/framework/archive.h"
 
 static const int max_port = 65535;
@@ -54,8 +55,6 @@ DEFINE_int32(pserver_sparse_merge_thread, 1, "pserver sparse merge thread num");
 
 DEFINE_int32(pserver_sparse_table_shard_num, 1000,
              "sparse table shard for save & load");
-
-DEFINE_int32(heter_world_size, 100, "group size");  // 可配置
 
 namespace paddle {
 namespace framework {
@@ -198,7 +197,7 @@ int32_t BrpcPsClient::Initialize() {
 
   // 异步push 请求队列初始化
   const auto &worker_param = _config.worker_param().downpour_worker_param();
-  for (size_t i = 0; i < worker_param.downpour_table_param_size(); ++i) {
+  for (int i = 0; i < worker_param.downpour_table_param_size(); ++i) {
     auto type = worker_param.downpour_table_param(i).type();
     auto table_id = worker_param.downpour_table_param(i).table_id();
     if (type == PS_DENSE_TABLE) {
@@ -247,8 +246,9 @@ int32_t BrpcPsClient::Initialize() {
 
 int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
-                                                  "err:"
+    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+               << " failed, "
+                  "err:"
                << _cntls[request_idx]->ErrorText();
     return -1;
   }
@@ -263,10 +263,11 @@ int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
 }
 
 int DownpourBrpcClosure::check_save_response(size_t request_idx, int cmd_id) {
-  uint32_t feasign_size = 0;
+  int32_t feasign_size = 0;
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
-                                                  "err:"
+    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+               << " failed, "
+                  "err:"
                << _cntls[request_idx]->ErrorText();
     return -1;
   }
@@ -429,6 +430,82 @@ std::future<int32_t> BrpcPsClient::Save(uint32_t table_id,
   return SendSaveCmd(table_id, PS_SAVE_ONE_TABLE, {epoch, mode});
 }
 
+std::future<int32_t> BrpcPsClient::CacheShuffle(
+    uint32_t table_id, const std::string &path, const std::string &mode,
+    const std::string &cache_threshold) {
+  VLOG(1) << "BrpcPsClient send cmd for cache shuffle";
+  return SendSaveCmd(table_id, PS_CACHE_SHUFFLE, {path, mode, cache_threshold});
+}
+
+std::future<int32_t> BrpcPsClient::CacheShuffleMultiTable(
+    std::vector<int> tables, const std::string &path, const std::string &mode,
+    const std::string &cache_threshold) {
+  VLOG(1) << "BrpcPsClient send cmd for cache shuffle multi table one path";
+  std::vector<std::string> param;
+  param.push_back(path);
+  param.push_back(mode);
+  param.push_back(cache_threshold);
+  for (size_t i = 0; i < tables.size(); i++) {
+    param.push_back(std::to_string(tables[i]));
+  }
+  return SendSaveCmd(0, PS_CACHE_SHUFFLE, param);
+}
+
+std::future<int32_t> BrpcPsClient::SaveCache(uint32_t table_id,
+                                             const std::string &path,
+                                             const std::string &mode) {
+  return SendSaveCmd(table_id, PS_SAVE_ONE_CACHE_TABLE, {path, mode});
+}
+
+std::future<int32_t> BrpcPsClient::GetCacheThreshold(uint32_t table_id,
+                                                     double &cache_threshold) {
+  int cmd_id = PS_GET_CACHE_THRESHOLD;
+  size_t request_call_num = _server_channels.size();
+  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
+      request_call_num,
+      [request_call_num, cmd_id, &cache_threshold](void *done) {
+        int ret = 0;
+        auto *closure = (DownpourBrpcClosure *)done;
+        std::vector<double> cache_thresholds(request_call_num, 0);
+        for (size_t i = 0; i < request_call_num; ++i) {
+          if (closure->check_response(i, cmd_id) != 0) {
+            ret = -1;
+            break;
+          }
+          std::string cur_res = closure->get_response(i, cmd_id);
+          cache_thresholds[i] = std::stod(cur_res);
+        }
+        double sum_threshold = 0.0;
+        int count = 0;
+        for (auto t : cache_thresholds) {
+          if (t >= 0) {
+            sum_threshold += t;
+            ++count;
+          }
+        }
+        if (count == 0) {
+          cache_threshold = 0;
+        } else {
+          cache_threshold = sum_threshold / count;
+        }
+        VLOG(1) << "client get cache threshold: " << cache_threshold;
+        closure->set_promise_value(ret);
+      });
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+  for (size_t i = 0; i < request_call_num; ++i) {
+    closure->request(i)->set_cmd_id(cmd_id);
+    closure->request(i)->set_table_id(table_id);
+    closure->request(i)->set_client_id(_client_id);
+    PsService_Stub rpc_stub(GetCmdChannel(i));
+    closure->cntl(i)->set_timeout_ms(10800000);
+    rpc_stub.service(closure->cntl(i), closure->request(i),
+                     closure->response(i), closure);
+  }
+  return fut;
+}
+
 std::future<int32_t> BrpcPsClient::Clear() {
   return SendCmd(-1, PS_CLEAR_ALL_TABLE, {});
 }
@@ -585,7 +662,7 @@ std::future<int32_t> BrpcPsClient::PushSparseParam(size_t table_id,
     char *push_data_ptr = const_cast<char *>(push_data->data());
     memcpy(push_data_ptr, kvs.data(), kv_size * sizeof(uint64_t));
     push_data_ptr += kv_size * sizeof(uint64_t);
-    for (int i = 0; i < kv_size; ++i) {
+    for (size_t i = 0; i < kv_size; ++i) {
       memcpy(push_data_ptr, value_ptr[i], value_size);
       push_data_ptr += value_size;
     }
@@ -805,7 +882,7 @@ std::future<int32_t> BrpcPsClient::PushSparseRawGradient(
     memcpy(push_data_ptr, kvs.data(), kv_size * sizeof(uint64_t));
     push_data_ptr += kv_size * sizeof(uint64_t);
 
-    for (int i = 0; i < kv_size; ++i) {
+    for (size_t i = 0; i < kv_size; ++i) {
       memcpy(push_data_ptr, value_ptr[i], value_size);
       push_data_ptr += value_size;
     }
@@ -1160,7 +1237,7 @@ std::future<int32_t> BrpcPsClient::PushSparseRawGradientPartial(
   char *push_data_ptr = const_cast<char *>(push_data->data());
   memcpy(push_data_ptr, keys, num * sizeof(uint64_t));
   push_data_ptr += num * sizeof(uint64_t);
-  for (int i = 0; i < num; ++i) {
+  for (uint32_t i = 0; i < num; ++i) {
     memcpy(push_data_ptr, update_values[i], value_size);
     push_data_ptr += value_size;
   }
@@ -1180,7 +1257,7 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
   int64_t var_shape = 0;
   std::string table_class;
   const auto &worker_param = _config.worker_param().downpour_worker_param();
-  for (size_t i = 0; i < worker_param.downpour_table_param_size(); ++i) {
+  for (int i = 0; i < worker_param.downpour_table_param_size(); ++i) {
     if (worker_param.downpour_table_param(i).table_id() == table_id) {
       var_name = worker_param.downpour_table_param(i).common().table_name();
       var_num = worker_param.downpour_table_param(i).common().table_num();
@@ -1404,13 +1481,13 @@ void BrpcPsClient::PushSparseTaskConsume() {
         closure->add_timer(rpc_timer);
 
         std::vector<std::future<int>> merge_status(request_call_num);
-        for (int shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
+        for (size_t shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
           merge_status[shard_idx] =
               async_push_sparse_shard_threads.enqueue(std::bind(
                   &BrpcPsClient::PushSparseAsyncShardPush, this, task_list,
                   request_kv_num, table_id, shard_idx, closure, accessor));
         }
-        for (int shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
+        for (size_t shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
           merge_status[shard_idx].wait();
         }
         merge_status.clear();
@@ -1420,13 +1497,13 @@ void BrpcPsClient::PushSparseTaskConsume() {
         auto queue_size = task_queue->Size();
       } else {  // 未达到阈值 只做多路归并
         std::vector<std::future<int>> merge_status(request_call_num);
-        for (int shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
+        for (size_t shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
           merge_status[shard_idx] =
               async_push_sparse_shard_threads.enqueue(std::bind(
                   &BrpcPsClient::PushSparseAsyncShardMerge, this, task_list,
                   request_kv_num, table_id, shard_idx, accessor));
         }
-        for (int shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
+        for (size_t shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
           merge_status[shard_idx].wait();
         }
 
@@ -1452,7 +1529,7 @@ void sparse_local_merge(ValueAccessor *accessor, float *merge_data,
   size_t col_num = accessor->GetAccessorInfo().update_dim;
   float *merge_data_shell[col_num];
   const float *another_data_shell[col_num];
-  for (int i = 0; i < col_num; ++i) {
+  for (size_t i = 0; i < col_num; ++i) {
     merge_data_shell[i] = merge_data + i;
     another_data_shell[i] = another_data + i;
   }
@@ -1469,12 +1546,12 @@ int BrpcPsClient::PushSparseAsyncShardMerge(
 
   thread_local std::vector<std::pair<uint64_t, const float *>> sorted_kv_list;
   sorted_kv_list.clear();
-  for (int i = 1; i < task_list.size(); ++i) {
+  for (size_t i = 1; i < task_list.size(); ++i) {
     size_t kv_num = task_list[i]->data()->shared_data[shard_idx].kv_num;
     auto &key_list = task_list[i]->data()->shared_data[shard_idx].key_list;
     auto &value_list = task_list[i]->data()->shared_data[shard_idx].value_list;
 
-    for (int j = 0; j < kv_num; ++j) {
+    for (size_t j = 0; j < kv_num; ++j) {
       if (value_list[j].size() < value_size) {
         LOG(WARNING) << "value_list[" << j << "]: " << value_list[j].c_str()
                      << "is invalid.";
@@ -1577,7 +1654,7 @@ int BrpcPsClient::PushSparseAsyncShardPush(
   memcpy(push_data_ptr, merged_key_list.data(),
          merged_kv_count * sizeof(uint64_t));
   push_data_ptr += merged_kv_count * sizeof(uint64_t);
-  for (int i = 0; i < merged_kv_count; ++i) {
+  for (size_t i = 0; i < merged_kv_count; ++i) {
     const char *task_data_ptr = merged_value_list[i].data();
 
     memcpy(push_data_ptr, (float *)(task_data_ptr),  // NOLINT
@@ -1701,7 +1778,7 @@ void BrpcPsClient::PushDenseTaskConsume() {
               });
           ++merge_count;
         }
-        for (int i = 0; i < merge_count; ++i) {
+        for (uint32_t i = 0; i < merge_count; ++i) {
           merge_status[i].wait();
         }
 

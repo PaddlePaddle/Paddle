@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
 #include <glog/logging.h>
+
 #include <limits>
 #include <memory>
 #include <vector>
@@ -36,10 +37,13 @@ limitations under the License. */
 #include "thrust/pair.h"
 #elif defined(__xpu__)
 #include <xpu/runtime.h>
+
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
 #endif
+
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 
 namespace paddle {
 namespace framework {
@@ -56,11 +60,10 @@ class TableContainer
             capacity, ValType()) {}
 };
 #elif defined(PADDLE_WITH_XPU_KP)
-
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
-  explicit XPUCacheArray(size_t capacity) : capacity_(capacity), size_(0) {
+  explicit XPUCacheArray(long long capacity) : capacity_(capacity), size_(0) {
     xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
     xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
   }
@@ -71,8 +74,27 @@ class XPUCacheArray {
   }
 
   void print() {}
-  // ValType* find(const KeyType& key) { return NULL; }
-  // bool insert(const KeyType& key, const ValType& val) { return true; }
+
+#if defined(__xpu__)
+  __device__ ValType* find(const KeyType& key) {
+    for (int i = 0; i < size_; i++) {
+      if (keys[i] == key) return &vals[i];
+    }
+    return NULL;
+  }
+  __device__ bool insert(const KeyType& key, const ValType& val) {
+    // # NOTE(zhangminxu): we set the capacity larger than the feasign number of
+    // one batch
+    if (size_ == capacity_) {
+      return false;
+    } else {
+      keys[size_] = key;
+      vals[size_] = val;
+      size_++;
+      return true;
+    }
+  }
+#endif
 
   int prefetch(const int dev_id, XPUStream stream = NULL) { return 0; }
   size_t size() { return size_; }
@@ -98,8 +120,8 @@ class HashTable {
               StreamType stream);
 
   template <typename StreamType>
-  void insert(const KeyType* d_keys, size_t len, char* pool, size_t start_index,
-              StreamType stream);
+  void insert(const KeyType* d_keys, size_t len, char* pool,
+              size_t feature_value_size, size_t start_index, StreamType stream);
 
   template <typename StreamType>
   void get(const KeyType* d_keys, ValType* d_vals, size_t len,
@@ -109,6 +131,9 @@ class HashTable {
   void get(const KeyType* d_keys, char* d_vals, size_t len, StreamType stream);
 
   void show();
+
+  void set_sparse_sgd(const OptimizerConfig& optimizer_config);
+  void set_embedx_sgd(const OptimizerConfig& optimizer_config);
 
   template <typename StreamType>
   void dump_to_cpu(int devid, StreamType stream);
@@ -152,6 +177,9 @@ class HashTable {
 #elif defined(PADDLE_WITH_XPU_KP)
   XPUCacheArray<KeyType, ValType>* container_;
 #endif
+  OptimizerConfig* device_optimizer_config_;
+  OptimizerConfig host_optimizer_config_;
+
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;

@@ -15,7 +15,9 @@ limitations under the License. */
 #include <stdio.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+
 #include <vector>
+
 #include "paddle/fluid/operators/ctc_align_op.h"
 
 namespace paddle {
@@ -26,19 +28,19 @@ __global__ void MergeAndDelCudaKernel(const int64_t num_token, const T* tokens,
                                       const size_t num_seq, size_t* lod0,
                                       const int blank, const int merge_repeated,
                                       size_t* out_lod0, T* output) {
-  int ouput_idx = 0;
+  int output_idx = 0;
   out_lod0[0] = 0;
 
   for (int i = 0; i < num_seq; ++i) {
     T pre_token = -1;
     for (int j = lod0[i]; j < lod0[i + 1]; ++j) {
       if (tokens[j] != blank && !(merge_repeated && tokens[j] == pre_token)) {
-        output[ouput_idx] = tokens[j];
-        ++ouput_idx;
+        output[output_idx] = tokens[j];
+        ++output_idx;
       }
       pre_token = tokens[j];
     }
-    out_lod0[i + 1] = ouput_idx;
+    out_lod0[i + 1] = output_idx;
   }
 }
 
@@ -92,10 +94,10 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       auto* output_length = ctx.Output<LoDTensor>("OutputLength");
       T* output_length_data =
           output_length->mutable_data<T>({input_dims[0], 1}, ctx.GetPlace());
-      PaddingMergeAndDelCudaKernel<
-          T><<<32, (input_dims[0] + 32 - 1) / 32, 0, stream>>>(
-          input_dims[1], tokens, input_length_data, blank, merge_repeated,
-          padding_value, input_dims[0], output_data, output_length_data);
+      PaddingMergeAndDelCudaKernel<T>
+          <<<32, (input_dims[0] + 32 - 1) / 32, 0, stream>>>(
+              input_dims[1], tokens, input_length_data, blank, merge_repeated,
+              padding_value, input_dims[0], output_data, output_length_data);
     } else {
       const size_t level = 0;
       auto input_lod = framework::ToAbsOffset(input->lod());

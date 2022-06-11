@@ -33,11 +33,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -160,7 +162,18 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                             "Input tensor (%s) is not initialized.", in_name));
       paddle::experimental::Tensor custom_in;
       custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (custom_in.is_gpu_pinned()) {
+        VLOG(3) << "Custom Operator: custom input is gpu pinned tensor";
+        auto gpu_place = phi::GPUPlace(platform::GetCurrentDeviceId());
+        auto custom_gpu_in = custom_in.copy_to(gpu_place, true);
+        kernel_ctx.EmplaceBackInput(std::move(custom_gpu_in));
+      } else {
+        kernel_ctx.EmplaceBackInput(std::move(custom_in));
+      }
+#else
       kernel_ctx.EmplaceBackInput(std::move(custom_in));
+#endif
     }
   }
 
@@ -854,43 +867,43 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
     bool is_double_grad = (i == 2);
 
     // GradOpDescMaker
-    info.grad_op_maker_ = [grad_op_name, grad_op_inputs, grad_op_outputs,
-                           is_double_grad](
-        const OpDesc& fwd_op,
-        const std::unordered_set<std::string>& no_grad_set,
-        std::unordered_map<std::string, std::string>* grad_to_var,
-        const std::vector<BlockDesc*>& grad_block) {
-      CustomGradOpMaker<paddle::framework::OpDesc> maker(
-          fwd_op, no_grad_set, grad_to_var, grad_block, grad_op_name,
-          grad_op_inputs, grad_op_outputs, is_double_grad);
-      return maker();
-    };
+    info.grad_op_maker_ =
+        [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
+            const OpDesc& fwd_op,
+            const std::unordered_set<std::string>& no_grad_set,
+            std::unordered_map<std::string, std::string>* grad_to_var,
+            const std::vector<BlockDesc*>& grad_block) {
+          CustomGradOpMaker<paddle::framework::OpDesc> maker(
+              fwd_op, no_grad_set, grad_to_var, grad_block, grad_op_name,
+              grad_op_inputs, grad_op_outputs, is_double_grad);
+          return maker();
+        };
 
     // GradOpBaseMaker
-    info.dygraph_grad_op_maker_ = [grad_op_name, grad_op_inputs,
-                                   grad_op_outputs, is_double_grad](
-        const std::string& type,
-        const imperative::NameVarBaseMap& var_base_map_in,
-        const imperative::NameVarBaseMap& var_base_map_out,
-        const framework::AttributeMap& attrs,
-        const framework::AttributeMap& default_attrs,
-        const std::map<std::string, std::string>& inplace_map) {
-      CustomGradOpMaker<paddle::imperative::OpBase> maker(
-          type, var_base_map_in, var_base_map_out, attrs, inplace_map,
-          grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad);
-      maker.SetDygraphDefaultAttrsMap(default_attrs);
-      return maker();
-    };
+    info.dygraph_grad_op_maker_ =
+        [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
+            const std::string& type,
+            const imperative::NameVarBaseMap& var_base_map_in,
+            const imperative::NameVarBaseMap& var_base_map_out,
+            const framework::AttributeMap& attrs,
+            const framework::AttributeMap& default_attrs,
+            const std::map<std::string, std::string>& inplace_map) {
+          CustomGradOpMaker<paddle::imperative::OpBase> maker(
+              type, var_base_map_in, var_base_map_out, attrs, inplace_map,
+              grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad);
+          maker.SetDygraphDefaultAttrsMap(default_attrs);
+          return maker();
+        };
 
     /* Grad op register */
     OpInfo grad_info;
 
     // Grad Op
-    grad_info.creator_ = [](
-        const std::string& type, const VariableNameMap& inputs,
-        const VariableNameMap& outputs, const AttributeMap& attrs) {
-      return new CustomOperator(type, inputs, outputs, attrs);
-    };
+    grad_info.creator_ =
+        [](const std::string& type, const VariableNameMap& inputs,
+           const VariableNameMap& outputs, const AttributeMap& attrs) {
+          return new CustomOperator(type, inputs, outputs, attrs);
+        };
 
     // Grad InferShape
     if (grad_infer_shape_fn == nullptr) {

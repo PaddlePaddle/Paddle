@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/ctr_accessor.h"
+
 #include <gflags/gflags.h>
+
 #include "glog/logging.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -34,6 +36,12 @@ int CtrCommonAccessor::Initialize() {
   common_feature_value.embedx_dim = _config.embedx_dim();
   common_feature_value.embedx_sgd_dim = _embedx_sgd_rule->Dim();
   _show_click_decay_rate = _config.ctr_accessor_param().show_click_decay_rate();
+  _ssd_unseenday_threshold =
+      _config.ctr_accessor_param().ssd_unseenday_threshold();
+
+  if (_config.ctr_accessor_param().show_scale()) {
+    _show_scale = true;
+  }
 
   InitAccessorInfo();
   return 0;
@@ -68,6 +76,25 @@ bool CtrCommonAccessor::Shrink(float* value) {
                               common_feature_value.Click(value));
   auto unseen_days = common_feature_value.UnseenDays(value);
   if (score < delete_threshold || unseen_days > delete_after_unseen_days) {
+    return true;
+  }
+  return false;
+}
+
+bool CtrCommonAccessor::SaveCache(float* value, int param,
+                                  double global_cache_threshold) {
+  auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
+  if (ShowClickScore(common_feature_value.Show(value),
+                     common_feature_value.Click(value)) >= base_threshold &&
+      common_feature_value.UnseenDays(value) <= delta_keep_days) {
+    return common_feature_value.Show(value) > global_cache_threshold;
+  }
+  return false;
+}
+
+bool CtrCommonAccessor::SaveSSD(float* value) {
+  if (common_feature_value.UnseenDays(value) > _ssd_unseenday_threshold) {
     return true;
   }
   return false;
@@ -169,7 +196,7 @@ bool CtrCommonAccessor::NeedExtendMF(float* value) {
   return score >= _config.embedx_threshold();
 }
 
-bool CtrCommonAccessor::HasMF(size_t size) {
+bool CtrCommonAccessor::HasMF(int size) {
   return size > common_feature_value.EmbedxG2SumIndex();
 }
 
@@ -200,11 +227,11 @@ int32_t CtrCommonAccessor::Merge(float** update_values,
                                  const float** other_update_values,
                                  size_t num) {
   auto embedx_dim = _config.embedx_dim();
-  size_t total_dim = CtrCommonPushValue::Dim(embedx_dim);
+  int total_dim = CtrCommonPushValue::Dim(embedx_dim);
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* other_update_value = other_update_values[value_item];
-    for (auto i = 0u; i < total_dim; ++i) {
+    for (int i = 0; i < total_dim; ++i) {
       if (i != CtrCommonPushValue::SlotIndex()) {
         update_value[i] += other_update_value[i];
       }
@@ -233,6 +260,11 @@ int32_t CtrCommonAccessor::Update(float** update_values,
         push_click * _config.ctr_accessor_param().click_coeff();
     update_value[common_feature_value.UnseenDaysIndex()] = 0;
     // TODO(zhaocaibei123): add configure show_scale
+    if (!_show_scale) {
+      push_show = 1;
+    }
+    VLOG(3) << "accessor show scale:" << _show_scale
+            << ", push_show:" << push_show;
     _embed_sgd_rule->UpdateValue(
         update_value + common_feature_value.EmbedWIndex(),
         update_value + common_feature_value.EmbedG2SumIndex(),
