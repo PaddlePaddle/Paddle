@@ -117,16 +117,17 @@ class GeneralGrad {
         auto precedding_nodes = (depending_nodes_)[target_node];
         for (auto pre_nodes : precedding_nodes) {
           queue.push_back(pre_nodes);
+          if (IsInputTargetNodes(pre_nodes)) {
+            needed_nodes_.emplace(pre_nodes);
+          }
           if (IsPotentialStopNodes(pre_nodes)) {
             potential_stop_nodes_.erase(pre_nodes);
-          } else {
-            needed_nodes_.emplace(pre_nodes);
           }
         }
       } else {  // startup_ops have no precedding nodes
         VLOG(6) << "Emplace startup_ops";
         startup_ops.emplace(target_node);
-        needed_nodes_.emplace(target_node);
+        // needed_nodes_.emplace(target_node);
       }
     }
     // Purify potential_startup_nodes_ again, remove some
@@ -334,78 +335,43 @@ class GeneralGrad {
     }
   }
 
-  void SetNextNodeToAccumulationNode(GradNodeBase* node,
-                                     std::shared_ptr<GradNodeBase> next_node) {
-    if (next_node.get()->name() == "GradNodeAccumulation") return;
-    paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
-        nodes_edges = node->MutableOutputMeta();
-    for (size_t i = 0; i < nodes_edges.size(); i++) {
-      for (size_t j = 0; j < nodes_edges[i].size(); j++) {
-        auto edge_ = nodes_edges[i][j].GetEdge();
-        if (edge_.GetGradNode() == next_node.get()) {
-          auto autograd_meta = egr::AutogradMeta(edge_);
-          Edge& node_edge = nodes_edges[i][j].GetMutableEdge();
-          if (grad_node_trans_mapping_.count(next_node.get())) {
-            node_edge.SetGradNode(grad_node_trans_mapping_[next_node.get()]);
-            VLOG(3) << "Setting next_node(" << next_node.get()->name()
-                    << ")to AccumulationNode "
-                    << grad_node_trans_mapping_[next_node.get()].get()
-                    << " for node " << node->name();
-          } else {
-            std::shared_ptr<GradNodeBase> shared_grad_node_accumulation =
-                std::make_shared<egr::GradNodeAccumulation>(&autograd_meta);
-            node_edge.SetGradNode(shared_grad_node_accumulation);
-            grad_node_trans_mapping_[next_node.get()] =
-                shared_grad_node_accumulation;
-            VLOG(3) << "Setting next_node(" << next_node.get()->name()
-                    << ")to AccumulationNode "
-                    << shared_grad_node_accumulation.get() << " for node "
-                    << node->name();
-          }
-        }
-      }
-    }
-  }
-
-  void GenSubGraph(std::queue<GradNodeBase*>* queue) {
-    std::queue<GradNodeBase*> queue_ = *queue;
+  void GenSubGraph(std::deque<GradNodeBase*>* queue) {
+    std::deque<GradNodeBase*> queue_ = *queue;
     std::unordered_set<GradNodeBase*> visited;
 
     while (!queue_.empty()) {
       GradNodeBase* node = queue_.front();
-      queue_.pop();
+      queue_.pop_front();
 
       if (visited.count(node)) {
         continue;
       }
       visited.insert(node);
 
-      const paddle::small_vector<std::vector<GradSlotMeta>,
-                                 kSlotSmallVectorSize>& meta =
-          node->OutputMeta();
+      paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+          meta = node->MutableOutputMeta();
       for (size_t i = 0; i < meta.size(); i++) {
         for (size_t j = 0; j < meta[i].size(); j++) {
-          const Edge& edge = meta[i][j].GetEdge();
+          Edge& edge = meta[i][j].GetMutableEdge();
           std::shared_ptr<GradNodeBase> next_node = edge.GetMutableGradNode();
           if (!next_node) continue;
 
           if (IsInputTargetNodes(node)) {
-            if (meta.size() == 1 && IsPotentialStopNodes(next_node.get())) {
-              VLOG(3) << " trans case 1";
+            if (meta.size() == 1 && IsPotentialStopNodes(next_node.get()) &&
+                !IsNeededNodes(node)) {
+              VLOG(3) << "Setting node: " << node->name() << " addr: " << node
+                      << " to Accumulation node";
               SetNodeToAccumulationNode(node);
             } else if (meta.size() != 1 &&
-                       IsPotentialStopNodes(next_node.get())) {
-              VLOG(3) << " trans case 2";
-              SetNextNodeToAccumulationNode(node, next_node);
-            }
-          } else {
-            if (IsNeededNodes(node) && !IsNeededNodes(next_node.get())) {
-              VLOG(3) << " trans case 3";
-              SetNextNodeToAccumulationNode(node, next_node);
+                       IsPotentialStopNodes(next_node.get()) &&
+                       IsNeededNodes(node)) {
+              VLOG(3) << "Setting empty edge for node: " << node->name()
+                      << " addr: " << node << " in slot:" << i;
+              meta[i][j].SetEdge(egr::Edge());
             }
           }
           // Update BFS queue
-          queue_.push(next_node.get());
+          queue_.push_back(next_node.get());
         }
       }
     }
