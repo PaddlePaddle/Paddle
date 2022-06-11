@@ -40,8 +40,8 @@ class MulPrimOp : public framework::OperatorBase {
 class MulPrimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), The input tensor of mul_p op.");
-    AddInput("Y", "(Tensor), The input tensor of mul_p op.");
+    AddInput("X", "(Tensor), The first input tensor of mul_p op.");
+    AddInput("Y", "(Tensor), The second input tensor of mul_p op.");
     AddOutput("Z", "(Tensor), The output tensor of mul_p op.");
     AddComment(R"DOC(
 Autograd primitive mul_p Operator.

@@ -40,8 +40,8 @@ class DivPrimOp : public framework::OperatorBase {
 class DivPrimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), The input tensor of div_p op.");
-    AddInput("Y", "(Tensor), The input tensor of div_p op.");
+    AddInput("X", "(Tensor), The first input tensor of div_p op.");
+    AddInput("Y", "(Tensor), The second input tensor of div_p op.");
     AddOutput("Z", "(Tensor), The output tensor of div_p op.");
     AddComment(R"DOC(
 Autograd primitive div_p Operator.

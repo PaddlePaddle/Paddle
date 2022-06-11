@@ -40,8 +40,8 @@ class AddPrimOp : public framework::OperatorBase {
 class AddPrimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), The input tensor of add_p op.");
-    AddInput("Y", "(Tensor), The input tensor of add_p op.");
+    AddInput("X", "(Tensor), The first input tensor of add_p op.");
+    AddInput("Y", "(Tensor), The second input tensor of add_p op.");
     AddOutput("Z", "(Tensor), The output tensor of add_p op.");
     AddComment(R"DOC(
 Autograd primitive add_p Operator.

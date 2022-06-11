@@ -41,8 +41,8 @@ class MatmulPrimOp : public framework::OperatorBase {
 class MatmulPrimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), The input tensor of matmul_p op.");
-    AddInput("Y", "(Tensor), The input tensor of matmul_p op.");
+    AddInput("X", "(Tensor), The first input tensor of matmul_p op.");
+    AddInput("Y", "(Tensor), The second input tensor of matmul_p op.");
     AddOutput("Z", "(Tensor), The output tensor of matmul_p op.");
     AddComment(R"DOC(
 Autograd primitive matmul_p Operator.

@@ -40,8 +40,8 @@ class SubPrimOp : public framework::OperatorBase {
 class SubPrimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), The input tensor of sub_p op.");
-    AddInput("Y", "(Tensor), The input tensor of sub_p op.");
+    AddInput("X", "(Tensor), The first input tensor of sub_p op.");
+    AddInput("Y", "(Tensor), The second input tensor of sub_p op.");
     AddOutput("Z", "(Tensor), The output tensor of sub_p op.");
     AddComment(R"DOC(
 Autograd primitive sub_p Operator.
