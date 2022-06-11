@@ -304,12 +304,13 @@ static __global__ void BNForwardTraining2DUpdateOutput(
   int outer_size = C;
   int inner_size = N * HxW;
 
-  extern __shared__ __align__(sizeof(double)) char smem_buf[];
+  extern __shared__ __align__(sizeof(BatchNormParamType<T>)) char smem_buf[];
 
   BatchNormParamType<T> *smem_mean =
       reinterpret_cast<BatchNormParamType<T> *>(smem_buf);
   BatchNormParamType<T> *smem_inv_var =
-      reinterpret_cast<BatchNormParamType<T> *>(&smem_buf[blockDim.x]);
+      reinterpret_cast<BatchNormParamType<T> *>(
+          smem_buf + blockDim.x * sizeof(BatchNormParamType<T>));
 
   int outer_loop_stride = gridDim.x * blockDim.x;
   int inner_loop_stride = gridDim.y * blockDim.y;

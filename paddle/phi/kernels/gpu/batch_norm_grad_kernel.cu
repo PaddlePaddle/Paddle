@@ -593,8 +593,9 @@ void BatchNormGradRawKernel(const Context &ctx,
 #else
       // CUDNN PER_ACTIVATION mode only support small batch size
       const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
-      const bool use_native_kernel =
-          (x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD);
+      // const bool use_native_kernel =
+      //     (x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD);
+      const bool use_native_kernel = true;
       if (use_native_kernel) {
         if (compute_format == DataLayout::kNCHW) {
           BNBackward<T, block, DataLayout::kNCHW>
