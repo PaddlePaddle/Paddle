@@ -25,6 +25,8 @@ function make_ubuntu_dockerfile(){
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q  \
       https://developer.download.nvidia.com/compute/cuda/10.2/Prod/patches/2/cuda_10.2.2_linux.run \&\& \
       bash cuda_10.2.2_linux.run --silent --toolkit" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN apt remove -y libcudnn* --allow-change-held-packages \&\& \
+      apt-get install -y libcudnn8=8.1.0.77-1+cuda10.2 libcudnn8-dev=8.1.0.77-1+cuda10.2 --allow-change-held-packages" ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh ubuntu1604-7234#g' ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
      tar -xzf     hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
