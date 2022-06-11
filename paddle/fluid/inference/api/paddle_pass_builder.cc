@@ -298,7 +298,6 @@ void CpuPassStrategy::EnableMKLDNN() {
              // "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
              "conv_concat_relu_mkldnn_fuse_pass",
-             // TODO(baoachun) fix int8 accuracy
              "conv_activation_mkldnn_fuse_pass",              //
              "scale_matmul_fuse_pass",                        //
              "reshape_transpose_matmul_mkldnn_fuse_pass",     //

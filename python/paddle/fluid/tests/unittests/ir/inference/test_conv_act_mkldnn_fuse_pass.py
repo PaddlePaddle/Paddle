@@ -210,5 +210,6 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(quant=False, max_examples=300, passes=self.passes)
 
+
 if __name__ == "__main__":
     unittest.main()
