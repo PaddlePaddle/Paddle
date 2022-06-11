@@ -2110,7 +2110,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
 
   std::string filename;
   while (this->PickOneFile(&filename)) {
-    VLOG(3) << "PickOneFile, filename=" << filename
+    VLOG(0) << "PickOneFile, filename=" << filename
             << ", thread_id=" << thread_id_;
     platform::Timer timeline;
     timeline.Start();
@@ -2118,8 +2118,9 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
     int lines = 0;
     bool is_ok = true;
     auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
+    size_t idx = filename.find("file://");
     do {
-      if (ps_gpu_ptr->UseAfsApi()) {
+      if (ps_gpu_ptr->UseAfsApi() && idx == std::string::npos) {
         auto afs_reader = ps_gpu_ptr->OpenReader(filename);
         is_ok = parser->ParseFileInstance(
             [this, afs_reader](char* buf, int len) {
@@ -2128,6 +2129,9 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
             pull_record_func, lines);
       } else {
         int err_no = 0;
+        if (idx == 0) {
+            filename = filename.substr(7);
+        }
         this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
 
         CHECK(this->fp_ != nullptr);

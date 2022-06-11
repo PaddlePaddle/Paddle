@@ -744,9 +744,22 @@ class DLManager {
     if (it != handle_map_.end()) {
       return it->second.parser;
     }
+    // load so symbol
+    // 导出libps、core_avx符号给parser共享
+    const std::vector<std::string> packages {"libps.so", "core_avx.so"};
+    for (auto& package : packages) {
+      if (handle_map_.count(package) == 0) {
+        DLHandle handle_ps;
+        handle_ps.module = dlopen(package.c_str(), RTLD_NOW | RTLD_GLOBAL);
+        if (handle_ps.module == nullptr) {
+          VLOG(0) << "Create so of " << package << " fail, " << dlerror();
+        }
+        handle_map_.insert({package, handle_ps});
+      }
+    }
     handle.module = dlopen(name.c_str(), RTLD_NOW);
     if (handle.module == nullptr) {
-      VLOG(0) << "Create so of " << name << " fail";
+      VLOG(0) << "Create so of " << name << " fail, " << dlerror();
       exit(-1);
       return nullptr;
     }

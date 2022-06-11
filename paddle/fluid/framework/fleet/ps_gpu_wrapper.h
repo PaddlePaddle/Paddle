@@ -104,8 +104,7 @@ class PSGPUWrapper {
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
-                  const std::vector<int>& slot_dim,
-                  const int hidden_size);
+                  const std::vector<int>& slot_dim, const int hidden_size);
   void PullSparse(const paddle::platform::Place& place, const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
@@ -354,7 +353,7 @@ class PSGPUWrapper {
     for (auto s : slots_vec_test) {
       std::cout << s << " | ";
     }
-    std::cout << " end wrapper " <<std::endl;
+    std::cout << " end wrapper " << std::endl;
     VLOG(0) << "get slot desc";
     slot_offset_vector_.clear();
     for (auto& slot : slot_vector_) {
@@ -369,7 +368,7 @@ class PSGPUWrapper {
     for (auto s : slot_offset_vector_) {
       std::cout << s << " | ";
     }
-    std::cout << " end " <<std::endl;
+    std::cout << " end " << std::endl;
     for (size_t i = 0; i < slot_mf_dim_vector_.size(); i++) {
       slot_dim_map_[slot_vector_[i]] = slot_mf_dim_vector_[i];
     }
@@ -457,8 +456,8 @@ class PSGPUWrapper {
   std::vector<std::vector<robin_hood::unordered_set<uint64_t>>> thread_keys_;
   std::vector<std::vector<std::vector<robin_hood::unordered_set<uint64_t>>>>
       thread_dim_keys_;
-  int thread_keys_thread_num_ = 37;
-  int thread_keys_shard_num_ = 37;
+  int thread_keys_thread_num_ = 37 * 4;
+  int thread_keys_shard_num_ = 64;
   uint64_t max_fea_num_per_pass_ = 5000000000;
   int year_;
   int month_;

@@ -88,20 +88,20 @@ __global__ void dy_mf_search_kernel(Table* table,
       uint64_t offset = i * pull_feature_value_size;
       FeatureValue* cur = (FeatureValue*)(vals + offset);
       FeatureValue& input = *(FeatureValue*)(it->second);
-      cur->slot    = input.slot;
-      cur->show    = input.show;
-      cur->clk     = input.clk;
+      cur->slot = input.slot;
+      cur->show = input.show;
+      cur->clk = input.clk;
       cur->mf_dim = input.mf_dim;
       cur->lr = input.lr;
       cur->mf_size = input.mf_size;
       cur->cpu_ptr = input.cpu_ptr;
       cur->delta_score = input.delta_score;
       cur->lr_g2sum = input.lr_g2sum;
-      for(int j = 0; j < cur->mf_dim + 1; ++j) {
-         cur->mf[j] = input.mf[j];
+      for (int j = 0; j < cur->mf_dim + 1; ++j) {
+        cur->mf[j] = input.mf[j];
       }
     } else {
-      if (keys[i] != 0) printf("pull miss key: %d",keys[i]);
+      if (keys[i] != 0) printf("pull miss key: %d", keys[i]);
       FeatureValue* cur = (FeatureValue*)(vals + i * pull_feature_value_size);
       cur->delta_score = 0;
       cur->show = 0;
@@ -115,12 +115,11 @@ __global__ void dy_mf_search_kernel(Table* table,
       for (int j = 0; j < cur->mf_dim + 1; j++) {
         cur->mf[j] = 0;
       }
-      
     }
   }
 }
 
-__global__ void  curand_init_kernel(curandState* p_value, int len) {
+__global__ void curand_init_kernel(curandState* p_value, int len) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     curand_init(clock64(), i, 0, p_value + i);
@@ -128,26 +127,26 @@ __global__ void  curand_init_kernel(curandState* p_value, int len) {
 }
 
 class CuRandState {
-public:
+ public:
   CuRandState() = default;
   CuRandState(const CuRandState&) = delete;
   CuRandState(CuRandState&&) = delete;
-  ~CuRandState() {
-    CHECK(cudaFree(states_) == cudaSuccess);
-  }
+  ~CuRandState() { CHECK(cudaFree(states_) == cudaSuccess); }
   curandState* get(size_t size, gpuStream_t stream) {
     if (size > size_) {
       size_t new_size = size * 2;
       curandState* new_state = nullptr;
-      CHECK(cudaMalloc(reinterpret_cast<void**>(&new_state), new_size * sizeof(curandState)) == cudaSuccess);
+      CHECK(cudaMalloc(reinterpret_cast<void**>(&new_state),
+                       new_size * sizeof(curandState)) == cudaSuccess);
       if (size_ > 0) {
-        CHECK(cudaMemcpyAsync(new_state, states_,
-                      size_ * sizeof(curandState), cudaMemcpyDeviceToDevice, stream) == cudaSuccess);
+        CHECK(cudaMemcpyAsync(new_state, states_, size_ * sizeof(curandState),
+                              cudaMemcpyDeviceToDevice, stream) == cudaSuccess);
       }
       int init_len = new_size - size_;
       const int BLOCK_SIZE_{256};
       const int init_kernel_grid = (init_len - 1) / BLOCK_SIZE_ + 1;
-      curand_init_kernel<<<init_kernel_grid, BLOCK_SIZE_, 0, stream>>>(new_state + size_, init_len);
+      curand_init_kernel<<<init_kernel_grid, BLOCK_SIZE_, 0, stream>>>(
+          new_state + size_, init_len);
       if (size_ != 0) {
         CHECK(cudaStreamSynchronize(stream) == cudaSuccess);
         CHECK(cudaFree(states_) == cudaSuccess);
@@ -163,11 +162,9 @@ public:
     return p;
   }
 
-  static std::shared_ptr<CuRandState> get() {
-    return pool().Get();
-  }
+  static std::shared_ptr<CuRandState> get() { return pool().Get(); }
 
-  static void CUDART_CB pushback_cu_rand_state(void *data) {
+  static void CUDART_CB pushback_cu_rand_state(void* data) {
     auto state = static_cast<std::shared_ptr<CuRandState>*>(data);
     pool().Push(std::move(*state));
     delete state;
@@ -175,9 +172,11 @@ public:
 
   static void push(std::shared_ptr<CuRandState> state, gpuStream_t stream) {
     CHECK(cudaLaunchHostFunc(stream, pushback_cu_rand_state,
-      new std::shared_ptr<CuRandState>(std::move(state))) == cudaSuccess); 
+                             new std::shared_ptr<CuRandState>(
+                                 std::move(state))) == cudaSuccess);
   }
-private:
+
+ private:
   size_t size_ = 0;
   curandState* states_ = nullptr;
 };
@@ -185,8 +184,8 @@ private:
 template <typename Table, typename GradType, typename Sgd>
 __global__ void update_kernel(Table* table,
                               const typename Table::key_type* const keys,
-                              const GradType* const grads, curandState* p_state, size_t len,
-                              Sgd sgd) {
+                              const GradType* const grads, curandState* p_state,
+                              size_t len, Sgd sgd) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     auto it = table->find(keys[i]);
@@ -222,7 +221,7 @@ __global__ void dy_mf_update_kernel(Table* table,
       FeaturePushValue* cur = (FeaturePushValue*)(grads + i * grad_value_size);
       sgd.dy_mf_update_value((it.getter())->second, *cur);
     } else {
-      if(keys[i] != 0) printf("push miss key: %d", keys[i]);
+      if (keys[i] != 0) printf("push miss key: %d", keys[i]);
     }
   }
 }
@@ -279,8 +278,7 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
 
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
-                                         char* pool,
-                                         size_t feature_value_size,
+                                         char* pool, size_t feature_value_size,
                                          size_t start_index,
                                          gpuStream_t stream) {
   if (len == 0) {
@@ -290,8 +288,8 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
   if (pool == NULL) {
     return;
   }
-  insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys, len,
-                                                       pool, feature_value_size, start_index);
+  insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+      container_, d_keys, len, pool, feature_value_size, start_index);
 }
 
 template <typename KeyType, typename ValType>
@@ -327,7 +325,12 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
       cpu_val[3] = gpu_val.clk;
       cpu_val[4] = gpu_val.lr;
       cpu_val[5] = gpu_val.lr_g2sum;
-      cpu_val[6] = gpu_val.slot;
+      // useless
+      if (cpu_val[6] <= 0) {
+        cpu_val[6] = gpu_val.slot * -1;
+      } else {
+        cpu_val[6] = gpu_val.slot;
+      }
       if (gpu_val.mf_size > 0) {
         for (int x = 0; x < gpu_val.mf_size; x++) {
           cpu_val[x + 7] = gpu_val.mf[x];
@@ -381,7 +384,8 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
   auto state = CuRandState::get();
   auto d_state = state->get(len, stream);
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-  update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys, d_grads, d_state, len, sgd);
+  update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+      container_, d_keys, d_grads, d_state, len, sgd);
   CuRandState::push(state, stream);
 }
 
