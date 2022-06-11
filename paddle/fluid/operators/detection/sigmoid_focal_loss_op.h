@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <limits>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {

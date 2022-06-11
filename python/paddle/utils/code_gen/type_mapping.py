@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -105,10 +105,14 @@ dense_output_types_map = {
 
 #---------------------- phi selected rows------------------------------
 # type mapping to phi, used in implementation
-sr_input_types_map = {'Tensor': 'const phi::SelectedRows&', }
-
-sr_optional_input_types_map = {
-    'Tensor': 'paddle::optional<const phi::SelectedRows&>',
+sr_input_types_map = {
+    'Tensor': 'const phi::SelectedRows&',
 }
 
-sr_output_types_map = {'Tensor': 'phi::SelectedRows*', }
+sr_optional_input_types_map = {
+    'Tensor': 'const paddle::optional<phi::SelectedRows>&',
+}
+
+sr_output_types_map = {
+    'Tensor': 'phi::SelectedRows*',
+}

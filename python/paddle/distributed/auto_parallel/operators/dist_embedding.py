@@ -34,6 +34,7 @@ from ..utils import _get_comm_group, _get_idx_in_axis, _get_corresponding_rank
 
 
 class DistributedEmbedding(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedEmbedding, self).__init__(op_type)
 
@@ -46,6 +47,7 @@ register_distributed_operator_impl_container(
 
 # RowParallel
 class DistributedEmbeddingImpl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedEmbeddingImpl, self).__init__(name)
         self._forward_implemented = True
@@ -58,8 +60,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         w_name = op_desc.input('W')[0]
         ids_dims_mapping = op_dist_attr.get_input_dims_mapping(ids_name)
         w_dims_mapping = op_dist_attr.get_input_dims_mapping(w_name)
-        if is_dim_replicate(w_dims_mapping[-2]) or is_dim_shard(w_dims_mapping[
-                -1]):
+        if is_dim_replicate(w_dims_mapping[-2]) or is_dim_shard(
+                w_dims_mapping[-1]):
             return False
         # Other dimensions must be replicate except the batch dimension
         for mapping in ids_dims_mapping[1:]:
@@ -215,8 +217,10 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
 
         c_embedding_op = main_block.append_op(
             type='c_embedding',
-            inputs={'Ids': [Ids_var],
-                    'W': [Weight_var]},
+            inputs={
+                'Ids': [Ids_var],
+                'W': [Weight_var]
+            },
             outputs={'Out': [intermediate_var_0]},
             attrs={"start_index": relative_idx})
         if intermediate_var_0.shape != ref_shape:
@@ -295,16 +299,15 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                                                   rank_id)
                     sync_group = new_process_group(group_ranks)
 
-                    startup_block.append_op(
-                        type='c_broadcast',
-                        inputs={'X': param},
-                        outputs={'Out': param},
-                        attrs={
-                            'ring_id': sync_group.id,
-                            'root': 0,
-                            'use_calc_stream': True,
-                            OP_ROLE_KEY: OpRole.Forward
-                        })
+                    startup_block.append_op(type='c_broadcast',
+                                            inputs={'X': param},
+                                            outputs={'Out': param},
+                                            attrs={
+                                                'ring_id': sync_group.id,
+                                                'root': 0,
+                                                'use_calc_stream': True,
+                                                OP_ROLE_KEY: OpRole.Forward
+                                            })
             startup_block._sync_with_cpp()
 
     @staticmethod
@@ -440,21 +443,21 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
 
         if need_gradient_allreduce:
             W_Grad_var = main_block.var(kwargs['W@GRAD'][0])
-            allreduce_op = main_block.append_op(
-                type='c_allreduce_sum',
-                inputs={'X': [W_Grad_var]},
-                outputs={'Out': [W_Grad_var]},
-                attrs={
-                    'ring_id': dp_group.id,
-                    'use_calc_stream': True,
-                    OP_ROLE_KEY: OpRole.Backward
-                })
-            scale_op = main_block.append_op(
-                type='scale',
-                inputs={'X': W_Grad_var},
-                outputs={'Out': W_Grad_var},
-                attrs={'scale': 1.0 / dp_degree,
-                       OP_ROLE_KEY: OpRole.Backward})
+            allreduce_op = main_block.append_op(type='c_allreduce_sum',
+                                                inputs={'X': [W_Grad_var]},
+                                                outputs={'Out': [W_Grad_var]},
+                                                attrs={
+                                                    'ring_id': dp_group.id,
+                                                    'use_calc_stream': True,
+                                                    OP_ROLE_KEY: OpRole.Backward
+                                                })
+            scale_op = main_block.append_op(type='scale',
+                                            inputs={'X': W_Grad_var},
+                                            outputs={'Out': W_Grad_var},
+                                            attrs={
+                                                'scale': 1.0 / dp_degree,
+                                                OP_ROLE_KEY: OpRole.Backward
+                                            })
             main_block._sync_with_cpp()
 
             dims_mapping = ctx.get_tensor_dist_attr_for_program(

@@ -88,8 +88,9 @@ class LayerNormGradXPUKernel : public framework::OpKernel<T> {
     auto* dscale_data =
         (dscale == nullptr ? nullptr
                            : dscale->mutable_data<float>(ctx.GetPlace()));
-    auto* dbias_data = (dbias == nullptr ? nullptr : dbias->mutable_data<float>(
-                                                         ctx.GetPlace()));
+    auto* dbias_data =
+        (dbias == nullptr ? nullptr
+                          : dbias->mutable_data<float>(ctx.GetPlace()));
     auto* dx_data =
         (dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();

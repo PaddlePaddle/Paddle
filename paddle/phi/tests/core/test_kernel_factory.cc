@@ -15,12 +15,11 @@ limitations under the License. */
 #include <iostream>
 #include <sstream>
 
+#include "gtest/gtest.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "gtest/gtest.h"
 
 PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 

@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 import sys
 import os
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -28,6 +29,7 @@ SEED = 2021
 
 
 class TestUpdateLossScalingOpMinLossScalingBad(TestUpdateLossScalingOpBad):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "update_loss_scaling"

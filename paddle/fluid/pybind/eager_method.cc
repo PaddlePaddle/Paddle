@@ -21,9 +21,6 @@ typedef SSIZE_T ssize_t;
 #include <unordered_map>
 #include <vector>
 
-#include "pybind11/numpy.h"
-#include "pybind11/pybind11.h"
-
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
@@ -47,12 +44,15 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "pybind11/detail/internals.h"
+#include "pybind11/numpy.h"
+#include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace pybind {
@@ -494,7 +494,8 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
   }
 
   paddle::experimental::Tensor* grad;
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(grad != nullptr,
                    paddle::platform::errors::Fatal(
@@ -517,7 +518,15 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
     } else if (grad->is_dense_tensor()) {
       if (grad->initialized()) {
         if (set_to_zero) {
-          grad->set_impl(paddle::experimental::zeros_like(*grad).impl());
+          auto* grad_t = static_cast<phi::DenseTensor*>(grad->impl().get());
+          auto* dev_ctx =
+              platform::DeviceContextPool::Instance().Get(grad_t->place());
+          phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
+          if (is_leaf) {
+            std::static_pointer_cast<egr::GradNodeAccumulation>(
+                egr::EagerUtils::grad_node(self->tensor))
+                ->SetFakeEmpty(true);
+          }
         } else {
           VLOG(4) << "Gradient of " << self->tensor.name()
                   << " is initialized, will be released.";
@@ -549,13 +558,26 @@ static PyObject* tensor__zero_grads(TensorObject* self, PyObject* args,
                        "Please check if you have manually cleared"
                        "the grad inside autograd_meta"));
     if (grad->initialized()) {
-      grad->set_impl(paddle::experimental::zeros_like(*(grad)).impl());
+      if (grad->is_dense_tensor()) {
+        auto* t = static_cast<phi::DenseTensor*>(grad->impl().get());
+        auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
+        phi::funcs::set_constant(*dev_ctx, t, 0.0);
+      } else {
+        grad->set_impl(paddle::experimental::zeros_like(*(grad)).impl());
+      }
     }
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
     if (meta->MutableGrad()->initialized()) {
-      meta->MutableGrad()->set_impl(
-          paddle::experimental::zeros_like(*(meta->MutableGrad())).impl());
+      if (meta->MutableGrad()->is_dense_tensor()) {
+        auto* t =
+            static_cast<phi::DenseTensor*>(meta->MutableGrad()->impl().get());
+        auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
+        phi::funcs::set_constant(*dev_ctx, t, 0.0);
+      } else {
+        meta->MutableGrad()->set_impl(
+            paddle::experimental::zeros_like(*(meta->MutableGrad())).impl());
+      }
     }
   }
 
@@ -984,10 +1006,11 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       PADDLE_ENFORCE_EQ(
           egr::egr_utils_api::IsLeafTensor(self->tensor) &&
               !egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient(),
-          false, platform::errors::InvalidArgument(
-                     "Leaf Tensor (%s) that doesn't stop gradient can't use "
-                     "inplace strategy.",
-                     self->tensor.name()));
+          false,
+          platform::errors::InvalidArgument(
+              "Leaf Tensor (%s) that doesn't stop gradient can't use "
+              "inplace strategy.",
+              self->tensor.name()));
     }
 
     paddle::experimental::Tensor value_tensor;
@@ -1209,9 +1232,10 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self, PyObject* args,
                         "Only can register backward hook for leaf Tensor."));
   PADDLE_ENFORCE_EQ(
       !egr::EagerUtils::unsafe_autograd_meta(self->tensor)->StopGradient(),
-      true, platform::errors::InvalidArgument(
-                "Cannot register backward hook on a Tensor that stop "
-                "gradient."));
+      true,
+      platform::errors::InvalidArgument(
+          "Cannot register backward hook on a Tensor that stop "
+          "gradient."));
   PADDLE_ENFORCE(
       grad_node.get() != nullptr,
       paddle::platform::errors::Fatal("Detected NULL grad_node,"
@@ -1644,8 +1668,8 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method__is_initialized,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_is_dense_tensor_hold_allocation",
-     (PyCFunction)(
-         void (*)(void))tensor_method__is_dense_tensor_hold_allocation,
+     (PyCFunction)(void (*)(
+         void))tensor_method__is_dense_tensor_hold_allocation,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_copy_to", (PyCFunction)(void (*)(void))tensor_method__copy_to,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -1770,8 +1794,8 @@ PyMethodDef string_tensor_variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method__is_initialized,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_is_string_tensor_hold_allocation",
-     (PyCFunction)(
-         void (*)(void))tensor_method__is_string_tensor_hold_allocation,
+     (PyCFunction)(void (*)(
+         void))tensor_method__is_string_tensor_hold_allocation,
      METH_VARARGS | METH_KEYWORDS, NULL},
     // TODO(zhoushunjie): Need to add _copy_to, copy_ for StringTensor.
     {NULL, NULL, 0, NULL}};

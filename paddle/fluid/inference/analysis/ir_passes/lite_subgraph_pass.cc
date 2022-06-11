@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/analysis/ir_passes/lite_subgraph_pass.h"
+
 #include <algorithm>
+#include <fstream>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <set>
@@ -21,28 +25,22 @@
 #include <unordered_set>
 #include <vector>
 
-#include <fstream>
-#include <iostream>
-
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/inference/lite/op_teller.h"
-#include "paddle/fluid/inference/utils/singleton.h"
-
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
-#include "paddle/fluid/inference/analysis/ir_passes/lite_subgraph_pass.h"
-#include "paddle/fluid/string/pretty_log.h"
-
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/lite/engine.h"
+#include "paddle/fluid/inference/lite/op_teller.h"
+#include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-using framework::ir::Node;
 using framework::ir::Agent;
-using framework::ir::SubGraphFuser;
 using framework::ir::Graph;
+using framework::ir::Node;
+using framework::ir::SubGraphFuser;
 
 namespace lite {
 
@@ -268,7 +266,7 @@ void LiteSubgraphPass::SetUpEngine(
   auto nnadapter_model_cache_token =
       Get<std::vector<std::string>>("nnadapter_model_cache_token");
 
-  lite_api::TargetType target_type;
+  lite_api::TargetType target_type = TARGET(kX86);
   if (use_gpu) {
     target_type = TARGET(kCUDA);
   } else if (use_xpu) {

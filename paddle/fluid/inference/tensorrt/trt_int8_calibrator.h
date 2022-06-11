@@ -16,6 +16,7 @@
 
 #include <NvInfer.h>
 #include <cuda_runtime_api.h>
+
 #include <atomic>
 #include <memory>
 #include <mutex>  // NOLINT

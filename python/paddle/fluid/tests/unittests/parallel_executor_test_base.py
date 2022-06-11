@@ -32,6 +32,7 @@ DeviceType = core.DeviceType
 
 
 class TestParallelExecutorBase(unittest.TestCase):
+
     @classmethod
     def check_network_convergence(cls,
                                   method,
@@ -52,6 +53,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   optimizer=fluid.optimizer.Adam,
                                   use_fast_executor=False,
                                   enable_sequential_execution=False):
+
         def run_executor(exe, binary, feed, fetch_list):
             if feed_data_reader is None:
                 res = exe.run(binary, feed=feed, fetch_list=fetch_list)
@@ -102,17 +104,21 @@ class TestParallelExecutorBase(unittest.TestCase):
                 os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
 
         begin = time.time()
-        first_loss, = run_executor(
-            exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name])
+        first_loss, = run_executor(exe=exe,
+                                   binary=binary,
+                                   feed=feed_dict,
+                                   fetch_list=[loss.name])
         for _ in range(iter):
             run_executor(exe=exe, binary=binary, feed=feed_dict, fetch_list=[])
-        last_loss, = run_executor(
-            exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name])
+        last_loss, = run_executor(exe=exe,
+                                  binary=binary,
+                                  feed=feed_dict,
+                                  fetch_list=[loss.name])
         end = time.time()
 
         if batch_size is not None:
-            print("%.4f Instance per second" % (
-                (batch_size * iter + 2) / (end - begin)))
+            print("%.4f Instance per second" % ((batch_size * iter + 2) /
+                                                (end - begin)))
 
         avg_last_loss_val = np.array(last_loss).mean()
         avg_first_loss_val = np.array(first_loss).mean()

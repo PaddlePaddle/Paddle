@@ -91,6 +91,10 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, scale_matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, scale_matmul_pattern);
 
+    if ((scale_out->outputs).size() != 1) {
+      return;
+    }
+
     if (scale_op->Op()->GetAttrIfExists<float>("bias") == 0.0) {
       auto matmul_alpha = matmul_op->Op()->GetAttrIfExists<float>("alpha");
       auto scale_scale = scale_op->Op()->GetAttrIfExists<float>("scale");

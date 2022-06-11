@@ -15,6 +15,7 @@
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 
 #include <thread>  // NOLINT
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"

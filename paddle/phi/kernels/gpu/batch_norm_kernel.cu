@@ -20,21 +20,18 @@
 namespace cub = hipcub;
 #endif
 
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/operators/layout_utils.h"
+#include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-
-#include "paddle/fluid/operators/norm_utils.cu.h"
-#include "paddle/fluid/operators/norm_utils.h"
-
-#include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/operators/layout_utils.h"
-#include "paddle/fluid/platform/enforce.h"
-
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/kernels/gpu/batch_norm_utils.h"
 
 #ifdef __HIPCC__
@@ -263,20 +260,20 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTrainingWellford(
 
 template <typename T, int BlockDim, phi::DataLayout layout>
 static __global__
-    LAUNCH_BOUNDS(BlockDim) void BNForwardTrainingWellfordParallel(
-        const T *x,
-        const BatchNormParamType<T> *scale,
-        const BatchNormParamType<T> *bias,
-        const int C,
-        const int N,
-        const int HxW,
-        const double epsilon,
-        double exponentialAverageFactor,
-        T *y,
-        BatchNormParamType<T> *mean,
-        BatchNormParamType<T> *variance,
-        BatchNormParamType<T> *save_mean,
-        BatchNormParamType<T> *save_inv_variance) {
+LAUNCH_BOUNDS(BlockDim) void BNForwardTrainingWellfordParallel(
+    const T *x,
+    const BatchNormParamType<T> *scale,
+    const BatchNormParamType<T> *bias,
+    const int C,
+    const int N,
+    const int HxW,
+    const double epsilon,
+    double exponentialAverageFactor,
+    T *y,
+    BatchNormParamType<T> *mean,
+    BatchNormParamType<T> *variance,
+    BatchNormParamType<T> *save_mean,
+    BatchNormParamType<T> *save_inv_variance) {
   int outer_size = C;
   int inner_size = N * HxW;
   __shared__ BatchNormParamType<T> mean_val;
@@ -732,22 +729,20 @@ inline bool TryDispatchBNForwardTrainingSMem(
   const int max_threads = ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(max_threads / block_size, 1);
   const int grid = std::min(C, max_blocks);
-  BNForwardTrainingSMem<T,
-                        block_size,
-                        layout><<<grid, block_size, smem, ctx.stream()>>>(
-      x,
-      scale,
-      bias,
-      C,
-      N,
-      HxW,
-      epsilon,
-      exponentialAverageFactor,
-      y,
-      mean,
-      variance,
-      save_mean,
-      save_inv_variance);
+  BNForwardTrainingSMem<T, block_size, layout>
+      <<<grid, block_size, smem, ctx.stream()>>>(x,
+                                                 scale,
+                                                 bias,
+                                                 C,
+                                                 N,
+                                                 HxW,
+                                                 epsilon,
+                                                 exponentialAverageFactor,
+                                                 y,
+                                                 mean,
+                                                 variance,
+                                                 save_mean,
+                                                 save_inv_variance);
   return true;
 }
 
@@ -795,22 +790,20 @@ inline void DispatchBNForwardTraining(
       const int max_threads = ctx.GetMaxPhysicalThreadCount();
       const int max_blocks = std::max(max_threads / block, 1);
       const int grid = std::min(C, max_blocks);
-      return BNForwardTraining<T,
-                               block,
-                               layout><<<grid, block, 0, ctx.stream()>>>(
-          x,
-          scale,
-          bias,
-          C,
-          N,
-          HxW,
-          epsilon,
-          exponentialAverageFactor,
-          y,
-          mean,
-          variance,
-          save_mean,
-          save_inv_variance);
+      return BNForwardTraining<T, block, layout>
+          <<<grid, block, 0, ctx.stream()>>>(x,
+                                             scale,
+                                             bias,
+                                             C,
+                                             N,
+                                             HxW,
+                                             epsilon,
+                                             exponentialAverageFactor,
+                                             y,
+                                             mean,
+                                             variance,
+                                             save_mean,
+                                             save_inv_variance);
     }
   }
 }
@@ -854,7 +847,7 @@ void BatchNormKernel(const Context &ctx,
 
   ctx.template Alloc<T>(y);
   int N, C, H, W, D;
-  paddle::operators::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 
@@ -1028,33 +1021,31 @@ void BatchNormKernel(const Context &ctx,
     const int block_size = 256;
     const int grid_size = (N * C * H * W * D + block_size - 1) / block_size;
     if (compute_format == DataLayout::kNCHW) {
-      BNForwardInference<
-          T,
-          DataLayout::kNCHW><<<grid_size, block_size, 0, ctx.stream()>>>(
-          transformed_x.template data<T>(),
-          est_mean->template data<BatchNormParamType<T>>(),
-          est_var->template data<BatchNormParamType<T>>(),
-          scale.template data<BatchNormParamType<T>>(),
-          bias.template data<BatchNormParamType<T>>(),
-          C,
-          N,
-          H * W * D,
-          epsilon,
-          transformed_y.template data<T>());
+      BNForwardInference<T, DataLayout::kNCHW>
+          <<<grid_size, block_size, 0, ctx.stream()>>>(
+              transformed_x.template data<T>(),
+              est_mean->template data<BatchNormParamType<T>>(),
+              est_var->template data<BatchNormParamType<T>>(),
+              scale.template data<BatchNormParamType<T>>(),
+              bias.template data<BatchNormParamType<T>>(),
+              C,
+              N,
+              H * W * D,
+              epsilon,
+              transformed_y.template data<T>());
     } else {
-      BNForwardInference<
-          T,
-          DataLayout::kNHWC><<<grid_size, block_size, 0, ctx.stream()>>>(
-          transformed_x.template data<T>(),
-          est_mean->template data<BatchNormParamType<T>>(),
-          est_var->template data<BatchNormParamType<T>>(),
-          scale.template data<BatchNormParamType<T>>(),
-          bias.template data<BatchNormParamType<T>>(),
-          C,
-          N,
-          H * W * D,
-          epsilon,
-          transformed_y.template data<T>());
+      BNForwardInference<T, DataLayout::kNHWC>
+          <<<grid_size, block_size, 0, ctx.stream()>>>(
+              transformed_x.template data<T>(),
+              est_mean->template data<BatchNormParamType<T>>(),
+              est_var->template data<BatchNormParamType<T>>(),
+              scale.template data<BatchNormParamType<T>>(),
+              bias.template data<BatchNormParamType<T>>(),
+              C,
+              N,
+              H * W * D,
+              epsilon,
+              transformed_y.template data<T>());
     }
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1133,39 +1124,37 @@ void BatchNormKernel(const Context &ctx,
       const int max_blocks = std::max(max_threads / block, 1);
       const int grid = std::min(C, max_blocks);
       if (compute_format == DataLayout::kNCHW) {
-        BNForwardTraining<T,
-                          block,
-                          DataLayout::kNCHW><<<grid, block, 0, ctx.stream()>>>(
-            transformed_x.template data<T>(),
-            scale.template data<BatchNormParamType<T>>(),
-            bias.template data<BatchNormParamType<T>>(),
-            C,
-            N,
-            H * W * D,
-            epsilon,
-            this_factor,
-            transformed_y.template data<T>(),
-            mean_out->template data<BatchNormParamType<T>>(),
-            variance_out->template data<BatchNormParamType<T>>(),
-            saved_mean->template data<BatchNormParamType<T>>(),
-            saved_variance->template data<BatchNormParamType<T>>());
+        BNForwardTraining<T, block, DataLayout::kNCHW>
+            <<<grid, block, 0, ctx.stream()>>>(
+                transformed_x.template data<T>(),
+                scale.template data<BatchNormParamType<T>>(),
+                bias.template data<BatchNormParamType<T>>(),
+                C,
+                N,
+                H * W * D,
+                epsilon,
+                this_factor,
+                transformed_y.template data<T>(),
+                mean_out->template data<BatchNormParamType<T>>(),
+                variance_out->template data<BatchNormParamType<T>>(),
+                saved_mean->template data<BatchNormParamType<T>>(),
+                saved_variance->template data<BatchNormParamType<T>>());
       } else {
-        BNForwardTraining<T,
-                          block,
-                          DataLayout::kNHWC><<<grid, block, 0, ctx.stream()>>>(
-            transformed_x.template data<T>(),
-            scale.template data<BatchNormParamType<T>>(),
-            bias.template data<BatchNormParamType<T>>(),
-            C,
-            N,
-            H * W * D,
-            epsilon,
-            this_factor,
-            transformed_y.template data<T>(),
-            mean_out->template data<BatchNormParamType<T>>(),
-            variance_out->template data<BatchNormParamType<T>>(),
-            saved_mean->template data<BatchNormParamType<T>>(),
-            saved_variance->template data<BatchNormParamType<T>>());
+        BNForwardTraining<T, block, DataLayout::kNHWC>
+            <<<grid, block, 0, ctx.stream()>>>(
+                transformed_x.template data<T>(),
+                scale.template data<BatchNormParamType<T>>(),
+                bias.template data<BatchNormParamType<T>>(),
+                C,
+                N,
+                H * W * D,
+                epsilon,
+                this_factor,
+                transformed_y.template data<T>(),
+                mean_out->template data<BatchNormParamType<T>>(),
+                variance_out->template data<BatchNormParamType<T>>(),
+                saved_mean->template data<BatchNormParamType<T>>(),
+                saved_variance->template data<BatchNormParamType<T>>());
       }
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1244,77 +1233,71 @@ void BatchNormKernel(const Context &ctx,
         }
 
         if (compute_format == DataLayout::kNCHW) {
-          BNForwardTraining2DComputeStatistic<
-              T,
-              block_size,
-              DataLayout::kNCHW><<<grid, block, 0, ctx.stream()>>>(
-              transformed_x.template data<T>(),
-              scale.template data<BatchNormParamType<T>>(),
-              bias.template data<BatchNormParamType<T>>(),
-              C,
-              N,
-              H * W * D,
-              epsilon,
-              this_factor,
-              transformed_y.template data<T>(),
-              mean_out->template data<BatchNormParamType<T>>(),
-              variance_out->template data<BatchNormParamType<T>>(),
-              saved_mean->template data<BatchNormParamType<T>>(),
-              saved_variance->template data<BatchNormParamType<T>>(),
-              compute_mean_tensor.data<BatchNormParamType<T>>(),
-              compute_inv_var_tensor.data<BatchNormParamType<T>>(),
-              block_data_ptr,
-              flag_ptr);
+          BNForwardTraining2DComputeStatistic<T, block_size, DataLayout::kNCHW>
+              <<<grid, block, 0, ctx.stream()>>>(
+                  transformed_x.template data<T>(),
+                  scale.template data<BatchNormParamType<T>>(),
+                  bias.template data<BatchNormParamType<T>>(),
+                  C,
+                  N,
+                  H * W * D,
+                  epsilon,
+                  this_factor,
+                  transformed_y.template data<T>(),
+                  mean_out->template data<BatchNormParamType<T>>(),
+                  variance_out->template data<BatchNormParamType<T>>(),
+                  saved_mean->template data<BatchNormParamType<T>>(),
+                  saved_variance->template data<BatchNormParamType<T>>(),
+                  compute_mean_tensor.data<BatchNormParamType<T>>(),
+                  compute_inv_var_tensor.data<BatchNormParamType<T>>(),
+                  block_data_ptr,
+                  flag_ptr);
 
           size_t smem_size = block.x * 2 * sizeof(BatchNormParamType<T>);
-          BNForwardTraining2DUpdateOutput<
-              T,
-              DataLayout::kNCHW><<<grid, block, smem_size, ctx.stream()>>>(
-              transformed_x.template data<T>(),
-              scale.template data<BatchNormParamType<T>>(),
-              bias.template data<BatchNormParamType<T>>(),
-              C,
-              N,
-              H * W * D,
-              transformed_y.template data<T>(),
-              compute_mean_tensor.data<BatchNormParamType<T>>(),
-              compute_inv_var_tensor.data<BatchNormParamType<T>>());
+          BNForwardTraining2DUpdateOutput<T, DataLayout::kNCHW>
+              <<<grid, block, smem_size, ctx.stream()>>>(
+                  transformed_x.template data<T>(),
+                  scale.template data<BatchNormParamType<T>>(),
+                  bias.template data<BatchNormParamType<T>>(),
+                  C,
+                  N,
+                  H * W * D,
+                  transformed_y.template data<T>(),
+                  compute_mean_tensor.data<BatchNormParamType<T>>(),
+                  compute_inv_var_tensor.data<BatchNormParamType<T>>());
         } else {
-          BNForwardTraining2DComputeStatistic<
-              T,
-              block_size,
-              DataLayout::kNHWC><<<grid, block, 0, ctx.stream()>>>(
-              transformed_x.template data<T>(),
-              scale.template data<BatchNormParamType<T>>(),
-              bias.template data<BatchNormParamType<T>>(),
-              C,
-              N,
-              H * W * D,
-              epsilon,
-              this_factor,
-              transformed_y.template data<T>(),
-              mean_out->template data<BatchNormParamType<T>>(),
-              variance_out->template data<BatchNormParamType<T>>(),
-              saved_mean->template data<BatchNormParamType<T>>(),
-              saved_variance->template data<BatchNormParamType<T>>(),
-              compute_mean_tensor.data<BatchNormParamType<T>>(),
-              compute_inv_var_tensor.data<BatchNormParamType<T>>(),
-              block_data_ptr,
-              flag_ptr);
+          BNForwardTraining2DComputeStatistic<T, block_size, DataLayout::kNHWC>
+              <<<grid, block, 0, ctx.stream()>>>(
+                  transformed_x.template data<T>(),
+                  scale.template data<BatchNormParamType<T>>(),
+                  bias.template data<BatchNormParamType<T>>(),
+                  C,
+                  N,
+                  H * W * D,
+                  epsilon,
+                  this_factor,
+                  transformed_y.template data<T>(),
+                  mean_out->template data<BatchNormParamType<T>>(),
+                  variance_out->template data<BatchNormParamType<T>>(),
+                  saved_mean->template data<BatchNormParamType<T>>(),
+                  saved_variance->template data<BatchNormParamType<T>>(),
+                  compute_mean_tensor.data<BatchNormParamType<T>>(),
+                  compute_inv_var_tensor.data<BatchNormParamType<T>>(),
+                  block_data_ptr,
+                  flag_ptr);
 
           size_t smem_size = block.x * 2 * sizeof(BatchNormParamType<T>);
-          BNForwardTraining2DUpdateOutput<
-              T,
-              DataLayout::kNHWC><<<grid, block, smem_size, ctx.stream()>>>(
-              transformed_x.template data<T>(),
-              scale.template data<BatchNormParamType<T>>(),
-              bias.template data<BatchNormParamType<T>>(),
-              C,
-              N,
-              H * W * D,
-              transformed_y.template data<T>(),
-              compute_mean_tensor.data<BatchNormParamType<T>>(),
-              compute_inv_var_tensor.data<BatchNormParamType<T>>());
+          BNForwardTraining2DUpdateOutput<T, DataLayout::kNHWC>
+              <<<grid, block, smem_size, ctx.stream()>>>(
+                  transformed_x.template data<T>(),
+                  scale.template data<BatchNormParamType<T>>(),
+                  bias.template data<BatchNormParamType<T>>(),
+                  C,
+                  N,
+                  H * W * D,
+                  transformed_y.template data<T>(),
+                  compute_mean_tensor.data<BatchNormParamType<T>>(),
+                  compute_inv_var_tensor.data<BatchNormParamType<T>>());
         }
       } else {
 #if CUDNN_VERSION_MIN(7, 4, 1)

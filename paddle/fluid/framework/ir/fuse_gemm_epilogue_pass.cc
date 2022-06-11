@@ -14,13 +14,21 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_gemm_epilogue_pass.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+static void GetTransposeAttrsFromOp(const OpDesc &op, bool *trans_x,
+                                    bool *trans_y) {
+  *trans_x = BOOST_GET_CONST(bool, op.GetAttr("trans_x"));
+  *trans_y = BOOST_GET_CONST(bool, op.GetAttr("trans_y"));
+}
 
 void FuseGemmEpiloguePass::ApplyImpl(ir::Graph *graph) const {
   EpiloguePassActivationCache cache;
@@ -75,6 +83,9 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
     if (!IsGemmFromLinear_(matmul_x_shape, matmul_w_shape, matmul_op_desc))
       return;
 
+    bool trans_x, trans_y;
+    GetTransposeAttrsFromOp(*matmul_op_desc, &trans_x, &trans_y);
+
     OpDesc fused_gemm_epilogue_op_desc(matmul_op->Op()->Block());
     std::string activation = "none";
     fused_gemm_epilogue_op_desc.SetType("fused_gemm_epilogue");
@@ -85,6 +96,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
     fused_gemm_epilogue_op_desc.SetAttr("activation", activation);
     fused_gemm_epilogue_op_desc.SetAttr("op_role",
                                         matmul_op_desc->GetAttr("op_role"));
+    fused_gemm_epilogue_op_desc.SetAttr("trans_x", trans_x);
+    fused_gemm_epilogue_op_desc.SetAttr("trans_y", trans_y);
     auto gemm_epilogue_node = g->CreateOpNode(&fused_gemm_epilogue_op_desc);
 
     IR_NODE_LINK_TO(subgraph.at(x), gemm_epilogue_node);
@@ -154,6 +167,9 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
 
     auto activation = act_op->Op()->Type();
 
+    bool trans_x, trans_y;
+    GetTransposeAttrsFromOp(*matmul_op_desc, &trans_x, &trans_y);
+
     OpDesc fused_gemm_epilogue_op_desc(matmul_op->Op()->Block());
     fused_gemm_epilogue_op_desc.SetType("fused_gemm_epilogue");
     fused_gemm_epilogue_op_desc.SetInput("X", {subgraph.at(x)->Name()});
@@ -163,6 +179,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
     fused_gemm_epilogue_op_desc.SetAttr("activation", activation);
     fused_gemm_epilogue_op_desc.SetAttr("op_role",
                                         matmul_op_desc->GetAttr("op_role"));
+    fused_gemm_epilogue_op_desc.SetAttr("trans_x", trans_x);
+    fused_gemm_epilogue_op_desc.SetAttr("trans_y", trans_y);
 
     auto gemm_epilogue_node = g->CreateOpNode(&fused_gemm_epilogue_op_desc);
 
@@ -274,6 +292,9 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
                            matmul_grad_op_desc))
       return;
 
+    bool trans_x, trans_y;
+    GetTransposeAttrsFromOp(*matmul_grad_op_desc, &trans_x, &trans_y);
+
     OpDesc fused_gemm_epilogue_grad_op_desc(ele_add_grad_op->Op()->Block());
     std::string activation_grad = "none";
     fused_gemm_epilogue_grad_op_desc.SetType("fused_gemm_epilogue_grad");
@@ -292,6 +313,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
                                              activation_grad);
     fused_gemm_epilogue_grad_op_desc.SetAttr(
         "op_role", matmul_grad_op_desc->GetAttr("op_role"));
+    fused_gemm_epilogue_grad_op_desc.SetAttr("trans_x", trans_x);
+    fused_gemm_epilogue_grad_op_desc.SetAttr("trans_y", trans_y);
 
     auto gemm_epilogue_grad_node =
         g->CreateOpNode(&fused_gemm_epilogue_grad_op_desc);
@@ -394,6 +417,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
 
     auto activation_grad = act_grad_op->Op()->Type();
 
+    bool trans_x, trans_y;
+    GetTransposeAttrsFromOp(*matmul_grad_op_desc, &trans_x, &trans_y);
     OpDesc fused_gemm_epilogue_grad_op_desc(ele_add_grad_op->Op()->Block());
     fused_gemm_epilogue_grad_op_desc.SetType("fused_gemm_epilogue_grad");
     fused_gemm_epilogue_grad_op_desc.SetInput("DOut",
@@ -410,6 +435,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
                                              activation_grad);
     fused_gemm_epilogue_grad_op_desc.SetAttr(
         "op_role", matmul_grad_op_desc->GetAttr("op_role"));
+    fused_gemm_epilogue_grad_op_desc.SetAttr("trans_x", trans_x);
+    fused_gemm_epilogue_grad_op_desc.SetAttr("trans_y", trans_y);
 
     auto gemm_epilogue_grad_node =
         g->CreateOpNode(&fused_gemm_epilogue_grad_op_desc);
@@ -456,10 +483,6 @@ bool FuseGemmEpiloguePass::IsGemmFromLinear_(
       if (tmp_vec.size() > 0) return false;
     }
   }
-  if (BOOST_GET_CONST(bool, matmul_v2_op->GetAttr("trans_x")) ||
-      BOOST_GET_CONST(bool, matmul_v2_op->GetAttr("trans_y")))
-    return false;
-
   return true;
 }
 

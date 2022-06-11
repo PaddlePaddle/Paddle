@@ -93,7 +93,7 @@ void ExpandAs(const Context& context,
 template <typename T, typename Context>
 void ExpandAsKernel(const Context& ctx,
                     const DenseTensor& x,
-                    paddle::optional<const DenseTensor&> y,
+                    const paddle::optional<DenseTensor>& y,
                     const std::vector<int>& target_shape,
                     DenseTensor* out) {
   auto rank = x.dims().size();

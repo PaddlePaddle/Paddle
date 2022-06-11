@@ -32,8 +32,9 @@ class BackendSet final {
  public:
   constexpr BackendSet() : bitset_(0) {}
   explicit constexpr BackendSet(Backend b)
-      : bitset_(b == Backend::UNDEFINED ? 0 : 1ULL << (static_cast<uint8_t>(b) -
-                                                       1)) {}
+      : bitset_(b == Backend::UNDEFINED
+                    ? 0
+                    : 1ULL << (static_cast<uint8_t>(b) - 1)) {}
 
   inline uint64_t bitset() const { return bitset_; }
 

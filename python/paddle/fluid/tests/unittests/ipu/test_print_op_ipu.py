@@ -23,6 +23,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -49,10 +50,9 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(
-            name=self.feed_list[0],
-            shape=self.feed_shape[0],
-            dtype=self.feed_dtype[0])
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype=self.feed_dtype[0])
         out = paddle.fluid.layers.conv2d(x, num_filters=3, filter_size=3)
         out = paddle.fluid.layers.Print(out, **self.attrs)
 
@@ -75,11 +75,13 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {"message": "input_data"}
 
 
 class TestTrainCase1(TestBase):
+
     def set_op_attrs(self):
         # "forward" : print forward
         # "backward" : print forward and backward
@@ -93,6 +95,7 @@ class TestTrainCase1(TestBase):
 
 @unittest.skip("attrs are not supported")
 class TestCase2(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {
             "first_n": 10,

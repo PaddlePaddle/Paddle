@@ -119,10 +119,10 @@ struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
         quant_stride *= in_dims[i];
       }
 
-      DequantizeOneScaleQuantAxisN<
-          T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-          in_data, scale_factor, max_range, num, in_dims[quant_axis],
-          quant_stride, out_data);
+      DequantizeOneScaleQuantAxisN<T>
+          <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+              in_data, scale_factor, max_range, num, in_dims[quant_axis],
+              quant_stride, out_data);
     } else if (scale_num == 2) {
       // Not need to consider quant_axis
       int num = in->numel();
