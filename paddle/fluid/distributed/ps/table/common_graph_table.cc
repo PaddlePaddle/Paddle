@@ -965,12 +965,18 @@ GraphNode *GraphShard::add_graph_node(Node *node) {
   }
   return (GraphNode *)bucket[node_location[id]];
 }
-FeatureNode *GraphShard::add_feature_node(uint64_t id) {
+
+FeatureNode *GraphShard::add_feature_node(uint64_t id, bool is_overlap) {
   if (node_location.find(id) == node_location.end()) {
     node_location[id] = bucket.size();
     bucket.push_back(new FeatureNode(id));
+    return (FeatureNode *)bucket[node_location[id]];
   }
-  return (FeatureNode *)bucket[node_location[id]];
+  if (is_overlap) {
+    return (FeatureNode *)bucket[node_location[id]];
+  }
+
+  return NULL;
 }
 
 void GraphShard::add_neighbor(uint64_t id, uint64_t dst_id, float weight) {
@@ -1075,15 +1081,14 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
   for (size_t i = 0; i < paths.size(); i++) {
     tasks.push_back(load_node_edge_task_pool[i % load_thread_num]->enqueue(
         [&, i, idx, this]() -> int {
-      VLOG(2) << "Begin GraphTable::load_nodes(), path[" << paths[i] << "]";
+      VLOG(0) << "Begin GraphTable::load_nodes(), path[" << paths[i] << "]";
       std::ifstream file(paths[i]);
       std::string line;
       uint64_t local_count = 0;
       while (std::getline(file, line)) {
         auto values = paddle::string::split_string<std::string>(line, "\t");
         if (values.size() < 2) continue;
-        std::string nt = values[0];
-        if (nt != node_type) {
+        if (values[0] != node_type) {
           continue;
         }
         
@@ -1096,20 +1101,14 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
         }
 
         size_t index = shard_id - shard_start;
-        auto node = feature_shards[idx][index]->add_feature_node(id);
-        node->set_feature_size(feat_name[idx].size());
-        
-        // TODO(huwei02): open it when slot fea ready
-        //for (size_t slice = 2; slice < values.size(); slice++) {
-        //  auto feat = this->parse_feature(idx, values[slice]);
-        //  if (feat.first >= 0) {
-        //    node->set_feature(feat.first, feat.second);
-        //  } else {
-        //    VLOG(4) << "Node feature:  " << values[slice]
-        //          << " not in feature_map.";
-        // }
-        //}
-        local_count++;
+        auto node = feature_shards[idx][index]->add_feature_node(id, false);
+        if (node != NULL) {
+          node->set_feature_size(feat_name[idx].size());
+          for (size_t slice = 2; slice < values.size(); slice++) {
+            parse_feature(idx, values[slice], node);
+          }
+          local_count++;
+        }
       }
       VLOG(0) << "node_type[" << node_type << "] loads " << local_count << " nodes from filepath->" << paths[i];
       return 0;
@@ -1503,42 +1502,56 @@ int32_t GraphTable::set_node_feat(
   return 0;
 }
 
-std::pair<int32_t, std::string> GraphTable::parse_feature(
-    int idx, std::string feat_str) {
+void string_vector_2_string(std::vector<std::string>::iterator strs_begin,
+        std::vector<std::string>::iterator strs_end, char delim, std::string* output) {
+  size_t i = 0;
+  for (std::vector<std::string>::iterator iter = strs_begin; iter != strs_end; ++iter) {
+    if (i > 0) {
+      *output += delim;
+    }
+
+    *output += *iter;
+    ++i;
+  }
+}
+
+int GraphTable::parse_feature(int idx, const std::string& feat_str,
+                            FeatureNode* node) {
   // Return (feat_id, btyes) if name are in this->feat_name, else return (-1,
   // "")
-  auto fields =
+  std::vector<std::string> fields =
       paddle::string::split_string<std::string>(feat_str, feature_separator_);
-  if (feat_id_map[idx].count(fields[0])) {
-    // if (this->feat_id_map.count(fields[0])) {
-    int32_t id = this->feat_id_map[idx][fields[0]];
+  auto it = feat_id_map[idx].find(fields[0]);
+  if (it != feat_id_map[idx].end()) {
+    int32_t id = it->second;
+    std::string* fea_ptr = node->mutable_feature(id);
     std::string dtype = this->feat_dtype[idx][id];
-    std::vector<std::string> values(fields.begin() + 1, fields.end());
     if (dtype == "feasign") {
-      return std::make_pair<int32_t, std::string>(
-          int32_t(id), paddle::string::join_strings(values, ' '));
+      string_vector_2_string(fields.begin() + 1, fields.end(), ' ', fea_ptr);
+      return 0;
     } else if (dtype == "string") {
-      return std::make_pair<int32_t, std::string>(
-          int32_t(id), paddle::string::join_strings(values, ' '));
+      string_vector_2_string(fields.begin() + 1, fields.end(), ' ', fea_ptr);
+      return 0;
     } else if (dtype == "float32") {
-      return std::make_pair<int32_t, std::string>(
-          int32_t(id), FeatureNode::parse_value_to_bytes<float>(values));
+      FeatureNode::parse_value_to_bytes<float>(fields.begin() + 1, fields.end(), fea_ptr);
+      return 0;
     } else if (dtype == "float64") {
-      return std::make_pair<int32_t, std::string>(
-          int32_t(id), FeatureNode::parse_value_to_bytes<double>(values));
+      FeatureNode::parse_value_to_bytes<double>(fields.begin() + 1, fields.end(), fea_ptr);
+      return 0;
     } else if (dtype == "int32") {
-      return std::make_pair<int32_t, std::string>(
-          int32_t(id), FeatureNode::parse_value_to_bytes<int32_t>(values));
+      FeatureNode::parse_value_to_bytes<int32_t>(fields.begin() + 1, fields.end(), fea_ptr);
+      return 0;
     } else if (dtype == "int64") {
-      return std::make_pair<int32_t, std::string>(
-          int32_t(id), FeatureNode::parse_value_to_bytes<uint64_t>(values));
+      FeatureNode::parse_value_to_bytes<uint64_t>(fields.begin() + 1, fields.end(), fea_ptr);
+      return 0;
     }
   } else {
     VLOG(2) << "feature_name[" << fields[0]
             << "] is not in feat_id_map, ntype_id[" << idx
             << "] feat_id_map_size[" << feat_id_map.size() << "]";
   }
-  return std::make_pair<int32_t, std::string>(-1, "");
+
+  return -1;
 }
 
 std::vector<std::vector<uint64_t>> GraphTable::get_all_id(int type_id, int slice_num) {
@@ -1588,9 +1601,9 @@ std::vector<std::vector<uint64_t>> GraphTable::get_all_id(int type_id, int idx,
   return res;
 }
 
-std::vector<std::vector<uint64_t>> GraphTable::get_all_feature_ids(int type_id, int idx,
-                                                          int slice_num) {
-  std::vector<std::vector<uint64_t>> res(slice_num);
+int GraphTable::get_all_feature_ids(int type_id, int idx, int slice_num,
+                                    std::vector<std::vector<uint64_t>>* output) {
+  output->resize(slice_num);
   auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
   std::vector<std::future<std::vector<uint64_t>>> tasks;
   for (int i = 0; i < search_shards.size(); i++) {
@@ -1604,9 +1617,9 @@ std::vector<std::vector<uint64_t>> GraphTable::get_all_feature_ids(int type_id, 
   }
   for (size_t i = 0; i < tasks.size(); i++) {
     auto ids = tasks[i].get();
-    for (auto &id : ids) res[id % slice_num].push_back(id);
+    for (auto &id : ids) (*output)[id % slice_num].push_back(id);
   }
-  return res;
+  return 0;
 }
 
 int32_t GraphTable::pull_graph_list(int type_id, int idx, int start,

@@ -73,16 +73,17 @@ class GraphShard {
   std::vector<uint64_t> get_all_feature_ids() {
     // TODO by huwei02, dedup
     std::vector<uint64_t> total_res;
+    std::set<uint64_t> res;
     for (int i = 0; i < (int)bucket.size(); i++) {
-      std::vector<uint64_t> res;
-      res.push_back(bucket[i]->get_feature_ids(&res));
+      res.clear();
+      bucket[i]->get_feature_ids(&res);
       total_res.insert(total_res.end(), res.begin(), res.end());
     }
     return total_res;
   }
   GraphNode *add_graph_node(uint64_t id);
   GraphNode *add_graph_node(Node *node);
-  FeatureNode *add_feature_node(uint64_t id);
+  FeatureNode *add_feature_node(uint64_t id, bool is_overlap = true);
   Node *find_node(uint64_t id);
   void delete_node(uint64_t id);
   void clear();
@@ -488,8 +489,8 @@ class GraphTable : public Table {
   std::vector<std::vector<uint64_t>> get_all_id(int type, int slice_num);
   std::vector<std::vector<uint64_t>> get_all_id(int type, int idx,
                                                 int slice_num);
-  std::vector<std::vector<uint64_t>> get_all_feature_ids(int type, int idx,
-                                                        int slice_num);
+  int get_all_feature_ids(int type, int idx,
+                        int slice_num, std::vector<std::vector<uint64_t>>* output);
   int32_t load_nodes(const std::string &path, std::string node_type);
 
   int32_t add_graph_node(int idx, std::vector<uint64_t> &id_list,
@@ -526,8 +527,8 @@ class GraphTable : public Table {
   }
   virtual uint32_t get_thread_pool_index_by_shard_index(uint64_t shard_index);
   virtual uint32_t get_thread_pool_index(uint64_t node_id);
-  virtual std::pair<int32_t, std::string> parse_feature(int idx,
-                                                        std::string feat_str);
+  virtual int parse_feature(int idx, const std::string& feat_str,
+                            FeatureNode* node);
 
   virtual int32_t get_node_feat(int idx, const std::vector<uint64_t> &node_ids,
                                 const std::vector<std::string> &feature_names,
