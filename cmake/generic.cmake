@@ -287,14 +287,12 @@ function(merge_static_libs TARGET_NAME)
       COMMAND ${CMAKE_RANLIB} "$<TARGET_FILE:${TARGET_NAME}>")
   endif()
 
-  # Windows do not support gcc/nvcc combined compiling.
-  # Use msvc 'lib.exe' to merge libs.
+  # Windows do not support gcc/nvcc combined compiling. Use msvc 'lib.exe' to merge libs.
   if(WIN32)
     foreach(lib ${libs})
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
     endforeach()
-    # msvc compiler will put libarary in directory of
-    # "/Release/xxxlib" by default
+    # msvc compiler will put libarary in directory of "/Release/xxxlib" by default
     add_custom_command(
       TARGET ${TARGET_NAME}
       POST_BUILD
@@ -306,8 +304,7 @@ endfunction()
 
 function(check_coverage_opt TARGET_NAME SRCS)
   if(WITH_COVERAGE AND WITH_INCREMENTAL_COVERAGE)
-    # if pybind.cc add '-g -O0 -fprofile-arcs -ftest-coverage' only,
-    # some testcase will fail.
+    # if pybind.cc add '-g -O0 -fprofile-arcs -ftest-coverage' only, some testcase will fail.
     if((NOT ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" MATCHES "pybind.cc"))
        AND "$ENV{PADDLE_GIT_DIFF_H_FILE}" STREQUAL "")
       if(NOT ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" STREQUAL ""))
@@ -345,8 +342,7 @@ function(cc_library TARGET_NAME)
   if(WIN32)
     # add libxxx.lib prefix in windows
     set(${TARGET_NAME}_LIB_NAME
-        "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}
-         ${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE STRING "output library name for target ${TARGET_NAME}")
   endif()
   if(cc_library_SRCS)
@@ -381,8 +377,8 @@ function(cc_library TARGET_NAME)
                                 "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
         endif()
       endif()
-      # remove link to python, see notes about building-manually at:
-      # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst
+      # remove link to python, see notes at:
+      # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst#building-manually
       if("${cc_library_DEPS};" MATCHES "python;")
         list(REMOVE_ITEM cc_library_DEPS python)
         add_dependencies(${TARGET_NAME} python)
@@ -416,8 +412,10 @@ function(cc_library TARGET_NAME)
 
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     else()
-      message(FATAL_ERROR "Please specify source files or libraries"
-                          " in cc_library(${TARGET_NAME} ...).")
+      message(
+        FATAL_ERROR
+          "Please specify source files or libraries in cc_library(${TARGET_NAME} ...)."
+      )
     endif()
   endif()
 endfunction()
@@ -552,8 +550,7 @@ function(nv_library TARGET_NAME)
                           "${multiValueArgs}" ${ARGN})
     if(nv_library_SRCS)
       # Attention:
-      # 1. cuda_add_library is deprecated after cmake v3.10,
-      #    use add_library for CUDA please.
+      # 1. cuda_add_library is deprecated after cmake v3.10, use add_library for CUDA please.
       # 2. cuda_add_library does not support ccache.
       # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
       if(nv_library_SHARED OR nv_library_shared) # build *.so
@@ -589,8 +586,8 @@ function(nv_library TARGET_NAME)
       endif()
     endif()
     if((CUDA_VERSION GREATER 9.2)
-       and (CUDA_VERSION LESS 11.0)
-       and (MSVC_VERSION LESS 1910))
+       AND (CUDA_VERSION LESS 11.0)
+       AND (MSVC_VERSION LESS 1910))
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS
                                                       ${WIN_PROPS})
     endif()
@@ -631,8 +628,7 @@ function(nv_test TARGET_NAME)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
     # Attention:
-    # 1. cuda_add_executable is deprecated after cmake v3.10,
-    #    use cuda_add_executable for CUDA please.
+    # 1. cuda_add_executable is deprecated after cmake v3.10, use cuda_add_executable for CUDA please.
     # 2. cuda_add_executable does not support ccache.
     # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
@@ -665,8 +661,8 @@ function(nv_test TARGET_NAME)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cudnn_deterministic=true)
     if((CUDA_VERSION GREATER 9.2)
-       and (CUDA_VERSION LESS 11.0)
-       and (MSVC_VERSION LESS 1910))
+       AND (CUDA_VERSION LESS 11.0)
+       AND (MSVC_VERSION LESS 1910))
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS
                                                       ${WIN_PROPS})
     endif()
@@ -681,8 +677,7 @@ function(hip_library TARGET_NAME)
     cmake_parse_arguments(hip_library "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
     if(hip_library_SRCS)
-      # FindHIP.cmake defined hip_add_library,
-      # HIP_SOURCE_PROPERTY_FORMAT is requried if no .cu files found
+      # FindHIP.cmake defined hip_add_library, HIP_SOURCE_PROPERTY_FORMAT is requried if no .cu files found
       if(NOT (${CMAKE_CURRENT_SOURCE_DIR} MATCHES ".*/operators"
               OR ${CMAKE_CURRENT_SOURCE_DIR} MATCHES ".*/phi/kernels"))
         set_source_files_properties(${hip_library_SRCS}
@@ -730,8 +725,7 @@ function(hip_binary TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(hip_binary "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    # FindHIP.cmake defined hip_add_executable,
-    # HIP_SOURCE_PROPERTY_FORMAT is requried for .cc files
+    # FindHIP.cmake defined hip_add_executable, HIP_SOURCE_PROPERTY_FORMAT is requried for .cc files
     hip_add_executable(${TARGET_NAME} ${hip_binary_SRCS})
     if(hip_binary_DEPS)
       target_link_libraries(${TARGET_NAME} ${hip_binary_DEPS})
@@ -906,14 +900,12 @@ function(go_library TARGET_NAME)
   if(go_library_SHARED OR go_library_shared)
     set(BUILD_MODE "-buildmode=c-shared")
     set(${TARGET_NAME}_LIB_NAME
-        "${CMAKE_SHARED_LIBRARY_PREFIX}${TARGET_NAME}\
-         ${CMAKE_SHARED_LIBRARY_SUFFIX}"
+        "${CMAKE_SHARED_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}"
         CACHE STRING "output library name for target ${TARGET_NAME}")
   else()
     set(BUILD_MODE "-buildmode=c-archive")
     set(${TARGET_NAME}_LIB_NAME
-        "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}\
-         ${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE STRING "output library name for target ${TARGET_NAME}")
   endif()
 
@@ -1136,8 +1128,7 @@ endfunction()
 # implementation source files and PROTO argument for your .proto
 # files.
 #
-# Usage: grpc_library(my_target SRCS my_client.cc
-#                     PROTO my_target.proto DEPS my_dep)
+# Usage: grpc_library(my_target SRCS my_client.cc PROTO my_target.proto DEPS my_dep)
 
 function(grpc_library TARGET_NAME)
   set(oneValueArgs PROTO)
@@ -1152,7 +1143,7 @@ function(grpc_library TARGET_NAME)
   get_filename_component(PROTO_WE ${grpc_library_PROTO} NAME_WE)
   get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
 
-  #FIXME(putcn): the follwoing line is supposed to generate *.pb.h and cc, but
+  # FIXME(putcn): the follwoing line is supposed to generate *.pb.h and cc, but
   # somehow it didn't. line 602 to 604 is to patching this. Leaving this here
   # for now to enable dist CI.
   paddle_protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
@@ -1170,21 +1161,22 @@ function(grpc_library TARGET_NAME)
             "${CMAKE_CURRENT_BINARY_DIR}" -I "${PROTO_PATH}" "${ABS_PROTO}"
     DEPENDS "${ABS_PROTO}" ${PROTOBUF_PROTOC_EXECUTABLE} extern_grpc)
 
-  # FIXME(typhoonzero):
-  # grpc generated code do not generate virtual-dtor, mark it as compiler
-  # warnings instead of error. Should try remove the warnings also.
+  # FIXME(typhoonzero): grpc generated code do not generate virtual-dtor, mark it
+  # as compiler warnings instead of error. Should try remove the warnings also.
   set_source_files_properties(
     ${grpc_grpc_srcs}
-    PROPERTIES COMPILE_FLAGS
-               "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor \
-       -Wno-error=delete-non-virtual-dtor")
+    PROPERTIES
+      COMPILE_FLAGS
+      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor"
+  )
   cc_library("${TARGET_NAME}_grpc" SRCS "${grpc_grpc_srcs}")
 
   set_source_files_properties(
     ${grpc_library_SRCS}
-    PROPERTIES COMPILE_FLAGS
-               "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor \
-       -Wno-error=delete-non-virtual-dtor")
+    PROPERTIES
+      COMPILE_FLAGS
+      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor"
+  )
   cc_library(
     "${TARGET_NAME}"
     SRCS "${grpc_library_SRCS}"
@@ -1216,8 +1208,7 @@ endfunction()
 function(copy_if_different src_file dst_file)
   get_filename_component(FILE_NAME ${dst_file} NAME_WE)
 
-  # this is a dummy target for custom command,
-  # should always be run firstly to update ${dst_file}
+  # this is a dummy target for custom command, should always be run firstly to update ${dst_file}
   add_custom_target(
     copy_${FILE_NAME}_command ALL
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${src_file} ${dst_file}
@@ -1232,9 +1223,7 @@ endfunction()
 # FILE_PATH should be the dummy source file path.
 # GENERATOR should be the file name invoke this function.
 # CONTENT should be some helpful info.
-# example: generate_dummy_static_lib(mylib FILE_PATH /path/to/dummy.c
-#                                    GENERATOR mylib.cmake
-#                                    CONTENT "helpful info")
+# example: generate_dummy_static_lib(mylib FILE_PATH /path/to/dummy.c GENERATOR mylib.cmake CONTENT "helpful info")
 function(generate_dummy_static_lib)
   set(options "")
   set(oneValueArgs LIB_NAME FILE_PATH GENERATOR CONTENT)
