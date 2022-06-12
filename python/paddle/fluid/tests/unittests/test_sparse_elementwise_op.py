@@ -43,6 +43,7 @@ class TestSparseElementWiseAPI(unittest.TestCase):
     """
 
     def setUp(self):
+        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         np.random.seed(2022)
         self.op_list = op_list
         self.csr_shape = [128, 256]
