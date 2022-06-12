@@ -392,7 +392,7 @@ int GraphDataGenerator::GenerateBatch() {
                            stream_>>>(show_tensor_ptr_, total_instance);
       GraphFillCVMKernel<<<GET_BLOCKS(total_instance), CUDA_NUM_THREADS, 0,
                            stream_>>>(clk_tensor_ptr_, total_instance);
-      return 1;
+      return total_instance / 2;
     }
     return 0;
   }

@@ -1062,6 +1062,8 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.graph_config.first_node_type = config.get(
             "first_node_type", "")
         self.proto_desc.graph_config.meta_path = config.get("meta_path", "")
+        self.proto_desc.graph_config.gpu_graph_training = config.get(
+            "gpu_graph_training", True)
 
 
 class QueueDataset(DatasetBase):
