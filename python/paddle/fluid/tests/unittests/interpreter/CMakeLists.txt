@@ -46,10 +46,12 @@ foreach(target ${TEST_INTERP_CASES})
     FLAGS_use_stream_safe_cuda_allocator=true
     FLAGS_fast_eager_deletion_mode=true
     FLAGS_eager_delete_tensor_gb=0.000001)
-
-  py_test_modules(${target}_sequential_run MODULES ${target} ENVS
-                  FLAGS_new_executor_sequential_run=true)
-
-  py_test_modules(${target}_serial_run MODULES ${target} ENVS
-                  FLAGS_new_executor_serial_run=true)
 endforeach()
+
+py_test_modules(
+  test_standalone_executor_sequential_run MODULES test_standalone_executor ENVS
+  FLAGS_new_executor_sequential_run=true)
+
+py_test_modules(
+  test_standalone_executor_serial_run MODULES test_standalone_executor ENVS
+  FLAGS_new_executor_serial_run=true)
