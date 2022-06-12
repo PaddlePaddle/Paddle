@@ -45,42 +45,44 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             else:
                 return np.random.random([batch, 32, 32, 32]).astype(np.float32)
 
-        for dims in [2, 3, 4]:
+        for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
                 for k in [1, 3]:
                     for axis in [-1, 1, 2, 3]:
                         for largest in [True, False]:
-                            self.dims = dims
-                            dics = [{
-                                "k": k,
-                                "axis": axis,
-                                "largest": largest,
-                                "sorted": True
-                            }]
-                            ops_config = [{
-                                "op_type": "top_k_v2",
-                                "op_inputs": {
-                                    "X": ["input_data"]
-                                },
-                                "op_outputs": {
-                                    "Out": ["output_data"],
-                                    "Indices": ["indices_data"]
-                                },
-                                "op_attrs": dics[0]
-                            }]
-                            ops = self.generate_op_config(ops_config)
+                            for sort in [True, False]:
+                                self.dims = dims
+                                self.sort = sort
+                                dics = [{
+                                    "k": k,
+                                    "axis": axis,
+                                    "largest": largest,
+                                    "sorted": sort
+                                }]
+                                ops_config = [{
+                                    "op_type": "top_k_v2",
+                                    "op_inputs": {
+                                        "X": ["input_data"]
+                                    },
+                                    "op_outputs": {
+                                        "Out": ["output_data"],
+                                        "Indices": ["indices_data"]
+                                    },
+                                    "op_attrs": dics[0]
+                                }]
+                                ops = self.generate_op_config(ops_config)
 
-                            program_config = ProgramConfig(
-                                ops=ops,
-                                weights={},
-                                inputs={
-                                    "input_data":
-                                    TensorConfig(data_gen=partial(
-                                        generate_input1, dims, batch, dics))
-                                },
-                                outputs=["output_data", "indices_data"])
+                                program_config = ProgramConfig(
+                                    ops=ops,
+                                    weights={},
+                                    inputs={
+                                        "input_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input1, dims, batch, dics))
+                                    },
+                                    outputs=["output_data", "indices_data"])
 
-                            yield program_config
+                                yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
@@ -115,6 +117,10 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
+            if self.dims == 1:
+                return 0, 4
+            if self.sort == False:
+                return 0, 4
             return 1, 3
 
         attrs = [
