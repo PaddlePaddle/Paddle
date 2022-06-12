@@ -1,6 +1,6 @@
 cc_library(
   phi_dynamic_loader
-  SRCS dynamic_loader.cc
+  SRCS dynamic_loader.cc port.cc
   DEPS enforce glog gflags)
 
 list(
