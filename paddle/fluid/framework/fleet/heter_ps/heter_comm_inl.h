@@ -128,8 +128,8 @@ void HeterComm<KeyType, ValType, GradType>::memory_copy(
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
                                                            int end_index,
-                                                           int keylen,
-                                                           int vallen) {
+                                                           size_t keylen,
+                                                           size_t vallen) {
 #if defined(PADDLE_WITH_CUDA)
   auto& allocator = allocators_[start_index];
   auto& nodes = path_[start_index][end_index].nodes_;
