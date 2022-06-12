@@ -42,7 +42,7 @@ if(WIN32)
   string(REPLACE "/w " "" GTEST_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   string(REPLACE "/W0 " "" GTEST_CMAKE_C_FLAGS "${GTEST_CMAKE_C_FLAGS}")
   string(REPLACE "/W0 " "" GTEST_CMAKE_CXX_FLAGS "${GTEST_CMAKE_CXX_FLAGS}")
-else(WIN32)
+else()
   set(GTEST_LIBRARIES
       "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgtest.a"
       CACHE FILEPATH "gtest libraries." FORCE)
@@ -51,7 +51,7 @@ else(WIN32)
       CACHE FILEPATH "gtest main libraries." FORCE)
   set(GTEST_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
   set(GTEST_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-endif(WIN32)
+endif()
 
 if(WITH_MKLML)
   # wait for mklml downloading completed
