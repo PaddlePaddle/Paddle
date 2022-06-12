@@ -83,7 +83,6 @@ repos:
         # exclude files which need to be fixed
         exclude: |
             (?x)^(
-                cmake/generic.cmake|
                 CMakeLists.txt|
                 paddle/fluid/pybind/CMakeLists.txt|
                 python/paddle/fluid/tests/unittests/CMakeLists.txt|
