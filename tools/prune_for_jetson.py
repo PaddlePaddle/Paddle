@@ -122,7 +122,7 @@ def append_fluid_kernels():
     with io.open(file_name, 'r', encoding='utf-8') as f:
         content = ''.join(f.readlines())
 
-    location_str = "nv_library(tensorrt_op_teller SRCS op_teller.cc DEPS framework_proto device_context boost)"
+    location_str = "nv_library(\n  tensorrt_op_teller\n  SRCS op_teller.cc\n  DEPS framework_proto device_context boost)"
     new_content = content.replace(location_str, location_str + append_str)
 
     if new_content == content:
@@ -169,7 +169,7 @@ def append_fluid_kernels():
 if __name__ == '__main__':
 
     print("================ step 1: apply patches =======================")
-    assert(apply_patches())
+    #assert(apply_patches())
     print("==============================================================\n")
 
     print("================ step 2: append fluid op/kernels==============")
