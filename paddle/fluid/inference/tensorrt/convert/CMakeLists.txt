@@ -60,6 +60,7 @@ list(
   roll_op.cc
   transformer_input_convert_op.cc
   remove_padding_op.cc
+  comparisons_op.cc
   recover_padding_op.cc)
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
