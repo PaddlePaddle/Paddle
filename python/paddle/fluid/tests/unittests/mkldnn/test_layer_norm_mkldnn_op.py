@@ -136,6 +136,9 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
                 self.__assert_close(mean, out[1], "mean")
                 self.__assert_close(variance, out[2], "variance", 1e-3)
 
+    def test_check_forward_non_last_begin_norm_axis(self):
+        self.check_forward(shape=[2, 3, 4, 5], begin_norm_axis=2)
+
     def test_check_forward_with_scale_and_bias(self):
         self.check_forward(shape=[2, 3, 4, 5], begin_norm_axis=3)
 

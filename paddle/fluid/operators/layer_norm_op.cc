@@ -106,8 +106,9 @@ class LayerNormOp : public framework::OperatorWithKernel {
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 
 #ifdef PADDLE_WITH_MKLDNN
+    int begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
     if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+        this->CanMKLDNNBeUsed(ctx, input_data_type) && begin_norm_axis == ctx.Input<Tensor>("X")->dims().size() - 1) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
