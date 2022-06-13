@@ -70,7 +70,9 @@ def prune_phi_kernels():
     register_op_count = 0
     for op_file in all_op:
         need_continue = False
-        file_blacklist = ["kernels/empty_kernel.cc", "/batch_norm_kernel.c"]
+        file_blacklist = [
+            "kernels/empty_kernel.cc", "/cast_kernel.c", "/batch_norm_kernel.c"
+        ]
         for bname in file_blacklist:
             if op_file.find(bname) >= 0:
                 need_continue = True
