@@ -67,6 +67,8 @@ void GradTensorHolder::CopyValueFromTensor(
       // Fill 1.0, use full to support complex, one_like don't support it.
       buffer_[slot_id][rank] =
           paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
+      egr::EagerUtils::autograd_meta(&(buffer_[slot_id][rank]))
+          ->SetStopGradient(false);
     }
   }
 }
