@@ -136,7 +136,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "preln_skip_layernorm",
       "transformer_input_convert",
       "recover_padding",
-      "remove_padding"};
+      "remove_padding",
+      "cast"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -208,7 +209,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "multiclass_nms3",
       "transformer_input_convert",
       "recover_padding",
-      "remove_padding"};
+      "remove_padding",
+      "cast"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -1756,6 +1758,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                      "tensorrt";
           return false;
         }
+      }
+    }
+
+    if (op_type == "cast") {
+      int out_dtype = BOOST_GET_CONST(int, desc.GetAttr("out_dtype"));
+      if (out_dtype < 0) {
+        VLOG(3) << "unsupport out dtype";
+        return false;
       }
     }
 
