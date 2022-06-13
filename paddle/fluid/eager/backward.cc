@@ -105,15 +105,23 @@ class GeneralGrad {
       queue.push_back(target_nodes_inputmeta_pair.first);
       needed_nodes_.emplace(target_nodes_inputmeta_pair.first);
     }
-
+    std::unordered_set<GradNodeBase*> visited;
+    std::unordered_set<GradNodeBase*> input_target_nodes_passing_by;
     while (!queue.empty()) {
       auto* target_node = queue.front();
       queue.pop_front();
+      if (visited.count(target_node)) {
+        continue;
+      }
+      visited.insert(target_node);
       if (!(depending_nodes_)[target_node].empty()) {
         auto precedding_nodes = (depending_nodes_)[target_node];
         for (auto pre_nodes : precedding_nodes) {
           queue.push_back(pre_nodes);
           needed_nodes_.emplace(pre_nodes);
+          if (IsInputTargetNodes(pre_nodes)) {
+            input_target_nodes_passing_by.emplace(pre_nodes);
+          }
         }
       } else {  // startup_ops have no precedding nodes
         VLOG(6) << "Emplace startup_ops";
@@ -121,6 +129,15 @@ class GeneralGrad {
         needed_nodes_.emplace(target_node);
       }
     }
+
+    for (auto& target_nodes_inputmeta_pair :
+         input_target_nodes_inputmeta_map_) {
+      if (!input_target_nodes_passing_by.count(
+              target_nodes_inputmeta_pair.first)) {
+        endding_nodes.emplace(target_nodes_inputmeta_pair.first);
+      }
+    }
+
     // Purify potential_startup_nodes_ again, remove some
     // potential startup_nodes that unreach to input target nodes
     if (!startup_ops.empty()) {
@@ -281,6 +298,7 @@ class GeneralGrad {
   }
 
   void SetNodeToAccumulationNode(GradNodeBase* node) {
+    if (node->name() == "GradNodeAccumulation") return;
     if (!(depending_nodes_)[node].empty()) {
       auto precedding_nodes = (depending_nodes_)[node];
       for (auto pre_nodes : precedding_nodes) {
@@ -328,6 +346,15 @@ class GeneralGrad {
       }
       visited.insert(node);
 
+      if (IsInputTargetNodes(node)) {
+        if (IsEnddingNodes(node)) {
+          VLOG(3) << "Setting node: " << node->name() << " addr: " << node
+                  << " to Accumulation node";
+          SetNodeToAccumulationNode(node);
+          continue;
+        }
+      }
+
       paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
           meta = node->MutableOutputMeta();
       for (size_t i = 0; i < meta.size(); i++) {
@@ -337,12 +364,8 @@ class GeneralGrad {
           if (!next_node) continue;
 
           if (IsInputTargetNodes(node)) {
-            if (meta.size() == 1 && !IsNeededNodes(next_node.get())) {
-              VLOG(3) << "Setting node: " << node->name() << " addr: " << node
-                      << " to Accumulation node";
-              SetNodeToAccumulationNode(node);
-            } else if (meta.size() != 1 && !IsNeededNodes(next_node.get()) &&
-                       IsNeededNodes(node)) {
+            if (meta.size() != 1 && !IsNeededNodes(next_node.get()) &&
+                IsNeededNodes(node) && !IsEnddingNodes(node)) {
               VLOG(3) << "Setting empty edge for node: " << node->name()
                       << " addr: " << node << " in slot:" << i;
               meta[i][j].SetEdge(egr::Edge());
@@ -387,6 +410,8 @@ class GeneralGrad {
   }
 
   bool IsNeededNodes(GradNodeBase* node) { return needed_nodes_.count(node); }
+
+  bool IsEnddingNodes(GradNodeBase* node) { return endding_nodes.count(node); }
 
   bool IsInputTargetNodes(GradNodeBase* node) {
     auto iter = input_target_nodes_inputmeta_map_.find(node);
@@ -519,6 +544,7 @@ class GeneralGrad {
   // Record which grad_node has been transformed to AccumulationNode
   std::unordered_map<GradNodeBase*, std::shared_ptr<GradNodeBase>>
       grad_node_trans_mapping_;
+  std::unordered_set<GradNodeBase*> endding_nodes;
 
   DISABLE_COPY_AND_ASSIGN(GeneralGrad);
 };
