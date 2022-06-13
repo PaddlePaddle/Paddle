@@ -108,7 +108,7 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
  * @brief Filter the DenseTensor x by the
  * mask.non_zero_indices() and output a SparseCooTensor
  * x and mask must have the same shape.
-**/
+ **/
 template <typename T, typename Context>
 void SparseMaskKernel(const Context& dev_ctx,
                       const DenseTensor& x,

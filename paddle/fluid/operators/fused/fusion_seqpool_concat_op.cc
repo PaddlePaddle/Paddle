@@ -13,8 +13,10 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_seqpool_concat_op.h"
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/operators/jit/kernels.h"
 
 namespace paddle {
@@ -29,17 +31,19 @@ void FusionSeqPoolConcatOp::InferShape(
                         ctx->Inputs("X").size()));
   OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FusionSeqPoolConcat");
   int axis = ctx->Attrs().Get<int>("axis");
-  PADDLE_ENFORCE_EQ(axis, 1, platform::errors::InvalidArgument(
-                                 "FusionSeqPoolConcatOp only supports concat "
-                                 "axis=1 yet, but received axis value is %d",
-                                 axis));
+  PADDLE_ENFORCE_EQ(axis, 1,
+                    platform::errors::InvalidArgument(
+                        "FusionSeqPoolConcatOp only supports concat "
+                        "axis=1 yet, but received axis value is %d",
+                        axis));
 
   auto ins_dims = ctx->GetInputsDim("X");
   const size_t n = ins_dims.size();
-  PADDLE_ENFORCE_GT(n, 0UL, platform::errors::InvalidArgument(
-                                "Input tensors count should be greater than 0, "
-                                "but received value is %d.",
-                                n));
+  PADDLE_ENFORCE_GT(n, 0UL,
+                    platform::errors::InvalidArgument(
+                        "Input tensors count should be greater than 0, "
+                        "but received value is %d.",
+                        n));
   if (n == 1) {
     LOG(WARNING) << "Only have one input, may waste memory";
   }

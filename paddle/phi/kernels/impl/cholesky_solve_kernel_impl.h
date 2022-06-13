@@ -15,8 +15,6 @@
 #pragma once
 
 #include "paddle/phi/kernels/cholesky_solve_kernel.h"
-
-#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"

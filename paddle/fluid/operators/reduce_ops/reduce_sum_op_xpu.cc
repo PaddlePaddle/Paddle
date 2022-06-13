@@ -15,6 +15,7 @@
 #ifdef PADDLE_WITH_XPU
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/operators/reduce_ops/reduce_op_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 

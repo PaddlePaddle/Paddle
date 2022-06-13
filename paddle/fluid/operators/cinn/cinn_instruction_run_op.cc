@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn/cinn_instruction_run_op.h"
+
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -48,12 +49,12 @@ class CinnInstructionRunOp : public framework::OperatorWithKernel {
 
  protected:
   /* [Why use single type kernel]:
-  *
-  * Whether the kernel data type is int, float or other type,
-  * which has no effect on its execution logic, so directly
-  * specified a data type here.
-  *
-  */
+   *
+   * Whether the kernel data type is int, float or other type,
+   * which has no effect on its execution logic, so directly
+   * specified a data type here.
+   *
+   */
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(framework::proto::VarType::FP32,

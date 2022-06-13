@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/eager/eager_tensor.h"
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
-#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/layout.h"
@@ -28,7 +28,7 @@ class AutogradMetaTest : public AbstractAutogradMeta {
   explicit AutogradMetaTest(int val) : val_(val) {}
   int val_ = 0;
 };
-}
+}  // namespace eager_test
 TEST(Tensor, Constructor) {
   paddle::experimental::Tensor et1 = paddle::experimental::Tensor();
   paddle::experimental::Tensor et2 = paddle::experimental::Tensor("et2");

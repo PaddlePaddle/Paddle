@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/logspace_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/logspace_kernel.h"
 
 namespace phi {
 
@@ -90,8 +89,8 @@ void LogspaceKernel(const Context& ctx,
     LogspaceKernelInner<T><<<grid, block, 0, stream>>>(
         start_data, stop_data, step, base_data, num, out_data);
   } else {
-    LogspaceSpecialKernel<T><<<grid, block, 0, stream>>>(
-        start_data, base_data, out_data);
+    LogspaceSpecialKernel<T>
+        <<<grid, block, 0, stream>>>(start_data, base_data, out_data);
   }
 }
 

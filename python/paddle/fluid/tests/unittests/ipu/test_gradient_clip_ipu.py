@@ -23,6 +23,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_data_feed()
@@ -61,10 +62,13 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        image = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
-        conv1 = paddle.static.nn.conv2d(
-            image, num_filters=3, filter_size=3, bias_attr=False)
+        image = paddle.static.data(name=self.feed_list[0],
+                                   shape=self.feed_shape[0],
+                                   dtype='float32')
+        conv1 = paddle.static.nn.conv2d(image,
+                                        num_filters=3,
+                                        filter_size=3,
+                                        bias_attr=False)
         loss = paddle.mean(conv1)
         self.fetch_list = [loss.name]
 
@@ -76,13 +80,13 @@ class TestBase(IPUOpTest):
                                        weight_decay=weight_decay,
                                        grad_clip=clip)
         elif self.attrs['optimizer'] == 'adam':
-            opt = paddle.optimizer.Adam(
-                learning_rate=1e-1, weight_decay=weight_decay, grad_clip=clip)
+            opt = paddle.optimizer.Adam(learning_rate=1e-1,
+                                        weight_decay=weight_decay,
+                                        grad_clip=clip)
         elif self.attrs['optimizer'] == 'lamb':
-            opt = paddle.optimizer.Lamb(
-                learning_rate=1e-1,
-                lamb_weight_decay=weight_decay,
-                grad_clip=clip)
+            opt = paddle.optimizer.Lamb(learning_rate=1e-1,
+                                        lamb_weight_decay=weight_decay,
+                                        grad_clip=clip)
         else:
             raise ValueError(
                 f"Not supported optimizer {self.attrs['optimizer']} for test")
@@ -100,6 +104,7 @@ class TestBase(IPUOpTest):
 
 
 class TestAdam(TestBase):
+
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'adam',
@@ -108,6 +113,7 @@ class TestAdam(TestBase):
 
 
 class TestLamb(TestBase):
+
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'lamb',

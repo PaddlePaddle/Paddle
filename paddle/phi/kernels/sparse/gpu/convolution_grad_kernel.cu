@@ -150,15 +150,15 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
 
   config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, rulebook_len * out_channels, 1);
-  GatherKernel<T, IntT><<<config.block_per_grid.x,
-                          config.thread_per_block.x,
-                          0,
-                          dev_ctx.stream()>>>(
-      out_grad.non_zero_elements().data<T>(),
-      rulebook_ptr + rulebook_len * 2,
-      out_grad_features_ptr,
-      rulebook_len,
-      out_channels);
+  GatherKernel<T, IntT>
+      <<<config.block_per_grid.x,
+         config.thread_per_block.x,
+         0,
+         dev_ctx.stream()>>>(out_grad.non_zero_elements().data<T>(),
+                             rulebook_ptr + rulebook_len * 2,
+                             out_grad_features_ptr,
+                             rulebook_len,
+                             out_channels);
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {

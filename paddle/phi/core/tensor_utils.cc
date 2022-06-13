@@ -12,15 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#ifdef PADDLE_WITH_XPU
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#endif
-#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/malloc.h"

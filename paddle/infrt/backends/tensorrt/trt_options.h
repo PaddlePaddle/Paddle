@@ -15,11 +15,11 @@
 
 #pragma once
 
+#include <NvInfer.h>
+
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include <NvInfer.h>
 
 namespace infrt {
 namespace backends {

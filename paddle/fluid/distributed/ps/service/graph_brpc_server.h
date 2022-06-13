@@ -14,12 +14,12 @@
 
 #pragma once
 
+#include <memory>
+#include <vector>
+
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
-
-#include <memory>
-#include <vector>
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
 #include "paddle/fluid/distributed/ps/service/server.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"

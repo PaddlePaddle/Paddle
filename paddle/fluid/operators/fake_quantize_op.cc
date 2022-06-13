@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fake_quantize_op.h"
+
 #include <algorithm>
 #include <string>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/transform.h"
@@ -832,7 +834,7 @@ REGISTER_OP_VERSION(moving_average_abs_max_scale)
             "Delete output in order to make the inference model not "
             "save moving_average_abs_max_scale operator. This will "
             "make the quantitative model be correctly applied in inference."))
-    .AddCheckpoint(
-        R"ROC(Incompatible upgrade of output [Out])ROC",
-        paddle::framework::compatible::OpVersionDesc().NewOutput(
-            "Out", "In order to support dygraph qat, add output again."));
+    .AddCheckpoint(R"ROC(Incompatible upgrade of output [Out])ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewOutput(
+                       "Out",
+                       "In order to support dygraph qat, add output again."));

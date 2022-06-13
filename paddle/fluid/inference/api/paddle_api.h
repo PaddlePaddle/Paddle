@@ -27,6 +27,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "crypto/cipher.h"
 #include "paddle_infer_declare.h"  // NOLINT
 #include "paddle_tensor.h"         // NOLINT
@@ -194,7 +195,8 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
  private:
   friend class AnalysisPredictor;
   friend class ONNXRuntimePredictor;
-  explicit ZeroCopyTensor(void* scope) : paddle_infer::Tensor{scope} {}
+  explicit ZeroCopyTensor(void* scope, const void* device_contexts)
+      : paddle_infer::Tensor{scope, device_contexts} {}
 };
 
 /// \brief A Predictor for executing inference on a model.
@@ -285,7 +287,7 @@ class PD_INFER_DECL PaddlePredictor {
   /// When using clone, the same network will be created,
   /// and the parameters between them are shared.
   /// \return unique_ptr which contains the pointer of predictor
-  virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
+  virtual std::unique_ptr<PaddlePredictor> Clone(void* stream = nullptr) = 0;
 
   /// \brief Destroy the Predictor.
   virtual ~PaddlePredictor() = default;
@@ -299,6 +301,11 @@ class PD_INFER_DECL PaddlePredictor {
   struct Config {
     std::string model_dir; /*!< path to the model directory. */
   };
+
+  virtual void* GetExecStream() const { return nullptr; }
+
+ protected:
+  virtual const void* GetDeviceContexts() const { return nullptr; }
 };
 
 ///
@@ -391,12 +398,14 @@ PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
     const ConfigT& config);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig& config);
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
+    const NativeConfig& config);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config);
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+    const AnalysisConfig& config);
 
 template <>
 PD_INFER_DECL std::unique_ptr<PaddlePredictor>

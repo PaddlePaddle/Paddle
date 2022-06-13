@@ -28,6 +28,7 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <shared_mutex>
+
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/cuda_managed_allocator.h"
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
@@ -418,21 +419,12 @@ class AllocatorFacadePrivate {
     const std::shared_ptr<StreamSafeCUDAAllocator>& allocator =
         GetDefaultStreamSafeCUDAAllocator(place);
 
-    // NOTE(Ruibiao): The default stream will be set when the CUDADeviceContext
-    // created. Normally, the DeviceContextPool is a global singleton and one
-    // Place only correspond to one DeviceContext. However, to support
-    // multi-stream scheduling, standalone executor creates two extra
-    // DeviceContextPools for H2D and D2H stream in StreamAnalyzer, which make
-    // one Place correspond to multiple DeviceContext and unexpectedly reset the
-    // default stream in runtime. To avoid this behavior, we do not allow
-    // changing default stream after initially setting.
-    if (allocator->GetDefaultStream() != nullptr) {
-      VLOG(5) << "The default stream for StreamSafeCUDAAllocator("
-              << allocator.get() << ") in " << place << " has been set to "
-              << allocator->GetDefaultStream()
-              << " before, not allow to change now.";
-      return;
-    }
+    PADDLE_ENFORCE_EQ(
+        allocator->GetDefaultStream(), nullptr,
+        platform::errors::Unavailable(
+            "The default stream for StreamSafeCUDAAllocator(%p) in %s has been "
+            "set to %p, not allow to change it to %p.",
+            allocator.get(), place, allocator->GetDefaultStream(), stream));
 
     allocator->SetDefaultStream(stream);
     VLOG(8) << "Set default stream to " << stream

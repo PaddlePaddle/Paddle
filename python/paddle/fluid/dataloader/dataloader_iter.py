@@ -194,8 +194,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._need_check_feed, self._places, self._use_buffer_reader, True,
             self._pin_memory)
 
-        self._thread = threading.Thread(
-            target=self._thread_loop, args=(_current_expected_place(), ))
+        self._thread = threading.Thread(target=self._thread_loop,
+                                        args=(_current_expected_place(), ))
         self._thread.daemon = True
         self._thread.start()
 
@@ -203,7 +203,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
         # and it will call platform::SetDeviceId() in c++ internally.
         # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
-        # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda 
+        # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda
         # APIs in this thread.
         _set_expected_place(legacy_expected_place)
 
@@ -276,13 +276,12 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                         data = self._reader.read_next_list()
                         for i in range(len(data)):
                             data[i] = data[i]._move_to_list()
-                        data = [
-                            _restore_batch(d, s)
-                            for d, s in zip(data, self._structure_infos[:len(
-                                self._places)])
+                        structs = [
+                            self._structure_infos.pop(0)
+                            for _ in range(len(self._places))
                         ]
-                        self._structure_infos = self._structure_infos[len(
-                            self._places):]
+                        data = [_restore_batch(d, s) \
+                                for d, s in zip(data, structs)]
                         # static graph organized data on multi-device with list, if
                         # place number is 1, there is only 1 device, extra the data
                         # from list for devices to be compatible with dygraph mode
@@ -341,6 +340,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
 
 class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
+
     def __init__(self, loader):
         super(_DataLoaderIterMultiProcess, self).__init__(loader)
 
@@ -354,7 +354,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._data_queue = None
 
         # data get from _data_queue will be reordered by _rcvd_idx
-        # for data order keeping, data index not equal _rcvd_idx 
+        # for data order keeping, data index not equal _rcvd_idx
         # will be cached in _task_infos
         self._send_idx = 0
         self._rcvd_idx = 0
@@ -392,7 +392,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # create data_queue for workers
         self._data_queue = multiprocessing.Queue()
 
-        # event for workers and thread, thread event is only need 
+        # event for workers and thread, thread event is only need
         # in multi-processing mode
         self._workers_done_event = multiprocessing.Event()
         self._thread_done_event = threading.Event()
@@ -434,7 +434,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         ]
         # if only 1 place, do not need to keep order
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
-            core.Variable(), self._outstanding_capacity, len(self._places) > 1)
+            core.Variable(), self._outstanding_capacity,
+            len(self._places) > 1)
         self._reader = core.create_py_reader(
             self._blocking_queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_buffer_reader, True,
@@ -442,8 +443,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
         self._thread_done_event = threading.Event()
         # thread event is only need in multi-processing mode
-        self._thread = threading.Thread(
-            target=self._thread_loop, args=(_current_expected_place(), ))
+        self._thread = threading.Thread(target=self._thread_loop,
+                                        args=(_current_expected_place(), ))
         self._thread.daemon = True
         self._thread.start()
 
@@ -492,8 +493,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._try_put_indices()
 
     def _shutdown_worker(self, worker_id, shutdown=False):
-        if self._worker_status[worker_id] or (self._persistent_workers and
-                                              shutdown):
+        if self._worker_status[worker_id] or (self._persistent_workers
+                                              and shutdown):
             self._indices_queues[worker_id].put(None)
             self._worker_status[worker_id] = False
 
@@ -524,7 +525,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
         # and it will call platform::SetDeviceId() in c++ internally.
         # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
-        # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda 
+        # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda
         # APIs in this thread.
         _set_expected_place(legacy_expected_place)
 
@@ -548,8 +549,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                             # LoDTensor not in shared memory is not
                             # serializable, cannot be create in workers
                             for slot in batch:
-                                if isinstance(slot, (paddle.Tensor,
-                                                     core.eager.Tensor)):
+                                if isinstance(
+                                        slot,
+                                    (paddle.Tensor, core.eager.Tensor)):
                                     slot = slot.value().get_tensor()
                                 elif not isinstance(slot, core.LoDTensor):
                                     tmp = core.LoDTensor()
@@ -570,7 +572,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             # For IterableDataset, batch indices is generated infinitely
             # for each worker to raise StopIteration, but a StopIteration
             # raising process will discard a batch indices which is count
-            # in _send_idx but will not increase _rcvd_idx, so we check 
+            # in _send_idx but will not increase _rcvd_idx, so we check
             # whether the worker is still alive here to skip the discarded
             # batch indices and increase _rcvd_idx
             if self._dataset_kind == _DatasetKind.ITER:
@@ -748,13 +750,12 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         data = self._reader.read_next_list()
                         for i in range(len(data)):
                             data[i] = data[i]._move_to_list()
-                        data = [
-                            _restore_batch(d, s)
-                            for d, s in zip(data, self._structure_infos[:len(
-                                self._places)])
+                        structs = [
+                            self._structure_infos.pop(0)
+                            for _ in range(len(self._places))
                         ]
-                        self._structure_infos = self._structure_infos[len(
-                            self._places):]
+                        data = [_restore_batch(d, s) \
+                                for d, s in zip(data, structs)]
                         # static graph organized data on multi-device with list, if
                         # place number is 1, there is only 1 device, extra the data
                         # from list for devices to be compatible with dygraph mode

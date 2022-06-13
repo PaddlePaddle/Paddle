@@ -109,7 +109,8 @@ struct Gather {
 };
 
 template <typename Context,
-          template <typename InT, typename OutT> typename CompareFunctor,
+          template <typename InT, typename OutT>
+          typename CompareFunctor,
           typename T>
 struct GetMask {
   void operator()(const Context& dev_ctx,
@@ -122,7 +123,8 @@ struct GetMask {
 };
 
 template <typename Context,
-          template <typename T> typename BinaryFunctor,
+          template <typename T>
+          typename BinaryFunctor,
           typename T>
 struct BinaryOperation {
   void operator()(const Context& dev_ctx,

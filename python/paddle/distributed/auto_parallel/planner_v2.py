@@ -20,6 +20,7 @@ from .utils import print_program_with_dist_attr
 
 
 class Planner:
+
     def __init__(self, mode, dist_context):
         self._mode = mode
         self._dist_context = dist_context

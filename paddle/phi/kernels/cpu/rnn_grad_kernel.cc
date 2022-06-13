@@ -962,8 +962,10 @@ void dropout_cpu_grad_function_inplace(const CPUContext& dev_ctx,
 }
 
 template <typename GradCellType,
-          template <typename, typename> class SingleGradLayerT,
-          template <typename, typename> class BidirGradLayerT,
+          template <typename, typename>
+          class SingleGradLayerT,
+          template <typename, typename>
+          class BidirGradLayerT,
           typename T>
 void RnnGradFunc(const CPUContext& dev_ctx,
                  const DenseTensor& x,

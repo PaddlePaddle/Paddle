@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/scatter_nd_add_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"

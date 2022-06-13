@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/api/lib/tensor_copy.h"
+
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -24,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-void copy(const Tensor& src, Place place, bool blocking, Tensor* dst) {
+void copy(const Tensor& src, const Place& place, bool blocking, Tensor* dst) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(src);
   kernel_key_set.backend_set =
       kernel_key_set.backend_set | BackendSet(phi::TransToPhiBackend(place));
@@ -32,7 +34,10 @@ void copy(const Tensor& src, Place place, bool blocking, Tensor* dst) {
 
   VLOG(6) << "start copy. ";
 
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto target_place = phi::TransToPhiPlace(kernel_key.backend());
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.GetMutable(
+      target_place.GetType() == place.GetType() ? place : target_place);
 
   auto dense_x = TensorToDenseTensor(src);
 

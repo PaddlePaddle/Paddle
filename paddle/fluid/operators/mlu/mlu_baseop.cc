@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -1141,7 +1142,7 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 }
 
 /* static */ void MLUCnnl::Logic(
-    const ExecutionContext& ctx, const MLULogicMethod log_method,
+    const ExecutionContext& ctx, const cnnlLogicOp_t log_method,
     const cnnlTensorDescriptor_t input1_desc, const void* input1,
     const cnnlTensorDescriptor_t input2_desc, const void* input2,
     const cnnlTensorDescriptor_t output_desc, void* output) {
@@ -1156,9 +1157,9 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
 
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlLogicOp(
-      handle, cnnlLogicOp_t(log_method), input1_desc, input1, input2_desc,
-      input2, workspace_ptr, workspace_size, output_desc, output));
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlLogicOp(handle, log_method, input1_desc, input1, input2_desc, input2,
+                  workspace_ptr, workspace_size, output_desc, output));
 }
 
 /* static */ void MLUCnnl::Select(
@@ -1939,6 +1940,25 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlCastDataType(handle, input_desc, input,
                                               cast_type, output_desc, output));
+}
+
+/*static*/ void MLUCnnl::Clip(const ExecutionContext& ctx,
+                              const cnnlTensorDescriptor_t x_desc,
+                              const void* x, const void* min, const void* max,
+                              void* y) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlClip(handle, x_desc, x, min, max, y));
+}
+
+/*static*/ void MLUCnnl::HardtanhBackward(
+    const ExecutionContext& ctx, const cnnlTensorDescriptor_t x_desc,
+    const void* x, const cnnlTensorDescriptor_t diff_y_desc, const void* diff_y,
+    const float max_val, const float min_val,
+    const cnnlTensorDescriptor_t diff_x_desc, void* diff_x) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlHardtanhBackward(handle, x_desc, x, diff_y_desc, diff_y, max_val,
+                           min_val, diff_x_desc, diff_x));
 }
 
 /* static */ void MLUCnnl::PoolingBackward(

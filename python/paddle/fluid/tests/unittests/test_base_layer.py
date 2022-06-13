@@ -24,20 +24,26 @@ from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
 
 class L1(fluid.Layer):
+
     def __init__(self):
         super(L1, self).__init__()
         self._param_attr = fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.1))
-        self.w1 = self.create_parameter(
-            attr=self._param_attr, shape=[2, 2], dtype='float32', is_bias=False)
-        self.w2 = self.create_parameter(
-            attr=self._param_attr, shape=[2, 2], dtype='float32', is_bias=False)
+        self.w1 = self.create_parameter(attr=self._param_attr,
+                                        shape=[2, 2],
+                                        dtype='float32',
+                                        is_bias=False)
+        self.w2 = self.create_parameter(attr=self._param_attr,
+                                        shape=[2, 2],
+                                        dtype='float32',
+                                        is_bias=False)
 
     def forward(self):
         return self.w1 + self.w2
 
 
 class L2(fluid.Layer):
+
     def __init__(self):
         super(L2, self).__init__()
         self.layer1 = L1()
@@ -48,6 +54,7 @@ class L2(fluid.Layer):
 
 
 class L3(fluid.Layer):
+
     def __init__(self):
         super(L3, self).__init__()
         self.layer1 = L2()
@@ -58,6 +65,7 @@ class L3(fluid.Layer):
 
 
 class TestBaseLayer(unittest.TestCase):
+
     def func_test_one_level(self):
         with fluid.dygraph.guard():
             l = L1()
@@ -131,6 +139,7 @@ class TestBaseLayer(unittest.TestCase):
 
 
 class BufferLayer(fluid.Layer):
+
     def __init__(self):
         super(BufferLayer, self).__init__()
         buffer_var = to_variable(np.zeros([2, 4]).astype('int32'))
@@ -141,11 +150,13 @@ class BufferLayer(fluid.Layer):
 
 
 class BufferNet(fluid.Layer):
+
     def __init__(self):
         super(BufferNet, self).__init__()
         self.buffer_layer = BufferLayer()
-        self.w1 = self.create_parameter(
-            shape=[2, 2], dtype='float32', is_bias=False)
+        self.w1 = self.create_parameter(shape=[2, 2],
+                                        dtype='float32',
+                                        is_bias=False)
         buffer_var = to_variable(np.ones([2, 4]).astype('int32'))
         self.register_buffer("net_buffer", buffer_var)
 
@@ -156,7 +167,9 @@ class BufferNet(fluid.Layer):
 
 
 class TestBuffer(unittest.TestCase):
+
     def func_test_buffers_and_named_buffers(self):
+
         def names(named_buffers):
             return [name for name, _ in named_buffers]
 
@@ -173,9 +186,8 @@ class TestBuffer(unittest.TestCase):
                 ['net_buffer', 'new_buffer', 'buffer_layer.layer_buffer'])
 
             self.assertEqual(len(net.buffers(include_sublayers=False)), 2)
-            self.assertEqual(
-                names(net.named_buffers(include_sublayers=False)),
-                ['net_buffer', 'new_buffer'])
+            self.assertEqual(names(net.named_buffers(include_sublayers=False)),
+                             ['net_buffer', 'new_buffer'])
 
     def test_buffers_and_named_buffers(self):
         with _test_eager_guard():
@@ -363,6 +375,7 @@ class TestBuffer(unittest.TestCase):
 
 
 class BufferNetWithModification(paddle.nn.Layer):
+
     def __init__(self, shape):
         super(BufferNetWithModification, self).__init__()
 
@@ -380,6 +393,7 @@ class BufferNetWithModification(paddle.nn.Layer):
 
 
 class TestModifiedBuffer(unittest.TestCase):
+
     def funcsetUp(self):
         paddle.disable_static()
         self.prog_trans = ProgramTranslator()
@@ -410,6 +424,7 @@ class TestModifiedBuffer(unittest.TestCase):
 
 
 class TestLayerTo(unittest.TestCase):
+
     def funcsetUp(self):
         paddle.disable_static()
         self.linear = paddle.nn.Linear(2, 2)
@@ -454,8 +469,8 @@ class TestLayerTo(unittest.TestCase):
             self.assertEqual(self.linear.weight.place.gpu_device_id(), 0)
             self.assertTrue(self.linear.buf_name.place.is_gpu_place())
             self.assertEqual(self.linear.buf_name.place.gpu_device_id(), 0)
-            self.assertTrue(self.linear.weight._grad_ivar().place.is_gpu_place(
-            ))
+            self.assertTrue(
+                self.linear.weight._grad_ivar().place.is_gpu_place())
             self.assertEqual(
                 self.linear.weight._grad_ivar().place.gpu_device_id(), 0)
 
@@ -464,8 +479,8 @@ class TestLayerTo(unittest.TestCase):
             self.assertEqual(self.linear.weight.place.gpu_device_id(), 0)
             self.assertTrue(self.linear.buf_name.place.is_gpu_place())
             self.assertEqual(self.linear.buf_name.place.gpu_device_id(), 0)
-            self.assertTrue(self.linear.weight._grad_ivar().place.is_gpu_place(
-            ))
+            self.assertTrue(
+                self.linear.weight._grad_ivar().place.is_gpu_place())
             self.assertEqual(
                 self.linear.weight._grad_ivar().place.gpu_device_id(), 0)
             for p in self.linear.parameters():
