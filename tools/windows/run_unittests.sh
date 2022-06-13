@@ -85,6 +85,7 @@ disable_win_inference_api_test="^trt_quant_int8_yolov3_r50_test$|\
 ^lite_resnet50_test$|\
 ^test_trt_dynamic_shape_transformer_prune$|\
 ^lite_mul_model_test$|\
+^trt_split_converter_test$|\
 ^paddle_infer_api_copy_tensor_tester$"
 
 

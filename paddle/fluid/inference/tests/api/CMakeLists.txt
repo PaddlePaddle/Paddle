@@ -943,24 +943,24 @@ if(WITH_GPU AND TENSORRT_FOUND)
     ${INFERENCE_EXTRA_DEPS}
     ARGS
     --infer_model=${TEST_SPLIT_CONVERTER_MODEL}/)
-  # inference_analysis_test(
-  #   test_analyzer_capi_exp_gpu
-  #   SRCS
-  #   analyzer_capi_exp_gpu_tester.cc
-  #   EXTRA_DEPS
-  #   ${INFERENCE_EXTRA_DEPS}
-  #   paddle_inference_c
-  #   ARGS
-  #   --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-  # inference_analysis_test(
-  #   test_analyzer_capi_exp_xpu
-  #   SRCS
-  #   analyzer_capi_exp_xpu_tester.cc
-  #   EXTRA_DEPS
-  #   ${INFERENCE_EXTRA_DEPS}
-  #   paddle_inference_c
-  #   ARGS
-  #   --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+  inference_analysis_test(
+    test_analyzer_capi_exp_gpu
+    SRCS
+    analyzer_capi_exp_gpu_tester.cc
+    EXTRA_DEPS
+    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_c_shared
+    ARGS
+    --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+  inference_analysis_test(
+    test_analyzer_capi_exp_xpu
+    SRCS
+    analyzer_capi_exp_xpu_tester.cc
+    EXTRA_DEPS
+    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_c_shared
+    ARGS
+    --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
 
   set(TRT_MODEL_QUANT_RESNET_DIR
       "${INFERENCE_DEMO_INSTALL_DIR}/small_quant_model")
@@ -1102,47 +1102,47 @@ inference_analysis_test(
   ARGS
   --infer_model=${RESNET50_MODEL_DIR})
 
-# inference_analysis_test(
-#   test_analyzer_capi_exp
-#   SRCS
-#   analyzer_capi_exp_tester.cc
-#   EXTRA_DEPS
-#   ${INFERENCE_EXTRA_DEPS}
-#   paddle_inference_c
-#   ARGS
-#   --infer_model=${RESNET50_MODEL_DIR}/model)
+inference_analysis_test(
+  test_analyzer_capi_exp
+  SRCS
+  analyzer_capi_exp_tester.cc
+  EXTRA_DEPS
+  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_c_shared
+  ARGS
+  --infer_model=${RESNET50_MODEL_DIR}/model)
 
-# inference_analysis_test(
-#   test_analyzer_capi_exp_pd_config
-#   SRCS
-#   analyzer_capi_exp_pd_config_tester.cc
-#   EXTRA_DEPS
-#   ${INFERENCE_EXTRA_DEPS}
-#   paddle_inference_c
-#   ARGS
-#   --infer_model=${MOBILENET_INSTALL_DIR}/model)
+inference_analysis_test(
+  test_analyzer_capi_exp_pd_config
+  SRCS
+  analyzer_capi_exp_pd_config_tester.cc
+  EXTRA_DEPS
+  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_c_shared
+  ARGS
+  --infer_model=${MOBILENET_INSTALL_DIR}/model)
 
-# inference_analysis_test(
-#   test_analyzer_capi_exp_pd_tensor
-#   SRCS
-#   analyzer_capi_exp_pd_tensor_tester.cc
-#   EXTRA_DEPS
-#   ${INFERENCE_EXTRA_DEPS}
-#   paddle_inference_c
-#   ARGS
-#   --infer_model=${MOBILENET_INSTALL_DIR}/model)
+inference_analysis_test(
+  test_analyzer_capi_exp_pd_tensor
+  SRCS
+  analyzer_capi_exp_pd_tensor_tester.cc
+  EXTRA_DEPS
+  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_c_shared
+  ARGS
+  --infer_model=${MOBILENET_INSTALL_DIR}/model)
 
-# if(NOT APPLE AND NOT WIN32)
-#   inference_analysis_test(
-#     test_analyzer_capi_exp_pd_threads
-#     SRCS
-#     analyzer_capi_exp_pd_threads_tester.cc
-#     EXTRA_DEPS
-#     ${INFERENCE_EXTRA_DEPS}
-#     paddle_inference_c
-#     ARGS
-#     --infer_model=${MOBILENET_INSTALL_DIR}/model)
-# endif()
+if(NOT APPLE AND NOT WIN32)
+  inference_analysis_test(
+    test_analyzer_capi_exp_pd_threads
+    SRCS
+    analyzer_capi_exp_pd_threads_tester.cc
+    EXTRA_DEPS
+    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_c_shared
+    ARGS
+    --infer_model=${MOBILENET_INSTALL_DIR}/model)
+endif()
 inference_analysis_test(
   test_analyzer_zerocopytensor_tensor
   SRCS
@@ -1176,27 +1176,27 @@ inference_analysis_test(
   --infer_data=${OCR_INSTALL_DIR}/data.txt
   --refer_result=${OCR_INSTALL_DIR}/result.txt)
 
-# if(WITH_MKLDNN)
-#   inference_analysis_test(
-#     test_analyzer_capi_exp_int
-#     SRCS
-#     analyzer_capi_exp_int_tester.cc
-#     EXTRA_DEPS
-#     ${INFERENCE_EXTRA_DEPS}
-#     paddle_inference_c
-#     ARGS
-#     --infer_model=${INT8_DATA_DIR}/resnet50/model)
-# endif()
+if(WITH_MKLDNN)
+  inference_analysis_test(
+    test_analyzer_capi_exp_int
+    SRCS
+    analyzer_capi_exp_int_tester.cc
+    EXTRA_DEPS
+    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_c_shared
+    ARGS
+    --infer_model=${INT8_DATA_DIR}/resnet50/model)
+endif()
 
-# inference_analysis_test(
-#   test_analyzer_capi_exp_ner
-#   SRCS
-#   analyzer_capi_exp_ner_tester.cc
-#   EXTRA_DEPS
-#   ${INFERENCE_EXTRA_DEPS}
-#   paddle_inference_c
-#   ARGS
-#   --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
+inference_analysis_test(
+  test_analyzer_capi_exp_ner
+  SRCS
+  analyzer_capi_exp_ner_tester.cc
+  EXTRA_DEPS
+  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_c_shared
+  ARGS
+  --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
 
 if(WITH_GPU)
   inference_analysis_test(
