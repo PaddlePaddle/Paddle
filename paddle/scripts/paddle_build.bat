@@ -638,9 +638,10 @@ if %ERRORLEVEL% NEQ 0 (
     echo pip install whl package failed!
     exit /b 1
 )
-
+@echo on
 set CUDA_VISIBLE_DEVICES=0
 python %work_dir%\paddle\scripts\installation_validate.py
+echo errorlevel is %errorlevel%
 goto:eof
 
 :test_whl_pacakage_error

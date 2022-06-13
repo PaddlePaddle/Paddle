@@ -135,10 +135,14 @@ def run_check():
                     exe0 = executor.Executor(
                         core.CUDAPlace(0) if core.is_compiled_with_cuda() and
                         (core.get_cuda_device_count() > 0) else core.CPUPlace())
+                    print("run startup_prog")
                     exe0.run(startup_prog)
+                    print("run feed fetch")
                     exe0.run(feed={inp0.name: np_inp_single},
                              fetch_list=[out0.name, param_grads[1].name])
+                    print("run prog successfully")
 
+    print("test simple_exe")
     test_simple_exe()
 
     print("Your Paddle Fluid works well on SINGLE GPU or CPU.")
