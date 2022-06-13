@@ -84,8 +84,7 @@ function(inference_quant_int8_image_classification_test target quant_model_dir
          dataset_path)
   py_test(
     ${target}
-    SRCS "${CMAKE_CURRENT_SOURCE_DIR}/ \
-      quant_int8_image_classification_comparison.py"
+    SRCS "${CMAKE_CURRENT_SOURCE_DIR}/quant_int8_image_classification_comparison.py"
          ENVS
          FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
          OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
@@ -109,8 +108,7 @@ function(inference_quant2_int8_image_classification_test target quant_model_dir
          fp32_model_dir dataset_path)
   py_test(
     ${target}
-    SRCS "${CMAKE_CURRENT_SOURCE_DIR}/ \
-      quant2_int8_image_classification_comparison.py"
+    SRCS "${CMAKE_CURRENT_SOURCE_DIR}/quant2_int8_image_classification_comparison.py"
          ENVS
          FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
          OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
