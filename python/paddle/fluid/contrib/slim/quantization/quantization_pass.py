@@ -1422,7 +1422,7 @@ class OutScaleForTrainingPass(object):
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-        self._is_test = True
+        self._is_test = graph.is_test()
         target_ops = []
         for op in graph.all_op_nodes():
             if op.name() in self._teller_set:
@@ -1449,6 +1449,33 @@ class OutScaleForTrainingPass(object):
                                    self._scope, self._place)
                     ins = {'X': in_node}
                     outs = {'OutScale': scale_node}
+                    if not self._is_test:
+                        state_in_node = graph.create_persistable_node(
+                            name=unique_name.generate('scale_state@'),
+                            var_type=core.VarDesc.VarType.LOD_TENSOR,
+                            var_dtype=in_node.dtype(),
+                            shape=[1])
+                        _init_var_node(state_in_node,
+                                       np.ones([1], dtype=data_type),
+                                       self._scope, self._place)
+                        accum_in_node = graph.create_persistable_node(
+                            name=unique_name.generate('scale_accum@'),
+                            var_type=core.VarDesc.VarType.LOD_TENSOR,
+                            var_dtype=in_node.dtype(),
+                            shape=[1])
+                        _init_var_node(accum_in_node,
+                                       np.ones([1], dtype=data_type),
+                                       self._scope, self._place)
+                        state_out_node = graph.create_var_node_from_desc(
+                            state_in_node.var())
+                        accum_out_node = graph.create_var_node_from_desc(
+                            accum_in_node.var())
+
+                        ins['InState'] = state_in_node
+                        ins['InAccum'] = accum_in_node
+                        outs['OutState'] = state_out_node
+                        outs['OutAccum'] = accum_out_node
+
                     attrs = {
                         'moving_rate': self._moving_rate,
                         'is_test': self._is_test,
@@ -1462,6 +1489,11 @@ class OutScaleForTrainingPass(object):
                         outputs=outs)
                     graph.link_to(in_node, scale_op_node)
                     graph.link_to(scale_op_node, scale_node)
+                    if not self._is_test:
+                        graph.link_to(state_in_node, scale_op_node)
+                        graph.link_to(accum_in_node, scale_op_node)
+                        graph.link_to(scale_op_node, state_out_node)
+                        graph.link_to(scale_op_node, accum_out_node)
                 t.update()
         return graph
 
