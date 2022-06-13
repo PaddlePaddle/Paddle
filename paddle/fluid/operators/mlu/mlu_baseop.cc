@@ -2804,5 +2804,55 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
       diff, workspace_ptr, workspace_size, output_desc, output));
 }
 
+/* static */ void MLUCnnl::BceWithLogits(
+    const ExecutionContext& ctx, cnnlBceWithLogitsReduction_t reduction,
+    const cnnlTensorDescriptor_t input_desc, const void* input,
+    const cnnlTensorDescriptor_t target_desc, const void* target,
+    const cnnlTensorDescriptor_t weight_desc, const void* weight,
+    const cnnlTensorDescriptor_t pos_weight_desc, const void* pos_weight,
+    const cnnlTensorDescriptor_t output_desc, void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetBceWithLogitsWorkspaceSize(
+      handle, input_desc, weight_desc, pos_weight_desc, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  const cnnlComputationPreference_t prefer = CNNL_COMPUTATION_HIGH_PRECISION;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlBceWithLogits_v2(
+      handle, prefer, input_desc, input, target_desc, target, weight_desc,
+      weight, pos_weight_desc, pos_weight, reduction, workspace_ptr,
+      workspace_size, output_desc, output));
+}
+
+/* static */ void MLUCnnl::BceWithLogitsBackward(
+    const ExecutionContext& ctx, cnnlBceWithLogitsReduction_t reduction,
+    const cnnlTensorDescriptor_t grad_desc, const void* grad,
+    const cnnlTensorDescriptor_t input_desc, const void* input,
+    const cnnlTensorDescriptor_t target_desc, const void* target,
+    const cnnlTensorDescriptor_t weight_desc, const void* weight,
+    const cnnlTensorDescriptor_t pos_weight_desc, const void* pos_weight,
+    const cnnlTensorDescriptor_t diff_input_desc, void* diff_input) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetBceWithLogitsBackwardWorkspaceSize(
+      handle, target_desc, weight_desc, pos_weight_desc, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlBceWithLogitsBackward(
+      handle, grad_desc, grad, input_desc, input, target_desc, target,
+      weight_desc, weight, pos_weight_desc, pos_weight, reduction,
+      workspace_ptr, workspace_size, diff_input_desc, diff_input));
+}
+
 }  // namespace operators
 }  // namespace paddle
