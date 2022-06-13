@@ -21,7 +21,9 @@
 
 namespace phi {
 
-template <typename T, typename IndexCalculator>
+using funcs::IndexCalculator;
+
+template <typename T>
 __global__ void Cross(const T* x,
                       const T* y,
                       T* out,
@@ -112,7 +114,7 @@ void CrossKernel(const Context& dev_ctx,
 
   auto* out_data = dev_ctx.template Alloc<T>(out);
 
-  auto index_calculator = phi::funcs::IndexCalculator(
+  auto index_calculator = IndexCalculator(
       input_x_dims.size() - 1, cal_dims, left_strides, full_strides);
 
   int64_t numel = x.numel();
