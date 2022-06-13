@@ -28,7 +28,7 @@ void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
       "relu", "mish",  "swish", "sqrt", "hard_swish",   "sigmoid",   "abs",
       "gelu", "relu6", "clip",  "tanh", "hard_sigmoid", "leaky_relu"};
 
-  std::vector<std::string> conv_types = {"conv2d", "conv2d_transpose"};
+  std::vector<std::string> conv_types = {"conv2d"};
 
   for (const auto& conv_type : conv_types)
     for (auto& act_type : act_types) {
@@ -156,48 +156,6 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
       .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 
-  AddOpCompat(OpCompat("conv2d_transpose"))
-      .AddInput("Input")
-      .IsTensor()
-      .End()
-      .AddInput("Filter")
-      .IsTensor()
-      .End()
-      .AddInput("Bias")
-      .IsTensor()
-      .IsOptional()
-      .End()
-      .AddOutput("Output")
-      .IsTensor()
-      .End()
-      .AddAttr("output_padding")
-      .IsType<std::vector<int>>()
-      .IsOptional()
-      .End()
-      .AddAttr("output_size")
-      .IsType<std::vector<int>>()
-      .IsOptional()
-      .End()
-      .AddAttr("groups")
-      .IsNumEQ(1)
-      .End()
-      .AddAttr("dilations")
-      .IsType<std::vector<int>>()
-      .End()
-      .AddAttr("strides")
-      .IsType<std::vector<int>>()
-      .End()
-      .AddAttr("paddings")
-      .IsType<std::vector<int>>()
-      .End()
-      .AddAttr("padding_algorithm")
-      .IsOptional()
-      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
-      .End()
-      .AddAttr("data_format")
-      .IsStringIn({"NCHW", "AnyLayout"})
-      .End();
-
   AddOpCompat(OpCompat("relu"))
       .AddInput("X")
       .IsTensor()
@@ -306,7 +264,6 @@ REGISTER_PASS_CAPABILITY(conv_activation_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
-            .LE("conv2d_transpose", 2)
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)

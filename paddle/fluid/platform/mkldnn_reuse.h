@@ -972,8 +972,8 @@ static const dnnl::algorithm AcquireActivationAlgorithm(
   const auto& activation_type = activation_map.find(activation_name);
 
   PADDLE_ENFORCE_NE(activation_type, activation_map.end(),
-                    platform::errors::Unavailable(
-                        "Activation \"%s\" not found in oneDNN algorithms mapper", activation_name));
+                    platform::errors::InvalidArgument(
+                        "Activation '%s' not found in oneDNN algorithms mapper", activation_name));
   return activation_type->second;
 }
 
