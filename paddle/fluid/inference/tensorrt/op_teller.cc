@@ -104,6 +104,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "stack",
       "transpose2",
       "transpose",
+      "top_k",
+      "top_k_v2",
       "flatten2",
       "flatten",
       "gather",
@@ -175,6 +177,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "stack",
       "transpose2",
       "transpose",
+      "top_k",
+      "top_k_v2",
       "flatten2",
       "flatten",
       "gather",
@@ -1753,6 +1757,34 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         const auto x_shape = x_var_desc->GetShape();
         if (x_shape.size() == 1) {
           VLOG(3) << "Hard sigmoid does not support 1-dimensional input in "
+                     "tensorrt";
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "top_k_v2" || op_type == "top_k") {
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << "top_k/top_k_v2 does not support 1-dimensional input in "
+                   "tensorrt";
+        return false;
+      }
+      if (desc.HasAttr("axis")) {
+        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+        if (axis == 0) {
+          VLOG(3) << "top_k_v2 does not support axis == 0 in "
+                     "tensorrt";
+          return false;
+        }
+      }
+      if (desc.HasAttr("sorted")) {
+        bool sorted = BOOST_GET_CONST(bool, desc.GetAttr("sorted"));
+        if (!sorted) {
+          VLOG(3) << "top_k_v2 does not support results not sorted in "
                      "tensorrt";
           return false;
         }
