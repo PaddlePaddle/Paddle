@@ -2688,6 +2688,15 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
   }
 }
 
+/* static */ void MLUCnnl::TrilTriu(
+    const ExecutionContext& ctx, const int diagonal_k, const bool tri_up_mode,
+    const cnnlTensorDescriptor_t input_desc, const void* input,
+    const cnnlTensorDescriptor_t output_desc, void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlTri(handle, diagonal_k, tri_up_mode,
+                                     input_desc, input, output_desc, output));
+}
+
 /* static */ void MLUCnnl::MatrixBandPart(
     const ExecutionContext& ctx, const cnnlTensorDescriptor_t data_desc,
     const void* input, const int num_lower, const int num_upper, void* output) {
