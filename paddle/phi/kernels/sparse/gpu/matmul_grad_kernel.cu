@@ -12,12 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <vector>
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
-#include "paddle/phi/kernels/sparse/sparse_mm_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/matmul_grad_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {

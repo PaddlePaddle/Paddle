@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
-#include "paddle/phi/kernels/sparse/sparse_mm_kernel.h"
+#include "paddle/phi/kernels/sparse/matmul_kernel.h"
 
 namespace phi {
 namespace sparse {

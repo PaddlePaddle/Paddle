@@ -12,26 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/sparse/full_kernel.h"
+
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/sparse/sparse_full_kernel.h"
+#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi {
 
-template <typename InT, typename OutT = InT>
-struct FullFuctor {
-  OutT value;
-
-  template <typename VType>
-  explicit inline FullFuctor(VType val) {
-    value = static_cast<OutT>(val);
-  }
-
-  __device__ __forceinline__ OutT operator()() const {
-    return static_cast<OutT>(value);
-  }
-};
+template <typename T, typename Context>
+void FullValue(const Context& dev_ctx, DenseTensor* tensor, T val) {
+  dev_ctx.template Alloc<T>(tensor);
+  auto t = phi::EigenVector<T>::Flatten(*tensor);
+  t.device(*dev_ctx.eigen_device()) = t.constant(val);
+}
 
 template <typename T, typename Context>
 void CooFullLikeKernel(const Context& dev_ctx,
@@ -48,14 +45,8 @@ void CooFullLikeKernel(const Context& dev_ctx,
   DenseTensor* values = out->mutable_non_zero_elements();
   values->Resize(x.non_zero_elements().dims());
   dev_ctx.template Alloc<T>(values);
+  FullValue<T, Context>(dev_ctx, values, val.to<T>());
 
-  std::vector<const DenseTensor*> inputs = {};
-  std::vector<DenseTensor*> outputs = {values};
-  int numel = values->numel();
-  if (numel > 0) {
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
-  }
   out->set_dims(x.dims());
 }
 
@@ -80,21 +71,15 @@ void CsrFullLikeKernel(const Context& dev_ctx,
   DenseTensor* values = out->mutable_non_zero_elements();
   values->Resize(x.non_zero_elements().dims());
   dev_ctx.template Alloc<T>(values);
+  FullValue<T, Context>(dev_ctx, values, val.to<T>());
 
-  std::vector<const DenseTensor*> inputs = {};
-  std::vector<DenseTensor*> outputs = {values};
-  int numel = values->numel();
-  if (numel > 0) {
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
-  }
   out->set_dims(x.dims());
 }
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(coo_full_like,
-                   GPU,
+                   CPU,
                    ALL_LAYOUT,
                    phi::CooFullLikeKernel,
                    float,
@@ -112,7 +97,7 @@ PD_REGISTER_KERNEL(coo_full_like,
 }
 
 PD_REGISTER_KERNEL(csr_full_like,
-                   GPU,
+                   CPU,
                    ALL_LAYOUT,
                    phi::CsrFullLikeKernel,
                    float,

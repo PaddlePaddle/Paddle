@@ -1777,8 +1777,6 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"cols", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_cols,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"is_dense", (PyCFunction)(void (*)(void))tensor_method_is_dense,
-     METH_VARARGS | METH_KEYWORDS, NULL},
     {"is_sparse", (PyCFunction)(void (*)(void))tensor_method_is_sparse,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"is_sparse_coo", (PyCFunction)(void (*)(void))tensor_method_is_sparse_coo,

@@ -14,14 +14,10 @@
 
 #pragma once
 
-#include <vector>
-
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 
 namespace phi {
 
