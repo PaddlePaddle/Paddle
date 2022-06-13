@@ -378,7 +378,7 @@ class QuantizationTransformPass(object):
         # The loop for transforming the forward graph:
         with tqdm(
                 total=len(ops),
-                bar_format='Adding quant op with weight:|{bar}| {n_fmt}/{total_fmt}',
+                bar_format='Adding quant op for weight:|{bar}| {n_fmt}/{total_fmt}',
                 ncols=80) as t:
             for op in ops:
                 if op.name() in self._quantizable_ops:
@@ -2265,7 +2265,7 @@ class QuantizationTransformPassV2(object):
         # The loop for transforming the forward graph:
         with tqdm(
                 total=len(ops),
-                bar_format='Adding quant op with weight:|{bar}| {n_fmt}/{total_fmt}',
+                bar_format='Adding quant op for weight:|{bar}| {n_fmt}/{total_fmt}',
                 ncols=80) as t:
             for op in ops:
                 if op.name() in self._quantizable_ops:
