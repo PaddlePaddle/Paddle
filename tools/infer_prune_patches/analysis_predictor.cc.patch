@@ -1,16 +1,16 @@
 diff --git a/paddle/fluid/inference/api/analysis_predictor.cc b/paddle/fluid/inference/api/analysis_predictor.cc
-index 09a5bbddba..569435b43c 100644
+index 0645af611b..90e122e8c6 100644
 --- a/paddle/fluid/inference/api/analysis_predictor.cc
 +++ b/paddle/fluid/inference/api/analysis_predictor.cc
-@@ -1024,6 +1024,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
+@@ -1161,6 +1161,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
    LOG(INFO) << "======= optimize end =======";
  }
  
 +/*
  template <>
- std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
-@@ -1132,6 +1133,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+ std::unique_ptr<PaddlePredictor>
+ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+@@ -1264,6 +1265,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
  
    return predictor;
  }
@@ -18,7 +18,7 @@ index 09a5bbddba..569435b43c 100644
  
  bool AnalysisPredictor::MkldnnQuantize() {
  #if PADDLE_WITH_MKLDNN
-@@ -1719,6 +1721,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
+@@ -1873,6 +1875,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
    exe.Run(save_program, scope(), 0, true, true);
  }
  
@@ -26,7 +26,7 @@ index 09a5bbddba..569435b43c 100644
  template <>
  std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
      const AnalysisConfig &config) {
-@@ -1726,6 +1729,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
+@@ -1880,6 +1883,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
    return CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
        config);
  }
@@ -34,7 +34,7 @@ index 09a5bbddba..569435b43c 100644
  
  }  // namespace paddle
  
-@@ -1769,7 +1773,7 @@ USE_TRT_CONVERTER(shuffle_channel);
+@@ -1923,7 +1927,7 @@ USE_TRT_CONVERTER(shuffle_channel);
  USE_TRT_CONVERTER(swish);
  USE_TRT_CONVERTER(group_norm);
  USE_TRT_CONVERTER(instance_norm);
@@ -43,7 +43,7 @@ index 09a5bbddba..569435b43c 100644
  USE_TRT_CONVERTER(gelu);
  USE_TRT_CONVERTER(multihead_matmul);
  USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
-@@ -1779,13 +1783,13 @@ USE_TRT_CONVERTER(scale);
+@@ -1933,13 +1937,13 @@ USE_TRT_CONVERTER(scale);
  USE_TRT_CONVERTER(stack);
  USE_TRT_CONVERTER(clip);
  USE_TRT_CONVERTER(gather);

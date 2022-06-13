@@ -1,13 +1,17 @@
 diff --git a/paddle/fluid/inference/api/CMakeLists.txt b/paddle/fluid/inference/api/CMakeLists.txt
-index 56cc4aa755..107378a0a3 100755
+index e25c5e9639..d898a17d27 100755
 --- a/paddle/fluid/inference/api/CMakeLists.txt
 +++ b/paddle/fluid/inference/api/CMakeLists.txt
-@@ -55,6 +55,8 @@ if (WITH_ONNXRUNTIME)
- else (WITH_ONNXRUNTIME)
-     cc_library(analysis_predictor SRCS analysis_predictor.cc resource_manager.cc infer_context.cc ${mkldnn_quantizer_src} DEPS ${inference_deps}
-               zero_copy_tensor ir_pass_manager op_compatible_info infer_io_utils)
-+    cc_library(tensorrt_predictor SRCS tensorrt_predictor.cc resource_manager.cc infer_context.cc ${mkldnn_quantizer_src} DEPS ${inference_deps}
-+              zero_copy_tensor ir_pass_manager op_compatible_info infer_io_utils)
- endif (WITH_ONNXRUNTIME)
+@@ -91,6 +91,12 @@ else(WITH_ONNXRUNTIME)
+          ${mkldnn_quantizer_src}
+     DEPS ${inference_deps} zero_copy_tensor ir_pass_manager op_compatible_info
+          infer_io_utils)
++  cc_library(
++    tensorrt_predictor
++    SRCS tensorrt_predictor.cc resource_manager.cc infer_context.cc
++         ${mkldnn_quantizer_src}
++    DEPS ${inference_deps} zero_copy_tensor ir_pass_manager op_compatible_info
++         infer_io_utils)
+ endif(WITH_ONNXRUNTIME)
  
- 
+ cc_test(

@@ -1,17 +1,16 @@
 diff --git a/paddle/fluid/inference/CMakeLists.txt b/paddle/fluid/inference/CMakeLists.txt
-index 633f481df8..61ad8aa591 100644
+index a29e530b2b..cc66417a83 100644
 --- a/paddle/fluid/inference/CMakeLists.txt
 +++ b/paddle/fluid/inference/CMakeLists.txt
-@@ -42,7 +42,7 @@ add_subdirectory(api)
- 
- # Create static inference library if needed
+@@ -46,6 +46,7 @@ add_subdirectory(api)
  # All static libs in inference/api
--set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor
-+set(STATIC_INFERENCE_API paddle_inference_api tensorrt_predictor analysis_predictor
-      zero_copy_tensor reset_tensor_array
-         analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
- 
-@@ -74,13 +74,14 @@ set(SHARED_INFERENCE_SRCS
+ set(STATIC_INFERENCE_API
+     paddle_inference_api
++    tensorrt_predictor
+     analysis_predictor
+     zero_copy_tensor
+     reset_tensor_array
+@@ -86,13 +87,14 @@ set(SHARED_INFERENCE_SRCS
      ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc
      ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
      ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
@@ -22,8 +21,8 @@ index 633f481df8..61ad8aa591 100644
      ${PADDLE_CUSTOM_OP_SRCS})
  
  # shared inference library deps
--set(SHARED_INFERENCE_DEPS ${fluid_modules} phi analysis_predictor ${utils_modules})
-+set(SHARED_INFERENCE_DEPS ${fluid_modules} phi analysis_predictor tensorrt_predictor ${utils_modules})
+-set(SHARED_INFERENCE_DEPS ${fluid_modules} phi analysis_predictor
++set(SHARED_INFERENCE_DEPS ${fluid_modules} phi analysis_predictor tensorrt_predictor
+                           ${utils_modules})
  
- if (WITH_CRYPTO) 
-     set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
+ if(WITH_CRYPTO)
