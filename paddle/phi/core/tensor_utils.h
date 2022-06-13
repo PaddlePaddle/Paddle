@@ -83,14 +83,6 @@ void Copy(const Context& dev_ctx,
           const SelectedRows& src,
           Place dst_place,
           bool blocking,
-          SelectedRows* dst) {
-  if (src.value().Holder() != dst->value().Holder() ||
-      src.value().data() != dst->value().data()) {
-    dst->set_rows(src.rows());
-    dst->set_height(src.height());
-  }
-  Copy<Context>(
-      dev_ctx, src.value(), dst_place, blocking, dst->mutable_value());
-}
+          SelectedRows* dst);
 
 }  // namespace phi
