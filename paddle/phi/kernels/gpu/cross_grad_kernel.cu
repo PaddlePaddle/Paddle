@@ -12,17 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cross_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
 namespace phi {
-
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename IndexCalculator>
 __global__ void CrossGrad(const T* x,
@@ -132,17 +129,21 @@ void CrossGradKernel(const Context& dev_ctx,
       input_x_dims.size() - 1, cal_dims, left_strides, full_strides);
 
   int64_t numel = x.numel();
-  int threads = PADDLE_CUDA_NUM_THREADS;
-  int blocks = (numel + threads - 1) / threads;
 
-  CrossGrad<<<blocks, threads>>>(input_x_data,
-                                 input_y_data,
-                                 input_out_grad_data,
-                                 output_x_grad_data,
-                                 output_y_grad_data,
-                                 full_strides[dim],
-                                 numel / 3,
-                                 index_calculator);
+  backends::gpu::GpuLaunchConfig config =
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel / 3);
+
+  CrossGrad<<<config.block_per_grid,
+              config.thread_per_block,
+              0,
+              dev_ctx.stream()>>>(input_x_data,
+                                  input_y_data,
+                                  input_out_grad_data,
+                                  output_x_grad_data,
+                                  output_y_grad_data,
+                                  full_strides[dim],
+                                  numel / 3,
+                                  index_calculator);
 }
 }  // namespace phi
 
