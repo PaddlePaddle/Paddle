@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,6 +19,8 @@ from codegen_utils import FunctionGeneratorBase, GeneratorBase
 from codegen_utils import yaml_types_mapping
 from codegen_utils import ReadFwdFile, IsVectorTensorType, GetForwardFunctionName
 from codegen_utils import ParseYamlForward, GetInplacedFunctionName
+from codegen_utils import GetAutoGradMetaVectorName
+from codegen_utils import GetAutoGradMetaName, GetIndent
 
 ###########################
 ## Global Configurations ##
@@ -102,6 +104,52 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 {}
     // Call dygraph function
     decltype({}({})) out = {}({});
+
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
+{}
+  }} catch(...) {{
+    if (tstate) {{
+      PyEval_RestoreThread(tstate);
+    }}
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }}
+}}
+"""
+
+PYTHON_C_FUNCTION_TEMPLATE_FWD_ONLY_TEMPLATE = \
+"""
+static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
+  {}
+
+  PyThreadState *tstate = nullptr;
+  try {{
+    VLOG(6) << "Running Eager Final State API: {}";
+
+    // Get EagerTensors from args
+{}
+    // Parse Attributes if needed
+{}
+    tstate = PyEval_SaveThread();
+
+    // Set Device ID
+{}
+    // Get Input autograd_meta
+{}
+    // Call dygraph function
+    decltype({}({})) out = {}({});
+
+    // Get Output autograd_meta
+{}
+    // Compute require grad
+    bool trace_backward = egr::Controller::Instance().HasGrad();
+    bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
+
+    // Pass Stop Gradient
+    if(require_any_grad) {{
+        egr::EagerUtils::PassStopGradient({});
+    }}
 
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
@@ -246,6 +294,7 @@ NAMESPACE_WRAPPER_TEMPLATE = \
 ## Generator Classes ##
 #######################
 class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
+
     def __init__(self, forward_api_contents, namespace):
         # Members from Parent:
         #self.namespace
@@ -258,7 +307,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         #self.forward_outputs_position_map
         #self.optional_inputs
         #self.no_need_buffers
-        #self.intermediate_outputs   
+        #self.intermediate_outputs
         #self.forward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
@@ -282,15 +331,23 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         forward_outputs_position_map = self.forward_outputs_position_map
         optional_inputs = self.optional_inputs
         is_forward_only = self.is_forward_only
-
-        # Generate Python-C Tensors Parsing Logic
+        indent = GetIndent(2)
+        # Generate Python-C Tensors Parsing Logic and forward compute require grad for fwd only code
         get_eager_tensor_str = ""
+        input_autograd_meta = ""
+        inputs_autograd_meta_list = []
+        compute_require_grad_args_list = ["trace_backward"]
+        no_inputs = (len(forward_inputs_position_map) == 0)
         for name, (ttype, pos) in forward_inputs_position_map.items():
             is_optional = (name in optional_inputs)
+            input_autograd_meta_name = GetAutoGradMetaName(name)
             if IsVectorTensorType(ttype):
                 get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
                     name, "GetTensorListFromArgs", forward_api_name, name, pos,
                     "false")
+                input_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
+                input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({name});\n"
+                input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
             else:
                 if is_optional:
                     get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
@@ -300,6 +357,43 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
                         name, "GetTensorFromArgs", forward_api_name, name, pos,
                         "false")
+                input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({name});"
+            inputs_autograd_meta_list.append(input_autograd_meta)
+            compute_require_grad_args_list.append(input_autograd_meta_name)
+        inputs_autograd_meta_str = "\n".join(inputs_autograd_meta_list)
+        compute_require_grad_args_str = ",".join(compute_require_grad_args_list)
+
+        # Pass Forward stop gradient status for fwd only code
+        outputs_autograd_meta_list = []
+        num_fwd_outputs = len(forward_outputs_position_map.keys())
+        for name, (rtype, pos) in forward_outputs_position_map.items():
+            output_autograd_meta_name = GetAutoGradMetaName(name)
+            output_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
+            if num_fwd_outputs == 1:
+                if not IsVectorTensorType(rtype):
+                    output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&out);"
+                else:
+                    output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&out);\n"
+                    output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
+            else:
+                # Tuple api_result
+                if not IsVectorTensorType(rtype):
+                    output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&(std::get<{pos}>(out)));"
+                else:
+                    assert IsVectorTensorType(rtype)
+                    output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&(std::get<{pos}>(out)));\n"
+                    output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
+
+            outputs_autograd_meta_list.append(output_autograd_meta)
+        outputs_autograd_meta_str = "\n".join(outputs_autograd_meta_list)
+        compute_require_grad_str = f"{indent}bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;\n"
+        compute_require_grad_str += f"{indent}bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({compute_require_grad_args_str});"
+
+        pass_stop_gradient_args_list = ["false"]
+        for name, (_, _) in forward_outputs_position_map.items():
+            output_autograd_meta_name = GetAutoGradMetaName(name)
+            pass_stop_gradient_args_list.append(output_autograd_meta_name)
+        pass_stop_gradient_args_str = ",".join(pass_stop_gradient_args_list)
 
         parse_attributes_str = ""
         expected_place_str = "    auto place = egr::Controller::Instance().GetExpectedPlace();\n"
@@ -320,8 +414,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         set_device_str = FUNCTION_SET_DEVICE_TEMPLATE.format(expected_place_str)
 
         # Generate Dygraph Function Call Logic
-        num_args = len(forward_inputs_position_map.keys()) + len(
-            orig_forward_attrs_list)
+        num_args = len(
+            forward_inputs_position_map.keys()) + len(orig_forward_attrs_list)
         dygraph_function_call_list = ["" for i in range(num_args)]
         for name, (_, pos) in forward_inputs_position_map.items():
             dygraph_function_call_list[pos] = f"{name}"
@@ -344,11 +438,21 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             "pythonc_record_event", forward_api_name, "pybind_imperative_func")
 
         # Generate Python-C Function Definetion
-        self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
-            forward_api_name, pythonc_record_event_str, forward_api_name,
-            get_eager_tensor_str, parse_attributes_str, set_device_str,
-            fwd_function_name, dygraph_function_call_str, fwd_function_name,
-            dygraph_function_call_str, return_str)
+        if is_forward_only and (not no_inputs):
+            self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE_FWD_ONLY_TEMPLATE.format(
+                forward_api_name, pythonc_record_event_str, forward_api_name,
+                get_eager_tensor_str, parse_attributes_str, set_device_str,
+                inputs_autograd_meta_str, fwd_function_name,
+                dygraph_function_call_str, fwd_function_name,
+                dygraph_function_call_str, outputs_autograd_meta_str,
+                compute_require_grad_args_str, pass_stop_gradient_args_str,
+                return_str)
+        else:
+            self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
+                forward_api_name, pythonc_record_event_str, forward_api_name,
+                get_eager_tensor_str, parse_attributes_str, set_device_str,
+                fwd_function_name, dygraph_function_call_str, fwd_function_name,
+                dygraph_function_call_str, return_str)
 
         # Set prefix of forward_api_name to avoid conflicts
         prefix = self.namespace.strip("::")
@@ -429,8 +533,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
 
 class PythonCGenerator(GeneratorBase):
+
     def __init__(self, path):
-        # Parent members: 
+        # Parent members:
         # self.namespace
         # self.api_yaml_path
         # self.forward_api_list
@@ -445,8 +550,8 @@ class PythonCGenerator(GeneratorBase):
         forward_api_list = self.forward_api_list
 
         for forward_api_content in forward_api_list:
-            f_generator = PythonCSingleFunctionGenerator(forward_api_content,
-                                                         namespace)
+            f_generator = PythonCSingleFunctionGenerator(
+                forward_api_content, namespace)
             status = f_generator.run()
 
             if status == True:
