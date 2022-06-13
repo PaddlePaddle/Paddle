@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/cross_kernel.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
+
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
@@ -33,17 +34,6 @@ void CrossKernel(const Context& dev_ctx,
   int dim = axis;
 
   auto input_x_dims = input_x.dims();
-  auto input_y_dims = input_y.dims();
-  bool dims_match = phi::funcs::CheckDims(input_x_dims, input_y_dims);
-  PADDLE_ENFORCE_EQ(
-      dims_match,
-      true,
-      phi::errors::InvalidArgument("The 'shape' of Input(X) should be equal to "
-                                   "the 'shape' of Input(Y). But received "
-                                   "Input(X).dimensions = [%s], "
-                                   "Input(Y).dimensions = [%s]",
-                                   input_x_dims,
-                                   input_x_dims));
 
   if (dim != DDim::kMaxRank) {
     PADDLE_ENFORCE_EQ(
