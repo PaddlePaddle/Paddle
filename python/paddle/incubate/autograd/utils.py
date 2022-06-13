@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import typing
+
 import paddle
 from paddle.fluid import framework as framework
 
@@ -160,9 +162,9 @@ def get_output_var_list(op):
 
 def to_tensors(xs):
     if isinstance(xs, paddle.fluid.framework.Variable):
-        return [xs]
-    else:
-        return xs
+        return (xs, )
+    elif isinstance(xs, typing.Sequence):
+        return tuple(xs)
 
 
 def flatten(inp):

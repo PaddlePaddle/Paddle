@@ -593,7 +593,7 @@ def _gradients(ys, xs, ys_bar=None):
 
     ys, xs, ys_bar = to_tensors(ys), to_tensors(xs), to_tensors(ys_bar)
     block = default_main_program().current_block()
-    for el in tuple(xs) + tuple(ys):
+    for el in xs + ys:
         assert el is None or el.block == block, f'variable in xs and ys should be None or in current block of main program'
     # TODO(Tongxin) without any prior knowledge about whether the program
     # is completely lowered to primitive ops, it's mandatory to run the lowering

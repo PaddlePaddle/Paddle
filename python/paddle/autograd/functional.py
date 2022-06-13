@@ -346,7 +346,13 @@ class _Jacobian(object):
     """
 
     def __init__(self, func, xs):
-        self._xs = _separate(xs)
+        # Skip separating in prim mode temporarily, as detach and clone are not
+        # primitive operators.
+        if not paddle.fluid._non_static_mode and paddle.incubate.autograd.prim_enabled(
+        ):
+            self._xs = xs
+        else:
+            self._xs = _separate(xs)
         self._ys = func(*_as_tensors(self._xs))
         self._flatten_xs = self._flatten(_as_tensors(self._xs))
         self._flatten_ys = self._flatten(_as_tensors(self._ys))
@@ -385,9 +391,13 @@ class _Jacobian(object):
             return self._cached_evaluate(
                 indexes[self._lazy_axis])[other_indexes]
         lazy_indexes = self._lazy_indexes(indexes)
-        part_jac = paddle.stack(
+        # Using concat and reshape to replace stack operator temporarily, as
+        # it is not a primitive operator.
+        shape = list(self.shape)
+        shape[self._lazy_axis] = len(lazy_indexes)
+        part_jac = paddle.concat(
             [self._cached_evaluate(i) for i in lazy_indexes],
-            axis=self._lazy_axis)
+            axis=self._lazy_axis).reshape(shape)
         return part_jac[self._shifted_indexes(indexes, len(lazy_indexes))]
 
     def _cached_evaluate(self, k):
