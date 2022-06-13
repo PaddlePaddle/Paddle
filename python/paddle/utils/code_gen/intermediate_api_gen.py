@@ -136,7 +136,7 @@ def main():
         '--api_yaml_path',
         nargs='+',
         help='path to api yaml file',
-        default='python/paddle/utils/code_gen/api.yaml')
+        default='python/paddle/utils/code_gen/legacy_api.yaml')
 
     parser.add_argument(
         '--sparse_api_yaml_path',

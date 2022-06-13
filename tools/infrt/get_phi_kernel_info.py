@@ -21,13 +21,21 @@ from typing import List, Dict, Any
 
 skipped_phi_api_list_file = "/tools/infrt/skipped_phi_api.json"
 api_yaml_file = "/python/paddle/utils/code_gen/api.yaml"
+legacy_api_yaml_file = "/python/paddle/utils/code_gen/legacy_api.yaml"
 
 
 def get_skipped_kernel_list():
     skiped_kernel_list = []
     with open(skipped_phi_api_list_file, 'r') as f:
         skiped_api_list = json.load(f)
-    infer_meta_data = get_api_yaml_info(api_yaml_file)
+    infer_meta_data = []
+    api_meta_data = get_api_yaml_info(api_yaml_file)
+    legacy_api_meta_data = get_api_yaml_info(legacy_api_yaml_file)
+    if api_meta_data:
+        infer_meta_data.extend(api_meta_data)
+    if legacy_api_meta_data:
+        infer_meta_data.extend(legacy_api_meta_data)
+
     for api in infer_meta_data:
         if "kernel" not in api or "infer_meta" not in api:
             continue
