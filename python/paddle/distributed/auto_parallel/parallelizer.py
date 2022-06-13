@@ -167,6 +167,14 @@ class AutoParallelizer:
             auto_parallel_sharding_pass.apply([main_program], [startup_program],
                                               self._pass_context)
 
+        if self._dist_strategy.pipeline:
+            acc_steps = self._dist_strategy.pipeline_configs["accumulate_steps"]
+            self._dist_strategy.gradient_merge = True
+            self._dist_strategy.gradient_merge_configs = {
+                "k_steps": acc_steps,
+                "avg": True
+            }
+
         if self._dist_strategy.gradient_merge:
             config = copy.deepcopy(self._dist_strategy.gradient_merge_configs)
             config["dist_context"] = self._dist_context

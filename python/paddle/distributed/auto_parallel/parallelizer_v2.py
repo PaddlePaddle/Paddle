@@ -164,6 +164,14 @@ class Parallelizer:
             auto_parallel_sharding_pass.apply([main_program], [startup_program],
                                               self._pass_context)
 
+        if self._strategy.pipeline:
+            acc_steps = self._strategy.pipeline_configs["accumulate_steps"]
+            self._strategy.gradient_merge = True
+            self._strategy.gradient_merge_configs = {
+                "k_steps": acc_steps,
+                "avg": True
+            }
+
         if self._strategy.gradient_merge:
             config = copy.deepcopy(self._strategy.gradient_merge_configs)
             config["dist_context"] = self._dist_context
