@@ -55,12 +55,12 @@ def find_kernel(content, pattern):
 def prune_phi_kernels():
     tool_dir = os.path.dirname(os.path.abspath(__file__))
     if sys.version_info[0] == 3:
-        all_op = glob.glob(
-            os.path.join(tool_dir, '../paddle/phi/kernels/**/*.cc'),
-            recursive=True)
-        all_op += glob.glob(
-            os.path.join(tool_dir, '../paddle/phi/kernels/**/*.cu'),
-            recursive=True)
+        all_op = glob.glob(os.path.join(tool_dir,
+                                        '../paddle/phi/kernels/**/*.cc'),
+                           recursive=True)
+        all_op += glob.glob(os.path.join(tool_dir,
+                                         '../paddle/phi/kernels/**/*.cu'),
+                            recursive=True)
     elif sys.version_info[0] == 2:
         all_op = find_type_files(
             os.path.join(tool_dir, '../paddle/phi/kernels/'), '.cc')
@@ -103,10 +103,11 @@ def prune_phi_kernels():
 
 def apply_patches():
     work_path = os.path.dirname(os.path.abspath(__file__)) + "/../"
-    ret = os.system("cd %s && rm -f paddle/fluid/inference/api/tensorrt_predictor.* "
-                    " && rm -f paddle/fluid/inference/api/paddle_tensorrt_predictor.h " 
-                    " && git apply tools/infer_prune_patches/*.patch && cd -" % work_path)
-    return ret == 0 
+    ret = os.system(
+        "cd %s && rm -f paddle/fluid/inference/api/tensorrt_predictor.* "
+        " && rm -f paddle/fluid/inference/api/paddle_tensorrt_predictor.h "
+        " && git apply tools/infer_prune_patches/*.patch && cd -" % work_path)
+    return ret == 0
 
 
 def append_fluid_kernels():
@@ -126,7 +127,8 @@ def append_fluid_kernels():
     new_content = content.replace(location_str, location_str + append_str)
 
     if new_content == content:
-        print("ERROR: can not find \"%s\" in file \"%s\"" % (location_str, file_name))
+        print("ERROR: can not find \"%s\" in file \"%s\"" %
+              (location_str, file_name))
         return False
 
     with io.open(file_name, 'w', encoding='utf-8') as f:
@@ -136,12 +138,12 @@ def append_fluid_kernels():
     op_white_list.append("tensorrt_engine")
     tool_dir = os.path.dirname(os.path.abspath(__file__))
     if sys.version_info[0] == 3:
-        all_op = glob.glob(
-            os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cc'),
-            recursive=True)
-        all_op += glob.glob(
-            os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cu'),
-            recursive=True)
+        all_op = glob.glob(os.path.join(tool_dir,
+                                        '../paddle/fluid/operators/**/*.cc'),
+                           recursive=True)
+        all_op += glob.glob(os.path.join(tool_dir,
+                                         '../paddle/fluid/operators/**/*.cu'),
+                            recursive=True)
     elif sys.version_info[0] == 2:
         all_op = find_type_files(
             os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cc')
@@ -153,13 +155,18 @@ def append_fluid_kernels():
             content = ''.join(f.readlines())
 
         for op in op_white_list:
-            patterns = {"REGISTER_OPERATOR":"REGISTER_OPERATOR\(\s*%s\s*," % op,
-                        "REGISTER_OP_CPU_KERNEL":"REGISTER_OP_CPU_KERNEL\(\s*%s\s*," % op,
-                        "REGISTER_OP_CUDA_KERNEL":"REGISTER_OP_CUDA_KERNEL\(\s*%s\s*," % op}
-            for k,p in patterns.items():
+            patterns = {
+                "REGISTER_OPERATOR": "REGISTER_OPERATOR\(\s*%s\s*," % op,
+                "REGISTER_OP_CPU_KERNEL":
+                "REGISTER_OP_CPU_KERNEL\(\s*%s\s*," % op,
+                "REGISTER_OP_CUDA_KERNEL":
+                "REGISTER_OP_CUDA_KERNEL\(\s*%s\s*," % op
+            }
+            for k, p in patterns.items():
                 matches = re.findall(p, content, flags=re.DOTALL)
-                if len(matches)  > 0:
-                    content = content.replace(matches[0], matches[0].replace(k, k + "__"))
+                if len(matches) > 0:
+                    content = content.replace(matches[0],
+                                              matches[0].replace(k, k + "__"))
                     with io.open(op_file, 'w', encoding='utf-8') as f:
                         f.write(u'{}'.format(content))
 
@@ -169,13 +176,13 @@ def append_fluid_kernels():
 if __name__ == '__main__':
 
     print("================ step 1: apply patches =======================")
-    #assert(apply_patches())
+    assert (apply_patches())
     print("==============================================================\n")
 
     print("================ step 2: append fluid op/kernels==============")
-    assert(append_fluid_kernels())
+    assert (append_fluid_kernels())
     print("==============================================================\n")
 
     print("================ step 3:prune phi kernels ====================")
-    assert(prune_phi_kernels())
+    assert (prune_phi_kernels())
     print("==============================================================\n")
