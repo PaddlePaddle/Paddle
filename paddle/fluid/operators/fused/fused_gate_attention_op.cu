@@ -65,13 +65,13 @@ void ComputeMergedQKVMatmulForward(const framework::ExecutionContext &ctx,
                                    const GateAttentionConfig<T> &config,
                                    const Tensor *query, Tensor *qkv_out) {
   // query: shape=[batch_size, seq_len_m, seq_len_r, qkv_dim]
-  // qkv_weight: shape=[3, num_heads, key_dim, qkv_dim]
-  // qkv_out: shape=[batch_size, seq_len_m, seq_len_r, 3, num_heads, key_dim]
+  // qkv_weight: shape=[3, num_heads, head_dim, qkv_dim]
+  // qkv_out: shape=[batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim]
   auto *qkv_weight = ctx.Input<Tensor>("QKVWeight");
 
   // qkv_out = GEMM(query, qkv_weight^T)
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
-  int n = 3 * config.num_heads * config.key_dim;
+  int n = 3 * config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto qkv_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, true, m, n, k, false);
@@ -91,7 +91,7 @@ void ComputeMergedQKVMatmulBackward(const framework::ExecutionContext &ctx,
 
   // Gradient of GEMM(query, qkv_weight)
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
-  int n = 3 * config.num_heads * config.key_dim;
+  int n = 3 * config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto qkv_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, true, m, n, k, false);
@@ -111,10 +111,10 @@ void ComputeSeparatedQKVMatmulForward(const framework::ExecutionContext &ctx,
 
   // query_out = GEMM(query, query_weight)
   // query: shape=[batch_size, seq_len_m, seq_len_r, q_dim]
-  // query_weight: shape=[q_dim, num_heads, key_dim]
-  // query_out: shape=[batch_size, seq_len_m, seq_len_r, num_heads, key_dim]
+  // query_weight: shape=[q_dim, num_heads, head_dim]
+  // query_out: shape=[batch_size, seq_len_m, seq_len_r, num_heads, head_dim]
   int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
-  int q_n = config.num_heads * config.key_dim;
+  int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
   auto q_compute = AttnMatMul<T>(ctx.cuda_device_context(), false, false, q_m,
                                  q_n, q_k, false);
@@ -122,10 +122,10 @@ void ComputeSeparatedQKVMatmulForward(const framework::ExecutionContext &ctx,
 
   // k_out = GEMM(key, key_weight)
   // key: shape=[batch_size, seq_len_m, m_size, kv_dim]
-  // key_weight: shape=[kv_dim, num_heads, key_dim]
-  // key_out: shape=[batch_size, seq_len_m, m_size, num_heads, key_dim]
+  // key_weight: shape=[kv_dim, num_heads, head_dim]
+  // key_out: shape=[batch_size, seq_len_m, m_size, num_heads, head_dim]
   int kv_m = config.batch_size * config.seq_len_m * config.m_size;
-  int kv_n = config.num_heads * config.key_dim;
+  int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
   auto kv_compute = AttnMatMul<T>(ctx.cuda_device_context(), false, false, kv_m,
                                   kv_n, kv_k, false);
@@ -151,7 +151,7 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   key_weight_grad->mutable_data<T>(ctx.GetPlace());
 
   int kv_m = config.batch_size * config.seq_len_m * config.m_size;
-  int kv_n = config.num_heads * config.key_dim;
+  int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
   auto kv_compute = AttnMatMul<T>(ctx.cuda_device_context(), false, false, kv_m,
                                   kv_n, kv_k, false);
@@ -174,7 +174,7 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   query_weight_grad->mutable_data<T>(ctx.GetPlace());
 
   int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
-  int q_n = config.num_heads * config.key_dim;
+  int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
   auto q_compute = AttnMatMul<T>(ctx.cuda_device_context(), false, false, q_m,
                                  q_n, q_k, false);
@@ -195,7 +195,7 @@ void ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
   // bias.
   //   gate_out = GEMM(query, gate_weight) + gate_bias
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
-  int n = config.num_heads * config.key_dim;
+  int n = config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto gate_attn_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
@@ -224,7 +224,7 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
   gate_bias_out.mutable_data<T>(ctx.GetPlace());
 
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
-  int n = config.num_heads * config.key_dim;
+  int n = config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto gate_attn_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
@@ -260,7 +260,7 @@ void ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
   // out = GEMM(fmha_or_gate_out, out_linear_weight) + out_linear_bias
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;
-  int k = config.num_heads * config.key_dim;
+  int k = config.num_heads * config.head_dim;
   auto out_linear_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
   out_linear_compute.ComputeForward(out_linear_weight, fmha_or_gate_out,
@@ -282,11 +282,9 @@ void ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
   out_linear_weight_grad->mutable_data<T>(ctx.GetPlace());
   out_linear_bias_grad->mutable_data<T>(ctx.GetPlace());
 
-  auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;
-  int k = config.num_heads * config.key_dim;
+  int k = config.num_heads * config.head_dim;
   auto out_linear_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
   out_linear_compute.ComputeBackward(input, out_linear_weight, out_grad,

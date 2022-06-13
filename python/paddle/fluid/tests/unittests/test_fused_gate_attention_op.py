@@ -47,7 +47,7 @@ class TestFusedGateAttentionOp(OpTest):
         self.res_len = 5
         self.q_dim = 6
         self.num_heads = 2
-        self.key_dim = 4
+        self.head_dim = 4
         self.m_size = self.res_len
         self.kv_dim = self.q_dim
         self.out_dim = self.q_dim
@@ -65,12 +65,12 @@ class TestFusedGateAttentionOp(OpTest):
         np.random.seed(123)
         self.query = _random(
             (self.batch_size, self.msa_len, self.res_len, self.q_dim))
-        self.q_weight = _random((self.q_dim, self.num_heads, self.key_dim))
-        self.k_weight = _random((self.kv_dim, self.num_heads, self.key_dim))
-        self.v_weight = _random((self.kv_dim, self.num_heads, self.key_dim))
+        self.q_weight = _random((self.q_dim, self.num_heads, self.head_dim))
+        self.k_weight = _random((self.kv_dim, self.num_heads, self.head_dim))
+        self.v_weight = _random((self.kv_dim, self.num_heads, self.head_dim))
         if self.merge_qkv:
             self.key = None
-            # (3, self.num_heads, self.key_dim, self.q_dim)
+            # (3, self.num_heads, self.head_dim, self.q_dim)
             q_weight_t = np.transpose(self.q_weight, axes=[1, 2, 0])
             k_weight_t = np.transpose(self.k_weight, axes=[1, 2, 0])
             v_weight_t = np.transpose(self.v_weight, axes=[1, 2, 0])
@@ -88,10 +88,10 @@ class TestFusedGateAttentionOp(OpTest):
                 (self.batch_size, 1, self.num_heads, self.res_len, self.m_size))
 
         if self.has_gating:
-            self.gating_w = _random((self.q_dim, self.num_heads, self.key_dim))
-            self.gating_b = _random((self.num_heads, self.key_dim))
+            self.gating_w = _random((self.q_dim, self.num_heads, self.head_dim))
+            self.gating_b = _random((self.num_heads, self.head_dim))
 
-        self.output_w = _random((self.num_heads, self.key_dim, self.out_dim))
+        self.output_w = _random((self.num_heads, self.head_dim, self.out_dim))
         self.output_b = _random((self.out_dim))
 
         self.dout = _random(
@@ -115,18 +115,18 @@ class TestFusedGateAttentionOp(OpTest):
         v_weight = paddle.to_tensor(self.v_weight, stop_gradient=False)
         src_mask = paddle.to_tensor(self.attn_mask, stop_gradient=True)
 
-        c = self.key_dim**(-0.5)
-        # [batch_size, msa_len, res_len, q_dim], [q_dim, num_heads, key_dim]
-        #   -> [batch_size, msa_len, res_len, num_heads, key_dim]
+        c = self.head_dim**(-0.5)
+        # [batch_size, msa_len, res_len, q_dim], [q_dim, num_heads, head_dim]
+        #   -> [batch_size, msa_len, res_len, num_heads, head_dim]
         q = paddle.einsum('nbqa,ahc->nbqhc', query, q_weight) * c
-        # [batch_size, msa_len, m_size, kv_dim], [kv_dim, num_heads, key_dim]
-        #   -> [batch_size, msa_len, m_size, num_heads, key_dim]
+        # [batch_size, msa_len, m_size, kv_dim], [kv_dim, num_heads, head_dim]
+        #   -> [batch_size, msa_len, m_size, num_heads, head_dim]
         k = paddle.einsum('nbka,ahc->nbkhc', key, k_weight)
-        # [batch_size, msa_len, m_size, kv_dim], [kv_dim, num_heads, key_dim]
-        #   -> [batch_size, msa_len, m_size, num_heads, key_dim]
+        # [batch_size, msa_len, m_size, kv_dim], [kv_dim, num_heads, head_dim]
+        #   -> [batch_size, msa_len, m_size, num_heads, head_dim]
         v = paddle.einsum('nbka,ahc->nbkhc', key, v_weight)
 
-        # [batch_size, msa_len, res_len, num_heads, key_dim], [batch_size, msa_len, m_size, num_heads, key_dim]
+        # [batch_size, msa_len, res_len, num_heads, head_dim], [batch_size, msa_len, m_size, num_heads, head_dim]
         #   -> [batch_size, msa_len, num_heads, res_len, m_size]
         logits = paddle.einsum('nbqhc,nbkhc->nbhqk', q, k)  # qk_out
         # [batch_size, msa_len, num_heads, res_len, m_size], [batch_size, mas_len, 1, 1, m_size]
@@ -141,8 +141,8 @@ class TestFusedGateAttentionOp(OpTest):
 
         # [batch_size, msa_len, num_heads, res_len, m_size]
         softmax_out = nn.functional.softmax(logits)
-        # [batch_size, msa_len, num_heads, res_len, m_size], [batch_size, msa_len, m_size, num_heads, key_dim]
-        #   -> [batch_size, msa_len, res_len, num_heads, key_dim]
+        # [batch_size, msa_len, num_heads, res_len, m_size], [batch_size, msa_len, m_size, num_heads, head_dim]
+        #   -> [batch_size, msa_len, res_len, num_heads, head_dim]
         # fmha_out = paddle.einsum('nbhqk,nbkhc->nbqhc', softmax_out, v)
         v_trans = paddle.transpose(v, perm=[0, 1, 3, 2, 4])
         qktv_out = paddle.matmul(softmax_out, v_trans)
@@ -151,18 +151,18 @@ class TestFusedGateAttentionOp(OpTest):
         if self.has_gating:
             gating_w = paddle.to_tensor(self.gating_w, stop_gradient=False)
             gating_b = paddle.to_tensor(self.gating_b, stop_gradient=False)
-            # [batch_size, msa_len, res_len, q_dim], [q_dim, num_heads, key_dim]
-            #   -> [batch_size, msa_len, res_len, num_heads, key_dim]
+            # [batch_size, msa_len, res_len, q_dim], [q_dim, num_heads, head_dim]
+            #   -> [batch_size, msa_len, res_len, num_heads, head_dim]
             # gate_values = paddle.einsum('nbqc,chv->nbqhv', query,
             #                             gating_w) + gating_b
             gating_w_2d = paddle.reshape(
-                gating_w, shape=[self.q_dim, self.num_heads * self.key_dim])
+                gating_w, shape=[self.q_dim, self.num_heads * self.head_dim])
             gate_values_4d = paddle.matmul(query, gating_w_2d)
             gate_values = paddle.reshape(
                 gate_values_4d,
                 shape=[
                     self.batch_size, self.msa_len, self.res_len, self.num_heads,
-                    self.key_dim
+                    self.head_dim
                 ]) + gating_b
             gate_values = nn.functional.sigmoid(gate_values)
             gate_out = fmha_out * gate_values
@@ -172,7 +172,7 @@ class TestFusedGateAttentionOp(OpTest):
         output_b = paddle.to_tensor(self.output_b, stop_gradient=False)
         output_w = paddle.to_tensor(self.output_w, stop_gradient=False)
 
-        # [batch_size, msa_len, res_len, num_heads, key_dim], [num_heads, key_dim, out_dim]
+        # [batch_size, msa_len, res_len, num_heads, head_dim], [num_heads, head_dim, out_dim]
         #   -> [batch_size, msa_len, res_len, out_dim]
         # out = paddle.einsum('nbqhc,hco->nbqo', gate_out,
         #                     output_w) + output_b
@@ -180,10 +180,10 @@ class TestFusedGateAttentionOp(OpTest):
             gate_out,
             shape=[
                 self.batch_size * self.msa_len * self.res_len,
-                self.num_heads * self.key_dim
+                self.num_heads * self.head_dim
             ])
         output_w_2d = paddle.reshape(
-            output_w, shape=[self.num_heads * self.key_dim, self.out_dim])
+            output_w, shape=[self.num_heads * self.head_dim, self.out_dim])
         out_2d = paddle.matmul(gate_out_2d, output_w_2d)
         out = paddle.reshape(
             out_2d,
@@ -295,7 +295,7 @@ class TestSeparatedQKVCase(TestFusedGateAttentionOp):
         self.res_len = 5
         self.q_dim = 6
         self.num_heads = 2
-        self.key_dim = 4
+        self.head_dim = 4
         self.m_size = 4
         self.kv_dim = 2
         self.out_dim = self.q_dim
