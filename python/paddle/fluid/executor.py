@@ -1417,15 +1417,6 @@ class Executor(object):
         # use StandaloneExecutor to run the program.
         if self._enable_interpreter_core and _can_use_interpreter_core(
                 program, self.place):
-
-            compiled = isinstance(program, compiler.CompiledProgram)
-            print("yoki compiled is : {}".format(compiled))
-            if compiled:
-                print("yoki: convert compiled program to program!\n")
-                compiled_graph = program._graph
-                ir_graph = framework.IrGraph(compiled_graph, for_test=True)
-                program = ir_graph.to_program()
-
             inner_program = program._program if isinstance(
                 program, compiler.CompiledProgram) else program
             if not inner_program._is_start_up_program_:
@@ -1446,6 +1437,11 @@ class Executor(object):
                 # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
                 # while use program to geet _StandaloneExecutor
                 if key not in self._executor_cache._cached_executors:
+                    if isinstance(program, compiler.CompiledProgram):
+                        compiled_graph = program._graph
+                        ir_graph = framework.IrGraph(compiled_graph,
+                                                     for_test=True)
+                        inner_program = ir_graph.to_program()
                     program = self._add_feed_fetch_ops(
                         program=inner_program,
                         feed=feed,
