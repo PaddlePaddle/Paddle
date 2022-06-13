@@ -1501,12 +1501,12 @@ class TripletMarginWithDistanceLoss(Layer):
 
     def forward(self, input, positive, negative):
         return F.triplet_margin_with_distance_loss(input,
-						   positive,
-						   negative,
-						   margin=self.margin,
-						   swap=self.swap,
-						   reduction=self.reduction,
-						   name=self.name)
+                                                   positive,
+                                                   negative,
+                                                   margin=self.margin,
+                                                   swap=self.swap,
+                                                   reduction=self.reduction,
+                                                   name=self.name)
 
 
 class TripletMarginLoss(Layer):
