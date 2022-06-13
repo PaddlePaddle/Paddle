@@ -83,6 +83,7 @@ void CsrMaskedMatmulGradKernel(const Context& dev_ctx,
                                const SparseCsrTensor& dout,
                                DenseTensor* dx,
                                DenseTensor* dy) {
+#if CUDA_VERSION >= 11000
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{Dense} = dout{SparseCsr} * y'{Dense}
@@ -123,6 +124,7 @@ void CsrMaskedMatmulGradKernel(const Context& dev_ctx,
     std::swap(axis[y_ndim - 1], axis[y_ndim - 2]);
     TransposeKernel<T, Context>(dev_ctx, trans_dy, axis, dy);
   }
+#endif
 }
 
 }  // namespace sparse

@@ -34,6 +34,7 @@ void CsrDenseMatmulKernel(const Context& dev_ctx,
                           const SparseCsrTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out) {
+#if CUDA_VERSION >= 11000
   std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
   std::vector<int64_t> ydim_vec = phi::vectorize(y.dims());
   auto x_ndims = xdim_vec.size();
@@ -80,6 +81,11 @@ void CsrDenseMatmulKernel(const Context& dev_ctx,
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.DSDMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
+#else
+  PADDLE_THROW(
+      phi::errors::Unimplemented(" forward of 'sparse.mm' use cusparseSpMM, "
+                                 "which is supported from CUDA 11.0"));
+#endif
 }
 
 template <typename T, typename Context>
@@ -174,9 +180,10 @@ void CsrMaskedMatmulKernel(const Context& dev_ctx,
   sparse_blas.SDDMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
-      " forward of 'sparse.masked_mm' use cusparseSDDMM, Only support it from "
-      "CUDA 11.3"));
+  PADDLE_THROW(
+      phi::errors::Unimplemented(" forward of 'sparse.masked_mm' use "
+                                 "cusparseSDDMM, which is supported from "
+                                 "CUDA 11.3"));
 #endif
 }
 
