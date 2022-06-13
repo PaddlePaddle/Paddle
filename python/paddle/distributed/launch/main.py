@@ -252,8 +252,7 @@ def launch():
     Examples 10 (ipu):
         .. code-block:: bash
             :name: code-block-example-bash10
-            # required: ipu
-            
+
             # With the following command, the job will begin to run the distributhed program with IPUs.
             # Only support and require the `device_num` as the arg and `ipu` as the launch script.
             # Please Check the details about the following args of the launch scripte from `utils/ipu_launch.py`.
