@@ -1400,3 +1400,110 @@ class CosineEmbeddingLoss(Layer):
                                        margin=self.margin,
                                        reduction=self.reduction,
                                        name=self.name)
+
+
+class TripletMarginWithDistanceLoss(Layer):
+    r"""
+    Creates a criterion that measures the triplet loss given an input
+    tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
+    This is used for measuring a relative similarity between samples. A triplet
+    is composed by `input`, `positive` and `negative` (i.e., `input`, `positive examples` and `negative
+    examples` respectively). The shapes of all input tensors should be
+    :math:`(N, D)`.
+
+    The loss function for each sample in the mini-batch is:
+
+    .. math::
+        L(input, pos, neg) = \max \{d(input_i, pos_i) - d(input_i, neg_i) + {\rm margin}, 0\}
+
+    where the default `distance_function`
+    
+    .. math::
+    	d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_2
+    
+    or user can define their own distance function. `margin` is a nonnegative margin representing the minimum difference 
+    between the positive and negative distances that is required for the loss to be 0. If `swap` is true, it will compare distance of (input, negative) with
+    distance of (negative, positive) and change it to the smaller one. For more details see http://www.bmva.org/bmvc/2016/papers/paper119/paper119.pdf.
+
+    Parameters:
+        distance_function (Callable, Optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
+	
+        margin (float, Optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
+                between the positive and negative distances required for the loss to be 0. Larger
+                margins penalize cases where the negative examples are not distant enough from the
+                anchors, relative to the positives.
+		
+        swap (bool, Optional):The distance swap changes the negative distance to the swap distance (distance between positive samples
+                and negative samples) if swap distance smaller than negative distance. Default: ``False``.
+
+        reduction (str, Optional):Indicate how to average the loss by batch_size.
+                the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+                If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+                If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+                Default: ``'mean'``
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+	    
+    Shapes:
+        input (Tensor):Input tensor, the data type is float32 or float64.
+	the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+
+        positive (Tensor):Positive tensor, the data type is float32 or float64.
+	The shape of label is the same as the shape of input.
+
+        negative (Tensor):Negative tensor, the data type is float32 or float64.
+	The shape of label is the same as the shape of input.
+	
+	    output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
+
+    Return：
+        A callable object of TripletMarginWithDistanceLoss
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.nn import TripletMarginWithDistanceLoss
+
+            input = paddle.to_tensor([[1, 5, 3], [0, 3, 2], [1, 4, 1]], dtype=paddle.float32)
+            positive= paddle.to_tensor([[5, 1, 2], [3, 2, 1], [3, -1, 1]], dtype=paddle.float32)
+            negative = paddle.to_tensor([[2, 1, -3], [1, 1, -1], [4, -2, 1]], dtype=paddle.float32)
+            triplet_margin_with_distance_loss = TripletMarginWithDistanceLoss(reduction='none')
+            loss = triplet_margin_with_distance_loss(input, positive, negative,)
+            print(loss)
+            # Tensor([0.        , 0.57496738, 0.        ])
+
+            triplet_margin_with_distance_loss = TripletMarginWithDistanceLoss(reduction='mean')
+            loss = triplet_margin_with_distance_loss(input, positive, negative,)
+            print(loss)
+            # Tensor([0.19165580])
+
+    """
+
+    def __init__(self,
+                 distance_function=None,
+                 margin=1.0,
+                 swap=False,
+                 reduction: str = 'mean',
+                 name=None):
+        super(TripletMarginWithDistanceLoss, self).__init__()
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in TripletMarginWithDistanceLoss "
+                "should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % reduction)
+        self.margin = margin
+        self.swap = swap
+        self.reduction = reduction
+        self.distance_function = distance_function
+        self.name = name
+
+    def forward(self, input, positive, negative):
+        return F.triplet_margin_with_distance_loss(input,
+                                                   positive,
+                                                   negative,
+                                                   margin=self.margin,
+                                                   swap=self.swap,
+                                                   reduction=self.reduction,
+                                                   name=self.name)
