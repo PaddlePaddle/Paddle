@@ -92,11 +92,11 @@ class BenchmarkStats {
     std::sort(run_times_walltime_.begin(), run_times_walltime_.end());
     std::sort(run_times_cpu_.begin(), run_times_cpu_.end());
 
-    auto percentile = [](
-        double p, const std::vector<std::chrono::nanoseconds> &run_times) {
-      assert(p >= 0.0 && p <= 1.0);
-      return run_times[run_times.size() * p];
-    };
+    auto percentile =
+        [](double p, const std::vector<std::chrono::nanoseconds> &run_times) {
+          assert(p >= 0.0 && p <= 1.0);
+          return run_times[run_times.size() * p];
+        };
 
     // BM: prefix is added to make grepping results from lit output easier.
     std::string prefix;

@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_bn_add_activation_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -52,20 +54,22 @@ void FusedBatchNormAddActOp::InferShape(
                         "of input X = [%s], and the shape of "
                         "input Y = [%s]",
                         x_dims, z_dims));
-  PADDLE_ENFORCE_GE(x_dims.size(), 2, platform::errors::InvalidArgument(
-                                          "ShapeError: the dimensions of input "
-                                          "must greater than or equal to 2."
-                                          "But received: the shape of input "
-                                          "= [%s], the dimension of input = "
-                                          "[%d]",
-                                          x_dims, x_dims.size()));
-  PADDLE_ENFORCE_LE(x_dims.size(), 5, platform::errors::InvalidArgument(
-                                          "ShapeError: the dimensions of input "
-                                          "must smaller than or equal to 5."
-                                          "But received: the shape of input "
-                                          "= [%s], the dimension of input = "
-                                          "[%d]",
-                                          x_dims, x_dims.size()));
+  PADDLE_ENFORCE_GE(
+      x_dims.size(), 2,
+      platform::errors::InvalidArgument("ShapeError: the dimensions of input "
+                                        "must greater than or equal to 2."
+                                        "But received: the shape of input "
+                                        "= [%s], the dimension of input = "
+                                        "[%d]",
+                                        x_dims, x_dims.size()));
+  PADDLE_ENFORCE_LE(
+      x_dims.size(), 5,
+      platform::errors::InvalidArgument("ShapeError: the dimensions of input "
+                                        "must smaller than or equal to 5."
+                                        "But received: the shape of input "
+                                        "= [%s], the dimension of input = "
+                                        "[%d]",
+                                        x_dims, x_dims.size()));
 
   const int64_t C = x_dims[x_dims.size() - 1];
 

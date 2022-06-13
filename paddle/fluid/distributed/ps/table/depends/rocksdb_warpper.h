@@ -20,6 +20,7 @@
 #include <rocksdb/slice.h>
 #include <rocksdb/table.h>
 #include <rocksdb/write_batch.h>
+
 #include <iostream>
 #include <string>
 
@@ -153,5 +154,5 @@ class RocksDBHandler {
   std::vector<rocksdb::ColumnFamilyHandle*> _handles;
   rocksdb::DB* _db;
 };
-}  // distributed
-}  // paddle
+}  // namespace distributed
+}  // namespace paddle

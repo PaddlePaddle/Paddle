@@ -213,12 +213,13 @@ class ExpandGradKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*in0, context.GetPlace(), context.device_context(),
                             out0);
     } else {
-      PADDLE_ENFORCE_GE(dims, 1, platform::errors::InvalidArgument(
-                                     "The number of dimensions of the input "
-                                     "'Out@GRAD' for Op(expand_grad)"
-                                     " must be greater than or equal to 1, but "
-                                     "the value received is %d.",
-                                     dims));
+      PADDLE_ENFORCE_GE(dims, 1,
+                        platform::errors::InvalidArgument(
+                            "The number of dimensions of the input "
+                            "'Out@GRAD' for Op(expand_grad)"
+                            " must be greater than or equal to 1, but "
+                            "the value received is %d.",
+                            dims));
       PADDLE_ENFORCE_LE(dims, MAX_RANK_SUPPORTED,
                         platform::errors::InvalidArgument(
                             "The number of dimensions of the input 'Out@GRAD' "

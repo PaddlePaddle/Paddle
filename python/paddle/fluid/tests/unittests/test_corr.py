@@ -18,13 +18,20 @@ import numpy as np
 import six
 import paddle
 import warnings
+import sys
+
+np_minor_version = int((np.__version__).split('.')[1])
 
 
 def numpy_corr(np_arr, rowvar=True, dtype='float64'):
+    # np.corrcoef support parameter 'dtype' since 1.20
+    if np_minor_version < 20:
+        return np.corrcoef(np_arr, rowvar=rowvar)
     return np.corrcoef(np_arr, rowvar=rowvar, dtype=dtype)
 
 
 class Corr_Test(unittest.TestCase):
+
     def setUp(self):
         self.shape = [4, 5]
 
@@ -46,8 +53,7 @@ class Corr_Test(unittest.TestCase):
                 np_corr = numpy_corr(np_arr, rowvar=True, dtype=dtype)
                 if dtype == 'float32':
                     self.assertTrue(
-                        np.allclose(
-                            np_corr, corr.numpy(), atol=1.e-5))
+                        np.allclose(np_corr, corr.numpy(), atol=1.e-5))
                 else:
                     self.assertTrue(np.allclose(np_corr, corr.numpy()))
 
@@ -70,29 +76,32 @@ class Corr_Test(unittest.TestCase):
                 np_corr = numpy_corr(np_arr, rowvar=False, dtype=dtype)
                 if dtype == 'float32':
                     self.assertTrue(
-                        np.allclose(
-                            np_corr, corr.numpy(), atol=1.e-5))
+                        np.allclose(np_corr, corr.numpy(), atol=1.e-5))
                 else:
                     self.assertTrue(np.allclose(np_corr, corr.numpy()))
 
 
 # Input(x) only support N-D (1<=N<=2) tensor
 class Corr_Test2(Corr_Test):
+
     def setUp(self):
         self.shape = [10]
 
 
 class Corr_Test3(Corr_Test):
+
     def setUp(self):
         self.shape = [4, 5]
 
 
 # Input(x) only support N-D (1<=N<=2) tensor
 class Corr_Test4(unittest.TestCase):
+
     def setUp(self):
         self.shape = [2, 5, 2]
 
     def test_errors(self):
+
         def test_err():
             np_arr = np.random.rand(*self.shape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
@@ -103,6 +112,7 @@ class Corr_Test4(unittest.TestCase):
 
 # test unsupported complex input
 class Corr_Comeplex_Test(unittest.TestCase):
+
     def setUp(self):
         self.dtype = 'complex128'
 
@@ -114,6 +124,7 @@ class Corr_Comeplex_Test(unittest.TestCase):
 
 
 class Corr_Test5(Corr_Comeplex_Test):
+
     def setUp(self):
         self.dtype = 'complex64'
 

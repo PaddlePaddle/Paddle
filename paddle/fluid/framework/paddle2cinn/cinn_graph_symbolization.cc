@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// clang-format off
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 
 #include <algorithm>
@@ -30,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+// clang-format on
 
 namespace paddle {
 namespace framework {

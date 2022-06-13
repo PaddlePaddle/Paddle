@@ -71,16 +71,16 @@ void IndexKernel(const KPDevice &dev_ctx, DenseTensor *out, Functor func) {
   size_t main_offset = (numel / (vec_size * block)) * vec_size * block;
   switch (vec_size) {
     case 4:
-      VectorizedIndexKernel<T, Functor, 4><<<grid, block, 0, stream>>>(
-          out_data, numel, main_offset, func);
+      VectorizedIndexKernel<T, Functor, 4>
+          <<<grid, block, 0, stream>>>(out_data, numel, main_offset, func);
       break;
     case 2:
-      VectorizedIndexKernel<T, Functor, 2><<<grid, block, 0, stream>>>(
-          out_data, numel, main_offset, func);
+      VectorizedIndexKernel<T, Functor, 2>
+          <<<grid, block, 0, stream>>>(out_data, numel, main_offset, func);
       break;
     case 1:
-      VectorizedIndexKernel<T, Functor, 1><<<grid, block, 0, stream>>>(
-          out_data, numel, main_offset, func);
+      VectorizedIndexKernel<T, Functor, 1>
+          <<<grid, block, 0, stream>>>(out_data, numel, main_offset, func);
       break;
     default: {
       PADDLE_THROW(phi::errors::Unimplemented(

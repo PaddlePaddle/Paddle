@@ -12,6 +12,7 @@ limitations under the License. */
 #include <algorithm>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -258,13 +259,14 @@ class MatMulGradKernel : public framework::OpKernel<T> {
       MatMul(context, a, trans_a, b, trans_b, out);
     } else {
       auto &ctx = context.template device_context<DeviceContext>();
-      MatMul(context, is_fold_init_dims_a
-                          ? FoldInitDims(a)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
-             trans_a, is_fold_init_dims_b
-                          ? FoldInitDims(b)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
-             trans_b, out);
+      MatMul(
+          context,
+          is_fold_init_dims_a ? FoldInitDims(a)
+                              : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
+          trans_a,
+          is_fold_init_dims_b ? FoldInitDims(b)
+                              : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
+          trans_b, out);
     }
   }
 
@@ -378,20 +380,6 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
       }
     }
 
-    // if "-1" is present then one of reshape dims must be infered
-    auto it_negative = std::find(shape.begin(), shape.end(), -1);
-    if (it_negative != shape.end()) {
-      int64_t dim_product = 1;
-      for (int i = 0; i < dim.size(); i++) {
-        dim_product *= dim.at(i);
-      }
-
-      int64_t shape_product = std::accumulate(shape.begin(), shape.end(), -1,
-                                              std::multiplies<int>());
-      int index = std::distance(shape.begin(), it_negative);
-      shape[index] = dim_product / shape_product;
-    }
-
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;
@@ -439,13 +427,14 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
       MatMul(context, a, trans_a, b, trans_b, flag, out);
     } else {
       auto &ctx = context.template device_context<DeviceContext>();
-      MatMul(context, is_fold_init_dims_a
-                          ? FoldInitDims(a)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
-             trans_a, is_fold_init_dims_b
-                          ? FoldInitDims(b)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
-             trans_b, flag, out);
+      MatMul(
+          context,
+          is_fold_init_dims_a ? FoldInitDims(a)
+                              : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
+          trans_a,
+          is_fold_init_dims_b ? FoldInitDims(b)
+                              : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
+          trans_b, flag, out);
     }
   }
 
@@ -616,12 +605,13 @@ class MatMulOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
               mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0,
-          true, platform::errors::InvalidArgument(
-                    "The batch size of the two matrices should be equal, or "
-                    "at least one is zero.\n"
-                    "But received X's shape: %s, Y's shape: %s.",
-                    DumpMatrixShape(mat_dim_x).c_str(),
-                    DumpMatrixShape(mat_dim_y).c_str()));
+          true,
+          platform::errors::InvalidArgument(
+              "The batch size of the two matrices should be equal, or "
+              "at least one is zero.\n"
+              "But received X's shape: %s, Y's shape: %s.",
+              DumpMatrixShape(mat_dim_x).c_str(),
+              DumpMatrixShape(mat_dim_y).c_str()));
     }
     int64_t dim_out_y = mat_dim_y.width_;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
@@ -686,76 +676,11 @@ class MatMulOp : public framework::OperatorWithKernel {
         context->Attrs().Get<std::vector<int>>("fused_transpose_Out");
 
     if (!reshape_out.empty() && !transpose_out.empty()) {
-      auto reshape_out_size = reshape_out.size();
-      auto transpose_out_size = transpose_out.size();
-      PADDLE_ENFORCE_EQ(transpose_out_size, 4,
-                        platform::errors::InvalidArgument(
-                            "transpose_out supported rank is 4, "
-                            "received %d",
-                            transpose_out_size));
-      const std::vector<int> supported_axis{0, 2, 1, 3};
-      const bool supported_transpose_axis = std::equal(
-          transpose_out.begin(), transpose_out.end(), supported_axis.begin());
-      PADDLE_ENFORCE_EQ(
-          supported_transpose_axis, true,
-          platform::errors::InvalidArgument(
-              "supported transpose axis for the fuse are {0, 2, 1, 3}"));
-      PADDLE_ENFORCE_EQ(
-          reshape_out_size, 3,
-          platform::errors::InvalidArgument("reshape_out supported rank is 3, "
-                                            "received %d",
-                                            reshape_out_size));
-
-      // int num_negative = std::count(reshape_out.begin(), reshape_out.end(),
-      // -1);
-      // PADDLE_ENFORCE_LE(num_negative, 1,
-      //                   platform::errors::InvalidArgument(
-      //                       "The max number of -1 in fused_reshape_Out is 1 "
-      //                       "but received %d.",
-      //                       num_negative));
-
-      // auto it_zero = std::find(reshape_out.begin(), reshape_out.end(), 0);
-      // if (it_zero != reshape_out.end()) {
-      //   for (uint64_t i = 0; i < reshape_out.size(); i++) {
-      //     if (reshape_out[i] == 0) {
-      //       PADDLE_ENFORCE_LT(
-      //           i, ddim_out.size(),
-      //           platform::errors::InvalidArgument(
-      //               "The index of 0 in fused_reshape_Out ",
-      //               "should be less than output dim size, ",
-      //               "but the index is %d and output dim size is %d", i,
-      //               ddim_out.size()));
-      //       reshape_out[i] = ddim_out.at(i);
-      //     }
-      //   }
-      // }
-
-      // if "-1" is present then one of reshape dims must be infered
-      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
-      if (it != reshape_out.end()) {
-        int index = std::distance(reshape_out.begin(), it);
-
-        auto ddim_out_vec = phi::vectorize(ddim_out);
-
-        int ddim_out_product =
-            std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,
-                            std::multiplies<int>());
-        int reshape_out_product = std::accumulate(
-            reshape_out.begin(), reshape_out.end(), -1, std::multiplies<int>());
-
-        reshape_out[index] = ddim_out_product / reshape_out_product;
-      }
-
-      framework::DDim shape_out =
-          ddim_out.transpose(transpose_out).reshape(reshape_out);
-      context->SetOutputDim("Out", shape_out);
-    } else {
-      context->SetOutputDim("Out", ddim_out);
+      ddim_out = ddim_out.transpose(transpose_out).reshape(reshape_out);
     }
-#else
-    context->SetOutputDim("Out", ddim_out);
 #endif
-    context->ShareLoD("X", /*->*/ "Out");
+    context->SetOutputDim("Out", ddim_out);
+    context->ShareLoD("X", "Out");
   }
 
   framework::OpKernelType GetExpectedKernelType(
@@ -1075,13 +1000,12 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>);
 #endif
 
-REGISTER_OP_VERSION(matmul)
-    .AddCheckpoint(
-        R"ROC(Register matmul for adding the attribute of
+REGISTER_OP_VERSION(matmul).AddCheckpoint(
+    R"ROC(Register matmul for adding the attribute of
        fused_reshape_Y)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "fused_reshape_Y",
-            "In order to support the function of fused the input Y "
-            " and input X into the input X when "
-            "using the operator of matmul, and get raw shape of input Y.",
-            std::vector<int>{}));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "fused_reshape_Y",
+        "In order to support the function of fused the input Y "
+        " and input X into the input X when "
+        "using the operator of matmul, and get raw shape of input Y.",
+        std::vector<int>{}));

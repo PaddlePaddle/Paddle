@@ -14,7 +14,9 @@
 
 #pragma once
 #include <thrust/host_vector.h>
+
 #include <chrono>
+
 #include "heter_comm.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
@@ -23,10 +25,10 @@
 #ifdef PADDLE_WITH_HETERPS
 namespace paddle {
 namespace framework {
-class GpuPsGraphTable : public HeterComm<int64_t, int64_t, int> {
+class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
  public:
   GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource, int topo_aware)
-      : HeterComm<int64_t, int64_t, int>(1, resource) {
+      : HeterComm<uint64_t, int64_t, int>(1, resource) {
     load_factor_ = 0.25;
     rw_lock.reset(new pthread_rwlock_t());
     gpu_num = resource_->total_device();
@@ -123,7 +125,7 @@ class GpuPsGraphTable : public HeterComm<int64_t, int64_t, int> {
   std::condition_variable cv_;
   int cpu_table_status;
 };
-}
-};
+}  // namespace framework
+};  // namespace paddle
 //#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table_inl.h"
 #endif

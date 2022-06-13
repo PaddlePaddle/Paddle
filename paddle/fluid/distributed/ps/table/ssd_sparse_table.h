@@ -55,7 +55,7 @@ class SSDSparseTable : public MemorySparseTable {
   int32_t Flush() override { return 0; }
   virtual int32_t Shrink(const std::string& param) override;
   virtual void Clear() override {
-    for (size_t i = 0; i < _real_local_shard_num; ++i) {
+    for (int i = 0; i < _real_local_shard_num; ++i) {
       _local_shards[i].clear();
     }
   }
@@ -79,7 +79,7 @@ class SSDSparseTable : public MemorySparseTable {
   virtual int32_t Load(const std::string& path,
                        const std::string& param) override;
   //加载path目录下数据[start_idx, end_idx)
-  virtual int32_t Load(size_t start_idx, size_t end_idx,
+  virtual int32_t Load(size_t start_idx, int end_idx,
                        const std::vector<std::string>& file_list,
                        const std::string& param);
   int64_t LocalSize();

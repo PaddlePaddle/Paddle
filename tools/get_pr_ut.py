@@ -88,8 +88,8 @@ class PRChecker(object):
             if code == 0:
                 return True
             print(
-                'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.
-                format(url, ix, ix * 10, proxy))
+                'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'
+                .format(url, ix, ix * 10, proxy))
             time.sleep(ix * 10)
             ix += 1
         return False
@@ -111,8 +111,8 @@ class PRChecker(object):
             except Exception as e:
                 print(e)
                 print(
-                    'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.
-                    format(url, ix, ix * 10, cur_proxy))
+                    'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'
+                    .format(url, ix, ix * 10, cur_proxy))
                 continue
             else:
                 return True
@@ -226,7 +226,9 @@ class PRChecker(object):
                             if line_list:
                                 line_list.append(line)
                             else:
-                                file_to_diff_lines[filename] = [line, ]
+                                file_to_diff_lines[filename] = [
+                                    line,
+                                ]
                         if data[ix][0] != '-':
                             lineno += 1
                         ix += 1
@@ -246,10 +248,9 @@ class PRChecker(object):
         return True
 
     def get_all_count(self):
-        p = subprocess.Popen(
-            "cd {}build && ctest -N".format(PADDLE_ROOT),
-            shell=True,
-            stdout=subprocess.PIPE)
+        p = subprocess.Popen("cd {}build && ctest -N".format(PADDLE_ROOT),
+                             shell=True,
+                             stdout=subprocess.PIPE)
         out, err = p.communicate()
         for line in out.splitlines():
             if 'Total Tests:' in str(line):
@@ -354,8 +355,8 @@ class PRChecker(object):
                         else:
                             print("remove file not hit mapFiles: %s" % f_judge)
                     else:
-                        notHitMapFiles.append(f_judge) if file_dict[
-                            f] != 'removed' else print(
+                        notHitMapFiles.append(
+                            f_judge) if file_dict[f] != 'removed' else print(
                                 "remove file not hit mapFiles: %s" % f_judge)
                 else:
                     if file_dict[f] not in ['removed']:

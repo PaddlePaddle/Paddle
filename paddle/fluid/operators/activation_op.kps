@@ -126,59 +126,6 @@ struct CudaSoftsignGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
-template <typename T>
-struct CudaCELUFunctor : public BaseActivationFunctor<T> {
-  using CT = typename details::MPTypeTrait<T>::Type;
-  CT zero = static_cast<CT>(0.0f);
-  CT one = static_cast<CT>(1.0f);
-  float alpha;
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"alpha", &alpha}};
-  }
-
-  // celu(x) = max(0, x) + min(0, alpha * (exp(x/alpha) - 1))
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    CT x = static_cast<CT>(arg_x);
-    CT temp = static_cast<CT>(alpha) * (exp(x / static_cast<CT>(alpha)) - one);
-    CT res = (x > zero ? x : zero) + (temp > zero ? zero : temp);
-    return static_cast<T>(res);
-  }
-};
-
-template <typename T>
-struct CudaCELUGradFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-  MPType zero = static_cast<MPType>(0.0f);
-  MPType one = static_cast<MPType>(1.0f);
-  float alpha;
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"alpha", &alpha}};
-  }
-
-  // dx = dout, if alpha > 0 and x > 0
-  // dx = dout * (x/alpha).exp(), if alpha > 0 and x <= 0
-  // dx = dout , if alpha < 0 and x > 0
-  // dx = dout * (x/alpha).exp(), if alpha < 0 and x <=0
-  __device__ __forceinline__ T operator()(const T arg_dout,
-                                          const T arg_x) const {
-    MPType dout = static_cast<MPType>(arg_dout);
-    MPType x = static_cast<MPType>(arg_x);
-    MPType a = static_cast<MPType>(alpha);
-    MPType temp_a_pos = static_cast<MPType>(alpha > 0.0f);
-    MPType temp_a_neg = static_cast<MPType>(alpha <= 0.0f);
-    MPType temp_x_pos = static_cast<MPType>(x > zero);
-    MPType temp_x_neg = static_cast<MPType>(x <= zero);
-    return static_cast<T>(
-        dout *
-        (temp_a_pos * temp_x_pos + temp_a_pos * temp_x_neg * exp(x / a) +
-         temp_a_neg * temp_x_pos + exp(x / a) * temp_a_neg * temp_x_neg));
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
 template <typename DeviceContext, typename Functor>
 class ActivationCudaKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -357,79 +304,35 @@ namespace plat = paddle::platform;
       ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
                                     ops::grad_functor<plat::bfloat16>>);
 
-/* ========================================================================== */
-
-/* ======================== celu register  ============================ */
-REGISTER_ACTIVATION_CUDA_KERNEL(celu, CELU, CudaCELUFunctor,
-                                CudaCELUGradFunctor);
-
 REGISTER_OP_CUDA_KERNEL(
-    celu_grad_grad, ops::CELUDoubleGradKernel<plat::CUDADeviceContext,
-                                              ops::CELUGradGradFunctor<float>>,
-    ops::CELUDoubleGradKernel<plat::CUDADeviceContext,
-                              ops::CELUGradGradFunctor<double>>,
-    ops::CELUDoubleGradKernel<plat::CUDADeviceContext,
-                              ops::CELUGradGradFunctor<plat::float16>>);
-/* ========================================================================== */
-
-/* ===========================   sqrt register  ============================= */
-
+    relu6, ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
+                                     ops::CudaRelu6Functor<float>>,
+    ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
+                              ops::CudaRelu6Functor<double>>,
+    ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
+                              ops::CudaRelu6Functor<int>>,
+    ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
+                              ops::CudaRelu6Functor<int64_t>>,
+    ops::ActivationCudaKernel<plat::CUDADeviceContext,
+                              ops::CudaRelu6Functor<plat::float16>>,
+    ops::ActivationCudaKernel<plat::CUDADeviceContext,
+                              ops::CudaRelu6Functor<plat::bfloat16>>);
 REGISTER_OP_CUDA_KERNEL(
-    sqrt_grad_grad,
-    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                              ops::SqrtGradGradFunctor<float>>,
-    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                              ops::SqrtGradGradFunctor<double>>,
-    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                              ops::SqrtGradGradFunctor<plat::float16>>,
-    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                              ops::SqrtGradGradFunctor<plat::bfloat16>>);
-/* ========================================================================== */
-
-/* ===========================   rsqrt register  =============================
- */
-
-REGISTER_OP_CUDA_KERNEL(
-    rsqrt_grad_grad,
-    ops::RsqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                               ops::RsqrtGradGradFunctor<float>>,
-    ops::RsqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                               ops::RsqrtGradGradFunctor<double>>,
-    ops::RsqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                               ops::RsqrtGradGradFunctor<plat::float16>>);
-/* ========================================================================== */
-
-/* ===========================  square register  ============================ */
-
-REGISTER_OP_CUDA_KERNEL(
-    square_grad_grad,
-    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                ops::SquareGradGradFunctor<float>>,
-    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                ops::SquareGradGradFunctor<double>>,
-    ops::SquareDoubleGradKernel<plat::CUDADeviceContext,
-                                ops::SquareGradGradFunctor<plat::float16>>,
-    ops::SquareDoubleGradKernel<plat::CUDADeviceContext,
-                                ops::SquareGradGradFunctor<plat::bfloat16>>,
-    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                ops::SquareGradGradFunctor<int>>,
-    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                ops::SquareGradGradFunctor<int64_t>>);
-/* ========================================================================== */
-
-/* ==========================   logit register  ============================ */
-namespace ops = paddle::operators;
-/* ========================================================================== */
-
-/* ==========================   exp register  ============================ */
-/* ========================================================================== */
-
-/* ==========================   expm1 register  ============================ */
-/* ========================================================================== */
+    relu6_grad, ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+                                              ops::CudaRelu6GradFunctor<float>>,
+    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+                                  ops::CudaRelu6GradFunctor<double>>,
+    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+                                  ops::CudaRelu6GradFunctor<int>>,
+    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+                                  ops::CudaRelu6GradFunctor<int64_t>>,
+    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+                                  ops::CudaRelu6GradFunctor<plat::float16>>,
+    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+                                  ops::CudaRelu6GradFunctor<plat::bfloat16>>);
 
 #define FOR_EACH_ACTIVATION_CUDA_OP(__macro)                                  \
   __macro(soft_relu, SoftRelu, CudaSoftReluFunctor, CudaSoftReluGradFunctor); \
-  __macro(relu6, Relu6, CudaRelu6Functor, CudaRelu6GradFunctor);              \
   __macro(softsign, Softsign, CudaSoftsignFunctor, CudaSoftsignGradFunctor);
 
 FOR_EACH_ACTIVATION_CUDA_OP(REGISTER_ACTIVATION_CUDA_KERNEL)
@@ -452,13 +355,14 @@ REGISTER_OP_KERNEL(
     ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
                                   ops::CudaZeroGradFunctor<float>>);
 
-REGISTER_OP_KERNEL(celu, KP, plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaCELUFunctor<float>>);
+REGISTER_OP_KERNEL(
+    celu, KP, plat::XPUPlace,
+    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                              phi::funcs::CudaCELUFunctor<float>>);
 REGISTER_OP_KERNEL(
     celu_grad, KP, plat::XPUPlace,
     ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
-                                  ops::CudaCELUGradFunctor<float>>);
+                                  phi::funcs::CudaCELUGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(elu, KP, plat::XPUPlace,
                    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,

@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/eigh_kernel.h"
-#include "paddle/phi/kernels/funcs/values_vectors_functor.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/values_vectors_functor.h"
 
 namespace phi {
 

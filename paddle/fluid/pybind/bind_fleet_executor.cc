@@ -13,10 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
+
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/distributed/fleet_executor/dist_model.h"
 #include "paddle/fluid/distributed/fleet_executor/dist_model_tensor_wrapper.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
@@ -62,13 +65,13 @@ struct npy_format_descriptor<paddle::platform::float16> {
 namespace paddle {
 namespace pybind {
 
+using paddle::distributed::DistModel;
+using paddle::distributed::DistModelConfig;
+using paddle::distributed::DistModelDataBuf;
+using paddle::distributed::DistModelDataType;
+using paddle::distributed::DistModelTensor;
 using paddle::distributed::FleetExecutor;
 using paddle::distributed::TaskNode;
-using paddle::distributed::DistModelConfig;
-using paddle::distributed::DistModel;
-using paddle::distributed::DistModelDataBuf;
-using paddle::distributed::DistModelTensor;
-using paddle::distributed::DistModelDataType;
 using paddle::framework::OpDesc;
 using paddle::framework::ProgramDesc;
 
@@ -217,33 +220,34 @@ void BindFleetExecutor(py::module* m) {
       .def("reset", &DistModelDataBufReset<float>)
       .def("reset", &DistModelDataBufReset<paddle::platform::float16>)
       .def("length", &DistModelDataBuf::length)
-      .def("tolist", [](DistModelDataBuf& self,
-                        const std::string& dtype) -> py::list {
-        py::list l;
-        if (dtype == "int32") {
-          auto* data = static_cast<int32_t*>(self.data());
-          auto size = self.length() / sizeof(int32_t);
-          l = py::cast(std::vector<int32_t>(data, data + size));
-        } else if (dtype == "int64") {
-          auto* data = static_cast<int64_t*>(self.data());
-          auto size = self.length() / sizeof(int64_t);
-          l = py::cast(std::vector<int64_t>(data, data + size));
-        } else if (dtype == "float32") {
-          auto* data = static_cast<float*>(self.data());
-          auto size = self.length() / sizeof(float);
-          l = py::cast(std::vector<float>(data, data + size));
-        } else if (dtype == "float16") {
-          auto* data = static_cast<paddle::platform::float16*>(self.data());
-          auto size = self.length() / sizeof(paddle::platform::float16);
-          l = py::cast(
-              std::vector<paddle::platform::float16>(data, data + size));
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported data type. Now only supports INT32, INT64, "
-              "FLOAT16 and FLOAT32."));
-        }
-        return l;
-      });
+      .def("tolist",
+           [](DistModelDataBuf& self, const std::string& dtype) -> py::list {
+             py::list l;
+             if (dtype == "int32") {
+               auto* data = static_cast<int32_t*>(self.data());
+               auto size = self.length() / sizeof(int32_t);
+               l = py::cast(std::vector<int32_t>(data, data + size));
+             } else if (dtype == "int64") {
+               auto* data = static_cast<int64_t*>(self.data());
+               auto size = self.length() / sizeof(int64_t);
+               l = py::cast(std::vector<int64_t>(data, data + size));
+             } else if (dtype == "float32") {
+               auto* data = static_cast<float*>(self.data());
+               auto size = self.length() / sizeof(float);
+               l = py::cast(std::vector<float>(data, data + size));
+             } else if (dtype == "float16") {
+               auto* data =
+                   static_cast<paddle::platform::float16*>(self.data());
+               auto size = self.length() / sizeof(paddle::platform::float16);
+               l = py::cast(
+                   std::vector<paddle::platform::float16>(data, data + size));
+             } else {
+               PADDLE_THROW(platform::errors::Unimplemented(
+                   "Unsupported data type. Now only supports INT32, INT64, "
+                   "FLOAT16 and FLOAT32."));
+             }
+             return l;
+           });
 
   py::class_<DistModelTensor>(*m, "DistModelTensor")
       .def(py::init<>())

@@ -14,7 +14,6 @@
 #pragma once
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
@@ -35,8 +34,7 @@ class GradTestNode : public egr::GradNodeBase {
                        egr::kSlotSmallVectorSize>
   operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                   egr::kSlotSmallVectorSize>& grads,  // NOLINT
-             bool create_graph = false,
-             bool is_new_grad = false) override {
+             bool create_graph = false, bool is_new_grad = false) override {
     val_ = std::dynamic_pointer_cast<phi::DenseTensor>(grads[0][0].impl())
                ->data<float>()[0];
     phi::DenseTensorMeta meta =

@@ -1,38 +1,54 @@
-file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
+file(
+  GLOB TEST_OPS
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
-file(GLOB TEST_DIST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_collective_*.py")
+file(
+  GLOB TEST_DIST_OPS
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "test_collective_*.py")
 string(REPLACE ".py" "" TEST_DIST_OPS "${TEST_DIST_OPS}")
 
-if (WITH_MLU)
+if(WITH_MLU)
+  foreach(TEST_OP ${TEST_DIST_OPS})
+    list(REMOVE_ITEM TEST_OPS ${TEST_OP})
+  endforeach()
+  list(REMOVE_ITEM TEST_OPS "test_spawn_mlu")
+
+  foreach(TEST_OP ${TEST_OPS})
+    py_test_modules(${TEST_OP} MODULES ${TEST_OP})
+  endforeach()
+
+  if(WITH_CNCL)
+    list(APPEND TEST_DIST_OPS "test_spawn_mlu")
     foreach(TEST_OP ${TEST_DIST_OPS})
-        LIST(REMOVE_ITEM TEST_OPS ${TEST_OP})
-    endforeach(TEST_OP)
-
-    foreach(TEST_OP ${TEST_OPS})
-        py_test_modules(${TEST_OP} MODULES ${TEST_OP})
-    endforeach(TEST_OP)
-
-    if(WITH_CNCL)
-        foreach(TEST_OP ${TEST_DIST_OPS})
-            py_test_modules(${TEST_OP} MODULES ${TEST_OP})
-        endforeach(TEST_OP)
-        bash_test_modules(test_launch_async_mlu START_BASH test_launch_async_mlu.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-        bash_test_modules(test_launch_cloud_mlu START_BASH test_launch_cloud_mlu.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-        bash_test_modules(test_launch_nproc_mlu START_BASH test_launch_nproc_mlu.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-        bash_test_modules(test_c_comm_init_op_mlu START_BASH test_c_comm_init_op_mlu.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-        set_tests_properties(test_collective_broadcast PROPERTIES TIMEOUT 120)
-	set_tests_properties(test_collective_allreduce_sum PROPERTIES TIMEOUT 120)
-        set_tests_properties(test_collective_allreduce_max PROPERTIES TIMEOUT 120)
-        set_tests_properties(test_collective_allreduce_min PROPERTIES TIMEOUT 120)
-	set_tests_properties(test_collective_allreduce_prod PROPERTIES TIMEOUT 120)
-	set_tests_properties(test_collective_allgather PROPERTIES TIMEOUT 120)
-	set_tests_properties(test_collective_reduce_sum PROPERTIES TIMEOUT 120)
-        set_tests_properties(test_collective_reduce_max PROPERTIES TIMEOUT 120)
-        set_tests_properties(test_collective_reduce_min PROPERTIES TIMEOUT 120)
-        set_tests_properties(test_collective_reduce_prod PROPERTIES TIMEOUT 120)
-        set_tests_properties(test_collective_broadcast_api_mlu PROPERTIES TIMEOUT 120)
-        set_tests_properties(test_collective_allreduce_api_mlu PROPERTIES TIMEOUT 120)
-	set_tests_properties(test_collective_allgather_api_mlu PROPERTIES TIMEOUT 120)
-        set_tests_properties(test_c_comm_init_op_mlu PROPERTIES TIMEOUT 120)
-    endif(WITH_CNCL)
+      py_test_modules(${TEST_OP} MODULES ${TEST_OP})
+    endforeach()
+    bash_test_modules(test_launch_async_mlu START_BASH test_launch_async_mlu.sh
+                      ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+    bash_test_modules(test_launch_cloud_mlu START_BASH test_launch_cloud_mlu.sh
+                      ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+    bash_test_modules(test_launch_nproc_mlu START_BASH test_launch_nproc_mlu.sh
+                      ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+    bash_test_modules(
+      test_c_comm_init_op_mlu START_BASH test_c_comm_init_op_mlu.sh ENVS
+      PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+    set_tests_properties(test_collective_broadcast PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_allreduce_sum PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_allreduce_max PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_allreduce_min PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_allreduce_prod PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_allgather PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_reduce_sum PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_reduce_max PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_reduce_min PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_reduce_prod PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_broadcast_api_mlu PROPERTIES TIMEOUT
+                                                                      120)
+    set_tests_properties(test_collective_allreduce_api_mlu PROPERTIES TIMEOUT
+                                                                      120)
+    set_tests_properties(test_collective_allgather_api_mlu PROPERTIES TIMEOUT
+                                                                      120)
+    set_tests_properties(test_c_comm_init_op_mlu PROPERTIES TIMEOUT 120)
+  endif()
 endif()

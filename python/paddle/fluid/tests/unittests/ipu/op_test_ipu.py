@@ -55,6 +55,7 @@ class ExecutionMode(IntEnum):
 
 
 class IPUTest(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         # Get random seeds
@@ -87,6 +88,7 @@ class IPUTest(unittest.TestCase):
 
     # Decorator for static graph building
     def static_graph(builder):
+
         def wrapper(self, *args, **kwargs):
             self.scope = paddle.static.Scope()
             self.main_prog = paddle.static.Program()
@@ -116,6 +118,7 @@ class IPUTest(unittest.TestCase):
 
 
 class IPUOpTest(IPUTest):
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -127,6 +130,11 @@ class IPUOpTest(IPUTest):
         cls.feed_list: List[str] = None
         cls.fetch_list: List[str] = None
         cls.output_dict: Optional[Dict] = {}
+
+    def tearDown(self):
+        # Manual reset when using ipumodel
+        if self.use_ipumodel():
+            paddle.framework.core.IpuBackend.get_instance().reset()
 
     @property
     def fp16_enabled(self):
@@ -176,8 +184,9 @@ class IPUOpTest(IPUTest):
                 ipu_strategy.set_precision_config(enable_fp16=True)
                 IPUOpTest.cast_model_to_fp16(self.main_prog)
             program = paddle.static.IpuCompiledProgram(
-                self.main_prog, ipu_strategy=ipu_strategy).compile(
-                    self.feed_list, self.fetch_list)
+                self.main_prog,
+                ipu_strategy=ipu_strategy).compile(self.feed_list,
+                                                   self.fetch_list)
         else:
             program = self.main_prog
 
@@ -209,8 +218,10 @@ class IPUOpTest(IPUTest):
         ipu_fp32 = output_dict[ExecutionMode.IPU_FP32]
         cpu_fp32 = np.asarray(cpu_fp32).astype(np.float32).flatten()
         ipu_fp32 = np.asarray(ipu_fp32).astype(np.float32).flatten()
-        pass_check = np.allclose(
-            ipu_fp32, cpu_fp32, rtol=self.rtol, atol=self.atol)
+        pass_check = np.allclose(ipu_fp32,
+                                 cpu_fp32,
+                                 rtol=self.rtol,
+                                 atol=self.atol)
         if not pass_check:
             max_atol = np.abs(ipu_fp32 - cpu_fp32).max()
             cpu_fp32_abs = np.abs(cpu_fp32)
@@ -226,8 +237,10 @@ class IPUOpTest(IPUTest):
         if ExecutionMode.IPU_FP16 in output_dict.keys():
             ipu_fp16 = output_dict[ExecutionMode.IPU_FP16]
             ipu_fp16 = np.asarray(ipu_fp16).astype(np.float32).flatten()
-            pass_check = np.allclose(
-                ipu_fp16, cpu_fp32, rtol=self.rtol_fp16, atol=self.atol_fp16)
+            pass_check = np.allclose(ipu_fp16,
+                                     cpu_fp32,
+                                     rtol=self.rtol_fp16,
+                                     atol=self.atol_fp16)
             if not pass_check:
                 max_atol = np.abs(ipu_fp16 - cpu_fp32).max()
                 cpu_fp32_abs = np.abs(cpu_fp32)

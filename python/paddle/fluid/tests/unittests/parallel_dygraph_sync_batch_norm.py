@@ -33,6 +33,7 @@ from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 
 class TestLayer(fluid.dygraph.Layer):
+
     def __init__(self,
                  num_channels,
                  num_filters,
@@ -42,28 +43,27 @@ class TestLayer(fluid.dygraph.Layer):
                  act=None):
         super(TestLayer, self).__init__()
 
-        self._conv = Conv2D(
-            in_channels=num_channels,
-            out_channels=num_filters,
-            kernel_size=filter_size,
-            stride=stride,
-            padding=(filter_size - 1) // 2,
-            groups=groups,
-            bias_attr=False)
+        self._conv = Conv2D(in_channels=num_channels,
+                            out_channels=num_filters,
+                            kernel_size=filter_size,
+                            stride=stride,
+                            padding=(filter_size - 1) // 2,
+                            groups=groups,
+                            bias_attr=False)
 
         self._sync_batch_norm = SyncBatchNorm(num_filters)
 
-        self._conv2 = Conv2D(
-            in_channels=num_filters,
-            out_channels=num_filters,
-            kernel_size=filter_size,
-            stride=stride,
-            padding=(filter_size - 1) // 2,
-            groups=groups,
-            bias_attr=False)
+        self._conv2 = Conv2D(in_channels=num_filters,
+                             out_channels=num_filters,
+                             kernel_size=filter_size,
+                             stride=stride,
+                             padding=(filter_size - 1) // 2,
+                             groups=groups,
+                             bias_attr=False)
 
-        self._sync_batch_norm2 = SyncBatchNorm(
-            num_filters, weight_attr=False, bias_attr=False)
+        self._sync_batch_norm2 = SyncBatchNorm(num_filters,
+                                               weight_attr=False,
+                                               bias_attr=False)
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -75,14 +75,14 @@ class TestLayer(fluid.dygraph.Layer):
 
 
 class TestSyncBatchNorm(TestParallelDyGraphRunnerBase):
+
     def get_model(self):
         model = TestLayer(3, 64, 7)
-        train_reader = paddle.batch(
-            paddle.dataset.flowers.test(use_xmap=False),
-            batch_size=32,
-            drop_last=True)
-        opt = fluid.optimizer.Adam(
-            learning_rate=1e-3, parameter_list=model.parameters())
+        train_reader = paddle.batch(paddle.dataset.flowers.test(use_xmap=False),
+                                    batch_size=32,
+                                    drop_last=True)
+        opt = fluid.optimizer.Adam(learning_rate=1e-3,
+                                   parameter_list=model.parameters())
         return model, train_reader, opt
 
     def run_one_loop(self, model, opt, data):

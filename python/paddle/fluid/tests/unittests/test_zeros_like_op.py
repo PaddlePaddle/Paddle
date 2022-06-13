@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestZerosLikeAPIError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             x = paddle.fluid.data('x', [3, 4])
@@ -34,6 +35,7 @@ class TestZerosLikeAPIError(unittest.TestCase):
 
 
 class TestZerosLikeAPI(unittest.TestCase):
+
     def test_api(self):
         shape = [3, 4]
         startup_program = Program()
@@ -62,6 +64,7 @@ class TestZerosLikeAPI(unittest.TestCase):
 
 
 class TestZerosLikeImpeartive(unittest.TestCase):
+
     def test_out(self):
         shape = [3, 4]
         place = (fluid.CUDAPlace(0)

@@ -17,6 +17,7 @@ import numpy as np
 import sys
 import unittest
 from functools import reduce
+
 sys.path.append("..")
 from op_test import OpTest
 from operator import mul
@@ -44,6 +45,7 @@ def ref_layer_norm(x, scale, bias, epsilon, begin_norm_axis=1):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestXPULayerNormOp(OpTest):
+
     def setUp(self):
         self.op_type = "layer_norm"
         self.dtype = np.float32
@@ -75,13 +77,15 @@ class TestXPULayerNormOp(OpTest):
         self.check_output_with_place(paddle.XPUPlace(0), atol=1e-4)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.XPUPlace(0), ['X'], 'Y', max_relative_error=0.02)
+        self.check_grad_with_place(paddle.XPUPlace(0), ['X'],
+                                   'Y',
+                                   max_relative_error=0.02)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestXPULayerNormOpAxis2(TestXPULayerNormOp):
+
     def set_attrs(self):
         self.begin_norm_axis = 2
 
@@ -89,6 +93,7 @@ class TestXPULayerNormOpAxis2(TestXPULayerNormOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestXPULayerNormOpAxis3(TestXPULayerNormOp):
+
     def set_attrs(self):
         self.begin_norm_axis = 3
 
@@ -96,6 +101,7 @@ class TestXPULayerNormOpAxis3(TestXPULayerNormOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestXPULayerNormOp2D(TestXPULayerNormOp):
+
     def set_attrs(self):
         self.shape = [10, 12]
 
@@ -103,6 +109,7 @@ class TestXPULayerNormOp2D(TestXPULayerNormOp):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestXPULayerNormOp3D(TestXPULayerNormOp):
+
     def set_attrs(self):
         self.shape = [4, 5, 6]
 
