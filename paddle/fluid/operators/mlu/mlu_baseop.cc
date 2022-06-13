@@ -2802,6 +2802,18 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
       cnnlReciprocal(handle, input_desc, input, output_desc, output));
 }
 
+/* static */ void MLUCnnl::EmbeddingForward(
+    const ExecutionContext& ctx, const int padding_idx,
+    const cnnlTensorDescriptor_t weight_desc, const void* weight,
+    const cnnlTensorDescriptor_t indices_desc, const int* indices,
+    const cnnlTensorDescriptor_t output_desc, void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlEmbeddingForward_v2(
+      handle, weight_desc, weight, indices_desc, indices, padding_idx,
+      nullptr /*max_norm*/, nullptr /*norm_type*/, output_desc, output));
+}
+
 /* static */ void MLUCnnl::EmbeddingBackward(
     const ExecutionContext& ctx, int padding_idx, bool scale_grad_by_freq,
     const cnnlTensorDescriptor_t indices_desc, const void* indices,
