@@ -9,16 +9,6 @@
   #kernel :
     #func : einsum_grad
 
-#- backward_api : einsum_grad
-  #forward : einsum (Tensor[] x, str equation) -> Tensor(out), Tensor[](inner_cache)
-  #args : (Tensor[] x, Tensor[] inner_cache, Tensor out_grad, str equation)
-  #output : Tensor[](x_grad){x.size()}
-  #infer_meta :
-    #func : UnchangedMultiInferMeta
-    #param : [x]
-  #kernel :
-    #func : einsum_grad
-
 - backward_api : abs_double_grad
   forward : abs_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_x_grad)
@@ -630,6 +620,16 @@
     data_type : out_v
   data_transform:
     skip_transform : out_w, out_w_grad
+
+- backward_api : einsum_grad
+  forward : einsum (Tensor[] x, str equation) -> Tensor(out), Tensor[](inner_cache), Tensor[](x_shape)
+  args : (Tensor[] x_shape, Tensor[] inner_cache, Tensor out_grad, str equation)
+  output : Tensor[](x_grad){x.size()}
+  infer_meta :
+    func : UnchangedMultiInferMeta
+    param : [x_shape]
+  kernel :
+    func : einsum_grad
 
 - backward_api : elementwise_pow_grad
   forward : elementwise_pow(Tensor x, Tensor y) -> Tensor(out)

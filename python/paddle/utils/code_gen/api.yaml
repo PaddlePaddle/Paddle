@@ -608,6 +608,7 @@
     param : [x, equation]
   kernel :
     func : einsum
+  backward : einsum_grad
 
 - api : elementwise_pow
   args : (Tensor x, Tensor y)

@@ -43,7 +43,8 @@ class EinsumOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddOutput("XShape", "(Tensor), The cache of the x_shape of: A and B.")
         .AsDuplicable()
-        .AsExtra();
+        .AsExtra()
+        .AsIntermediate();
     AddAttr<std::string>("equation",
                          "(string) A einsum equation. such as `ij,jk->ik`"
                          "There must have `->` and the number of operands in "
