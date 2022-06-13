@@ -1070,7 +1070,7 @@ class LayerSaved(paddle.nn.Layer):
     def forward(self, x):
         y = self._linear_0(x)
         # Multiple blocks
-        if x.shape[0] == 1:
+        if paddle.shape(x)[0] == 1:
             y = self._linear_1_0(y)
         else:
             y += self._linear_1_1(y + self._scale)
@@ -1097,7 +1097,7 @@ class LayerLoadFinetune(paddle.nn.Layer):
         y = self._linear_0(x)
         y = self._load_l1(y)
         # Multiple blocks
-        if x.shape[0] == 1:
+        if paddle.shape(x)[0] == 1:
             y = self._linear_1_0(y)
             y = self._load_l1(y)
         else:
