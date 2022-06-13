@@ -378,6 +378,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "0.0 and 0.001, But received [%s].",
                                 ln_epsilon));
         });
+    AddAttr<bool>("add_residual", "Whether to add residual.").SetDefault(true);
     AddAttr<int>(
         "ring_id",
         "ring id for tensor model parallel. distributed training and inference")

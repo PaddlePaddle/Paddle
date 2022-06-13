@@ -194,6 +194,7 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<int>("dropout1_seed", "Dropout1 random seed.").SetDefault(0);
     AddAttr<int>("dropout2_seed", "Dropout2 random seed.").SetDefault(0);
+    AddAttr<bool>("add_residual", "Whether to add residual.").SetDefault(true);
     AddAttr<int>("ring_id", "ring id for tensor model parallel.")
         .SetDefault(-1);
     AddComment(R"DOC(
