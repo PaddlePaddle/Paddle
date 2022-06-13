@@ -43,6 +43,31 @@ struct DevicePythonNode {
   uint64_t stream_id;
 };
 
+struct MemPythonNode {
+  MemPythonNode() = default;
+  ~MemPythonNode() {}
+
+  // timestamp of the record
+  uint64_t timestamp_ns;
+  // memory addr of allocation or free
+  uint64_t addr;
+  // memory manipulation type
+  TracerMemEventType type;
+  // process id of the record
+  uint64_t process_id;
+  // thread id of the record
+  uint64_t thread_id;
+  // increase bytes after this manipulation, allocation for sign +, free for
+  // sign -
+  int64_t increase_bytes;
+  // place
+  std::string place;
+  // current total allocated memory
+  uint64_t current_allocated;
+  // current total reserved memory
+  uint64_t current_reserved;
+};
+
 struct HostPythonNode {
   HostPythonNode() = default;
   ~HostPythonNode();
@@ -58,12 +83,19 @@ struct HostPythonNode {
   uint64_t process_id;
   // thread id of the record
   uint64_t thread_id;
+  // input shapes
+  std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
+  std::map<std::string, std::vector<std::string>> dtypes;
+  // call stack
+  std::string callstack;
   // children node
   std::vector<HostPythonNode*> children_node_ptrs;
   // runtime node
   std::vector<HostPythonNode*> runtime_node_ptrs;
   // device node
   std::vector<DevicePythonNode*> device_node_ptrs;
+  // mem node
+  std::vector<MemPythonNode*> mem_node_ptrs;
 };
 
 class ProfilerResult {

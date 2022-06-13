@@ -46,6 +46,15 @@ enum TracerEventTypeProto {
   PythonOp = 13;
   // Used to mark python level userdefined
   PythonUserDefined = 14;
+  // Used to mark mlu runtime record returned by cnpapi
+  MluRuntime = 15;
+};
+
+enum TracerMemEventTypeProto {
+  // Used to mark memory allocation
+  Allocate = 0;
+  // Used to mark memory free
+  Free = 1;
 };
 
 message KernelEventInfoProto {
@@ -121,6 +130,58 @@ message HostTraceEventProto {
   required uint64 thread_id = 6;
 }
 
+message MemTraceEventProto {
+  // timestamp of the record
+  required uint64 timestamp_ns = 1;
+  // memory manipulation type
+  required TracerMemEventTypeProto type = 2;
+  // memory addr of allocation or free
+  required uint64 addr = 3;
+  // process id of the record
+  required uint64 process_id = 4;
+  // thread id of the record
+  required uint64 thread_id = 5;
+  // increase bytes after this manipulation, allocation for sign +, free for
+  // sign -
+  required int64 increase_bytes = 6;
+  // place
+  required string place = 7;
+  // current total allocated memory
+  required uint64 current_allocated = 8;
+  // current total reserved memory
+  required uint64 current_reserved = 9;
+}
+
+message OperatorSupplementEventProto {
+  // timestamp of the record
+  required uint64 timestamp_ns = 1;
+  // op type name
+  required string op_type = 2;
+  // process id of the record
+  required uint64 process_id = 3;
+  // thread id of the record
+  required uint64 thread_id = 4;
+  // input shapes
+  message input_shape_proto {
+    repeated string key = 1;
+    message shape_vector {
+      message shape { repeated uint64 size = 1; }
+      repeated shape shapes = 1;
+    }
+    repeated shape_vector shape_vecs = 2;
+  }
+  required input_shape_proto input_shapes = 5;
+  // dtypes
+  message dtype_proto {
+    repeated string key = 1;
+    message dtype_vector { repeated string dtype = 1; }
+    repeated dtype_vector dtype_vecs = 2;
+  }
+  required dtype_proto dtypes = 6;
+  // call stack
+  required string callstack = 7;
+}
+
 message CudaRuntimeTraceEventProto {
   // record name
   required string name = 1;
@@ -166,6 +227,12 @@ message DeviceTraceEventProto {
   }
 }
 
+message OperatorSupplementEventNodeProto {
+  required OperatorSupplementEventProto op_supplement_event = 1;
+}
+
+message MemTraceEventNodeProto { required MemTraceEventProto mem_event = 1; }
+
 message DeviceTraceEventNodeProto {
   required DeviceTraceEventProto device_event = 1;
 }
@@ -180,6 +247,9 @@ message HostTraceEventNodeProto {
   required int64 parentid = 2;
   required HostTraceEventProto host_trace_event = 3;
   repeated CudaRuntimeTraceEventNodeProto runtime_nodes = 4;
+  // below is added in version 1.0.1
+  repeated MemTraceEventNodeProto mem_nodes = 5;
+  repeated OperatorSupplementEventNodeProto op_supplement_nodes = 6;
 }
 
 message ThreadNodeTreeProto {
