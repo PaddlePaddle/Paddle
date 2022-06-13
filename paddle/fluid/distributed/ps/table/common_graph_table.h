@@ -492,7 +492,10 @@ class GraphTable : public Table {
   int get_all_feature_ids(int type, int idx,
                         int slice_num, std::vector<std::vector<uint64_t>>* output);
   int32_t load_nodes(const std::string &path, std::string node_type);
-
+  int32_t parse_edge_file(const std::string &path, int idx, bool reverse, 
+                        uint64_t &count, uint64_t &valid_count);
+  int32_t parse_node_file(const std::string &path, const std::string &node_type, 
+                        int idx, uint64_t &count, uint64_t &valid_count);
   int32_t add_graph_node(int idx, std::vector<uint64_t> &id_list,
                          std::vector<bool> &is_weight_list);
 
@@ -617,7 +620,7 @@ class GraphTable : public Table {
 
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
   std::vector<std::shared_ptr<std::mt19937_64>> _shards_task_rng_pool;
-  std::vector<std::shared_ptr<::ThreadPool>> load_node_edge_task_pool;
+  std::shared_ptr<::ThreadPool> load_node_edge_task_pool;
   std::shared_ptr<ScaledLRU<SampleKey, SampleResult>> scaled_lru;
   std::unordered_set<uint64_t> extra_nodes;
   std::unordered_map<uint64_t, size_t> extra_nodes_to_thread_index;
