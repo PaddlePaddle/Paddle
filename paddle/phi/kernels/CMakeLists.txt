@@ -10,15 +10,6 @@ file(
 file(APPEND ${kernel_declare_file}
      "#include \"paddle/phi/core/kernel_registry.h\"\n\n")
 
-set(file_name ${CMAKE_CURRENT_BINARY_DIR}/pch_dummy.cpp)
-generate_dummy_static_lib(LIB_NAME "pch" GENERATOR "phi.cmake" FILE_PATH ${file_name})
-set_target_properties(pch PROPERTIES LINKER_LANGUAGE CXX)
-target_precompile_headers(pch PUBLIC 
-    ${PADDLE_SOURCE_DIR}/paddle/phi/backends/cpu/cpu_context.h 
-    ${PADDLE_SOURCE_DIR}/paddle/phi/core/dense_tensor.h 
-    ${PADDLE_SOURCE_DIR}/paddle/phi/core/kernel_registry.h 
-    ${PADDLE_SOURCE_DIR}/paddle/phi/common/scalar.h)
-
 # phi functors and functions called by kernels
 add_subdirectory(funcs)
 
@@ -128,6 +119,13 @@ file(GLOB kernel_xpu "xpu/*.cc")
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")
 target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
+target_precompile_headers(
+  phi_cpu
+  PUBLIC
+  ${PADDLE_SOURCE_DIR}/paddle/phi/backends/cpu/cpu_context.h
+  ${PADDLE_SOURCE_DIR}/paddle/phi/core/dense_tensor.h
+  ${PADDLE_SOURCE_DIR}/paddle/phi/core/kernel_registry.h
+  ${PADDLE_SOURCE_DIR}/paddle/phi/common/scalar.h)
 set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu)
 
 if(WITH_GPU OR WITH_ROCM)
@@ -138,6 +136,7 @@ if(WITH_GPU OR WITH_ROCM)
   endif()
   kernel_declare("${kernel_cu}")
   target_link_libraries(phi_gpu ${COMMON_KERNEL_DEPS})
+  target_precompile_headers(phi_gpu REUSE_FROM phi_cpu)
   set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu phi_gpu)
 endif()
 
@@ -150,5 +149,6 @@ if(WITH_XPU)
   endif()
   kernel_declare(${kernel_xpu})
   target_link_libraries(phi_xpu ${COMMON_KERNEL_DEPS})
+  target_precompile_headers(phi_xpu REUSE_FROM phi_cpu)
   set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu phi_xpu)
 endif()
