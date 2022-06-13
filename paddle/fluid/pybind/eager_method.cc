@@ -1417,6 +1417,16 @@ static PyObject* tensor_method_get_non_zero_cols(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_is_dense(TensorObject* self, PyObject* args,
+                                        PyObject* kwargs) {
+  EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
+  return ToPyObject(self->tensor.is_dense_tensor());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_is_sparse(TensorObject* self, PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
@@ -1681,6 +1691,8 @@ PyMethodDef variable_methods[] = {
     {"retain_grads", (PyCFunction)(void (*)(void))tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"clear_gradient", (PyCFunction)(void (*)(void))tensor_clear_gradient,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"is_dense", (PyCFunction)(void (*)(void))tensor_method_is_dense,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_zero_grads", (PyCFunction)(void (*)(void))tensor__zero_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},

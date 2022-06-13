@@ -196,7 +196,7 @@ bool CtrCommonAccessor::NeedExtendMF(float* value) {
   return score >= _config.embedx_threshold();
 }
 
-bool CtrCommonAccessor::HasMF(size_t size) {
+bool CtrCommonAccessor::HasMF(int size) {
   return size > common_feature_value.EmbedxG2SumIndex();
 }
 
@@ -227,11 +227,11 @@ int32_t CtrCommonAccessor::Merge(float** update_values,
                                  const float** other_update_values,
                                  size_t num) {
   auto embedx_dim = _config.embedx_dim();
-  size_t total_dim = CtrCommonPushValue::Dim(embedx_dim);
+  int total_dim = CtrCommonPushValue::Dim(embedx_dim);
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* other_update_value = other_update_values[value_item];
-    for (auto i = 0u; i < total_dim; ++i) {
+    for (int i = 0; i < total_dim; ++i) {
       if (i != CtrCommonPushValue::SlotIndex()) {
         update_value[i] += other_update_value[i];
       }

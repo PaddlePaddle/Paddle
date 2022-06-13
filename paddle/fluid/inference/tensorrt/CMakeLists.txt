@@ -1,4 +1,5 @@
-# Compiling with WITH_PYTHON=ON and WITH_TENSORRT=ON failed on windows. Temporarily add paddle_inference_api dependency to solve the problem
+# Compiling with WITH_PYTHON=ON and WITH_TENSORRT=ON failed on windows.
+# Temporarily add paddle_inference_api dependency to solve the problem
 if(WIN32)
   nv_library(
     tensorrt_engine
@@ -21,7 +22,7 @@ nv_test(
   DEPS dynload_cuda device_context dynamic_loader)
 nv_test(
   test_tensorrt_engine
-  SRCS test_engine.cc
-  DEPS dynload_cuda tensorrt_engine)
+  SRCS test_engine.cc test_dynamic_engine.cc
+  DEPS dynload_cuda tensorrt_engine tensorrt_plugin)
 add_subdirectory(plugin)
 add_subdirectory(convert)

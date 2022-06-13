@@ -11,7 +11,7 @@ cc_test(test_type_info SRCS test_type_info.cc)
 cc_test(
   test_kernel_factory
   SRCS test_kernel_factory.cc
-  DEPS kernel_factory scale_kernel)
+  DEPS kernel_factory phi)
 cc_test(
   test_sparse_coo_tensor
   SRCS test_sparse_coo_tensor.cc

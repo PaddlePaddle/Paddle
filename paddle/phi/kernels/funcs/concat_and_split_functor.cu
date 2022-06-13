@@ -276,7 +276,10 @@ struct ConcatFunctor<phi::GPUContext, T> {
     int64_t out_row = in_row, out_col = 0;
 
     int inputs_col_num = in_num + 1;
-    paddle::memory::AllocationPtr data_alloc, col_alloc;
+    std::vector<const T*> inputs_data_vec(in_num);
+    std::vector<int64_t> inputs_col_vec(inputs_col_num);
+    const T** inputs_data = inputs_data_vec.data();
+    int64_t* inputs_col = inputs_col_vec.data();
 
 // There are some differences between hip runtime and NV runtime.
 // In NV, when the pageable memory data less than 64K is transferred from
@@ -286,22 +289,16 @@ struct ConcatFunctor<phi::GPUContext, T> {
 // 3.2.6.1. Concurrent Execution between Host and Device
 // Memory copies from host to device of a memory block of 64 KB or less
 #ifdef PADDLE_WITH_HIP
+    paddle::memory::AllocationPtr data_alloc, col_alloc;
     // TODO(chentianyu03): try to find a method to remove the Alloc function
     data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                        in_num * sizeof(T*));
+    inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
     // TODO(chentianyu03): try to find a method to remove the Alloc function
     col_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                       inputs_col_num * sizeof(int));
-#else
-    // TODO(pinned): cuda-graph not support pinned memory, we just use the cpu
-    // allocator.
-    data_alloc = paddle::memory::Alloc(paddle::platform::CPUPlace(),
-                                       in_num * sizeof(T*));
-    col_alloc = paddle::memory::Alloc(paddle::platform::CPUPlace(),
-                                      (inputs_col_num) * sizeof(int64_t));
+    inputs_col = reinterpret_cast<int64_t*>(col_alloc->ptr());
 #endif
-    const T** inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
-    int64_t* inputs_col = reinterpret_cast<int64_t*>(col_alloc->ptr());
 
     inputs_col[0] = 0;
     bool has_same_shape = true;
@@ -390,6 +387,7 @@ struct ConcatFunctor<phi::GPUContext, T> {
           output->data<T>());
     }
 
+#ifdef PADDLE_WITH_HIP
     // Prevent the pinned memory value from being covered and release the memory
     // after the launch kernel of the stream is executed (reapply pinned memory
     // next time)
@@ -403,6 +401,7 @@ struct ConcatFunctor<phi::GPUContext, T> {
       paddle::memory::allocation::Allocator::AllocationDeleter(
           col_alloc_released);
     });
+#endif
   }
 };
 
@@ -433,7 +432,10 @@ class SplitFunctor<phi::GPUContext, T> {
     bool has_same_shape = true;
 
     int outputs_cols_num = o_num + 1;
-    paddle::memory::AllocationPtr data_alloc, cols_alloc;
+    std::vector<T*> outputs_data_vec(o_num);
+    std::vector<int64_t> outputs_cols_vec(outputs_cols_num);
+    T** outputs_data = outputs_data_vec.data();
+    int64_t* outputs_cols = outputs_cols_vec.data();
 
 // There are some differences between hip runtime and NV runtime.
 // In NV, when the pageable memory data less than 64K is transferred from
@@ -443,22 +445,16 @@ class SplitFunctor<phi::GPUContext, T> {
 // 3.2.6.1. Concurrent Execution between Host and Device
 // Memory copies from host to device of a memory block of 64 KB or less
 #ifdef PADDLE_WITH_HIP
+    paddle::memory::AllocationPtr data_alloc, cols_alloc;
     // TODO(chentianyu03): try to find a method to remove the Alloc function
     data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                        o_num * sizeof(T*));
+    outputs_data = reinterpret_cast<T**>(data_alloc->ptr());
     // TODO(chentianyu03): try to find a method to remove the Alloc function
     cols_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                        (outputs_cols_num) * sizeof(int64_t));
-#else
-    // TODO(pinned): cuda-graph not support pinned memory, we just use the cpu
-    // allocator.
-    data_alloc =
-        paddle::memory::Alloc(paddle::platform::CPUPlace(), o_num * sizeof(T*));
-    cols_alloc = paddle::memory::Alloc(paddle::platform::CPUPlace(),
-                                       (outputs_cols_num) * sizeof(int64_t));
+    outputs_cols = reinterpret_cast<int64_t*>(cols_alloc->ptr());
 #endif
-    T** outputs_data = reinterpret_cast<T**>(data_alloc->ptr());
-    int64_t* outputs_cols = reinterpret_cast<int64_t*>(cols_alloc->ptr());
 
     outputs_cols[0] = 0;
     for (int i = 0; i < o_num; ++i) {
@@ -552,6 +548,7 @@ class SplitFunctor<phi::GPUContext, T> {
           dev_out_gpu_data);
     }
 
+#ifdef PADDLE_WITH_HIP
     // Prevent the pinned memory value from being covered and release the memory
     // after the launch kernel of the stream is executed (reapply pinned memory
     // next time)
@@ -563,6 +560,7 @@ class SplitFunctor<phi::GPUContext, T> {
       paddle::memory::allocation::Allocator::AllocationDeleter(
           cols_alloc_released);
     });
+#endif
   }
 };
 
