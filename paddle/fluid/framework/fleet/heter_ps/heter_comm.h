@@ -203,7 +203,7 @@ class HeterComm {
 
   void init_path();
 
-  void create_storage(int start_index, int end_index, int keylen, int vallen);
+  void create_storage(int start_index, int end_index, size_t keylen, size_t vallen);
   void destroy_storage(int start_index, int end_index);
   void walk_to_dest(int start_index, int gpu_num, int* h_left, int* h_right,
                     KeyType* src_key, GradType* src_val);
