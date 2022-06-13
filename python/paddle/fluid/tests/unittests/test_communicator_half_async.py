@@ -21,6 +21,7 @@ import threading
 import subprocess
 import unittest
 import numpy
+import tempfile
 
 import paddle
 import paddle.fluid as fluid
@@ -134,14 +135,15 @@ os.environ["TRAINING_ROLE"] = "PSERVER"
 half_run_server = RunServer()
 half_run_server.run_ut()
 """
-
+        temp_dir = tempfile.TemporaryDirectory()
         server_file = "run_server_for_communicator_haflaysnc.py"
-        with open(server_file, "w") as wb:
+        file_path = os.path.join(temp_dir.name, server_file)
+        with open(file_path, "w") as wb:
             wb.write(run_server_cmd)
         os.environ["TRAINING_ROLE"] = "PSERVER"
         _python = sys.executable
 
-        ps_cmd = "{} {}".format(_python, server_file)
+        ps_cmd = "{} {}".format(_python, file_path)
         ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
@@ -155,8 +157,7 @@ half_run_server.run_ut()
         self.run_ut()
         ps_proc.kill()
 
-        if os.path.exists(server_file):
-            os.remove(server_file)
+        temp_dir.cleanup()
 
 
 if __name__ == '__main__':
