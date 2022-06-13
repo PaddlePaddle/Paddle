@@ -76,11 +76,6 @@ void GradTensorHolder::CopyValueFromTensor(
 void GradTensorHolder::add(size_t slot_id, size_t rank,
                            const paddle::experimental::Tensor& t,
                            bool create_graph) {
-  // TODO(jiabin): We need to deal with empty input_buffer with slot size not
-  // empty;
-  if (!t.initialized()) {
-    return;
-  }
   PADDLE_ENFORCE(slot_id < buffer_.size(),
                  paddle::platform::errors::Fatal(
                      "Invalid slot_id for GradTensorHolder::add() "
