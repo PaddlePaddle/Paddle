@@ -295,11 +295,6 @@ class OpConverter {
     engine->ClearWeights();
   }
 
-<<<<<<< HEAD
-  // Create and add 1D constant layer
-  nvinfer1::ITensor* Add1DConstantLayer(const std::vector<int>& data,
-                                        const std::string& weight_name) {
-=======
   // rank(result) = rank(input)
   nvinfer1::ITensor* Gather(nvinfer1::ITensor* input,
                             const std::vector<int32_t> indices, int axis = 0) {
@@ -457,7 +452,6 @@ class OpConverter {
   nvinfer1::ITensor* Add1DConstantLayer(const std::vector<int>& data,
                                         const std::string& weight_name = "",
                                         bool scalar = false) {
->>>>>>> develop
     std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
     int data_size = data.size();
     tmp_tensor->Resize({data_size});
@@ -471,11 +465,7 @@ class OpConverter {
                                   static_cast<void*>(tmp_data),
                                   static_cast<size_t>(data_size)};
     nvinfer1::Dims input_shape;
-<<<<<<< HEAD
-    input_shape.nbDims = 1;
-=======
     input_shape.nbDims = scalar ? 0 : 1;
->>>>>>> develop
     input_shape.d[0] = data_size;
     auto const_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Constant, input_shape, weight.get());
@@ -483,19 +473,6 @@ class OpConverter {
   }
 
   nvinfer1::ITensor* Add1DConstantLayer(nvinfer1::Dims data,
-<<<<<<< HEAD
-                                        const std::string& weight_name) {
-    std::vector<int> tmp_data;
-    for (int i = 0; i < data.nbDims; i++) tmp_data.push_back(data.d[i]);
-    return Add1DConstantLayer(tmp_data, weight_name);
-  }
-
-  nvinfer1::ITensor* Add1DConstantLayer(int32_t data,
-                                        const std::string& weight_name) {
-    std::vector<int> tmp_data;
-    tmp_data.push_back(data);
-    return Add1DConstantLayer(tmp_data, weight_name);
-=======
                                         const std::string& weight_name = "",
                                         bool scalar = false) {
     std::vector<int> tmp_data;
@@ -509,7 +486,6 @@ class OpConverter {
     std::vector<int> tmp_data;
     tmp_data.push_back(data);
     return Add1DConstantLayer(tmp_data, weight_name, scalar);
->>>>>>> develop
   }
 
   void RreplenishLayerAndOutput(
