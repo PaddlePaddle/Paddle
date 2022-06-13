@@ -439,6 +439,16 @@ class MLUCnnl {
                    const cnnlTensorDescriptor_t input_desc, const void* input,
                    const cnnlTensorDescriptor_t output_desc, void* output);
 
+  static void Clip(const ExecutionContext& ctx,
+                   const cnnlTensorDescriptor_t input_desc, const void* input,
+                   const void* min, const void* max, void* y);
+
+  static void HardtanhBackward(
+      const ExecutionContext& ctx, const cnnlTensorDescriptor_t x_desc,
+      const void* x, const cnnlTensorDescriptor_t diff_y_desc,
+      const void* diff_y, const float max_val, const float min_val,
+      const cnnlTensorDescriptor_t diff_x_desc, void* diff_x);
+
   static void Div(const ExecutionContext& ctx,
                   cnnlComputationPreference_t prefer,
                   const cnnlTensorDescriptor_t in0_desc, const void* in0,
@@ -1159,7 +1169,7 @@ class MLUCnnl {
 
   static void ConvBackpropInput(
       const ExecutionContext& ctx, const cnnlConvolutionDescriptor_t conv_desc,
-      const cnnlTensorDescriptor_t input_desc, const void* filter,
+      const cnnlTensorDescriptor_t filter_desc, const void* filter,
       const cnnlTensorDescriptor_t out_backprop_desc, const void* out_backprop,
       const cnnlTensorDescriptor_t in_backprop_desc, void* in_backprop);
 

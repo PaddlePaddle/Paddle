@@ -162,7 +162,7 @@ class PD_INFER_DECL Tensor {
   PlaceType place() const;
 
  protected:
-  explicit Tensor(void* scope);
+  explicit Tensor(void* scope, const void* device_contexs);
 
   template <typename T>
   void* FindTensor() const;
@@ -181,6 +181,7 @@ class PD_INFER_DECL Tensor {
   DataType dtype_;
   bool input_or_output_;
   void* scope_{nullptr};
+  const void* device_contexs_{nullptr};
   PlaceType place_;
   int device_;
 
