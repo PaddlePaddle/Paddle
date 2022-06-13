@@ -32,7 +32,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             for input_size in [288]:
                 for batch in [16]:
                     for seq_len in [30]:
-                        for num_layers in [1]:
+                        for num_layers in [2]:
 
                             def generate_input1():
                                 return np.random.random([
@@ -184,10 +184,10 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
 
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [batch, seq_len, input_size],
+                "input_data": [batch - 2, seq_len, input_size],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [batch, seq_len, input_size],
+                "input_data": [batch + 2, seq_len, input_size],
             }
             self.dynamic_shape.opt_input_shape = {
                 "input_data": [batch, seq_len, input_size],
@@ -221,7 +221,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 7e-2
+            attrs, True), 1e-2
 
     def test(self):
         self.run_test()

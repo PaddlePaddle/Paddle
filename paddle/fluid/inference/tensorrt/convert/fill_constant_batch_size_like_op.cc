@@ -41,7 +41,7 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
     float value = std::stof(str_value);
 
     auto* input_shape_tensor = Shape(input);
-    std::vector<int32_t> gather_batch_indices {input_dim_idx};
+    std::vector<int32_t> gather_batch_indices{input_dim_idx};
     std::string name = "_add_fill_constant_batch_size_like_op_";
     auto* batch_tensor = Gather(input_shape_tensor, gather_batch_indices);
     auto shape_attr_tensor = Add1DConstantLayer(shape, name + "shape_attr");
@@ -53,8 +53,10 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
       }
       gather_out_shape_indices.push_back(i);
     }
-    std::vector<nvinfer1::ITensor*> concat_inputs {shape_attr_tensor, batch_tensor};
-    auto out_shape_tensor = Gather(Concat(concat_inputs), gather_out_shape_indices);
+    std::vector<nvinfer1::ITensor*> concat_inputs{shape_attr_tensor,
+                                                  batch_tensor};
+    auto out_shape_tensor =
+        Gather(Concat(concat_inputs), gather_out_shape_indices);
     auto layer = TRT_ENGINE_ADD_LAYER(engine_, Fill, nvinfer1::Dims{},
                                       nvinfer1::FillOperation::kLINSPACE);
     std::vector<float> value_vec(1, value);

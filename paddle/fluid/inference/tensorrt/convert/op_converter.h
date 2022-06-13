@@ -307,15 +307,16 @@ class OpConverter {
 
   // paddle allows negative index
   // for axis length = 5, paddle allows [-5, 4]
-  nvinfer1::ITensor* FixNegIndices(nvinfer1::ITensor* input_shape, nvinfer1::ITensor* indices) {
+  nvinfer1::ITensor* FixNegIndices(nvinfer1::ITensor* input_shape,
+                                   nvinfer1::ITensor* indices) {
     int rank = input_shape->getDimensions().nbDims;
-    std::vector<int32_t> zero = std::vector<int32_t> (rank, 0);
-    std::vector<int32_t> minus_one = std::vector<int32_t> (rank, -1);
+    std::vector<int32_t> zero = std::vector<int32_t>(rank, 0);
+    std::vector<int32_t> minus_one = std::vector<int32_t>(rank, -1);
     nvinfer1::ITensor* zero_tensor = Add1DConstantLayer(zero);
     nvinfer1::ITensor* minus_one_tensor = Add1DConstantLayer(minus_one);
     // -1, 0
     auto* sign = Max(Min(indices, zero_tensor), minus_one_tensor);
-    return Sub(indices, Prod(sign, input_shape)); 
+    return Sub(indices, Prod(sign, input_shape));
   }
 
   nvinfer1::ITensor* Shape(nvinfer1::ITensor* input) {
@@ -372,6 +373,14 @@ class OpConverter {
     return c;
   }
 
+  nvinfer1::ITensor* Div(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
+    nvinfer1::ITensor* c =
+        TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *a, *b,
+                             nvinfer1::ElementWiseOperation::kDIV)
+            ->getOutput(0);
+    return c;
+  }
+
   nvinfer1::ITensor* Act(nvinfer1::ITensor* a,
                          nvinfer1::ActivationType act_type) {
     nvinfer1::ITensor* c =
@@ -380,13 +389,13 @@ class OpConverter {
   }
 
   // Get element tensor of 1D shape tensor
-  nvinfer1::ITensor* GetEleTensorOfShape(nvinfer1::ITensor* shape_tensor, int index, bool is_scalar = false)
-  {
-        auto* tensor =
-        TRT_ENGINE_ADD_LAYER(
-            engine_, Gather, *shape_tensor,
-            *Add1DConstantLayer(index, " ", is_scalar), 0)->getOutput(0);
-        return tensor;
+  nvinfer1::ITensor* GetEleTensorOfShape(nvinfer1::ITensor* shape_tensor,
+                                         int index, bool is_scalar = false) {
+    auto* tensor =
+        TRT_ENGINE_ADD_LAYER(engine_, Gather, *shape_tensor,
+                             *Add1DConstantLayer(index, " ", is_scalar), 0)
+            ->getOutput(0);
+    return tensor;
   }
 
   // Create and add Multi-D constant float layer
@@ -464,7 +473,7 @@ class OpConverter {
   }
 
   nvinfer1::ITensor* Add1DConstantLayer(nvinfer1::Dims data,
-                                        const std::string& weight_name="",
+                                        const std::string& weight_name = "",
                                         bool scalar = false) {
     std::vector<int> tmp_data;
     for (int i = 0; i < data.nbDims; i++) tmp_data.push_back(data.d[i]);
@@ -472,7 +481,7 @@ class OpConverter {
   }
 
   nvinfer1::ITensor* Add1DConstantLayer(int32_t data,
-                                        const std::string& weight_name="",
+                                        const std::string& weight_name = "",
                                         bool scalar = false) {
     std::vector<int> tmp_data;
     tmp_data.push_back(data);

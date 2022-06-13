@@ -98,6 +98,7 @@ void ConvertConv3d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
                                      " layer failed."));
   layer->setStrideNd(nv_strides);
   layer->setPaddingNd(nv_paddings);
+  // layer->setPrePadding(nv_paddings);
   layer->setNbGroups(groups);
   if (padding_algorithm == "SAME") {
     layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
@@ -109,6 +110,13 @@ void ConvertConv3d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   layer->setName((name + " (Output: " + output_name + ")").c_str());
   layer->getOutput(0)->setName(output_name.c_str());
   engine->SetITensor(output_name, layer->getOutput(0));
+
+  for (int ii = 0; ii < X->getDimensions().nbDims; ii++)
+    printf("输入维度：%d ", X->getDimensions().d[ii]);
+  std::cout << std::endl;
+  for (int ii = 0; ii < layer->getOutput(0)->getDimensions().nbDims; ii++)
+    printf("输出维度：%d ", layer->getOutput(0)->getDimensions().d[ii]);
+  std::cout << output_name << std::endl;
 
   if (test_mode) {
     engine->DeclareOutput(output_name);

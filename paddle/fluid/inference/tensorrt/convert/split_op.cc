@@ -40,31 +40,38 @@ class SplitOpConverter : public OpConverter {
     if (op_desc.HasAttr("num")) {
       num = BOOST_GET_CONST(int, op_desc.GetAttr("num"));
     }
-
+    nvinfer1::ITensor* shape_tensor = nullptr;
     if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
       axis += (axis < 0) ? input_dims.nbDims : 0;
-#endif
+      // only be called in dynamic_shape mode
+      shape_tensor = Shape(input);
     } else {
       axis += (axis < 0) ? input_dims.nbDims : -1;
     }
-    if (num > 0) {
-      int64_t in_axis_dim = input_dims.d[axis];
-      size_t out_axis_dim = in_axis_dim / num;
-      for (int i = 0; i < num; ++i) {
-        output_lengths.push_back(out_axis_dim);
+    bool in_axis_dim_dynamic = false;
+    nvinfer1::ITensor* avg_len_tensor = nullptr;
+    // need infer output_lengths
+    if (num > 0 && output_lengths.empty()) {
+      if (input_dims.d[axis] > 0) {
+        int64_t in_axis_dim = input_dims.d[axis];
+        size_t out_axis_dim = in_axis_dim / num;
+        for (int i = 0; i < num; ++i) {
+          output_lengths.push_back(out_axis_dim);
+        }
+      } else {
+        in_axis_dim_dynamic = true;
+        auto* num_tensor = Add1DConstantLayer(num);
+        avg_len_tensor =
+            Div(GetEleTensorOfShape(shape_tensor, axis), num_tensor);
       }
     }
 
     nvinfer1::ILayer* layer = nullptr;
-
-#if IS_TRT_VERSION_GE(8000)
+#if IS_TRT_VERSION_GE(6000)
     if (engine_->with_dynamic_shape()) {
       nvinfer1::Dims trt_step_dims;
       trt_step_dims.nbDims = input->getDimensions().nbDims;
       for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
-
-      auto* shape_tensor = Shape(input);
 
       std::vector<int32_t> gather_indices;
       gather_indices.resize(trt_step_dims.nbDims);
@@ -75,9 +82,17 @@ class SplitOpConverter : public OpConverter {
       // input : [N,C,H,W]
       int start_point = 0;
       for (size_t i = 0; i < output_num; i++) {
-        auto* this_len_tensor = Add1DConstantLayer(output_lengths[i]);
-        auto* start_point_tensor = Add1DConstantLayer(start_point);
-        start_point += output_lengths[i];
+        nvinfer1::ITensor* this_len_tensor = nullptr;
+        nvinfer1::ITensor* start_point_tensor = nullptr;
+        if (!in_axis_dim_dynamic) {
+          this_len_tensor = Add1DConstantLayer(output_lengths[i]);
+          start_point_tensor = Add1DConstantLayer(start_point);
+          start_point += output_lengths[i];
+        } else {
+          this_len_tensor = avg_len_tensor;
+          auto* i_tensor = Add1DConstantLayer(i);
+          start_point_tensor = Prod(i_tensor, avg_len_tensor);
+        }
 
         std::vector<nvinfer1::ITensor*> concat_inputs1 = {zeros_tensor,
                                                           start_point_tensor};
