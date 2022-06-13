@@ -35,6 +35,7 @@ using paddle::platform::ProfilerResult;
 using paddle::platform::RuntimeTraceEvent;
 using paddle::platform::SerializationLogger;
 using paddle::platform::TracerEventType;
+using paddle::platform::TracerMemEventType;
 
 TEST(SerializationLoggerTest, dump_case0) {
   std::list<HostTraceEvent> host_events;
@@ -109,6 +110,80 @@ TEST(SerializationLoggerTest, dump_case0) {
                                            11,
                                            5,
                                            MemsetEventInfo()));
+  mem_events.push_back(MemTraceEvent(11500,
+                                     0x1000,
+                                     TracerMemEventType::Allocate,
+                                     10,
+                                     10,
+                                     50,
+                                     "GPU:0",
+                                     50,
+                                     50));
+  mem_events.push_back(MemTraceEvent(
+      11900, 0x1000, TracerMemEventType::Free, 10, 10, -50, "GPU:0", 0, 50));
+  std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
+  std::map<std::string, std::vector<std::string>> dtypes;
+  input_shapes[std::string("X")].push_back(std::vector<int64_t>{1, 2, 3});
+  input_shapes[std::string("X")].push_back(std::vector<int64_t>{4, 5, 6, 7});
+  dtypes[std::string("X")].push_back(std::string("int8"));
+  dtypes[std::string("X")].push_back(std::string("float32"));
+  op_supplement_events.push_back(OperatorSupplementEvent(
+      11600, "op1", input_shapes, dtypes, "op1()", 10, 10));
+  runtime_events.push_back(RuntimeTraceEvent(
+      std::string("cudalaunch1"), 15000, 17000, 10, 10, 1, 0));
+  runtime_events.push_back(RuntimeTraceEvent(
+      std::string("cudalaunch2"), 25000, 35000, 10, 10, 2, 0));
+  runtime_events.push_back(RuntimeTraceEvent(
+      std::string("cudalaunch3"), 33000, 37000, 10, 11, 3, 0));
+  runtime_events.push_back(RuntimeTraceEvent(
+      std::string("cudaMemcpy1"), 18000, 19000, 10, 10, 4, 0));
+  runtime_events.push_back(RuntimeTraceEvent(
+      std::string("cudaMemset1"), 38000, 39000, 10, 11, 5, 0));
+  device_events.push_back(DeviceTraceEvent(std::string("kernel1"),
+                                           TracerEventType::Kernel,
+                                           40000,
+                                           55000,
+                                           0,
+                                           10,
+                                           10,
+                                           1,
+                                           KernelEventInfo()));
+  device_events.push_back(DeviceTraceEvent(std::string("kernel2"),
+                                           TracerEventType::Kernel,
+                                           70000,
+                                           95000,
+                                           0,
+                                           10,
+                                           10,
+                                           2,
+                                           KernelEventInfo()));
+  device_events.push_back(DeviceTraceEvent(std::string("kernel3"),
+                                           TracerEventType::Kernel,
+                                           60000,
+                                           65000,
+                                           0,
+                                           10,
+                                           11,
+                                           3,
+                                           KernelEventInfo()));
+  device_events.push_back(DeviceTraceEvent(std::string("memcpy1"),
+                                           TracerEventType::Memcpy,
+                                           56000,
+                                           59000,
+                                           0,
+                                           10,
+                                           10,
+                                           4,
+                                           MemcpyEventInfo()));
+  device_events.push_back(DeviceTraceEvent(std::string("memset1"),
+                                           TracerEventType::Memset,
+                                           66000,
+                                           69000,
+                                           0,
+                                           10,
+                                           11,
+                                           5,
+                                           MemsetEventInfo()));
   SerializationLogger logger("test_serialization_logger_case0.pb");
   NodeTrees tree(host_events,
                  runtime_events,
@@ -128,6 +203,8 @@ TEST(SerializationLoggerTest, dump_case0) {
     if ((*it)->Name() == "op1") {
       EXPECT_EQ((*it)->GetChildren().size(), 0u);
       EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
+      EXPECT_EQ((*it)->GetMemTraceEventNodes().size(), 2u);
+      EXPECT_NE((*it)->GetOperatorSupplementEventNode(), nullptr);
     }
   }
   for (auto it = thread2_nodes.begin(); it != thread2_nodes.end(); it++) {
@@ -137,6 +214,7 @@ TEST(SerializationLoggerTest, dump_case0) {
     }
   }
   tree.LogMe(&logger);
+  logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
 }
 
 TEST(SerializationLoggerTest, dump_case1) {
@@ -224,6 +302,7 @@ TEST(SerializationLoggerTest, dump_case1) {
     }
   }
   tree.LogMe(&logger);
+  logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
 }
 
 TEST(DeserializationReaderTest, restore_case0) {
@@ -243,6 +322,8 @@ TEST(DeserializationReaderTest, restore_case0) {
     if ((*it)->Name() == "op1") {
       EXPECT_EQ((*it)->GetChildren().size(), 0u);
       EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
+      EXPECT_EQ((*it)->GetMemTraceEventNodes().size(), 2u);
+      EXPECT_NE((*it)->GetOperatorSupplementEventNode(), nullptr);
     }
   }
   for (auto it = thread2_nodes.begin(); it != thread2_nodes.end(); it++) {
