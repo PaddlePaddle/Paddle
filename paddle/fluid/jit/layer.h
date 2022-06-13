@@ -40,26 +40,12 @@ class Layer {
       const std::vector<std::string>& func_names,
       const std::vector<framework::ProgramDesc>& program_descs,
       const std::vector<std::vector<std::string>>& param_names_for_each_program,
-      const VariableNameMap& params_dict) {
-    VLOG(3) << "program size: " << program_descs.size();
-    // Layer manage the life time of all parameter.
-    for (size_t i = 0; i < func_names.size(); ++i) {
-      // TODO(dev): choose exector or pe by flag
-      function_dict[func_names[i]] = std::make_shared<ExectorFunction>(
-          program_descs[i], param_names_for_each_program[i], params_dict);
-    }
-  }
+      const VariableNameMap& params_dict);
 
   // TODO(dev): make it as const function
-  std::shared_ptr<BaseFunction> GetFunction(const std::string& name) {
-    VLOG(3) << "funcs_ size: " << function_dict.size();
-    return function_dict[name];
-  }
+  std::shared_ptr<BaseFunction> GetFunction(const std::string& name);
 
-  std::vector<Variable> forward(const VariableNameMap& inputs) {
-    auto func = GetFunction("forward");
-    return (*func)(inputs);
-  }
+  std::vector<Variable> forward(const VariableNameMap& inputs);
 
  private:
   // internal::Object obj_;
