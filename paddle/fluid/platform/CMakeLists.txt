@@ -2,7 +2,7 @@ proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto
               simple_threadpool)
 if(WITH_GPU)
   proto_library(external_error_proto SRCS external_error.proto)
-endif(WITH_GPU)
+endif()
 if(WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
@@ -19,7 +19,7 @@ if(WITH_PYTHON)
       COMMENT
         "Copy generated python proto into directory paddle/fluid/proto/profiler."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-  else(NOT WIN32)
+  else()
     string(REPLACE "/" "\\" proto_dstpath
                    "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler/")
     add_custom_command(
@@ -31,7 +31,7 @@ if(WITH_PYTHON)
       COMMENT
         "Copy generated python proto into directory paddle/fluid/proto/profiler."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-  endif(NOT WIN32)
+  endif()
 endif()
 
 cc_library(

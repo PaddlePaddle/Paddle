@@ -43,10 +43,10 @@ struct DevicePythonNode {
   uint64_t stream_id;
 };
 
-struct MemPythonNode{
+struct MemPythonNode {
   MemPythonNode() = default;
   ~MemPythonNode() {}
-  
+
   // timestamp of the record
   uint64_t timestamp_ns;
   // memory addr of allocation or free

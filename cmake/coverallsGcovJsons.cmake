@@ -141,9 +141,9 @@ file(GLOB_RECURSE ALL_GCOV_FILES "${COV_PATH}" "*.gcov")
 # Get only the filenames to use for filtering.
 #set(COVERAGE_SRCS_NAMES "")
 #foreach (COVSRC ${COVERAGE_SRCS})
-#	get_filename_component(COVSRC_NAME ${COVSRC} NAME)
-#	message("${COVSRC} -> ${COVSRC_NAME}")
-#	list(APPEND COVERAGE_SRCS_NAMES "${COVSRC_NAME}")
+# get_filename_component(COVSRC_NAME ${COVSRC} NAME)
+# message("${COVSRC} -> ${COVSRC_NAME}")
+# list(APPEND COVERAGE_SRCS_NAMES "${COVSRC_NAME}")
 #endforeach()
 
 #
@@ -155,15 +155,15 @@ file(GLOB_RECURSE ALL_GCOV_FILES "${COV_PATH}" "*.gcov")
 #
 # Example:
 # COVERAGE_SRCS =
-#				/path/to/project/root/subdir/the_file.c
+#       /path/to/project/root/subdir/the_file.c
 #
 # ALL_GCOV_FILES =
-#				/path/to/project/root/build/#path#to#project#root#subdir#the_file.c.gcov
-#				/path/to/project/root/build/#path#to#project#root#subdir#other_file.c.gcov
+#       /path/to/project/root/build/#path#to#project#root#subdir#the_file.c.gcov
+#       /path/to/project/root/build/#path#to#project#root#subdir#other_file.c.gcov
 #
 # Result should be:
 # GCOV_FILES =
-#				/path/to/project/root/build/#path#to#project#root#subdir#the_file.c.gcov
+#       /path/to/project/root/build/#path#to#project#root#subdir#the_file.c.gcov
 #
 set(GCOV_FILES "")
 #message("Look in coverage sources: ${COVERAGE_SRCS}")
