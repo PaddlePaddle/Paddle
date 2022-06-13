@@ -242,14 +242,14 @@ class TestNormalInitializer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.NormalInitializer(2.3, 1.9, 123))
-        num_ops = 2 if (dtype == "float16" or dtype == "uint16" or
-                        dtype == "bfloat16") else 1
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.NormalInitializer(
+                                       2.3, 1.9, 123))
+        num_ops = 2 if (dtype == "float16" or dtype == "uint16"
+                        or dtype == "bfloat16") else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -368,15 +368,18 @@ class TestXavierInitializer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.XavierInitializer(
-                    uniform=uniform, fan_in=12, fan_out=23, seed=134))
-        num_ops = 2 if (dtype == "float16" or (
-            dtype in ["uint16", "bfloat16"] and not uniform)) else 1
+            block.create_parameter(dtype=dtype,
+                                   shape=[5, 10],
+                                   lod_level=0,
+                                   name="param",
+                                   initializer=initializer.XavierInitializer(
+                                       uniform=uniform,
+                                       fan_in=12,
+                                       fan_out=23,
+                                       seed=134))
+        num_ops = 2 if (
+            dtype == "float16" or
+            (dtype in ["uint16", "bfloat16"] and not uniform)) else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         if uniform:

@@ -38,12 +38,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/pybind/paddle_bfloat/bfloat16.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/kernels/strings/unicode.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
-
-#include "paddle/fluid/pybind/paddle_bfloat/bfloat16.h"
 
 namespace py = pybind11;
 

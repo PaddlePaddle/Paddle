@@ -31,6 +31,7 @@ from paddle_bfloat import bfloat16
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestLayerNormBF16MKLDNNOp(OpTest):
+
     def setUp(self):
         self.op_type = "layer_norm"
         self.config()
@@ -55,9 +56,12 @@ class TestLayerNormBF16MKLDNNOp(OpTest):
             "is_test": self.is_test
         }
 
-        output, mean, var = _reference_layer_norm_naive(
-            x, scale, bias, self.epsilon, self.begin_norm_axis)
-        self.outputs = {'Y': output.astype('bfloat16'), }
+        output, mean, var = _reference_layer_norm_naive(x, scale, bias,
+                                                        self.epsilon,
+                                                        self.begin_norm_axis)
+        self.outputs = {
+            'Y': output.astype('bfloat16'),
+        }
 
         if self.is_test == False:
             self.outputs['Mean'] = mean
@@ -71,7 +75,7 @@ class TestLayerNormBF16MKLDNNOp(OpTest):
         self.with_scale_and_bias = False
         self.begin_norm_axis = 3
 
-    # TODO (jczaja): Enable testing without is_test and with scale 
+    # TODO (jczaja): Enable testing without is_test and with scale
     # and bias when enabling layer_norm for training using bf16
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())

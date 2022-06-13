@@ -17,8 +17,9 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
-from paddle.fluid.tests.unittests.op_test import (
-    skip_check_grad_ci, OpTestTool, convert_uint16_to_float)
+from paddle.fluid.tests.unittests.op_test import (skip_check_grad_ci,
+                                                  OpTestTool,
+                                                  convert_uint16_to_float)
 from paddle.fluid.tests.unittests.test_lookup_table_bf16_op import (
     _lookup, TestLookupTableBF16Op, TestLookupTableBF16OpIds4D,
     TestLookupTableBF16OpWIsSelectedRows,
@@ -106,13 +107,13 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
 
         with fluid.program_guard(self.prog, self.startup_prog):
             x = fluid.layers.data(name='x', shape=self.ids_shape, dtype='int64')
-            self.emb = fluid.input.embedding(
-                input=x,
-                size=self.w_shape,
-                param_attr=fluid.ParamAttr(
-                    name="emb_weight", initializer=self.initializer),
-                is_sparse=False,
-                dtype="bfloat16")
+            self.emb = fluid.input.embedding(input=x,
+                                             size=self.w_shape,
+                                             param_attr=fluid.ParamAttr(
+                                                 name="emb_weight",
+                                                 initializer=self.initializer),
+                                             is_sparse=False,
+                                             dtype="bfloat16")
         exe = fluid.Executor(self.place)
         exe.run(self.startup_prog)
         self.result = exe.run(self.prog,
