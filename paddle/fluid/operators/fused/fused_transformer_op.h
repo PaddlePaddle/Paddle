@@ -151,5 +151,5 @@ class FusedTransformerEncoderLayer {
 
   std::string act_method;
 };
-}
-}
+}  // namespace operators
+}  // namespace paddle

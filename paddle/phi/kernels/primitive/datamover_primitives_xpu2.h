@@ -21,6 +21,8 @@ namespace phi {
 namespace kps {
 namespace details {
 
+int RoundUpDiv(int n, int k) { return (n + k - 1) / k; }
+
 enum class OptType {    // Optimize type of calc after input shape compressed
   CanNotOptimize = -1,  // can not optimize, broadcast first
   N_1,                  // just like {1} op {100} or {100} op {1}
@@ -65,12 +67,12 @@ struct alignas(sizeof(T) * VecSize) VectorType {
  * must be [dim1, dim0].
  */
 #pragma pack(4)
-template <int kDims>
 struct BroadcastConfig {
   int strides_in[phi::DDim::kMaxRank];
   int strides_out[phi::DDim::kMaxRank];
   int in_dim[phi::DDim::kMaxRank];
   int dim_after_cmp[phi::DDim::kMaxRank];
+  int y_dim_after_cmp[phi::DDim::kMaxRank];
   int dim_size_after_cmp = 0;
   int cmp_res = 0;
   OptType cmp_type = OptType::CanNotOptimize;
@@ -78,12 +80,12 @@ struct BroadcastConfig {
   int n = 1;
   int k = 1;
   int buf_len = 0;
-
+  int kDims;
   HOSTDEVICE BroadcastConfig() {}
 
   HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
                              const std::vector<int64_t>& in_dims,
-                             const std::vector<int64_t>& another_in_dims,
+                             const std::vector<int64_t>& y_in_dims,
                              int dim_size) {
     std::vector<int> strides_in_tmp;
     std::vector<int> strides_out_tmp;
@@ -99,13 +101,13 @@ struct BroadcastConfig {
     for (int i = 0; i < dim_size; i++) {
       dim_tmp[i] = in_dims[i];
     }
-
+    kDims = dim_size;
     memcpy(strides_in, strides_in_tmp.data(), kDims * sizeof(int));
     memcpy(strides_out, strides_out_tmp.data(), kDims * sizeof(int));
     memcpy(in_dim, dim_tmp.data(), kDims * sizeof(int));
 
-    cmp_res = get_mnk_for_broadcast_ops(in_dims, another_in_dims);
-    get_opt_type(another_in_dims);
+    cmp_res = get_mnk_for_broadcast_ops(in_dims, y_in_dims);
+    get_opt_type();
     buf_len = get_buf_len();
   }
 
@@ -155,7 +157,7 @@ struct BroadcastConfig {
     return index_src;
   }
 
-  void get_opt_type(const std::vector<int64_t>& y_dim_after_cmp) {
+  void get_opt_type() {
     if (dim_size_after_cmp == 1) {
       if (dim_after_cmp[0] == 1 && y_dim_after_cmp[0] != 1) {  // {1} op {n}
         n = y_dim_after_cmp[0];
@@ -242,6 +244,7 @@ struct BroadcastConfig {
     int cmp_x = 0;
     int cmp_y = 0;
     bool is_same = false;
+
     std::vector<int64_t> xshape_after_remove_ones = xshape;
     std::vector<int64_t> yshape_after_remove_ones = yshape;
     // first step: remove excess ones
@@ -276,6 +279,7 @@ struct BroadcastConfig {
       }
       idx = idx + 1;
       dim_after_cmp[after_cmp_idx] = cmp_x;
+      y_dim_after_cmp[after_cmp_idx] = cmp_y;
       after_cmp_idx++;
       if (idx == xshape_after_remove_ones.size()) {
         dim_size_after_cmp = after_cmp_idx;
@@ -423,9 +427,10 @@ __device__ __inline__ void Init(T* dst, T init_data, int read_lens) {
  * it supports different data types of inputs.
  */
 template <typename T, typename ArgsT, int Index, int NX>
-__device__ __forceinline__ void Init(ArgsT* dst, T init_data) {
+__device__ __forceinline__ void Init(ArgsT* dst, T init_data, int read_lens) {
+  mfence();
 #pragma unroll
-  for (int i = 0; i < NX; i++) {
+  for (int i = 0; i < read_lens; i++) {
     std::get<Index>(dst[i]) = init_data;
   }
 }
@@ -521,22 +526,24 @@ template <typename T,
           bool IsBoundary>
 __device__ __forceinline__ void ReadData(ArgsT* dst,
                                          const T _global_ptr_* src,
-                                         int num) {
-  int thread_offset = core_id() * NX;
+                                         int num,
+                                         int read_lens) {
+  int thread_offset = core_id() * read_lens;
   __local__ T in_temp[1];
   __local__ T in_vec[NX];
-  if (IsBoundary) {  // core_num() * NX > num
+  if (IsBoundary) {  // core_num() * read_lens > num
 #pragma unroll
-    for (int idx = 0; idx < NX; ++idx) {
+    for (int idx = 0; idx < read_lens; ++idx) {
       if (idx + thread_offset < num) {
         GM2LM(src + thread_offset + idx, in_temp, sizeof(T));
         std::get<Index>(dst[idx]) = in_temp[0];
+        mfence();
       }
     }
-  } else {  // core_num() * NX < num
-    GM2LM(src + thread_offset, in_vec, NX * sizeof(T));
+  } else {  // core_num() * read_lens < num
+    GM2LM(src + thread_offset, in_vec, read_lens * sizeof(T));
 #pragma unroll
-    for (int idx = 0; idx < NX; ++idx) {
+    for (int idx = 0; idx < read_lens; ++idx) {
       std::get<Index>(dst[idx]) = in_vec[idx];
     }
   }
@@ -551,7 +558,6 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
  * NY: The number of data rows loaded by each thread.
  * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
- * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
  * NX x NY x core_num(), boundary judgment is required to avoid memory access
@@ -567,16 +573,11 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename T,
-          int NX,
-          int NY,
-          int BlockSize,
-          int Rank,
-          bool IsBoundary = false>
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __inline__ void ReadDataBc(T* dst,
                                       const T _global_ptr_* src,
                                       uint32_t block_offset,
-                                      details::BroadcastConfig<Rank> config,
+                                      const details::BroadcastConfig& config,
                                       int total_num_output,
                                       int stride_nx,
                                       int stride_ny) {
@@ -731,10 +732,12 @@ __device__ void WriteData(T _global_ptr_* dst,
     for (int idx = 0; idx < read_lens; ++idx) {
       if (idx + thread_offset < num) {
         in_temp[0] = src[idx];
+        mfence();
         LM2GM(in_temp, dst + idx + thread_offset, sizeof(T));
       }
     }
   } else {  // core_num() * read_lens < num
+    mfence();
     LM2GM(src, dst + thread_offset, read_lens * sizeof(T));
   }
 }
@@ -883,60 +886,6 @@ __device__ __inline__ void Init(T* dst, T* init_data, int num) {
 }
 
 /**
- * @brief Read 1D data from global memory to register with broadcast form.
- *
- * @template paraments
- * T: The type of data stored in the global memory.
- * NX: The number of data continuously loaded by each thread.
- * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For xpu,
- * core_id() is used as the index.
- * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
- * IsBoundary: Indicates whether to perform block access storage out-of-bounds
- * judgment. When the number of data processed by the block is less than
- * NX x NY x core_num(), boundary judgment is required to avoid memory access
- * crossing the boundary.
- *
- * @param：
- * dst: The register pointer of the thread, the size is NX * NY.
- * src: The original input data pointer of kernel.
- * block_offset: The data offset of this block, core_num() * blockIdx.x * NX;
- * config: Calculation configuration of broadcast. It is used to calculate the
- * coordinate mapping relationship between output data and input data.
- * total_num_output: Total number of original output.
- */
-template <typename T,
-          int NX,
-          int NY,
-          int BlockSize,
-          int Rank,
-          bool IsBoundary = false>
-__device__ __inline__ void ReadDataBc(
-    T* dst,
-    const T _global_ptr_* src,
-    uint32_t block_offset,
-    const details::BroadcastConfig<Rank>& config,
-    int total_num_output) {
-  int thread_offset = block_offset + core_id() * NX;
-  int index_src = 0;
-
-  __local__ T in_temp;
-#pragma unroll
-  for (int nx = 0; nx < NX; ++nx) {
-    int index_output = thread_offset + nx;
-    index_src = 0;
-    if (IsBoundary) {
-      if (index_output >= total_num_output) {
-        break;
-      }
-    }
-    index_src = config(index_output);
-    GM2LM(src + index_src, &in_temp, sizeof(T));
-    dst[nx] = in_temp;
-  }
-}
-
-/**
  * @brief Read data from global memory to local memory with broadcast
  * {m, 1, k}-> {m, n, k} form.
  *
@@ -952,12 +901,12 @@ __device__ __inline__ void ReadDataBc(
  * coordinate mapping relationship between output data and input data.
  * read_lens: The number of data continuously loaded by each thread.
  */
-template <typename T, int Rank>
+template <typename T>
 __device__ __inline__ void ReadDataBcM1kMnk(
     T* dst,
     const T _global_ptr_* src,
     int thread_offset,
-    const details::BroadcastConfig<Rank>& config,
+    const details::BroadcastConfig& config,
     int read_lens) {
   int index_output = thread_offset;
   int index_base = config(index_output);
@@ -999,12 +948,12 @@ __device__ __inline__ void ReadDataBcM1kMnk(
  * coordinate mapping relationship between output data and input data.
  * read_lens: The number of data continuously loaded by each thread.
  */
-template <typename T, int Rank>
+template <typename T>
 __device__ __inline__ void ReadDataBcM1Mn(
     T* dst,
     const T _global_ptr_* src,
     int thread_offset,
-    const details::BroadcastConfig<Rank>& config,
+    const details::BroadcastConfig& config,
     int read_lens) {
   int index_output = thread_offset;
   int index_base = config(index_output);
@@ -1027,7 +976,6 @@ __device__ __inline__ void ReadDataBcM1Mn(
  *
  * @template paraments
  * T: Data type of register.
- * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX.
@@ -1037,12 +985,12 @@ __device__ __inline__ void ReadDataBcM1Mn(
  * coordinate mapping relationship between output data and input data.
  * read_lens: The number of data continuously loaded by each thread.
  */
-template <typename T, int Rank>
+template <typename T>
 __device__ __inline__ void ReadDataBc1NMn(
     T* dst,
     const T _global_ptr_* src,
     int thread_offset,
-    const details::BroadcastConfig<Rank>& config,
+    const details::BroadcastConfig& config,
     int read_lens) {
   int index_output = thread_offset;
   int index_base = config(index_output);
@@ -1075,7 +1023,6 @@ __device__ __inline__ void ReadDataBc1NMn(
  *
  * @template paraments
  * T: Data type of register.
- * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX.
@@ -1085,12 +1032,12 @@ __device__ __inline__ void ReadDataBc1NMn(
  * coordinate mapping relationship between output data and input data.
  * read_lens: The number of data continuously loaded by each thread.
  */
-template <typename T, int Rank>
+template <typename T>
 __device__ __inline__ void ReadDataBc1N1Mnk(
     T* dst,
     const T _global_ptr_* src,
     int thread_offset,
-    const details::BroadcastConfig<Rank>& config,
+    const details::BroadcastConfig& config,
     int read_lens) {
   int index_output = thread_offset;
   int index_base = config(index_output);
@@ -1130,7 +1077,6 @@ __device__ __inline__ void ReadDataBc1N1Mnk(
  *
  * @template paraments
  * T: Data type of register.
- * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX.
@@ -1140,13 +1086,12 @@ __device__ __inline__ void ReadDataBc1N1Mnk(
  * coordinate mapping relationship between output data and input data.
  * read_lens: The number of data continuously loaded by each thread.
  */
-template <typename T, int Rank>
-__device__ __inline__ void ReadDataBc1N(
-    T* dst,
-    const T _global_ptr_* src,
-    int thread_offset,
-    const details::BroadcastConfig<Rank>& config,
-    int read_lens) {
+template <typename T>
+__device__ __inline__ void ReadDataBc1N(T* dst,
+                                        const T _global_ptr_* src,
+                                        int thread_offset,
+                                        const details::BroadcastConfig& config,
+                                        int read_lens) {
   int index_output = thread_offset;
   int index_base = config(index_output);
   T in_temp;
@@ -1174,12 +1119,12 @@ __device__ __inline__ void ReadDataBc1N(
  * total_num_output: Total number of original output.
  * read_lens: The number of data continuously loaded by each thread.
  */
-template <typename T, int Rank, bool IsBoundary = false>
+template <typename T, bool IsBoundary = false>
 __device__ __inline__ void ReadDataBcCanNotCmp(
     T* dst,
     const T _global_ptr_* src,
     int thread_offset,
-    const details::BroadcastConfig<Rank>& config,
+    const details::BroadcastConfig& config,
     int total_num_output,
     int read_lens) {
   int index_output = thread_offset;
@@ -1215,7 +1160,6 @@ __device__ __inline__ void ReadDataBcCanNotCmp(
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
  * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
- * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
  * NX x NY x core_num(), boundary judgment is required to avoid memory access
@@ -1230,33 +1174,27 @@ __device__ __inline__ void ReadDataBcCanNotCmp(
  * read_lens: The number of data continuously loaded by each thread.
  * total_num_output: Total number of original output.
  */
-template <typename T,
-          int NX,
-          int NY,
-          int BlockSize,
-          int Rank,
-          bool IsBoundary = false>
-__device__ __inline__ void ReadDataBc(
-    T* dst,
-    const T _global_ptr_* src,
-    uint32_t block_offset,
-    const details::BroadcastConfig<Rank>& config,
-    int total_num_output,
-    int read_lens) {
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+__device__ __inline__ void ReadDataBc(T* dst,
+                                      const T _global_ptr_* src,
+                                      uint32_t block_offset,
+                                      const details::BroadcastConfig& config,
+                                      int total_num_output,
+                                      int read_lens) {
   int thread_offset = block_offset + core_id() * read_lens;
 
   if (config.cmp_type == details::OptType::MNK_M1K) {
-    ReadDataBcM1kMnk<T, Rank>(dst, src, thread_offset, config, read_lens);
+    ReadDataBcM1kMnk<T>(dst, src, thread_offset, config, read_lens);
   } else if (config.cmp_type == details::OptType::N_1) {
-    ReadDataBc1N<T, Rank>(dst, src, thread_offset, config, read_lens);
+    ReadDataBc1N<T>(dst, src, thread_offset, config, read_lens);
   } else if (config.cmp_type == details::OptType::MN_M) {
-    ReadDataBcM1Mn<T, Rank>(dst, src, thread_offset, config, read_lens);
+    ReadDataBcM1Mn<T>(dst, src, thread_offset, config, read_lens);
   } else if (config.cmp_type == details::OptType::MN_N) {
-    ReadDataBc1NMn<T, Rank>(dst, src, thread_offset, config, read_lens);
+    ReadDataBc1NMn<T>(dst, src, thread_offset, config, read_lens);
   } else if (config.cmp_type == details::OptType::MNK_1N1) {
-    ReadDataBc1N1Mnk<T, Rank>(dst, src, thread_offset, config, read_lens);
+    ReadDataBc1N1Mnk<T>(dst, src, thread_offset, config, read_lens);
   } else {
-    ReadDataBcCanNotCmp<T, Rank, IsBoundary>(
+    ReadDataBcCanNotCmp<T, IsBoundary>(
         dst, src, thread_offset, config, total_num_output, read_lens);
   }
 }

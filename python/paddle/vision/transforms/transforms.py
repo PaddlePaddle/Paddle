@@ -45,7 +45,14 @@ def _get_image_size(img):
     elif F._is_numpy_image(img):
         return img.shape[:2][::-1]
     elif F._is_tensor_image(img):
-        return img.shape[1:][::-1]  # chw
+        if len(img.shape) == 3:
+            return img.shape[1:][::-1]  # chw -> wh
+        elif len(img.shape) == 4:
+            return img.shape[2:][::-1]  # nchw -> wh
+        else:
+            raise ValueError(
+                "The dim for input Tensor should be 3-D or 4-D, but received {}"
+                .format(len(img.shape)))
     else:
         raise TypeError("Unexpected type {}".format(type(img)))
 
@@ -65,8 +72,8 @@ def _check_input(value,
             value[0] = max(value[0], 0)
     elif isinstance(value, (tuple, list)) and len(value) == 2:
         if not bound[0] <= value[0] <= value[1] <= bound[1]:
-            raise ValueError("{} values should be between {}".format(name,
-                                                                     bound))
+            raise ValueError("{} values should be between {}".format(
+                name, bound))
     else:
         raise TypeError(
             "{} should be a single number or a list/tuple with lenght 2.".
@@ -411,8 +418,8 @@ class Resize(BaseTransform):
 
     def __init__(self, size, interpolation='bilinear', keys=None):
         super(Resize, self).__init__(keys)
-        assert isinstance(size, int) or (isinstance(size, Iterable) and
-                                         len(size) == 2)
+        assert isinstance(size, int) or (isinstance(size, Iterable)
+                                         and len(size) == 2)
         self.size = size
         self.interpolation = interpolation
 
@@ -931,8 +938,11 @@ class HueTransform(BaseTransform):
 
     def __init__(self, value, keys=None):
         super(HueTransform, self).__init__(keys)
-        self.value = _check_input(
-            value, 'hue', center=0, bound=(-0.5, 0.5), clip_first_on_zero=False)
+        self.value = _check_input(value,
+                                  'hue',
+                                  center=0,
+                                  bound=(-0.5, 0.5),
+                                  clip_first_on_zero=False)
 
     def _apply_image(self, img):
         if self.value is None:
@@ -979,7 +989,11 @@ class ColorJitter(BaseTransform):
 
     """
 
-    def __init__(self, brightness=0, contrast=0, saturation=0, hue=0,
+    def __init__(self,
+                 brightness=0,
+                 contrast=0,
+                 saturation=0,
+                 hue=0,
                  keys=None):
         super(ColorJitter, self).__init__(keys)
         self.brightness = brightness
@@ -1035,14 +1049,32 @@ class RandomCrop(BaseTransform):
         size (sequence|int): Desired output size of the crop. If size is an
             int instead of sequence like (h, w), a square crop (size, size) is
             made.
-        padding (int|sequence|optional): Optional padding on each border
+        padding (int|sequence, optional): Optional padding on each border
             of the image. If a sequence of length 4 is provided, it is used to pad left, 
-            top, right, bottom borders respectively. Default: 0.
-        pad_if_needed (boolean|optional): It will pad the image if smaller than the
+            top, right, bottom borders respectively. Default: None, without padding.
+        pad_if_needed (boolean, optional): It will pad the image if smaller than the
             desired size to avoid raising an exception. Default: False.
+        fill (float|tuple, optional): Pixel fill value for constant fill. If a tuple of
+            length 3, it is used to fill R, G, B channels respectively.
+            This value is only used when the padding_mode is constant. Default: 0.
+        padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default: 'constant'.
+
+            - constant: pads with a constant value, this value is specified with fill
+
+            - edge: pads with the last value on the edge of the image
+
+            - reflect: pads with reflection of image (without repeating the last value on the edge)
+
+                   padding [1, 2, 3, 4] with 2 elements on both sides in reflect mode
+                   will result in [3, 2, 1, 2, 3, 4, 3, 2]
+
+            - symmetric: pads with reflection of image (repeating the last value on the edge)
+
+                     padding [1, 2, 3, 4] with 2 elements on both sides in symmetric mode
+                     will result in [2, 1, 1, 2, 3, 4, 4, 3]
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
     
-    Shape:
+    Shape
         - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
         - output(PIL.Image|np.ndarray|Paddle.Tensor): A random cropped image.
 
@@ -1052,17 +1084,17 @@ class RandomCrop(BaseTransform):
     Examples:
     
         .. code-block:: python
+          :name: code-example1
 
-            import numpy as np
-            from PIL import Image
+            import paddle
             from paddle.vision.transforms import RandomCrop
-
             transform = RandomCrop(224)
 
-            fake_img = Image.fromarray((np.random.rand(324, 300, 3) * 255.).astype(np.uint8))
+            fake_img = paddle.randint(0, 255, shape=(3, 324,300), dtype = 'int32')
+            print(fake_img.shape) # [3, 324, 300]
 
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            crop_img = transform(fake_img)
+            print(crop_img.shape) # [3, 224, 224]
     """
 
     def __init__(self,
@@ -1380,12 +1412,11 @@ class RandomAffine(BaseTransform):
         ret = self._get_param(img_size, self.degrees, self.translate,
                               self.scale, self.shear)
 
-        return F.affine(
-            img,
-            *ret,
-            interpolation=self.interpolation,
-            fill=self.fill,
-            center=self.center)
+        return F.affine(img,
+                        *ret,
+                        interpolation=self.interpolation,
+                        fill=self.fill,
+                        center=self.center)
 
 
 class RandomRotation(BaseTransform):
@@ -1552,14 +1583,17 @@ class RandomPerspective(BaseTransform):
         half_height = height // 2
         half_width = width // 2
         topleft = [
-            int(random.uniform(0, int(distortion_scale * half_width) + 1)),
-            int(random.uniform(0, int(distortion_scale * half_height) + 1)),
+            int(random.uniform(0,
+                               int(distortion_scale * half_width) + 1)),
+            int(random.uniform(0,
+                               int(distortion_scale * half_height) + 1)),
         ]
         topright = [
             int(
                 random.uniform(width - int(distortion_scale * half_width) - 1,
                                width)),
-            int(random.uniform(0, int(distortion_scale * half_height) + 1)),
+            int(random.uniform(0,
+                               int(distortion_scale * half_height) + 1)),
         ]
         botright = [
             int(
@@ -1570,7 +1604,8 @@ class RandomPerspective(BaseTransform):
                                height)),
         ]
         botleft = [
-            int(random.uniform(0, int(distortion_scale * half_width) + 1)),
+            int(random.uniform(0,
+                               int(distortion_scale * half_width) + 1)),
             int(
                 random.uniform(height - int(distortion_scale * half_height) - 1,
                                height)),
@@ -1698,10 +1733,10 @@ class RandomErasing(BaseTransform):
                 ), "scale should be of kind (min, max) and in range [0, 1]"
         assert isinstance(ratio,
                           (tuple, list)), "ratio should be a tuple or list"
-        assert (ratio[0] >= 0 and
-                ratio[0] <= ratio[1]), "ratio should be of kind (min, max)"
-        assert (prob >= 0 and
-                prob <= 1), "The probability should be in range [0, 1]"
+        assert (ratio[0] >= 0
+                and ratio[0] <= ratio[1]), "ratio should be of kind (min, max)"
+        assert (prob >= 0
+                and prob <= 1), "The probability should be in range [0, 1]"
         assert isinstance(
             value, (numbers.Number, str, tuple,
                     list)), "value should be a number, tuple, list or str"
@@ -1747,8 +1782,8 @@ class RandomErasing(BaseTransform):
                 continue
             if F._is_tensor_image(img):
                 if value is None:
-                    v = paddle.normal(
-                        shape=[c, erase_h, erase_w]).astype(img.dtype)
+                    v = paddle.normal(shape=[c, erase_h, erase_w]).astype(
+                        img.dtype)
                 else:
                     v = paddle.to_tensor(value, dtype=img.dtype)[:, None, None]
             else:
@@ -1783,7 +1818,7 @@ class RandomErasing(BaseTransform):
                 raise ValueError(
                     "Value should be a single number or a sequence with length equals to image's channel."
                 )
-            top, left, erase_h, erase_w, v = self._get_param(img, self.scale,
-                                                             self.ratio, value)
+            top, left, erase_h, erase_w, v = self._get_param(
+                img, self.scale, self.ratio, value)
             return F.erase(img, top, left, erase_h, erase_w, v, self.inplace)
         return img

@@ -17,6 +17,7 @@ limitations under the License. */
 #endif  // PADDLE_FLUID_OPERATORS_FAKE_QUANTIZE_OP_CU_H_
 
 #include <string>
+
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/fake_quantize_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -80,10 +81,10 @@ struct FindAbsMaxFunctor<platform::CUDADeviceContext, T> {
 
     framework::Tensor max;
     T* max_data = max.mutable_data<T>(phi::make_ddim({grid}), ctx.GetPlace());
-    FindAbsMaxKernel<T><<<grid, block, 1024 * sizeof(T), ctx.stream()>>>(
-        in, num, max_data);
-    FindAbsMaxKernel<T><<<1, block, 1024 * sizeof(T), ctx.stream()>>>(
-        max_data, grid, out);
+    FindAbsMaxKernel<T>
+        <<<grid, block, 1024 * sizeof(T), ctx.stream()>>>(in, num, max_data);
+    FindAbsMaxKernel<T>
+        <<<1, block, 1024 * sizeof(T), ctx.stream()>>>(max_data, grid, out);
   }
 };
 
@@ -176,9 +177,9 @@ struct FindChannelAbsMaxFunctor<platform::CUDADeviceContext, T> {
       int cout = in_dims[0];
       int grid = cout;
       int block = 1024;
-      FindChannelAbsMaxKernelQuantAxis0<
-          T><<<grid, block, block * sizeof(T), ctx.stream()>>>(
-          in_data, num, cout, out_abs_max);
+      FindChannelAbsMaxKernelQuantAxis0<T>
+          <<<grid, block, block * sizeof(T), ctx.stream()>>>(in_data, num, cout,
+                                                             out_abs_max);
     } else if (quant_axis == 1) {
       int cin = in_dims[0];
       int cout = in_dims[1];
@@ -193,17 +194,17 @@ struct FindChannelAbsMaxFunctor<platform::CUDADeviceContext, T> {
 
       for (int i = 0; i < cin / max_threads; i++) {
         int block = max_threads;
-        FindChannelAbsMaxKernelQuantAxis1<
-            T><<<grid, block, block * sizeof(T), ctx.stream()>>>(
-            in_data, num, cin, cout, out_abs_max);
+        FindChannelAbsMaxKernelQuantAxis1<T>
+            <<<grid, block, block * sizeof(T), ctx.stream()>>>(
+                in_data, num, cin, cout, out_abs_max);
         in_data += num / cin;
       }
 
       int block = cin % max_threads;
       if (block > 0) {
-        FindChannelAbsMaxKernelQuantAxis1<
-            T><<<grid, block, block * sizeof(T), ctx.stream()>>>(
-            in_data, num, in_dims[0], in_dims[1], out_abs_max);
+        FindChannelAbsMaxKernelQuantAxis1<T>
+            <<<grid, block, block * sizeof(T), ctx.stream()>>>(
+                in_data, num, in_dims[0], in_dims[1], out_abs_max);
       }
     }
   }
@@ -217,19 +218,21 @@ __global__ void ClipAndQuantKernel(const T* in, const T* scale,
   int bid = threadIdx.x + blockIdx.x * blockDim.x;
   int tid = threadIdx.x;
 
-  T s = scale[0];
-  T inv_s = inverse(s);
-  T bin_cnt_t = static_cast<T>(bin_cnt);
+  using ComputeDataType = typename QuantizeDataType<T>::type;
+
+  ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
+  ComputeDataType inv_s = inverse(s);
+  ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
+
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
-    T x = in[i];
+    ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     x = bin_cnt_t * inv_s * x;
-    x = static_cast<T>(roundWithTiesToEven(
-        static_cast<typename QuantizeDataType<T>::type>(x)));
-    T max_bound = bin_cnt_t;
-    T min_bound = -bin_cnt_t - static_cast<T>(1);
+    x = roundWithTiesToEven(x);
+    ComputeDataType max_bound = bin_cnt_t;
+    ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
     x = x > max_bound ? max_bound : x;
     x = x < min_bound ? min_bound : x;
-    out[i] = x;
+    out[i] = static_cast<T>(x);
   }
 }
 
@@ -240,21 +243,22 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
   int bid = threadIdx.x + blockIdx.x * blockDim.x;
   int tid = threadIdx.x;
 
-  T s = scale[0];
-  T inv_s = inverse(s);
-  T bin_cnt_t = static_cast<T>(bin_cnt);
+  using ComputeDataType = typename QuantizeDataType<T>::type;
+
+  ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
+  ComputeDataType inv_s = inverse(s);
+  ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
-    T x = in[i];
+    ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     x = bin_cnt_t * inv_s * x;
-    x = static_cast<T>(roundWithTiesToEven(
-        static_cast<typename QuantizeDataType<T>::type>(x)));
-    T max_bound = bin_cnt_t;
-    T min_bound = -bin_cnt_t - static_cast<T>(1);
+    x = roundWithTiesToEven(x);
+    ComputeDataType max_bound = bin_cnt_t;
+    ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
     x = x > max_bound ? max_bound : x;
     x = x < min_bound ? min_bound : x;
     // Dequant
-    out[i] = (x * s) / bin_cnt_t;
+    out[i] = static_cast<T>((x * s) / bin_cnt_t);
   }
 }
 
@@ -308,20 +312,21 @@ __global__ void ChannelClipAndQuantKernelQuantAxis0(const T* in, const T* scale,
   const T* in_c = in + blockIdx.x * channel_size;
   T* out_c = out + blockIdx.x * channel_size;
 
-  T s = scale[blockIdx.x];
-  T inv_s = inverse(s);
-  T bin_cnt_t = static_cast<T>(bin_cnt);
+  using ComputeDataType = typename QuantizeDataType<T>::type;
+
+  ComputeDataType s = static_cast<ComputeDataType>(scale[blockIdx.x]);
+  ComputeDataType inv_s = inverse(s);
+  ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
   for (int64_t i = tid; i < channel_size; i += blockDim.x) {
-    T x = in_c[i];
+    ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     x = bin_cnt_t * inv_s * x;
-    x = static_cast<T>(roundWithTiesToEven(
-        static_cast<typename QuantizeDataType<T>::type>(x)));
-    T max_bound = bin_cnt_t;
-    T min_bound = -bin_cnt_t - static_cast<T>(1);
+    x = roundWithTiesToEven(x);
+    ComputeDataType max_bound = bin_cnt_t;
+    ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
     x = x > max_bound ? max_bound : x;
     x = x < min_bound ? min_bound : x;
-    out_c[i] = x;
+    out_c[i] = static_cast<T>(x);
   }
 }
 
@@ -331,20 +336,20 @@ __global__ void ChannelClipAndQuantKernelQuantAxisN(
     const T* in, const T* scale, const int bin_cnt, const int64_t n,
     const int nScale, const int quant_stride, T* out) {
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
-  T bin_cnt_t = static_cast<T>(bin_cnt);
+  using ComputeDataType = typename QuantizeDataType<T>::type;
+  ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
   for (int64_t i = idx; i < n; i += blockDim.x * gridDim.x) {
-    T s = scale[(i / quant_stride) % nScale];
-    T inv_s = inverse(s);
-    T x = in[i];
-
+    ComputeDataType s =
+        static_cast<ComputeDataType>(scale[(i / quant_stride) % nScale]);
+    ComputeDataType inv_s = inverse(s);
+    ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     x = bin_cnt_t * inv_s * x;
-    x = static_cast<T>(roundWithTiesToEven(
-        static_cast<typename QuantizeDataType<T>::type>(x)));
-    T max_bound = bin_cnt_t;
-    T min_bound = -bin_cnt_t - static_cast<T>(1);
+    x = roundWithTiesToEven(x);
+    ComputeDataType max_bound = bin_cnt_t;
+    ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
     x = x > max_bound ? max_bound : x;
     x = x < min_bound ? min_bound : x;
-    out[i] = x;
+    out[i] = static_cast<T>(x);
   }
 }
 
@@ -567,16 +572,16 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
     if (quant_axis == 0) {
       int grid = in_dims[0];
       int block = 1024;
-      ChannelClipAndQuantDequantKernelQuantAxis0<
-          T><<<grid, block, 0, ctx.stream()>>>(in_data, scale_data, bin_cnt,
-                                               num, in_dims[0], out_data);
+      ChannelClipAndQuantDequantKernelQuantAxis0<T>
+          <<<grid, block, 0, ctx.stream()>>>(in_data, scale_data, bin_cnt, num,
+                                             in_dims[0], out_data);
     } else if (quant_axis == 1) {
       int grid = in_dims[0] * in_dims[1];
       int block = 1024;
 
-      ChannelClipAndQuantDequantKernelQuantAxis1<
-          T><<<grid, block, 0, ctx.stream()>>>(
-          in_data, scale_data, bin_cnt, num, in_dims[0], in_dims[1], out_data);
+      ChannelClipAndQuantDequantKernelQuantAxis1<T>
+          <<<grid, block, 0, ctx.stream()>>>(in_data, scale_data, bin_cnt, num,
+                                             in_dims[0], in_dims[1], out_data);
     }
   }
 };

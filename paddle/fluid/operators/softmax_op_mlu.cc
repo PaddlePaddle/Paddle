@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <cnnlSoftmaxAlgorithm_t softmax_algo, typename T>
 class SoftmaxMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -45,7 +45,7 @@ class SoftmaxMLUKernel : public framework::OpKernel<T> {
       regard_in_shape = {d1, d2, d3};
     }
 
-    static const cnnlSoftmaxAlgorithm_t algo = CNNL_SOFTMAX_ACCURATE;
+    static const cnnlSoftmaxAlgorithm_t algo = softmax_algo;
     MLUCnnlTensorDesc in_desc(cnnl_softmax_dims, regard_in_shape.data(),
                               ToCnnlDataType<T>());
     MLUCnnl::SoftmaxForward(ctx, algo, mode, NULL, in_desc.get(),
@@ -54,7 +54,7 @@ class SoftmaxMLUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <cnnlSoftmaxAlgorithm_t softmax_algo, typename T>
 class SoftmaxGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -82,7 +82,7 @@ class SoftmaxGradMLUKernel : public framework::OpKernel<T> {
       regard_out_shape = {d1, d2, d3};
     }
 
-    static const cnnlSoftmaxAlgorithm_t algo = CNNL_SOFTMAX_ACCURATE;
+    static const cnnlSoftmaxAlgorithm_t algo = softmax_algo;
     MLUCnnlTensorDesc out_desc(cnnl_softmax_dims, regard_out_shape.data(),
                                ToCnnlDataType<T>());
     MLUCnnl::SoftmaxBackward(ctx, algo, mode, out_desc.get(), GetBasePtr(out),
@@ -97,7 +97,16 @@ class SoftmaxGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(softmax, ops::SoftmaxMLUKernel<float>,
-                       ops::SoftmaxMLUKernel<plat::float16>);
-REGISTER_OP_MLU_KERNEL(softmax_grad, ops::SoftmaxGradMLUKernel<float>,
-                       ops::SoftmaxGradMLUKernel<paddle::platform::float16>);
+REGISTER_OP_MLU_KERNEL(
+    softmax, ops::SoftmaxMLUKernel<CNNL_SOFTMAX_ACCURATE, float>,
+    ops::SoftmaxMLUKernel<CNNL_SOFTMAX_ACCURATE, plat::float16>);
+REGISTER_OP_MLU_KERNEL(softmax_grad,
+                       ops::SoftmaxGradMLUKernel<CNNL_SOFTMAX_ACCURATE, float>,
+                       ops::SoftmaxGradMLUKernel<CNNL_SOFTMAX_ACCURATE,
+                                                 paddle::platform::float16>);
+REGISTER_OP_MLU_KERNEL(
+    log_softmax, ops::SoftmaxMLUKernel<CNNL_SOFTMAX_LOG, float>,
+    ops::SoftmaxMLUKernel<CNNL_SOFTMAX_ACCURATE, plat::float16>);
+REGISTER_OP_MLU_KERNEL(
+    log_softmax_grad, ops::SoftmaxGradMLUKernel<CNNL_SOFTMAX_LOG, float>,
+    ops::SoftmaxGradMLUKernel<CNNL_SOFTMAX_LOG, paddle::platform::float16>);

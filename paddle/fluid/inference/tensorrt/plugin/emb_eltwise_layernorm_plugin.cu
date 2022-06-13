@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include <stdio.h>
+
 #include <cassert>
 #include <cub/cub.cuh>  // NOLINT
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -253,10 +255,11 @@ nvinfer1::DataType EmbEltwiseLayernormPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
-      index, 0, platform::errors::InvalidArgument(
-                    "The EmbEltwiseLayernorm Plugin only has one input, so the "
-                    "index value should be 0, but get %d.",
-                    index));
+      index, 0,
+      platform::errors::InvalidArgument(
+          "The EmbEltwiseLayernorm Plugin only has one input, so the "
+          "index value should be 0, but get %d.",
+          index));
   if (with_fp16_)
     return nvinfer1::DataType::kHALF;
   else

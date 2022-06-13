@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/stack_kernel.h"
-
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/stack_kernel.h"
 
 namespace phi {
 
@@ -77,25 +76,25 @@ void StackKernel(const Context& dev_ctx,
       phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, out_col, x_row);
 
   if (out->numel() < std::numeric_limits<int32_t>::max()) {
-    StackCUDAKernel<T, int32_t><<<config.block_per_grid,
-                                  config.thread_per_block,
-                                  0,
-                                  dev_ctx.stream()>>>(
-        reinterpret_cast<T**>(tmp_x_data->ptr()),
-        x_col,
-        x_row,
-        out_col,
-        y_data);
+    StackCUDAKernel<T, int32_t>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           dev_ctx.stream()>>>(reinterpret_cast<T**>(tmp_x_data->ptr()),
+                               x_col,
+                               x_row,
+                               out_col,
+                               y_data);
   } else {
-    StackCUDAKernel<T, int64_t><<<config.block_per_grid,
-                                  config.thread_per_block,
-                                  0,
-                                  dev_ctx.stream()>>>(
-        reinterpret_cast<T**>(tmp_x_data->ptr()),
-        x_col,
-        x_row,
-        out_col,
-        y_data);
+    StackCUDAKernel<T, int64_t>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           dev_ctx.stream()>>>(reinterpret_cast<T**>(tmp_x_data->ptr()),
+                               x_col,
+                               x_row,
+                               out_col,
+                               y_data);
   }
 }
 

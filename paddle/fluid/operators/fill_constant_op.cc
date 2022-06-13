@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fill_constant_op.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 namespace paddle {
 namespace operators {
@@ -32,7 +34,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
             shape[i], 0,
             platform::errors::InvalidArgument(
                 "Each value of attribute 'shape' is expected to be no less "
-                "than 0. But recieved: shape[%u] = %d; shape = [%s].",
+                "than 0. But received: shape[%u] = %d; shape = [%s].",
                 i, shape[i], phi::make_ddim(shape)));
       }
     }

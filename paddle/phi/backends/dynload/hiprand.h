@@ -16,9 +16,9 @@ limitations under the License. */
 #include <hiprand.h>
 
 #include <mutex>  // NOLINT
-#include "paddle/phi/backends/dynload/port.h"
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 namespace phi {
 namespace dynload {

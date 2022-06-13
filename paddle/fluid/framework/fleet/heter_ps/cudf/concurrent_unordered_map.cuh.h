@@ -22,6 +22,7 @@
 #define CONCURRENT_UNORDERED_MAP_CUH
 
 #include <thrust/pair.h>
+
 #include <cassert>
 #include <iostream>
 #include <iterator>
@@ -258,7 +259,7 @@ class cycle_iterator_adapter {
     return old;
   }
 
-  __host__ __device__ const cycle_iterator_adapter& operator++(int)const {
+  __host__ __device__ const cycle_iterator_adapter& operator++(int) const {
     cycle_iterator_adapter<iterator_type> old(m_begin, m_end, m_current);
     if (m_end == (m_current + 1))
       m_current = m_begin;

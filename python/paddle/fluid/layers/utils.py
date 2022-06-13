@@ -48,14 +48,16 @@ def convert_to_list(value, n, name, dtype=int):
         passed.
     """
     if isinstance(value, dtype):
-        return [value, ] * n
+        return [
+            value,
+        ] * n
     else:
         try:
             value_list = list(value)
         except TypeError:
             raise ValueError("The " + name +
-                             "'s type must be list or tuple. Received: " + str(
-                                 value))
+                             "'s type must be list or tuple. Received: " +
+                             str(value))
         if len(value_list) != n:
             raise ValueError("The " + name + "'s length must be " + str(n) +
                              ". Received: " + str(value))
@@ -63,12 +65,12 @@ def convert_to_list(value, n, name, dtype=int):
             try:
                 dtype(single_value)
             except (ValueError, TypeError):
-                raise ValueError(
-                    "The " + name + "'s type must be a list or tuple of " + str(
-                        n) + " " + str(dtype) + " . Received: " + str(
-                            value) + " "
-                    "including element " + str(single_value) + " of type" + " "
-                    + str(type(single_value)))
+                raise ValueError("The " + name +
+                                 "'s type must be a list or tuple of " +
+                                 str(n) + " " + str(dtype) + " . Received: " +
+                                 str(value) + " "
+                                 "including element " + str(single_value) +
+                                 " of type" + " " + str(type(single_value)))
         return value_list
 
 
@@ -148,11 +150,11 @@ def _sequence_like(instance, args):
         # ordered and plain dicts (e.g., flattening a dict but using a
         # corresponding `OrderedDict` to pack it back).
         result = dict(zip(_sorted(instance), args))
-        return type(instance)((key, result[key])
-                              for key in six.iterkeys(instance))
-    elif (isinstance(instance, tuple) and hasattr(instance, "_fields") and
-          isinstance(instance._fields, Sequence) and
-          all(isinstance(f, six.string_types) for f in instance._fields)):
+        return type(instance)(
+            (key, result[key]) for key in six.iterkeys(instance))
+    elif (isinstance(instance, tuple) and hasattr(instance, "_fields")
+          and isinstance(instance._fields, Sequence)
+          and all(isinstance(f, six.string_types) for f in instance._fields)):
         # This is a namedtuple
         return type(instance)(*args)
     else:
@@ -332,9 +334,9 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
             shape = cast(shape, 'int32')
         inputs["ShapeTensor"] = shape
     elif isinstance(shape, (list, tuple)):
-        assert len(shape) > 0, (
-            "The size of 'shape' in" + op_type + " can't be zero, "
-            "but received %s." % len(shape))
+        assert len(shape) > 0, ("The size of 'shape' in" + op_type +
+                                " can't be zero, "
+                                "but received %s." % len(shape))
         attrs["shape"] = _get_attr_shape(shape)
         if _contain_var(shape):
             inputs['ShapeTensorList'] = _get_shape_tensor(shape)
@@ -366,8 +368,8 @@ def convert_shape_to_list(shape):
     """
     if isinstance(shape, (list, tuple)):
         shape = list(
-            map(lambda x: x.numpy().flat[0] if isinstance(x, Variable) else x,
-                shape))
+            map(lambda x: x.numpy().flat[0]
+                if isinstance(x, Variable) else x, shape))
     else:
         shape = shape.numpy().astype(int).tolist()
     return shape
@@ -434,8 +436,8 @@ def try_get_constant_shape_from_tensor(shape_tensor):
             if shape_tensor.op is not None:
                 generate_op = shape_tensor.op
                 if generate_op.type == 'shape':
-                    var = shape_tensor.block.vars[generate_op.input_arg_names[
-                        0]]
+                    var = shape_tensor.block.vars[
+                        generate_op.input_arg_names[0]]
                     return var.shape
         except:
             return None

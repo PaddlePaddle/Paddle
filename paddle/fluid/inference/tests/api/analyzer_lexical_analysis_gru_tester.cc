@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -147,10 +148,10 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   file.read(reinterpret_cast<char *>(&total_words_num), sizeof(int64_t));
   LOG(INFO) << "Total words in file: " << total_words_num;
   size_t lods_beginning_offset = static_cast<size_t>(file.tellg());
-  auto words_begining_offset =
+  auto words_beginning_offset =
       lods_beginning_offset + sizeof(size_t) * total_sentences_num;
   auto targets_beginning_offset =
-      words_begining_offset + sizeof(int64_t) * total_words_num;
+      words_beginning_offset + sizeof(int64_t) * total_words_num;
 
   std::vector<size_t> lod_full =
       ReadSentenceLod(file, lods_beginning_offset, total_sentences_num);
@@ -158,7 +159,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   size_t lods_sum = std::accumulate(lod_full.begin(), lod_full.end(), 0UL);
   EXPECT_EQ(lods_sum, static_cast<size_t>(total_words_num));
 
-  TensorReader<int64_t> words_reader(file, words_begining_offset, "words");
+  TensorReader<int64_t> words_reader(file, words_beginning_offset, "words");
   TensorReader<int64_t> targets_reader(file, targets_beginning_offset,
                                        "targets");
   // If FLAGS_iterations is set to 0, run all batches
@@ -211,18 +212,15 @@ std::vector<double> Lexical_Test(
       }
     }
     // nums_infer, nums_label, nums_correct
-    auto precision =
-        acc_sum[0]
-            ? static_cast<double>(acc_sum[2]) / static_cast<double>(acc_sum[0])
-            : 0;
-    auto recall =
-        acc_sum[1]
-            ? static_cast<double>(acc_sum[2]) / static_cast<double>(acc_sum[1])
-            : 0;
-    auto f1_score =
-        acc_sum[2]
-            ? static_cast<float>(2 * precision * recall) / (precision + recall)
-            : 0;
+    auto precision = acc_sum[0] ? static_cast<double>(acc_sum[2]) /
+                                      static_cast<double>(acc_sum[0])
+                                : 0;
+    auto recall = acc_sum[1] ? static_cast<double>(acc_sum[2]) /
+                                   static_cast<double>(acc_sum[1])
+                             : 0;
+    auto f1_score = acc_sum[2] ? static_cast<float>(2 * precision * recall) /
+                                     (precision + recall)
+                               : 0;
 
     LOG(INFO) << "Precision:  " << std::fixed << std::setw(6)
               << std::setprecision(5) << precision;

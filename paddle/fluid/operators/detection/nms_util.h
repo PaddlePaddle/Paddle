@@ -16,6 +16,7 @@ limitations under the License. */
 #include <algorithm>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/operators/detection/poly_util.h"
 
 namespace paddle {

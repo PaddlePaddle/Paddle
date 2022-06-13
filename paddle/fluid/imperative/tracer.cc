@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/imperative/tracer.h"
+
 #include <map>
 #include <set>
 #include <unordered_set>
 #include <utility>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/execution_context.h"
@@ -192,7 +194,7 @@ void Tracer::TraceOpImpl(const std::string& type,
                          paddle::framework::AttributeMap* passed_default_attrs_,
                          bool use_default_attr_map) {
   platform::RecordEvent op_type_record_event(
-      "trace_op", platform::TracerEventType::Operator, 1);
+      type, platform::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {

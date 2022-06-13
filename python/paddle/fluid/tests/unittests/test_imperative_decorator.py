@@ -23,6 +23,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTracerMode(unittest.TestCase):
+
     def setUp(self):
         self.init_mode = True
 
@@ -59,8 +60,8 @@ class TestTracerMode(unittest.TestCase):
 
             decorated_func = fluid.dygraph.no_grad(need_no_grad_func)
             self.assertTrue(
-                str(inspect.getfullargspec(decorated_func)) ==
-                str(inspect.getfullargspec(need_no_grad_func)))
+                str(inspect.getfullargspec(decorated_func)) == str(
+                    inspect.getfullargspec(need_no_grad_func)))
 
             self.assertEqual(self.tracer._train_mode, self.init_mode)
 
@@ -78,11 +79,13 @@ class TestTracerMode(unittest.TestCase):
 
 
 class TestTracerMode2(TestTracerMode):
+
     def setUp(self):
         self.init_mode = False
 
 
 class TestNoGradClass(unittest.TestCase):
+
     @paddle.no_grad()
     def no_grad_func(self, a):
         self.assertEqual(self.tracer._train_mode, True)
@@ -102,9 +105,8 @@ class TestNoGradClass(unittest.TestCase):
             return a + b
 
         decorated_func = paddle.no_grad()(need_no_grad_func)
-        self.assertEqual(
-            str(inspect.getfullargspec(decorated_func)),
-            str(inspect.getfullargspec(need_no_grad_func)))
+        self.assertEqual(str(inspect.getfullargspec(decorated_func)),
+                         str(inspect.getfullargspec(need_no_grad_func)))
 
         def test_gen():
             for i in range(3):

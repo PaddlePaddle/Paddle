@@ -25,10 +25,11 @@ class TileXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto rank = context.Input<Tensor>("X")->dims().size();
     PADDLE_ENFORCE_GE(
-        rank, 1, platform::errors::InvalidArgument(
-                     "The rank of the input 'x' for tile op must be a positive "
-                     "integer, but the value received is %d.",
-                     rank));
+        rank, 1,
+        platform::errors::InvalidArgument(
+            "The rank of the input 'x' for tile op must be a positive "
+            "integer, but the value received is %d.",
+            rank));
     PADDLE_ENFORCE_LE(
         rank, MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(

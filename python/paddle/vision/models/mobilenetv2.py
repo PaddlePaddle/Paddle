@@ -29,6 +29,7 @@ model_urls = {
 
 
 class InvertedResidual(nn.Layer):
+
     def __init__(self,
                  inp,
                  oup,
@@ -45,22 +46,19 @@ class InvertedResidual(nn.Layer):
         layers = []
         if expand_ratio != 1:
             layers.append(
-                ConvNormActivation(
-                    inp,
-                    hidden_dim,
-                    kernel_size=1,
-                    norm_layer=norm_layer,
-                    activation_layer=nn.ReLU6))
+                ConvNormActivation(inp,
+                                   hidden_dim,
+                                   kernel_size=1,
+                                   norm_layer=norm_layer,
+                                   activation_layer=nn.ReLU6))
         layers.extend([
-            ConvNormActivation(
-                hidden_dim,
-                hidden_dim,
-                stride=stride,
-                groups=hidden_dim,
-                norm_layer=norm_layer,
-                activation_layer=nn.ReLU6),
-            nn.Conv2D(
-                hidden_dim, oup, 1, 1, 0, bias_attr=False),
+            ConvNormActivation(hidden_dim,
+                               hidden_dim,
+                               stride=stride,
+                               groups=hidden_dim,
+                               norm_layer=norm_layer,
+                               activation_layer=nn.ReLU6),
+            nn.Conv2D(hidden_dim, oup, 1, 1, 0, bias_attr=False),
             norm_layer(oup),
         ])
         self.conv = nn.Sequential(*layers)
@@ -120,12 +118,11 @@ class MobileNetV2(nn.Layer):
         self.last_channel = _make_divisible(last_channel * max(1.0, scale),
                                             round_nearest)
         features = [
-            ConvNormActivation(
-                3,
-                input_channel,
-                stride=2,
-                norm_layer=norm_layer,
-                activation_layer=nn.ReLU6)
+            ConvNormActivation(3,
+                               input_channel,
+                               stride=2,
+                               norm_layer=norm_layer,
+                               activation_layer=nn.ReLU6)
         ]
 
         for t, c, n, s in inverted_residual_setting:
@@ -133,21 +130,19 @@ class MobileNetV2(nn.Layer):
             for i in range(n):
                 stride = s if i == 0 else 1
                 features.append(
-                    block(
-                        input_channel,
-                        output_channel,
-                        stride,
-                        expand_ratio=t,
-                        norm_layer=norm_layer))
+                    block(input_channel,
+                          output_channel,
+                          stride,
+                          expand_ratio=t,
+                          norm_layer=norm_layer))
                 input_channel = output_channel
 
         features.append(
-            ConvNormActivation(
-                input_channel,
-                self.last_channel,
-                kernel_size=1,
-                norm_layer=norm_layer,
-                activation_layer=nn.ReLU6))
+            ConvNormActivation(input_channel,
+                               self.last_channel,
+                               kernel_size=1,
+                               norm_layer=norm_layer,
+                               activation_layer=nn.ReLU6))
 
         self.features = nn.Sequential(*features)
 
@@ -211,6 +206,8 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
 
             print(out.shape)
     """
-    model = _mobilenet(
-        'mobilenetv2_' + str(scale), pretrained, scale=scale, **kwargs)
+    model = _mobilenet('mobilenetv2_' + str(scale),
+                       pretrained,
+                       scale=scale,
+                       **kwargs)
     return model

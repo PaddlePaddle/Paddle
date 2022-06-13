@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include <vector>
 
 #include "paddle/fluid/framework/ir/mkldnn/shuffle_channel_mkldnn_detect_pass.h"

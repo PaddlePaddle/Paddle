@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/autotune/cache.h"
+
 #include <iomanip>
+
 #include "glog/logging.h"
 
 namespace phi {

@@ -141,11 +141,16 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         "NCCL communication data. If it is false, it would be less accurate "
         "and be less NCCL communication data.")
         .SetDefault(true);
+    AddAttr<bool>("use_master_acc_grad",
+                  "Whether to use master gradient when acc_steps > 1.")
+        .SetDefault(true);
     AddAttr<bool>("is_grad_scaled_by_nranks",
                   "Whether the input gradient has been scaled by nranks.")
         .SetDefault(true);
-    AddAttr<int>("ring_id", "The ring id of the NCCL communicator.")
-        .SetDefault(0);
+    AddAttr<int64_t>("nranks", "The world size.").SetDefault(1);
+    AddAttr<std::vector<int>>("ring_id",
+                              "The ring id of the NCCL communicator.")
+        .SetDefault({0});
     AddComment("The DistributedFusedLamb optimizer.");
   }
 };

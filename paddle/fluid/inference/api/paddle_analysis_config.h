@@ -410,7 +410,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return int The NPU device id.
   ///
   int npu_device_id() const { return npu_device_id_; }
-  /// \brief Get the the number of IPU device .
+  /// \brief Get the number of IPU device .
   ///
   /// \return int The number of IPU device.
   ///
@@ -586,6 +586,25 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_allow_build_at_runtime();
 
   ///
+  /// \brief Set execution stream. If not set a stream will be created
+  /// internally.
+  ///
+  void SetExecStream(void* stream);
+
+  ///
+  /// \brief Get execution stream. The user needs to explicitly cast into a
+  /// stream type such as cudaStream_t, hipStream_t, etc.
+  ///
+  void* GetExecStream() const;
+
+  ///
+  /// \brief Whether the external stream is used, if True, the predictor clone
+  /// operation must use the external stream, otherwise the framework manages
+  /// the stream internally.
+  ///
+  bool external_stream_enabled() const;
+
+  ///
   /// \brief Collect shape info of all tensors in compute graph.
   ///
   /// \param shape_range_info_path the path to save shape info.
@@ -618,14 +637,14 @@ struct PD_INFER_DECL AnalysisConfig {
   /// may be more high-performance. Libnvinfer_plugin.so greater than
   /// V7.2.1 is needed.
   ///
-  void EnableTensorRtOSS();
+  void EnableVarseqlen();
 
   ///
   /// \brief A boolean state telling whether to use the TensorRT OSS.
   ///
   /// \return bool Whether to use the TensorRT OSS.
   ///
-  bool tensorrt_oss_enabled() { return trt_use_oss_; }
+  bool tensorrt_varseqlen_enabled() { return trt_use_varseqlen_; }
 
   ///
   /// \brief Enable TensorRT DLA
@@ -912,13 +931,22 @@ struct PD_INFER_DECL AnalysisConfig {
   bool thread_local_stream_{false};
   bool use_gpu_fp16_{false};
   std::unordered_set<std::string> gpu_fp16_disabled_op_types_{
-      "conv2d_fusion", "conv2d", "roll", "strided_slice", "depthwise_conv2d",
-      "unfold", "generate_proposals_v2", "nearest_interp_v2",
+      "conv2d_fusion",
+      "conv2d",
+      "roll",
+      "strided_slice",
+      "depthwise_conv2d",
+      "unfold",
+      "generate_proposals_v2",
+      "nearest_interp_v2",
       "bilinear_interp_v2"
       "yolo_box",
-      "multiclass_nms3", "matrix_nms"};
+      "multiclass_nms3",
+      "matrix_nms"};
 
   bool use_cudnn_{false};
+  bool use_external_stream_{false};
+  void* exec_stream_{nullptr};
 
   // NPU related
   bool use_npu_{false};
@@ -954,8 +982,10 @@ struct PD_INFER_DECL AnalysisConfig {
   Precision tensorrt_precision_mode_{Precision::kFloat32};
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
-  bool trt_use_oss_{false};
+  bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
+  std::string tensorrt_transformer_posid_{""};
+  std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
   int trt_dla_core_{0};
   std::map<std::string, std::vector<int>> min_input_shape_{};

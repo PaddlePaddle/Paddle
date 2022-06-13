@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/naive_executor.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"

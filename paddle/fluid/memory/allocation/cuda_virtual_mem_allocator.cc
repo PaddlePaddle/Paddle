@@ -18,6 +18,7 @@
 #endif
 
 #include <string>
+
 #include "paddle/fluid/memory/allocation/cuda_virtual_mem_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 
