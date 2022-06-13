@@ -475,19 +475,23 @@ void DatasetImpl<T>::LoadIntoMemory() {
       }
       cnt++;
     }
-    //TODO(huwei02): open it when slot fea ready
-    //for (auto& iter : node_to_id) {
-    //  int node_idx = iter.second;
-    //  auto gpu_graph_device_keys =
-    //      gpu_graph_ptr->get_all_feature_ids(1, node_idx, thread_num_);
-    //  for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
-    //    VLOG(2) << "node type: " << node_idx << ", gpu_graph_device_keys[" << i
-    //            << "] = " << gpu_graph_device_keys[i].size();
-    //    for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
-    //      gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
-    //    }
-    //  }
-    //}
+
+    VLOG(2) << "begin add feature_id into gpu_graph_total_keys_ size[" << gpu_graph_total_keys_.size() << "]";
+    for (auto& iter : node_to_id) {
+      std::vector<std::vector<uint64_t>> gpu_graph_device_keys;
+      int node_idx = iter.second;
+      gpu_graph_ptr->get_all_feature_ids(1, node_idx, thread_num_, &gpu_graph_device_keys);
+      for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
+        VLOG(2) << "begin node type: " << node_idx << ", gpu_graph_device_keys[" << i
+                << "] = " << gpu_graph_device_keys[i].size();
+        for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
+          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
+        }
+        VLOG(2) << "end node type: " << node_idx << ", gpu_graph_device_keys[" << i
+                << "] = " << gpu_graph_device_keys[i].size();
+      }
+    }
+    VLOG(2) << "end add feature_id into gpu_graph_total_keys_ size[" << gpu_graph_total_keys_.size() << "]";
 
     // FIX: trick for iterate edge table
     for (auto& iter : edge_to_id) {

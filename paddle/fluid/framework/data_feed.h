@@ -895,6 +895,7 @@ class GraphDataGenerator {
   int AcquireInstance(BufState* state);
   int GenerateBatch();
   int FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk);
+  int FillFeatureBuf(int64_t* d_walk, int64_t* d_feature, size_t key_num);
   int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
           std::shared_ptr<phi::Allocation> d_feature);
   void FillOneStep(uint64_t* start_ids, uint64_t* walk, int len,
@@ -947,6 +948,8 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_ins_buf_;
   std::shared_ptr<phi::Allocation> d_feature_buf_;
   std::shared_ptr<phi::Allocation> d_pair_num_;
+  std::shared_ptr<phi::Allocation> d_slot_tensor_ptr_;
+  std::shared_ptr<phi::Allocation> d_slot_lod_tensor_ptr_;
   int ins_buf_pair_len_;
   // size of a d_walk buf
   size_t buf_size_;

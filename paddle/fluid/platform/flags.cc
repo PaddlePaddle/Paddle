@@ -65,6 +65,19 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Checking whether operator produce NAN/INF or not. It will be "
     "extremely slow so please use this flag wisely.");
 
+/**
+ * Operator related FLAG
+ * Name: FLAGS_check_nan_inf
+ * Since Version: 0.13.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Checking whether operator produce NAN/INF or not.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    enable_opt_get_features, false,
+    "Checking whether operator produce NAN/INF or not. It will be "
+    "extremely slow so please use this flag wisely.");
+
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \

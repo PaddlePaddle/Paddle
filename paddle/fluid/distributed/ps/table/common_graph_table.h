@@ -70,14 +70,13 @@ class GraphShard {
     }
     return res;
   }
-  std::vector<uint64_t> get_all_feature_ids() {
-    // TODO by huwei02, dedup
-    std::vector<uint64_t> total_res;
+  std::set<uint64_t> get_all_feature_ids() {
+    std::set<uint64_t> total_res;
     std::set<uint64_t> res;
     for (int i = 0; i < (int)bucket.size(); i++) {
       res.clear();
       bucket[i]->get_feature_ids(&res);
-      total_res.insert(total_res.end(), res.begin(), res.end());
+      total_res.insert(res.begin(), res.end());
     }
     return total_res;
   }

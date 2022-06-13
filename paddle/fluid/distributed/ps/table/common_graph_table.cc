@@ -1665,12 +1665,15 @@ int GraphTable::get_all_feature_ids(int type_id, int idx, int slice_num,
                                     std::vector<std::vector<uint64_t>>* output) {
   output->resize(slice_num);
   auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
-  std::vector<std::future<std::vector<uint64_t>>> tasks;
+  std::vector<std::future<std::set<uint64_t>>> tasks;
   for (int i = 0; i < search_shards.size(); i++) {
-    tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
-        [&search_shards, i]() -> std::vector<uint64_t> {
+    tasks.push_back(
+      _shards_task_pool[i % task_pool_size_]->enqueue(
+        [&search_shards, i]() -> std::set<uint64_t> {
           return search_shards[i]->get_all_feature_ids();
-        }));
+        }
+      )
+    );
   }
   for (size_t i = 0; i < tasks.size(); ++i) {
     tasks[i].wait();

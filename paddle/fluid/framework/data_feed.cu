@@ -26,6 +26,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 
+DECLARE_bool(enable_opt_get_features);
+
 namespace paddle {
 namespace framework {
 
@@ -174,7 +176,7 @@ int GraphDataGenerator::AcquireInstance(BufState *state) {
 __global__ void GraphFillFeatureKernel(int64_t *id_tensor, int *fill_ins_num,
                     int64_t *walk, int64_t *feature, int *row, int central_word,
                     int step, int len, int col_num, int slot_num) {
-  __shared__ int64_t local_key[CUDA_NUM_THREADS * 2];
+  __shared__ int32_t local_key[CUDA_NUM_THREADS * 16];
   __shared__ int local_num;
   __shared__ int global_num;
 
@@ -245,6 +247,23 @@ __global__ void GraphFillIdKernel(int64_t *id_tensor, int *fill_ins_num,
   }
 }
 
+__global__ void GraphFillSlotKernel(int64_t *id_tensor, int64_t* feature_buf, int len,
+        int total_ins, int slot_num) {
+  CUDA_KERNEL_LOOP(idx, len) {
+    int slot_idx = idx / total_ins;
+    int ins_idx = idx % total_ins;
+    ((int64_t*)(id_tensor[slot_idx]))[ins_idx] = feature_buf[ins_idx * slot_num + slot_idx];
+  }
+}
+
+__global__ void GraphFillSlotLodKernelOpt(int64_t *id_tensor, int len, int total_ins) {
+  CUDA_KERNEL_LOOP(idx, len) {
+    int slot_idx = idx / total_ins;
+    int ins_idx = idx % total_ins;
+    ((int64_t*)(id_tensor[slot_idx]))[ins_idx] = ins_idx;
+  }
+}
+
 __global__ void GraphFillSlotLodKernel(int64_t *id_tensor, int len) {
   CUDA_KERNEL_LOOP(idx, len) {
     id_tensor[idx] = idx;
@@ -274,7 +293,7 @@ int GraphDataGenerator::FillInsBuf() {
       //}
     }
 
-    if (slot_num_ > 0) {
+    if (!FLAGS_enable_opt_get_features && slot_num_ > 0) {
       FillFeatureBuf(d_walk_, d_feature_);
       if (debug_mode_) {
         int len = buf_size_ > 5000? 5000: buf_size_;
@@ -311,7 +330,7 @@ int GraphDataGenerator::FillInsBuf() {
                   stream_);
 
   int64_t *feature_buf = reinterpret_cast<int64_t *>(d_feature_buf_->ptr());
-  if (slot_num_ > 0) {
+  if (!FLAGS_enable_opt_get_features && slot_num_ > 0) {
     int64_t *feature = reinterpret_cast<int64_t *>(d_feature_->ptr());
     cudaMemsetAsync(d_pair_num, 0, sizeof(int), stream_);
     int len = buf_state_.len;
@@ -380,6 +399,12 @@ int GraphDataGenerator::GenerateBatch() {
       slot_lod_tensor_ptr_[i] =
           feed_vec_[3 + 2 * i + 1]->mutable_data<int64_t>({total_instance + 1}, this->place_);
     }
+    if (FLAGS_enable_opt_get_features) {
+      cudaMemcpyAsync(d_slot_tensor_ptr_->ptr(), slot_tensor_ptr_, sizeof(int64_t*) * slot_num_,
+                  cudaMemcpyHostToDevice, stream_);
+      cudaMemcpyAsync(d_slot_lod_tensor_ptr_->ptr(), slot_lod_tensor_ptr_, sizeof(int64_t*) * slot_num_,
+                  cudaMemcpyHostToDevice, stream_);
+    }
   }
 
   VLOG(2) << "total_instance: " << total_instance
@@ -396,19 +421,47 @@ int GraphDataGenerator::GenerateBatch() {
 
   if (slot_num_ > 0) {
     int64_t *feature_buf = reinterpret_cast<int64_t *>(d_feature_buf_->ptr());
-    for (int i = 0; i < slot_num_; ++i) {
-      int feature_buf_offset = (ins_buf_pair_len_ * 2 - total_instance) * slot_num_ + i * 2;
-      // TODO huwei02 opt
-      for (int j = 0; j < total_instance; j += 2) {
-        VLOG(2) << "slot_tensor[" << i << "][" << j << "] <- feature_buf["
-            << feature_buf_offset + j * slot_num_ << "]";
-        VLOG(2) << "slot_tensor[" << i << "][" << j + 1 << "] <- feature_buf["
-            << feature_buf_offset + j * slot_num_ + 1 << "]";
-        cudaMemcpyAsync(slot_tensor_ptr_[i] + j, &feature_buf[feature_buf_offset + j * slot_num_],
-                sizeof(int64_t) * 2, cudaMemcpyDeviceToDevice, stream_);
+    if (FLAGS_enable_opt_get_features) {
+      FillFeatureBuf(ins_cursor, feature_buf, total_instance);
+      if (debug_mode_) {
+        uint64_t h_walk[total_instance];
+        cudaMemcpy(h_walk, ins_cursor, total_instance * sizeof(uint64_t),
+                cudaMemcpyDeviceToHost);
+        uint64_t h_feature[total_instance * slot_num_];
+        cudaMemcpy(h_feature, feature_buf, total_instance * slot_num_ * sizeof(uint64_t),
+                cudaMemcpyDeviceToHost);
+        for(int i = 0; i < total_instance; ++i) {
+          std::stringstream ss;
+          for (int j = 0; j < slot_num_; ++j) {
+            ss << h_feature[i * slot_num_ + j] << " ";
+          }
+          VLOG(2) << "aft FillFeatureBuf, gpu[" << gpuid_ << "] walk[" << i << "] = " << (uint64_t)h_walk[i]
+              << " feature[" << i * slot_num_ << ".." << (i + 1) * slot_num_ << "] = " << ss.str();
+        }
       }
-      GraphFillSlotLodKernel<<<GET_BLOCKS(total_instance), CUDA_NUM_THREADS, 0, stream_>>>(
+
+      GraphFillSlotKernel<<<GET_BLOCKS(total_instance * slot_num_),
+          CUDA_NUM_THREADS, 0, stream_>>>(
+              (int64_t*)d_slot_tensor_ptr_->ptr(), feature_buf,
+              total_instance * slot_num_, total_instance, slot_num_);
+      GraphFillSlotLodKernelOpt<<<GET_BLOCKS((total_instance + 1) * slot_num_),
+          CUDA_NUM_THREADS, 0, stream_>>>(
+              (int64_t*)d_slot_lod_tensor_ptr_->ptr(), (total_instance + 1) * slot_num_,
+              total_instance + 1);
+    } else { 
+      for (int i = 0; i < slot_num_; ++i) {
+        int feature_buf_offset = (ins_buf_pair_len_ * 2 - total_instance) * slot_num_ + i * 2;
+        for (int j = 0; j < total_instance; j += 2) {
+          VLOG(2) << "slot_tensor[" << i << "][" << j << "] <- feature_buf["
+              << feature_buf_offset + j * slot_num_ << "]";
+          VLOG(2) << "slot_tensor[" << i << "][" << j + 1 << "] <- feature_buf["
+              << feature_buf_offset + j * slot_num_ + 1 << "]";
+          cudaMemcpyAsync(slot_tensor_ptr_[i] + j, &feature_buf[feature_buf_offset + j * slot_num_],
+                  sizeof(int64_t) * 2, cudaMemcpyDeviceToDevice, stream_);
+        }
+        GraphFillSlotLodKernel<<<GET_BLOCKS(total_instance), CUDA_NUM_THREADS, 0, stream_>>>(
               slot_lod_tensor_ptr_[i], total_instance + 1);
+      }
     }
   }
 
@@ -569,12 +622,21 @@ void GraphDataGenerator::FillOneStep(uint64_t *d_start_ids, uint64_t *walk,
   cur_sampleidx2row_ = 1 - cur_sampleidx2row_;
 }
 
+int GraphDataGenerator::FillFeatureBuf(int64_t* d_walk, int64_t* d_feature, size_t key_num) {
+  platform::CUDADeviceGuard guard(gpuid_);
+
+  auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+  int ret = gpu_graph_ptr->get_feature_of_nodes(gpuid_, d_walk, d_feature, key_num, slot_num_);
+  return ret;
+}
+
 int GraphDataGenerator::FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
                                     std::shared_ptr<phi::Allocation> d_feature) {
   platform::CUDADeviceGuard guard(gpuid_);
 
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-  int ret = gpu_graph_ptr->get_feature_of_nodes(gpuid_, d_walk, d_feature, buf_size_, slot_num_);
+  int ret = gpu_graph_ptr->get_feature_of_nodes(gpuid_, (int64_t*)d_walk->ptr(),
+                                        (int64_t*)d_feature->ptr(), buf_size_, slot_num_);
   return ret;
 }
 
@@ -766,8 +828,10 @@ void GraphDataGenerator::AllocResource(const paddle::platform::Place &place,
   jump_rows_ = 0;
   d_walk_ = memory::AllocShared(place_, buf_size_ * sizeof(uint64_t));
   cudaMemsetAsync(d_walk_->ptr(), 0, buf_size_ * sizeof(uint64_t), stream_);
-  d_feature_ = memory::AllocShared(place_, buf_size_ * slot_num_ * sizeof(uint64_t));
-  cudaMemsetAsync(d_feature_->ptr(), 0, buf_size_ * sizeof(uint64_t), stream_);
+  if (!FLAGS_enable_opt_get_features && slot_num_ > 0) {
+    d_feature_ = memory::AllocShared(place_, buf_size_ * slot_num_ * sizeof(uint64_t));
+    cudaMemsetAsync(d_feature_->ptr(), 0, buf_size_ * sizeof(uint64_t), stream_);
+  }
   d_sample_keys_ =
       memory::AllocShared(place_, once_max_sample_keynum * sizeof(uint64_t));
 
@@ -794,9 +858,15 @@ void GraphDataGenerator::AllocResource(const paddle::platform::Place &place,
   ins_buf_pair_len_ = 0;
   d_ins_buf_ =
       memory::AllocShared(place_, (batch_size_ * 2 * 2) * sizeof(int64_t));
-  d_feature_buf_ =
-      memory::AllocShared(place_, (batch_size_ * 2 * 2) * slot_num_ * sizeof(int64_t));
+  if (slot_num_ > 0) {
+    d_feature_buf_ =
+        memory::AllocShared(place_, (batch_size_ * 2 * 2) * slot_num_ * sizeof(int64_t));
+  }
   d_pair_num_ = memory::AllocShared(place_, sizeof(int));
+  if (FLAGS_enable_opt_get_features && slot_num_ > 0) {
+    d_slot_tensor_ptr_ = memory::AllocShared(place_, slot_num_ * sizeof(int64_t*));
+    d_slot_lod_tensor_ptr_ = memory::AllocShared(place_, slot_num_ * sizeof(int64_t*));
+  }
 
   cudaStreamSynchronize(stream_);
 }

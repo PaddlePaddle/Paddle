@@ -128,9 +128,8 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
                                                 uint64_t *key, int sample_size,
                                                 int len, bool cpu_query_switch);
 
-  int get_feature_of_nodes(int gpu_id,
-                    std::shared_ptr<phi::Allocation> d_walk,
-                    std::shared_ptr<phi::Allocation> d_offset, int size, int slot_num);
+  int get_feature_of_nodes(int gpu_id, int64_t* d_walk,
+                        int64_t* d_offset, int size, int slot_num);
 
   NodeQueryResult query_node_list(int gpu_id, int idx, int start,
                                   int query_size);
