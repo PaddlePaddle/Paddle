@@ -25,6 +25,7 @@ import warnings
 
 from .framework import Variable, default_main_program, _current_expected_place, _non_static_mode, _in_eager_without_dygraph_check
 from .framework import _cpu_num, _cuda_ids
+
 __all__ = ['DataFeeder']
 
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
@@ -173,6 +174,7 @@ def check_shape(shape,
 
 
 class DataToLoDTensorConverter(object):
+
     def __init__(self, place, lod_level, shape, dtype):
         self.place = place
         self.lod_level = lod_level
@@ -206,8 +208,8 @@ class DataToLoDTensorConverter(object):
         for s1, s2 in zip(self.shape, shape):
             if s1 != s2 and s1 >= 0 and s2 >= 0:
                 raise ValueError(
-                    "Shape not match. What is defined in data layer is {}, but receive {}".
-                    format(self.shape, shape))
+                    "Shape not match. What is defined in data layer is {}, but receive {}"
+                    .format(self.shape, shape))
 
     def done(self):
         arr = np.array(self.data, dtype=self.dtype)
@@ -228,6 +230,7 @@ class DataToLoDTensorConverter(object):
 
 
 class BatchedTensorProvider(object):
+
     def __init__(self, feed_list, place, batch_size, generator, drop_last):
         self.place = place
         self.batch_size = batch_size
@@ -238,11 +241,10 @@ class BatchedTensorProvider(object):
         for var in feed_list:
             assert var.lod_level == 0, "lod_level must be 0"
             self.converters.append(
-                DataToLoDTensorConverter(
-                    place=self.place,
-                    lod_level=0,
-                    shape=var.shape,
-                    dtype=var.dtype))
+                DataToLoDTensorConverter(place=self.place,
+                                         lod_level=0,
+                                         shape=var.shape,
+                                         dtype=var.dtype))
 
     def _done(self):
         return [c.done() for c in self.converters]
@@ -250,8 +252,8 @@ class BatchedTensorProvider(object):
     def __call__(self):
         idx = 0
         for each_sample in self.generator():
-            for each_slot, each_converter in six.moves.zip(each_sample,
-                                                           self.converters):
+            for each_slot, each_converter in six.moves.zip(
+                    each_sample, self.converters):
                 each_converter.data.append(each_slot)
 
             idx += 1
@@ -384,21 +386,21 @@ class DataFeeder(object):
 
         """
         converter = []
-        for lod_level, shape, dtype in six.moves.zip(
-                self.feed_lod_level, self.feed_shapes, self.feed_dtypes):
+        for lod_level, shape, dtype in six.moves.zip(self.feed_lod_level,
+                                                     self.feed_shapes,
+                                                     self.feed_dtypes):
             converter.append(
-                DataToLoDTensorConverter(
-                    place=self.place,
-                    lod_level=lod_level,
-                    shape=shape,
-                    dtype=dtype))
+                DataToLoDTensorConverter(place=self.place,
+                                         lod_level=lod_level,
+                                         shape=shape,
+                                         dtype=dtype))
 
         for each_sample in iterable:
             assert len(each_sample) == len(converter), (
                 "The number of fields in data (%d) does not match " +
                 "len(feed_list) (%d)") % (len(each_sample), len(converter))
-            for each_converter, each_slot in six.moves.zip(converter,
-                                                           each_sample):
+            for each_converter, each_slot in six.moves.zip(
+                    converter, each_sample):
                 each_converter.feed(each_slot)
         ret_dict = {}
         for each_name, each_converter in six.moves.zip(self.feed_names,
@@ -462,14 +464,12 @@ class DataFeeder(object):
         """
         if isinstance(self.place, core.CUDAPlace):
             places = [
-                core.CUDAPlace(i)
-                for i in six.moves.xrange(
+                core.CUDAPlace(i) for i in six.moves.xrange(
                     self._get_number_of_places_(num_places))
             ]
         else:
             places = [
-                core.CPUPlace()
-                for _ in six.moves.xrange(
+                core.CPUPlace() for _ in six.moves.xrange(
                     self._get_number_of_places_(num_places))
             ]
 

@@ -31,6 +31,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 
 
 class TestDygraphFleetAPI(unittest.TestCase):
+
     def setUp(self):
         paddle.seed(2022)
         random.seed(2022)
@@ -48,8 +49,8 @@ class TestDygraphFleetAPI(unittest.TestCase):
         strategy.amp = True
         strategy.recompute = True
         fleet.init(is_collective=True, strategy=strategy)
-        net = paddle.nn.Sequential(
-            paddle.nn.Linear(10, 1), paddle.nn.Linear(1, 2))
+        net = paddle.nn.Sequential(paddle.nn.Linear(10, 1),
+                                   paddle.nn.Linear(1, 2))
         net = dist.fleet.distributed_model(net)
         data = np.random.uniform(-1, 1, [30, 10]).astype('float32')
         data = paddle.to_tensor(data)

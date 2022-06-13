@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +21,7 @@ from paddle.nn import CrossEntropyLoss
 
 
 class TestFixOpRunOrder(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
         paddle.seed(1)
@@ -29,8 +30,8 @@ class TestFixOpRunOrder(unittest.TestCase):
             fluid.set_flags({'FLAGS_cudnn_deterministic': 1})
 
     def get_place(self):
-        return paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda(
-        ) else paddle.CPUPlace()
+        return paddle.CUDAPlace(
+            0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
 
     def get_feed(self):
         batch_size = 4
@@ -43,10 +44,12 @@ class TestFixOpRunOrder(unittest.TestCase):
         startup_prog = paddle.static.Program()
         scope = paddle.static.Scope()
         with paddle.static.program_guard(main_prog, startup_prog):
-            image = paddle.static.data(
-                name="image", shape=[None, 3, 224, 224], dtype="float32")
-            label = paddle.static.data(
-                name="label", shape=[None, 1], dtype="int64")
+            image = paddle.static.data(name="image",
+                                       shape=[None, 3, 224, 224],
+                                       dtype="float32")
+            label = paddle.static.data(name="label",
+                                       shape=[None, 1],
+                                       dtype="int64")
             model = resnet18()
             pred = model(image)
             loss_fn = CrossEntropyLoss()

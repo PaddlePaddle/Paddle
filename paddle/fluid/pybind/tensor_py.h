@@ -15,12 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"

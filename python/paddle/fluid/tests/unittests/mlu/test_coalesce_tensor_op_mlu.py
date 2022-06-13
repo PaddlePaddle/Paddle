@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append('..')
 from op_test import OpTest
 from paddle.fluid import core
@@ -27,6 +28,7 @@ paddle.enable_static()
 
 
 class TestAllocContinuousSpace(OpTest):
+
     def setUp(self):
         self.op_type = "coalesce_tensor"
         self.dtype, self.fluid_dtype = self.init_dtype()
@@ -82,13 +84,13 @@ class TestAllocContinuousSpace(OpTest):
         return outputs, coalesce_tensor_var
 
     def test_check_output(self):
-        self.check_output_with_place(
-            place=paddle.device.MLUPlace(0),
-            no_check_set=["FusedOutput"],
-            atol=1e-5)
+        self.check_output_with_place(place=paddle.device.MLUPlace(0),
+                                     no_check_set=["FusedOutput"],
+                                     atol=1e-5)
 
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
+
     def init_attr(self):
         return {
             "copy_data": False,
@@ -99,10 +101,9 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(
-            place=paddle.device.MLUPlace(0),
-            no_check_set=["FusedOutput"],
-            atol=1e-5)
+        self.check_output_with_place(place=paddle.device.MLUPlace(0),
+                                     no_check_set=["FusedOutput"],
+                                     atol=1e-5)
 
 
 if __name__ == '__main__':

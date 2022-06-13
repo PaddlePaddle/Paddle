@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/chunk_eval_op.h"
+
 #include <string>
 #include <vector>
 
@@ -55,11 +56,12 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           (inference_dim.size() == 3 && inference_dim[2] == 1) ||
               inference_dim.size() == 2,
-          true, platform::errors::InvalidArgument(
-                    "when Input(SeqLength) is provided, Input(Inference) "
-                    "should be of dim 3 (batch_size, bucket, 1) or dim 2 "
-                    "(batch_size, bucket), but received [%s].",
-                    inference_dim));
+          true,
+          platform::errors::InvalidArgument(
+              "when Input(SeqLength) is provided, Input(Inference) "
+              "should be of dim 3 (batch_size, bucket, 1) or dim 2 "
+              "(batch_size, bucket), but received [%s].",
+              inference_dim));
       auto seq_length_dim = ctx->GetInputDim("SeqLength");
       PADDLE_ENFORCE_LE(seq_length_dim.size(), 2,
                         platform::errors::InvalidArgument(

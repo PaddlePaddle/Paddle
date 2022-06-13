@@ -38,11 +38,10 @@ class AttnLayerNorm {
     auto stream = dev_ctx_.stream();
 
     switch (GetDesiredBlockDim(feature_size_)) {
-      FIXED_BLOCK_DIM_CASE(
-          LayerNormForward<T, LayerNormParamType<T>,
-                           kBlockDim><<<batch_size_, kBlockDim, 0, stream>>>(
-              x_data, scale_data, bias_data, y_data, mean_data, var_data,
-              epsilon_, feature_size_));
+      FIXED_BLOCK_DIM_CASE(LayerNormForward<T, LayerNormParamType<T>, kBlockDim>
+                           <<<batch_size_, kBlockDim, 0, stream>>>(
+                               x_data, scale_data, bias_data, y_data, mean_data,
+                               var_data, epsilon_, feature_size_));
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Feature_size must be larger than 1"));

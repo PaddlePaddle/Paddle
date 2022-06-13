@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/optimizers/momentum_op.h"
-
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
@@ -70,14 +69,16 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*param, ctx.GetPlace(), dev_ctx, param_out);
       framework::TensorCopy(*velocity, ctx.GetPlace(), dev_ctx, velocity_out);
       // NOTE: ApplyMomentum will change the input
-      const auto& runner = NpuOpRunner(
-          "ApplyMomentum", {*param_out, *velocity_out, *learning_rate,
-                            regularized_grad, mu_tensor},
-          {*param_out}, {{"use_nesterov", use_nesterov}});
+      const auto& runner =
+          NpuOpRunner("ApplyMomentum",
+                      {*param_out, *velocity_out, *learning_rate,
+                       regularized_grad, mu_tensor},
+                      {*param_out}, {{"use_nesterov", use_nesterov}});
       runner.Run(dev_ctx.stream());
     } else if (grad_var->IsType<phi::SelectedRows>()) {
-      PADDLE_ENFORCE_EQ(false, true, platform::errors::PermissionDenied(
-                                         "Unsupport SparseMomentum"));
+      PADDLE_ENFORCE_EQ(
+          false, true,
+          platform::errors::PermissionDenied("Unsupport SparseMomentum"));
     } else {
       PADDLE_ENFORCE_EQ(false, true,
                         platform::errors::PermissionDenied(

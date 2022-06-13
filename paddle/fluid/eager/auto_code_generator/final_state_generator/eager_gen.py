@@ -1404,7 +1404,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   const auto& out_metas = OutputMeta();
   paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns({slot_num_bwd_outputs});
   for (int i = 0; i < {slot_num_bwd_outputs}; ++i) {{
-    returns[i].resize(out_metas[i].size());
+    out_metas[i].size() == 0 ? returns[i].resize(1) : returns[i].resize(out_metas[i].size());
   }}
 """
 

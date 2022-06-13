@@ -42,9 +42,10 @@ static void CheckEighResult(const int batch, const int info) {
           "tridiagonal form did not converge to zero",
           batch, info));
   PADDLE_ENFORCE_GE(
-      info, 0, platform::errors::PreconditionNotMet(
-                   "For batch [%d]: the [%d] argument had an illegal value",
-                   batch, info));
+      info, 0,
+      platform::errors::PreconditionNotMet(
+          "For batch [%d]: the [%d] argument had an illegal value", batch,
+          info));
 }
 
 template <typename DeviceContext, typename T>

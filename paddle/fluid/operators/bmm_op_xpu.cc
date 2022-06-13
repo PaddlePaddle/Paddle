@@ -16,8 +16,8 @@
 
 #include <string>
 #include <vector>
-#include "paddle/fluid/operators/matmul_v2_op.h"
 
+#include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/fluid/operators/xpu_api_wrapper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 

@@ -36,7 +36,7 @@ class KaimingNormal(MSRAInitializer):
         \sqrt{\frac{2.0}{fan\_in}}
 
     Args:
-        fan_in (float32|None): fan_in for Kaiming normal Initializer. If None, it is\
+        fan_in (float32|None, optional): fan_in for Kaiming normal Initializer. If None, it is 
         inferred from the variable. default is None.
 
     Note:
@@ -44,7 +44,7 @@ class KaimingNormal(MSRAInitializer):
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
             import paddle.nn as nn
 
@@ -57,8 +57,9 @@ class KaimingNormal(MSRAInitializer):
     """
 
     def __init__(self, fan_in=None):
-        super(KaimingNormal, self).__init__(
-            uniform=False, fan_in=fan_in, seed=0)
+        super(KaimingNormal, self).__init__(uniform=False,
+                                            fan_in=fan_in,
+                                            seed=0)
 
 
 class KaimingUniform(MSRAInitializer):
@@ -78,7 +79,7 @@ class KaimingUniform(MSRAInitializer):
         x = \sqrt{\frac{6.0}{fan\_in}}
 
     Args:
-        fan_in (float32|None): fan_in for Kaiming uniform Initializer. If None, it is\
+        fan_in (float32|None, optional): fan_in for Kaiming uniform Initializer. If None, it is 
         inferred from the variable. default is None.
 
     Note:
@@ -86,7 +87,7 @@ class KaimingUniform(MSRAInitializer):
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
             import paddle.nn as nn
 
@@ -99,5 +100,6 @@ class KaimingUniform(MSRAInitializer):
     """
 
     def __init__(self, fan_in=None):
-        super(KaimingUniform, self).__init__(
-            uniform=True, fan_in=fan_in, seed=0)
+        super(KaimingUniform, self).__init__(uniform=True,
+                                             fan_in=fan_in,
+                                             seed=0)

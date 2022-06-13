@@ -245,9 +245,12 @@ TEST(InferVarType, multiple_api) {
   ASSERT_ANY_THROW(infer.SetDataTypes(&ctx, "test2_a_out", {}));
 
   ASSERT_EQ(0u, infer.GetShape(&ctx, "test2_a_out").size());
-  infer.SetShape(&ctx, "test2_a_out", {
-                                          1, 3, 3,
-                                      });
+  infer.SetShape(&ctx, "test2_a_out",
+                 {
+                     1,
+                     3,
+                     3,
+                 });
   ASSERT_EQ(3u, infer.GetShape(&ctx, "test2_a_out").size());
 
   ASSERT_EQ(0, infer.GetLoDLevel(&ctx, "test2_a_out"));

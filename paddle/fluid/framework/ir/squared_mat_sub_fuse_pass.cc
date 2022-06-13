@@ -170,8 +170,9 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
 
   auto* matmul_xy_op = pattern->NewNode(
       [=](Node* x) {
-        return x && x->IsOp() && (x->Op()->Type() == "matmul_v2" ||
-                                  x->Op()->Type() == "matmul") &&
+        return x && x->IsOp() &&
+               (x->Op()->Type() == "matmul_v2" ||
+                x->Op()->Type() == "matmul") &&
                is_fusion_first_mul_out(x->outputs[0]);
       },
       name_scope + "/matmul_xy_op");
@@ -212,8 +213,9 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
 
   auto* matmul_squared_x_y_op = pattern->NewNode(
       [=](Node* x) {
-        return x && x->IsOp() && (x->Op()->Type() == "matmul_v2" ||
-                                  x->Op()->Type() == "matmul") &&
+        return x && x->IsOp() &&
+               (x->Op()->Type() == "matmul_v2" ||
+                x->Op()->Type() == "matmul") &&
                is_fusion_mat_squared_x_y_op_out(x->outputs[0]);
       },
       name_scope + "/matmul_squared_x_y_op");

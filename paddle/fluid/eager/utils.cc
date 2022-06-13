@@ -27,7 +27,7 @@
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
-PADDLE_DEFINE_EXPORTED_bool(retain_grad_for_all_tensor, true,
+PADDLE_DEFINE_EXPORTED_bool(retain_grad_for_all_tensor, false,
                             "retain grad for all tensor");
 
 namespace egr {
@@ -467,26 +467,16 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
   }
 }
 
-void EagerUtils::FillZeroForEmptyGradInputs(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         kSlotSmallVectorSize>* in_grads,
-    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
-        grad_in_metas) {
+void EagerUtils::FillZeroForEmptyOptionalGradInput(
+    std::vector<paddle::experimental::Tensor>* in_grads,
+    const std::vector<GradSlotMeta>& grad_in_metas) {
   for (size_t i = 0; i < in_grads->size(); i++) {
-    for (size_t j = 0; j < (*in_grads)[i].size(); j++) {
-      paddle::experimental::Tensor& grad = (*in_grads)[i][j];
-      if (!grad.initialized()) {
-        const GradSlotMeta& grad_in_meta = grad_in_metas[i][j];
-        PADDLE_ENFORCE(
-            grad_in_meta.HasTensorMeta(),
-            paddle::platform::errors::Fatal(
-                "Unable to fill empty grad inputs due to empty GradSlotMeta"));
-        const auto& tensor_meta = grad_in_meta.GetTensorMeta();
-        auto tensor_with_zero = paddle::experimental::full(
-            phi::vectorize(tensor_meta.dims), 0.0, tensor_meta.dtype,
-            grad_in_meta.GetPlace());
-        grad.set_impl(tensor_with_zero.impl());
-      }
+    paddle::experimental::Tensor& grad = (*in_grads)[i];
+    if (!grad.initialized() && grad_in_metas[i].HasTensorMeta()) {
+      auto tensor_with_zero = paddle::experimental::full(
+          phi::vectorize(grad_in_metas[i].GetTensorMeta().dims), 0.0,
+          grad_in_metas[i].GetTensorMeta().dtype, grad_in_metas[i].GetPlace());
+      grad.set_impl(tensor_with_zero.impl());
     }
   }
 }

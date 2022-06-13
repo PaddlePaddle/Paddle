@@ -44,37 +44,7 @@ class CastMLUKernel : public framework::OpKernel<T> {
                           framework::DataTypeToString(src_type),
                           framework::DataTypeToString(dst_type)));
 
-    switch (dst_type) {
-      case VT::FP32:
-        output->mutable_data<float>(place);
-        break;
-      case VT::FP16:
-        output->mutable_data<paddle::platform::float16>(place);
-        break;
-      case VT::INT32:
-        output->mutable_data<int32_t>(place);
-        break;
-      case VT::INT16:
-        output->mutable_data<int16_t>(place);
-        break;
-      case VT::INT8:
-        output->mutable_data<int8_t>(place);
-        break;
-      case VT::UINT8:
-        output->mutable_data<uint8_t>(place);
-        break;
-      case VT::BOOL:
-        output->mutable_data<bool>(place);
-        break;
-      case VT::INT64:
-        output->mutable_data<int64_t>(place);
-        break;
-      default:
-        PADDLE_THROW(platform::errors::Unavailable(
-            "Not supported cast %d -> %d",
-            framework::DataTypeToString(src_type),
-            framework::DataTypeToString(dst_type)));
-    }
+    output->mutable_data(place, framework::TransToPhiDataType(dst_type));
 
     MLUCnnlTensorDesc input_desc(*input);
     MLUCnnlTensorDesc output_desc(*output);

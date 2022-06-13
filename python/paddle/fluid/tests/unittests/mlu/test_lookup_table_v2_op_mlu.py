@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -27,6 +28,7 @@ SEED = 2022
 
 
 class TestLookupTableV2(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "lookup_table_v2"
@@ -36,8 +38,9 @@ class TestLookupTableV2(OpTest):
         self.init_padding_idx()
         np.random.seed(SEED)
         w = np.random.random([self.vocab, self.dim]).astype(self.dtype)
-        x = np.random.randint(
-            0, self.vocab, size=(self.bsz, self.seqlen)).astype(self.ids_dtype)
+        x = np.random.randint(0, self.vocab,
+                              size=(self.bsz,
+                                    self.seqlen)).astype(self.ids_dtype)
         out = w[x]
         if self.padding_idx != -1:
             out[np.squeeze(x == self.padding_idx)] = np.zeros(self.dim)
@@ -77,8 +80,9 @@ class TestLookupTableV2(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
-            self.check_grad_with_place(
-                self.place, ['W'], 'Out', max_relative_error=0.01)
+            self.check_grad_with_place(self.place, ['W'],
+                                       'Out',
+                                       max_relative_error=0.01)
         else:
             self.check_grad_with_place(self.place, ['W'], 'Out')
 
@@ -93,10 +97,10 @@ class TestLookupTableV2FP16(TestLookupTableV2):
     def set_mlu(self):
         self.__class__.use_mlu = True
         self.place = paddle.device.MLUPlace(0)
-        self.__class__.no_need_check_grad = True
 
 
 class TestLookupTableV2Dim32(TestLookupTableV2):
+
     def init_dims(self):
         self.bsz = 6
         self.seqlen = 8
@@ -121,15 +125,16 @@ class TestLookupTableV2Dim32FP16(TestLookupTableV2):
     def set_mlu(self):
         self.__class__.use_mlu = True
         self.place = paddle.device.MLUPlace(0)
-        self.__class__.no_need_check_grad = True
 
 
 class TestLookupTableV2WithPadding(TestLookupTableV2):
+
     def init_padding_idx(self):
         self.padding_idx = np.random.randint(0, self.vocab)
 
 
 class TestLookupTableV2WithPadding1(TestLookupTableV2):
+
     def init_padding_idx(self):
         self.padding_idx = np.random.randint(0, self.vocab)
 

@@ -22,6 +22,7 @@ from paddle.fluid import compiler, Program, program_guard
 
 
 class TestInf(OpTest):
+
     def setUp(self):
         self.op_type = "isinf"
         self.dtype = np.float32
@@ -42,7 +43,9 @@ class TestInf(OpTest):
 
 
 class TestRaiseError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.isfinite([10])
 
@@ -58,11 +61,13 @@ class TestRaiseError(unittest.TestCase):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFP16Inf(TestInf):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestNAN(OpTest):
+
     def setUp(self):
         self.op_type = "isnan"
         self.dtype = np.float32
@@ -85,11 +90,13 @@ class TestNAN(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFP16NAN(TestNAN):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestIsfinite(OpTest):
+
     def setUp(self):
         self.op_type = "isfinite"
         self.dtype = np.float32
@@ -113,11 +120,13 @@ class TestIsfinite(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFP16Isfinite(TestIsfinite):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class BadInputTest(unittest.TestCase):
+
     def test_error(self):
         with fluid.program_guard(fluid.Program()):
 

@@ -143,10 +143,10 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
     int blocks_per_grid =
         (total_num + elements_per_block - 1) / elements_per_block;
     VLOG(3) << "launch kernel";
-    CheckFiniteAndUnscale<
-        T, MPDType><<<blocks_per_grid, threads_per_block,
-                      (xs_size + 1) * sizeof(int64_t), dev_ctx.stream()>>>(
-        d_xs, inverse_scale_v, xs_size, d_starts, found_inf_data, d_outs);
+    CheckFiniteAndUnscale<T, MPDType>
+        <<<blocks_per_grid, threads_per_block, (xs_size + 1) * sizeof(int64_t),
+           dev_ctx.stream()>>>(d_xs, inverse_scale_v, xs_size, d_starts,
+                               found_inf_data, d_outs);
     VLOG(3) << "finish kernel";
   }
 };

@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/cpu_info.h"
-
 #include "paddle/phi/kernels/elementwise_kernel.h"
 
 namespace paddle {

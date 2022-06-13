@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -291,7 +292,9 @@ class TestMatMulOpBroadcast2(TestMatMulV2Op):
 
 
 def create_test_fp16_class(parent, atol=0.001, max_relative_error=2.5):
+
     class TestMatMulOpFp16Case(parent):
+
         def init_kernel_type(self):
             self.dtype = np.float16
 
@@ -299,10 +302,9 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=2.5):
             self.check_output_with_place(self.place, atol=atol)
 
         def test_check_grad(self):
-            self.check_grad_with_place(
-                self.place, ['X', 'Y'],
-                'Out',
-                max_relative_error=max_relative_error)
+            self.check_grad_with_place(self.place, ['X', 'Y'],
+                                       'Out',
+                                       max_relative_error=max_relative_error)
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
     TestMatMulOpFp16Case.__name__ = cls_name
@@ -329,6 +331,7 @@ create_test_fp16_class(TestMatMulOp17)
 
 
 class TestMatMulV2API(unittest.TestCase):
+
     def setUp(self):
         self.places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_npu():
@@ -346,8 +349,10 @@ class TestMatMulV2API(unittest.TestCase):
 
             exe = fluid.Executor(place)
             fetches = exe.run(fluid.default_main_program(),
-                              feed={"input_x": x_np,
-                                    "input_y": y_np},
+                              feed={
+                                  "input_x": x_np,
+                                  "input_y": y_np
+                              },
                               fetch_list=[result])
 
     def test_static(self):

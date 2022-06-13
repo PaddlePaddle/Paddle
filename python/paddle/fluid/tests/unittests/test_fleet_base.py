@@ -23,6 +23,7 @@ import numpy as np
 
 
 class TestFleetBase(unittest.TestCase):
+
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36000"
@@ -59,8 +60,8 @@ class TestFleetBase(unittest.TestCase):
     def test_worker_endpoints(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        self.assertEqual(
-            "127.0.0.1:36000", fleet.worker_endpoints(to_string=True))
+        self.assertEqual("127.0.0.1:36000",
+                         fleet.worker_endpoints(to_string=True))
         self.assertEqual(["127.0.0.1:36000"], fleet.worker_endpoints())
 
     def test_server_num(self):
@@ -90,9 +91,8 @@ class TestFleetBase(unittest.TestCase):
         role = role_maker.PaddleCloudRoleMaker()
         fleet.init(role)
         if fleet.is_server():
-            self.assertEqual(
-                "127.0.0.1:36001,127.0.0.2:36002",
-                fleet.server_endpoints(to_string=True))
+            self.assertEqual("127.0.0.1:36001,127.0.0.2:36002",
+                             fleet.server_endpoints(to_string=True))
             self.assertEqual(["127.0.0.1:36001", "127.0.0.2:36002"],
                              fleet.server_endpoints())
 
@@ -144,6 +144,7 @@ class TestFleetBase(unittest.TestCase):
 
 
 class TestFleetDygraph(unittest.TestCase):
+
     def setUp(self):
         os.environ[
             "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213,127.0.0.1:36214"
@@ -156,15 +157,15 @@ class TestFleetDygraph(unittest.TestCase):
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = fluid.dygraph.to_variable(value)
         layer = paddle.nn.Linear(13, 5)
-        adam = paddle.optimizer.Adam(
-            learning_rate=0.01, parameters=layer.parameters())
+        adam = paddle.optimizer.Adam(learning_rate=0.01,
+                                     parameters=layer.parameters())
         # remove init cause this UT cannot launch distributed task
         adam = fleet.distributed_optimizer(adam)
         try:
             dp_layer = fleet.distributed_model(layer)
         except Exception as e:
-            # This is just for testing the interface, 
-            # and will not actually be called. Therefore, 
+            # This is just for testing the interface,
+            # and will not actually be called. Therefore,
             # use "try-except" to avoid errors.
             lr = 0.001
             adam.set_lr(lr)
@@ -177,20 +178,22 @@ class TestFleetDygraph(unittest.TestCase):
 
 
 class TestFleetBaseSingleError(unittest.TestCase):
+
     def setUp(self):
         os.environ.pop("PADDLE_TRAINER_ENDPOINTS")
 
     def gen_data(self):
         return {
             "x": np.random.random(size=(128, 32)).astype('float32'),
-            "y": np.random.randint(
-                2, size=(128, 1)).astype('int64')
+            "y": np.random.randint(2, size=(128, 1)).astype('int64')
         }
 
     def test_single_run_collective_minimize(self):
+
         def test_single_error():
-            input_x = paddle.static.data(
-                name="x", shape=[-1, 32], dtype='float32')
+            input_x = paddle.static.data(name="x",
+                                         shape=[-1, 32],
+                                         dtype='float32')
             input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
             fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')

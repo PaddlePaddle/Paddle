@@ -74,7 +74,9 @@ def Pmat_to_perm(Pmat_org, cut):
             sP[idx, :] = tmp
 
         permmat.append(permlst)
-    Pivot = np.array(permmat).reshape(list(shape[:-2]) + [rows, ]) + 1
+    Pivot = np.array(permmat).reshape(list(shape[:-2]) + [
+        rows,
+    ]) + 1
 
     return Pivot[..., :cut]
 
@@ -130,8 +132,9 @@ class TestLU_UnpackOp(OpTest):
                 place = fluid.CPUPlace()
                 if core.is_compiled_with_cuda():
                     place = fluid.CUDAPlace(0)
-                xv = paddle.fluid.data(
-                    name="input", shape=self.x_shape, dtype=self.dtype)
+                xv = paddle.fluid.data(name="input",
+                                       shape=self.x_shape,
+                                       dtype=self.dtype)
                 lu, p = paddle.linalg.lu(xv)
                 exe = fluid.Executor(place)
                 fetches = exe.run(fluid.default_main_program(),
@@ -186,7 +189,9 @@ class TestLU_UnpackOp3(TestLU_UnpackOp):
 
 
 class TestLU_UnpackAPI(unittest.TestCase):
+
     def test_dygraph(self):
+
         def run_lu_unpack_dygraph(shape, dtype):
             if dtype == "float32":
                 np_dtype = np.float32
@@ -247,8 +252,9 @@ class TestLU_UnpackAPI(unittest.TestCase):
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
                     sP, sL, sU = scipy_lu_unpack(a)
 
-                    x = paddle.fluid.data(
-                        name="input", shape=shape, dtype=dtype)
+                    x = paddle.fluid.data(name="input",
+                                          shape=shape,
+                                          dtype=dtype)
                     lu, p = paddle.linalg.lu(x)
                     pP, pL, pU = paddle.linalg.lu_unpack(lu, p)
                     exe = fluid.Executor(place)

@@ -92,14 +92,13 @@ def getfullargspec(target):
         return inspect.getfullargspec(target)
     else:
         argspec = inspect.getargspec(target)
-        return FullArgSpec(
-            args=argspec.args,
-            varargs=argspec.varargs,
-            varkw=argspec.keywords,
-            defaults=argspec.defaults,
-            kwonlyargs=[],
-            kwonlydefaults=None,
-            annotations={})
+        return FullArgSpec(args=argspec.args,
+                           varargs=argspec.varargs,
+                           varkw=argspec.keywords,
+                           defaults=argspec.defaults,
+                           kwonlyargs=[],
+                           kwonlydefaults=None,
+                           annotations={})
 
 
 def parse_arg_and_kwargs(function):
@@ -190,8 +189,8 @@ def is_api_in_module(node, module_prefix):
         from paddle.fluid.dygraph import to_variable
         from paddle import to_tensor
 
-        return eval("_is_api_in_module_helper({}, '{}')".format(func_str,
-                                                                module_prefix))
+        return eval("_is_api_in_module_helper({}, '{}')".format(
+            func_str, module_prefix))
     except Exception:
         return False
 
@@ -241,8 +240,9 @@ def is_control_flow_to_transform(node,
     """
     assert isinstance(node, gast.AST), \
         "The type of input node must be gast.AST, but received %s." % type(node)
-    visitor = IsControlFlowVisitor(
-        node, static_analysis_visitor, node_var_type_map=var_name_to_type)
+    visitor = IsControlFlowVisitor(node,
+                                   static_analysis_visitor,
+                                   node_var_type_map=var_name_to_type)
     need_to_transform = visitor.transform()
     return need_to_transform
 
@@ -262,9 +262,9 @@ def to_static_api(dygraph_class):
     if dygraph_class in dygraph_class_to_static_api:
         return dygraph_class_to_static_api[dygraph_class]
     else:
-        raise NotImplementedError("Paddle dygraph API {} cannot be converted "
-                                  "to static graph at present.".format(
-                                      dygraph_class))
+        raise NotImplementedError(
+            "Paddle dygraph API {} cannot be converted "
+            "to static graph at present.".format(dygraph_class))
 
 
 def _add_keywords_to(node, dygraph_api_name):
@@ -275,10 +275,8 @@ def _add_keywords_to(node, dygraph_api_name):
                 ast_keyword.arg = "size"
 
         node.keywords.append(
-            gast.keyword(
-                arg="num_flatten_dims",
-                value=gast.Constant(
-                    value=-1, kind=None)))
+            gast.keyword(arg="num_flatten_dims",
+                         value=gast.Constant(value=-1, kind=None)))
 
     if dygraph_api_name == "BilinearTensorProduct":
         for ast_keyword in node.keywords:
@@ -297,15 +295,15 @@ def to_static_ast(node, class_node):
     assert isinstance(class_node, gast.Call)
     static_api = to_static_api(class_node.func.attr)
 
-    node.func = gast.Attribute(
-        attr=static_api,
-        ctx=gast.Load(),
-        value=gast.Attribute(
-            attr='layers',
-            ctx=gast.Load(),
-            value=gast.Name(
-                ctx=gast.Load(), id='fluid', annotation=None,
-                type_comment=None)))
+    node.func = gast.Attribute(attr=static_api,
+                               ctx=gast.Load(),
+                               value=gast.Attribute(attr='layers',
+                                                    ctx=gast.Load(),
+                                                    value=gast.Name(
+                                                        ctx=gast.Load(),
+                                                        id='fluid',
+                                                        annotation=None,
+                                                        type_comment=None)))
 
     update_args_of_func(node, class_node, 'forward')
 
@@ -330,8 +328,8 @@ def update_args_of_func(node, dygraph_node, method_name):
     import paddle.fluid as fluid
     if method_name == "__init__" or eval(
             "issubclass({}, fluid.dygraph.Layer)".format(class_src)):
-        full_args = eval("inspect.getargspec({}.{})".format(class_src,
-                                                            method_name))
+        full_args = eval("inspect.getargspec({}.{})".format(
+            class_src, method_name))
         full_args_name = [
             arg_name for arg_name in full_args[0] if arg_name != "self"
         ]
@@ -351,14 +349,14 @@ def create_api_shape_node(tensor_shape_node):
 
     if isinstance(tensor_shape_node, gast.Name):
         api_shape_node = gast.Call(
-            func=gast.parse('fluid.layers.shape').body[0].value,
+            func=gast.parse('paddle.shape').body[0].value,
             args=[tensor_shape_node],
             keywords=[])
         return api_shape_node
 
     if isinstance(tensor_shape_node, gast.Attribute):
         api_shape_node = gast.Call(
-            func=gast.parse('fluid.layers.shape').body[0].value,
+            func=gast.parse('paddle.shape').body[0].value,
             args=[tensor_shape_node.value],
             keywords=[])
         return api_shape_node
@@ -370,8 +368,8 @@ def create_api_shape_node(tensor_shape_node):
 
 
 def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
-    return gast.parse('%s = fluid.layers.fill_constant(%s, "%s", %s)' %
-                      (name, str(shape), dtype, str(value)))
+    return gast.parse('%s = paddle.full(%s, "%s", %s)' %
+                      (name, str(shape), str(value), dtype))
 
 
 def get_attribute_full_name(node):
@@ -394,11 +392,11 @@ def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
     if isinstance(name_ids, six.string_types):
         name_ids = [name_ids]
     if not isinstance(name_ids, (list, tuple, set)):
-        raise TypeError('name_ids must be list or tuple or set, but received %s'
-                        % type(type(name_ids)))
+        raise TypeError(
+            'name_ids must be list or tuple or set, but received %s' %
+            type(type(name_ids)))
     gast_names = [
-        gast.Name(
-            id=name_id, ctx=ctx, annotation=None, type_comment=None)
+        gast.Name(id=name_id, ctx=ctx, annotation=None, type_comment=None)
         for name_id in name_ids
     ]
     if len(gast_names) == 1 and not gen_tuple_if_single:
@@ -419,13 +417,12 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
         nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
     else:
         nodes.append(gast.Return(value=None))
-    func_def_node = gast.FunctionDef(
-        name=name,
-        args=input_args,
-        body=nodes,
-        decorator_list=[],
-        returns=None,
-        type_comment=None)
+    func_def_node = gast.FunctionDef(name=name,
+                                     args=input_args,
+                                     body=nodes,
+                                     decorator_list=[],
+                                     returns=None,
+                                     type_comment=None)
     return func_def_node
 
 
@@ -447,6 +444,7 @@ def create_assign_node(name, node):
 
 
 class RenameTransformer(gast.NodeTransformer):
+
     def __init__(self, node):
         assert isinstance(
             node, gast.AST), "RenameTransformer only accepts gast.AST as input"
@@ -488,8 +486,10 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     source = ast_to_source_code(ast_root)
     source = _inject_import_statements() + source
 
-    f = tempfile.NamedTemporaryFile(
-        mode='w', suffix='.py', delete=False, encoding='utf-8')
+    f = tempfile.NamedTemporaryFile(mode='w',
+                                    suffix='.py',
+                                    delete=False,
+                                    encoding='utf-8')
     with f:
         module_name = os.path.basename(f.name[:-3])
         f.write(source)
@@ -546,8 +546,8 @@ def func_to_source_code(function, dedent=True):
     """
     if not (inspect.isfunction(function) or inspect.ismethod(function)):
         raise TypeError(
-            "The type of 'function' should be a function or method, but received {}.".
-            format(type(function).__name__))
+            "The type of 'function' should be a function or method, but received {}."
+            .format(type(function).__name__))
     source_code_list, _ = inspect.getsourcelines(function)
     # Replace comments with blank lines so that error messages are not misplaced
     source_code_list = [
@@ -596,8 +596,9 @@ def compare_with_none(node):
             # node.comparators is a list.
             if isinstance(child, list):
                 child = child[0]
-            if (isinstance(child, gast.Constant) and child.value is None) or (
-                    isinstance(child, gast.Name) and child.id == 'None'):
+            if (isinstance(child, gast.Constant)
+                    and child.value is None) or (isinstance(child, gast.Name)
+                                                 and child.id == 'None'):
                 return True
     return False
 
@@ -869,54 +870,46 @@ class ForLoopTuplePreTransformer(gast.NodeTransformer):
                 tuple_iter_name = unique_name.generate(
                     FOR_ITER_TUPLE_INDEX_PREFIX)
                 tuple_var_name = unique_name.generate(FOR_ITER_TUPLE_PREFIX)
-                node.target = gast.Tuple(
-                    elts=[
-                        gast.Name(
-                            id=tuple_iter_name,
-                            ctx=gast.Store(),
-                            annotation=None,
-                            type_comment=None), gast.Name(
-                                id=tuple_var_name,
-                                ctx=gast.Store(),
-                                annotation=None,
-                                type_comment=None)
-                    ],
-                    ctx=gast.Store())
+                node.target = gast.Tuple(elts=[
+                    gast.Name(id=tuple_iter_name,
+                              ctx=gast.Store(),
+                              annotation=None,
+                              type_comment=None),
+                    gast.Name(id=tuple_var_name,
+                              ctx=gast.Store(),
+                              annotation=None,
+                              type_comment=None)
+                ],
+                                         ctx=gast.Store())
                 node.body.insert(
                     0,
-                    gast.Assign(
-                        targets=[
-                            gast.Name(
-                                id=out_tuple_name,
-                                ctx=gast.Store(),
-                                annotation=None,
-                                type_comment=None)
-                        ],
-                        value=gast.Tuple(
-                            elts=[
-                                gast.Name(
-                                    id=tuple_iter_name,
-                                    ctx=gast.Load(),
-                                    annotation=None,
-                                    type_comment=None), gast.Name(
-                                        id=tuple_var_name,
-                                        ctx=gast.Load(),
-                                        annotation=None,
-                                        type_comment=None)
-                            ],
-                            ctx=gast.Load())))
-            elif isinstance(node.target, (
-                    gast.List,
-                    gast.Tuple)) and len(node.target.elts) >= 2 and isinstance(
+                    gast.Assign(targets=[
+                        gast.Name(id=out_tuple_name,
+                                  ctx=gast.Store(),
+                                  annotation=None,
+                                  type_comment=None)
+                    ],
+                                value=gast.Tuple(elts=[
+                                    gast.Name(id=tuple_iter_name,
+                                              ctx=gast.Load(),
+                                              annotation=None,
+                                              type_comment=None),
+                                    gast.Name(id=tuple_var_name,
+                                              ctx=gast.Load(),
+                                              annotation=None,
+                                              type_comment=None)
+                                ],
+                                                 ctx=gast.Load())))
+            elif isinstance(node.target, (gast.List, gast.Tuple)) and len(
+                    node.target.elts) >= 2 and isinstance(
                         node.target.elts[1], (gast.List, gast.Tuple)):
                 # Inner tuple case
                 inner_tuple_name = unique_name.generate(FOR_ITER_TUPLE_PREFIX)
                 origin_inner_tuple_node = node.target.elts[1]
-                node.target.elts[1] = gast.Name(
-                    id=inner_tuple_name,
-                    ctx=gast.Store(),
-                    annotation=None,
-                    type_comment=None)
+                node.target.elts[1] = gast.Name(id=inner_tuple_name,
+                                                ctx=gast.Store(),
+                                                annotation=None,
+                                                type_comment=None)
                 node.body[0:0] = self.tuple_to_stmts(origin_inner_tuple_node,
                                                      inner_tuple_name)
         elif self.is_for_iter(node) and isinstance(node.target,
@@ -924,11 +917,10 @@ class ForLoopTuplePreTransformer(gast.NodeTransformer):
             # Non-enumrate case:
             tuple_name = unique_name.generate(FOR_ITER_TUPLE_PREFIX)
             origin_tuple_node = node.target
-            node.target = gast.Name(
-                id=tuple_name,
-                ctx=gast.Store(),
-                annotation=None,
-                type_comment=None)
+            node.target = gast.Name(id=tuple_name,
+                                    ctx=gast.Store(),
+                                    annotation=None,
+                                    type_comment=None)
             node.body[0:0] = self.tuple_to_stmts(origin_tuple_node, tuple_name)
         return node
 
@@ -1144,8 +1136,8 @@ class ForNodeVisitor(object):
             if self.args_length == 1:
                 index_init_value_str = '0'
             else:
-                index_init_value_str = ast_to_source_code(self.iter_args[
-                    0]).strip()
+                index_init_value_str = ast_to_source_code(
+                    self.iter_args[0]).strip()
 
             index_init_var_name = self.iter_var_name
         else:
@@ -1164,8 +1156,8 @@ class ForNodeVisitor(object):
         if isinstance(self.iter_node, gast.Call) and isinstance(
                 self.iter_node.func,
                 gast.Attribute) and self.iter_node.func.attr == 'numpy':
-            iter_var_name = ast_to_source_code(self.iter_node.func.value).strip(
-            )
+            iter_var_name = ast_to_source_code(
+                self.iter_node.func.value).strip()
         else:
             iter_var_name = ast_to_source_code(self.iter_node).strip()
 
@@ -1196,11 +1188,10 @@ class ForNodeVisitor(object):
                 zip_to_list_node = gast.parse(zip_to_list_str).body[0]
                 new_nodes.append(zip_to_list_node)
 
-                self.iter_node = gast.Name(
-                    id=self.iter_zip_to_list_name,
-                    ctx=gast.Load(),
-                    annotation=None,
-                    type_comment=None)
+                self.iter_node = gast.Name(id=self.iter_zip_to_list_name,
+                                           ctx=gast.Load(),
+                                           annotation=None,
+                                           type_comment=None)
 
         return new_nodes
 
@@ -1220,18 +1211,17 @@ class ForNodeVisitor(object):
             compare_node = self.iter_args[
                 0] if self.args_length == 1 else self.iter_args[1]
         else:
-            compare_node = gast.Name(
-                id=self.iter_var_len_name,
-                ctx=gast.Load(),
-                annotation=None,
-                type_comment=None)
+            compare_node = gast.Name(id=self.iter_var_len_name,
+                                     ctx=gast.Load(),
+                                     annotation=None,
+                                     type_comment=None)
         return compare_node
 
     def _build_step_node(self):
         if self.is_for_range_iter():
             step_node = self.iter_args[
-                2] if self.args_length == 3 else gast.Constant(
-                    value=1, kind=None)
+                2] if self.args_length == 3 else gast.Constant(value=1,
+                                                               kind=None)
         else:
             step_node = gast.Constant(value=1, kind=None)
         return step_node
@@ -1248,40 +1238,37 @@ class ForNodeVisitor(object):
             # range(max, min, -2)
             # ->
             # i > min
-            return gast.Compare(
-                left=gast.Name(
-                    id=self.iter_var_name
-                    if self.is_for_range_iter() else self.iter_idx_name,
-                    ctx=gast.Load(),
-                    annotation=None,
-                    type_comment=None),
-                ops=[gast.Gt()],
-                comparators=[compare_node])
+            return gast.Compare(left=gast.Name(
+                id=self.iter_var_name
+                if self.is_for_range_iter() else self.iter_idx_name,
+                ctx=gast.Load(),
+                annotation=None,
+                type_comment=None),
+                                ops=[gast.Gt()],
+                                comparators=[compare_node])
         else:
             # eg:
             # range(min, max, 2)
             # ->
             # i < max
-            return gast.Compare(
-                left=gast.Name(
-                    id=self.iter_var_name
-                    if self.is_for_range_iter() else self.iter_idx_name,
-                    ctx=gast.Load(),
-                    annotation=None,
-                    type_comment=None),
-                ops=[gast.Lt()],
-                comparators=[compare_node])
-
-    def _build_index_increase_node(self, step_node):
-        return gast.AugAssign(
-            target=gast.Name(
+            return gast.Compare(left=gast.Name(
                 id=self.iter_var_name
                 if self.is_for_range_iter() else self.iter_idx_name,
-                ctx=gast.Store(),
+                ctx=gast.Load(),
                 annotation=None,
                 type_comment=None),
-            op=gast.Add(),
-            value=step_node)
+                                ops=[gast.Lt()],
+                                comparators=[compare_node])
+
+    def _build_index_increase_node(self, step_node):
+        return gast.AugAssign(target=gast.Name(
+            id=self.iter_var_name
+            if self.is_for_range_iter() else self.iter_idx_name,
+            ctx=gast.Store(),
+            annotation=None,
+            type_comment=None),
+                              op=gast.Add(),
+                              value=step_node)
 
     def _build_assign_var_slice_node(self):
         var_slice_str = "{}[{}]".format(
@@ -1293,15 +1280,12 @@ class ForNodeVisitor(object):
         return target_node, assign_node
 
     def _build_enum_increase_node(self):
-        return gast.AugAssign(
-            target=gast.Name(
-                id=self.enum_idx_name,
-                ctx=gast.Store(),
-                annotation=None,
-                type_comment=None),
-            op=gast.Add(),
-            value=gast.Constant(
-                value=1, kind=None))
+        return gast.AugAssign(target=gast.Name(id=self.enum_idx_name,
+                                               ctx=gast.Store(),
+                                               annotation=None,
+                                               type_comment=None),
+                              op=gast.Add(),
+                              value=gast.Constant(value=1, kind=None))
 
     def _get_iter_var_name(self):
         if self.is_for_range_iter():
