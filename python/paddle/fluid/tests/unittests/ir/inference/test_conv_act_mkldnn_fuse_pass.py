@@ -177,17 +177,17 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
                               inputs={"X": ["conv2d_out"]},
                               outputs={"Out": ["relu_out"]},
                               threshold=threshold)
-        if act_type == "leaky_relu":
+        elif act_type == "leaky_relu":
             alpha = draw(st.floats(min_value=0.1, max_value=1.0))
             act_op = OpConfig("leaky_relu",
                               inputs={"X": ["conv2d_out"]},
                               outputs={"Out": ["relu_out"]},
                               alpha=alpha)
-        if act_type == "relu":
+        elif act_type == "relu":
             act_op = OpConfig("relu",
                               inputs={"X": ["conv2d_out"]},
                               outputs={"Out": ["relu_out"]})
-        if act_type == "swish":
+        elif act_type == "swish":
             beta = draw(st.floats(min_value=0.1, max_value=1.0))
             act_op = OpConfig("swish",
                               inputs={"X": ["conv2d_out"]},

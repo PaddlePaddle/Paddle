@@ -42,8 +42,8 @@ void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
         attrs_map.emplace("slope", "fuse_alpha");
         attrs_map.emplace("offset", "fuse_beta");
       } else if (act_type == "clip") {
-        attr_map.emplace("min", "activation_alpha");
-        attr_map.emplace("max", "activation_beta");
+        attrs_map.emplace("min", "fuse_alpha");
+        attrs_map.emplace("max", "fuse_beta");
       } else {
         attrs_map.emplace("alpha", "fuse_alpha");
         attrs_map.emplace("beta", "fuse_beta");
