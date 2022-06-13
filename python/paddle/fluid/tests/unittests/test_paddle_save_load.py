@@ -19,6 +19,7 @@ import numpy as np
 import os
 import sys
 from io import BytesIO
+import tempfile
 
 import paddle
 import paddle.nn as nn
@@ -90,7 +91,10 @@ def train(layer, loader, loss_fn, opt):
 
 class TestSaveLoadLargeParameters(unittest.TestCase):
     def setUp(self):
-        pass
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_large_parameters_paddle_save(self):
         # enable dygraph mode
@@ -100,7 +104,8 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
         layer = LayerWithLargeParameters()
         save_dict = layer.state_dict()
 
-        path = os.path.join("test_paddle_save_load_large_param_save",
+        path = os.path.join(self.temp_dir.name,
+                            "test_paddle_save_load_large_param_save",
                             "layer.pdparams")
         protocol = 4
         paddle.save(save_dict, path, protocol=protocol)
@@ -111,6 +116,12 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
 
 
 class TestSaveLoadPickle(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_pickle_protocol(self):
         # enable dygraph mode
         paddle.disable_static()
@@ -118,7 +129,8 @@ class TestSaveLoadPickle(unittest.TestCase):
         layer = LinearNet()
         save_dict = layer.state_dict()
 
-        path = os.path.join("test_paddle_save_load_pickle_protocol",
+        path = os.path.join(self.temp_dir.name,
+                            "test_paddle_save_load_pickle_protocol",
                             "layer.pdparams")
 
         with self.assertRaises(ValueError):
@@ -143,6 +155,12 @@ class TestSaveLoadPickle(unittest.TestCase):
 
 
 class TestSaveLoadAny(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def set_zero(self, prog, place, scope=None):
         if scope is None:
             scope = fluid.global_scope()
@@ -203,7 +221,8 @@ class TestSaveLoadAny(unittest.TestCase):
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
                     base_map[var.name] = t
-            path = os.path.join("test_replace_static_save_load", "model")
+            path = os.path.join(self.temp_dir.name,
+                                "test_replace_static_save_load", "model")
             # paddle.save, legacy paddle.fluid.load
             self.replace_static_save(prog, path)
             self.set_zero(prog, place)
@@ -229,7 +248,9 @@ class TestSaveLoadAny(unittest.TestCase):
             for var in prog.list_vars():
                 if var.persistable:
                     tensor = var.get_value(fluid.global_scope())
-                    paddle.save(tensor, os.path.join(path_vars, var.name))
+                    paddle.save(
+                        tensor,
+                        os.path.join(self.temp_dir.name, path_vars, var.name))
             with self.assertRaises(TypeError):
                 var.get_value('fluid.global_scope()')
             with self.assertRaises(ValueError):
@@ -247,8 +268,11 @@ class TestSaveLoadAny(unittest.TestCase):
             self.set_zero(prog, place)
             for var in prog.list_vars():
                 if var.persistable:
+
                     tensor = paddle.load(
-                        os.path.join(path_vars, var.name), return_numpy=False)
+                        os.path.join(self.temp_dir.name, path_vars, var.name),
+                        return_numpy=False)
+
                     var.set_value(tensor)
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
@@ -282,7 +306,8 @@ class TestSaveLoadAny(unittest.TestCase):
         y.mean().backward()
         adam.step()
         state_dict = adam.state_dict()
-        path = 'paddle_save_load_v2/model.pdparams'
+        path = os.path.join(self.temp_dir.name,
+                            'paddle_save_load_v2/model.pdparams')
         with self.assertRaises(TypeError):
             paddle.save(state_dict, path, use_binary_format='False')
         # legacy paddle.save, paddle.load
@@ -306,7 +331,8 @@ class TestSaveLoadAny(unittest.TestCase):
         # enable dygraph mode
         paddle.disable_static()
         layer = LinearNet()
-        path = 'paddle_save_load_v2/var_dygraph'
+        path = os.path.join(self.temp_dir.name,
+                            'paddle_save_load_v2/var_dygraph')
         tensor = layer._linear.weight
         with self.assertRaises(ValueError):
             paddle.save(tensor, path, pickle_protocol='3')
@@ -348,7 +374,8 @@ class TestSaveLoadAny(unittest.TestCase):
                     break
             scope = fluid.global_scope()
         origin_tensor = np.array(tensor)
-        path = 'test_single_pickle_var_static/var'
+        path = os.path.join(self.temp_dir.name,
+                            'test_single_pickle_var_static/var')
         paddle.save(tensor, path)
         self.set_zero(prog, place, scope)
         # static load
@@ -370,7 +397,8 @@ class TestSaveLoadAny(unittest.TestCase):
 
     def test_dygraph_save_static_load(self):
         inps = np.random.randn(1, IMAGE_SIZE).astype('float32')
-        path = 'test_dygraph_save_static_load/dy-static.pdparams'
+        path = os.path.join(self.temp_dir.name,
+                            'test_dygraph_save_static_load/dy-static.pdparams')
         paddle.disable_static()
         with paddle.utils.unique_name.guard():
             layer = LinearNet()
@@ -414,10 +442,14 @@ class TestSaveLoadAny(unittest.TestCase):
             })
         obj4 = (np.random.randn(5, 6), (123, ))
 
-        path1 = "test_save_load_any_complex_object_dygraph/obj1"
-        path2 = "test_save_load_any_complex_object_dygraph/obj2"
-        path3 = "test_save_load_any_complex_object_dygraph/obj3"
-        path4 = "test_save_load_any_complex_object_dygraph/obj4"
+        path1 = os.path.join(self.temp_dir.name,
+                             "test_save_load_any_complex_object_dygraph/obj1")
+        path2 = os.path.join(self.temp_dir.name,
+                             "test_save_load_any_complex_object_dygraph/obj2")
+        path3 = os.path.join(self.temp_dir.name,
+                             "test_save_load_any_complex_object_dygraph/obj3")
+        path4 = os.path.join(self.temp_dir.name,
+                             "test_save_load_any_complex_object_dygraph/obj4")
         paddle.save(obj1, path1)
         paddle.save(obj2, path2)
         paddle.save(obj3, path3)
@@ -584,10 +616,18 @@ class TestSaveLoadAny(unittest.TestCase):
                 })
             obj4 = (np.ndarray([3, 4], dtype="float32"), )
 
-            path1 = "test_save_load_any_complex_object_static/obj1"
-            path2 = "test_save_load_any_complex_object_static/obj2"
-            path3 = "test_save_load_any_complex_object_static/obj3"
-            path4 = "test_save_load_any_complex_object_static/obj4"
+            path1 = os.path.join(
+                self.temp_dir.name,
+                "test_save_load_any_complex_object_static/obj1")
+            path2 = os.path.join(
+                self.temp_dir.name,
+                "test_save_load_any_complex_object_static/obj2")
+            path3 = os.path.join(
+                self.temp_dir.name,
+                "test_save_load_any_complex_object_static/obj3")
+            path4 = os.path.join(
+                self.temp_dir.name,
+                "test_save_load_any_complex_object_static/obj4")
             paddle.save(obj1, path1)
             paddle.save(obj2, path2)
             paddle.save(obj3, path3)
@@ -751,7 +791,8 @@ class TestSaveLoadAny(unittest.TestCase):
     def test_varbase_binary_var(self):
         paddle.disable_static()
         varbase = paddle.randn([3, 2], dtype='float32')
-        path = 'test_paddle_save_load_varbase_binary_var/varbase'
+        path = os.path.join(self.temp_dir.name,
+                            'test_paddle_save_load_varbase_binary_var/varbase')
         paddle.save(varbase, path, use_binary_format=True)
         load_array = paddle.load(path, return_numpy=True)
         load_tensor = paddle.load(path, return_numpy=False)
@@ -836,6 +877,10 @@ class TestSaveLoad(unittest.TestCase):
         # config seed
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def build_and_train_model(self):
         # create network
@@ -863,8 +908,10 @@ class TestSaveLoad(unittest.TestCase):
         layer, opt = self.build_and_train_model()
 
         # save
-        layer_save_path = "test_paddle_save_load.linear.pdparams"
-        opt_save_path = "test_paddle_save_load.linear.pdopt"
+        layer_save_path = os.path.join(self.temp_dir.name,
+                                       "test_paddle_save_load.linear.pdparams")
+        opt_save_path = os.path.join(self.temp_dir.name,
+                                     "test_paddle_save_load.linear.pdopt")
         layer_state_dict = layer.state_dict()
         opt_state_dict = opt.state_dict()
 
@@ -880,7 +927,9 @@ class TestSaveLoad(unittest.TestCase):
 
         # test save load in static mode
         paddle.enable_static()
-        static_save_path = "static_mode_test/test_paddle_save_load.linear.pdparams"
+        static_save_path = os.path.join(
+            self.temp_dir.name,
+            "static_mode_test/test_paddle_save_load.linear.pdparams")
         paddle.save(layer_state_dict, static_save_path)
         load_static_state_dict = paddle.load(static_save_path)
         self.check_load_state_dict(layer_state_dict, load_static_state_dict)
@@ -891,20 +940,28 @@ class TestSaveLoad(unittest.TestCase):
 
         # 2. test save path format error
         with self.assertRaises(ValueError):
-            paddle.save(layer_state_dict, "test_paddle_save_load.linear.model/")
+            paddle.save(layer_state_dict,
+                        os.path.join(self.temp_dir.name,
+                                     "test_paddle_save_load.linear.model/"))
 
         # 3. test load path not exist error
         with self.assertRaises(ValueError):
-            paddle.load("test_paddle_save_load.linear.params")
+            paddle.load(
+                os.path.join(self.temp_dir.name,
+                             "test_paddle_save_load.linear.params"))
 
         # 4. test load old save path error
         with self.assertRaises(ValueError):
-            paddle.load("test_paddle_save_load.linear")
+            paddle.load(
+                os.path.join(self.temp_dir.name,
+                             "test_paddle_save_load.linear"))
 
 
 class TestSaveLoadProgram(unittest.TestCase):
     def test_save_load_program(self):
         paddle.enable_static()
+        temp_dir = tempfile.TemporaryDirectory()
+
         with new_program_scope():
             layer = LinearNet()
             data = paddle.static.data(
@@ -914,8 +971,12 @@ class TestSaveLoadProgram(unittest.TestCase):
             startup_program = paddle.static.default_startup_program()
             origin_main = main_program.desc.serialize_to_string()
             origin_startup = startup_program.desc.serialize_to_string()
-            path1 = "test_paddle_save_load_program/main_program.pdmodel"
-            path2 = "test_paddle_save_load_program/startup_program.pdmodel"
+            path1 = os.path.join(
+                temp_dir.name,
+                "test_paddle_save_load_program/main_program.pdmodel")
+            path2 = os.path.join(
+                temp_dir.name,
+                "test_paddle_save_load_program/startup_program.pdmodel")
             paddle.save(main_program, path1)
             paddle.save(startup_program, path2)
 
@@ -924,11 +985,13 @@ class TestSaveLoadProgram(unittest.TestCase):
             load_startup = paddle.load(path2).desc.serialize_to_string()
             self.assertTrue(origin_main == load_main)
             self.assertTrue(origin_startup == load_startup)
+        temp_dir.cleanup()
 
 
 class TestSaveLoadLayer(unittest.TestCase):
     def test_save_load_layer(self):
         paddle.disable_static()
+        temp_dir = tempfile.TemporaryDirectory()
         inps = paddle.randn([1, IMAGE_SIZE], dtype='float32')
         layer1 = LinearNet()
         layer2 = LinearNet()
@@ -936,9 +999,11 @@ class TestSaveLoadLayer(unittest.TestCase):
         layer2.eval()
         origin_layer = (layer1, layer2)
         origin = (layer1(inps), layer2(inps))
-        path = "test_save_load_layer_/layer.pdmodel"
+        path = os.path.join(temp_dir.name,
+                            "test_save_load_layer_/layer.pdmodel")
         with self.assertRaises(ValueError):
             paddle.save(origin_layer, path)
+        temp_dir.cleanup()
 
 
 if __name__ == '__main__':
