@@ -63,6 +63,7 @@ class TestCudaGraphAttrAll(unittest.TestCase):
         return loss
 
     def run_with_cuda_graph(self, x_data):
+        # run with cuda graph
         paddle.seed(1024)
 
         main_prog = paddle.static.Program()
@@ -84,9 +85,11 @@ class TestCudaGraphAttrAll(unittest.TestCase):
         exe.run(start_prog)
         for i in range(10):
             rst = exe.run(main_prog, feed={'x': x_data}, fetch_list=[loss])
+
         return rst
 
     def normal_run(self, x_data):
+        # run without cuda graph
         paddle.seed(1024)
 
         main_prog = paddle.static.Program()
