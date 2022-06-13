@@ -1965,6 +1965,12 @@ USE_TRT_CONVERTER(fill_constant_batch_size_like)
 USE_TRT_CONVERTER(transformer_input_convert)
 USE_TRT_CONVERTER(recover_padding)
 USE_TRT_CONVERTER(remove_padding)
+USE_TRT_CONVERTER(top_k)
+USE_TRT_CONVERTER(top_k_v2)
+#if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
+USE_TRT_CONVERTER(sparse_fc)
+USE_TRT_CONVERTER(sparse_multihead_matmul)
+#endif
 #endif
 
 namespace paddle_infer {

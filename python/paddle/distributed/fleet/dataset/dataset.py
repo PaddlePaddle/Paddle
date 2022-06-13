@@ -583,6 +583,12 @@ class InMemoryDataset(DatasetBase):
         pipe_command = kwargs.get("pipe_command", "cat")
         download_cmd = kwargs.get("download_cmd", "cat")
 
+        if self.use_ps_gpu:
+            data_feed_type = "SlotRecordInMemoryDataFeed"
+        else:
+            data_feed_type = "MultiSlotInMemoryDataFeed"
+        self._set_feed_type(data_feed_type)
+
         super(InMemoryDataset, self).init(batch_size=batch_size,
                                           thread_num=thread_num,
                                           use_var=use_var,
@@ -591,10 +597,6 @@ class InMemoryDataset(DatasetBase):
                                           fs_name=fs_name,
                                           fs_ugi=fs_ugi,
                                           download_cmd=download_cmd)
-
-        data_feed_type = kwargs.get("data_feed_type",
-                                    "MultiSlotInMemoryDataFeed")
-        self._set_feed_type(data_feed_type)
 
         if kwargs.get("queue_num", -1) > 0:
             queue_num = kwargs.get("queue_num", -1)
@@ -605,6 +607,8 @@ class InMemoryDataset(DatasetBase):
         Set data_feed_desc
         """
         self.proto_desc.name = data_feed_type
+        if (self.proto_desc.name == "SlotRecordInMemoryDataFeed"):
+            self.dataset = core.Dataset("SlotRecordDataset")
 
     def _prepare_to_run(self):
         """
