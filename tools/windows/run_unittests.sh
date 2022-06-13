@@ -85,6 +85,7 @@ disable_win_inference_api_test="^trt_quant_int8_yolov3_r50_test$|\
 ^lite_resnet50_test$|\
 ^test_trt_dynamic_shape_transformer_prune$|\
 ^lite_mul_model_test$|\
+^trt_split_converter_test$|\
 ^paddle_infer_api_copy_tensor_tester$"
 
 
@@ -350,7 +351,7 @@ if nvcc --version | grep 11.2; then
     export CUDA_VISIBLE_DEVICES=0
     tmpfile=$tmp_dir/$RANDOM
     inference_api_test=^$(ls "paddle/fluid/inference/tests/api" | sed -n 's/\.exe$//pg' | awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' | sed 's/|\^$//g')
-    (ctest -R "$inference_api_test" -E "$disable_win_inference_api_test" --output-on-failure -C Release -j 2 | tee $tmpfile ) &
+    (ctest -R "$inference_api_test" -E "$disable_win_inference_api_test" --output-on-failure -C Release -j 8 | tee $tmpfile ) &
     wait;
     collect_failed_tests
     set -e
