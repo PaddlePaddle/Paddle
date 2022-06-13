@@ -1400,7 +1400,7 @@ class Layer(object):
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix,
             include_non_persistable_buffer=True,
-            use_hook=True)
+            use_hook=use_hook)
 
     def state_dict(self,
                    destination=None,
@@ -1433,7 +1433,7 @@ class Layer(object):
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix,
             include_non_persistable_buffer=False,
-            use_hook=True)
+            use_hook=use_hook)
 
     @framework.deprecate_stat_dict
     def set_state_dict(self, state_dict, use_structured_name=True):
