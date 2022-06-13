@@ -653,11 +653,12 @@ class MLUCnnl {
                     const void* input2, const cnnlTensorDescriptor_t ouput_desc,
                     void* output);
 
-  static void Select(const ExecutionContext& ctx,
-                     const cnnlTensorDescriptor_t then_desc, const void* p_then,
-                     const cnnlTensorDescriptor_t else_desc, const void* p_else,
-                     const cnnlTensorDescriptor_t output_desc, void* output,
-                     const bool* condition, const int condition_size);
+  static void Select(
+      const ExecutionContext& ctx, const cnnlTensorDescriptor_t condition_desc,
+      const void* condition_ptr, const cnnlTensorDescriptor_t then_desc,
+      const void* then_ptr, const cnnlTensorDescriptor_t else_desc,
+      const void* else_ptr, const cnnlTensorDescriptor_t output_desc,
+      void* output_ptr);
 
   static void AssignAdd(const ExecutionContext& ctx, const void* alpha,
                         const void* beta,
