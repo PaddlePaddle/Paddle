@@ -13,6 +13,10 @@
 # limitations under the License.
 
 import os
+
+os.environ['NVIDIA_TF32_OVERRIDE'] = "0"
+os.environ['FLAGS_new_einsum'] = "0"
+
 import numpy as np
 
 import paddle
@@ -26,8 +30,6 @@ from paddle.fluid.framework import default_main_program, _enable_legacy_dygraph
 from paddle.fluid import core
 
 _enable_legacy_dygraph()
-
-os.environ['FLAGS_new_einsum'] = "0"
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
