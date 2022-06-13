@@ -28,6 +28,7 @@ class TestDistTRT(unittest.TestCase):
 
     def init_case(self):
         self.op_type = "c_allreduce_sum"
+        self.target_value = 4.
 
     def test_run(self):
         env = dict(os.environ)
@@ -38,24 +39,29 @@ class TestDistTRT(unittest.TestCase):
         local_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env)
 
         local_out, local_err = local_proc.communicate()
+        out = float(local_out.decode("utf-8").split("\n")[-2])
+        self.assertEqual(out, self.target_value)
 
 
 class TestMin(TestDistTRT):
 
     def init_case(self):
         self.op_type = "c_allreduce_min"
+        self.target_value = 2.
 
 
 class TestMax(TestDistTRT):
 
     def init_case(self):
         self.op_type = "c_allreduce_max"
+        self.target_value = 2.
 
 
 class TestProd(TestDistTRT):
 
     def init_case(self):
         self.op_type = "c_allreduce_prod"
+        self.target_value = 2.
 
 
 if __name__ == '__main__':

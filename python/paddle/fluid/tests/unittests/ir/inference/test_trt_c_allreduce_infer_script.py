@@ -33,13 +33,15 @@ def run(op_type):
     startup_program = paddle.static.Program()
     block = main_program.blocks[0]
     with paddle.static.program_guard(main_program, startup_program):
-        data = paddle.static.data(name='data', shape=[2, 3, 4], dtype='float32')
-        c_data = block.create_var(shape=data.shape,
-                                  dtype=data.dtype,
-                                  type=data.type,
-                                  lod_level=data.lod_level,
-                                  persistable=False,
-                                  is_data=False)
+        data = paddle.static.data(name='data', shape=[3, 4], dtype='float32')
+        c_data = block.create_var(
+            shape=data.shape,
+            dtype=data.dtype,
+            type=data.type,
+            lod_level=data.lod_level,
+            persistable=False,
+            is_data=False,
+            initializer=paddle.nn.initializer.Constant(value=1.0))
         block.append_op(type=op_type,
                         inputs={'X': data},
                         outputs={'Out': c_data},
@@ -48,9 +50,12 @@ def run(op_type):
                             'use_calc_stream': True,
                             'use_model_parallel': True
                         })
-        out = paddle.static.nn.fc(x=c_data, size=1)
+        out = paddle.static.nn.fc(
+            x=c_data,
+            size=1,
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.5)))
         mean = paddle.mean(out)
-    print(main_program)
     exe = paddle.static.Executor(paddle.CPUPlace())
     exe.run(startup_program)
 
@@ -60,7 +65,6 @@ def run(op_type):
 
     dist_config = core.DistConfig()
     dist_config.set_carrier_id("inference")
-    #dist_config.set_comm_init_config("./config.csv")
     dist_config.set_endpoints(trainer_endpoints, current_endpoint)
     dist_config.set_ranks(nranks, fleet.worker_index())
     dist_config.enable_dist_model(True)
@@ -82,22 +86,18 @@ def run(op_type):
                                       use_static=False,
                                       use_calib_mode=False)
 
-        config.set_trt_dynamic_shape_info({"data": [2, 3, 4]},
-                                          {"data": [2, 3, 4]},
-                                          {"data": [2, 3, 4]})
+        config.set_trt_dynamic_shape_info({"data": [3, 4]}, {"data": [3, 4]},
+                                          {"data": [3, 4]})
         predictor = create_predictor(config)
         input_names = predictor.get_input_names()
-        print(input_names)
         input_tensor = predictor.get_input_handle("data")
-        input_tensor.reshape([2, 3, 4])
-        input_tensor.copy_from_cpu(np.ones([2, 3, 4]).astype(np.float32))
+        input_tensor.reshape([3, 4])
+        input_tensor.copy_from_cpu(np.ones([3, 4]).astype(np.float32))
         predictor.run()
-        print("finish")
         output_names = predictor.get_output_names()
         output_handle = predictor.get_output_handle(output_names[0])
         output_data = output_handle.copy_to_cpu()  # numpy.ndarray类型
-        print("Output data size is {}".format(output_data.size))
-        print("Output data is {}".format(output_data))
+        print(output_data[0])
 
 
 if __name__ == "__main__":

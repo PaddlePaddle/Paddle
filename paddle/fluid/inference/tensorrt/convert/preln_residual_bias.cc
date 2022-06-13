@@ -25,15 +25,14 @@ class PrelnResidualBiasOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(4) << "convert fused preln_residual_bias op to tensorrt layer";
+    if (!engine_->with_dynamic_shape()) {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Unsupported static mode. Please set dynamic shape of inputs."));
+    }
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
-
-    auto input1_dims = input1->getDimensions();
-    for (int i = 0; i < input1_dims.nbDims; i++) {
-      std::cout << "input1 dims: " << input1_dims.d[i] << std::endl;
-    }
     std::vector<nvinfer1::ITensor*> inputs;
     inputs.push_back(input1);
     inputs.push_back(input2);
@@ -43,7 +42,6 @@ class PrelnResidualBiasOpConverter : public OpConverter {
       auto* temp_var = scope.FindVar(var_name);
       auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
       (*dims) = temp_tensor->dims();
-
       auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor);
       return temp_data;
     };
@@ -53,10 +51,7 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     auto* ele_bias = get_persistable_data("EleBias", &ele_bias_dims);
 
     int bias_size = phi::product(bias_dims);
-    auto half_ele_bias_data = new half[bias_size];
-    for (int i = 0; i < bias_size; i++) {
-      half_ele_bias_data[i] = static_cast<half>(ele_bias[i]);
-    }
+
     int scale_size = phi::product(scale_dims);
     int ele_bias_size = phi::product(ele_bias_dims);
     float epsilon = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
@@ -65,12 +60,22 @@ class PrelnResidualBiasOpConverter : public OpConverter {
       with_fp16 = true;
     }
 
-    VLOG(3) << "preln_residual_bias with_fp16: " << with_fp16;
     nvinfer1::ILayer* layer = nullptr;
-    plugin::DynamicPluginTensorRT* plugin =
-        new plugin::PrelnResidualBiasPluginDynamic<half>(
-            bias, scale, half_ele_bias_data, bias_size, scale_size,
-            ele_bias_size, epsilon, with_fp16);
+    plugin::DynamicPluginTensorRT* plugin = nullptr;
+    if (with_fp16) {
+      auto half_ele_bias_data = new half[bias_size];
+      for (int i = 0; i < bias_size; i++) {
+        half_ele_bias_data[i] = static_cast<half>(ele_bias[i]);
+      }
+      plugin = new plugin::PrelnResidualBiasPluginDynamic(
+          bias, scale, half_ele_bias_data, bias_size, scale_size, ele_bias_size,
+          epsilon, with_fp16);
+    } else {
+      plugin = new plugin::PrelnResidualBiasPluginDynamic(
+          bias, scale, ele_bias, bias_size, scale_size, ele_bias_size, epsilon,
+          with_fp16);
+    }
+
     std::vector<nvinfer1::ITensor*> plugin_inputs;
     plugin_inputs.emplace_back(input1);
     plugin_inputs.emplace_back(input2);
@@ -78,7 +83,7 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Out_0")[0]);
     output_names.push_back(op_desc.Output("Out_1")[0]);
-    RreplenishLayerAndOutput(layer, "preln_residual_bias", {output_names},
+    RreplenishLayerAndOutput(layer, "preln_residual_bias", output_names,
                              test_mode);
   }
 };

@@ -31,11 +31,9 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 using half = phi::dtype::float16;
-// Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
 
-template <typename T>
-int PrelnResidualBiasPluginDynamic<T>::initialize() TRT_NOEXCEPT {
+#if IS_TRT_VERSION_GE(6000)
+int PrelnResidualBiasPluginDynamic::initialize() TRT_NOEXCEPT {
   cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
   cudaMemcpy(bias_gpu_, bias_.data(), bias_size_ * sizeof(float),
              cudaMemcpyHostToDevice);
@@ -43,15 +41,20 @@ int PrelnResidualBiasPluginDynamic<T>::initialize() TRT_NOEXCEPT {
   cudaMemcpy(scale_gpu_, scale_.data(), scale_size_ * sizeof(float),
              cudaMemcpyHostToDevice);
 
-  cudaMalloc(&ele_bias_gpu_, sizeof(T) * ele_bias_size_);
-  cudaMemcpy(ele_bias_gpu_, ele_bias_.data(), ele_bias_size_ * sizeof(T),
-             cudaMemcpyHostToDevice);
+  if (with_fp16_) {
+    cudaMalloc(&ele_bias_gpu_, sizeof(half) * ele_bias_size_);
+    cudaMemcpy(ele_bias_gpu_, fp16_ele_bias_.data(),
+               ele_bias_size_ * sizeof(half), cudaMemcpyHostToDevice);
+  } else {
+    cudaMalloc(&ele_bias_gpu_, sizeof(float) * ele_bias_size_);
+    cudaMemcpy(ele_bias_gpu_, fp32_ele_bias_.data(),
+               ele_bias_size_ * sizeof(float), cudaMemcpyHostToDevice);
+  }
 
   return 0;
 }
 
-template <typename T>
-void PrelnResidualBiasPluginDynamic<T>::terminate() TRT_NOEXCEPT {
+void PrelnResidualBiasPluginDynamic::terminate() TRT_NOEXCEPT {
   if (bias_gpu_) {
     cudaFree(bias_gpu_);
     bias_gpu_ = nullptr;
@@ -66,15 +69,20 @@ void PrelnResidualBiasPluginDynamic<T>::terminate() TRT_NOEXCEPT {
   }
 }
 
-template <typename T>
-nvinfer1::DimsExprs PrelnResidualBiasPluginDynamic<T>::getOutputDimensions(
+nvinfer1::DimsExprs PrelnResidualBiasPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
-  return inputs[0];
+  if (output_index < 2) {
+    return inputs[0];
+  } else {  // moving mean and var
+    nvinfer1::DimsExprs ret;
+    ret.nbDims = 1;
+    ret.d[0] = inputs[0].d[2];
+    return ret;
+  }
 }
 
-template <typename T>
-bool PrelnResidualBiasPluginDynamic<T>::supportsFormatCombination(
+bool PrelnResidualBiasPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
@@ -94,11 +102,12 @@ bool PrelnResidualBiasPluginDynamic<T>::supportsFormatCombination(
       return (in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
 #else
-      return (in.type == nvinfer1::DataType::kHALF) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
+      PADDLE_THROW(
+          platform::errors::Fatal("TRT plugin supported FP16 is not available "
+                                  "while with_fp16 is set true."));
 #endif
     } else {
-      return (in.type == nvinfer1::DataType::kHALF) &&
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
     }
   }
@@ -112,15 +121,13 @@ bool PrelnResidualBiasPluginDynamic<T>::supportsFormatCombination(
   return in.type == prev.type && in.format == prev.format;
 }
 
-template <typename T>
-nvinfer1::DataType PrelnResidualBiasPluginDynamic<T>::getOutputDataType(
+nvinfer1::DataType PrelnResidualBiasPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
   return input_types[0];
 }
 
-template <typename T>
-int PrelnResidualBiasPluginDynamic<T>::enqueue(
+int PrelnResidualBiasPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
     void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
@@ -134,8 +141,31 @@ int PrelnResidualBiasPluginDynamic<T>::enqueue(
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. PrelnResidualBias-->fp32";
+    const float *input1 = static_cast<const float *>(inputs[0]);
+    const float *input2 = static_cast<const float *>(inputs[1]);
 
-    PADDLE_THROW(platform::errors::Fatal("unsupported float format!!!"));
+    uint64_t seed = 0;
+    const float dropout_prob = 0.;
+    const bool is_upscale_in_train = false;
+    const bool is_test = true;
+    const uint64_t increment = 0;
+    const float epsilon = eps_;
+    const float *src = input2;
+    const float *residual = input1;
+    const float *bias = static_cast<float *>(ele_bias_gpu_);
+    const float *scale = scale_gpu_;
+    const float *layernorm_bias = bias_gpu_;
+    uint8_t *mask_data = nullptr;
+    float *dst = static_cast<float *>(outputs[1]);
+    float *layernorm_dst = static_cast<float *>(outputs[0]);
+    float *mean = nullptr;
+    float *var = nullptr;
+    const int VecSize = 8;
+    paddle::operators::FusedLayernormResidualDropoutBiasFunctor<
+        float, uint8_t, VecSize, float, false>()(
+        rows, cols, seed, dropout_prob, is_upscale_in_train, is_test, increment,
+        epsilon, src, residual, bias, scale, layernorm_bias, mask_data, dst,
+        layernorm_dst, mean, var, stream);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
@@ -151,7 +181,7 @@ int PrelnResidualBiasPluginDynamic<T>::enqueue(
     const float epsilon = eps_;
     const half *src = input2;
     const half *residual = input1;
-    const half *bias = ele_bias_gpu_;
+    const half *bias = static_cast<half *>(ele_bias_gpu_);
     const float *scale = scale_gpu_;
     const float *layernorm_bias = bias_gpu_;
     uint8_t *mask_data = nullptr;
@@ -181,7 +211,6 @@ int PrelnResidualBiasPluginDynamic<T>::enqueue(
   return cudaGetLastError() != cudaSuccess;
 }
 
-template class PrelnResidualBiasPluginDynamic<half>;
 #endif
 
 }  // namespace plugin

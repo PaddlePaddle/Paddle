@@ -125,15 +125,14 @@ int CAllReducePlugin::enqueue(int batchSize, const void* const* inputs,
   cudaStream_t custream = use_calc_stream_ ? stream : custream = comm->stream();
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
       sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
+
+#else
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Please install PaddlePaddle compiled with nccl if c_allreduce_op_plugin "
+      "is used in your model."));
 #endif
   return (cudaGetLastError() != cudaSuccess);
 }
-
-// Dynamic Plugin below.
-// int CAllReducePluginDynamic::initialize() TRT_NOEXCEPT {
-//  getPluginNamespace();
-//  return 0;
-//}
 
 size_t CAllReducePluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   return SerializedSize(ring_id_) + SerializedSize(use_calc_stream_) +
@@ -229,6 +228,7 @@ int CAllReducePluginDynamic::enqueue(
   cudaStream_t custream = use_calc_stream_ ? stream : comm->stream();
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
       sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
+
 #endif
   return (cudaGetLastError() != cudaSuccess);
 }

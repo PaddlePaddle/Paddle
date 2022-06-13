@@ -154,32 +154,20 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if dynamic_shape == True:
-                return 1, 3
-            else:
-                return 0, 4
+            return 1, 4
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-        # for static_shape
-        clear_dynamic_shape()
 
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
-
-        # for dynamic_shape
+        # just support dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True), 1e-2  # atol=1e-2 while rtol is 1e-8
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True), 1e-2  # atol=1e-2 while rtol is 1e-8
 
     def add_skip_trt_case(self):
         pass
