@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import numpy as np
 
 import paddle
@@ -25,6 +26,8 @@ from paddle.fluid.framework import default_main_program, _enable_legacy_dygraph
 from paddle.fluid import core
 
 _enable_legacy_dygraph()
+
+os.environ['FLAGS_new_einsum'] = "0"
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -259,7 +262,6 @@ class TestFusedGateAttentionOp(OpTest):
                 err_msg="Checking < {} > failed!".format(name))
 
     def check_output_and_grad(self, atol, rtol):
-        num_forward_outputs = 4
         output_names = [
             "softmax_out", "fmha_out", "gate_out", "out", "query_grad",
             "key_grad"
@@ -270,7 +272,14 @@ class TestFusedGateAttentionOp(OpTest):
             ref_res = outputs_ref[i]
             fused_res = outputs_fused[i]
             if ref_res is not None and fused_res is not None:
-                check_equal = True if i < num_forward_outputs else False
+                # The python implementation of einsum is likely to call
+                # matmul(x, y, transpose_x=False, transpose_y=True). With different
+                # transpose_x and transpose_y, cublas will launch different kernels
+                # and the result cannot be exactly equal.
+                # Because the arguments of matmul in einsum is the the same as
+                # that in fused ops, check_equal is set to False and we use allclose
+                # to check the correctness.
+                check_equal = False
                 self.check(ref_res.numpy(), fused_res.numpy(), atol, rtol,
                            check_equal, output_names[i])
 
