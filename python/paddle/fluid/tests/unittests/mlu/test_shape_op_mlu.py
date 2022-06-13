@@ -31,7 +31,7 @@ SEED = 2022
 class TestShape(OpTest):
 
     def setUp(self):
-        self.set_npu()
+        self.set_mlu()
         self.op_type = "shape"
         self.place = paddle.MLUPlace(0)
 
@@ -44,7 +44,7 @@ class TestShape(OpTest):
         self.attrs = {}
         self.outputs = {'Out': out}
 
-    def set_npu(self):
+    def set_mlu(self):
         self.__class__.use_mlu = True
 
     def init_dtype(self):

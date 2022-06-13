@@ -37,10 +37,21 @@ class ShapeMLUKernel : public framework::OpKernel<T> {
     }
     auto* out_t = ctx.Output<Tensor>("Out");
     out_t->Resize({in_dims.size()});
-    auto out_data = out_t->mutable_data<int32_t>(platform::CPUPlace());
+    out_t->mutable_data<int32_t>(ctx.GetPlace());
+
+    // shape op cpu
+    Tensor shape_on_cpu(
+        framework::TransToPhiDataType(framework::proto::VarType::INT32));
+    shape_on_cpu.Resize({in_dims.size()});
+    auto cpu_data = shape_on_cpu.mutable_data<int32_t>(platform::CPUPlace());
     for (int i = 0; i < in_dims.size(); ++i) {
-      out_data[i] = in_dims[i];
+      cpu_data[i] = in_dims[i];
     }
+
+    // cpu to mlu
+    auto& dev_ctx = ctx.template device_context<platform::MLUDeviceContext>();
+    framework::TensorCopy(shape_on_cpu, ctx.GetPlace(), dev_ctx, out_t);
+    dev_ctx.Wait();
   }
 };
 }  // namespace operators
