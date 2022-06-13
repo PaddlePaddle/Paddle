@@ -1942,6 +1942,25 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
                                               cast_type, output_desc, output));
 }
 
+/*static*/ void MLUCnnl::Clip(const ExecutionContext& ctx,
+                              const cnnlTensorDescriptor_t x_desc,
+                              const void* x, const void* min, const void* max,
+                              void* y) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlClip(handle, x_desc, x, min, max, y));
+}
+
+/*static*/ void MLUCnnl::HardtanhBackward(
+    const ExecutionContext& ctx, const cnnlTensorDescriptor_t x_desc,
+    const void* x, const cnnlTensorDescriptor_t diff_y_desc, const void* diff_y,
+    const float max_val, const float min_val,
+    const cnnlTensorDescriptor_t diff_x_desc, void* diff_x) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlHardtanhBackward(handle, x_desc, x, diff_y_desc, diff_y, max_val,
+                           min_val, diff_x_desc, diff_x));
+}
+
 /* static */ void MLUCnnl::PoolingBackward(
     const ExecutionContext& ctx, const cnnlPoolingDescriptor_t pooling_desc,
     const void* alpha, const cnnlTensorDescriptor_t y_desc, const void* y,

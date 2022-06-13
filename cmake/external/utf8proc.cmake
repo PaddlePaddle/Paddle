@@ -23,9 +23,9 @@ set(UTF8PROC_TAG v2.6.1)
 if(WIN32)
   set(UTF8PROC_LIBRARIES "${UTF8PROC_INSTALL_DIR}/lib/utf8proc_static.lib")
   add_definitions(-DUTF8PROC_STATIC)
-else(WIN32)
+else()
   set(UTF8PROC_LIBRARIES "${UTF8PROC_INSTALL_DIR}/lib/libutf8proc.a")
-endif(WIN32)
+endif()
 
 include_directories(${UTF8PROC_INSTALL_DIR}/include)
 
