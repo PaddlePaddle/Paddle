@@ -2802,6 +2802,52 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
       cnnlReciprocal(handle, input_desc, input, output_desc, output));
 }
 
+/* static */ void MLUCnnl::BceLoss(
+    const ExecutionContext& ctx, const cnnlBceLossReduction_t reduction,
+    const cnnlTensorDescriptor_t input_desc, const void* input,
+    const cnnlTensorDescriptor_t target_desc, const void* target,
+    const cnnlTensorDescriptor_t weight_desc, const void* weight,
+    const cnnlTensorDescriptor_t output_desc, void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetBceLossWorkspaceSize(
+      handle, input_desc, weight_desc, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlBceLoss(
+      handle, input_desc, input, target_desc, target, weight_desc, weight,
+      reduction, workspace_ptr, workspace_size, output_desc, output));
+}
+
+/* static */ void MLUCnnl::BceLossBackward(
+    const ExecutionContext& ctx, const cnnlBceLossReduction_t reduction,
+    const cnnlTensorDescriptor_t grad_desc, const void* grad,
+    const cnnlTensorDescriptor_t input_desc, const void* input,
+    const cnnlTensorDescriptor_t target_desc, const void* target,
+    const cnnlTensorDescriptor_t weight_desc, const void* weight,
+    const cnnlTensorDescriptor_t output_desc, void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetBceLossBackwardWorkspaceSize(
+      handle, target_desc, weight_desc, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlBceLossBackward(handle, grad_desc, grad, input_desc, input,
+                          target_desc, target, weight_desc, weight, reduction,
+                          workspace_ptr, workspace_size, output_desc, output));
+}
+
 /* static */ void MLUCnnl::EmbeddingForward(
     const ExecutionContext& ctx, const int padding_idx,
     const cnnlTensorDescriptor_t weight_desc, const void* weight,
