@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/params_quantization_mkldnn_pass.h"  // NOLINT
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/framework/ir/mkldnn/params_quantization_mkldnn_pass.h"  // NOLINT
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -31,9 +31,9 @@ struct Data {
       : shape(std::move(data_shape)), data(std::move(raw_data)) {
     auto size_from_shape = std::accumulate(shape.begin(), shape.end(), 1,
                                            std::multiplies<int64_t>());
-    PADDLE_ENFORCE_EQ(
-        size_from_shape, data.size(),
-        platform::errors::InvalidArgument("Shape size doesn't match data size."));
+    PADDLE_ENFORCE_EQ(size_from_shape, data.size(),
+                      platform::errors::InvalidArgument(
+                          "Shape size doesn't match data size."));
   }
 
   const std::vector<int64_t>& getShape() const { return shape; }
