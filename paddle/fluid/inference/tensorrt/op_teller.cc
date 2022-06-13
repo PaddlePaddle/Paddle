@@ -1767,6 +1767,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "unsupport out dtype";
         return false;
       }
+#if IS_TRT_VERSION_LT(7000)
+      if (out_dtype == 0) {
+        VLOG(3) << "BOOL data type is only supported on TRT 7 or higher version.";
+        return false;
+      }
+#endif
     }
 
 #if IS_TRT_VERSION_GE(8000)
