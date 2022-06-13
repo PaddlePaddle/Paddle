@@ -60,11 +60,11 @@ class EarlyReturnTransformer(gast.NodeTransformer):
             # append other nodes to if.orelse even though if.orelse is not empty
             if isinstance(node, gast.If) and self.is_define_return_in_if(node):
                 destination_nodes = node.orelse
-                # handle stmt like `if/elif`
-                if len(node.orelse) > 0 and \
-                    isinstance(node.orelse[0], gast.If) and \
-                        self.is_define_return_in_if(node.orelse[0]):
-                    destination_nodes = node.orelse[0].orelse
+                # handle stmt like `if/elif/elif`
+                while len(destination_nodes) > 0 and \
+                      isinstance(destination_nodes[0], gast.If) and \
+                      self.is_define_return_in_if(destination_nodes[0]):
+                    destination_nodes = destination_nodes[0].orelse
 
         return result_nodes
 
