@@ -134,7 +134,7 @@ class GeneralGrad {
          input_target_nodes_inputmeta_map_) {
       if (!input_target_nodes_passing_by.count(
               target_nodes_inputmeta_pair.first)) {
-        endding_nodes.emplace(target_nodes_inputmeta_pair.first);
+        endding_nodes_.emplace(target_nodes_inputmeta_pair.first);
       }
     }
 
@@ -411,7 +411,7 @@ class GeneralGrad {
 
   bool IsNeededNodes(GradNodeBase* node) { return needed_nodes_.count(node); }
 
-  bool IsEnddingNodes(GradNodeBase* node) { return endding_nodes.count(node); }
+  bool IsEnddingNodes(GradNodeBase* node) { return endding_nodes_.count(node); }
 
   bool IsInputTargetNodes(GradNodeBase* node) {
     auto iter = input_target_nodes_inputmeta_map_.find(node);
@@ -446,7 +446,7 @@ class GeneralGrad {
     copied_node_to_end_node_mapping_.clear();
     needed_nodes_.clear();
     grad_node_trans_mapping_.clear();
-    endding_nodes.clear();
+    endding_nodes_.clear();
   }
 
   GradNodeBase* CopyGradNode(const std::shared_ptr<GradNodeBase>& orig_node) {
@@ -545,7 +545,7 @@ class GeneralGrad {
   // Record which grad_node has been transformed to AccumulationNode
   std::unordered_map<GradNodeBase*, std::shared_ptr<GradNodeBase>>
       grad_node_trans_mapping_;
-  std::unordered_set<GradNodeBase*> endding_nodes;
+  std::unordered_set<GradNodeBase*> endding_nodes_;
 
   DISABLE_COPY_AND_ASSIGN(GeneralGrad);
 };
