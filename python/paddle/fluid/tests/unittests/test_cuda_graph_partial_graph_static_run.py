@@ -47,19 +47,25 @@ class TestCudaGraphAttrAll(unittest.TestCase):
 
     def get_model(self, use_cuda_graph=False):
         x = paddle.static.data(shape=[3, 10], dtype='float32', name='x')
+
         model_start = SimpleModel(10, 20)
         if use_cuda_graph:
             model_start = wrap_cuda_graph(model_start)
+
         model_inter = SimpleModel(20, 20)
+
         model_end = SimpleModel(20, 10)
         if use_cuda_graph:
             model_end = wrap_cuda_graph(model_end, memory_pool='new')
+
         start_out = model_start(x)
         inter_out = model_inter(start_out)
         end_out = model_end(inter_out)
         loss = paddle.mean(end_out)
+
         opt = paddle.optimizer.SGD()
         opt.minimize(loss)
+
         return loss
 
     def run_with_cuda_graph(self, x_data):
@@ -74,6 +80,7 @@ class TestCudaGraphAttrAll(unittest.TestCase):
 
         section_programs = cuda_graph_transform(main_prog)
         assert len(section_programs) == 4
+
         block = main_prog.global_block()
         run_program_op_num = 0
         for op in block.ops:
@@ -83,6 +90,7 @@ class TestCudaGraphAttrAll(unittest.TestCase):
 
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         exe.run(start_prog)
+
         for i in range(10):
             rst = exe.run(main_prog, feed={'x': x_data}, fetch_list=[loss])
 
@@ -100,6 +108,7 @@ class TestCudaGraphAttrAll(unittest.TestCase):
 
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         exe.run(start_prog)
+
         for i in range(10):
             rst = exe.run(main_prog, feed={'x': x_data}, fetch_list=[loss])
 

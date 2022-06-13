@@ -163,6 +163,7 @@ def construct_program_and_find_ins_outs(section, origin_program, section_idx):
     outs = []
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     later_ins = all_inputs_of_later_op(origin_block, section_idx[-1])
+
     for op in section:
         for in_name in op.input_arg_names:
             var = origin_block.var(in_name)
@@ -190,7 +191,9 @@ def construct_program_and_find_ins_outs(section, origin_program, section_idx):
         new_op_desc = block.desc.append_op()
         new_op_desc.copy_from(op.desc)
         new_op_desc._set_attr(op_role_attr_name, op.attr(op_role_attr_name))
+
     program._sync_with_cpp()
+
     return program, [ins, outs]
 
 
@@ -199,11 +202,13 @@ def get_cuda_graph_sections(program):
     get all sections that should run under cuda graph and the corresponding idx
 
     :param program: framework.Program, the original program
-    :return: a list of cuda graph sections and the corresponding ops' idx in the block
+    :return: A list of cuda graph sections and the corresponding ops' idx in the block.
+             The program is under is test or not.
     """
     block = program.global_block()
     cuda_graph_sections = []  # record all ops in every cuda graph sections
     sections_idx = []  # idx of all ops in every cuda graph sections
+    is_test = False  # will be set to True is any op's 'is_test' attr is True
 
     # ops and it's idx between cuda graph wrapped op, may belong to a section
     internal_section = []
@@ -217,6 +222,8 @@ def get_cuda_graph_sections(program):
     for idx, op in enumerate(block.ops):
         assert op.type != 'conditional_block' and op.type != 'while', \
             "Cuda graph not support conditional block op and while op."
+        if op.has_attr('is_test') and op.attr('is_test'):
+            is_test = True
         # find cuda graph sections
         if op._cuda_graph_attr is not None:
             assert isinstance(op._cuda_graph_attr,
@@ -285,11 +292,12 @@ def get_cuda_graph_sections(program):
         cuda_graph_sections.append(current_section)
         sections_idx.append(current_idx)
 
-    return cuda_graph_sections, sections_idx
+    return cuda_graph_sections, sections_idx, is_test
 
 
 def replace_cuda_graph_section(ins_and_outs, section_program, section_idx,
-                               origin_program, cuda_graph_section, order):
+                               origin_program, cuda_graph_section, order,
+                               is_test):
     """
     Use section_program and ins_and_outs to initialize a run_program_op,
     and replace the section_idx marks ops in the origin program.
@@ -300,6 +308,7 @@ def replace_cuda_graph_section(ins_and_outs, section_program, section_idx,
     :param origin_program: framework.Program, the origin program
     :param cuda_graph_section: list, the ops in current sections, used to get the mode, memory pool id and is_test
     :param order: int, the order of current section, used to create unique cuda graph var
+    :param is_test: bool, the program is running under is_test or not
     :return: no return
     """
     ins = ins_and_outs[0]
@@ -313,18 +322,14 @@ def replace_cuda_graph_section(ins_and_outs, section_program, section_idx,
 
     mode = None
     memory_pool_id = None
-    is_test = False
+
     for op in cuda_graph_section:
         # find the cuda graph mode and memory pool id, determine is test or not
         if op._cuda_graph_attr is not None:
             attrs = op._cuda_graph_attr.split(';')
             mode = attrs[0]
             memory_pool_id = int(attrs[1])
-        if op.has_attr('is_test'):
-            is_test = op.attr('is_test')
-            if mode is not None:
-                # early exit the loop after getting all info
-                break
+            break
 
     assert mode is not None and memory_pool_id is not None, \
         "mode and memory pool id should be specified in cuda graph attr"
@@ -391,7 +396,8 @@ def cuda_graph_transform(program):
     # step 1: get all cuda graph sections.
     # A cuda graph section contains all ops marked with same cuda graph id and
     # some ops inserted by some optimizers (amp, sharding for example) between ops with same id.
-    cuda_graph_sections, sections_idx = get_cuda_graph_sections(program)
+    cuda_graph_sections, sections_idx, is_test = get_cuda_graph_sections(
+        program)
     assert len(cuda_graph_sections) == len(sections_idx), \
         "num of cuda graph sections is not equal with num of idx sections"
 
@@ -418,7 +424,8 @@ def cuda_graph_transform(program):
                                    sections_idx[i],
                                    program,
                                    cuda_graph_sections[i],
-                                   order=i)
+                                   order=i,
+                                   is_test=is_test)
 
     # NOTE: user should hold these program, for now just return these program back to caller
     return section_programs
