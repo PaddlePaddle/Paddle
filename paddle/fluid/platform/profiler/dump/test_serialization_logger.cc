@@ -35,6 +35,7 @@ using paddle::platform::ProfilerResult;
 using paddle::platform::RuntimeTraceEvent;
 using paddle::platform::SerializationLogger;
 using paddle::platform::TracerEventType;
+using paddle::platform::TracerMemEventType;
 
 TEST(SerializationLoggerTest, dump_case0) {
   std::list<HostTraceEvent> host_events;
@@ -128,6 +129,8 @@ TEST(SerializationLoggerTest, dump_case0) {
     if ((*it)->Name() == "op1") {
       EXPECT_EQ((*it)->GetChildren().size(), 0u);
       EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
+      EXPECT_EQ((*it)->GetMemTraceEventNodes().size(), 2u);
+      EXPECT_NE((*it)->GetOperatorSupplementEventNode(), nullptr);
     }
   }
   for (auto it = thread2_nodes.begin(); it != thread2_nodes.end(); it++) {
@@ -137,6 +140,7 @@ TEST(SerializationLoggerTest, dump_case0) {
     }
   }
   tree.LogMe(&logger);
+  logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
 }
 
 TEST(SerializationLoggerTest, dump_case1) {
@@ -224,6 +228,7 @@ TEST(SerializationLoggerTest, dump_case1) {
     }
   }
   tree.LogMe(&logger);
+  logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
 }
 
 TEST(DeserializationReaderTest, restore_case0) {
@@ -243,6 +248,8 @@ TEST(DeserializationReaderTest, restore_case0) {
     if ((*it)->Name() == "op1") {
       EXPECT_EQ((*it)->GetChildren().size(), 0u);
       EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
+      EXPECT_EQ((*it)->GetMemTraceEventNodes().size(), 2u);
+      EXPECT_NE((*it)->GetOperatorSupplementEventNode(), nullptr);
     }
   }
   for (auto it = thread2_nodes.begin(); it != thread2_nodes.end(); it++) {
