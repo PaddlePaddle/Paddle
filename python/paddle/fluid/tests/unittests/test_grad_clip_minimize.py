@@ -29,6 +29,7 @@ from paddle.fluid.clip import GradientClipByValue, GradientClipByNorm, GradientC
 
 
 class TestGradClipByGlobalNorm(unittest.TestCase):
+
     def init_value(self):
         self.max_global_norm = 5.0
         self.init_scale = 1.0
@@ -103,6 +104,7 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
 
 
 class TestGradClipByNorm(unittest.TestCase):
+
     def init_value(self):
         self.max_norm = 5.0
         self.init_scale = 1.0
@@ -173,6 +175,7 @@ class TestGradClipByNorm(unittest.TestCase):
 
 
 class TestGradClipByValue(unittest.TestCase):
+
     def init_value(self):
         self.max_value = 0.8
         self.min_value = -0.1
@@ -200,8 +203,8 @@ class TestGradClipByValue(unittest.TestCase):
 
     def get_dygrap_clip_result(self):
         with fluid.dygraph.guard():
-            value_clip = GradientClipByValue(
-                max=self.max_value, min=self.min_value)
+            value_clip = GradientClipByValue(max=self.max_value,
+                                             min=self.min_value)
             p_g_var = []
             for p, g in self.para_and_grad:
                 new_p = to_variable(p)

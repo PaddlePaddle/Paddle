@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 from functools import reduce
@@ -37,6 +38,7 @@ _set_use_system_allocator(False)
 
 
 class TestLayerNormOp(unittest.TestCase):
+
     def setUp(self):
         self.use_cudnn = True
         self.set_npu()
@@ -52,9 +54,9 @@ class TestLayerNormOp(unittest.TestCase):
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(
-            np.allclose(
-                np.array(tensor).astype(np_array.dtype), np_array, atol=atol),
-            msg)
+            np.allclose(np.array(tensor).astype(np_array.dtype),
+                        np_array,
+                        atol=atol), msg)
 
     def check_forward_backward(self,
                                shape,
@@ -63,6 +65,7 @@ class TestLayerNormOp(unittest.TestCase):
                                has_bias=True,
                                y_grad_scale=1.0,
                                use_mkldnn=False):
+
         def test_with_place(place,
                             shape,
                             begin_norm_axis,
@@ -79,8 +82,8 @@ class TestLayerNormOp(unittest.TestCase):
                 np.float32) if has_scale else None
             bias = np.random.random_sample(scale_shape).astype(
                 np.float32) if has_bias else None
-            y_grad = (np.random.random_sample(x_shape) *
-                      y_grad_scale).astype(self.dtype)
+            y_grad = (np.random.random_sample(x_shape) * y_grad_scale).astype(
+                self.dtype)
 
             # reference forward & backward
             y, mean, variance = _reference_layer_norm_naive(
@@ -101,10 +104,9 @@ class TestLayerNormOp(unittest.TestCase):
             with fluid.program_guard(program):
                 block = program.global_block()
                 for name in ground_truth:
-                    block.create_var(
-                        name=name,
-                        dtype=self.dtype,
-                        shape=ground_truth[name].shape)
+                    block.create_var(name=name,
+                                     dtype=self.dtype,
+                                     shape=ground_truth[name].shape)
                 inputs = {"X": block.var('x')}
                 fetch_list = [
                     'y',
@@ -171,25 +173,23 @@ class TestLayerNormOp(unittest.TestCase):
 
     def test_check_forward_backward_with_scale_and_bias(self):
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
-        self.check_forward_backward(
-            shape=[2, 3, 4, 5],
-            begin_norm_axis=1,
-            has_scale=False,
-            has_bias=True)
-        self.check_forward_backward(
-            shape=[2, 3, 4, 5],
-            begin_norm_axis=1,
-            has_scale=True,
-            has_bias=False)
-        self.check_forward_backward(
-            shape=[2, 3, 4, 5],
-            begin_norm_axis=1,
-            has_scale=False,
-            has_bias=False)
+        self.check_forward_backward(shape=[2, 3, 4, 5],
+                                    begin_norm_axis=1,
+                                    has_scale=False,
+                                    has_bias=True)
+        self.check_forward_backward(shape=[2, 3, 4, 5],
+                                    begin_norm_axis=1,
+                                    has_scale=True,
+                                    has_bias=False)
+        self.check_forward_backward(shape=[2, 3, 4, 5],
+                                    begin_norm_axis=1,
+                                    has_scale=False,
+                                    has_bias=False)
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=3)
 
 
 class TestLayerNormOpFP16(TestLayerNormOp):
+
     def init_dtype(self):
         self.dtype = np.float16
         self.atol = 1e-2

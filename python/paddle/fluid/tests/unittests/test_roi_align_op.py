@@ -23,6 +23,7 @@ from op_test import OpTest
 
 
 class TestROIAlignOp(OpTest):
+
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -66,8 +67,8 @@ class TestROIAlignOp(OpTest):
         bilinear_pos = np.zeros(
             [self.channels, self.pooled_height, self.pooled_width, count, 4],
             np.float64)
-        bilinear_w = np.zeros(
-            [self.pooled_height, self.pooled_width, count, 4], np.float64)
+        bilinear_w = np.zeros([self.pooled_height, self.pooled_width, count, 4],
+                              np.float64)
         for ph in range(self.pooled_width):
             for pw in range(self.pooled_height):
                 c = 0
@@ -172,12 +173,14 @@ class TestROIAlignOp(OpTest):
                 rois.append(roi)
         self.rois_num = len(rois)
         self.rois = np.array(rois).astype("float64")
-        self.boxes_num = np.array(
-            [bno + 1 for bno in range(self.batch_size)]).astype('int32')
+        self.boxes_num = np.array([bno + 1 for bno in range(self.batch_size)
+                                   ]).astype('int32')
 
     def setUp(self):
         self.op_type = "roi_align"
-        self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, spatial_scale, sampling_ratio, aligned: paddle.vision.ops.roi_align(x, boxes, boxes_num, (pooled_height, pooled_width), spatial_scale, sampling_ratio, aligned)
+        self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, spatial_scale, sampling_ratio, aligned: paddle.vision.ops.roi_align(
+            x, boxes, boxes_num, (pooled_height, pooled_width), spatial_scale,
+            sampling_ratio, aligned)
         self.set_data()
 
     def test_check_output(self):
@@ -188,6 +191,7 @@ class TestROIAlignOp(OpTest):
 
 
 class TestROIAlignInLodOp(TestROIAlignOp):
+
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -213,6 +217,7 @@ class TestROIAlignInLodOp(TestROIAlignOp):
 
 
 class TestROIAlignOpWithAligned(TestROIAlignOp):
+
     def init_test_case(self):
         self.batch_size = 3
         self.channels = 3

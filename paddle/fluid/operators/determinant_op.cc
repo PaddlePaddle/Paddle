@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/determinant_op.h"
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"

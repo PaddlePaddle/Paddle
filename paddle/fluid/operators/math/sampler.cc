@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/sampler.h"
 
 #include <glog/logging.h>
+
 #include "paddle/fluid/framework/generator.h"
 
 namespace paddle {

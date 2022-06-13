@@ -20,8 +20,8 @@ namespace paddle {
 namespace operators {
 using framework::Tensor;
 using platform::ActivationDescriptor;
-using platform::TensorDescriptor;
 using platform::CUDADeviceContext;
+using platform::TensorDescriptor;
 
 #ifdef PADDLE_WITH_HIP
 #define GPUDNN_ACTIVATION_RELU miopenActivationRELU

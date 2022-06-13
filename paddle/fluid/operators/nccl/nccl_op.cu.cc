@@ -19,9 +19,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using framework::LoDTensor;
 using framework::Tensor;
 using platform::Communicator;
-using framework::LoDTensor;
 
 template <typename Type>
 class NCCLTypeWrapper;

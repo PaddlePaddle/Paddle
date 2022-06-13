@@ -167,9 +167,10 @@ void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
   attrs.insert({"workspace_size_MB", 512});
 
   auto op = framework::OpRegistry::CreateOp(
-      "conv2d_grad", {{"Input", {"Input"}},
-                      {"Filter", {"Filter"}},
-                      {"Output@GRAD", {"Output@GRAD"}}},
+      "conv2d_grad",
+      {{"Input", {"Input"}},
+       {"Filter", {"Filter"}},
+       {"Output@GRAD", {"Output@GRAD"}}},
       {{"Input@GRAD", {"Input@GRAD"}}, {"Filter@GRAD", {"Filter@GRAD"}}},
       attrs);
   op->Run(scope, ctx.GetPlace());

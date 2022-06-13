@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -122,8 +123,9 @@ void BboxOverlaps(const framework::Tensor& r_boxes,
       inter_h = std::max(y_max - y_min + 1, zero);
       inter_area = inter_w * inter_h;
       overlaps_et(i, j) =
-          (inter_area == 0.) ? 0 : inter_area /
-                                       (r_box_area + c_box_area - inter_area);
+          (inter_area == 0.)
+              ? 0
+              : inter_area / (r_box_area + c_box_area - inter_area);
     }
   }
 }

@@ -60,12 +60,12 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
-void CumsumInferMeta(const MetaTensor& x,
-                     int axis,
-                     bool flatten,
-                     bool exclusive,
-                     bool reverse,
-                     MetaTensor* out);
+void CumInferMeta(const MetaTensor& x,
+                  int axis,
+                  bool flatten,
+                  bool exclusive,
+                  bool reverse,
+                  MetaTensor* out);
 
 void DiagInferMeta(const MetaTensor& x,
                    int offset,
@@ -178,6 +178,13 @@ void MultinomialInferMeta(const MetaTensor& x,
                           int num_samples,
                           bool replacement,
                           MetaTensor* out);
+
+void NanmedianInferMeta(const MetaTensor& x,
+                        const IntArray& axes,
+                        bool keep_dim,
+                        MetaTensor* out,
+                        MetaTensor* median_index);
+
 void NormInferMeta(const MetaTensor& x,
                    int axis,
                    float epsilon,
@@ -273,6 +280,17 @@ void RollInferMeta(const MetaTensor& x,
                    const IntArray& shifts,
                    const std::vector<int64_t>& axis,
                    MetaTensor* out);
+
+void RReluInferMeta(const MetaTensor& x,
+                    float lower,
+                    float upper,
+                    bool is_test,
+                    MetaTensor* out,
+                    MetaTensor* noise);
+
+void RReluGradInferMeta(const MetaTensor& out_grad,
+                        const MetaTensor& noise,
+                        MetaTensor* x_grad);
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 

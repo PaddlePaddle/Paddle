@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import sys
+
 sys.path.append("..")
 import unittest
 import numpy as np
@@ -23,14 +24,16 @@ from paddle import enable_static
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from paddle.fluid.tests.unittests.op_test import (
-    OpTest, convert_float_to_uint16, convert_uint16_to_float)
+from paddle.fluid.tests.unittests.op_test import (OpTest,
+                                                  convert_float_to_uint16,
+                                                  convert_uint16_to_float)
 from paddle import _C_ops
 
 paddle.enable_static()
 
 
 class TestSumOp(XPUOpTest):
+
     def setUp(self):
         self.op_type = "sum"
         self.init_kernel_type()
@@ -54,6 +57,7 @@ class TestSumOp(XPUOpTest):
 
 #----------- test fp16 -----------
 class TestFP16SumOp(TestSumOp):
+
     def init_kernel_type(self):
         self.dtype = np.float16
 
@@ -67,12 +71,15 @@ class TestFP16SumOp(TestSumOp):
     def test_check_grad(self):
         place = core.XPUPlace(0)
         # if core.is_float16_supported(place):
-        self.check_grad_with_place(
-            place, ['x0'], 'Out', max_relative_error=0.15)
+        self.check_grad_with_place(place, ['x0'],
+                                   'Out',
+                                   max_relative_error=0.15)
 
 
 def create_test_sum_fp16_class(parent):
+
     class TestSumFp16Case(parent):
+
         def init_kernel_type(self):
             self.dtype = np.float16
 
@@ -88,12 +95,15 @@ def create_test_sum_fp16_class(parent):
 
 
 class API_Test_Add_n(unittest.TestCase):
+
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input0 = fluid.layers.fill_constant(
-                shape=[2, 3], dtype='int64', value=5)
-            input1 = fluid.layers.fill_constant(
-                shape=[2, 3], dtype='int64', value=3)
+            input0 = fluid.layers.fill_constant(shape=[2, 3],
+                                                dtype='int64',
+                                                value=5)
+            input1 = fluid.layers.fill_constant(shape=[2, 3],
+                                                dtype='int64',
+                                                value=3)
             expected_result = np.empty((2, 3))
             expected_result.fill(8)
             sum_value = paddle.add_n([input0, input1])
@@ -112,7 +122,9 @@ class API_Test_Add_n(unittest.TestCase):
 
 
 class TestRaiseSumError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.sum([11, 22])
 
@@ -133,7 +145,9 @@ class TestRaiseSumError(unittest.TestCase):
 
 
 class TestRaiseSumsError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.sums([11, 22])
 
@@ -169,7 +183,9 @@ class TestRaiseSumsError(unittest.TestCase):
 
 
 class TestSumOpError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_empty_list_input():
             with fluid.dygraph.guard():
                 fluid._C_ops.sum([])

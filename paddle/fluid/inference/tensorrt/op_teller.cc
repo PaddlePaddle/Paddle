@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+
 #include <bitset>
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
 
@@ -44,6 +46,12 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("reshape2");
     int8_teller_set.insert("reshape");
     int8_teller_set.insert("reshape2");
+#endif
+#if IS_TRT_VERSION_GE(8000)
+    teller_set.insert("sparse_fc");
+    int8_teller_set.insert("sparse_fc");
+    teller_set.insert("sparse_multihead_matmul");
+    int8_teller_set.insert("sparse_multihead_matmul");
 #endif
   }
 
@@ -96,6 +104,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "stack",
       "transpose2",
       "transpose",
+      "top_k",
+      "top_k_v2",
       "flatten2",
       "flatten",
       "gather",
@@ -125,7 +135,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
       "roll",
-      "preln_skip_layernorm"};
+      "preln_skip_layernorm",
+      "transformer_input_convert",
+      "recover_padding",
+      "remove_padding"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -164,6 +177,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "stack",
       "transpose2",
       "transpose",
+      "top_k",
+      "top_k_v2",
       "flatten2",
       "flatten",
       "gather",
@@ -194,7 +209,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
       "roll",
-      "multiclass_nms3"};
+      "multiclass_nms3",
+      "transformer_input_convert",
+      "recover_padding",
+      "remove_padding"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -1023,15 +1041,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
               return false;
             }
           }
-        } else {
-          for (size_t i = 0; i < axes.size(); i++) {
-            if (starts[i] < 0 || ends[i] < 0) {
-              VLOG(3) << "Invalid slice attribute 'starts' or 'ends'. "
-                         "Negative starts or ends not supported in TensorRT "
-                         "when running in dynamic shape mode.";
-              return false;
-            }
-          }
         }
       }
     }
@@ -1744,6 +1753,44 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
     }
+
+    if (op_type == "top_k_v2" || op_type == "top_k") {
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << "top_k/top_k_v2 does not support 1-dimensional input in "
+                   "tensorrt";
+        return false;
+      }
+      if (desc.HasAttr("axis")) {
+        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+        if (axis == 0) {
+          VLOG(3) << "top_k_v2 does not support axis == 0 in "
+                     "tensorrt";
+          return false;
+        }
+      }
+      if (desc.HasAttr("sorted")) {
+        bool sorted = BOOST_GET_CONST(bool, desc.GetAttr("sorted"));
+        if (!sorted) {
+          VLOG(3) << "top_k_v2 does not support results not sorted in "
+                     "tensorrt";
+          return false;
+        }
+      }
+    }
+
+#if IS_TRT_VERSION_GE(8000)
+    if (op_type == "sparse_fc" || op_type == "sparse_multihead_matmul") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the sparse_fc and sparse_multihead_matmul does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+#endif
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }

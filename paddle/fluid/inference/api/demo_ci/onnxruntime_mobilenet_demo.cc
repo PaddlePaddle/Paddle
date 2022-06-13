@@ -17,7 +17,9 @@ limitations under the License. */
  */
 
 #include <glog/logging.h>  // use glog instead of CHECK to avoid importing other paddle header files.
+
 #include <vector>
+
 #include "gflags/gflags.h"
 #include "utils.h"  // NOLINT
 

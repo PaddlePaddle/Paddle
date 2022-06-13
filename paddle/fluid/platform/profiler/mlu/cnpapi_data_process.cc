@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/mlu/cnpapi_data_process.h"
+
 #include <cstdio>
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
 

@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/bind_threaded_ssa_graph_executor.h"
+
 #include <deque>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"

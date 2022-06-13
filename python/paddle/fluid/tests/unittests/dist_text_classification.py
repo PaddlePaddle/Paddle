@@ -77,28 +77,30 @@ def conv_net(input,
         filter_size=window_size,
         act="tanh",
         pool_type="max",
-        param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)))
+        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+            value=0.01)))
 
     fc_0 = fluid.layers.fc(
         input=[conv_3],
         size=fc0_dim,
-        param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)))
+        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+            value=0.01)))
 
     prediction = fluid.layers.fc(
         input=[fc_0],
         size=class_dim,
         act="softmax",
-        param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)))
+        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+            value=0.01)))
 
     return prediction
 
 
 def inference_network(dict_dim):
-    data = fluid.layers.data(
-        name="words", shape=[1], dtype="int64", lod_level=1)
+    data = fluid.layers.data(name="words",
+                             shape=[1],
+                             dtype="int64",
+                             lod_level=1)
     out = conv_net(data, dict_dim)
     return out
 
@@ -119,14 +121,17 @@ def get_optimizer(learning_rate):
 
 
 class TestDistTextClassification2x2(TestDistRunnerBase):
+
     def get_model(self, batch_size=2):
         vocab = os.path.join(paddle.dataset.common.DATA_HOME,
                              "text_classification", "imdb.vocab")
         word_dict, dict_dim = get_worddict(vocab)
 
         # Input data
-        data = fluid.layers.data(
-            name="words", shape=[1], dtype="int64", lod_level=1)
+        data = fluid.layers.data(name="words",
+                                 shape=[1],
+                                 dtype="int64",
+                                 lod_level=1)
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
         # Train program
@@ -162,9 +167,9 @@ def tokenize(pattern):
         while tf != None:
             if bool(pattern.match(tf.name)):
                 # newline and punctuations removal and ad-hoc tokenization.
-                yield tarf.extractfile(tf).read().rstrip(six.b(
-                    "\n\r")).translate(
-                        None, six.b(string.punctuation)).lower().split()
+                yield tarf.extractfile(tf).read().rstrip(
+                    six.b("\n\r")).translate(None, six.b(
+                        string.punctuation)).lower().split()
             tf = tarf.next()
 
 
@@ -198,9 +203,8 @@ def train(word_idx):
     :return: Training reader creator
     :rtype: callable
     """
-    return reader_creator(
-        re.compile(r"train/pos/.*\.txt$"),
-        re.compile(r"train/neg/.*\.txt$"), word_idx)
+    return reader_creator(re.compile(r"train/pos/.*\.txt$"),
+                          re.compile(r"train/neg/.*\.txt$"), word_idx)
 
 
 def test(word_idx):
@@ -215,9 +219,8 @@ def test(word_idx):
     :return: Test reader creator
     :rtype: callable
     """
-    return reader_creator(
-        re.compile(r"test/pos/.*\.txt$"),
-        re.compile(r"test/neg/.*\.txt$"), word_idx)
+    return reader_creator(re.compile(r"test/pos/.*\.txt$"),
+                          re.compile(r"test/neg/.*\.txt$"), word_idx)
 
 
 if __name__ == "__main__":

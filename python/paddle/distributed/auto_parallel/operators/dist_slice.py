@@ -23,6 +23,7 @@ from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedSlice(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedSlice, self).__init__(op_type)
 
@@ -31,6 +32,7 @@ register_distributed_operator_impl_container(DistributedSlice("slice"))
 
 
 class DistributedSliceImpl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedSliceImpl, self).__init__(name)
         self._forward_implemented = True

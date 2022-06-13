@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
@@ -232,14 +233,14 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
   dim3 grid = dim3((n + block - 1) / block);
   paddle::platform::LimitGridDim(ctx, &grid);
 
-  ScatterNdCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
-      p_update,
-      p_index,
-      p_output,
-      g_output_dims,
-      remain_numel,
-      slice_size,
-      end_size);
+  ScatterNdCUDAKernel<T, IndexT>
+      <<<grid, block, 0, ctx.stream()>>>(p_update,
+                                         p_index,
+                                         p_output,
+                                         g_output_dims,
+                                         remain_numel,
+                                         slice_size,
+                                         end_size);
 }
 
 }  // namespace funcs

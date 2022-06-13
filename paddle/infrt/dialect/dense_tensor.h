@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+
+// clang-format off
 #include <mlir/IR/Dialect.h>
 #include <mlir/IR/OpDefinition.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
@@ -25,3 +27,4 @@
 
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/dense_tensor.hpp.inc"
+// clang-format on

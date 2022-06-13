@@ -51,15 +51,16 @@ PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
             for input_name in api.inputs['names']:
                 if input_name in kernel_params:
                     print("type", api.inputs['input_info'])
-                    args.append(tensor_type_map[api.inputs['input_info'][
-                        input_name]] + ' ' + input_name)
+                    args.append(
+                        tensor_type_map[api.inputs['input_info'][input_name]] +
+                        ' ' + input_name)
             for attr_name in api.attrs['names']:
                 if attr_name in kernel_params:
                     args.append(api.attrs['attr_info'][attr_name][0] + ' ' +
                                 attr_name)
             for i, out_type in enumerate(api.outputs['types']):
-                args.append(tensor_type_map[out_type] + ' ' + api.outputs[
-                    'names'][i])
+                args.append(tensor_type_map[out_type] + ' ' +
+                            api.outputs['names'][i])
 
             invoke_param = api.infer_meta['param']
             invoke_param.extend(api.outputs['names'])
@@ -157,11 +158,10 @@ def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
 def main():
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle C++ API files')
-    parser.add_argument(
-        '--api_yaml_path',
-        help='path to api yaml file',
-        nargs='+',
-        default='python/paddle/utils/code_gen/legacy_api.yaml')
+    parser.add_argument('--api_yaml_path',
+                        help='path to api yaml file',
+                        nargs='+',
+                        default='python/paddle/utils/code_gen/api.yaml')
     parser.add_argument(
         '--wrapped_infermeta_header_path',
         help='output of generated wrapped_infermeta header code file',

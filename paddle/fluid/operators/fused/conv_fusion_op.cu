@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <array>
+
 #include "paddle/fluid/framework/conv_search_cache.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"

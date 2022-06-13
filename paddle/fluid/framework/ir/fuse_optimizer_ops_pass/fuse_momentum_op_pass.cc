@@ -67,8 +67,9 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
           platform::errors::InvalidArgument(
               "All momentum Op's attr(use_nesterov) must be same, but there "
               "are two different value: %d, %d.",
-              use_nesterov, BOOST_GET_CONST(bool, momentum_op->Op()->GetAttr(
-                                                      "use_nesterov"))));
+              use_nesterov,
+              BOOST_GET_CONST(bool,
+                              momentum_op->Op()->GetAttr("use_nesterov"))));
       PADDLE_ENFORCE_EQ(
           op_role,
           BOOST_GET_CONST(int, momentum_op->Op()->GetAttr(

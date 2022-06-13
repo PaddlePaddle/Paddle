@@ -22,6 +22,7 @@
 
 #ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
+
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 
@@ -159,8 +160,9 @@ paddle::platform::DeviceContext *NCCLParallelContext::GetDeviceContext(
 }
 
 void NCCLParallelContext::WaitCompute(int ring_id) {
-  PADDLE_ENFORCE_GE(ring_id, 0, platform::errors::OutOfRange(
-                                    "ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_GE(
+      ring_id, 0,
+      platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
   PADDLE_ENFORCE_LT(ring_id, compute_events_.size(),
                     platform::errors::OutOfRange(
                         "ring id must < compute events size,"
@@ -185,8 +187,9 @@ void NCCLParallelContext::WaitCompute(int ring_id) {
 }
 
 void NCCLParallelContext::WaitComm(int ring_id) {
-  PADDLE_ENFORCE_GE(ring_id, 0, platform::errors::OutOfRange(
-                                    "ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_GE(
+      ring_id, 0,
+      platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
   PADDLE_ENFORCE_LT(ring_id, comm_events_.size(),
                     platform::errors::OutOfRange(
                         "ring id must < comm events size,"
