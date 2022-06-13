@@ -684,6 +684,7 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
+set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
                 FLAGS_inner_op_parallelism=4)
 if(WITH_GPU
@@ -977,11 +978,11 @@ if(WITH_DISTRIBUTE)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
-# Coverage pipeline use cuda 10.1 now, profiler will random hang in cuda 10.1,
+# profiler will random hang in linux cuda 10.1 or 10.2
 # see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
-# We guess there are some bugs in cuda 10.1 or 10.2,
-# since this unittest is stable in cuda 11 (py3 pipeline) now.
-if(NOT WITH_COVERAGE)
+# We guess there are some bugs in linux cuda 10.1 or 10.2,
+# since this unittest is stable in cuda 11.2 and 10.2 (windows-ci pipeline) now.
+if(NOT (LINUX AND CUDA_VERSION LESS 11.0))
   py_test_modules(test_parallel_executor_profiler MODULES
                   test_parallel_executor_profiler)
   set_tests_properties(test_parallel_executor_profiler
@@ -1507,7 +1508,7 @@ if(WITH_DISTRIBUTE
                                                                      350)
   set_tests_properties(test_parallel_dygraph_no_sync PROPERTIES TIMEOUT 300)
   set_tests_properties(test_parallel_dygraph_no_sync_gradient_check
-                       PROPERTIES TIMEOUT 30)
+                       PROPERTIES TIMEOUT 60)
   set_tests_properties(test_parallel_dygraph_pipeline_parallel
                        PROPERTIES TIMEOUT 500)
   set_tests_properties(test_parallel_dygraph_tensor_parallel PROPERTIES TIMEOUT

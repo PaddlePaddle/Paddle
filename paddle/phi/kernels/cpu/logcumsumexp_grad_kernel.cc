@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+#include "paddle/phi/kernels/logcumsumexp_grad_kernel.h"
 
-// reduce_max
-REGISTER_OP_CUDA_KERNEL(
-    reduce_amax,
-    ops::ReduceCudaKernel<float, kps::MaxFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<double, kps::MaxFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<int, kps::MaxFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<int64_t, kps::MaxFunctor, kps::IdentityFunctor>);
+#include <limits>
+
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/logcumsumexp_grad_impl.h"
+
+PD_REGISTER_KERNEL(logcumsumexp_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::LogcumsumexpGradKernel,
+                   float,
+                   double) {}

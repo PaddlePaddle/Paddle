@@ -148,7 +148,7 @@ class Parallelizer:
                                                     config)
             auto_parallel_recompute_pass.apply([main_program],
                                                [startup_program],
-                                               self._dist_context)
+                                               self._pass_context)
 
     def _apply_post_optimization(self, main_program, startup_program, rank,
                                  params_grads):
@@ -162,7 +162,7 @@ class Parallelizer:
             auto_parallel_sharding_pass = new_pass("auto_parallel_sharding",
                                                    config)
             auto_parallel_sharding_pass.apply([main_program], [startup_program],
-                                              self._dist_context)
+                                              self._pass_context)
 
         if self._strategy.gradient_merge:
             config = copy.deepcopy(self._strategy.gradient_merge_configs)
@@ -172,4 +172,4 @@ class Parallelizer:
                 "auto_parallel_gradient_merge_pass", config)
             auto_parallel_gradient_merge_pass.apply([main_program],
                                                     [startup_program],
-                                                    self._dist_context)
+                                                    self._pass_context)

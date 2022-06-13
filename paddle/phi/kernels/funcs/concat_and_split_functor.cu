@@ -547,6 +547,7 @@ class SplitFunctor<phi::GPUContext, T> {
           static_cast<int>(outputs_cols_num),
           dev_out_gpu_data);
     }
+
 #ifdef PADDLE_WITH_HIP
     // Prevent the pinned memory value from being covered and release the memory
     // after the launch kernel of the stream is executed (reapply pinned memory
