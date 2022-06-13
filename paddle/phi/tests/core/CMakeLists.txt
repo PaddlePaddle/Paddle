@@ -58,7 +58,7 @@ if(WITH_TESTING AND TEST selected_rows_test)
 endif()
 if(NOT WIN32)
   cc_test(test_rw_lock SRCS test_rw_lock.cc)
-endif(NOT WIN32)
+endif()
 cc_test(
   test_string_tensor
   SRCS test_string_tensor.cc

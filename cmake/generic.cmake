@@ -305,8 +305,8 @@ endfunction()
 function(check_coverage_opt TARGET_NAME SRCS)
   if(WITH_COVERAGE AND WITH_INCREMENTAL_COVERAGE)
     # if pybind.cc add '-g -O0 -fprofile-arcs -ftest-coverage' only, some testcase will fail.
-    if((NOT ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" MATCHES "pybind.cc"))
-       AND "$ENV{PADDLE_GIT_DIFF_H_FILE}" STREQUAL "")
+    if("$ENV{PADDLE_GIT_DIFF_H_FILE}" STREQUAL ""
+       AND (NOT ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" MATCHES "pybind.cc")))
       if(NOT ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" STREQUAL ""))
         string(REPLACE "," ";" CC_FILE_LIST $ENV{PADDLE_GIT_DIFF_CC_FILE})
         set(use_coverage_opt FALSE)
@@ -779,8 +779,12 @@ function(hip_test TARGET_NAME)
                                               FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cudnn_deterministic=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=\
-         ${CMAKE_BINARY_DIR}/python/paddle/libs:$LD_LIBRARY_PATH")
+    set_property(
+      TEST ${TARGET_NAME}
+      PROPERTY
+        ENVIRONMENT
+        "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/python/paddle/libs:$LD_LIBRARY_PATH"
+    )
   endif()
 endfunction()
 
