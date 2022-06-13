@@ -74,10 +74,14 @@ static void StridedSliceOutDims(const std::vector<int64_t>& starts,
 
     if (start_index < 0) {
       start_index = start_index + axis_size;
+      start_index = std::max<int64_t>(start_index, 0);
     }
     if (end_index < 0) {
       if (!(end_index == -1 && stride_index < 0)) {  // skip None stop condition
         end_index = end_index + axis_size;
+        if (end_index < 0) {
+          end_index = 0;
+        }
       }
     }
 

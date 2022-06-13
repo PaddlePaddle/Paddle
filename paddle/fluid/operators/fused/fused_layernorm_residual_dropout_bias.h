@@ -541,7 +541,7 @@ void LaunchLayernormResidualDropoutGrad(
   if (!is_upscale_in_train) {
     factor = static_cast<T>(1.0f);
   }
-  ln_bwd_1024_kernel_driver<
+  ln_bwd_fast_kernel_driver<
       T, U, LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, MaskType>(
       dev_ctx, rows, cols, epsilon, layernorm_src, scale, mean, var, d_out,
       d_residual, d_scale, d_layernorm_bias, mask_data, factor, d_dropout_src);

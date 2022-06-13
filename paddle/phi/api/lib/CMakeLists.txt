@@ -335,11 +335,12 @@ cc_library(
 cc_library(
   api_gen_utils
   SRCS api_gen_utils.cc
-  DEPS phi_tensor_raw selected_rows sparse_csr_tensor sparse_coo_tensor)
+  DEPS phi_tensor_raw selected_rows sparse_csr_tensor sparse_coo_tensor
+       infermeta_utils)
 cc_library(
   phi_data_transform
   SRCS data_transform.cc
-  DEPS phi_tensor_raw transfer_layout_kernel cast_kernel copy_kernel tensor)
+  DEPS phi_tensor_raw phi tensor)
 cc_library(
   api_custom_impl
   SRCS api_custom_impl.cc
@@ -404,7 +405,7 @@ cc_library(
 cc_library(
   tensor_copy
   SRCS tensor_copy.cc
-  DEPS phi_tensor_raw copy_kernel kernel_dispatch api_gen_utils)
+  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils)
 cc_library(
   api_scalar
   SRCS scalar.cc
