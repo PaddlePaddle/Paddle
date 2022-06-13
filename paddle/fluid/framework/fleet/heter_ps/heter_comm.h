@@ -65,6 +65,7 @@ class HeterComm {
                 size_t feature_value_size, size_t chunk_size, int stream_num);
   void dump();
   void show_one_table(int gpu_num);
+  void show_table_collisions();
   int get_index_by_devid(int devid);
 
 #if defined(PADDLE_WITH_CUDA)

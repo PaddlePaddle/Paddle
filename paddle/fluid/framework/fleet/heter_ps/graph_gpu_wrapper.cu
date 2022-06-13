@@ -185,6 +185,10 @@ void GraphGpuWrapper::init_service() {
   graph_table = (char *)g;
 }
 
+void GraphGpuWrapper::finalize() {
+  ((GpuPsGraphTable *)graph_table)->show_table_collisions();
+}
+
 void GraphGpuWrapper::upload_batch(int idx,
                                    std::vector<std::vector<uint64_t>> &ids) {
   debug_gpu_memory_info("upload_batch node start");

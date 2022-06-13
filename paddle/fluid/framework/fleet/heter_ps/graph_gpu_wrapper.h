@@ -31,6 +31,7 @@ class GraphGpuWrapper {
   }
   static std::shared_ptr<GraphGpuWrapper> s_instance_;
   void initialize();
+  void finalize();
   void set_device(std::vector<int> ids);
   void init_service();
   void set_up_types(std::vector<std::string>& edge_type,

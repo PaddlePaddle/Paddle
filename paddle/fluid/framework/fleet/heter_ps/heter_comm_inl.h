@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
+DECLARE_double(gpugraph_hbm_table_load_factor);
+
 namespace paddle {
 namespace framework {
 template <typename KeyType, typename ValType, typename GradType>
@@ -30,6 +32,8 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
   resource_ = resource;
   storage_.resize(resource_->total_device());
   multi_mf_dim_ = resource->multi_mf();
+  load_factor_ = FLAGS_gpugraph_hbm_table_load_factor;
+  VLOG(0) << "load_factor = " << load_factor_;
   for (int i = 0; i < resource_->total_device(); ++i) {
 #if defined(PADDLE_WITH_CUDA)
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
@@ -376,6 +380,22 @@ template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::show_one_table(int gpu_num) {
   if (!multi_mf_dim_) {
     tables_[gpu_num]->show();
+  }
+}
+
+template <typename KeyType, typename ValType, typename GradType>
+void HeterComm<KeyType, ValType, GradType>::show_table_collisions() {
+  size_t idx = 0;
+  for (auto& table : tables_) {
+    if (table != nullptr) {
+      table->show_collision(idx++);
+    }
+  }
+  idx = 0;
+  for (auto& table : ptr_tables_) {
+    if (table != nullptr) {
+      table->show_collision(idx++);
+    }
   }
 }
 

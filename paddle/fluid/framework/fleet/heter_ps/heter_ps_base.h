@@ -47,6 +47,7 @@ class HeterPsBase {
 #endif
   virtual void end_pass() = 0;
   virtual void show_one_table(int gpu_num) = 0;
+  virtual void show_table_collisions() = 0;
   virtual void push_sparse(int num, FeatureKey* d_keys,
                            FeaturePushValue* d_grads, size_t len) = 0;
 

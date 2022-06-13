@@ -811,7 +811,13 @@ DEFINE_bool(enable_slotpool_wait_release, false,
 DEFINE_bool(enable_slotrecord_reset_shrink, false,
             "enable slotrecord obejct reset shrink memory, default false");
 DEFINE_bool(enable_ins_parser_file, false,
-            "enable parser ins file , default false");
+            "enable parser ins file, default false");
+PADDLE_DEFINE_EXPORTED_bool(
+    gpugraph_enable_hbm_table_collision_stat, false,
+    "enable hash collisions stat for hbm table, default false");
+PADDLE_DEFINE_EXPORTED_double(
+    gpugraph_hbm_table_load_factor, 0.75,
+    "the load factor of hbm table, default 0.75");
 
 /**
  * ProcessGroupNCCL related FLAG

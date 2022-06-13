@@ -367,7 +367,8 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("get_partition", &GraphGpuWrapper::get_partition)
       .def("load_node_weight", &GraphGpuWrapper::load_node_weight)
       .def("export_partition_files", &GraphGpuWrapper::export_partition_files)
-      .def("load_node_file", &GraphGpuWrapper::load_node_file);
+      .def("load_node_file", &GraphGpuWrapper::load_node_file)
+      .def("finalize", &GraphGpuWrapper::finalize);
 }
 #endif
 
