@@ -951,6 +951,32 @@ class ActivationMKLDNNHandler
   }
 };
 
+static const dnnl::algorithm AcquireActivationAlgorithm(
+    std::string activation_name) {
+  std::unordered_map<std::string, dnnl::algorithm> activation_map = {
+      {"abs", dnnl::algorithm::eltwise_abs},
+      {"clip", dnnl::algorithm::eltwise_clip},
+      {"gelu", dnnl::algorithm::eltwise_gelu_erf},
+      {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
+      {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+      {"hard_swish", dnnl::algorithm::eltwise_hardswish},
+      {"leaky_relu", dnnl::algorithm::eltwise_relu},
+      {"mish", dnnl::algorithm::eltwise_mish},
+      {"relu", dnnl::algorithm::eltwise_relu},
+      {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+      {"sigmoid", dnnl::algorithm::eltwise_logistic},
+      {"sqrt", dnnl::algorithm::eltwise_sqrt},
+      {"swish", dnnl::algorithm::eltwise_swish},
+      {"tanh", dnnl::algorithm::eltwise_tanh}};
+
+  const auto& activation_type = activation_map.find(activation_name);
+
+  PADDLE_ENFORCE_NE(activation_type, activation_map.end(),
+                    platform::errors::Unavailable(
+                        "Activation \"%s\" not found in oneDNN algorithms mapper", activation_name));
+  return activation_type->second;
+}
+
 class ReorderMKLDNNHandler {
  public:
   ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT

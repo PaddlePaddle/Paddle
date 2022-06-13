@@ -97,6 +97,8 @@ void ConvActivationMkldnnFusePass::FuseConvAct(
       act_type = BOOST_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
                      ? "gelu_tanh"
                      : "gelu_erf";
+      conv_op->SetAttr("fuse_alpha", 0.0f);
+      conv_op->SetAttr("fuse_beta", 0.0f);
     }
     conv_op->SetAttr("fuse_activation", act_type);
     conv_op->SetOutput("Output", {activation_out->Name()});
