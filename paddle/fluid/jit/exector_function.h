@@ -24,21 +24,17 @@ class ExectorFunction : public BaseFunction {
   ExectorFunction(const framework::ProgramDesc &program_desc,
                   const std::vector<std::string> param_names_for_program,
                   const VariableNameMap &params_dict)
-      : BaseFunction(program_desc, param_names_for_program, params_dict) {}
+      : BaseFunction(program_desc, param_names_for_program, params_dict),
+        inner_exe_(phi::CPUPlace()) {}
 
   ~ExectorFunction() {}
 
   std::vector<Variable> operator()(const VariableNameMap &inputs) {
-    if (inner_exe_ == nullptr) {
-      // TODO(dev): support other devices
-      inner_exe_ = new framework::Executor(phi::CPUPlace());
-    }
-
     // share input into scope
     ShareIntoScope(inputs);
     // run program
-    inner_exe_->Run(program_desc_, &scope_, /*blockID=*/0, false, true,
-                    schema_.GetOutputArgNames());
+    inner_exe_.Run(program_desc_, &scope_, /*blockID=*/0, false, true,
+                   schema_.GetOutputArgNames());
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
     // fetch outputs
     std::vector<Variable> res;
@@ -47,7 +43,8 @@ class ExectorFunction : public BaseFunction {
   }
 
  private:
-  framework::Executor *inner_exe_ = nullptr;
+  // TODO(dev): support other devices exe
+  framework::Executor inner_exe_;
 };
 
 }  // namespace jit
