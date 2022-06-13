@@ -41,6 +41,7 @@ void Main() {
   auto predictor = paddle_infer::CreatePredictor(config);
 
   // Inference.
+  LOG(INFO) << "--- prepare input data ----";
   std::vector<int> input_shape = {1, 3, 224, 224};
   std::vector<float> input_data;
   std::string line;
@@ -49,9 +50,13 @@ void Main() {
   file.close();
   std::vector<std::string> data_strs;
   split(line, ' ', &data_strs);
+  int input_num = 0;
   for (auto& d : data_strs) {
+    input_num += 1;
     input_data.push_back(std::stof(d));
   }
+  std::cout << "input_num:" << input_num << std::endl;
+  LOG(INFO) << "input_num:" << input_num;
 
   std::vector<float> out_data;
   out_data.resize(1000);
@@ -60,18 +65,22 @@ void Main() {
   auto input_tensor = predictor->GetInputHandle(input_names[0]);
   input_tensor->Reshape(input_shape);
   auto output_tensor = predictor->GetOutputHandle(output_names[0]);
+  LOG(INFO) << "----get input and output tensor-----";
 
   input_tensor->CopyFromCpu(input_data.data());
+  LOG(INFO) << "----start run-----";
   predictor->Run();
   output_tensor->CopyToCpu(out_data.data());
 
+  LOG(INFO) << "----get output result-----:" << out_data.size();
   std::vector<int> out_index(out_data.size());
   std::iota(out_index.begin(), out_index.end(), 0);
   std::sort(out_index.begin(), out_index.end(),
             [&out_data](int index1, int index2) {
               return out_data[index1] > out_data[index2];
             });
-  VLOG(3) << "output.size " << out_data.size();
+  LOG(INFO) << "output.size " << out_data.size()
+            << "  max_index:" << out_index[0];
   CHECK_EQ(out_data.size(), 1000);
   int max_index = out_index[0];
   CHECK_EQ(max_index, 13);
