@@ -188,7 +188,7 @@ def _run_py_logical_not(x):
     return not x
 
 
-def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
+def convert_ifelse(pred, true_fn, false_fn, true_args, false_args):
     """
     A function representation of a Python ``if/else`` statement.
 
@@ -198,15 +198,13 @@ def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
         false_fn(callable): A callable to be performed if ``pred`` is false.
         true_args(tuple): Parameters of ``true_fn``.
         false_args(tuple): Parameters of ``false_fn``.
-        return_vars(tuple): Return variables of ``true_fn`` and ``false_fn``.
 
     Returns:
         ``true_fn(true_args)`` if the predicate ``pred`` is true else ``false_fn(false_args)`` .
 
     """
     if isinstance(pred, Variable):
-        out = _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
-                               return_vars)
+        out = _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args)
     else:
         out = _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args)
 
@@ -246,8 +244,7 @@ def _remove_no_value_return_var(out):
         return out
 
 
-def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
-                     return_vars):
+def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args):
     pred = cast_bool_if_necessary(pred)
     return control_flow.cond(pred, lambda: true_fn(*true_args),
                              lambda: false_fn(*false_args))
