@@ -25,10 +25,10 @@ using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   std::vector<std::string> act_types = {
-      "relu", "mish",  "swish",   "hard_swish", "hard_sigmoid",
-      "gelu", "relu6", "sigmoid", "leaky_relu"};
+      "relu", "mish",  "swish", "sqrt", "hard_swish",   "sigmoid",   "abs",
+      "gelu", "relu6", "clip",  "tanh", "hard_sigmoid", "leaky_relu"};
 
-  std::vector<std::string> conv_types = {"conv2d"};
+  std::vector<std::string> conv_types = {"conv2d", "conv2d_transpose"};
 
   for (const auto& conv_type : conv_types)
     for (auto& act_type : act_types) {
@@ -41,6 +41,9 @@ void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
       else if (act_type == "hard_sigmoid") {
         attrs_map.emplace("slope", "fuse_alpha");
         attrs_map.emplace("offset", "fuse_beta");
+      } else if (act_type == "clip") {
+        attr_map.emplace("min", "activation_alpha");
+        attr_map.emplace("max", "activation_beta");
       } else {
         attrs_map.emplace("alpha", "fuse_alpha");
         attrs_map.emplace("beta", "fuse_beta");
@@ -136,8 +139,6 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
       .AddAttr("paddings")
       .IsType<std::vector<int>>()
       .End()
-      // IsStringIn({"EXPLICIT", "SAME", "VALID"}), MobileNetV2 has no this
-      // attribute
       .AddAttr("padding_algorithm")
       .IsOptional()
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
@@ -148,10 +149,51 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
       .AddAttr("dilations")
       .IsType<std::vector<int>>()
       .End()
-      // IsStringIn({"NHWC", "NCHW"}) MobileNetV2 has no this attribute
       .AddAttr("data_format")
       .IsOptional()
       .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("conv2d_transpose"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("output_padding")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("output_size")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("groups")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("relu"))
@@ -262,12 +304,17 @@ REGISTER_PASS_CAPABILITY(conv_activation_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
+            .LE("conv2d_transpose", 2)
+            .EQ("abs", 0)
+            .LE("clip", 1)
             .EQ("gelu", 0)
             .EQ("hard_sigmoid", 0)
             .LE("hard_swish", 0)
             .LE("leaky_relu", 1)
-            .EQ("mish", 1)
+            .LE("mish", 1)
             .EQ("relu", 0)
             .EQ("relu6", 0)
             .EQ("sigmoid", 0)
-            .EQ("swish", 0));
+            .EQ("sqrt", 0)
+            .EQ("swish", 0)
+            .EQ("tanh", 0));
