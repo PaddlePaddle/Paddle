@@ -23,21 +23,22 @@ using paddle::PaddleTensor;
 void profile(bool use_mkldnn = false, bool use_bfloat16 = false);
 std::vector<std::vector<paddle::PaddleTensor>> LoadInputData();
 void CompareNativeAndAnalysisWrapper(bool use_mkldnn = false);
-std::vector<paddle::PaddleTensor> ParseInputStreamToVector(const std::string &line);
+std::vector<paddle::PaddleTensor> ParseInputStreamToVector(
+    const std::string &line);
 
 AnalysisConfig SetConfig(bool use_mkldnn = false, bool use_bfloat16 = false);
 
 template <typename T>
-paddle::PaddleTensor ParseTensor(const std::string& field);
+paddle::PaddleTensor ParseTensor(const std::string &field);
 
 template <typename T>
-std::vector<T> Split(const std::string& line, char separator);
+std::vector<T> Split(const std::string &line, char separator);
 
 template <typename T>
-T GetValueFromStream(std::stringstream& ss);
+T GetValueFromStream(std::stringstream &ss);
 
 template <>
-std::string GetValueFromStream<std::string>(std::stringstream& ss);
+std::string GetValueFromStream<std::string>(std::stringstream &ss);
 
 TEST(Analyzer_bert, profile) { profile(); }
 
@@ -162,7 +163,8 @@ void CompareNativeAndAnalysisWrapper(bool use_mkldnn) {
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), inputs);
 }
 
-std::vector<paddle::PaddleTensor> ParseInputStreamToVector(const std::string &line) {
+std::vector<paddle::PaddleTensor> ParseInputStreamToVector(
+    const std::string &line) {
   const auto fields = Split<std::string>(line, ';');
 
   if (fields.size() < 5) throw "invalid input line";
@@ -198,14 +200,13 @@ AnalysisConfig SetConfig(bool use_mkldnn, bool use_bfloat16) {
     config.pass_builder()->AppendPass("fc_elementwise_add_mkldnn_fuse_pass");
   }
 
-  if(use_bfloat16)
-    config.EnableMkldnnBfloat16();
+  if (use_bfloat16) config.EnableMkldnnBfloat16();
 
   return config;
 }
 
 template <typename T>
-paddle::PaddleTensor ParseTensor(const std::string& field) {
+paddle::PaddleTensor ParseTensor(const std::string &field) {
   const auto data = Split<std::string>(field, ':');
   if (data.size() < 2) throw "invalid data field";
 
@@ -220,14 +221,14 @@ paddle::PaddleTensor ParseTensor(const std::string& field) {
 
   std::string mat_str = data[1];
   const auto mat = Split<T>(mat_str, ' ');
-  std::copy(mat.cbegin(), mat.cend(), static_cast<T*>(tensor.data.data()));
+  std::copy(mat.cbegin(), mat.cend(), static_cast<T *>(tensor.data.data()));
   tensor.dtype = GetPaddleDType<T>();
 
   return tensor;
 }
 
 template <typename T>
-std::vector<T> Split(const std::string& line, char separator) {
+std::vector<T> Split(const std::string &line, char separator) {
   std::vector<T> result;
   std::stringstream ss;
   for (auto c : line) {
@@ -241,21 +242,20 @@ std::vector<T> Split(const std::string& line, char separator) {
   }
 
   auto ss_is_not_empty = !ss.str().empty();
-  if (ss_is_not_empty)
-    result.emplace_back(GetValueFromStream<T>(ss));
+  if (ss_is_not_empty) result.emplace_back(GetValueFromStream<T>(ss));
 
   return result;
 }
 
 template <typename T>
-T GetValueFromStream(std::stringstream& ss) {
+T GetValueFromStream(std::stringstream &ss) {
   T result;
   ss >> result;
   return result;
 }
 
 template <>
-std::string GetValueFromStream<std::string>(std::stringstream& ss) {
+std::string GetValueFromStream<std::string>(std::stringstream &ss) {
   return ss.str();
 }
 
