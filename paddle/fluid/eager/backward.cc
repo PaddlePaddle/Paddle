@@ -446,6 +446,7 @@ class GeneralGrad {
     copied_node_to_end_node_mapping_.clear();
     needed_nodes_.clear();
     grad_node_trans_mapping_.clear();
+    endding_nodes.clear();
   }
 
   GradNodeBase* CopyGradNode(const std::shared_ptr<GradNodeBase>& orig_node) {
