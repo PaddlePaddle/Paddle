@@ -45,24 +45,6 @@ void QuantizeParams(LoDTensor* param_tensor, const std::vector<float>& scales) {
   std::copy_n(tmp_data.data(), param_tensor->numel(), int_param_data);
 }
 
-ir::Node* FindOpInput(ir::Node* op, const std::string& input_name) {
-  auto op_input_it =
-      std::find_if(op->inputs.begin(), op->inputs.end(),
-                   [&](ir::Node* node) { return node->Name() == input_name; });
-
-  PADDLE_ENFORCE_NE(
-      op_input_it, op->inputs.end(),
-      platform::errors::InvalidArgument("Not found input %s of operator %s.",
-                                        input_name, op->Op()->Type()));
-  return (*op_input_it);
-}
-
-void ConnectInput(ir::Node* conv_op, const std::string& input_name,
-                  ir::Node* int_node) {
-  conv_op->Op()->SetInput(input_name, {int_node->Name()});
-  IR_NODE_LINK_TO(int_node, conv_op);
-}
-
 bool HasBias(ir::Node* conv_op) {
   auto input_names = conv_op->Op()->InputNames();
   return std::find(input_names.begin(), input_names.end(), "Bias") !=
@@ -95,7 +77,6 @@ void QuantizeConvInput(Scope* scope, ir::Graph* g, ir::Node* conv_op,
       conv_op->Op()->GetAttrIfExists<std::vector<float>>(scales_attr_name);
 
   auto* tensor = scope->GetVar(input_name)->GetMutable<LoDTensor>();
-
   QuantizeParams<T>(tensor, scales);
 
   conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
