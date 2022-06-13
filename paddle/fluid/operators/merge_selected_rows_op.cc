@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/merge_selected_rows_op.h"
+
 #include <unordered_map>
 
 namespace paddle {

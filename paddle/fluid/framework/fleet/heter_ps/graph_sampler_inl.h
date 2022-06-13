@@ -156,6 +156,6 @@ void AllInGpuGraphSampler::init(GpuPsGraphTable *g,
   this->gpu_num = g->gpu_num;
   graph_table = g->cpu_graph_table.get();
 }
-}
-};
+}  // namespace framework
+};  // namespace paddle
 #endif

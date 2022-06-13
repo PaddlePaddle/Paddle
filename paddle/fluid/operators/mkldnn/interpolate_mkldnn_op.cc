@@ -19,12 +19,12 @@
 namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
 using dnnl::memory;
 using dnnl::primitive;
 using dnnl::reorder;
-using dnnl::stream;
 using dnnl::resampling_forward;
+using dnnl::stream;
+using framework::DataLayout;
 using platform::GetMKLDNNFormat;
 using platform::to_void_cast;
 
@@ -114,9 +114,10 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GT(std::all_of(out_dims.begin(), out_dims.end(),
                                   [](int i) { return i > 0; }),
-                      0, platform::errors::InvalidArgument(
-                             "out_d, out_h, out_w of Op(interpolate) "
-                             "should be greater than 0."));
+                      0,
+                      platform::errors::InvalidArgument(
+                          "out_d, out_h, out_w of Op(interpolate) "
+                          "should be greater than 0."));
 
     const std::vector<int64_t> nc_dims = {in_dims[0], in_dims[1]};
     out_dims.insert(out_dims.begin(), nc_dims.begin(), nc_dims.end());

@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/detection/box_coder_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"

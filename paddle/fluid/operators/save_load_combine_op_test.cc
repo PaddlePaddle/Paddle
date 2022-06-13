@@ -15,6 +15,7 @@ limitations under the License. */
 #include <iostream>
 #include <string>
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/bfloat16.h"

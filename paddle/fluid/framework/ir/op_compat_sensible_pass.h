@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <map>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
