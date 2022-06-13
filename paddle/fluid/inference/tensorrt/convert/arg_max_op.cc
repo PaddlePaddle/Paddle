@@ -40,7 +40,9 @@ class ArgMaxOpConverter : public OpConverter {
     int axis = op_desc.HasAttr("axis")
                    ? BOOST_GET_CONST(int64_t, op_desc.GetAttr("axis"))
                    : -1;
-    if (axis > 0) axis -= 1;
+    if (rank == 3 && axis > 0) {
+        axis -= 1;
+    }
     if (axis < 0) axis += rank;
     auto* topk_layer = TRT_ENGINE_ADD_LAYER(
         engine_, TopK, *input, nvinfer1::TopKOperation::kMAX, 1, 1 << axis);
