@@ -1401,7 +1401,10 @@ class Executor(object):
             # print("compiled is : {}".format(compiled))
             # NOTE(zhiqiu): do not support compiled program now
             if compiled:
-                return True
+                if program._program is not None:
+                    return True
+                else:
+                    return False
                 # if program._is_data_parallel and len(
                 #         program._get_places(place, program._places)) == 1:
                 #     return True
