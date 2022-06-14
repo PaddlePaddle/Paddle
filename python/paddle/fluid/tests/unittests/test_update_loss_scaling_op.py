@@ -24,7 +24,7 @@ class TestUpdateLossScalingOp(OpTest):
     def setUp(self):
         self.op_type = "update_loss_scaling"
         self.init()
-        found_inf = np.array([False], dtype=np.bool)
+        found_inf = np.array([False], dtype=np.bool_)
         x = np.random.random((1024, 1024)).astype(self.dtype)
 
         self.inputs = {
@@ -66,7 +66,7 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
     def setUp(self):
         self.op_type = "update_loss_scaling"
         self.init()
-        found_inf = np.array([True], dtype=np.bool)
+        found_inf = np.array([True], dtype=np.bool_)
         x = np.random.random((1024, 1024)).astype(self.dtype)
         i = np.random.randint(0, 1024, 1)
         j = np.random.randint(0, 1024, 1)
