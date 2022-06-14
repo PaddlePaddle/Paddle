@@ -588,7 +588,7 @@ class SparseTable(Table):
         self.common.table_name = self.context['grad_name_to_param_name'][
             ctx.origin_varnames()[0]]
 
-        # print('new table_name: {}'.format(self.common.table_name))
+        print('new table_name: {}'.format(self.common.table_name))
         all_table_proto = self.context[
             "user_defined_strategy"].sparse_table_configs
         usr_table_proto = all_table_proto.add()
@@ -1098,9 +1098,9 @@ class TheOnePSRuntime(RuntimeBase):
         if self.is_heter_ps_mode:
             trainers += len(self.role_maker._get_heter_worker_endpoints())
 
-        # debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        # if debug:
-        #     print("server: \n{}".format(server_desc))
+        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
+        if debug:
+            print("server: \n{}".format(server_desc))
 
         self._server = fluid.core.DistFleetWrapper()
         self._server.init_server(server_desc, self.string_hosts, role_id,
