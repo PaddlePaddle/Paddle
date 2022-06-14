@@ -34,6 +34,10 @@ class ComparisonsOpConverter : public OpConverter {
   ComparisonsOpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
+#if IS_TRT_VERSION_LT(7000)
+    PADDLE_THROW(platform::errors::Fatal(
+      "ElementWise Compare Operation is only supported on TRT 7 or higher version."));
+#endif
     auto op_pair = ops.find(op_type_);
     PADDLE_ENFORCE_NE(op_pair, ops.end(),
                       platform::errors::InvalidArgument(
@@ -85,7 +89,6 @@ class ComparisonsOpConverter : public OpConverter {
     
     layer = TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *X, *Y, op_pair->second);
     RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
-
   }
 
  protected:

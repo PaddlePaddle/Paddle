@@ -1800,7 +1800,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "equal" || op_type == "greater" || op_type == "less") {
 #if !IS_TRT_VERSION_GE(7000)
-      VLOG(3) << "Boolean shape tensors is not supported when TensorRT < 7.0";
+      VLOG(3) << "compare is not supported when TensorRT < 7.0";
       return false;
 #endif
       int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
@@ -1815,7 +1815,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
     }
-
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
