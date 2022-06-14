@@ -685,6 +685,7 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;^
 %PATH%
 
+REM TODO: make ut find .dll in install\onnxruntime\lib
 xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y
 
 if "%WITH_GPU%"=="ON" (

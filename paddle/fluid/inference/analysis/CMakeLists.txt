@@ -87,7 +87,7 @@ function(inference_analysis_test TARGET)
     inference_base_test_run(${TARGET} COMMAND ${TARGET} ARGS
                             ${analysis_test_ARGS})
   endif()
-endfunction(inference_analysis_test)
+endfunction()
 
 if(NOT APPLE AND NOT WIN32)
   inference_analysis_test(

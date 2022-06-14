@@ -39,9 +39,11 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       local_exec_scopes_(local_exec_scopes),
       places_(places),
       graph_(graph),
-      fetch_ctxs_(places),
       // add one more thread for generate op_deps
       prepare_pool_(1) {
+  platform::EmplaceDeviceContexts(
+      &fetch_ctxs_, places,
+      /*disable_setting_default_stream_for_allocator=*/true);
   if (ir::IsTopologySortOperationsUnique(*graph_)) {
     VLOG(10)
         << "Change thread number to 1 because the toposort order is unique";
@@ -144,7 +146,7 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     ClearFetchOp(graph_, &fetch_ops);
 
     for (auto &place : places_) {
-      fetch_ctxs_.Get(place)->Wait();
+      fetch_ctxs_[place].get().get()->Wait();
     }
   }
 
@@ -195,7 +197,7 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {
-      op->SetDeviceContext(p, fetch_ctxs_.Get(p));
+      op->SetDeviceContext(p, fetch_ctxs_[p].get().get());
     }
 
     for (auto *var : vars) {
