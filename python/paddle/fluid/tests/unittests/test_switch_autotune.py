@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
+import os
+import json
 import numpy as np
+import unittest
 import tempfile
 import warnings
-import json
-import os
+
+import paddle
 
 
 class SimpleNet(paddle.nn.Layer):
