@@ -666,7 +666,7 @@ class MLUCnnl {
                    const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void Log(const ExecutionContext& ctx,
-                  cnnlComputationPreference_t prefer,
+                  cnnlComputationPreference_t prefer, cnnlLogBase_t log_base,
                   const cnnlTensorDescriptor_t input_desc, const void* input,
                   const cnnlTensorDescriptor_t output_desc, void* output);
 
