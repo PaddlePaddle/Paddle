@@ -38,7 +38,8 @@ inline std::vector<int> get_new_shape(
                           "The shape of dimension tensor should be [1],"
                           "but received d%.",
                           tensor->dims()));
-    if (platform::is_gpu_place(tensor->place())) {
+    if (platform::is_gpu_place(tensor->place()) ||
+        platform::is_mlu_place(tensor->place())) {
       framework::Tensor temp;
       paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
       vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
@@ -55,7 +56,8 @@ inline std::vector<T> get_new_data_from_tensor(const Tensor* new_data_tensor) {
   std::vector<T> vec_new_data;
   auto* new_data = new_data_tensor->data<T>();
   framework::Tensor cpu_starts_tensor;
-  if (platform::is_gpu_place(new_data_tensor->place())) {
+  if (platform::is_gpu_place(new_data_tensor->place()) ||
+      platform::is_mlu_place(new_data_tensor->place())) {
     paddle::framework::TensorCopySync(*new_data_tensor, platform::CPUPlace(),
                                       &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();

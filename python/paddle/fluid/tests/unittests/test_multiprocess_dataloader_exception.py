@@ -181,10 +181,11 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                 for i in range(10):
                     indices_queue.put([i, i + 10])
                 indices_queue.put(None)
+                base_seed = 1234
                 _worker_loop(loader._dataset, 0, indices_queue,
                              loader._data_queue, loader._workers_done_event,
                              True, _collate_fn, True, _init_fn, 0, 1,
-                             loader._use_shared_memory)
+                             loader._use_shared_memory, base_seed)
                 self.assertTrue(False)
         except AssertionError:
             pass
@@ -223,10 +224,11 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     indices_queue.put([i, i + 10])
                 indices_queue.put(None)
                 loader._workers_done_event.set()
+                base_seed = 1234
                 _worker_loop(loader._dataset, 0, indices_queue,
                              loader._data_queue, loader._workers_done_event,
                              True, _collate_fn, True, _init_fn, 0, 1,
-                             loader._use_shared_memory)
+                             loader._use_shared_memory, base_seed)
                 self.assertTrue(True)
         except AssertionError:
             pass
