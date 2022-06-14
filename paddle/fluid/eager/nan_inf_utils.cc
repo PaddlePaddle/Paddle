@@ -114,6 +114,7 @@ void CheckTensorHasNanOrInf(const std::string& api_name,
                             const TupleOfTensorAndVector& tensors) {
   CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
   CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<2>(tensors));
 }
 
 }  // namespace egr
