@@ -100,6 +100,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_map_matmul_v2_to_matmul_pass",             //
       "trt_map_matmul_to_mul_pass",                   //
       "fc_fuse_pass",                                 //
+      "batched_gemm_fuse_pass",                          //
       "conv_elementwise_add_fuse_pass",               //
       "tensorrt_subgraph_pass",                       //
       "conv_bn_fuse_pass",                            //
@@ -147,6 +148,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "gpu_cpu_map_matmul_v2_to_matmul_pass",   //
         "gpu_cpu_map_matmul_to_mul_pass",         //
         "fc_fuse_pass",                           //
+        //"fc_concat_fuse_pass",                    //
         "fc_elementwise_layernorm_fuse_pass",     //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7

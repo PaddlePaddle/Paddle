@@ -35,6 +35,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 // #if IS_TRT_VERSION_GE(7130)
 //     teller_set.insert("group_norm");
 // #endif
+teller_set.insert("batchedgemm");
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");

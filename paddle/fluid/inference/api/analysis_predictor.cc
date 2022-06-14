@@ -1753,9 +1753,10 @@ USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);
 USE_TRT_CONVERTER(mish);
 USE_TRT_CONVERTER(deformable_conv);
-USE_TRT_CONVERTER(pool3d)
-USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
-USE_TRT_CONVERTER(preln_skip_layernorm)
+USE_TRT_CONVERTER(pool3d);
+USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm);
+USE_TRT_CONVERTER(preln_skip_layernorm);
+USE_TRT_CONVERTER(batchedgemm);
 #endif
 
 namespace paddle_infer {
@@ -1770,7 +1771,7 @@ Predictor::Predictor(const Config &config) {
                       "and it falls back to use Paddle Inference.";
     } else if (!paddle::CheckConvertToONNX(config)) {
       LOG(WARNING)
-          << "Paddle2ONNX do't support convert the Modelï¼Œ fall back to using "
+          << "Paddle2ONNX do't support convert the Modelï¼? fall back to using "
              "Paddle Inference.";
     } else {
       predictor_ = paddle::CreatePaddlePredictor<
