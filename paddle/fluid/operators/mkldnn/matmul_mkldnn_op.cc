@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mkldnn/matmul_mkldnn_op.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 #include <tuple>
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 using dnnl::memory;
 using dnnl::primitive;
@@ -434,10 +434,10 @@ class MatMulMKLDNNHandler
     }
 
     if (ctx.HasAttr("activation_type")) {
-      const auto activation_type = ctx.Attr<std::string>("activation_type"); 
+      const auto activation_type = ctx.Attr<std::string>("activation_type");
       const float activation_scale = ctx.HasAttr("activation_scale")
-                              ? ctx.Attr<float>("activation_scale")
-                              : 1.0f;
+                                         ? ctx.Attr<float>("activation_scale")
+                                         : 1.0f;
       const float alpha = ctx.HasAttr("activation_alpha")
                               ? ctx.Attr<float>("activation_alpha")
                               : 0.0f;
@@ -446,9 +446,8 @@ class MatMulMKLDNNHandler
                              : 0.0f;
 
       if (activation_type == "hard_sigmoid") {
-        post_operations.append_eltwise(activation_scale,
-                                       dnnl::algorithm::eltwise_linear,
-                                       alpha, beta);
+        post_operations.append_eltwise(
+            activation_scale, dnnl::algorithm::eltwise_linear, alpha, beta);
         post_operations.append_eltwise(
             activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
       } else if (activation_type != "") {
