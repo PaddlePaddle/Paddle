@@ -2814,6 +2814,20 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
       nullptr /*max_norm*/, nullptr /*norm_type*/, output_desc, output));
 }
 
+/* static */ void MLUCnnl::Transform(const ExecutionContext& ctx,
+                                     const void* alpha, const void* beta,
+                                     const cnnlTensorDescriptor_t input_desc,
+                                     const void* input,
+                                     const cnnlTensorDescriptor_t output_desc,
+                                     void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  const cnnlPointerMode_t pointer_mode = CNNL_POINTER_MODE_HOST;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlTransform_v2(handle, pointer_mode, alpha,
+                                              input_desc, input, beta,
+                                              output_desc, output));
+}
+
 /* static */ void MLUCnnl::EmbeddingBackward(
     const ExecutionContext& ctx, int padding_idx, bool scale_grad_by_freq,
     const cnnlTensorDescriptor_t indices_desc, const void* indices,
