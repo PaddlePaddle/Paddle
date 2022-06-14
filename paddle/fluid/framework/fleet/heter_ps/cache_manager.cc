@@ -27,7 +27,6 @@ CacheManager::CacheManager(): thread_num_(-1), batch_sz_(-1), worker_num_(1) {
 #endif
 }
 
-
 void CacheManager::init(int thread_num, int batch_sz, int worker_num) {
   thread_num_ = thread_num;
   batch_sz_ = batch_sz;
@@ -78,58 +77,61 @@ uint64_t CacheManager::query_sign2fid(const FeatureKey & key) {
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
 
-void CacheManager::build_batch_fid_seq(std::deque<Record> & recs) {
-  int size = recs.size();
-  // init prebuild n_batch_bfidseq vector
-  int n_batch_sz = batch_sz_ * worker_num_;
-  int groups = size % n_batch_sz == 0 ? (size / n_batch_sz) : (size / n_batch_sz) + 1;
+void CacheManager::build_batch_fid_seq(std::vector<std::deque<Record> *> & all_chan_recs) {
+  CHECK(all_chan_recs.size() > 0);
+  size_t expected_chan_size = all_chan_recs[0]->size();
+  for (auto & chan_recs : all_chan_recs) {
+    CHECK(chan_recs->size() == expected_chan_size) 
+        << "expected:" << expected_chan_size
+        << ", now:" << chan_recs->size();  
+  }
+  
+  int size = expected_chan_size;
+  int batch_sz = batch_sz_;
+  int groups = size % batch_sz == 0 ? (size / batch_sz) : (size / batch_sz) + 1;
   std::vector<std::shared_ptr<std::vector<uint64_t>>> n_batch_bfidseq(groups, nullptr);
-  VLOG(0) << "build_batch_fid_seq: in size:" << size << "groups: " << groups;
-  // fill n_batch_bfidseq vector by multi-thread
+  VLOG(0) << "build_batch_fid_seq: in size:" << size 
+          << ", batch_size: " << batch_sz
+          << ", groups: " << groups
+          << ", channels:" << all_chan_recs.size();
+  
   std::vector<std::thread> threads(thread_num_);
-  for (int i = 0; i < thread_num_; ++i) {
-    threads[i] = std::thread([this, i, size, &recs, n_batch_sz, &n_batch_bfidseq]() {
-      VLOG(0) << "build_batch_fid_seq: in thread-" << i; 
+  for (int i = 0; i < thread_num_; ++i) { 
+    threads[i] = std::thread([&, i, this]() {
+      VLOG(0) << "build_batch_fid_seq: in thread-" << i;
       int my_group = 0;
-      for (int batch_first = i * n_batch_sz; batch_first < size; batch_first += thread_num_ * n_batch_sz) {
-        int current_batch_sz = std::min(n_batch_sz, size - batch_first);
+      for (int batch_first = i * batch_sz; batch_first < size; batch_first += thread_num_ * batch_sz) { 
+        int current_batch_sz = std::min(batch_sz, size - batch_first);
+
+        // process batch data for every chan_recs
         std::shared_ptr<std::vector<uint64_t>> current_bfid_seq = std::make_shared<std::vector<uint64_t>>();
         std::set<uint64_t> current_bfid_set;
-        auto it = recs.begin() + batch_first;
-        for (int j = 0; j < current_batch_sz; ++j) {
+        for (auto & recs : all_chan_recs) {
+          auto it = recs->begin() + batch_first;
+          for (int j = 0; j < current_batch_sz; ++j) {
             const Record & cur_rec = *(it + j);
             for (auto & fea : cur_rec.uint64_feasigns_) {
               current_bfid_set.insert(fea.sign().uint64_feasign_); // feasign already converted to fid
             }
-        }
+          }
+        } // process finished
         current_bfid_seq->assign(current_bfid_set.begin(), current_bfid_set.end());
-        // fid_seq_channel_->Put(current_bfid_seq);
-        //for (auto it = current_bfid_set.begin(); it != current_bfid_set.end(); it++) {
-        //    VLOG(0) << "bfid_set item:" << *it;
-        //}
         n_batch_bfidseq[my_group * thread_num_ + i] = current_bfid_seq;
         ++my_group;
-        // VLOG(0) << "build_batch_fid_seq:" 
-        //         << recs.size() << "|"
-        //         << fid_seq_channel_->Size() << "|"
-        //         << batch_first << "|" 
-        //         << current_batch_sz << "|" 
-        //         << current_bfid_seq->size();
-        }
+      }
     });
   }
+
   for (auto & thd : threads) {
     thd.join();
   }
   // check for debug
   for (auto group_bfid_ptr : n_batch_bfidseq) {
-    if (group_bfid_ptr == nullptr) {
-      VLOG(0) << "err: bfid_ptr is nullptr"; 
-    } else {
-      VLOG(0) << "group size: " << group_bfid_ptr->size();
-    }
+    CHECK(group_bfid_ptr != nullptr) << "err: bfid_ptr is nullptr";
+    VLOG(0) << "group size: " << group_bfid_ptr->size();
   }
   // write n_batch_bfidseq to channel
+  fid_seq_channel_ = paddle::framework::MakeChannel<std::shared_ptr<std::vector<uint64_t>>>();
   fid_seq_channel_->Write(groups, &n_batch_bfidseq[0]);
   fid_seq_channel_->Close();
 }
@@ -151,7 +153,7 @@ void CacheManager::prepare_current_batch_fid_seq() {
 }
 
 std::shared_ptr<std::vector<uint64_t>>  CacheManager::get_current_batch_fid_seq() {
-  CHECK(current_batch_fid_seq_ != nullptr);
+  CHECK(current_batch_fid_seq_ != nullptr) << "current_batch_fid_seq_ is nullptr";
   return current_batch_fid_seq_; 
 }
 

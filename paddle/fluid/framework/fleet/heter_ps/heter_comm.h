@@ -238,7 +238,6 @@ class HeterComm {
 #endif
 
 #if defined(PADDLE_WITH_XPU_KP)
-  //TODO(dingjie02): define CacheManager object
   std::shared_ptr<CacheManager> cache_mgr_ = nullptr;
 #endif
 

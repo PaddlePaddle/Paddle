@@ -115,8 +115,11 @@ class HashTable {
 
   void show();
 
+#if defined(PADDLE_WITH_XPU_KP)  
   void set_xpu_id(uint32_t xpu_id) { container_->set_xpu_id(xpu_id); }
   void set_xpu_num(uint32_t xpu_num) { container_->set_xpu_num(xpu_num); }
+#endif
+
   void set_sparse_sgd(const OptimizerConfig& optimizer_config);
   void set_embedx_sgd(const OptimizerConfig& optimizer_config);
 

@@ -39,6 +39,13 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
         8, 1, (unsigned int)-1, (size_t)-1, false, false));  // NOLINT
 #endif
     auto table = new Table(capacity / load_factor_);
+#if defined(PADDLE_WITH_XPU_KP)
+    int dev_id = resource_->dev_id(i);
+    int dev_idx = get_index_by_devid(dev_id);
+    table->set_xpu_id(dev_idx);
+    table->set_xpu_num(resource_->total_device());
+    VLOG(0) << "init heter xpu table(id|idx|dev_num):" << dev_id << "|" << dev_idx << "|" << resource_->total_device();
+#endif
     tables_.push_back(table);
     if (multi_node_) {
       storage_[i].init(feanum_, resource_->dev_id(i));

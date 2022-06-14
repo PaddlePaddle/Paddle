@@ -62,6 +62,7 @@ namespace framework {
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
 class Dataset;
+class Record;
 
 #ifdef PADDLE_WITH_PSLIB
 class AfsWrapper {
@@ -100,6 +101,10 @@ class PSGPUWrapper {
       hbm_thread_pool_[i].reset(new ::ThreadPool(1));
     }
   }
+
+#if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU_CACHE_BFID)
+  void build_batch_fid_seq(std::vector<std::deque<Record> *> & all_chan_recs);
+#endif
 
   void PullSparse(const paddle::platform::Place& place, const int table_id,
                   const std::vector<const uint64_t*>& keys,

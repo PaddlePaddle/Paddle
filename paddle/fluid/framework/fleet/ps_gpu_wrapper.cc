@@ -784,6 +784,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   // dangerous, the return value of GetData is unmutable in general
   //std::deque<SlotRecord>& vec_data = const_cast<std::deque<SlotRecord>&>(input_channel->GetData());
   std::deque<Record>& vec_data = const_cast<std::deque<Record>&>(input_channel->GetData());
+  VLOG(0) << "BuildGPUTask: input_channel size:" << vec_data.size();
   for (auto it = vec_data.begin(); it != vec_data.end(); it++) {
     //auto& feasign = ((*it)->slot_uint64_feasigns_).slot_values;
     //for (unsigned int j = 0; j < feasign.size(); j++) {
@@ -794,10 +795,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       feasigns[j].sign().uint64_feasign_ = cache_manager->query_sign2fid(feasigns[j].sign().uint64_feasign_);
     }
   }
-#if defined(PADDLE_WITH_XPU_CACHE_BFID)
-  VLOG(0) << "BuildGPUTask: build_batch_fid_seq";  
-  cache_manager->build_batch_fid_seq(vec_data);
-#endif
   VLOG(0) << "BuildGPUTask: query sign2fid for device keys";
   // convert feasign to fid in device_keys_
   for (int i = 0; i < device_num; i++) {
@@ -810,13 +807,9 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 #endif //PADDLE_WITH_XPU_KP
   auto build_func = [this, &gpu_task, &feature_keys_count](int i) {
     VLOG(3) << "building table: " << i;
-#ifndef PADDLE_WITH_XPU_AVOID_CORE
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], 500000, 2);
-#else
-    VLOG(0) << "BuildGPUTask build table (hacked): " << i << ", keys:" << feature_keys_count[i];
-#endif
     // if (feature_keys_count[i] > 0) {
     //   HeterPs_->show_one_table(i);
     // }
@@ -943,17 +936,20 @@ void PSGPUWrapper::EndPass() {
   VLOG(0) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
 }
 
+#if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU_CACHE_BFID)
+void PSGPUWrapper::build_batch_fid_seq(std::vector<std::deque<Record> *> & all_chan_recs) {
+  VLOG(0) << "PSGPUWrapper::build_batch_fid_seq called"; 
+  auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
+  cache_manager->build_batch_fid_seq(all_chan_recs); 
+}
+#endif
+
 void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                               const int table_id,
                               const std::vector<const uint64_t*>& keys,
                               const std::vector<float*>& values,
                               const std::vector<int64_t>& slot_lengths,
                               const int hidden_size) {
-#ifdef PADDLE_WITH_XPU_AVOID_CORE
-   VLOG(0) << "PSGPUWrapper::PullSparse hacked";
-   return;
-#endif
-
   platform::Timer all_timer;
   platform::Timer pull_gpups_timer;
   all_timer.Start();
@@ -1067,10 +1063,6 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
                                   const std::vector<const float*>& grad_values,
                                   const std::vector<int64_t>& slot_lengths,
                                   const int hidden_size, const int batch_size) {
-#ifdef PADDLE_WITH_XPU_AVOID_CORE
-   VLOG(0) << "PSGPUWrapper::PushSparse hacked";
-   return;
-#endif
   platform::Timer all_timer;
   platform::Timer push_gpups_timer;
   all_timer.Start();

@@ -325,6 +325,34 @@ void PSGPUTrainer::InitOtherEnv(const ProgramDesc& main_program) {
 }
 
 void PSGPUTrainer::Run() {
+#ifdef PADDLE_WITH_XPU_KP
+  auto dataset = dynamic_cast<DatasetImpl<Record> *>(dataset_ptr_);
+  CHECK(dataset != nullptr) << "dataset_ptr must be derived from DatasetImpl<Record>";
+  auto readers = dataset->GetReaders();
+  auto & ds_chans = dataset->GetCurOutputChannel();
+
+  VLOG(0) << "PSGPUTrainer Run: readers|dataset_channels|workers:" << readers.size()
+          << "|" << ds_chans.size() 
+          << "|" << places_.size();
+  CHECK(readers.size() == ds_chans.size())
+          << "readers_num should equal channel_num:"
+          << readers.size() << "!=" << ds_chans.size();
+#ifdef PADDLE_WITH_XPU_CACHE_BFID
+  // move reader->Start from worker to Trainer
+  for (auto & reader : readers) {
+      reader->Start(); 
+  }
+  auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+  std::vector<std::deque<Record> *> all_chan_data(ds_chans.size(), nullptr);
+  for (size_t i = 0; i < ds_chans.size(); i++) {
+    std::deque<Record>& vec_data = const_cast<std::deque<Record>&>(ds_chans[i]->GetData());
+    all_chan_data[i] = &vec_data;
+    VLOG(0) << "PSGPUTrainer Run: dataset multi_chan:" << i << ", size:" << vec_data.size();
+  }
+  ps_gpu_wrapper->build_batch_fid_seq(all_chan_data);
+#endif
+#endif
+
   for (size_t thidx = 0; thidx < places_.size(); ++thidx) {
     if (!debug_) {
       threads_.push_back(

@@ -130,7 +130,9 @@ void PSGPUWorker::TrainFiles() {
   int total_ins_num = 0;
 
   // how to accumulate fetched values here
+#if !defined(PADDLE_WITH_XPU_CACHE_BFID)
   device_reader_->Start();
+#endif
   int cur_batch;
   int batch_cnt = 0;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -207,7 +209,9 @@ void PSGPUWorker::TrainFiles() {
 void PSGPUWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
   VLOG(0) << "Begin to train files with profiler";
+#if !defined(PADDLE_WITH_XPU_CACHE_BFID)
   device_reader_->Start();
+#endif
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
   for (auto& op : ops_) {
@@ -255,10 +259,6 @@ void PSGPUWorker::TrainFilesWithProfiler() {
           break;
         }
       }
-#ifdef PADDLE_WITH_XPU_AVOID_CORE
-      VLOG(0) << "PSGPUWorker::TrainFilesWithProfiler op->Run hacked";
-      continue;
-#endif
       if (!need_skip) {
         timeline.Start();
         VLOG(3) << "Going to run op " << op_name[run_op_idx];
