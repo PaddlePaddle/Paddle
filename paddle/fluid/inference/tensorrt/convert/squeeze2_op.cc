@@ -43,13 +43,10 @@ class Squeeze2OpConverter : public OpConverter {
     std::vector<bool> should_squeeze(input_dims.nbDims, false);
     for (size_t i = 0; i < axes.size(); i++) {
       if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
         axes[i] += (axes[i] < 0) ? input_dims.nbDims : 0;
-#endif
+        should_squeeze[axes[i]] = true;
       } else {
         axes[i] += (axes[i] < 0) ? input_dims.nbDims : -1;
-      }
-      if (input_dims.d[axes[i]] == 1) {
         should_squeeze[axes[i]] = true;
       }
     }
@@ -58,25 +55,19 @@ class Squeeze2OpConverter : public OpConverter {
     trt_out_dims.nbDims = 0;
     std::vector<int32_t> gather_indices;
     for (size_t i = 0; i < should_squeeze.size(); i++) {
+      std::cout << should_squeeze[i] << std::endl;
       if (should_squeeze[i]) continue;
-      trt_out_dims.nbDims++;
-      trt_out_dims.d[i] = input_dims.d[i];
       gather_indices.push_back(i);
+      // for static shape
+      trt_out_dims.d[trt_out_dims.nbDims] = input_dims.d[i];
+      trt_out_dims.nbDims++;
     }
-    std::string name = "_add_squeeze2_op_";
-    auto gather_indices_tensor =
-        Add1DConstantLayer(gather_indices, name + "gather_indices");
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      auto shape_tensor =
-          TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
-      auto real_shape_tensor =
-          TRT_ENGINE_ADD_LAYER(engine_, Gather, *shape_tensor,
-                               *gather_indices_tensor, 0)
-              ->getOutput(0);
+      auto* shape_tensor = Shape(input);
+      auto* real_shape_tensor = Gather(shape_tensor, gather_indices);
       layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
       layer->setInput(1, *real_shape_tensor);
-
     } else {
       auto squeeze_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
       squeeze_layer->setReshapeDimensions(trt_out_dims);

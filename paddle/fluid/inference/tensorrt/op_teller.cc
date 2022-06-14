@@ -842,6 +842,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "missing.";
         return false;
       }
+      if (!with_dynamic_shape) {
+        if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+          VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                     "supported in static shape";
+          return false;
+        }
+      }
     }
 
     if (op_type == "unsqueeze2") {
@@ -853,6 +860,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
                    "missing.";
         return false;
+      }
+      if (!with_dynamic_shape) {
+        if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+          VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                     "supported in static shape";
+          return false;
+        }
       }
     }
 

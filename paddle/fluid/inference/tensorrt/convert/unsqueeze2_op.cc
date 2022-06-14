@@ -41,15 +41,25 @@ class Unsqueeze2OpConverter : public OpConverter {
             axes.size()));
 
     std::vector<bool> should_unsqueeze(input_dims.nbDims + axes.size(), false);
+    int cur_out_rank = input_dims.nbDims;
     for (size_t i = 0; i < axes.size(); i++) {
+      cur_out_rank++;
       if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
-        axes[i] += (axes[i] < 0) ? should_unsqueeze.size() : 0;
-#endif
+        axes[i] += (axes[i] < 0) ? cur_out_rank : 0;
       } else {
-        axes[i] += (axes[i] < 0) ? should_unsqueeze.size() : -1;
+        axes[i] += (axes[i] < 0) ? cur_out_rank : -1;
       }
-      should_unsqueeze[axes[i]] = true;
+      // axes[i] is relative to cur_out_rank
+      // we make [axes[i], cur_out_rank - 2] shift right
+      // and make (axes[i]) to true!
+      std::cout << "axes[i]" << axes[i] << std::endl;
+      for (int j = cur_out_rank - 1; j > axes[i]; j--) {
+        should_unsqueeze[j] = should_unsqueeze[j - 1];
+      }
+      if (axes[i] >= cur_out_rank)
+        should_unsqueeze[cur_out_rank - 1] = true;
+      else
+        should_unsqueeze[axes[i]] = true;
     }
 
     nvinfer1::Dims trt_out_dims;
@@ -66,29 +76,17 @@ class Unsqueeze2OpConverter : public OpConverter {
       gather_indices.push_back(in_rank_i);
       in_rank_i++;
     }
-    std::string name = "_add_unsqueeze2_op_";
-    auto gather_indices_tensor =
-        Add1DConstantLayer(gather_indices, name + "gather_indices");
     std::vector<int32_t> all_one(axes.size(), 1);
-    auto all_one_tensor = Add1DConstantLayer(all_one, name + "all_one");
+    auto* all_one_tensor = Add1DConstantLayer(all_one);
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      auto shape_tensor =
-          TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
+      auto shape_tensor = Shape(input);
       std::vector<nvinfer1::ITensor*> concat_inputs = {shape_tensor,
                                                        all_one_tensor};
-      auto real_shape_tensor =
-          TRT_ENGINE_ADD_LAYER(engine_, Gather,
-                               *TRT_ENGINE_ADD_LAYER(engine_, Concatenation,
-                                                     concat_inputs.data(), 2)
-                                    ->getOutput(0),
-                               *gather_indices_tensor, 0)
-              ->getOutput(0);
-
+      auto real_shape_tensor = Gather(Concat(concat_inputs), gather_indices);
       layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
       layer->setInput(1, *real_shape_tensor);
-
     } else {
       auto unsqueeze_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
       unsqueeze_layer->setReshapeDimensions(trt_out_dims);
