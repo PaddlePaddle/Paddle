@@ -140,6 +140,7 @@ half_run_server.run_ut()
         file_path = os.path.join(temp_dir.name, server_file)
         with open(file_path, "w") as wb:
             wb.write(run_server_cmd)
+
         os.environ["TRAINING_ROLE"] = "PSERVER"
         _python = sys.executable
 
