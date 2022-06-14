@@ -448,7 +448,7 @@ class MyModelMultipleInputs(paddle.nn.Layer):
 
     def __init__(self):
         super(MyModelMultipleInputs, self).__init__()
-        self._fc1 = Linear(20, 10)
+        self._fc1 = Linear(30, 10)
         self._fc2 = Linear(10, 10)
 
     def forward(self, x1, x2):
