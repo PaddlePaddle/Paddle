@@ -118,7 +118,7 @@ def dyfunc_with_if_else_early_return2():
         return a, b
     elif x == 1:
         c = paddle.zeros([2, 2]) + 1
-        d = paddle.zeros([2, 2]) + 1
+        d = paddle.zeros([3, 3]) + 1
         return c, d
     e = paddle.zeros([2, 2]) + 3
     return e
