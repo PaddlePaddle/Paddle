@@ -141,12 +141,12 @@ void HashTable<unsigned long, FeatureValue>::get(const paddle::platform::Place& 
       xpu_size, len,
       platform::errors::External("XPU get kernel len size %d is greate than xpu_size %d", len, xpu_size));
   auto ctx_xpu = xpu_dev_ctx.x_context();
-  int r = xpu::get_pairs<unsigned int, ::FeatureValue>(
+  int r = xpu::get_pairs<unsigned int, xpu::FeatureValue>(
       ctx_xpu,
       reinterpret_cast<const unsigned int*>(d_keys),
-      reinterpret_cast<::FeatureValue*>(d_vals_in),
+      reinterpret_cast<xpu::FeatureValue*>(d_vals_in),
       len,
-      reinterpret_cast<::FeatureValue*>(d_vals),
+      reinterpret_cast<xpu::FeatureValue*>(d_vals),
       xpu_id, xpu_num
      );
   PADDLE_ENFORCE_EQ(
@@ -229,12 +229,12 @@ void HashTable<unsigned long, FeatureValue>::insert(const paddle::platform::Plac
   xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys),
       reinterpret_cast<int32_t*>(d_keys_in_cast), len);
 
-  int r = xpu::insert<unsigned int, ::FeatureValue>(
+  int r = xpu::insert<unsigned int, xpu::FeatureValue>(
       ctx_xpu,
       reinterpret_cast<const unsigned int*>(d_keys_in_cast),
-      reinterpret_cast<const ::FeatureValue*>(d_vals),
+      reinterpret_cast<const xpu::FeatureValue*>(d_vals),
       reinterpret_cast<unsigned int*>(d_keys_out_in_cast),
-      reinterpret_cast<::FeatureValue*>(d_vals_out),
+      reinterpret_cast<xpu::FeatureValue*>(d_vals_out),
       len,
       xpu_id,
       xpu_num);
@@ -244,7 +244,7 @@ void HashTable<unsigned long, FeatureValue>::insert(const paddle::platform::Plac
                                   r, XPUAPIErrorMsg[r]));
   xpu::cast_v2<int32_t, int64_t>(ctx_xpu, reinterpret_cast<int32_t*>(d_keys_out_in_cast),
     reinterpret_cast<int64_t*>(d_keys_out), len);
-  
+
   container_->set_size(len);
 }
 
@@ -273,7 +273,7 @@ void HashTable<KeyType, ValType>::update(const paddle::platform::Place& place,
   size_t len2 = container_->size();
   int r = xpu::update<KeyType, GradType, ValType>(
       ctx_xpu,
-      reinterpret_cast<const ::OptimizerConfig*>(device_optimizer_config_),
+      reinterpret_cast<const xpu::OptimizerConfig*>(device_optimizer_config_),
       d_keys,
       d_grads,
       len,
@@ -317,15 +317,15 @@ void HashTable<unsigned long, FeatureValue>::update(const paddle::platform::Plac
       reinterpret_cast<int32_t*>(d_keys_in_cast), len);
   xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys_out),
       reinterpret_cast<int32_t*>(d_keys_out_in_cast), len2);
-      
-  int r = xpu::update<unsigned int, ::FeaturePushValue, ::FeatureValue>(
+
+  int r = xpu::update<unsigned int, xpu::FeaturePushValue, xpu::FeatureValue>(
       ctx_xpu,
-      reinterpret_cast<const ::OptimizerConfig*>(device_optimizer_config_),
+      reinterpret_cast<const xpu::OptimizerConfig*>(device_optimizer_config_),
       reinterpret_cast<const unsigned int*>(d_keys_in_cast),
-      reinterpret_cast<const ::FeaturePushValue*>(d_grads),
+      reinterpret_cast<const xpu::FeaturePushValue*>(d_grads),
       len,
       reinterpret_cast<unsigned int*>(d_keys_out_in_cast),
-      reinterpret_cast<::FeatureValue*>(d_vals_out),
+      reinterpret_cast<xpu::FeatureValue*>(d_vals_out),
       len2,
       xpu_id,
       xpu_num);

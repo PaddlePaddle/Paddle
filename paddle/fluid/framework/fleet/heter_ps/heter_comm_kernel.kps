@@ -329,12 +329,12 @@ void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
     xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys_in),
         reinterpret_cast<int32_t*>(d_keys_in_cast), num_items);
 
-    int r = xpu::sort_pairs<unsigned int, ::FeaturePushValue>(
+    int r = xpu::sort_pairs<unsigned int, xpu::FeaturePushValue>(
         ctx_xpu,
         reinterpret_cast<const unsigned int*>(d_keys_in_cast),
         reinterpret_cast<unsigned int*>(d_keys_out_cast),
-        reinterpret_cast<const ::FeaturePushValue*>(d_values_in),
-        reinterpret_cast<::FeaturePushValue*>(d_values_out),
+        reinterpret_cast<const xpu::FeaturePushValue*>(d_values_in),
+        reinterpret_cast<xpu::FeaturePushValue*>(d_values_out),
         num_items,
         false);
     PADDLE_ENFORCE_EQ(
@@ -423,13 +423,13 @@ void HeterCommKernel::reduce_by_key(const paddle::platform::Place& place,
         reinterpret_cast<int32_t*>(d_keys_in_cast), num_items);
 
     std::cout << "reduce_by_key, before reduce_by_key" << std::endl;
-    int r = xpu::reduce_by_key<uint32_t, ::FeaturePushValue>(
+    int r = xpu::reduce_by_key<uint32_t, xpu::FeaturePushValue>(
         ctx_xpu,
         reinterpret_cast<const unsigned int*>(d_keys_in_cast),
-        reinterpret_cast<const ::FeaturePushValue*>(d_values_in),
+        reinterpret_cast<const xpu::FeaturePushValue*>(d_values_in),
         num_items,
         d_keys_out_cast,
-        reinterpret_cast<::FeaturePushValue*>(d_aggregates_out),
+        reinterpret_cast<xpu::FeaturePushValue*>(d_aggregates_out),
         d_num_runs_out);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
