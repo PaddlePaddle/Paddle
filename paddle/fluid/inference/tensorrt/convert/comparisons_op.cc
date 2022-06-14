@@ -34,10 +34,6 @@ class ComparisonsOpConverter : public OpConverter {
   ComparisonsOpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-#if IS_TRT_VERSION_LT(7000)
-    PADDLE_THROW(platform::errors::Fatal(
-      "ElementWise Compare Operation is only supported on TRT 7 or higher version."));
-#endif
     auto op_pair = ops.find(op_type_);
     PADDLE_ENFORCE_NE(op_pair, ops.end(),
                       platform::errors::InvalidArgument(
@@ -97,12 +93,17 @@ class ComparisonsOpConverter : public OpConverter {
   std::string op_type_;
 };
 
+#if IS_TRT_VERSION_GE(7000)
 const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
     ComparisonsOpConverter::ops = {
         {"greater", nvinfer1::ElementWiseOperation::kGREATER},
         {"less", nvinfer1::ElementWiseOperation::kLESS},
         {"equal", nvinfer1::ElementWiseOperation::kEQUAL},
 };
+#else
+    PADDLE_THROW(platform::errors::Fatal(
+      "ElementWise Compare Operation is only supported on TRT 7 or higher version."));
+#endif
 
 class GreaterOpConverter : public ComparisonsOpConverter {
  public:
