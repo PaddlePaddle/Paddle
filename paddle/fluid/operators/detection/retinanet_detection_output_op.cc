@@ -471,7 +471,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
       std::vector<Tensor> box_per_batch_list(boxes_list.size());
       std::vector<Tensor> score_per_batch_list(scores_list.size());
       for (size_t j = 0; j < boxes_list.size(); ++j) {
-        auto score_dims = scores_list[j].dims();
+        const auto& score_dims = scores_list[j].dims();
         score_per_batch_list[j] = scores_list[j].Slice(i, i + 1);
         score_per_batch_list[j].Resize({score_dims[1], score_dims[2]});
         box_per_batch_list[j] = boxes_list[j].Slice(i, i + 1);

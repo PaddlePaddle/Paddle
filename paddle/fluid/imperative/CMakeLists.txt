@@ -156,7 +156,7 @@ if(NOT WIN32)
     data_loader
     SRCS data_loader.cc
     DEPS enforce)
-endif(NOT WIN32)
+endif()
 if(WITH_GLOO)
   cc_library(
     imperative_gloo_context

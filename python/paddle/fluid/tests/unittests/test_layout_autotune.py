@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
-import numpy
-import paddle.nn.functional as F
-import tempfile
-import warnings
-import json
 import os
+import json
+import tempfile
+import unittest
+import warnings
+import numpy
+
+import paddle
+import paddle.nn.functional as F
 from paddle.fluid.framework import _enable_legacy_dygraph
 
 _enable_legacy_dygraph()
