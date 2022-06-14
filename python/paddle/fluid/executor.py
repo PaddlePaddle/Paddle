@@ -1413,7 +1413,8 @@ class Executor(object):
             # print("compiled is : {}".format(compiled))
             # NOTE(zhiqiu): do not support compiled program now
             if compiled:
-                if _is_standalone_executor_enable_compiled_program():
+                if program._program is not None and _is_standalone_executor_enable_compiled_program(
+                ):
                     return True
                 return False
                 # if program._is_data_parallel and len(
