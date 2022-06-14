@@ -86,7 +86,7 @@ class TestAssignBoolValue(TestBase):
         self.feed_fp32 = {'in_0': data.astype(np.float32)}
         self.feed_fp16 = {'in_0': data.astype(np.float16)}
         data = np.random.choice([True, False], size=(2, 3, 1))
-        self.assign_bool = data.astype(np.bool)
+        self.assign_bool = data.astype(np.bool_)
 
     @IPUOpTest.static_graph
     def build_model(self):

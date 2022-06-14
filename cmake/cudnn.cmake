@@ -4,11 +4,11 @@ endif()
 
 if(WIN32)
   set(CUDNN_ROOT ${CUDA_TOOLKIT_ROOT_DIR})
-else(WIN32)
+else()
   set(CUDNN_ROOT
       "/usr"
       CACHE PATH "CUDNN ROOT")
-endif(WIN32)
+endif()
 
 find_path(
   CUDNN_INCLUDE_DIR cudnn.h
@@ -41,16 +41,16 @@ set(CUDNN_LIB_NAME "")
 
 if(LINUX)
   set(CUDNN_LIB_NAME "libcudnn.so")
-endif(LINUX)
+endif()
 
 if(WIN32)
   # only support cudnn7
   set(CUDNN_LIB_NAME "cudnn.lib" "cudnn64_7.dll")
-endif(WIN32)
+endif()
 
 if(APPLE)
   set(CUDNN_LIB_NAME "libcudnn.dylib" "libcudnn.so")
-endif(APPLE)
+endif()
 
 find_library(
   CUDNN_LIBRARY

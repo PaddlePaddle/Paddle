@@ -193,7 +193,7 @@ class TestBoxCoderOp(OpTest):
         }
         if self.use_variance:
             self.attrs['variance'] = self.prior_box_var.astype(
-                np.float).flatten()
+                np.float64).flatten()
         if self.axis != 0:
             self.attrs['axis'] = self.axis
 

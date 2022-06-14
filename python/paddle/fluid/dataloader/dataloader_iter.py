@@ -276,12 +276,12 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                         data = self._reader.read_next_list()
                         for i in range(len(data)):
                             data[i] = data[i]._move_to_list()
-                        data = [
-                            _restore_batch(d, s) for d, s in zip(
-                                data, self._structure_infos[:len(self._places)])
+                        structs = [
+                            self._structure_infos.pop(0)
+                            for _ in range(len(self._places))
                         ]
-                        self._structure_infos = self._structure_infos[
-                            len(self._places):]
+                        data = [_restore_batch(d, s) \
+                                for d, s in zip(data, structs)]
                         # static graph organized data on multi-device with list, if
                         # place number is 1, there is only 1 device, extra the data
                         # from list for devices to be compatible with dygraph mode
@@ -374,6 +374,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # see _try_put_indices
         self._thread_lock = threading.Lock()
 
+        self._base_seed = np.random.randint(low=0, high=sys.maxsize)
+
         # init workers and indices queues and put 2 indices in each indices queue
         self._init_workers()
         for _ in range(self._outstanding_capacity):
@@ -406,7 +408,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                       self._data_queue, self._workers_done_event,
                       self._auto_collate_batch, self._collate_fn,
                       self._drop_last, self._worker_init_fn, i,
-                      self._num_workers, self._use_shared_memory))
+                      self._num_workers, self._use_shared_memory,
+                      self._base_seed))
             worker.daemon = True
             worker.start()
             self._workers.append(worker)
@@ -750,12 +753,12 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         data = self._reader.read_next_list()
                         for i in range(len(data)):
                             data[i] = data[i]._move_to_list()
-                        data = [
-                            _restore_batch(d, s) for d, s in zip(
-                                data, self._structure_infos[:len(self._places)])
+                        structs = [
+                            self._structure_infos.pop(0)
+                            for _ in range(len(self._places))
                         ]
-                        self._structure_infos = self._structure_infos[
-                            len(self._places):]
+                        data = [_restore_batch(d, s) \
+                                for d, s in zip(data, structs)]
                         # static graph organized data on multi-device with list, if
                         # place number is 1, there is only 1 device, extra the data
                         # from list for devices to be compatible with dygraph mode

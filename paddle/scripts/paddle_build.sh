@@ -481,10 +481,10 @@ EOF
 }
 
 function cmake_gen_and_build() {
-    startTime_s=100
+    startTime_s=`date +%s`
     cmake_gen $1
     build $2
-    endTime_s=200
+    endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt

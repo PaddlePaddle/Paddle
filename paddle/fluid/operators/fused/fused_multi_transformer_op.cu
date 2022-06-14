@@ -16,29 +16,25 @@ limitations under the License. */
 // https://github.com/NVIDIA/FasterTransformer/blob/v4.0/fastertransformer/cuda/masked_multihead_attention.cu
 // We add License in the head.
 
-// headers sort by clang-format may cause compiling error or test faiure,
-// see https://github.com/PaddlePaddle/Paddle/pull/42840/
-// clang-format off
 #include <cuda_fp16.h>
 #include <float.h>
+
 #include <cub/cub.cuh>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-
-#include "paddle/phi/kernels/funcs/math_function.h"
-
 #include "paddle/fluid/operators/fused/attention_layer_norm.h"
 #include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
-// clang-format on
 
 namespace paddle {
 namespace operators {
