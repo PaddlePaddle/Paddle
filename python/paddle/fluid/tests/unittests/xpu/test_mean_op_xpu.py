@@ -64,7 +64,7 @@ class XPUTestMeanOp(XPUOpTestWrapper):
             self.__class__.op_type = self.dtype
 
         def test_check_output(self):
-            self.check_output_with_place(self.place, atol=2e-3)
+            self.check_output_with_place(self.place)
 
         def test_checkout_grad(self):
             self.check_grad_with_place(self.place, ['X'], 'Out')
