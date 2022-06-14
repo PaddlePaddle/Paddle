@@ -444,6 +444,19 @@ class MyModel(paddle.nn.Layer):
         return y
 
 
+class MyModelMultipleInputs(paddle.nn.Layer):
+
+    def __init__(self):
+        super(MyModelMultipleInputs, self).__init__()
+        self._fc1 = Linear(20, 10)
+        self._fc2 = Linear(10, 10)
+
+    def forward(self, x1, x2):
+        y1 = self._fc1(x1)
+        y2 = self._fc2(x2)
+        return y1 + y2
+
+
 class MyDataset(Dataset):
 
     def __getitem__(self, idx):
@@ -722,6 +735,16 @@ class TestModelFunction(unittest.TestCase):
         input_shape = (3, 1)
         net = paddle.nn.Embedding(10, 3, sparse=True)
         paddle.summary(net, input_shape, dtypes='int64')
+
+    def test_summary_multiple_inputs(self):
+        input_shape_1 = (3, 30)
+        input_shape_2 = (3, 10)
+        mymodel = MyModelMultipleInputs()
+        paddle.summary(mymodel, input_size=[input_shape_1, input_shape_2])
+
+        input_data_1 = paddle.rand(input_shape_1)
+        input_data_2 = paddle.rand(input_shape_2)
+        paddle.summary(mymodel, input=[input_data_1, input_data_2])
 
     def test_summary_error(self):
         with self.assertRaises(TypeError):

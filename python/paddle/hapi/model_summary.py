@@ -37,7 +37,9 @@ def summary(net, input_size=None, dtypes=None, input=None):
                     batch_size can be None or -1. Default: None. Note that 
                     input_size and input cannot be None at the same time.
         dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
-        input: the input tensor. if input is given, input_size and dtype will be ignored, Default: None.
+        input (Tensor|list[Tensor]): the input tensor. if input is given, input_size and dtype will be ignored.
+                    if model only have one input, input can be Tensor. if model have multiple input, 
+                    input must be a list which contain every input. Default: None.
 
     Returns:
         Dict: a summary of the network including total params and total trainable params.
@@ -352,11 +354,13 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     model.apply(register_hook)
     if input is not None:
         x = input
-        model(x)
+        if not isinstance(input, (list, tuple)):
+            x = [x]
     else:
         x = build_input(input_size, dtypes)
-        # make a forward pass
-        model(*x)
+
+    # make a forward pass
+    model(*x)
 
     # remove these hooks
     for h in hooks:
