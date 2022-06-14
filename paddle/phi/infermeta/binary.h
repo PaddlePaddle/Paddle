@@ -218,6 +218,12 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
                                 int y_num_col_dims,
                                 MetaTensor* out);
 
+void MatrixRankTolInferMeta(const MetaTensor& x,
+                            const MetaTensor& atol_tensor,
+                            bool use_default_tol,
+                            bool hermitian,
+                            MetaTensor* out);
+
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
 
 void PReluInferMeta(const MetaTensor& x,

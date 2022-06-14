@@ -131,7 +131,8 @@ void Update(const platform::NPUDeviceContext& ctx,
 }
 
 template <typename T>
-class UpdateLossScalingFunctor<platform::NPUDeviceContext, T> {
+class UpdateLossScalingFunctor<platform::NPUDeviceContext, T,
+                               /*IsFoundInfOnCPU=*/true> {
  public:
   void operator()(const platform::NPUDeviceContext& dev_ctx,
                   const std::vector<bool> found_inf_vec,
@@ -236,7 +237,7 @@ class UpdateLossScalingNPUKernel : public framework::OpKernel<T> {
         ctx.Attr<int>("decr_every_n_nan_or_inf");
     const float incr_ratio = ctx.Attr<float>("incr_ratio");
     const float decr_ratio = ctx.Attr<float>("decr_ratio");
-    UpdateLossScalingFunctor<DeviceContext, MPDType>{}(
+    UpdateLossScalingFunctor<DeviceContext, MPDType, true>{}(
         dev_ctx, found_inf_vec, pre_loss_scaling, good_in, bad_in,
         incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
         updated_loss_scaling, good_out, bad_out);

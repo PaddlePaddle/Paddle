@@ -23,8 +23,6 @@
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
 
-DECLARE_bool(use_curand);
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -37,37 +35,9 @@ void RandintRawKernel(const Context& dev_ctx,
                       DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   T* data = dev_ctx.template Alloc<T>(out);
-  if (FLAGS_use_curand) {
-    funcs::uniform_distribution<uint32_t> dist;
-    funcs::uniform_int_transform<T, uint32_t> trans(low, high);
-    funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
-  } else {
-    DenseTensor tmp;
-    tmp.Resize(phi::make_ddim(shape.GetData()));
-    T* tmp_data = dev_ctx.template HostAlloc<T>(&tmp);
-
-    std::shared_ptr<std::mt19937_64> engine;
-    if (seed) {
-      engine = std::make_shared<std::mt19937_64>();
-      engine->seed(seed);
-    } else {
-      engine = dev_ctx.GetHostGenerator()->GetCPUEngine();
-    }
-
-    std::uniform_int_distribution<T> dist(low, high - 1);
-    auto numel = out->numel();
-    for (int64_t i = 0; i < numel; ++i) {
-      tmp_data[i] = dist(*engine);
-    }
-
-    paddle::memory::Copy<phi::GPUPlace, phi::Place>(
-        out->place(),
-        data,
-        tmp.place(),
-        tmp_data,
-        numel * paddle::experimental::SizeOf(out->dtype()),
-        0);
-  }
+  funcs::uniform_distribution<uint32_t> dist;
+  funcs::uniform_int_transform<T, uint32_t> trans(low, high);
+  funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
 }
 
 template <typename T, typename Context>

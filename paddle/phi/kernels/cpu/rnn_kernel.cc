@@ -808,7 +808,7 @@ struct BidirLayer : public Layer<T, CellType> {
                   mode,
                   is_test);
 
-    // concat the the output result
+    // concat the output result
     funcs::ConcatFunctor<CPUContext, T> concat_functor;
     concat_functor(dev_ctx, output_vec, static_cast<int>(2), output);
   }
@@ -832,11 +832,13 @@ void RnnKernel(const Context& dev_ctx,
                DenseTensor* dropout_state,
                std::vector<DenseTensor*> state,
                DenseTensor* reserve) {
-  if (dropout_state->IsInitialized()) {
-    if (dropout_state->numel() != out->numel()) dropout_state->clear();
+  if (!is_test) {
+    if (dropout_state->IsInitialized()) {
+      if (dropout_state->numel() != out->numel()) dropout_state->clear();
+    }
+    const auto& out_dim = out->dims();
+    Full<uint8_t>(dev_ctx, {out_dim.Get(), out_dim.size()}, 1, dropout_state);
   }
-  const auto& out_dim = out->dims();
-  Full<uint8_t>(dev_ctx, {out_dim.Get(), out_dim.size()}, 1, dropout_state);
 
   // init the output and allocate the memory
   dev_ctx.template Alloc<T>(out);

@@ -29,14 +29,14 @@ KernelSignature Pad3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature Pad3dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("Paddings")) {
     return KernelSignature("pad3d_grad",
-                           {"X", GradVarName("Out")},
+                           {"X", "Out@GRAD"},
                            {"Paddings", "mode", "value", "data_format"},
-                           {GradVarName("X")});
+                           {"X@GRAD"});
   }
   return KernelSignature("pad3d_grad",
-                         {"X", GradVarName("Out")},
+                         {"X", "Out@GRAD"},
                          {"paddings", "mode", "value", "data_format"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

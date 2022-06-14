@@ -14,25 +14,260 @@
 
 from __future__ import print_function
 import numpy as np
+import math
 from paddle.common_ops_import import fill_constant
 from ..fluid.layers import utils
-
-from ..fluid.layers import tensor
 from ..static import Variable, device_guard
 from ..framework import _current_expected_place, _get_paddle_place
 from ..framework import dygraph_only
 from ..framework import core
-from ..fluid.layer_helper import LayerHelper
+from ..framework import in_dygraph_mode, _non_static_mode
+from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..framework import convert_np_dtype_to_dtype_, _varbase_creator, OpProtoHolder
-from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dtype
 # TODO: define functions to get create a tensor  
-from ..fluid.layers import linspace  # noqa: F401
 import paddle
 from paddle import _C_ops
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _in_eager_without_dygraph_check
+from ..fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check
+import warnings
 
 __all__ = []
+
+
+def _complex_to_real_dtype(dtype):
+    if dtype == core.VarDesc.VarType.COMPLEX64:
+        return core.VarDesc.VarType.FP32
+    elif dtype == core.VarDesc.VarType.COMPLEX128:
+        return core.VarDesc.VarType.FP64
+    else:
+        return dtype
+
+
+def _real_to_complex_dtype(dtype):
+    if dtype == core.VarDesc.VarType.FP32:
+        return core.VarDesc.VarType.COMPLEX64
+    elif dtype == core.VarDesc.VarType.FP64:
+        return core.VarDesc.VarType.COMPLEX128
+    else:
+        return dtype
+
+
+def linspace(start, stop, num, dtype=None, name=None):
+    r"""
+    This OP return fixed number of evenly spaced values within a given interval.
+
+    Args:
+        start(int|float|Tensor): The input :attr:`start` is start variable of range. It is a scalar, \
+            or a Tensor of shape [1] with input data type int32, int64, float32 or float64.
+        stop(int|float|Tensor): The input :attr:`stop` is start variable of range. It is a scalar, \
+            or a Tensor of shape [1] with input data type int32, int64, float32 or float64.
+        num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int scalar, \
+            or a Tensor of shape [1] with data type int32.
+        dtype(np.dtype|str, optional): The data type of output tensor, it could be
+            int32, int64, float32 and float64. Default: if None, the data type is float32.
+        name(str, optional): Normally there is no need for user to set this property. 
+            For more information, please refer to :ref:`api_guide_Name`.Default: None.
+
+    Returns:
+        Tensor: the output data type will be float32, float64. The 1-D tensor with fixed number of evenly spaced values, \
+        the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
+        the value with input :attr:`start`. 
+
+    Examples:
+        .. code-block:: python
+
+             import paddle
+             data = paddle.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
+             data = paddle.linspace(0, 10, 1, 'float32') # [0.0]
+
+    """
+    if dtype is None:
+        dtype = 'float32'
+    tensor_num = num
+    tensor_start = start
+    tensor_stop = stop
+    if not isinstance(num, Variable):
+        check_type(num, 'num', (int), 'linspace')
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+    if not isinstance(start, Variable):
+        with device_guard("cpu"):
+            tensor_start = fill_constant([1], dtype, start, force_cpu=True)
+    if not isinstance(stop, Variable):
+        with device_guard("cpu"):
+            tensor_stop = fill_constant([1], dtype, stop, force_cpu=True)
+    if not isinstance(num, Variable):
+        with device_guard("cpu"):
+            tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
+    if _non_static_mode():
+        return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
+                               dtype)
+
+    helper = LayerHelper("linspace", **locals())
+
+    start_dtype = convert_dtype(tensor_start.dtype)
+    stop_dtype = convert_dtype(tensor_stop.dtype)
+    out_dtype = convert_dtype(dtype)
+    if isinstance(start, Variable):
+        check_dtype(start.dtype, 'start',
+                    ['float32', 'float64', 'int32', 'int64'], 'linspace')
+    else:
+        check_type(start, 'start', (int, float), 'linspace')
+
+    if isinstance(stop, Variable):
+        check_dtype(stop.dtype, 'stop',
+                    ['float32', 'float64', 'int32', 'int64'], 'linspace')
+    else:
+        check_type(stop, 'stop', (int, float), 'linspace')
+    if isinstance(num, Variable):
+        check_dtype(num.dtype, 'num', ['int32'], 'linspace')
+    check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
+                'linspace')
+    if ((stop_dtype == "float64" or start_dtype == "float64") and
+            out_dtype in ["float32", "int32"]) or ((stop_dtype == "int64" or
+                                                    start_dtype == "int64") and
+                                                   out_dtype == "int32"):
+        raise ValueError(
+            "The dtype of start/stop is {}/{} but the attr(dtype) of linspace is {}, "
+            "which may cause data type overflows. Please reset attr(dtype) of linspace."
+            .format(start_dtype, stop_dtype, dtype))
+
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    helper.append_op(
+        type='linspace',
+        inputs={'Start': tensor_start,
+                'Stop': tensor_stop,
+                'Num': tensor_num},
+        attrs={'dtype': dtype},
+        outputs={'Out': [out]})
+    if isinstance(num, int):
+        out.desc.set_shape((num, ))
+    return out
+
+
+def logspace(start, stop, num, base=10.0, dtype=None, name=None):
+    r"""
+    Return fixed number of logarithmical-evenly spaced values within the interval \
+    :math:`[base^{start}, base^{stop}]`.
+    
+    Notes:
+        This API does not compute the gradient.
+    
+    Args:
+        start(int|float|Tensor): The input :attr:`start` is exponent of first entry in \
+            the sequence. It is a scalar, or a Tensor of shape [1] with input data \
+            type int32, int64, float32 or float64.
+        stop(int|float|Tensor): The input :attr:`stop` is exponent of last entry in the \
+            sequence. It is a scalar, or a Tensor of shape [1] with input data \
+            type int32, int64, float32 or float64.
+        num(int|Tensor): The input :attr:`num` is given number of items in the sequence. \
+            It is an int scalar, or a Tensor of shape [1] with data type int32.
+        base(int|float|Tensor): The input :attr:`base` is base of the logarithm function. \
+            It is a scalar, or a Tensor of shape [1] with input data type int32, int64, \
+            float32 or float64.
+        dtype(np.dtype|str, optional): The data type of output tensor, it could be \
+            int32, int64, float32 or float64. Default: if None, the data type is float32. \
+        name(str, optional): Normally there is no need for user to set this property. \
+            For more information, please refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        Tensor: The output data type will be float32, float64. The 1-D tensor with \
+        fixed number of logarithmical-evenly spaced values, the data shape of this \
+        tensor is :math:`[num]`. If the :attr:`num` is set 1, the output tensor \
+        just has the value with exponential of :attr:`start` with base :attr:`base`. 
+
+    Examples:
+        .. code-block:: python
+            :name: logspace-example
+
+            import paddle
+            data = paddle.logspace(0, 10, 5, 2, 'float32')
+            # [1.          , 5.65685415  , 32.         , 181.01933289, 1024.       ]
+            data = paddle.logspace(0, 10, 1, 2, 'float32')
+            # [1.]
+    """
+    if dtype is None:
+        dtype = 'float32'
+    tensor_num = num
+    tensor_start = start
+    tensor_stop = stop
+    tensor_base = base
+    if not isinstance(num, Variable):
+        check_type(num, 'num', (int), 'logspace')
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+    if not isinstance(start, Variable):
+        with device_guard("cpu"):
+            tensor_start = fill_constant([1], dtype, start)
+    if not isinstance(stop, Variable):
+        with device_guard("cpu"):
+            tensor_stop = fill_constant([1], dtype, stop)
+    if not isinstance(num, Variable):
+        with device_guard("cpu"):
+            tensor_num = fill_constant([1], 'int32', num)
+    if not isinstance(base, Variable):
+        with device_guard("cpu"):
+            tensor_base = fill_constant([1], dtype, base)
+    if _non_static_mode():
+        return _C_ops.logspace(tensor_start, tensor_stop, tensor_num,
+                               tensor_base, 'dtype', dtype)
+
+    helper = LayerHelper("logspace", **locals())
+
+    start_dtype = convert_dtype(tensor_start.dtype)
+    stop_dtype = convert_dtype(tensor_stop.dtype)
+    base_dtype = convert_dtype(tensor_base.dtype)
+    out_dtype = convert_dtype(dtype)
+    if isinstance(start, Variable):
+        check_dtype(start.dtype, 'start',
+                    ['float32', 'float64', 'int32', 'int64'], 'logspace')
+    else:
+        check_type(start, 'start', (int, float), 'logspace')
+
+    if isinstance(stop, Variable):
+        check_dtype(stop.dtype, 'stop',
+                    ['float32', 'float64', 'int32', 'int64'], 'logspace')
+    else:
+        check_type(stop, 'stop', (int, float), 'logspace')
+
+    if isinstance(num, Variable):
+        check_dtype(num.dtype, 'num', ['int32'], 'logspace')
+
+    if isinstance(base, Variable):
+        check_dtype(base.dtype, 'base',
+                    ['float32', 'float64', 'int32', 'int64'], 'logspace')
+    else:
+        check_type(base, 'base', (int, float), 'logspace')
+
+    check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
+                'logspace')
+    if ((stop_dtype == "float64" or start_dtype == "float64"
+                                 or base_dtype == "float64")
+                                 and out_dtype in ["float32", "int32"]) or \
+       ((stop_dtype == "int64" or start_dtype == "int64"
+                               or base_dtype == "int64")
+                               and out_dtype == "int32"):
+        raise ValueError(
+            "The dtype of start/stop/base is {}/{}/{} but the attr(dtype) of logspace is {}, "
+            "which may cause data type overflows. Please reset attr(dtype) of logspace."
+            .format(start_dtype, stop_dtype, base_dtype, dtype))
+
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    helper.append_op(
+        type='logspace',
+        inputs={
+            'Start': tensor_start,
+            'Stop': tensor_stop,
+            'Num': tensor_num,
+            'Base': tensor_base
+        },
+        attrs={'dtype': dtype},
+        outputs={'Out': [out]})
+    if isinstance(num, int):
+        out.desc.set_shape((num, ))
+    return out
 
 
 @dygraph_only
@@ -60,7 +295,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         Tensor: A Tensor constructed from ``data`` .
 
     Raises:
-        TypeError: If the data type of ``data`` is not scalar, list, tuple, numpy.ndarray, paddle.Tensor
+        TypeError: If the data type of ``data`` is not scalar, list, tuple, np.ndarray, paddle.Tensor
         ValueError: If ``data`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]
         TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
         ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace or specified pattern string. 
@@ -105,9 +340,9 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         place = _current_expected_place()
     elif not isinstance(place, (core.Place, core.CPUPlace, core.CUDAPinnedPlace,
                                 core.CUDAPlace, core.NPUPlace, core.XPUPlace,
-                                core.CustomPlace)):
+                                core.MLUPlace, core.CustomPlace)):
         raise ValueError(
-            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace, paddle.CustomPlace"
+            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace, paddle.MLUPlace, paddle.CustomPlace"
         )
 
     if not isinstance(data, np.ndarray):
@@ -152,7 +387,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             return data
         else:
             raise TypeError(
-                "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|numpy.ndarray|paddle.Tensor".
+                "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|np.ndarray|paddle.Tensor".
                 format(type(data)))
         if not dtype:
             if data.dtype in [
@@ -439,11 +674,39 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         dtype = 'float32'
     if num_columns is None:
         num_columns = num_rows
-    return paddle.fluid.layers.eye(num_rows=num_rows,
-                                   num_columns=num_columns,
-                                   batch_shape=None,
-                                   dtype=dtype,
-                                   name=name)
+
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+    if num_columns is not None:
+        if not isinstance(num_columns, int) or num_columns < 0:
+            raise TypeError("num_columns should be a non-negative int")
+    else:
+        num_columns = num_rows
+
+    if _non_static_mode():
+        out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
+                         num_columns)
+
+    else:
+        helper = LayerHelper("eye", **locals())
+        check_dtype(dtype, 'dtype',
+                    ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
+        if not isinstance(num_rows, int) or num_rows < 0:
+            raise TypeError("num_rows should be a non-negative int")
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+        helper.append_op(
+            type='eye',
+            inputs={},
+            outputs={'Out': [out]},
+            attrs={
+                'num_rows': num_rows,
+                'num_columns': num_columns,
+                'dtype': dtype
+            },
+            stop_gradient=True)
+
+    out.stop_gradient = True
+    return out
 
 
 def full(shape, fill_value, dtype=None, name=None):
@@ -564,7 +827,55 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         end = start
         start = 0
 
-    return paddle.fluid.layers.range(start, end, step, dtype, name)
+    out_shape = None
+    if not isinstance(start, Variable) and not isinstance(
+            end, Variable) and not isinstance(step, Variable):
+        out_shape = [int(math.ceil((end - start) / step))]
+
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if not isinstance(start, Variable):
+        with device_guard("cpu"):
+            start = fill_constant([1], dtype, start, force_cpu=True)
+    elif start.dtype != dtype:
+        start = paddle.cast(start, dtype)
+
+    if not isinstance(end, Variable):
+        with device_guard("cpu"):
+            end = fill_constant([1], dtype, end, force_cpu=True)
+    elif end.dtype != dtype:
+        end = paddle.cast(end, dtype)
+
+    if not isinstance(step, Variable):
+        with device_guard("cpu"):
+            step = fill_constant([1], dtype, step, force_cpu=True)
+    elif step.dtype != dtype:
+        step = paddle.cast(step, dtype)
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_arange(start, end, step, dtype,
+                                         _current_expected_place())
+
+    if _in_legacy_dygraph():
+        out = _C_ops.range(start, end, step)
+        out.stop_gradient = True
+        return out
+
+    check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
+                'range/arange')
+    helper = LayerHelper('range', **locals())
+    out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
+    helper.append_op(
+        type='range',
+        inputs={'Start': start,
+                'End': end,
+                'Step': step},
+        outputs={'Out': out})
+    out.stop_gradient = True
+    if out_shape is not None:
+        out.desc.set_shape(out_shape)
+    return out
 
 
 def _tril_triu_op(helper):
@@ -1187,7 +1498,7 @@ def assign(x, output=None):
     The OP copies the :attr:`x` to the :attr:`output`.
  
     Parameters:
-        x (Tensor|numpy.ndarray|list|tuple|scalar): A tensor, numpy ndarray, tuple/list of scalar,
+        x (Tensor|np.ndarray|list|tuple|scalar): A tensor, numpy ndarray, tuple/list of scalar,
             or scalar. Its data type supports float16, float32, float64, int32, int64, and bool.
             Note: the float64 data will be converted to float32 because of current platform protobuf
             data limitation.
@@ -1211,9 +1522,91 @@ def assign(x, output=None):
           result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
-    check_type(x, 'x', (Variable, np.ndarray, list, tuple, float, int, bool),
-               'assign')
-    return tensor.assign(x, output)
+    input = x
+    helper = LayerHelper('assign', **locals())
+    check_type(input, 'input', (Variable, np.ndarray, list, tuple, float, int,
+                                bool), 'assign')
+    is_inplace = True if output is not None else False
+
+    if np.isscalar(input) and not isinstance(input, str):
+        input = np.array([input])
+    elif isinstance(input, (list, tuple)):
+        input = np.array(input)
+    # NOTE(Aurelius84): Why we judge core.VarBase?
+    # In case of @to_static, a VarBase can be as input of `assign`,
+    # but _non_static_mode()==False under @to_static, which means
+    # isinstance(VarBase, Variable) == False. It will cause return None
+    # after this api.
+    if isinstance(input, (Variable, core.VarBase)):
+        if _non_static_mode():
+            if output is None:
+                if _in_legacy_dygraph():
+                    output = core.VarBase()
+                else:
+                    output = core.eager.Tensor()
+            _C_ops.assign(input, output)
+        else:
+            check_dtype(input.dtype, 'input', [
+                'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
+                'uint8', 'bool'
+            ], 'assign', '(When the type of input in assign is Variable.)')
+            if output is None:
+                output = helper.create_variable_for_type_inference(
+                    dtype=input.dtype)
+            helper.append_op(
+                type='assign', inputs={'X': [input]},
+                outputs={'Out': [output]})
+    elif isinstance(input, np.ndarray):
+        # Not support [var, var, ...] currently.
+        if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
+            raise TypeError(
+                "Required type(input) numpy.ndarray, but found `list(Variable)` in input."
+            )
+        dtype = convert_np_dtype_to_dtype_(input.dtype)
+        if dtype == core.VarDesc.VarType.FP64:
+            # Setting FP64 numpy data is not supported in Paddle, so we
+            # use FP32 here
+            warnings.warn(
+                "paddle.assign doesn't support float64 input now due "
+                "to current platform protobuf data limitation, we convert "
+                "it to float32")
+            dtype = core.VarDesc.VarType.FP32
+        if dtype == core.VarDesc.VarType.BOOL:
+            value_name = "bool_values"
+            values = [int(v) for v in input.flat]
+        elif dtype == core.VarDesc.VarType.FP32:
+            value_name = "fp32_values"
+            values = [float(v) for v in input.flat]
+        elif dtype == core.VarDesc.VarType.INT32:
+            value_name = "int32_values"
+            values = [int(v) for v in input.flat]
+        elif dtype == core.VarDesc.VarType.INT64:
+            value_name = "int64_values"
+            values = [int(v) for v in input.flat]
+        else:
+            raise TypeError(
+                "When the type of 'input' in assign is numpy.ndarray, "
+                "the data type of 'input' must be bool, float32, int32 or int64, but "
+                "received %s." % convert_dtype(dtype))
+        if input.size > 1024 * 1024:
+            raise ValueError("The size of input is too big. Please consider "
+                             "saving it to file and 'load_op' to load it")
+        if output is None:
+            output = helper.create_variable_for_type_inference(
+                dtype=input.dtype)
+        helper.append_op(
+            type='assign_value',
+            outputs={'Out': [output]},
+            attrs={
+                'dtype': dtype,
+                'shape': list(input.shape),
+                value_name: values
+            })
+
+    if is_inplace and _non_static_mode():
+        output._bump_inplace_version()
+
+    return output
 
 
 def clone(x, name=None):

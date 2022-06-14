@@ -110,21 +110,20 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   paddle::experimental::Tensor leaf_tensor = paddle::experimental::Tensor();
   {
     // AccumulationNode Hook: +3
+    auto tmp_tensor0 = paddle::experimental::Tensor();
+    auto auto_grad_meta = EagerUtils::autograd_meta(&tmp_tensor0);
 
-    auto auto_grad_meta = std::make_shared<AutogradMeta>();
-
-    auto acc_node_ptr =
-        std::make_shared<GradNodeAccumulation>(auto_grad_meta.get());
+    auto acc_node_ptr = std::make_shared<GradNodeAccumulation>(auto_grad_meta);
 
     auto_grad_meta->SetStopGradient(false);
     auto_grad_meta->SetGradNode(acc_node_ptr);
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
-    std::vector<egr::AutogradMeta*> res = {auto_grad_meta.get()};
-    scale_node_ptr->AddEdges(&res, 0);
+    std::vector<egr::AutogradMeta*> res = {auto_grad_meta};
+    scale_node_ptr->SetGradOutMeta(tmp_tensor0, 0);
 
     leaf_tensor.set_autograd_meta(
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
-            auto_grad_meta));
+            tmp_tensor0.mutable_autograd_meta()));
 
     egr_utils_api::RegisterGradientHookForTensor(
         leaf_tensor, std::make_shared<egr::CppTensorHook>(hook_function));
@@ -181,19 +180,17 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   paddle::experimental::Tensor leaf_tensor = paddle::experimental::Tensor();
   {
     // AccumulationNode Hook: +3
-
-    auto auto_grad_meta = std::make_shared<AutogradMeta>();
-    auto acc_node_ptr =
-        std::make_shared<GradNodeAccumulation>(auto_grad_meta.get());
+    auto tmp_tensor0 = paddle::experimental::Tensor();
+    auto auto_grad_meta = EagerUtils::autograd_meta(&tmp_tensor0);
+    auto acc_node_ptr = std::make_shared<GradNodeAccumulation>(auto_grad_meta);
     auto_grad_meta->SetGradNode(acc_node_ptr);
     auto_grad_meta->SetStopGradient(false);
-    std::vector<egr::AutogradMeta*> res = {auto_grad_meta.get()};
-    scale_node_ptr->AddEdges(&res, 0);
+    scale_node_ptr->SetGradOutMeta(tmp_tensor0, 0);
 
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
     leaf_tensor.set_autograd_meta(
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
-            auto_grad_meta));
+            tmp_tensor0.mutable_autograd_meta()));
 
     egr_utils_api::RegisterGradientHookForTensor(
         leaf_tensor, std::make_shared<egr::CppTensorHook>(hook_function));

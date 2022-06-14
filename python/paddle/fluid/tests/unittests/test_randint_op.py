@@ -198,9 +198,6 @@ class TestRandomValue(unittest.TestCase):
         if not "V100" in paddle.device.cuda.get_device_name():
             return
 
-        if os.getenv("FLAGS_use_curand", None) in ('0', 'False', None):
-            return
-
         print("Test Fixed Random number on GPU------>")
         paddle.disable_static()
 

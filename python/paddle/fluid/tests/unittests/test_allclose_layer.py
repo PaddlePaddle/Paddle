@@ -16,6 +16,7 @@ import paddle
 import paddle.fluid as fluid
 import unittest
 import numpy as np
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestAllcloseLayer(unittest.TestCase):
@@ -95,7 +96,7 @@ class TestAllcloseLayer(unittest.TestCase):
                 with fluid.program_guard(main, startup):
                     self.allclose_check(use_cuda=True, dtype='float64')
 
-    def test_dygraph_mode(self):
+    def func_dygraph_mode(self):
         x_1 = np.array([10000., 1e-07]).astype("float32")
         y_1 = np.array([10000.1, 1e-08]).astype("float32")
         x_2 = np.array([10000., 1e-08]).astype("float32")
@@ -171,8 +172,13 @@ class TestAllcloseLayer(unittest.TestCase):
             x_v_5 = paddle.to_tensor(x_5)
             y_v_5 = paddle.to_tensor(y_5)
             ret_5 = paddle.allclose(
-                x_v_5, y_v_5, rtol=0.01, atol=0.0, name='test_8')
+                x_v_5, y_v_5, rtol=0.015, atol=0.0, name='test_8')
             self.assertEqual(ret_5.numpy()[0], True)
+
+    def test_dygraph_mode(self):
+        with _test_eager_guard():
+            self.func_dygraph_mode()
+        self.func_dygraph_mode()
 
 
 if __name__ == "__main__":

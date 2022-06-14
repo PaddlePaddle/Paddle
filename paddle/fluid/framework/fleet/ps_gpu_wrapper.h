@@ -30,16 +30,22 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
-#include "paddle/fluid/framework/data_set.h"
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#include "paddle/fluid/framework/heter_util.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
+#endif
+#ifdef PADDLE_WITH_XPU_KP
+#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#endif
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_PSCORE
@@ -55,13 +61,44 @@ namespace framework {
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
+class Dataset;
+
+#ifdef PADDLE_WITH_PSLIB
+class AfsWrapper {
+ public:
+  AfsWrapper() {}
+  virtual ~AfsWrapper() {}
+  void init(const std::string& fs_name, const std::string& fs_user,
+            const std::string& pass_wd, const std::string& conf);
+  int remove(const std::string& path);
+  int mkdir(const std::string& path);
+  std::vector<std::string> list(const std::string& path);
+
+  int exist(const std::string& path);
+  int upload(const std::string& local_file, const std::string& afs_file);
+
+  int download(const std::string& local_file, const std::string& afs_file);
+
+  int touchz(const std::string& path);
+  std::string cat(const std::string& path);
+  int mv(const std::string& old_path, const std::string& dest_path);
+
+ private:
+  paddle::ps::AfsApiWrapper afs_handler_;
+};
+#endif
+
 class PSGPUWrapper {
  public:
-  virtual ~PSGPUWrapper() { delete HeterPs_; }
+  virtual ~PSGPUWrapper();
 
   PSGPUWrapper() {
     HeterPs_ = NULL;
     sleep_seconds_before_fail_exit_ = 300;
+    hbm_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
+      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
   }
 
   void PullSparse(const paddle::platform::Place& place, const int table_id,
@@ -121,7 +158,7 @@ class PSGPUWrapper {
       is_initialized_ = true;
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
-      keys_tensor.resize(resource_->total_gpu());
+      keys_tensor.resize(resource_->total_device());
 #ifdef PADDLE_WITH_GLOO
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
       if (gloo->Size() > 1) {
@@ -131,6 +168,7 @@ class PSGPUWrapper {
       PADDLE_THROW(
           platform::errors::Unavailable("heter ps need compile with GLOO"));
 #endif
+#ifdef PADDLE_WITH_CUDA
       if (multi_node_) {
         int dev_size = dev_ids.size();
         // init inner comm
@@ -166,6 +204,7 @@ class PSGPUWrapper {
             platform::errors::Unavailable("heter ps need compile with GLOO"));
 #endif
       }
+#endif
       heter_devices_ = dev_ids;
       data_ready_channel_->Open();
       data_ready_channel_->SetCapacity(3);
@@ -233,7 +272,11 @@ class PSGPUWrapper {
                              ? 1.0
                              : config["mf_max_bound"];
     for (size_t i = 0; i < heter_devices_.size(); i++) {
+#ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(heter_devices_[i]));
+#elif defined(PADDLE_WITH_XPU_KP)
+      PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(heter_devices_[i]));
+#endif
       this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
                          learning_rate, initial_g2sum, initial_range);
       this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
@@ -241,6 +284,7 @@ class PSGPUWrapper {
                          mf_max_bound);
     }
   }
+
   void SetDate(int year, int month, int day) {
     year_ = year;
     month_ = month;
@@ -268,6 +312,7 @@ class PSGPUWrapper {
     slot_offset_vector_ = slot_offset_vector;
   }
 
+#ifdef PADDLE_WITH_CUDA
   void SetSlotDimVector(const std::vector<int>& slot_mf_dim_vector) {
     slot_mf_dim_vector_ = slot_mf_dim_vector;
     assert(slot_mf_dim_vector_.size() == slot_vector_.size());
@@ -287,8 +332,8 @@ class PSGPUWrapper {
     for (size_t i = 0; i < num_of_dim; i++) {
       dim_index_map[index_dim_vec_[i]] = i;
     }
-    hbm_pools_.resize(resource_->total_gpu() * num_of_dim);
-    mem_pools_.resize(resource_->total_gpu() * num_of_dim);
+    hbm_pools_.resize(resource_->total_device() * num_of_dim);
+    mem_pools_.resize(resource_->total_device() * num_of_dim);
     max_mf_dim_ = index_dim_vec_.back();
     multi_mf_dim_ = (dim_index_map.size() >= 1) ? dim_index_map.size() : 0;
     resource_->set_multi_mf(multi_mf_dim_, max_mf_dim_);
@@ -301,6 +346,7 @@ class PSGPUWrapper {
     grad_type_size_ =
         TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
   }
+#endif
 
   void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
 
@@ -342,9 +388,11 @@ class PSGPUWrapper {
   int multi_node_{0};
   int node_size_;
   uint64_t table_id_;
+#ifdef PADDLE_WITH_CUDA
   std::vector<ncclComm_t> inner_comms_;
   std::vector<ncclComm_t> inter_comms_;
   std::vector<ncclUniqueId> inter_ncclids_;
+#endif
   std::vector<int> heter_devices_;
   std::unordered_set<std::string> gpu_ps_config_keys_;
   HeterObjectPool<HeterContext> gpu_task_pool_;
@@ -359,9 +407,11 @@ class PSGPUWrapper {
   int day_;
   int use_afs_api_ = 0;
 
+#ifdef PADDLE_WITH_CUDA
   std::vector<MemoryPool*> mem_pools_;
   std::vector<HBMMemoryPool*> hbm_pools_;  // in multi mfdim, one table need hbm
                                            // pools of totol dims number
+#endif
 
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
@@ -378,6 +428,7 @@ class PSGPUWrapper {
   std::shared_ptr<HeterContext> current_task_ = nullptr;
   std::thread pre_build_threads_;
   bool running_ = false;
+  std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
 
  protected:
   static bool is_initialized_;

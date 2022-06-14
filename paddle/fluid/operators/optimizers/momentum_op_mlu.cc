@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/momentum_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 
 namespace paddle {
 namespace operators {
@@ -27,10 +28,10 @@ class MLUMomentumOpKernel : public framework::OpKernel<T> {
     std::string regularization_method =
         ctx.Attr<std::string>("regularization_method");
     auto regularization_coeff = ctx.Attr<float>("regularization_coeff");
-    RegularizationType regularization_flag{
-        RegularizationType::kNONE};  // disable regularization
+    phi::RegularizationType regularization_flag{
+        phi::RegularizationType::kNONE};  // disable regularization
     if (regularization_method == "l2_decay") {
-      regularization_flag = RegularizationType::kL2DECAY;
+      regularization_flag = phi::RegularizationType::kL2DECAY;
     }
 
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
@@ -52,11 +53,12 @@ class MLUMomentumOpKernel : public framework::OpKernel<T> {
       Tensor mu_tensor =
           ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
       MLUCnnlTensorDesc mu_tensor_desc(mu_tensor);
-      MLUCnnl::Fill(ctx, mu, mu_tensor_desc.get(), GetBasePtr(&mu_tensor));
+      MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &mu, mu_tensor_desc.get(),
+                    GetBasePtr(&mu_tensor));
 
       Tensor regularized_grad;
       MLUCnnlTensorDesc param_desc(*param);
-      if (regularization_flag == RegularizationType::kL2DECAY) {
+      if (regularization_flag == phi::RegularizationType::kL2DECAY) {
         regularized_grad =
             ctx.AllocateTmpTensor<T, MLUDeviceContext>(param->dims(), dev_ctx);
         MLUCnnlOpTensorDesc op_tensor_desc(

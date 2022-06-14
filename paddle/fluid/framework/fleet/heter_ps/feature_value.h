@@ -52,18 +52,18 @@ struct FeaturePushValue {
   float lr_g;
   float mf_g[MF_DIM];
 
-  __device__ __forceinline__ FeaturePushValue
-  operator+(const FeaturePushValue& a) const {
-    FeaturePushValue out;
-    out.slot = a.slot;
-    out.show = a.show + show;
-    out.clk = a.clk + clk;
-    out.lr_g = a.lr_g + lr_g;
-    for (int i = 0; i < MF_DIM; ++i) {
-      out.mf_g[i] = a.mf_g[i] + mf_g[i];
-    }
-    return out;
-  }
+  // __device__ __forceinline__ FeaturePushValue
+  // operator+(const FeaturePushValue& a) const {
+  //  FeaturePushValue out;
+  //  out.slot = a.slot;
+  //  out.show = a.show + show;
+  //  out.clk = a.clk + clk;
+  //  out.lr_g = a.lr_g + lr_g;
+  //  for (int i = 0; i < MF_DIM; ++i) {
+  //    out.mf_g[i] = a.mf_g[i] + mf_g[i];
+  //  }
+  //  return out;
+  // }
 };
 
 }  // end namespace framework

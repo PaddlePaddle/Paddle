@@ -698,6 +698,10 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
       TensorFillConstant<float>(dev_ctx, global_scale, {1}, 1.0f);
     }
     VLOG(10) << "Init global scale ends";
+
+    TensorFillConstant<int64_t>(dev_ctx, ctx.Output<framework::Tensor>("Step"),
+                                {1}, static_cast<int64_t>(0));
+
     dev_ctx.Wait();
     VLOG(10) << "Wait for H2D copy";
   }

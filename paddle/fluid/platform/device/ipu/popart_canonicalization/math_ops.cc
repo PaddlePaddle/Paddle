@@ -41,7 +41,7 @@ Node *pow_handler(Graph *graph, Node *node) {
     // Op(pow) -> Op(Constant)->Var(const_out)->Op(Pow)
     auto value_ = BOOST_GET_CONST(float, op->GetAttr("factor"));
     auto attrs =
-        MakeConstAttrMapFromValue<float>(value_, {1}, GetOutputVarDtype(node));
+        MakeConstAttrMapFromValue<float>(value_, {1}, GetOutputVarDType(node));
 
     auto new_node_const = CreateConst(graph, node, {}, {}, attrs);
     return CreateBaseOp(graph, node, "popart_pow", {GetInputVarNode("X", node),
@@ -134,7 +134,7 @@ Node *matmul_handler(Graph *graph, Node *node) {
   } else {
     auto o_node =
         CreateBaseOp(graph, node, "popart_matmul", {x_node, y_node}, {});
-    auto attr = MakeConstAttrMapFromValue(alpha, {1}, GetOutputVarDtype(node));
+    auto attr = MakeConstAttrMapFromValue(alpha, {1}, GetOutputVarDType(node));
     auto const_node = CreateConst(graph, node, {}, {}, attr);
     return CreateBaseOp(graph, node, "popart_mul",
                         {o_node->outputs[0], const_node->outputs[0]},
@@ -157,7 +157,6 @@ Node *softmax_handler(Graph *graph, Node *node) {
 
 Node *scale_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto scale_ = BOOST_GET_CONST(float, op->GetAttr("scale"));
   auto bias_ = BOOST_GET_CONST(float, op->GetAttr("bias"));
   auto bias_after_scale_ =
       BOOST_GET_CONST(bool, op->GetAttr("bias_after_scale"));
@@ -191,6 +190,7 @@ Node *scale_handler(Graph *graph, Node *node) {
       }
     }
   } else {
+    auto scale_ = BOOST_GET_CONST(float, op->GetAttr("scale"));
     if (is_float_equal(bias_, 0.0) && is_float_equal(scale_, 1.0)) {
       return CreateBaseOp(graph, node, "popart_identity",
                           {GetInputVarNode("X", node)}, node->outputs, {});
@@ -299,6 +299,80 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
   }
 }
 
+Node *softmax_with_cross_entropy_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto ignoreIndex = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
+  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  auto soft_label = BOOST_GET_CONST(bool, op->GetAttr("soft_label"));
+  if (soft_label) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "soft_label is not supported yet in IPU"));
+  }
+  Node *new_cast = nullptr;
+  if (GetInputVarNode("Label", node)->Var()->GetDataType() ==
+      framework::proto::VarType::INT32) {
+    new_cast = GetInputVarNode("Label", node);
+  } else {
+    auto new_cast = CreateCast(graph, node, {GetInputVarNode("Label", node)},
+                               {}, framework::proto::VarType::INT32);
+    new_cast = new_cast->outputs[0];
+  }
+  auto softmax_node = CreateSoftmaxOpset11(
+      graph, node, {GetInputVarNode("Logits", node)}, {}, axis);
+
+  auto label_shape_ = GetInputVarNode("Label", node)->Var()->GetShape();
+  if (label_shape_[label_shape_.size() - 1] != 1) {
+    auto log = CreateBaseOp(graph, node, "popart_log",
+                            {softmax_node->outputs[0]}, {}, {});
+    // softmax_with_cross_entropy is split to several ops in python.
+    // reduction is not needed here.
+    return CreateBaseOp(
+        graph, node, "popart_nllloss_v2", {log->outputs[0], new_cast},
+        {GetOutputVarNode("Loss", node)},
+        {
+            {"reduction", 2},  // popart::ReductionType::NoReduction
+            {"ignoreIndex", ignoreIndex},
+            {"inputIsLogProbability", true},
+        });
+  } else {
+    std::vector<int64_t> new_shape_{label_shape_[0]};
+    auto const_before_loss = CreateBaseOp(
+        graph, node, "popart_constant", {}, {},
+        {{"value", new_shape_},
+         {"dims",
+          std::vector<int64_t>{static_cast<int64_t>(new_shape_.size())}},
+         {"dtype", ONNXDataType::INT64}});
+
+    auto reshape_before_loss =
+        CreateBaseOp(graph, node, "popart_reshape",
+                     {new_cast, const_before_loss->outputs[0]}, {}, {});
+
+    auto log = CreateBaseOp(graph, node, "popart_log",
+                            {softmax_node->outputs[0]}, {}, {});
+    auto nllloss = CreateBaseOp(
+        graph, node, "popart_nllloss_v2",
+        {log->outputs[0], reshape_before_loss->outputs[0]}, {},
+        {
+            {"reduction", 2},  // popart::ReductionType::NoReduction
+            {"ignoreIndex", ignoreIndex},
+            {"inputIsLogProbability", true},
+        });
+
+    auto const_after_loss = CreateBaseOp(
+        graph, node, "popart_constant", {}, {},
+        {{"value", label_shape_},
+         {"dims",
+          std::vector<int64_t>{static_cast<int64_t>(label_shape_.size())}},
+         {"dtype", ONNXDataType::INT64}});
+
+    auto reshape_after_loss =
+        CreateBaseOp(graph, node, "popart_reshape",
+                     {nllloss->outputs[0], const_after_loss->outputs[0]},
+                     {GetOutputVarNode("Loss", node)}, {});
+    return reshape_after_loss;
+  }
+}
+
 Node *cumsum_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto exclusive = BOOST_GET_CONST(bool, op->GetAttr("exclusive"));
@@ -378,6 +452,8 @@ REGISTER_HANDLER(matmul, matmul_handler);
 REGISTER_HANDLER(sum, sum_handler);
 REGISTER_HANDLER(softmax, softmax_handler);
 REGISTER_HANDLER(scale, scale_handler);
+REGISTER_HANDLER(softmax_with_cross_entropy,
+                 softmax_with_cross_entropy_handler);
 REGISTER_HANDLER(cross_entropy2, cross_entropy2_handler);
 REGISTER_HANDLER(cumsum, cumsum_handler);
 REGISTER_HANDLER(matmul_v2, matmul_v2_handler);

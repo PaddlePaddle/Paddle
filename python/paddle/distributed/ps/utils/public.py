@@ -58,7 +58,7 @@ DATA_NORM_GRAD_NAME = [x + "@GRAD" for x in DATA_NORM_NAME]
 
 def logger_config(log_path, logging_name):
     logger = logging.getLogger(logging_name)
-    logger.setLevel(level=logging.DEBUG)
+    logger.setLevel(level=logging.WARNING)
     handler = logging.FileHandler(
         log_path, mode='a', encoding='UTF-8', delay=True)
     handler.setLevel(logging.INFO)
@@ -748,7 +748,7 @@ def find_heter_ops(program, default_device="cpu"):
 def union_forward_gradient_op(program_block_ops_list):
     """
     before analyzing the input & output of each block in program_block_list, we should
-    union the forward op and corresponding gradient op to elimincate the uneccessary variable
+    union the forward op and corresponding gradient op to elimincate the unnecessary variable
     transmit
     """
     """

@@ -17,8 +17,7 @@
 namespace phi {
 
 KernelSignature ErfGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "erf_grad", {"X", GradVarName("Out")}, {}, {GradVarName("X")});
+  return KernelSignature("erf_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 }  // namespace phi

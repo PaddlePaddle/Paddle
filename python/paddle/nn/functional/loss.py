@@ -37,7 +37,7 @@ from paddle.utils import deprecated
 from paddle import _C_ops
 from paddle import in_dynamic_mode
 from paddle.framework import core
-from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
+from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode, _current_expected_place
 __all__ = []
 
 
@@ -116,13 +116,13 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
     if in_dygraph_mode():
         out = _C_ops.final_state_bce_loss(input, label)
         if weight is not None:
-            out = _C_ops.elementwise_mul(out, weight, 'axis', -1)
+            out = _C_ops.final_state_multiply(out, weight, 'axis', -1)
 
         if reduction == 'sum':
             return _C_ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
                                      "reduce_all", True)
         elif reduction == 'mean':
-            return _C_ops.mean(out)
+            return _C_ops.final_state_mean_all(out)
         else:
             return out
     else:
@@ -260,14 +260,17 @@ def binary_cross_entropy_with_logits(logit,
             % reduction)
 
     if _non_static_mode():
-        one = _varbase_creator(dtype=logit.dtype)
-        _C_ops.fill_constant(one, 'value',
-                             float(1.0), 'force_cpu', False, 'dtype', one.dtype,
-                             'str_value', '1.0', 'shape', [1])
         if in_dygraph_mode():
+            one = _C_ops.final_state_full([1],
+                                          float(1.0), core.VarDesc.VarType.FP32,
+                                          _current_expected_place())
             out = _C_ops.final_state_sigmoid_cross_entropy_with_logits(
                 logit, label, False, -100)
         else:
+            one = _varbase_creator(dtype=logit.dtype)
+            _C_ops.fill_constant(one, 'value',
+                                 float(1.0), 'force_cpu', False, 'dtype',
+                                 one.dtype, 'str_value', '1.0', 'shape', [1])
             out = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
         if pos_weight is not None:
             log_weight = _C_ops.elementwise_add(
@@ -389,23 +392,27 @@ def hsigmoid_loss(input,
 
             paddle.set_device('cpu')
 
-            input = paddle.uniform([2, 3])
-            # [[-0.8018668   0.8736385  -0.9064771 ] # random
-            #  [-0.10228515 -0.87188244 -0.8783718 ]] # random
+            input = paddle.uniform([4, 3])
+            # [[0.45424712  -0.77296764  0.82943869] # random
+            #  [0.85062802  0.63303483  0.35312140] # random
+            #  [0.57170701  0.16627562  0.21588242] # random
+            #  [0.27610803  -0.99303514  -0.17114788]] # random
             label = paddle.to_tensor([0, 1, 4, 5])
             num_classes = 5
             weight=paddle.uniform([num_classes-1, 3])
-            # [[-0.24148715  0.8449961  -0.7399121 ] # random
-            #  [-0.9800559   0.43509364  0.9091208 ] # random
-            #  [ 0.60194826  0.10430074 -0.4521166 ] # random
-            #  [-0.4469818  -0.01536179 -0.604454  ]] # random
+            # [[-0.64477652  0.24821866  -0.17456549] # random
+            #  [-0.04635394  0.07473493  -0.25081766] # random
+            #  [ 0.05986035  -0.12185556  0.45153677] # random
+            #  [-0.66236806  0.91271877  -0.88088769]] # random
 
             out=F.hsigmoid_loss(input, label, num_classes, weight)
-            # [[3.0159328]
-            #  [2.2407534]]
+            # [[1.96709502]
+            #  [2.40019274]
+            #  [2.11009121]
+            #  [1.92374969]]
     """
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         out, _, _ = _C_ops.hierarchical_sigmoid(
             input, weight, label, path_table, path_code, bias, 'num_classes',
             num_classes, 'is_sparse', is_sparse, 'remote_prefetch', is_sparse)
@@ -539,7 +546,7 @@ def margin_ranking_loss(input,
                         name=None):
     r"""
 
-    This op the calcluate the the margin rank loss between the input, other and label, use the math function as follows.
+    This op the calcluate the margin rank loss between the input, other and label, use the math function as follows.
 
     .. math::
         margin\_rank\_loss = max(0, -label * (input - other) + margin)
@@ -582,7 +589,19 @@ def margin_ranking_loss(input,
         raise ValueError(
             "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
             "received %s, which is not allowed." % reduction)
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_subtract(other, input)
+        out = _C_ops.final_state_multiply(out, label)
+        if margin != 0.0:
+            margin = fluid.dygraph.base.to_variable([margin], dtype=out.dtype)
+            out = _C_ops.elementwise_add(out, margin)
+        out = _C_ops.relu(out)
+        if reduction == 'sum':
+            return _C_ops.reduce_sum(out, 'reduce_all', True)
+        elif reduction == 'mean':
+            return _C_ops.final_state_mean_all(out)
+        return out
+    elif _in_legacy_dygraph():
         out = _C_ops.elementwise_sub(other, input)
         out = _C_ops.elementwise_mul(out, label)
         if margin != 0.0:
@@ -698,7 +717,17 @@ def l1_loss(input, label, reduction='mean', name=None):
             "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
             "received %s, which is not allowed." % reduction)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        unreduced = _elementwise_op_in_dygraph(
+            input, label, axis=-1, act='abs', op_name='elementwise_sub')
+        if reduction == 'mean':
+            return _C_ops.final_state_mean_all(unreduced)
+        elif reduction == 'sum':
+            return _C_ops.reduce_sum(unreduced, 'dim', [0], 'keep_dim', False,
+                                     'reduce_all', True)
+        else:
+            return unreduced
+    elif in_dynamic_mode():
         unreduced = _elementwise_op_in_dygraph(
             input, label, axis=-1, act='abs', op_name='elementwise_sub')
         if reduction == 'mean':
@@ -854,7 +883,7 @@ def kl_div(input, label, reduction='mean', name=None):
 
     While :attr:`reduction` is :attr:`none`, output loss is in
     the same shape as input, loss in each point is calculated
-    seperately and no reduction is applied.
+    separately and no reduction is applied.
 
     While :attr:`reduction` is :attr:`mean`, output loss is in
     shape of [1] and loss value is the mean value of all losses.
@@ -1795,7 +1824,7 @@ def cross_entropy(input,
             # 2. else
             #     numerator: loss's weighted sum
             #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
-            if ignore_index != -100:
+            if ignore_index >= 0:
                 out_sum = _C_ops.reduce_sum(out, 'reduce_all', True)
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
@@ -1819,7 +1848,10 @@ def cross_entropy(input,
                                                  'reduce_all', True)
                 return out_sum / (total_weight + (total_weight == 0.0))
             else:
-                return _C_ops.mean(out)
+                if in_dygraph_mode():
+                    return _C_ops.final_state_mean_all(out)
+                else:
+                    return _C_ops.mean(out)
 
         else:
             if input_dims - 1 == label_dims:
@@ -1905,7 +1937,7 @@ def cross_entropy(input,
     if reduction == "sum":
         return paddle.sum(out, name=name)
     elif reduction == "mean":
-        if ignore_index != -100:
+        if ignore_index >= 0:
             out_sum = paddle.sum(out, name=name)
             # for each label[i],set 1 or 0, according to ignore_index
             # mask[i]=0, if label[i]==ignore_index
@@ -1978,7 +2010,7 @@ def sigmoid_focal_loss(logit,
             Available dtype is float32, float64.
         normalizer (Tensor, optional): The number normalizes the focal loss. It has to be
             a 1-D Tensor whose shape is `[1, ]`. The data type is float32, float64.
-            For object detection task, it is the the number of positive samples.
+            For object detection task, it is the number of positive samples.
             If set to None, the focal loss will not be normalized. Default is None.
         alpha(int|float, optional): Hyper-parameter to balance the positive and negative example,
             it should be between 0 and 1.  Default value is set to 0.25. 
@@ -2064,6 +2096,8 @@ def sigmoid_focal_loss(logit,
         if reduction == "sum":
             return _C_ops.reduce_sum(loss, 'reduce_all', True)
         elif reduction == "mean":
+            if in_dygraph_mode():
+                return _C_ops.final_state_mean_all(loss)
             return _C_ops.mean(loss)
 
         return loss
@@ -2179,7 +2213,7 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
             "'reduction' in 'hinge_embedding_loss' should be 'sum', 'mean' or 'none', "
             "but received {}.".format(reduction))
 
-    if not in_dynamic_mode():
+    if not _non_static_mode():
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                                  'hinge_embedding_loss')
         check_variable_and_dtype(label, 'label', ['float32', 'float64'],

@@ -246,6 +246,14 @@ __device__ __forceinline__ void Init(T* dst, T init_data) {
   }
 }
 
+template <typename T, int NX>
+__device__ __forceinline__ void Init(T* dst, T init_data, int read_lens) {
+#pragma unroll
+  for (int i = 0; i < NX; i++) {
+    dst[i] = init_data;
+  }
+}
+
 /**
  * The difference from the above function is that
  * it supports different data types of inputs.
@@ -311,6 +319,38 @@ __device__ __forceinline__ void ReadData(T* dst,
   }
 }
 
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+__device__ __forceinline__ void ReadData(T* dst,
+                                         const T* __restrict__ src,
+                                         int num,
+                                         int read_lens) {
+  if (IsBoundary) {  // blockDim.x * NX > num
+    int thread_offset = threadIdx.x * NX;
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if (idx + thread_offset < num) {
+        dst[idx] = src[thread_offset + idx];
+      }
+    }
+  } else {  // blockDim,x * NX < num
+    constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+    constexpr int kVectorsPerThread = NX / kVectorSize;
+    int thread_offset = threadIdx.x * kVectorsPerThread;
+
+    using VecType = details::VectorType<T, kVectorSize>;
+    const VecType* vec_input = reinterpret_cast<const VecType*>(src);
+    VecType vec_temp[kVectorsPerThread];
+
+#pragma unroll
+    for (int i = 0; i < kVectorsPerThread; ++i) {
+      vec_temp[i] = vec_input[thread_offset + i];
+#pragma unroll
+      for (int idx = 0; idx < NX; ++idx) {
+        dst[idx] = *(reinterpret_cast<T*>(vec_temp) + idx);
+      }
+    }
+  }
+}
 /**
  * @brief Read 1D data from global memory to register. The difference
  * from the above function is that it supports different data types of inputs.
@@ -576,6 +616,36 @@ __device__ __forceinline__ void WriteData(T* dst,
   }
 }
 
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+__device__ __forceinline__ void WriteData(T* dst,
+                                          T* __restrict__ src,
+                                          int num,
+                                          int read_lens) {
+  if (IsBoundary) {
+    int thread_offset = threadIdx.x * NX;
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if ((thread_offset + idx) < num) {
+        dst[thread_offset + idx] = src[idx];
+      }
+    }
+  } else {
+    // Vector type
+    constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+    constexpr int kVectorsPerThread = NX / kVectorSize;
+
+    int thread_offset = threadIdx.x * kVectorsPerThread;
+    using VecType = details::VectorType<T, kVectorSize>;
+    VecType* vec_dst = reinterpret_cast<VecType*>(dst);
+    VecType vec_temp[kVectorsPerThread];
+#pragma unroll
+    for (int idx = 0; idx < kVectorsPerThread; ++idx) {
+      vec_temp[idx] = *(reinterpret_cast<VecType*>(src) + idx);
+      vec_dst[thread_offset + idx] = vec_temp[idx];
+    }
+  }
+}
+
 /**
  * @brief Write 2D data from register to global memory according to Tx type, and
  * store it as Ty type.
@@ -749,6 +819,40 @@ __device__ __forceinline__ void ReadDataBc(
   }
 }
 
+template <typename T,
+          int NX,
+          int NY,
+          int BlockSize,
+          int Rank,
+          bool IsBoundary = false>
+__device__ __forceinline__ void ReadDataBc(
+    T* dst,
+    const T* __restrict__ src,
+    uint32_t block_offset,
+    details::BroadcastConfig<Rank> config,
+    int total_num_output,
+    int read_lens) {
+  uint32_t thread_offset = block_offset + threadIdx.x * NX;
+  uint32_t index_src = 0;
+
+#pragma unroll
+  for (uint32_t nx = 0; nx < NX; ++nx) {
+    uint32_t index_output = thread_offset + nx;
+    index_src = 0;
+    if (IsBoundary) {
+      if (index_output >= total_num_output) {
+        break;
+      }
+    }
+#pragma unroll
+    for (int i = 0; i < Rank; ++i) {
+      auto fast_divmoder = config.divmoders[i].Divmod(index_output);
+      index_output = fast_divmoder.val[0];
+      index_src += fast_divmoder.val[1] * config.strides[i];
+    }
+    dst[nx] = src[index_src];
+  }
+}
 /**
  * @brief Initialize register with data index.
  *

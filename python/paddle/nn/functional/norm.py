@@ -318,7 +318,13 @@ def layer_norm(x,
                          str_normalized_shape[
                              1:] + ', but got input shape ' + str(input_shape))
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        pre_act, _, _, = _C_ops.final_state_layer_norm(x, weight, bias, epsilon,
+                                                       begin_norm_axis, False)
+
+        return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
+
+    if _in_legacy_dygraph():
         pre_act, _, _ = _C_ops.layer_norm(x, weight, bias, 'epsilon', epsilon,
                                           'begin_norm_axis', begin_norm_axis)
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)

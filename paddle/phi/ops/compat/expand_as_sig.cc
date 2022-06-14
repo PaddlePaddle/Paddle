@@ -22,10 +22,8 @@ KernelSignature ExpandAsOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature ExpandAsGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("expand_as_grad",
-                         {"X", GradVarName("Out")},
-                         {"target_shape"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "expand_as_grad", {"X", "Out@GRAD"}, {"target_shape"}, {"X@GRAD"});
 }
 
 }  // namespace phi

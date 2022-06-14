@@ -116,7 +116,7 @@ endif()
 
 cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 
-# seperate init from device_context to avoid cycle dependencies
+# separate init from device_context to avoid cycle dependencies
 cc_library(init SRCS init.cc DEPS device_context custom_kernel context_pool)
 
 # memcpy depends on device_context, here add deps individually for
@@ -125,7 +125,7 @@ cc_library(device_context SRCS device_context.cc DEPS simple_threadpool malloc x
     place phi_place eigen3 stringpiece cpu_helper cpu_info framework_proto ${IPU_CTX_DEPS} ${GPU_CTX_DEPS} ${NPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS} ${MLU_CTX_DEPS} eigen3 cpu_context generator)
 if(WITH_XPU)
-  target_link_libraries(device_context xpu_context)
+  target_link_libraries(device_context xpu_context xpu_resource_pool)
 endif()
 
 cc_library(collective_helper SRCS collective_helper.cc gen_comm_id_helper.cc DEPS framework_proto device_context enforce)
@@ -192,13 +192,13 @@ add_subdirectory(profiler)
 
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
 if(WITH_GPU)
-  nv_library(profiler SRCS profiler.cc profiler.cu DEPS os_info device_tracer gpu_info enforce dynload_cuda new_profiler)
+  nv_library(profiler SRCS profiler.cc profiler.cu DEPS os_info device_tracer gpu_info enforce dynload_cuda new_profiler stats)
   nv_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info gpu_info place)
 elseif(WITH_ROCM)
-  hip_library(profiler SRCS profiler.cc profiler.cu DEPS os_info device_tracer gpu_info enforce new_profiler)
+  hip_library(profiler SRCS profiler.cc profiler.cu DEPS os_info device_tracer gpu_info enforce new_profiler stats)
   hip_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info gpu_info place)
 else()
-  cc_library(profiler SRCS profiler.cc DEPS os_info device_tracer enforce new_profiler)
+  cc_library(profiler SRCS profiler.cc DEPS os_info device_tracer enforce new_profiler stats)
   cc_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info place)
 endif()
 

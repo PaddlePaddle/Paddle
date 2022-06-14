@@ -16,8 +16,8 @@
 
 #include <set>
 
-#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 
 #include "paddle/phi/api/lib/utils/storage.h"

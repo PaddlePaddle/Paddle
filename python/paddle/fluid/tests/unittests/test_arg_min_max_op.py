@@ -68,6 +68,26 @@ class TestCase2(BaseTestCase):
         self.axis = 0
 
 
+@unittest.skipIf(not paddle.is_compiled_with_cuda(),
+                 "FP16 test runs only on GPU")
+class TestCase0FP16(BaseTestCase):
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (3, 4, 5)
+        self.dtype = np.float16
+        self.axis = 0
+
+
+@unittest.skipIf(not paddle.is_compiled_with_cuda(),
+                 "FP16 test runs only on GPU")
+class TestCase1FP16(BaseTestCase):
+    def initTestCase(self):
+        self.op_type = 'arg_min'
+        self.dims = (3, 4)
+        self.dtype = np.float16
+        self.axis = 1
+
+
 class TestCase2_1(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
@@ -202,4 +222,5 @@ class BaseTestComplex2_2(OpTest):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

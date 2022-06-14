@@ -289,6 +289,11 @@ void Scope::DelListener(const std::shared_ptr<ScopeListener>& listener) {
   listeners_.remove(listener);
 }
 
+bool Scope::HasListener(const std::shared_ptr<ScopeListener>& listener) {
+  auto it = std::find(listeners_.begin(), listeners_.end(), listener);
+  return it != listeners_.end();
+}
+
 void Scope::EraseVarsExcept(const std::unordered_set<Variable*>& vars) {
   SCOPE_VARS_WRITER_LOCK
   for (auto iter = vars_.begin(); iter != vars_.end();) {

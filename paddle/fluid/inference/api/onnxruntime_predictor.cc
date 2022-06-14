@@ -279,6 +279,12 @@ bool ONNXRuntimePredictor::Run(const std::vector<PaddleTensor> &inputs,
 
 bool ONNXRuntimePredictor::ZeroCopyRun() {
   try {
+    const char *device_name = place_ == PlaceType::kCPU ? "Cpu" : "Cuda";
+    for (auto output : output_desc_) {
+      Ort::MemoryInfo out_memory_info(device_name, OrtDeviceAllocator,
+                                      place_.GetDeviceId(), OrtMemTypeDefault);
+      binding_->BindOutput(output.name.c_str(), out_memory_info);
+    }
     session_.Run({}, *(binding_.get()));
   } catch (const std::exception &e) {
     LOG(ERROR) << e.what();

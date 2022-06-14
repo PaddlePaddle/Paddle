@@ -25,6 +25,7 @@ limitations under the License. */
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale_sr, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace tests {

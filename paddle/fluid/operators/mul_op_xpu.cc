@@ -19,6 +19,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/xpu_api_wrapper.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace operators {
@@ -28,6 +30,8 @@ using framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class MulXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* x = context.Input<Tensor>("X");
@@ -62,14 +66,15 @@ class MulXPUKernel : public framework::OpKernel<T> {
     const T* data_b = y_matrix.data<T>();
     T* data_c = z->data<T>();
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    int ret = xpu::fc_int16(dev_ctx.x_context(), trans_a, trans_b, m, n, k,
-                            alpha, data_a, data_b, beta, data_c);
-    PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            ret));
+
+    int ret = xpu_fc_wrapper<XPUType, int16_t>(
+        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(data_a),
+        reinterpret_cast<const XPUType*>(data_b),
+        reinterpret_cast<XPUType*>(data_c), m, n, k, trans_a, trans_b, nullptr,
+        nullptr, nullptr, k, n, n, alpha, beta, nullptr,
+        xpu::Activation_t::LINEAR);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "xpu_fc_wrapper");
+
     if (z_dim.size() != 2) {
       z->Resize(z_dim);
     }
@@ -78,6 +83,8 @@ class MulXPUKernel : public framework::OpKernel<T> {
 
 template <typename DeviceContext, typename T>
 class MulGradXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     int x_num_col_dims = ctx.template Attr<int>("x_num_col_dims");
@@ -126,14 +133,14 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
       const T* data_a = dout->data<T>();
       const T* data_b = y_matrix.data<T>();
       T* data_c = dx_matrix.data<T>();
-      int ret =
-          xpu::gemm_int16(dev_ctx.x_context(), trans_a, trans_b, m, n, k, alpha,
-                          data_a, lda, data_b, ldb, beta, data_c, ldc);
-      PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                        platform::errors::External(
-                            "XPU API return wrong value[%d], please check "
-                            "where Baidu Kunlun Card is properly installed.",
-                            ret));
+
+      int ret = xpu_fc_wrapper<XPUType, int16_t>(
+          dev_ctx.x_context(), reinterpret_cast<const XPUType*>(data_a),
+          reinterpret_cast<const XPUType*>(data_b),
+          reinterpret_cast<XPUType*>(data_c), m, n, k, trans_a, trans_b,
+          nullptr, nullptr, nullptr, lda, ldb, ldc, alpha, beta, nullptr,
+          xpu::Activation_t::LINEAR);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "xpu_fc_wrapper");
     }
 
     if (dy) {
@@ -159,14 +166,14 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
       const T* data_a = x_matrix.data<T>();
       const T* data_b = dout->data<T>();
       T* data_c = dy_matrix.data<T>();
-      int ret =
-          xpu::gemm_int16(dev_ctx.x_context(), trans_a, trans_b, m, n, k, alpha,
-                          data_a, lda, data_b, ldb, beta, data_c, ldc);
-      PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                        platform::errors::External(
-                            "XPU API return wrong value[%d], please check "
-                            "where Baidu Kunlun Card is properly installed.",
-                            ret));
+
+      int ret = xpu_fc_wrapper<XPUType, int16_t>(
+          dev_ctx.x_context(), reinterpret_cast<const XPUType*>(data_a),
+          reinterpret_cast<const XPUType*>(data_b),
+          reinterpret_cast<XPUType*>(data_c), m, n, k, trans_a, trans_b,
+          nullptr, nullptr, nullptr, lda, ldb, ldc, alpha, beta, nullptr,
+          xpu::Activation_t::LINEAR);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "xpu_fc_wrapper");
     }
   }
 };
@@ -175,9 +182,12 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_XPU_KERNEL(
-    mul, ops::MulXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    mul, ops::MulXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::MulXPUKernel<paddle::platform::XPUDeviceContext, plat::float16>);
 REGISTER_OP_XPU_KERNEL(
-    mul_grad, ops::MulGradXPUKernel<paddle::platform::XPUDeviceContext, float>)
+    mul_grad, ops::MulGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::MulGradXPUKernel<paddle::platform::XPUDeviceContext, plat::float16>)
 #endif

@@ -176,6 +176,36 @@ function(create_static_lib TARGET_NAME)
   endif()
 endfunction()
 
+function(create_dummy_static_lib TARGET_NAME)
+  set(options "")
+  set(oneValueArgs "")
+  set(multiValueArgs LIBS DEPS LIMIT)
+  cmake_parse_arguments(merge "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+  list(REMOVE_DUPLICATES merge_LIBS)
+  set(index 1)
+  set(offset 1)
+  # the dummy target would be consisted of limit size libraries
+  set(limit ${merge_LIMIT})
+  list(LENGTH merge_LIBS libs_len)
+  foreach(lib ${merge_LIBS})
+    list(APPEND merge_list ${lib})
+    list(LENGTH merge_list listlen)
+    if ((${listlen} GREATER ${limit}) OR (${offset} EQUAL ${libs_len}))
+      message("Merge and generate static library: ${TARGET_NAME}_static_${index}")
+      merge_static_libs(${TARGET_NAME}_static_${index} ${merge_list})
+      if(merge_DEPS)
+        target_link_libraries(${TARGET_NAME}_static_${index} ${merge_DEPS})
+      endif()
+      set(merge_list)
+      list(APPEND ${TARGET_NAME}_list ${TARGET_NAME}_static_${index})
+      MATH(EXPR index "${index}+1")
+    endif()
+    MATH(EXPR offset "${offset}+1")
+  endforeach()
+  cc_library(${TARGET_NAME} DEPS ${${TARGET_NAME}_list})
+endfunction()
+
 function(merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
   list(REMOVE_DUPLICATES libs)
@@ -193,92 +223,61 @@ function(merge_static_libs TARGET_NAME)
   # also help to track dependencies.
   set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
 
-  if(APPLE) # Use OSX's libtool to merge archives
-    # Make the generated dummy source file depended on all static input
-    # libs. If input lib changes,the source file is touched
-    # which causes the desired effect (relink).
-    add_custom_command(OUTPUT ${target_SRCS}
-      COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
-      DEPENDS ${libs})
+  # Make the generated dummy source file depended on all static input
+  # libs. If input lib changes,the source file is touched
+  # which causes the desired effect (relink).
+  add_custom_command(OUTPUT ${target_SRCS}
+    COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
+    DEPENDS ${libs})
+  
+    # Generate dummy staic lib
+  generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:merge_static_libs")
+  target_link_libraries(${TARGET_NAME} ${libs_deps})
 
-    # Generate dummy static lib
-    generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:merge_static_libs")
-
-    target_link_libraries(${TARGET_NAME} ${libs_deps})
-
+  # OSX: use 'libtool' to merge archives
+  if(APPLE)
     foreach(lib ${libs})
       # Get the file names of the libraries to be merged
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
     endforeach()
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMENT "Merge and generate static lib: lib${TARGET_NAME}.a"
       COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
       COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles}
       )
-  endif(APPLE)
-  if(LINUX) # general UNIX: use "ar" to extract objects and re-add to a common lib
-    set(target_DIR ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.dir)
+  endif()
+
+  # LINUX: use "ar" to extract objects and re-add to a common lib
+  if(LINUX)
+    set(mri_file ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.mri CACHE INTERNAL "phi_static.mri file")
+    get_property(ABS_MERGE_LIB_PATH TARGET ${TARGET_NAME} PROPERTY LOCATION)
+    file(WRITE ${mri_file} "create ${ABS_MERGE_LIB_PATH}\n")
 
     foreach(lib ${libs})
-      set(objlistfile ${target_DIR}/${lib}.objlist) # list of objects in the input library
-      set(objdir ${target_DIR}/${lib}.objdir)
-
-      add_custom_command(OUTPUT ${objdir}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${objdir}
-        DEPENDS ${lib})
-
-      add_custom_command(OUTPUT ${objlistfile}
-        COMMAND ${CMAKE_AR} -x "$<TARGET_FILE:${lib}>"
-        COMMAND ${CMAKE_AR} -t "$<TARGET_FILE:${lib}>" > ${objlistfile}
-        DEPENDS ${lib} ${objdir}
-        WORKING_DIRECTORY ${objdir})
-
-      list(APPEND target_OBJS "${objlistfile}")
+      get_property(ABS_LIB_PATH TARGET ${lib} PROPERTY LOCATION)
+      file(APPEND ${mri_file} "addlib ${ABS_LIB_PATH}\n")
     endforeach()
-
-    # Make the generated dummy source file depended on all static input
-    # libs. If input lib changes,the source file is touched
-    # which causes the desired effect (relink).
-    add_custom_command(OUTPUT ${target_SRCS}
-      COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
-      DEPENDS ${libs} ${target_OBJS})
-
-    # Generate dummy staic lib
-    generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:merge_static_libs")
-
-    target_link_libraries(${TARGET_NAME} ${libs_deps})
-
-    # Get the file name of the generated library
-    set(target_LIBNAME "$<TARGET_FILE:${TARGET_NAME}>")
+    file(APPEND ${mri_file} "save\nend\n")
 
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-        COMMAND ${CMAKE_AR} crs ${target_LIBNAME} `find ${target_DIR} -name '*.o'`
-        COMMAND ${CMAKE_RANLIB} ${target_LIBNAME}
-        WORKING_DIRECTORY ${target_DIR})
-  endif(LINUX)
-  if(WIN32) # windows do not support gcc/nvcc combined compiling. Use msvc lib.exe to merge libs.
-    # Make the generated dummy source file depended on all static input
-    # libs. If input lib changes,the source file is touched
-    # which causes the desired effect (relink).
-    add_custom_command(OUTPUT ${target_SRCS}
-      COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
-      DEPENDS ${libs})
-    # Generate dummy staic lib
-    generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:merge_static_libs")
+        COMMENT "Merge and generate static lib: lib${TARGET_NAME}.a"
+        COMMAND ${CMAKE_AR} -M < ${mri_file}
+        COMMAND ${CMAKE_RANLIB} "$<TARGET_FILE:${TARGET_NAME}>")
+  endif()
 
-    target_link_libraries(${TARGET_NAME} ${libs_deps})
-
+  # Windows do not support gcc/nvcc combined compiling. Use msvc 'lib.exe' to merge libs.
+  if(WIN32)
     foreach(lib ${libs})
-      # Get the file names of the libraries to be merged
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
     endforeach()
-    # msvc will put libarary in directory of "/Release/xxxlib" by default
-    #       COMMAND cmake -E remove "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
+    # msvc compiler will put libarary in directory of "/Release/xxxlib" by default
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMENT "Merge and generate static lib: lib${TARGET_NAME}.lib"
       COMMAND cmake -E make_directory $<TARGET_FILE_DIR:${TARGET_NAME}>
       COMMAND lib /OUT:$<TARGET_FILE:${TARGET_NAME}> ${libfiles}
       )
-  endif(WIN32)
-endfunction(merge_static_libs)
+  endif()
+endfunction()
 
 function(check_coverage_opt TARGET_NAME SRCS)
   if(WITH_COVERAGE AND WITH_INCREMENTAL_COVERAGE)
@@ -1076,4 +1075,3 @@ function(math_library TARGET)
         cc_library(${TARGET} SRCS ${cc_srcs} DEPS ${math_library_DEPS} ${math_common_deps})
     endif()
 endfunction()
-

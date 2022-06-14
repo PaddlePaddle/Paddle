@@ -26,6 +26,7 @@ import paddle
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 def output_hist(out):
@@ -52,6 +53,7 @@ def output_hist_diag(out):
 class TestUniformRandomOp_attr_tensorlist(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
+        self.python_api = paddle.uniform
         self.new_shape = (1000, 784)
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
@@ -84,6 +86,7 @@ class TestMaxMinAreInt(TestUniformRandomOp_attr_tensorlist):
 class TestUniformRandomOp_attr_tensorlist_int32(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
+        self.python_api = paddle.uniform
         self.new_shape = (1000, 784)
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
@@ -110,6 +113,7 @@ class TestUniformRandomOp_attr_tensorlist_int32(OpTest):
 class TestUniformRandomOp_attr_tensor(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
+        self.python_api = paddle.uniform
         self.inputs = {"ShapeTensor": np.array([1000, 784]).astype("int64")}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
@@ -131,6 +135,7 @@ class TestUniformRandomOp_attr_tensor(OpTest):
 class TestUniformRandomOp_attr_tensor_int32(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
+        self.python_api = paddle.uniform
         self.inputs = {"ShapeTensor": np.array([1000, 784]).astype("int32")}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
@@ -152,6 +157,7 @@ class TestUniformRandomOp_attr_tensor_int32(OpTest):
 class TestUniformRandomOp(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
+        self.python_api = paddle.uniform
         self.inputs = {}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
@@ -173,6 +179,18 @@ class TestUniformRandomOp(OpTest):
         self.assertTrue(
             np.allclose(
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+    def test_check_api(self):
+        places = self._get_places()
+        for place in places:
+            with fluid.dygraph.base.guard(place=place):
+                out = self.python_api(self.attrs['shape'], 'float32',
+                                      self.attrs['min'], self.attrs['max'],
+                                      self.attrs['seed'])
+
+    def test_check_api_eager(self):
+        with _test_eager_guard():
+            self.test_check_api()
 
 
 class TestUniformRandomOpError(unittest.TestCase):
@@ -573,37 +591,46 @@ class TestRandomValue(unittest.TestCase):
         if not "V100" in paddle.device.cuda.get_device_name():
             return
 
-        if os.getenv("FLAGS_use_curand", None) in ('0', 'False', None):
-            return
-
-        def _check_random_value(dtype, expect, expect_mean, expect_std):
-            x = paddle.rand([32, 3, 1024, 1024], dtype=dtype)
-            actual = x.numpy()
-            self.assertTrue(np.allclose(actual[2, 1, 512, 1000:1010], expect))
-            self.assertEqual(np.mean(actual), expect_mean)
-            self.assertEqual(np.std(actual), expect_std)
-
         print("Test Fixed Random number on V100 GPU------>")
         paddle.disable_static()
+
         paddle.set_device('gpu')
         paddle.seed(2021)
+
+        expect_mean = 0.50000454338820143895816272561205551028251647949218750
+        expect_std = 0.28867379167297479991560749112977646291255950927734375
         expect = [
             0.55298901, 0.65184678, 0.49375412, 0.57943639, 0.16459608,
             0.67181056, 0.03021481, 0.0238559, 0.07742096, 0.55972187
         ]
-        expect_mean = 0.50000454338820143895816272561205551028251647949218750
-        expect_std = 0.28867379167297479991560749112977646291255950927734375
-        _check_random_value(core.VarDesc.VarType.FP64, expect, expect_mean,
-                            expect_std)
+        out = paddle.rand([32, 3, 1024, 1024], dtype='float64').numpy()
+        self.assertEqual(np.mean(out), expect_mean)
+        self.assertEqual(np.std(out), expect_std)
+        self.assertTrue(np.allclose(out[2, 1, 512, 1000:1010], expect))
 
+        expect_mean = 0.50002604722976684570312500
+        expect_std = 0.2886914908885955810546875
         expect = [
             0.45320973, 0.17582087, 0.725341, 0.30849215, 0.622257, 0.46352342,
             0.97228295, 0.12771158, 0.286525, 0.9810645
         ]
-        expect_mean = 0.50002604722976684570312500
-        expect_std = 0.2886914908885955810546875
-        _check_random_value(core.VarDesc.VarType.FP32, expect, expect_mean,
-                            expect_std)
+        out = paddle.rand([32, 3, 1024, 1024], dtype='float32').numpy()
+        self.assertEqual(np.mean(out), expect_mean)
+        self.assertEqual(np.std(out), expect_std)
+        self.assertTrue(np.allclose(out[2, 1, 512, 1000:1010], expect))
+
+        expect_mean = 25.11843109130859375
+        expect_std = 43.370647430419921875
+        expect = [
+            30.089634, 77.05225, 3.1201615, 68.34072, 59.266724, -25.33281,
+            12.973292, 27.41127, -17.412298, 27.931019
+        ]
+        out = paddle.empty(
+            [16, 16, 16, 16], dtype='float32').uniform_(-50, 100).numpy()
+        self.assertEqual(np.mean(out), expect_mean)
+        self.assertEqual(np.std(out), expect_std)
+        self.assertTrue(np.allclose(out[10, 10, 10, 0:10], expect))
+
         paddle.enable_static()
 
 

@@ -23,10 +23,8 @@ KernelSignature SqueezeOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature SqueezeGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("squeeze_grad",
-                         {"XShape", GradVarName("Out")},
-                         {"axes"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "squeeze_grad", {"XShape", "Out@GRAD"}, {"axes"}, {"X@GRAD"});
 }
 
 }  // namespace phi

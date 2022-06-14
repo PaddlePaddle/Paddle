@@ -20,11 +20,11 @@ namespace phi {
 
 template <typename T, typename Context>
 void ConvGradGradKernel(const Context& dev_ctx,
-                        paddle::optional<const DenseTensor&> input_grad_grad,
-                        paddle::optional<const DenseTensor&> filter_grad_grad,
-                        const DenseTensor& out_grad,
                         const DenseTensor& input,
                         const DenseTensor& filter,
+                        const DenseTensor& out_grad,
+                        paddle::optional<const DenseTensor&> input_grad_grad,
+                        paddle::optional<const DenseTensor&> filter_grad_grad,
                         const std::vector<int>& strides,
                         const std::vector<int>& paddings,
                         const std::string& paddding_algorithm,
@@ -34,9 +34,9 @@ void ConvGradGradKernel(const Context& dev_ctx,
                         bool use_addto,
                         int workspace_size_MB,
                         bool exhaustive_search,
-                        DenseTensor* out_grad_grad,
                         DenseTensor* input_grad,
-                        DenseTensor* filter_grad);
+                        DenseTensor* filter_grad,
+                        DenseTensor* out_grad_grad);
 
 template <typename T, typename Context>
 void Conv3DGradGradKernel(const Context& dev_ctx,

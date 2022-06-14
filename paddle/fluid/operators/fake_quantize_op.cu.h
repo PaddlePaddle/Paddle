@@ -25,6 +25,16 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
+struct QuantizeDataType {
+  using type = T;
+};
+
+template <>
+struct QuantizeDataType<paddle::platform::float16> {
+  using type = float;
+};
+
+template <typename T>
 __global__ void FindAbsMaxKernel(const T* in, const int n, T* out) {
   int bid = threadIdx.x + blockIdx.x * blockDim.x;
   int tid = threadIdx.x;
@@ -87,10 +97,12 @@ __global__ void FindChannelAbsMaxKernelQuantAxis0(const T* in, const int n,
   int tid = threadIdx.x;
   int channel_size = n / c;
   const T* in_c = in + blockIdx.x * channel_size;
-  extern __shared__ T shared_max_data[];
+  extern __shared__ char* shared_max_data_tmp[];
+  auto shared_max_data = reinterpret_cast<T*>(shared_max_data_tmp);
   T local_max_data = T(0);
   for (int i = tid; i < channel_size; i += blockDim.x) {
-    T tmp = fabs(in_c[i]);
+    T tmp = static_cast<T>(
+        fabs(static_cast<typename QuantizeDataType<T>::type>(in_c[i])));
     if (tmp > local_max_data) {
       local_max_data = tmp;
     }
@@ -112,7 +124,8 @@ template <typename T>
 __global__ void FindChannelAbsMaxKernelQuantAxis1(const T* in, const int n,
                                                   const int cin, const int cout,
                                                   T* out) {
-  extern __shared__ T shared_max_data[];
+  extern __shared__ char* shared_max_data_tmp[];
+  auto shared_max_data = reinterpret_cast<T*>(shared_max_data_tmp);
   int cout_wh_size = n / cin;
   int wh_size = n / (cin * cout);
 
@@ -121,7 +134,8 @@ __global__ void FindChannelAbsMaxKernelQuantAxis1(const T* in, const int n,
   const T* in_current = in + tid * cout_wh_size + bid * wh_size;
   T local_max_data = T(0);
   for (int i = 0; i < wh_size; i++) {
-    T tmp = fabs(in_current[i]);
+    T tmp = static_cast<T>(
+        fabs(static_cast<typename QuantizeDataType<T>::type>(in_current[i])));
     if (tmp > local_max_data) {
       local_max_data = tmp;
     }
@@ -205,12 +219,14 @@ __global__ void ClipAndQuantKernel(const T* in, const T* scale,
 
   T s = scale[0];
   T inv_s = inverse(s);
+  T bin_cnt_t = static_cast<T>(bin_cnt);
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     T x = in[i];
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
-    v = bin_cnt * inv_s * v;
-    out[i] = round(v);
+    v = bin_cnt_t * inv_s * v;
+    out[i] = static_cast<T>(
+        round(static_cast<typename QuantizeDataType<T>::type>(v)));
   }
 }
 
@@ -230,7 +246,8 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
     x = x > s ? s : x;
     x = x < -s ? -s : x;
     x = bin_cnt_t * inv_s * x;
-    x = static_cast<T>(round(static_cast<float>(x)));
+    x = static_cast<T>(
+        round(static_cast<typename QuantizeDataType<T>::type>(x)));
     out[i] = (x * s) / bin_cnt_t;
   }
 }
@@ -287,13 +304,15 @@ __global__ void ChannelClipAndQuantKernelQuantAxis0(const T* in, const T* scale,
 
   T s = scale[blockIdx.x];
   T inv_s = inverse(s);
+  T bin_cnt_t = static_cast<T>(bin_cnt);
 
   for (int64_t i = tid; i < channel_size; i += blockDim.x) {
     T x = in_c[i];
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
-    v = bin_cnt * inv_s * v;
-    out_c[i] = round(v);
+    v = bin_cnt_t * inv_s * v;
+    out_c[i] = static_cast<T>(
+        round(static_cast<typename QuantizeDataType<T>::type>(v)));
   }
 }
 
@@ -303,14 +322,16 @@ __global__ void ChannelClipAndQuantKernelQuantAxisN(
     const T* in, const T* scale, const int bin_cnt, const int64_t n,
     const int nScale, const int quant_stride, T* out) {
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  T bin_cnt_t = static_cast<T>(bin_cnt);
   for (int64_t i = idx; i < n; i += blockDim.x * gridDim.x) {
     T s = scale[(i / quant_stride) % nScale];
-    T inv_s = 1.0 / s;
+    T inv_s = inverse(s);
     T x = in[i];
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
-    v = bin_cnt * inv_s * v;
-    out[i] = round(v);
+    v = bin_cnt_t * inv_s * v;
+    out[i] = static_cast<T>(
+        round(static_cast<typename QuantizeDataType<T>::type>(v)));
   }
 }
 
@@ -376,7 +397,8 @@ __global__ void FindRangeAbsMaxAndFillArray(const T* cur_scale,
   scale_arr[idx] = cur;
   T max = last_scale[0];
   out_scale[0] = max < cur ? cur : max;
-  if (fabs(removed - max) < 1e-6) {
+  if (fabs(static_cast<typename QuantizeDataType<T>::type>(removed - max)) <
+      1e-6) {
     need_find_max[0] = 1;
     out_size[0] = it > window_size ? window_size : it;
   } else {

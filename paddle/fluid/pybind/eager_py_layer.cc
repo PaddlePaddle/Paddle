@@ -231,6 +231,10 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
   auto outputs = PyObject_Call(forward_fn, forward_args, kwargs);
   egr::Controller::Instance().SetHasGrad(trace_backward);
   if (!outputs) {
+    Py_XDECREF(forward_args);
+    Py_XDECREF(kwargs_value_list);
+    Py_XDECREF(backward_function);
+    Py_XDECREF(forward_fn);
     return nullptr;
   }
 
@@ -342,10 +346,8 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
         for (auto t : inputs_tensor[i]) {
           grad_node->SetGradOutMeta(*t, i);
         }
-        grad_node->AddEdges(&inputs_autograd_meta[i], i);
       } else {
         grad_node->SetGradOutMeta(*inputs_tensor[i][0], i);
-        grad_node->AddEdges(inputs_autograd_meta[i][0], i);
       }
     }
 
@@ -367,6 +369,14 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
     VLOG(6) << "PyLayer construct backward node finish...";
   }
 
+  if (!PyTuple_Check(outputs)) {
+    Py_XDECREF(outputs_tuple);
+  }
+  Py_XDECREF(forward_args);
+  Py_XDECREF(kwargs_value_list);
+  Py_XDECREF(backward_function);
+  Py_XDECREF(forward_fn);
+
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -380,8 +390,7 @@ PyObject* pylayer_method_register_hook(PyObject* _self, PyObject* hook) {
 PyObject* tensor_properties_get_container(PyLayerObject* self, void* closure) {
   EAGER_TRY
   if (self->container == nullptr) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE;
   }
   Py_INCREF(self->container);
   return self->container;
@@ -402,8 +411,7 @@ PyObject* tensor_properties_get_non_differentiable(PyLayerObject* self,
                                                    void* closure) {
   EAGER_TRY
   if (self->non_differentiable == nullptr) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE;
   }
   Py_INCREF(self->non_differentiable);
   return self->non_differentiable;
@@ -424,8 +432,7 @@ PyObject* tensor_properties_get_dirty_tensors(PyLayerObject* self,
                                               void* closure) {
   EAGER_TRY
   if (self->dirty_tensors == nullptr) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE;
   }
   Py_INCREF(self->dirty_tensors);
   return self->dirty_tensors;
