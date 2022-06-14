@@ -31,10 +31,12 @@ format them before git push."
     git diff 2>&1
 fi
 
+echo -e '\n***********************************'
 if [ ${check_error} != 0 ];then
-    echo -e '\n********************************'
     echo "Your PR code style check failed."
-    echo -e '********************************\n'
+else
+    echo "Your PR code style check passed."
 fi
+echo -e '***********************************\n'
 
 exit ${check_error}
