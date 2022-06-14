@@ -329,8 +329,8 @@ int GraphDataGenerator::FillInsBuf() {
   cudaMemcpyAsync(&h_pair_num, d_pair_num, sizeof(int), cudaMemcpyDeviceToHost,
                   stream_);
 
-  int64_t *feature_buf = reinterpret_cast<int64_t *>(d_feature_buf_->ptr());
   if (!FLAGS_enable_opt_get_features && slot_num_ > 0) {
+    int64_t *feature_buf = reinterpret_cast<int64_t *>(d_feature_buf_->ptr());
     int64_t *feature = reinterpret_cast<int64_t *>(d_feature_->ptr());
     cudaMemsetAsync(d_pair_num, 0, sizeof(int), stream_);
     int len = buf_state_.len;
@@ -355,11 +355,14 @@ int GraphDataGenerator::FillInsBuf() {
     }
     delete[] h_ins_buf;
 
-    int64_t h_feature_buf[(batch_size_ * 2 * 2) * slot_num_];
-    cudaMemcpy(h_feature_buf, feature_buf, (batch_size_ * 2 * 2) * slot_num_ * sizeof(int64_t),
-               cudaMemcpyDeviceToHost);
-    for (int xx = 0; xx < (batch_size_ * 2 * 2) * slot_num_; xx++) {
-      VLOG(2) << "h_feature_buf[" << xx << "]: " << h_feature_buf[xx];
+    if (!FLAGS_enable_opt_get_features && slot_num_ > 0) {
+      int64_t *feature_buf = reinterpret_cast<int64_t *>(d_feature_buf_->ptr());
+      int64_t h_feature_buf[(batch_size_ * 2 * 2) * slot_num_];
+      cudaMemcpy(h_feature_buf, feature_buf, (batch_size_ * 2 * 2) * slot_num_ * sizeof(int64_t),
+              cudaMemcpyDeviceToHost);
+      for (int xx = 0; xx < (batch_size_ * 2 * 2) * slot_num_; xx++) {
+        VLOG(2) << "h_feature_buf[" << xx << "]: " << h_feature_buf[xx];
+      }
     }
   }
   return ins_buf_pair_len_;
