@@ -1,16 +1,16 @@
 diff --git a/paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.cc b/paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.cc
-index 394ce7799e..8edbef50be 100644
+index e4fc52b6fa..24b6f73949 100644
 --- a/paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.cc
 +++ b/paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.cc
-@@ -390,6 +390,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
-       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
-       graph->Has(framework::ir::kMultiheadMatmulPass));
+@@ -384,6 +384,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
+       (graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass) &&
+        graph->Has(framework::ir::kMultiheadMatmulPass)));
  
 +  std::unordered_set<std::string> param_set(params.begin(), params.end());
    if (use_static_engine) {
      trt_engine_serialized_data = GetTrtEngineSerializedData(
          Get<std::string>("model_opt_cache_dir"), engine_key);
-@@ -399,6 +400,19 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
+@@ -393,6 +394,19 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
        LOG(INFO) << "Load TRT Optimized Info from "
                  << GetTrtEngineSerializedPath(
                         Get<std::string>("model_opt_cache_dir"), engine_key);
@@ -30,7 +30,7 @@ index 394ce7799e..8edbef50be 100644
        return;
      }
    }
-@@ -411,12 +425,25 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
+@@ -405,12 +419,25 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
  
    auto *scope = param_scope();
    framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
@@ -57,7 +57,7 @@ index 394ce7799e..8edbef50be 100644
  
    if (use_static_engine) {
      nvinfer1::IHostMemory *serialized_engine_data = trt_engine->Serialize();
-@@ -431,6 +458,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
+@@ -425,6 +452,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                << GetTrtEngineSerializedPath(
                       Get<std::string>("model_opt_cache_dir"), engine_key);
    }
