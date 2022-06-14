@@ -25,6 +25,14 @@ namespace operators {
 class IdentityLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
+  }
 };
 
 class IdentityLossOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -55,7 +63,7 @@ class IdentityLossGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, platform::CPUPlace());
   }
 };
 
