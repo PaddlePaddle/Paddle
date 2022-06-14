@@ -373,7 +373,14 @@ if __name__ == "__main__":
     args = parse_args()
     skipped_phi_api_list_file = args.paddle_root_path + skipped_phi_api_list_file
     api_yaml_file = args.paddle_root_path + api_yaml_file
-    infer_meta_data = get_api_yaml_info(api_yaml_file)
+    legacy_api_yaml_file = args.paddle_root_path + legacy_api_yaml_file
+    infer_meta_data = []
+    api_meta_data = get_api_yaml_info(api_yaml_file)
+    legacy_api_meta_data = get_api_yaml_info(legacy_api_yaml_file)
+    if api_meta_data:
+        infer_meta_data.extend(api_meta_data)
+    if legacy_api_meta_data:
+        infer_meta_data.extend(legacy_api_meta_data)
     kernel_data = get_kernel_info(args.kernel_info_file)
     info_meta_wrap_data = get_infermeta_info(args.infermeta_wrap_file)
     attr_data = get_attr_info(args.attr_info_file)
