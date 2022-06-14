@@ -225,7 +225,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
       fwd_in_meta->SetGradNode(
           std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
     }
-    VLOG(6) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+    VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
             << this->name() << " (addr: " << this << ") "
             << " to " << fwd_in_meta->GetMutableGradNode()->name()
             << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
@@ -281,7 +281,7 @@ void GradNodeBase::SetGradOutMeta(
         fwd_in_meta->SetGradNode(
             std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
       }
-      VLOG(6) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+      VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
               << this->name() << " (addr: " << this << ") "
               << " to " << fwd_in_meta->GetMutableGradNode()->name()
               << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
