@@ -104,7 +104,11 @@ class SliceOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument(
               "The size of ends must be equal to the size of axes."));
     }
-
+    for (auto &axis : axes) {
+      if (axis < 0) {
+        axis = std::max(0, axis + in_dims.size());
+      }
+    }
     phi::funcs::CheckAndUpdateSliceAttrs<int>(in_dims, axes, &starts, &ends,
                                               nullptr, &infer_flags);
 

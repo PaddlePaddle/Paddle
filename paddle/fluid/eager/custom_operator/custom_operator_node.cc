@@ -263,9 +263,9 @@ RunCustomOpNode::operator()(
                                 trace_backward, &(ins_auto_grad_metas[i]));
   }
 
-  if (require_any_grad) {
-    auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
-    const auto& vec_map = meta_info_map.at(op_type_);
+  auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
+  const auto& vec_map = meta_info_map.at(op_type_);
+  if (require_any_grad && (vec_map.size() > 2)) {
     paddle::platform::RecordEvent node_creation_record_event(
         "Custom Op " + op_type_ + " double_grad node_creation",
         paddle::platform::TracerEventType::OperatorInner, 1);

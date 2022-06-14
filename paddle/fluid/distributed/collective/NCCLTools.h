@@ -14,7 +14,13 @@
 
 #pragma once
 
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
+
 #include <error.h>
 
 #include <string>
@@ -23,9 +29,19 @@
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+
 #include "paddle/fluid/platform/device_context.h"
+
+#ifdef PADDLE_WITH_RCCL
+#include "paddle/fluid/platform/dynload/rccl.h"
+#else
 #include "paddle/fluid/platform/dynload/nccl.h"
+#endif
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -56,7 +72,11 @@ class EventManager {
   ~EventManager() {
     if (is_created_) {
       platform::CUDADeviceGuard guard(device_index_);
+#ifdef PADDLE_WITH_HIP
+      hipEventDestroy(event_);
+#else
       cudaEventDestroy(event_);
+#endif
     }
   }
 
@@ -94,24 +114,42 @@ class EventManager {
                           device_index, device_index_));
 
     platform::CUDADeviceGuard guard(device_index_);
+#ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, ctx.stream()));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, ctx.stream()));
+#endif
   }
 
   bool Query() const {
+#ifdef PADDLE_WITH_HIP
+    gpuError_t err = hipEventQuery(event_);
+    if (err == hipSuccess) {
+      return true;
+    }
+    if (err == hipErrorNotReady) {
+      return false;
+    }
+#else
     gpuError_t err = cudaEventQuery(event_);
     if (err == cudaSuccess) {
       return true;
-    } else if (err == cudaErrorNotReady) {
-      return false;
-    } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(err);
+    }
+    if (err == cudaErrorNotReady) {
       return false;
     }
+#endif
+    PADDLE_ENFORCE_GPU_SUCCESS(err);
+    return false;
   }
 
   void Synchronize() const {
     if (is_created_) {
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventSynchronize(event_));
+#else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(event_));
+#endif
     }
   }
 
@@ -124,12 +162,22 @@ class EventManager {
                             "Event's device %d",
                             device_index, device_index_));
       platform::CUDADeviceGuard guard(device_index_);
+
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(ctx.stream(), event_, 0));
+#else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(ctx.stream(), event_, 0));
+#endif
     }
   }
 
  private:
+#ifdef PADDLE_WITH_HIP
+  unsigned int flags_ = hipEventDefault;
+#else
   unsigned int flags_ = cudaEventDefault;
+#endif
+
   bool is_created_{false};
   gpuEvent_t event_{};
   int8_t device_index_{0};
@@ -138,7 +186,13 @@ class EventManager {
   void CreateEvent(int device_index) {
     device_index_ = device_index;
     platform::CUDADeviceGuard guard(device_index);
+
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventCreateWithFlags(&event_, flags_));
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreateWithFlags(&event_, flags_));
+#endif
+
     is_created_ = true;
   }
 };

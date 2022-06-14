@@ -217,7 +217,7 @@ function(op_library TARGET)
         return()
       endif()
     endforeach()
-  endif(WIN32)
+  endif()
 
   # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
   if(WITH_UNITY_BUILD AND op_library_UNITY)
