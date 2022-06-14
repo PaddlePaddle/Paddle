@@ -60,6 +60,7 @@ class Squeeze2OpConverter : public OpConverter {
       trt_out_dims.d[trt_out_dims.nbDims] = input_dims.d[i];
       trt_out_dims.nbDims++;
     }
+
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     if (engine_->with_dynamic_shape()) {
       auto* shape_tensor = Shape(input);

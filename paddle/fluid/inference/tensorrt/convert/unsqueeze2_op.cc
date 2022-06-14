@@ -75,7 +75,7 @@ class Unsqueeze2OpConverter : public OpConverter {
       gather_indices.push_back(in_rank_i);
       in_rank_i++;
     }
-    
+
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     if (engine_->with_dynamic_shape()) {
       auto* shape_tensor = Shape(input);
