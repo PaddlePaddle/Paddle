@@ -57,7 +57,6 @@ void TrainerBase::DumpWork(int tid) {
   int err_no = 0;
   // GetDumpPath is implemented in each Trainer
   std::string path = GetDumpPath(tid);
-  VLOG(0) << "dump path = " << path;
   std::shared_ptr<FILE> fp = fs_open_write(path, &err_no, dump_converter_);
   while (1) {
     std::string out_str;

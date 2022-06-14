@@ -106,17 +106,13 @@ std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
 
 bool CheckValidOutput(LoDTensor* tensor, size_t batch_size) {
   auto& dims = tensor->dims();
-  VLOG(0) << "dim --- size " << dims.size();
-  VLOG(0) << "--- dims " << dims[0] << " " << dims[1];
   if (dims.size() != 2) return false;
   if (tensor->lod().size() != 0) {
-    VLOG(0) << "dim ..... branch1";
     auto& lod = tensor->lod()[0];
     if (lod.size() != batch_size + 1) {
       return false;
     }
   } else {
-    VLOG(1) << "dim ..... branch2";
     if (dims[0] != static_cast<int>(batch_size)) {
       return false;
     }
@@ -171,13 +167,11 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
   // 3: in sequential order of the records
   // number
   size_t batch_size = device_reader_->GetCurBatchSize();
-  VLOG(0) << "()2-----batch size = " << batch_size;
   auto& ins_id_vec = device_reader_->GetInsIdVec();
   auto& ins_content_vec = device_reader_->GetInsContentVec();
   if (ins_id_vec.size() > 0) {
     batch_size = ins_id_vec.size();
   }
-  VLOG(0) << "()-----batch size = " << batch_size;
   std::vector<std::string> ars(batch_size);
   std::vector<bool> hit(batch_size, false);
 
