@@ -54,9 +54,28 @@ class ActivationOpConverter : public OpConverter {
 
     auto op_pair = ops.find(op_type_);
 
-    nvinfer1::IActivationLayer* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Activation, *const_cast<nvinfer1::ITensor*>(input_tensor),
-        op_pair->second);
+    if (op_type_ == "softplus") {
+      const float beta = op_desc.HasAttr("beta")
+                             ? BOOST_GET_CONST(float, op_desc.GetAttr("beta"))
+                             : 1.0f;
+      const float threshold =
+          op_desc.HasAttr("threshold")
+              ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
+              : 20.0f;
+      auto* layer_clip = TRT_ENGINE_ADD_LAYER(
+          engine_, Activation, *const_cast<nvinfer1::ITensor*>(input_tensor),
+          nvinfer1::ActivationType::kCLIP);
+      layer_clip->setAlpha(-3.40282e+038);
+      layer_clip->setBeta(threshold / beta);
+      layer = TRT_ENGINE_ADD_LAYER(engine_, Activation,
+                                   *layer_clip->getOutput(0), op_pair->second);
+      layer->setAlpha(1.0f / beta);
+      layer->setBeta(beta);
+    } else {
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Activation, *const_cast<nvinfer1::ITensor*>(input_tensor),
+          op_pair->second);
+    }
 
 #if IS_TRT_VERSION_GE(5130)
     // max(alpha, min(beta, x))
@@ -79,13 +98,6 @@ class ActivationOpConverter : public OpConverter {
                               : 1.0f;
       layer->setAlpha(alpha);
       layer->setBeta(scale);
-    }
-    if (op_type_ == "softplus") {
-      const float beta = op_desc.HasAttr("beta")
-                             ? BOOST_GET_CONST(float, op_desc.GetAttr("beta"))
-                             : 1.0f;
-      layer->setAlpha(1.0f / beta);
-      layer->setBeta(beta);
     }
     if (op_type_ == "stanh") {
       const float scale_a =
