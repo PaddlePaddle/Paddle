@@ -207,7 +207,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
 
 def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
     """
-    This OP computes the indices of the min elements of the input tensor's
+    Computing the indices of the min elements of the input tensor's
     element along the provided axis.
 
     Args:
@@ -217,7 +217,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
         keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
-        dtype(str): Data type of the output tensor which can
+        dtype(str, optional): Data type of the output tensor which can
                     be int32, int64. The default value is 'int64', and it will
                     return the int64 indices.
         name(str, optional): The default value is None. Normally there is no
@@ -225,11 +225,11 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
+        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`.
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
 
             x =  paddle.to_tensor([[5,8,9,5],
@@ -834,7 +834,7 @@ def masked_select(x, mask, name=None):
 
 def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     """
-    This OP is used to find values and indices of the k largest or smallest at the optional axis.
+    Return values and indices of the k largest or smallest at the optional axis.
     If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
     If the input is a Tensor with higher rank, this operator computes the top k values and indices along the :attr:`axis`.
 
@@ -856,35 +856,27 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     Examples:
 
         .. code-block:: python
+          :name: code-example1
+            import paddle
 
-           import paddle
+            data_1 = paddle.to_tensor([1, 4, 5, 7])
+            value_1, indices_1 = paddle.topk(data_1, k=1)
+            print(value_1) # [7]
+            print(indices_1) # [3]
 
-           tensor_1 = paddle.to_tensor([1, 4, 5, 7])
-           value_1, indices_1 = paddle.topk(tensor_1, k=1)
-           print(value_1)
-           # [7]
-           print(indices_1)
-           # [3] 
-           tensor_2 = paddle.to_tensor([[1, 4, 5, 7], [2, 6, 2, 5]])
-           value_2, indices_2 = paddle.topk(tensor_2, k=1)
-           print(value_2)
-           # [[7]
-           #  [6]]
-           print(indices_2)
-           # [[3]
-           #  [1]]
-           value_3, indices_3 = paddle.topk(tensor_2, k=1, axis=-1)
-           print(value_3)
-           # [[7]
-           #  [6]]
-           print(indices_3)
-           # [[3]
-           #  [1]]
-           value_4, indices_4 = paddle.topk(tensor_2, k=1, axis=0)
-           print(value_4)
-           # [[2 6 5 7]]
-           print(indices_4)
-           # [[1 1 0 0]]
+            data_2 = paddle.to_tensor([[1, 4, 5, 7], [2, 6, 2, 5]])
+            value_2, indices_2 = paddle.topk(data_2, k=1)
+            print(value_2) # [[7], [6]]
+            print(indices_2) # [[3], [1]]
+
+            value_3, indices_3 = paddle.topk(data_2, k=1, axis=-1)
+            print(value_3) # [[7], [6]]
+            print(indices_3) # [[3], [1]]
+
+            value_4, indices_4 = paddle.topk(data_2, k=1, axis=0)
+            print(value_4) # [[2, 6, 5, 7]]
+            print(indices_4) # [[1, 1, 0, 0]]
+
 
     """
 

@@ -178,8 +178,7 @@ def _fallback_legacy_dygraph():
     need_fallback = False
     # Only enable eager on CPU/GPU
     is_not_support = core.is_compiled_with_xpu() or core.is_compiled_with_npu(
-    ) or core.is_compiled_with_ipu() or core.is_compiled_with_mlu(
-    ) or core.is_compiled_with_rocm()
+    ) or core.is_compiled_with_ipu() or core.is_compiled_with_mlu()
 
     if _in_eager_mode_ and is_not_support:
         # switch into legacy dygraph mode
