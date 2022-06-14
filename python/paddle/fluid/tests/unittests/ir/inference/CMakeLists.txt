@@ -23,8 +23,7 @@ if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_preln_residual_bias")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_preln_residual_bias")
 
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
-       "test_trt_convert_c_allreduce")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_c_allreduce")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_c_allreduce")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_c_allreduce")
 endif()

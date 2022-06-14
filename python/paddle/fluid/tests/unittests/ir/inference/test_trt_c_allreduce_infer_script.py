@@ -97,7 +97,7 @@ def run(op_type):
         output_names = predictor.get_output_names()
         output_handle = predictor.get_output_handle(output_names[0])
         output_data = output_handle.copy_to_cpu()  # numpy.ndarray类型
-        print(output_data[0])
+        print(f"c_allreduce_out={output_data[0]}")
 
 
 if __name__ == "__main__":

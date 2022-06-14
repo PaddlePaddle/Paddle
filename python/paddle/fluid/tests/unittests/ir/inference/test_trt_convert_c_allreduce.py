@@ -39,8 +39,10 @@ class TestDistTRT(unittest.TestCase):
         local_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env)
 
         local_out, local_err = local_proc.communicate()
-        out = float(local_out.decode("utf-8").split("\n")[-2])
-        self.assertEqual(out, self.target_value)
+        for line in local_out.decode("utf-8").split("\n"):
+            results = line.split("=")
+            if len(results) == 2 and results[0] == "c_allreduce_out":
+                self.assertEqual(float(results[1]), self.target_value)
 
 
 class TestMin(TestDistTRT):

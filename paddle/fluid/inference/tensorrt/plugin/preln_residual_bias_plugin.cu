@@ -132,7 +132,6 @@ int PrelnResidualBiasPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
     void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
-  size_t num = ProductDim(input_dims);
   int hidden = input_dims.d[2];
   const size_t rows = static_cast<size_t>(
       input_dims.d[0] * input_dims.d[1]);  // batch * seq_length
