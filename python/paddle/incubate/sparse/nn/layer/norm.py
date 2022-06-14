@@ -157,3 +157,53 @@ class BatchNorm(paddle.nn.BatchNorm1D):
             batch_norm_out,
             shape=input.shape,
             stop_gradient=input.stop_gradient)
+
+
+class SyncBatchNorm(paddle.nn.SyncBatchNorm):
+
+    def __init__(self,
+                 num_features,
+                 momentum=0.9,
+                 epsilon=1e-05,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_format='NCHW',
+                 name=None):
+        super(SyncBatchNorm,
+              self).__init__(num_features, momentum, epsilon, weight_attr,
+                             bias_attr, data_format, None, name)
+
+    def forward(self, x):
+        out = super(SyncBatchNorm, self).forward(x.values())
+        return paddle.incubate.sparse.sparse_coo_tensor(
+            x.indices(), out, shape=x.shape, stop_gradient=x.stop_gradient)
+
+    @classmethod
+    def convert_sync_batchnorm(cls, layer):
+        layer_output = layer
+        if isinstance(layer, _BatchNormBase):
+            if layer._weight_attr != None and not isinstance(
+                    layer._weight_attr,
+                    bool) and layer._weight_attr.name != None:
+                layer._weight_attr.name = layer._weight_attr.name + '_sync'
+            if layer._bias_attr != None and not isinstance(
+                    layer._bias_attr, bool) and layer._bias_attr.name != None:
+                layer._bias_attr.name = layer._bias_attr.name + '_sync'
+
+            layer_output = SyncBatchNorm(layer._num_features, layer._momentum,
+                                         layer._epsilon, layer._weight_attr,
+                                         layer._bias_attr, layer._data_format,
+                                         layer._name)
+
+            if layer._weight_attr != False and layer._bias_attr != False:
+                with no_grad():
+                    layer_output.weight = layer.weight
+                    layer_output.bias = layer.bias
+            layer_output._mean = layer._mean
+            layer_output._variance = layer._variance
+
+        for name, sublayer in layer.named_children():
+            layer_output.add_sublayer(name,
+                                      cls.convert_sync_batchnorm(sublayer))
+        del layer
+        return layer_output
