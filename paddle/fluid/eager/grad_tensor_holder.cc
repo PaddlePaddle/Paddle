@@ -68,6 +68,8 @@ void GradTensorHolder::CopyValueFromTensor(
       // Fill 1.0, use full to support complex, one_like don't support it.
       buffer_[slot_id][rank] =
           paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
+      egr::EagerUtils::autograd_meta(&(buffer_[slot_id][rank]))
+          ->SetStopGradient(false);
     }
   }
 }
@@ -75,8 +77,6 @@ void GradTensorHolder::CopyValueFromTensor(
 void GradTensorHolder::add(size_t slot_id, size_t rank,
                            const paddle::experimental::Tensor& t,
                            bool create_graph) {
-  // TODO(jiabin): We need to deal with empty input_buffer with slot size not
-  // empty;
   PADDLE_ENFORCE(slot_id < buffer_.size(),
                  paddle::platform::errors::Fatal(
                      "Invalid slot_id for GradTensorHolder::add() "

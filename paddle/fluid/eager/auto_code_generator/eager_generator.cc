@@ -1152,7 +1152,8 @@ static std::string GenerateGradNodeCreationContent(
   size_t bwd_in_slot_num = out_vars.size();
   size_t bwd_out_slot_num = in_vars.size();
   const char* GRAD_OP_NODE_TEMPLATE =
-      "      auto grad_node = std::shared_ptr<GradNode%s>(new GradNode%s(%d, "
+      "      auto grad_node = std::shared_ptr<%sGradNodeCompat>(new "
+      "%sGradNodeCompat(%d, "
       "%d));\n";
   grad_node_creation_str += "    // Create GradOpNode\n";
   grad_node_creation_str +=
@@ -2080,10 +2081,8 @@ static std::string GenerateSingleOpBase(
   generated_grad_function_body +=
       "  paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
       "egr::kSlotSmallVectorSize> " +
-      hooked_grads +
-      " = "
-      "GradNode" +
-      fwd_op_type + "::ApplyGradientHooks(grads);\n";
+      hooked_grads + " = " + fwd_op_type +
+      "GradNodeCompat::ApplyGradientHooks(grads);\n";
 
   // [Generation] Get Ins Map
   std::unordered_set<std::string> dispensable_input_name_set;
@@ -2547,7 +2546,7 @@ static std::string GenerateGradNodeCCContents(
   */
 
   const char* EAGER_LOG_TEMPLATE =
-      "  VLOG(3) << \"Running Eager Backward Node: GradNode%s\";\n";
+      "  VLOG(3) << \"Running Eager Backward Node: %sGradNodeCompat\";\n";
   std::string generated_grad_function_body =
       paddle::string::Sprintf(EAGER_LOG_TEMPLATE, fwd_op_type);
 
@@ -2616,7 +2615,7 @@ static std::string GenerateGradNodeCCContents(
   const char* GRAD_FUNCTION_TEMPLATE =
       "paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
       "egr::kSlotSmallVectorSize> "
-      "GradNode%s::operator()("
+      "%sGradNodeCompat::operator()("
       "paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
       "egr::kSlotSmallVectorSize>& grads, bool "
       "create_graph, bool is_new_grad) {\n"
@@ -2645,14 +2644,15 @@ static std::string GenerateGradNodeHeaderContents(
   VLOG(6) << "Generating Grad Node Header";
 
   const char* GRAD_NODE_TEMPLATE =
-      "class GradNode%s : public egr::GradNodeBase {\n"
+      "class %sGradNodeCompat : public egr::GradNodeBase {\n"
       " public:\n"
-      "  GradNode%s() : egr::GradNodeBase() { VLOG(7) << \" Construct "
-      "GradNode%s \"; }\n"
-      "  GradNode%s(size_t bwd_in_slot_num, size_t bwd_out_slot_num) : "
+      "  %sGradNodeCompat() : egr::GradNodeBase() { VLOG(7) << \" Construct "
+      "%sGradNodeCompat \"; }\n"
+      "  %sGradNodeCompat(size_t bwd_in_slot_num, size_t bwd_out_slot_num) : "
       "egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) { VLOG(7) << \" "
-      "Construct GradNode%s \"; }\n"
-      "  ~GradNode%s() override { VLOG(6) << \" Destruct GradNode%s \"; }\n"
+      "Construct %sGradNodeCompat \"; }\n"
+      "  ~%sGradNodeCompat() override { VLOG(6) << \" Destruct "
+      "%sGradNodeCompat \"; }\n"
       "\n"
       "  virtual "
       "paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
@@ -2667,11 +2667,11 @@ static std::string GenerateGradNodeHeaderContents(
       "%s\n"
       "    SetIsTensorWrappersCleared(true);\n"
       "  }\n"
-      "  std::string name() override { return \"GradNode%sMid\"; } \n "
+      "  std::string name() override { return \"%sGradNodeCompat\"; } \n "
       "\n"
       "std::shared_ptr<GradNodeBase> Copy() const override {{\n "
-      "    auto copied_node = std::shared_ptr<GradNode%s>(new "
-      "GradNode%s(*this));\n "
+      "    auto copied_node = std::shared_ptr<%sGradNodeCompat>(new "
+      "%sGradNodeCompat(*this));\n "
       "    return copied_node;\n "
       "}}\n "
       "\n"
