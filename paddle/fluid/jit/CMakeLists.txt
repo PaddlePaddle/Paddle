@@ -6,7 +6,7 @@ cc_library(
 cc_library(
   jit_layer
   SRCS layer.cc
-  DEPS executor parallel_executor)
+  DEPS executor parallel_executor executor_cache)
 
 cc_library(
   jit_base_function
@@ -19,14 +19,7 @@ if(WITH_TESTING AND NOT WIN32)
     COMMAND wget -nc https://paddle-ci.gz.bcebos.com/dy2st/Testing.tar.gz
     COMMAND tar zxvf Testing.tar.gz)
   set(JIT_DEPS
-      executor
-      parallel_executor
-      executor_cache
-      scope
-      proto_desc
       phi
-      phi_api_utils
-      phi_tensor_raw
       elementwise_add_op
       matmul_v2_op
       activation_op
