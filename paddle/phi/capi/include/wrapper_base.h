@@ -24,13 +24,38 @@
 #include <vector>
 
 #include "paddle/phi/api/ext/exception.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/custom_phi_kernel_c_api.h"
+#include "paddle/phi/capi/include/c_device_context.h"
+#include "paddle/phi/capi/include/c_int_array.h"
+#include "paddle/phi/capi/include/c_kernel_context.h"
+#include "paddle/phi/capi/include/c_kernel_factory.h"
+#include "paddle/phi/capi/include/c_kernel_registry.h"
+#include "paddle/phi/capi/include/c_place.h"
+#include "paddle/phi/capi/include/c_scalar.h"
+#include "paddle/phi/capi/include/c_tensor.h"
+#include "paddle/phi/capi/include/data_type.h"
 #include "paddle/utils/optional.h"
 
 #define PD_CHECK_STATUS(status) PD_CHECK(status == C_SUCCESS)
+
+namespace phi {
+
+namespace capi {
+
+using LoD = std::vector<std::vector<size_t>>;
+
+template <typename T>
+static inline PD_List PDListFromVector(std::vector<T>* vec) {
+  PD_List list;
+  list.data = reinterpret_cast<void*>(vec->data());
+  list.size = vec->size();
+  return list;
+}
+
+template <typename T>
+static inline std::vector<T> PDListToVector(PD_List list) {
+  return std::vector<T>(static_cast<T*>(list.data),
+                        static_cast<T*>(list.data) + list.size);
+}
 
 inline std::vector<int64_t> PD_TensorGetDims(PD_Tensor* tensor,
                                              PD_Status* status) {
@@ -44,50 +69,6 @@ inline std::vector<int64_t> PD_TensorGetDims(PD_Tensor* tensor,
   }
   return std::vector<int64_t>();
 }
-
-namespace phi {
-
-using LoD = std::vector<std::vector<size_t>>;
-
-// utils
-
-#define CPP_TYPE_TO_PD_DTYPE_REGISTER(_)         \
-  _(bool, PD_DataType::BOOL)                     \
-  _(phi::dtype::bfloat16, PD_DataType::BFLOAT16) \
-  _(phi::dtype::float16, PD_DataType::FLOAT16)   \
-  _(float, PD_DataType::FLOAT32)                 \
-  _(double, PD_DataType::FLOAT64)                \
-  _(uint8_t, PD_DataType::UINT8)                 \
-  _(uint16_t, PD_DataType::UINT16)               \
-  _(uint32_t, PD_DataType::UINT32)               \
-  _(uint64_t, PD_DataType::UINT64)               \
-  _(int8_t, PD_DataType::INT8)                   \
-  _(int16_t, PD_DataType::INT16)                 \
-  _(int32_t, PD_DataType::INT32)                 \
-  _(int64_t, PD_DataType::INT64)
-
-template <typename T>
-struct CppTypeToPDType;
-
-#define CPP_TYPE_TO_PD_DTYPE(x, y)                    \
-  template <>                                         \
-  struct CppTypeToPDType<x> {                         \
-    constexpr static PD_DataType Type() { return y; } \
-  };
-
-template <PD_DataType T>
-struct PDTypeToCppType;
-
-#define PD_DTYPE_TO_CPP_TYPE(x, y) \
-  template <>                      \
-  struct PDTypeToCppType<y> {      \
-    using type = x;                \
-  };
-
-CPP_TYPE_TO_PD_DTYPE_REGISTER(CPP_TYPE_TO_PD_DTYPE)
-CPP_TYPE_TO_PD_DTYPE_REGISTER(PD_DTYPE_TO_CPP_TYPE)
-
-namespace custom_kernel {
 
 template <typename T>
 class WrapperBase {
@@ -109,7 +90,7 @@ class DenseTensor : public WrapperBase<PD_Tensor> {
  public:
   DenseTensor() : WrapperBase(PD_NewTensor(), true) {}
 
-  explicit DenseTensor(PD_Tensor* tensor) : WrapperBase(tensor, false) {}
+  explicit DenseTensor(PD_Tensor* tensor) : WrapperBase(tensor) {}
 
   ~DenseTensor() {
     if (own_data()) {
@@ -231,24 +212,25 @@ class DenseTensor : public WrapperBase<PD_Tensor> {
     return static_cast<T*>(ptr);
   }
 
-  template <typename T>
-  T* mutable_data(int64_t size = 0, const PD_DeviceContext* ctx = nullptr) {
-    C_Status status;
-    auto ptr = PD_DeviceContextAllocateTensor(
-        ctx, raw_data(), size, phi::CppTypeToPDType<T>::Type(), &status);
-    PD_CHECK_STATUS(status);
-    return static_cast<T*>(ptr);
-  }
+  // template <typename T>
+  // T* mutable_data(int64_t size = 0, const PD_DeviceContext* ctx = nullptr) {
+  //   C_Status status;
+  //   auto ptr = PD_DeviceContextAllocateTensor(
+  //       ctx, raw_data(), size, phi::capi::CppTypeToPDType<T>::Type(),
+  //       &status);
+  //   PD_CHECK_STATUS(status);
+  //   return static_cast<T*>(ptr);
+  // }
 
-  void* mutable_data(PD_DataType data_type,
-                     int64_t size = 0,
-                     const PD_DeviceContext* ctx = nullptr) {
-    C_Status status;
-    auto ptr = PD_DeviceContextAllocateTensor(
-        ctx, raw_data(), size, data_type, &status);
-    PD_CHECK_STATUS(status);
-    return static_cast<void*>(ptr);
-  }
+  // void* mutable_data(PD_DataType data_type,
+  //                    int64_t size = 0,
+  //                    const PD_DeviceContext* ctx = nullptr) {
+  //   C_Status status;
+  //   auto ptr = PD_DeviceContextAllocateTensor(
+  //       ctx, raw_data(), size, data_type, &status);
+  //   PD_CHECK_STATUS(status);
+  //   return static_cast<void*>(ptr);
+  // }
 
   DenseTensor& ShareDataWith(const DenseTensor& src) {
     C_Status status;
@@ -279,23 +261,47 @@ class DeviceContext : public WrapperBase<PD_DeviceContext> {
   void* Alloc(DenseTensor* tensor,
               PD_DataType dtype,
               int64_t requested_size = 0) const {
-    return tensor->mutable_data(dtype, requested_size, raw_data());
+    C_Status status;
+    auto ptr = PD_DeviceContextAllocateTensor(
+        raw_data(), tensor->raw_data(), requested_size, dtype, &status);
+    PD_CHECK_STATUS(status);
+    return static_cast<void*>(ptr);
   }
 
   template <typename T>
   T* Alloc(DenseTensor* tensor, int64_t requested_size = 0) const {
-    return tensor->mutable_data<T>(requested_size, raw_data());
+    C_Status status;
+    auto ptr =
+        PD_DeviceContextAllocateTensor(raw_data(),
+                                       tensor->raw_data(),
+                                       requested_size,
+                                       phi::capi::CppTypeToPDType<T>::Type(),
+                                       &status);
+    PD_CHECK_STATUS(status);
+    return static_cast<T*>(ptr);
   }
 
   void* HostAlloc(DenseTensor* tensor,
                   PD_DataType dtype,
                   int64_t requested_size = 0) const {
-    return tensor->mutable_data(dtype, requested_size);
+    C_Status status;
+    auto ptr = PD_DeviceContextAllocateTensor(
+        nullptr, tensor->raw_data(), requested_size, dtype, &status);
+    PD_CHECK_STATUS(status);
+    return static_cast<void*>(ptr);
   }
 
   template <typename T>
   T* HostAlloc(DenseTensor* tensor, int64_t requested_size = 0) const {
-    return tensor->mutable_data<T>(requested_size);
+    C_Status status;
+    auto ptr =
+        PD_DeviceContextAllocateTensor(nullptr,
+                                       tensor->raw_data(),
+                                       requested_size,
+                                       phi::capi::CppTypeToPDType<T>::Type(),
+                                       &status);
+    PD_CHECK_STATUS(status);
+    return static_cast<T*>(ptr);
   }
 };
 
@@ -426,7 +432,7 @@ class KernelArgsDef : WrapperBase<PD_KernelArgsDef> {
     for (size_t i = 0; i < list.size; ++i) {
       ret.emplace_back(ptr[i]);
     }
-    PD_DeleteList(list);
+    PD_DeletePointerList(list);
     return ret;
   }
 
@@ -439,7 +445,7 @@ class KernelArgsDef : WrapperBase<PD_KernelArgsDef> {
     for (size_t i = 0; i < list.size; ++i) {
       ret.emplace_back(ptr[i]);
     }
-    PD_DeleteList(list);
+    PD_DeletePointerList(list);
     return ret;
   }
 
@@ -485,125 +491,7 @@ class Kernel : WrapperBase<PD_Kernel> {
   TensorArgDef OutputAt(size_t idx) { return args_def().input_defs()[idx]; }
 };
 
-}  // namespace custom_kernel
-
-using Context = custom_kernel::DeviceContext;
-using DenseTensor = custom_kernel::DenseTensor;
-using Scalar = custom_kernel::Scalar;
-using IntArray = custom_kernel::IntArray;
-using Place = custom_kernel::Place;
-using DataType = ::PD_DataType;
-using DataLayout = ::PD_DataLayout;
-
-#define CPP_TYPE_TO_PD_ARG_TYPE_REGISTER(_)                                  \
-  _(phi::custom_kernel::DenseTensor, PD_ArgumentType::PD_ARG_TYPE_TENSOR)    \
-  _(phi::custom_kernel::DeviceContext, PD_ArgumentType::PD_ARG_TYPE_CONTEXT) \
-  _(bool, PD_ArgumentType::PD_ARG_TYPE_BOOL)                                 \
-  _(float, PD_ArgumentType::PD_ARG_TYPE_FLOAT32)                             \
-  _(double, PD_ArgumentType::PD_ARG_TYPE_FLOAT64)                            \
-  _(int32_t, PD_ArgumentType::PD_ARG_TYPE_INT32)                             \
-  _(int64_t, PD_ArgumentType::PD_ARG_TYPE_INT64)                             \
-  _(PD_DataType, PD_ArgumentType::PD_ARG_TYPE_DATA_TYPE)                     \
-  _(PD_DataLayout, PD_ArgumentType::PD_ARG_TYPE_DATA_LAYOUT)                 \
-  _(std::vector<int32_t>, PD_ArgumentType::PD_ARG_TYPE_LIST_INT32)           \
-  _(std::vector<int64_t>, PD_ArgumentType::PD_ARG_TYPE_LIST_INT64)           \
-  _(std::vector<float>, PD_ArgumentType::PD_ARG_TYPE_LIST_FLOAT32)           \
-  _(std::vector<double>, PD_ArgumentType::PD_ARG_TYPE_LIST_FLOAT64)          \
-  _(std::vector<bool>, PD_ArgumentType::PD_ARG_TYPE_LIST_BOOL)               \
-  _(std::string, PD_ArgumentType::PD_ARG_TYPE_STRING)                        \
-  _(phi::custom_kernel::Scalar, PD_ArgumentType::PD_ARG_TYPE_SCALAR)         \
-  _(phi::custom_kernel::IntArray, PD_ArgumentType::PD_ARG_TYPE_INT_ARRAY)    \
-  _(phi::custom_kernel::Place, PD_ArgumentType::PD_ARG_TYPE_PLACE)           \
-  _(std::vector<std::string>, PD_ArgumentType::PD_ARG_TYPE_LIST_STRING)      \
-  _(std::vector<phi::custom_kernel::Scalar>,                                 \
-    PD_ArgumentType::PD_ARG_TYPE_LIST_SCALAR)
-
-template <typename T>
-struct CppTypeToPDArgumentType;
-
-#define CPP_TYPE_TO_PD_ARG_TYPE(x, y)                     \
-  template <>                                             \
-  struct CppTypeToPDArgumentType<x> {                     \
-    constexpr static PD_ArgumentType Type() { return y; } \
-  };
-
-template <PD_ArgumentType T>
-struct PDArgumentTypeToCppType;
-
-#define PD_ARG_TYPE_TO_CPP_TYPE(x, y) \
-  template <>                         \
-  struct PDArgumentTypeToCppType<y> { \
-    using type = x;                   \
-  };
-
-CPP_TYPE_TO_PD_ARG_TYPE_REGISTER(CPP_TYPE_TO_PD_ARG_TYPE)
-CPP_TYPE_TO_PD_ARG_TYPE_REGISTER(PD_ARG_TYPE_TO_CPP_TYPE)
-
+}  // namespace capi
 }  // namespace phi
-
-#include "paddle/phi/core/custom_phi_kernel_c_api_internal.h"
-
-// clang-format off
-
-#define PD_BUILD_PHI_KERNEL(kernel_name,                            \
-                            backend,                                \
-                            layout,                                 \
-                            meta_kernel_fn,                         \
-                            ...)                                    \
-  static void                                                       \
-      __CUSTOM_adefs_CFN_##kernel_name##_##backend##_##layout(   \
-          const PD_KernelKey* kernel_key, PD_Kernel* kernel);       \
-  template <typename kernel_type>                                   \
-  struct __##kernel_name##_##backend##_##layout##__ {               \
-    __##kernel_name##_##backend##_##layout##__() {                  \
-      phi::CustomKernelArgsParseFunctor<decltype(                   \
-          &meta_kernel_fn<kernel_type>)>                            \
-          parser;                                                   \
-      PD_RegisterPhiKernel(                                         \
-          #kernel_name,                                             \
-          #backend,                                                 \
-          ::phi::CppTypeToPDType<kernel_type>::Type(),              \
-          PD_DATALAYOUT(layout),                                    \
-          parser.in_args_type.size(),                               \
-          parser.in_args_type.data(),                               \
-          parser.attr_args_type.size(),                             \
-          parser.attr_args_type.data(),                             \
-          parser.out_args_type.size(),                              \
-          parser.out_args_type.data(),                              \
-          __CUSTOM_adefs_CFN_##kernel_name##_##backend##_##layout,  \
-          CUSTOM_PHI_KERNEL(meta_kernel_fn<kernel_type>),           \
-          CUSTOM_PHI_VARIADIC_KERNEL(                               \
-            meta_kernel_fn<kernel_type>));                          \
-    }                                                               \
-    static void Touch() {}                                          \
-  };                                                                \
-  PD_CUSTOM_PHI_KERNEL_STATIC_ASSERT_GLOBAL_NAMESPACE(              \
-      CUSTOM_tp_ns_check_##kernel_name##_##backend##_##layout,      \
-      "PD_BUILD_KERNEL must be called in global namespace.");       \
-  static void                                                       \
-      __CUSTOM_adefs_FN_##kernel_name##_##backend##_##layout(       \
-          const ::phi::custom_kernel::KernelKey &kernel_key,        \
-          ::phi::custom_kernel::Kernel* kernel);                    \
-  _PD_BUILD_PHI_KERNEL(__##kernel_name##_##backend##_##layout##__,  \
-                       kernel_name,                                 \
-                       backend,                                     \
-                       layout,                                      \
-                       meta_kernel_fn,                              \
-                       __VA_ARGS__)                                 \
-  void                                                              \
-      __CUSTOM_adefs_CFN_##kernel_name##_##backend##_##layout(      \
-          const PD_KernelKey* kernel_key, PD_Kernel* kernel) {      \
-          auto cc_kernel = ::phi::custom_kernel::Kernel(kernel);    \
-          __CUSTOM_adefs_FN_##kernel_name##_##backend##_##layout(   \
-            ::phi::custom_kernel::KernelKey(                        \
-              const_cast<PD_KernelKey*>(kernel_key)),               \
-            &cc_kernel);                                            \
-      }                                                             \
-  void                                                              \
-      __CUSTOM_adefs_FN_##kernel_name##_##backend##_##layout(       \
-          const ::phi::custom_kernel::KernelKey &kernel_key,        \
-          ::phi::custom_kernel::Kernel* kernel)
-
-// clang-format on
 
 #endif
