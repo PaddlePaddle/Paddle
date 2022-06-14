@@ -59,7 +59,7 @@ else()
   set(MKLDNN_LIB
       "${MKLDNN_INSTALL_DIR}/bin/mkldnn.lib"
       CACHE FILEPATH "mkldnn library." FORCE)
-endif(NOT WIN32)
+endif()
 
 ExternalProject_Add(
   ${MKLDNN_PROJECT}
@@ -121,7 +121,7 @@ if(WIN32)
     DEPENDS ${MKLDNN_PROJECT}
     VERBATIM)
   add_custom_target(mkldnn_cmd ALL DEPENDS ${MKLDNN_LIB})
-else(WIN32)
+else()
   set(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libmkldnn.so.0)
   set(MKLDNN_SHARED_LIB_1 ${MKLDNN_INSTALL_DIR}/libdnnl.so.1)
   set(MKLDNN_SHARED_LIB_2 ${MKLDNN_INSTALL_DIR}/libdnnl.so.2)
@@ -132,7 +132,7 @@ else(WIN32)
     COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB_2}
     DEPENDS ${MKLDNN_PROJECT})
   add_custom_target(mkldnn_cmd ALL DEPENDS ${MKLDNN_SHARED_LIB_2})
-endif(WIN32)
+endif()
 
 # generate a static dummy target to track mkldnn dependencies
 # for cc_library(xxx SRCS xxx.c DEPS mkldnn)

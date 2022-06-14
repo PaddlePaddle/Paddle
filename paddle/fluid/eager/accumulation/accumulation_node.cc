@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
 
 namespace egr {
 
@@ -48,6 +49,22 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
               std::make_shared<phi::DenseTensor>(), "tmp_accumulator");
           paddle::imperative::SelectedRowsAddTensor(*tensor, t, &new_buffer);
           tensor->set_impl(new_buffer.impl());
+        }
+      } else if (LIKELY(t.is_sparse_coo_tensor())) {
+        // In fact, the gradient of SparseTensor is still a SparseTensor
+        if (LIKELY(tensor->is_sparse_coo_tensor())) {
+          auto t_sparse =
+              std::dynamic_pointer_cast<phi::SparseCooTensor>(t.impl());
+          paddle::experimental::Tensor t_values(
+              std::make_shared<phi::DenseTensor>(
+                  t_sparse->non_zero_elements()));
+          auto tensor_sparse =
+              std::dynamic_pointer_cast<phi::SparseCooTensor>(tensor->impl());
+          paddle::experimental::Tensor tensor_values(
+              std::make_shared<phi::DenseTensor>(
+                  tensor_sparse->non_zero_elements()));
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
+              t_values, &tensor_values);
         }
       } else {
         // TODO(jiabin): Support Other TensorBase later
