@@ -471,7 +471,7 @@ class OpTest(unittest.TestCase):
             np.dtype(np.int16),
             np.dtype(np.int8),
             np.dtype(np.uint8),
-            np.dtype(np.bool)
+            np.dtype(np.bool_)
         ]
         # check the dtype in dtype_list in order, select the first dtype that in dtype_set
         for dtype in dtype_list:

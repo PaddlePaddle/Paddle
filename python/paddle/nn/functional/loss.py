@@ -2763,3 +2763,239 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
         return paddle.sum(loss, name=name)
     elif reduction == 'none':
         return loss
+
+
+def cosine_embedding_loss(input1,
+                          input2,
+                          label,
+                          margin=0,
+                          reduction='mean',
+                          name=None):
+    r"""
+    This operator computes the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
+
+    If label = 1, then the loss value can be calculated as follow:
+
+    .. math::
+        Out = 1 - cos(input1, input2)
+
+    If label = -1, then the loss value can be calculated as follow:
+
+    .. math::
+        Out = max(0, cos(input1, input2)) - margin
+
+    The operator cos can be described as follow:
+     .. math::
+        cos(x1, x2) = \frac{x1 \cdot{} x2}{\Vert x1 \Vert_2 * \Vert x2 \Vert_2}
+
+     Parameters:
+        input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+                         Available dtypes are float32, float64.
+        input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+                         Available dtypes are float32, float64.
+        label (Tensor): tensor with shape: [N] or [1]. The target labels values should be -1 or 1.
+                         Available dtypes are int32, int64, float32, float64.
+        margin (float, optional): Should be a number from :math:`-1` to :math:`1`,
+                         :math:`0` to :math:`0.5` is suggested. If :attr:`margin` is missing, the
+                         default value is :math:`0`.
+        reduction (string, optional): Specifies the reduction to apply to the output:
+                         ``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction will be applied,
+                         ``'mean'``: the sum of the output will be divided by the number of elements in the output
+                         ``'sum'``: the output will be summed.
+        name (str, optional): Name for the operation (optional, default is None).
+                         For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the cosine embedding Loss of Tensor ``input1`` ``input2`` and ``label``.
+            If `reduction` is ``'none'``, the shape of output loss is [N], the same as ``input`` .
+            If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+
+    Examples:
+        .. code-block:: python
+          :name: code-example1
+
+            import paddle
+
+            input1 = paddle.to_tensor([[1.6, 1.2, -0.5], [3.2, 2.6, -5.8]], 'float32')
+            input2 = paddle.to_tensor([[0.5, 0.5, -1.8], [2.3, -1.4, 1.1]], 'float32')
+            label = paddle.to_tensor([1, -1], 'int64')
+
+            output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='mean')
+            print(output)  # [0.21155193]
+
+            output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='sum')
+            print(output)  # [0.42310387]
+
+            output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='none')
+            print(output)  # [0.42310387, 0.        ]
+
+    """
+    if len(label.shape) != 1:
+        raise ValueError(
+            "1D target tensor expected, multi-target not supported")
+
+    if input1.shape != input2.shape:
+        raise ValueError(
+            "the shape of input tensor 1 should be equal to input tensor 2, but found inputs with "
+            "different sizes")
+
+    if len(input1.shape) > 2:
+        raise ValueError(
+            "1D target tensor expects 1D or 2D input tensors, but found inputs with different sizes"
+        )
+
+    if input1.dtype not in [paddle.float32, paddle.float64]:
+        raise ValueError(
+            "The data type of input Variable must be 'float32' or 'float64'")
+    if label.dtype not in [
+            paddle.int32, paddle.int64, paddle.float32, paddle.float64
+    ]:
+        raise ValueError(
+            "The data type of label Variable must be 'int32', 'int64', 'float32', 'float64'"
+        )
+
+    prod_sum = (input1 * input2).sum(axis=-1)
+    mag_square1 = paddle.square(input1).sum(axis=-1) + 10e-12
+    mag_square2 = paddle.square(input2).sum(axis=-1) + 10e-12
+    denom = paddle.sqrt(mag_square1 * mag_square2)
+    cos = prod_sum / denom
+    zeros = paddle.zeros_like(cos)
+    pos = 1 - cos
+    neg = paddle.clip(cos - margin, min=0)
+    out_pos = paddle.where(label == 1, pos, zeros)
+    out_neg = paddle.where(label == -1, neg, zeros)
+    out = out_pos + out_neg
+
+    if reduction == 'none':
+        return out
+    if reduction == 'mean':
+        return paddle.mean(out, name=name)
+    elif reduction == 'sum':
+        return paddle.sum(out, name=name)
+
+
+def triplet_margin_with_distance_loss(input,
+                                      positive,
+                                      negative,
+                                      distance_function=None,
+                                      margin=1.0,
+                                      swap=False,
+                                      reduction='mean',
+                                      name=None):
+    r"""
+    Measures the triplet loss given an input
+    tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
+    This is used for measuring a relative similarity between samples. A triplet
+    is composed by `input`, `positive` and `negative` (i.e., `input`, `positive examples` and `negative
+    examples` respectively). The shapes of all input tensors should be
+    :math:`(N, D)`.
+
+    The loss function for each sample in the mini-batch is:
+
+    .. math::
+        L(input, pos, neg) = \max \{d(input_i, pos_i) - d(input_i, neg_i) + {\rm margin}, 0\}
+
+
+    where the default distance function
+
+    .. math::
+        d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_p
+
+    or user can defined their own distance functions. `margin` is a nonnegative margin representing the minimum difference 
+    between the positive and negative distances that is required for the loss to be 0. If `swap` is true, it will compare distance of (input, negative) with
+    distance of (negative, positive) and change it to the smaller one. For more details see http://www.bmva.org/bmvc/2016/papers/paper119/paper119.pdf.
+
+    Parameters:
+
+        input (Tensor):Input tensor, the data type is float32 or float64.
+            the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+
+        positive (Tensor):Positive tensor, the data type is float32 or float64.
+            The shape of label is the same as the shape of input.
+
+        negative (Tensor):Negative tensor, the data type is float32 or float64.
+            The shape of label is the same as the shape of input.
+
+        distance_function (callable, optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
+	
+	    margin (float, optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
+            between the positive and negative distances required for the loss to be 0.
+	
+        swap (bool, optional):The distance swap changes the negative distance to the swap distance (distance between positive samples
+                and negative samples) if swap distance smaller than negative distance. Default: ``False``.
+
+        reduction (str, optional):Indicate how to average the loss by batch_size.
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default: ``'mean'``
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+	    
+    Returns:
+        Output: Tensor. The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            input = paddle.to_tensor([[1, 5, 3], [0, 3, 2], [1, 4, 1]], dtype=paddle.float32)
+            positive= paddle.to_tensor([[5, 1, 2], [3, 2, 1], [3, -1, 1]], dtype=paddle.float32)
+            negative = paddle.to_tensor([[2, 1, -3], [1, 1, -1], [4, -2, 1]], dtype=paddle.float32)
+            loss = F.triplet_margin_with_distance_loss(input, positive, negative, margin=1.0, reduction='none')
+            print(loss)
+            # Tensor([0.        , 0.57496738, 0.        ])
+
+
+            loss = F.triplet_margin_with_distance_loss(input, positive, negative, margin=1.0, reduction='mean')
+            print(loss)
+            # Tensor([0.19165580])
+
+    """
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError("'reduction' in 'triplet_margin_with_distance_loss' "
+                         "should be 'sum', 'mean' or 'none', "
+                         "but received {}.".format(reduction))
+    if margin < 0:
+        raise ValueError(
+            "The margin between positive samples and negative samples should be greater than 0."
+        )
+    if not _non_static_mode():
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'triplet_margin_with_distance_loss')
+        check_variable_and_dtype(positive, 'positive', ['float32', 'float64'],
+                                 'triplet_margin_with_distance_loss')
+        check_variable_and_dtype(negative, 'negative', ['float32', 'float64'],
+                                 'triplet_margin_with_distance_loss')
+
+    if not (input.shape == positive.shape == negative.shape):
+        raise ValueError("input's shape must equal to "
+                         "positive's shape and  "
+                         "negative's shape")
+
+    distance_function = distance_function if distance_function is not None \
+        else paddle.nn.PairwiseDistance(2)
+
+    positive_dist = distance_function(input, positive)
+    negative_dist = distance_function(input, negative)
+
+    if swap:
+        swap_dist = distance_function(positive, negative)
+        negative_dist = paddle.minimum(negative_dist, swap_dist)
+
+    if not paddle.all(positive_dist > 0) or not paddle.all(negative_dist > 0):
+        raise ValueError(
+            "The positive distance or negative distance should be greater than 0, "
+            "The distance functions should be checked.")
+
+    loss = paddle.clip(positive_dist - negative_dist + margin, min=0.0)
+
+    if reduction == 'mean':
+        return paddle.mean(loss, name=name)
+    elif reduction == 'sum':
+        return paddle.sum(loss, name=name)
+    elif reduction == 'none':
+        return loss

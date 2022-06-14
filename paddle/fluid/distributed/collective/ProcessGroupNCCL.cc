@@ -95,7 +95,11 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
     // If we use the work to do barrier, we should block cpu
     for (auto& place : places_) {
       platform::CUDADeviceGuard gpuGuard(place);
+#ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#endif
     }
   }
   return true;

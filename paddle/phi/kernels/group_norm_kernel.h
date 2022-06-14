@@ -14,17 +14,22 @@
 
 #pragma once
 
+#include <string>
+
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void CumsumKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  int axis,
-                  bool flatten,
-                  bool exclusive,
-                  bool reverse,
-                  DenseTensor* out);
+void GroupNormKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const paddle::optional<DenseTensor>& scale,
+                     const paddle::optional<DenseTensor>& bias,
+                     float epsilon,
+                     int groups,
+                     const std::string& data_layout,
+                     DenseTensor* y,
+                     DenseTensor* mean,
+                     DenseTensor* variance);
 
 }  // namespace phi

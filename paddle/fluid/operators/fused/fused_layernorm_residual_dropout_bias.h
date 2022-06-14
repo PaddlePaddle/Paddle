@@ -481,10 +481,12 @@ void LaunchLayernormResidualDropoutBias(
   LAUNCH_FUSED_FAST_LN_KERNEL_BASE(1536); \
   LAUNCH_FUSED_FAST_LN_KERNEL_BASE(1792); \
   LAUNCH_FUSED_FAST_LN_KERNEL_BASE(2048); \
+  LAUNCH_FUSED_FAST_LN_KERNEL_BASE(3072); \
   LAUNCH_FUSED_FAST_LN_KERNEL_BASE(4096)
 
   bool can_call_fast_ln_kernel = false;
-  if (((cols >= 768 && cols <= 2048 && cols % 256 == 0) || cols == 4096) &&
+  if (((cols >= 768 && cols <= 2048 && cols % 256 == 0) || cols == 3072 ||
+       cols == 4096) &&
       scale != nullptr && layernorm_bias != nullptr) {
     can_call_fast_ln_kernel = true;
   }
@@ -539,7 +541,7 @@ void LaunchLayernormResidualDropoutGrad(
   if (!is_upscale_in_train) {
     factor = static_cast<T>(1.0f);
   }
-  ln_bwd_1024_kernel_driver<
+  ln_bwd_fast_kernel_driver<
       T, U, LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, MaskType>(
       dev_ctx, rows, cols, epsilon, layernorm_src, scale, mean, var, d_out,
       d_residual, d_scale, d_layernorm_bias, mask_data, factor, d_dropout_src);

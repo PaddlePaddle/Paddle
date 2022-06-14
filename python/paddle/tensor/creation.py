@@ -352,7 +352,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             data = np.array([data])
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
-            if data.dtype == np.object:
+            if data.dtype == np.object_:
                 raise ValueError(
                     "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
@@ -962,7 +962,7 @@ def tril(x, diagonal=0, name=None):
 
 def triu(x, diagonal=0, name=None):
     r"""
-    This op returns the upper triangular part of a matrix (2-D tensor) or batch of matrices
+    Return the upper triangular part of a matrix (2-D tensor) or batch of matrices
     :attr:`x`, the other elements of the result tensor are set to 0.
     The upper triangular part of the matrix is defined as the elements on and
     above the diagonal.
@@ -1479,22 +1479,21 @@ def empty_like(x, dtype=None, name=None):
 def assign(x, output=None):
     """
 
-    The OP copies the :attr:`x` to the :attr:`output`.
+    Copy value of the :attr:`x` to the :attr:`output`.
  
     Parameters:
-        x (Tensor|np.ndarray|list|tuple|scalar): A tensor, numpy ndarray, tuple/list of scalar,
-            or scalar. Its data type supports float16, float32, float64, int32, int64, and bool.
-            Note: the float64 data will be converted to float32 because of current platform protobuf
+        x (Tensor|np.ndarray|list|tuple|scalar): A Tensor, numpy ndarray, tuple/list of scalar,
+            or scalar. Its data type can be float16, float32, float64, int32, int64 or bool. Note: the float64 data will be converted to float32 because of current platform protobuf
             data limitation.
-        output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
-            be created as :attr:`output`. Default: None.
+        output (Tensor, optional): A Tensor. If :attr:`output` is None, a new Tensor will be created as :attr:`output`. Default: None.
  
     Returns:
-        Tensor: A tensor with the same shape, data type and value as :attr:`x`.
+        Tensor: A Tensor with the same shape, data type and value as :attr:`x`.
  
     Examples:
         .. code-block:: python
- 
+          :name: assign-example
+
           import paddle
           import numpy as np
           data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]

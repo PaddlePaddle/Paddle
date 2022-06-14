@@ -17,7 +17,7 @@
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
 
-#include "paddle/phi/kernels/cumsum_kernel.h"
+#include "paddle/phi/kernels/cum_kernel.h"
 #ifdef __NVCC__
 #include <cub/cub.cuh>
 #endif
@@ -82,19 +82,20 @@ __global__ void MatrixRowReverse(const T* matrix_data,
   }
 }
 
-template <typename T>
+template <typename T, typename Op>
 struct BlockPrefixCallbackOp {
   // Running prefix
-  T running_total;
-  // Constructor
-  __device__ BlockPrefixCallbackOp(T running_total)
-      : running_total(running_total) {}
+  T running_total_;
+  Op op_;
+
+  __device__ BlockPrefixCallbackOp(T running_total, Op op)
+      : running_total_(running_total), op_(op) {}
+
   // Callback operator to be entered by the first warp of threads in the block.
-  // Thread-0 is responsible for returning a value for seeding the block-wide
-  // scan.
+  // tid 0 is responsible for returning a value for seeding the block-wide scan.
   __device__ T operator()(T block_aggregate) {
-    T old_prefix = running_total;
-    running_total = old_prefix + block_aggregate;
+    T old_prefix = running_total_;
+    running_total_ = op_(old_prefix, block_aggregate);
     return old_prefix;
   }
 };
@@ -129,13 +130,36 @@ __global__ void MatrixTranspose(T* odata,
   }
 }
 
-template <typename T, int BLOCK_THREADS, int ITEMS_PER_THREAD>
+struct LogAddExp {
+  template <typename T>
+  __host__ __device__ __forceinline__ T operator()(const T& a,
+                                                   const T& b) const {
+    return std::log(1 + std::exp(std::min(a, b) - std::max(a, b))) +
+           std::max(a, b);
+  }
+};
+
+template <typename T, typename op>
+struct Identity;
+
+template <typename T>
+struct Identity<T, cub::Sum> {
+  static constexpr T value = 0;
+};
+
+template <typename T>
+struct Identity<T, LogAddExp> {
+  static constexpr T value = std::numeric_limits<T>::lowest();
+};
+
+template <typename T, int BLOCK_THREADS, int ITEMS_PER_THREAD, typename Op>
 __global__ void BlockScanKernel(T* d_out,
                                 const T* d_in,
                                 int inner_size,
                                 int outer_size,
                                 int scan_size,
-                                bool exclusive) {
+                                bool exclusive,
+                                Op op) {
   // Specialize BlockLoad, BlockStore, and BlockRadixSort collective types
   typedef cub::
       BlockLoad<T, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_TRANSPOSE>
@@ -154,7 +178,7 @@ __global__ void BlockScanKernel(T* d_out,
   int bx = blockIdx.x;
   int by = blockIdx.y;
 
-  BlockPrefixCallbackOp<T> prefix_op(0);
+  BlockPrefixCallbackOp<T, Op> prefix_op(Identity<T, Op>::value, op);
   T block_aggregate = static_cast<T>(0);
 
   // Obtain this block's segment of consecutive keys (blocked across threads)
@@ -176,12 +200,11 @@ __global__ void BlockScanKernel(T* d_out,
 
     __syncthreads();
     if (exclusive) {
-      T init_value = static_cast<T>(0);
       BlockScanT(temp_storage.scan)
-          .ExclusiveScan(thread_keys, thread_keys, cub::Sum(), prefix_op);
+          .ExclusiveScan(thread_keys, thread_keys, op, prefix_op);
     } else {
       BlockScanT(temp_storage.scan)
-          .InclusiveScan(thread_keys, thread_keys, cub::Sum(), prefix_op);
+          .InclusiveScan(thread_keys, thread_keys, op, prefix_op);
     }
     __syncthreads();
 
@@ -190,14 +213,15 @@ __global__ void BlockScanKernel(T* d_out,
   }
 }
 
-template <typename T, typename Context>
-void CumsumKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  int axis,
-                  bool flatten,
-                  bool exclusive,
-                  bool reverse,
-                  DenseTensor* out) {
+template <typename T, typename Context, typename Op>
+void ScanKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                int axis,
+                bool flatten,
+                bool exclusive,
+                bool reverse,
+                Op op,
+                DenseTensor* out) {
   auto out_dims = out->dims();
   auto size = x.numel();
 
@@ -219,7 +243,7 @@ void CumsumKernel(const Context& dev_ctx,
 
   // Use thrust for parallel acceleration when the input size is equal to the
   // length of the ‘axis’ dimension.
-  if (size == out_dims[axis]) {
+  if (std::is_same<Op, cub::Sum>::value && size == out_dims[axis]) {
 #ifdef __HIPCC__
     const auto& policy = thrust::hip::par.on(dev_ctx.stream());
 #else
@@ -247,6 +271,7 @@ void CumsumKernel(const Context& dev_ctx,
     return;
   }
 
+
   size_t height = 1;
   size_t width = 1;
   for (size_t i = 0; i <= axis; i++) {
@@ -263,8 +288,9 @@ void CumsumKernel(const Context& dev_ctx,
   dim3 blocks(32, 8);
   dim3 transpose_grids((width + tile_size - 1) / tile_size,
                        (height + tile_size - 1) / tile_size);
-  out->Resize(out_dims);
-  auto* tmp_data = out->data<T>();
+  DenseTensor tmp_tensor;
+  tmp_tensor.Resize(out_dims);
+  auto* tmp_data = dev_ctx.template Alloc<T>(&tmp_tensor);
 
   T* next_in_data = out_data;
   T* next_out_data = tmp_data;
@@ -298,17 +324,18 @@ void CumsumKernel(const Context& dev_ctx,
     }
   }
   if (!transpose && !reverse) {
-    BlockScanKernel<T, 128, 4><<<scan_grid, 128, 0, dev_ctx.stream()>>>(
-        out_data, in_data, outer_size, inner_size, scan_size, exclusive);
+    BlockScanKernel<T, 128, 4, Op><<<scan_grid, 128, 0, dev_ctx.stream()>>>(
+        out_data, in_data, outer_size, inner_size, scan_size, exclusive, op);
 
   } else {
-    BlockScanKernel<T, 128, 4>
+    BlockScanKernel<T, 128, 4, Op>
         <<<scan_grid, 128, 0, dev_ctx.stream()>>>(next_out_data,
                                                   next_in_data,
                                                   outer_size,
                                                   inner_size,
                                                   scan_size,
-                                                  exclusive);
+                                                  exclusive,
+                                                  op);
   }
   swap_ptr(next_in_data, next_out_data);
   if (reverse) {
@@ -324,6 +351,34 @@ void CumsumKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void CumsumKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int axis,
+                  bool flatten,
+                  bool exclusive,
+                  bool reverse,
+                  DenseTensor* out) {
+  using Op = cub::Sum;
+  auto op = Op();
+  ScanKernel<T, Context, Op>(
+      dev_ctx, x, axis, flatten, exclusive, reverse, op, out);
+}
+
+template <typename T, typename Context>
+void LogcumsumexpKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        int axis,
+                        bool flatten,
+                        bool exclusive,
+                        bool reverse,
+                        DenseTensor* out) {
+  using Op = LogAddExp;
+  auto op = Op();
+  ScanKernel<T, Context, Op>(
+      dev_ctx, x, axis, flatten, exclusive, reverse, op, out);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(cumsum,
@@ -335,3 +390,10 @@ PD_REGISTER_KERNEL(cumsum,
                    int16_t,
                    int,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(logcumsumexp,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LogcumsumexpKernel,
+                   float,
+                   double) {}

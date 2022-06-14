@@ -168,31 +168,33 @@ class TestSparseConvert(unittest.TestCase):
         with _test_eager_guard():
             indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
             values = [1.0, 2.0, 3.0, 4.0, 5.0]
-            sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
-                paddle.to_tensor(indices),
-                paddle.to_tensor(values),
-                shape=[3, 4],
-                stop_gradient=False)
-            dense_tensor = sparse_x.to_dense()
-            #test to_dense_grad backward
-            out_grad = [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
-                        [9.0, 10.0, 11.0, 12.0]]
-            dense_tensor.backward(paddle.to_tensor(out_grad))
-            #mask the out_grad by sparse_x.indices()
-            correct_x_grad = [2.0, 4.0, 7.0, 9.0, 10.0]
-            assert np.array_equal(correct_x_grad,
-                                  sparse_x.grad.values().numpy())
+            indices_dtypes = ['int32', 'int64']
+            for indices_dtype in indices_dtypes:
+                sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
+                    paddle.to_tensor(indices, dtype=indices_dtype),
+                    paddle.to_tensor(values),
+                    shape=[3, 4],
+                    stop_gradient=False)
+                dense_tensor = sparse_x.to_dense()
+                #test to_dense_grad backward
+                out_grad = [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
+                            [9.0, 10.0, 11.0, 12.0]]
+                dense_tensor.backward(paddle.to_tensor(out_grad))
+                #mask the out_grad by sparse_x.indices()
+                correct_x_grad = [2.0, 4.0, 7.0, 9.0, 10.0]
+                assert np.array_equal(correct_x_grad,
+                                      sparse_x.grad.values().numpy())
 
-            paddle.device.set_device("cpu")
-            sparse_x_cpu = paddle.incubate.sparse.sparse_coo_tensor(
-                paddle.to_tensor(indices),
-                paddle.to_tensor(values),
-                shape=[3, 4],
-                stop_gradient=False)
-            dense_tensor_cpu = sparse_x_cpu.to_dense()
-            dense_tensor_cpu.backward(paddle.to_tensor(out_grad))
-            assert np.array_equal(correct_x_grad,
-                                  sparse_x_cpu.grad.values().numpy())
+                paddle.device.set_device("cpu")
+                sparse_x_cpu = paddle.incubate.sparse.sparse_coo_tensor(
+                    paddle.to_tensor(indices, dtype=indices_dtype),
+                    paddle.to_tensor(values),
+                    shape=[3, 4],
+                    stop_gradient=False)
+                dense_tensor_cpu = sparse_x_cpu.to_dense()
+                dense_tensor_cpu.backward(paddle.to_tensor(out_grad))
+                assert np.array_equal(correct_x_grad,
+                                      sparse_x_cpu.grad.values().numpy())
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_to_sparse_csr(self):

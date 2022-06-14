@@ -207,7 +207,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
 
 def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
     """
-    This OP computes the indices of the min elements of the input tensor's
+    Computing the indices of the min elements of the input tensor's
     element along the provided axis.
 
     Args:
@@ -217,7 +217,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
         keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
-        dtype(str): Data type of the output tensor which can
+        dtype(str, optional): Data type of the output tensor which can
                     be int32, int64. The default value is 'int64', and it will
                     return the int64 indices.
         name(str, optional): The default value is None. Normally there is no
@@ -225,11 +225,11 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
+        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`.
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
 
             x =  paddle.to_tensor([[5,8,9,5],
@@ -572,49 +572,46 @@ def mode(x, axis=-1, keepdim=False, name=None):
 
 def where(condition, x=None, y=None, name=None):
     r"""
-    Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
-
-    **Note**:
-        ``paddle.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``.
+    Return a Tensor of elements selected from either :attr:`x` or :attr:`y` according to corresponding elements of :attr:`condition`. Concretely,
 
     .. math::
 
-      out_i =
-      \begin{cases}
-      x_i, \quad  \text{if}  \ condition_i \  is \ True \\
-      y_i, \quad  \text{if}  \ condition_i \  is \ False \\
-      \end{cases}
+        out_i =
+        \begin{cases}
+        x_i, & \text{if}  \ condition_i \  \text{is} \ True \\
+        y_i, & \text{if}  \ condition_i \  \text{is} \ False \\
+        \end{cases}.
 
+    Notes:
+        ``numpy.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``, please refer to :ref:`api_tensor_search_nonzero`.
 
     Args:
-        condition(Tensor): The condition to choose x or y. When True(nonzero), yield x, otherwise yield y.
-        x(Tensor or Scalar, optional): x is a Tensor or Scalar with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
-        y(Tensor or Scalar, optional): y is a Tensor or Scalar with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
-
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        condition (Tensor): The condition to choose x or y. When True (nonzero), yield x, otherwise yield y.
+        x (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is True with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
+        y (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is False with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor: A Tensor with the same data dype as x. 
+        Tensor: A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`.
 
     Examples:
         .. code-block:: python
+            :name:where-example
 
-          import paddle
+            import paddle
 
-          x = paddle.to_tensor([0.9383, 0.1983, 3.2, 1.2])
-          y = paddle.to_tensor([1.0, 1.0, 1.0, 1.0])
-          out = paddle.where(x>1, x, y)
+            x = paddle.to_tensor([0.9383, 0.1983, 3.2, 1.2])
+            y = paddle.to_tensor([1.0, 1.0, 1.0, 1.0])
+            out = paddle.where(x>1, x, y)
 
-          print(out)
-          #out: [1.0, 1.0, 3.2, 1.2]
+            print(out)
+            #out: [1.0, 1.0, 3.2, 1.2]
 
-          out = paddle.where(x>1)
-          print(out)
-          #out: (Tensor(shape=[2, 1], dtype=int64, place=CPUPlace, stop_gradient=True,
-          #            [[2],
-          #             [3]]),)
+            out = paddle.where(x>1)
+            print(out)
+            #out: (Tensor(shape=[2, 1], dtype=int64, place=CPUPlace, stop_gradient=True,
+            #            [[2],
+            #             [3]]),)
     """
     if np.isscalar(x):
         x = paddle.full([1], x, np.array([x]).dtype.name)
@@ -837,7 +834,7 @@ def masked_select(x, mask, name=None):
 
 def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     """
-    This OP is used to find values and indices of the k largest or smallest at the optional axis.
+    Return values and indices of the k largest or smallest at the optional axis.
     If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
     If the input is a Tensor with higher rank, this operator computes the top k values and indices along the :attr:`axis`.
 
@@ -859,35 +856,27 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     Examples:
 
         .. code-block:: python
+          :name: code-example1
+            import paddle
 
-           import paddle
+            data_1 = paddle.to_tensor([1, 4, 5, 7])
+            value_1, indices_1 = paddle.topk(data_1, k=1)
+            print(value_1) # [7]
+            print(indices_1) # [3]
 
-           tensor_1 = paddle.to_tensor([1, 4, 5, 7])
-           value_1, indices_1 = paddle.topk(tensor_1, k=1)
-           print(value_1)
-           # [7]
-           print(indices_1)
-           # [3] 
-           tensor_2 = paddle.to_tensor([[1, 4, 5, 7], [2, 6, 2, 5]])
-           value_2, indices_2 = paddle.topk(tensor_2, k=1)
-           print(value_2)
-           # [[7]
-           #  [6]]
-           print(indices_2)
-           # [[3]
-           #  [1]]
-           value_3, indices_3 = paddle.topk(tensor_2, k=1, axis=-1)
-           print(value_3)
-           # [[7]
-           #  [6]]
-           print(indices_3)
-           # [[3]
-           #  [1]]
-           value_4, indices_4 = paddle.topk(tensor_2, k=1, axis=0)
-           print(value_4)
-           # [[2 6 5 7]]
-           print(indices_4)
-           # [[1 1 0 0]]
+            data_2 = paddle.to_tensor([[1, 4, 5, 7], [2, 6, 2, 5]])
+            value_2, indices_2 = paddle.topk(data_2, k=1)
+            print(value_2) # [[7], [6]]
+            print(indices_2) # [[3], [1]]
+
+            value_3, indices_3 = paddle.topk(data_2, k=1, axis=-1)
+            print(value_3) # [[7], [6]]
+            print(indices_3) # [[3], [1]]
+
+            value_4, indices_4 = paddle.topk(data_2, k=1, axis=0)
+            print(value_4) # [[2, 6, 5, 7]]
+            print(indices_4) # [[1, 1, 0, 0]]
+
 
     """
 
