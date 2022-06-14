@@ -27,6 +27,8 @@
 
 import paddle
 import warnings
+from paddle.nn.layer.norm import _BatchNormBase
+from paddle.framework import no_grad
 
 
 class BatchNorm(paddle.nn.BatchNorm1D):
@@ -171,7 +173,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
                  name=None):
         super(SyncBatchNorm,
               self).__init__(num_features, momentum, epsilon, weight_attr,
-                             bias_attr, data_format, None, name)
+                             bias_attr, data_format, name)
 
     def forward(self, x):
         out = super(SyncBatchNorm, self).forward(x.values())

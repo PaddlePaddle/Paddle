@@ -15,7 +15,7 @@
 from . import functional
 
 from .layer.activation import ReLU
-from .layer.norm import BatchNorm
+from .layer.norm import BatchNorm, SyncBatchNorm
 from .layer.conv import Conv3D
 from .layer.conv import SubmConv3D
 from .layer.pooling import MaxPool3D
@@ -23,6 +23,7 @@ from .layer.pooling import MaxPool3D
 __all__ = [
     'ReLU',
     'BatchNorm',
+    'SyncBatchNorm',
     'Conv3D',
     'SubmConv3D',
     'MaxPool3D',
