@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import os
+import tempfile
 import unittest
 
 import paddle.fluid as fluid
@@ -28,8 +30,6 @@ from paddle.fluid.framework import _test_eager_guard
 import paddle
 from paddle.io import Dataset
 import numpy
-
-paddle.enable_static()
 
 
 class TestOptimizer(unittest.TestCase):
@@ -1279,6 +1279,12 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
     Master weights will be saved by optimizer::state_dict.
     '''
 
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def check_with_opt_state_dict(self, use_save_load=True):
         paddle.seed(100)
         numpy.random.seed(100)
@@ -1340,10 +1346,12 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
             optimizer.clear_grad(set_to_zero=False)
 
             if use_save_load and i == 5:
-                paddle.save(model.state_dict(), "model.pdparams")
-                paddle.save(optimizer.state_dict(), "opt.pdopt")
-                model.set_state_dict(paddle.load("model.pdparams"))
-                optimizer.set_state_dict(paddle.load("opt.pdopt"))
+                model_path = os.path.join(self.temp_dir.name, "model.pdparams")
+                optimizer_path = os.path.join(self.temp_dir.name, "opt.pdopt")
+                paddle.save(model.state_dict(), model_path)
+                paddle.save(optimizer.state_dict(), optimizer_path)
+                model.set_state_dict(paddle.load(model_path))
+                optimizer.set_state_dict(paddle.load(optimizer_path))
 
         return loss.numpy()
 
@@ -1359,4 +1367,5 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

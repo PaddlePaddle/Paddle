@@ -482,7 +482,7 @@
   args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(out)
   infer_meta :
-    func : CumsumInferMeta
+    func : CumInferMeta
   kernel :
     func : cumsum
   backward : cumsum_grad
@@ -499,15 +499,16 @@
   backward : deformable_conv_grad
 
 - api : depthwise_conv2d
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu)
+  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu, bool use_gpudnn)
   output : Tensor(out)
-  invoke : conv2d_impl(x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search)
+  infer_meta :
+    func : ConvInferMeta
+    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search]
+  kernel :
+    func : depthwise_conv2d
+    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search, fuse_relu]
+    use_gpudnn : use_gpudnn
   backward : depthwise_conv2d_grad
-  # infer_meta :
-  #   func : ConvTransposeInferMeta
-  #   prams: [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search]
-  # kernel :
-  #   func : depthwise_conv2d
 
 - api : depthwise_conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
@@ -602,7 +603,7 @@
 
 - api : einsum
   args : (Tensor[] x, str equation)
-  output : Tensor, Tensor[]{x.size()}
+  output : Tensor, Tensor[]{x.size()}, Tensor[]{x.size()}
   infer_meta :
     func : EinsumInferMeta
     param : [x, equation]
@@ -1258,6 +1259,15 @@
   kernel :
     func : log_softmax
   backward : log_softmax_grad
+
+- api : logcumsumexp
+  args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
+  output : Tensor(out)
+  infer_meta :
+    func : CumInferMeta
+  kernel :
+    func : logcumsumexp
+  backward : logcumsumexp_grad
 
 # logical_and
 - api : logical_and

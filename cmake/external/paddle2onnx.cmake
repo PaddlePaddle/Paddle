@@ -69,7 +69,7 @@ else()
   set(PADDLE2ONNX_COMPILE_LIB
       "${PADDLE2ONNX_INSTALL_DIR}/lib/libpaddle2onnx.so"
       CACHE FILEPATH "paddle2onnx compile library." FORCE)
-endif(WIN32)
+endif()
 
 if(WIN32)
   set(PADDLE2ONNX_URL

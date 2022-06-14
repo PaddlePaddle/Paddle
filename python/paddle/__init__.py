@@ -193,6 +193,7 @@ from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
 from .tensor.math import cumprod  # noqa: F401
+from .tensor.math import logcumsumexp  # noqa: F401
 from .tensor.math import logit  # noqa: F401
 from .tensor.math import exp  # noqa: F401
 from .tensor.math import expm1  # noqa: F401
@@ -407,6 +408,7 @@ __all__ = [  # noqa
     'eye',
     'cumsum',
     'cumprod',
+    'logcumsumexp',
     'logit',
     'sign',
     'is_empty',
