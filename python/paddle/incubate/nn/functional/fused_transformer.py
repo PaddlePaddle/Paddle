@@ -129,9 +129,8 @@ def fused_feedforward(x,
             'pre_layer_norm', pre_layer_norm, 'ln1_epsilon', ln1_epsilon,
             'ln2_epsilon', ln2_epsilon, 'act_method', activation,
             'dropout1_rate', dropout1_rate, 'dropout2_rate', dropout2_rate,
-            "dropout1_is_test", not training, "dropout2_is_test", not training,
-            "dropout1_fix_seed", seed is not None, "dropout2_fix_seed",
-            seed is not None, "dropout1_seed", seed
+            "is_test", not training, "dropout1_fix_seed", seed is not None,
+            "dropout2_fix_seed", seed is not None, "dropout1_seed", seed
             if seed is not None else 0, "dropout2_seed", seed
             if seed is not None else 0, 'dropout1_implementation', mode,
             'dropout2_implementation', mode, 'ring_id', ring_id)
@@ -202,8 +201,7 @@ def fused_feedforward(x,
             'pre_layer_norm': pre_layer_norm,
             'ln1_epsilon': ln1_epsilon,
             'ln2_epsilon': ln2_epsilon,
-            'dropout1_is_test': not training,
-            'dropout2_is_test': not training,
+            'is_test': not training,
             'dropout1_fix_seed': seed is not None,
             'dropout2_fix_seed': seed is not None,
             'dropout1_seed': seed if seed is not None else 0,
