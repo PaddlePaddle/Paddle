@@ -52,18 +52,20 @@ inline T DivUp(T a, T b) {
 
 // https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
 //   for round integer value into next highest power of 2.
-inline uint64_t RoundToPowerOfTwo(uint64_t n) {
+inline int64_t RoundToPowerOfTwo(int64_t n) {
   n--;
   n |= (n >> 1);
   n |= (n >> 2);
   n |= (n >> 4);
   n |= (n >> 8);
   n |= (n >> 16);
+  int64_t min_val = 32;
 #ifdef __HIPCC__
-  return std::min(256UL, std::max(32UL, (n + 1)));
+  int64_t max_val = 256;
 #else
-  return std::min(1024UL, std::max(32UL, (n + 1)));
+  int64_t max_val = 1024;
 #endif
+  return std::min(max_val, std::max(min_val, (n + 1)));
 }
 
 #ifdef WITH_NV_JETSON
