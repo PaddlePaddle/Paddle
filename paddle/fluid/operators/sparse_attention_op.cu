@@ -600,7 +600,7 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
                                &dvalue_lists[i], M, N, true, false);
 
       // dSoftmax = dOut * transpose(Value)
-      int nnz_num = columns.dims()[0];
+      int nnz_num = columns_lists[i].numel();
       Tensor dsoftmax;
       dsoftmax.Resize({nnz_num});
       dsoftmax.mutable_data<T>(ctx.GetPlace());
