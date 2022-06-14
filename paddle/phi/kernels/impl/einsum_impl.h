@@ -14,11 +14,14 @@
 #pragma once
 
 #include <set>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/utils/string/string_helper.h"
+
+DECLARE_bool(einsum_opt);
 
 namespace phi {
 
@@ -456,7 +459,7 @@ DenseTensor PerformContraction(
     }
     // reduction
     DenseTensor trans_t;
-    if (use_cache && cache[operand_idx] != nullptr &&
+    if (FLAGS_einsum_opt && use_cache && cache[operand_idx] != nullptr &&
         cache[operand_idx]->IsInitialized()) {
       trans_t.ShareBufferWith(*(cache[operand_idx]));
       VLOG(5) << "Cache Used!";
@@ -465,7 +468,7 @@ DenseTensor PerformContraction(
           dev_ctx, t, perm, all_labels, ellipsis, label2type);
       trans_t = PerformTranspose<T, Context>(
           dev_ctx, reduct_t, perm, reordered_all_labels, ellipsis, label2type);
-      if (cache[operand_idx] != nullptr)
+      if (FLAGS_einsum_opt && cache[operand_idx] != nullptr)
         cache[operand_idx]->ShareBufferWith(trans_t);
     }
     auto mul_dims = GetShapeByType<int>(all_labels,

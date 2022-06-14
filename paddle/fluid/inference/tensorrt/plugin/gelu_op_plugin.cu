@@ -15,6 +15,7 @@
 #include <cassert>
 #include <cstring>
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/plugin/gelu_op_plugin.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -112,15 +113,15 @@ int GeluPlugin::enqueue(int batch_size, const void* const* inputs,
     VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp32";
     const float* input = static_cast<const float*>(inputs[0]);
     float* output = static_cast<float*>(outputs[0]);
-    gelu_kernel<float, block_size><<<grid_size, block_size, 0, stream>>>(
-        kA, num, input, output);
+    gelu_kernel<float, block_size>
+        <<<grid_size, block_size, 0, stream>>>(kA, num, input, output);
   } else if (type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp16";
     const half* input = static_cast<const half*>(inputs[0]);
     half* output = static_cast<half*>(outputs[0]);
-    no_exact_gelu_kernel<half,
-                         block_size><<<grid_size, block_size, 0, stream>>>(
-        kAT, kBT, kCT, num, input, output);
+    no_exact_gelu_kernel<half, block_size>
+        <<<grid_size, block_size, 0, stream>>>(kAT, kBT, kCT, num, input,
+                                               output);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The Gelu TRT Plugin's input type should be float or half."));
@@ -170,10 +171,11 @@ bool GeluPluginDynamic::supportsFormatCombination(
 nvinfer1::DataType GeluPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The Gelu Plugin only has one input, so the "
-                                  "index value should be 0, but get %d.",
-                                  index));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The Gelu Plugin only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
   return input_types[0];
 }
 
@@ -192,15 +194,15 @@ int GeluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp32";
     const float* input = static_cast<const float*>(inputs[0]);
     float* output = static_cast<float*>(outputs[0]);
-    gelu_kernel<float, block_size><<<grid_size, block_size, 0, stream>>>(
-        kA, num, input, output);
+    gelu_kernel<float, block_size>
+        <<<grid_size, block_size, 0, stream>>>(kA, num, input, output);
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp16";
     const half* input = static_cast<const half*>(inputs[0]);
     half* output = static_cast<half*>(outputs[0]);
-    no_exact_gelu_kernel<half,
-                         block_size><<<grid_size, block_size, 0, stream>>>(
-        kAT, kBT, kCT, num, input, output);
+    no_exact_gelu_kernel<half, block_size>
+        <<<grid_size, block_size, 0, stream>>>(kAT, kBT, kCT, num, input,
+                                               output);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The Gelu TRT Plugin's input type should be float or half."));

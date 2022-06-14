@@ -321,13 +321,15 @@ size_t BufferSharedCrossOpMemoryReusePass::ResolveDependencyBetween(
 }
 
 void BufferSharedCrossOpMemoryReusePass::BuildOpDependencyMap() const {
-  PADDLE_ENFORCE_EQ(ops_.empty(), true, platform::errors::InvalidArgument(
-                                            "Ops must be initialized here."));
+  PADDLE_ENFORCE_EQ(
+      ops_.empty(), true,
+      platform::errors::InvalidArgument("Ops must be initialized here."));
   PADDLE_ENFORCE_EQ(
       op_to_idx_.empty(), true,
       platform::errors::InvalidArgument("Op to idx must be initialized here."));
-  PADDLE_ENFORCE_EQ(deps_.empty(), true, platform::errors::InvalidArgument(
-                                             "Deps must be initialized here."));
+  PADDLE_ENFORCE_EQ(
+      deps_.empty(), true,
+      platform::errors::InvalidArgument("Deps must be initialized here."));
 
   // Toposort ops
   OpGraphView graph_view(ir::FilterByNodeWrapper<OpHandleBase>(*graph_));

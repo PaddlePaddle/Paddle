@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
-#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
-#include "paddle/fluid/platform/enforce.h"
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/binary.h"
 namespace paddle {

@@ -345,14 +345,14 @@ AMP_LOGIC_TEMPLATE = \
 
 CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE = \
 """
-  paddle::optional<const paddle::experimental::Tensor&> {}_optional = paddle::none;
-  if({}.initialized()) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
+  paddle::optional<paddle::experimental::Tensor> {}_optional;
+  if({}.initialized()) {}_optional = paddle::make_optional<paddle::experimental::Tensor>({});
 """
 
 CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = \
 """
-  paddle::optional<const paddle::experimental::Tensor&> {}_optional = paddle::none;
-  if( {}.impl() ) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
+  paddle::optional<paddle::experimental::Tensor> {}_optional;
+  if( {}.impl() ) {}_optional = paddle::make_optional<paddle::experimental::Tensor>({});
 """
 
 CHECK_BACKWARD_INPLACE_TEMPLATE = \
@@ -713,7 +713,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
             if is_fwd_input:
                 if is_optional:
-                    set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()));"
+                    set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name});"
                 else:
                     set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name});"
                 set_input_tensor_wrappers_list.append(set_tensor_wrappers)
@@ -724,7 +724,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     ), AssertMessage(name, forward_outputs_position_map.keys())
 
                 if is_optional:
-                    set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()));"
+                    set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name});"
                 else:
                     set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name});"
                 set_output_tensor_wrappers_list.append(set_tensor_wrappers)
@@ -888,15 +888,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             is_optional = (name in optional_inputs)
             if IsPlainTensorType(ttype):
                 if is_optional:
-                    arg_str = f"const paddle::optional<const paddle::experimental::Tensor&> {name}"
+                    arg_str = f"const paddle::optional<paddle::experimental::Tensor>& {name}"
                     amp_tensors_vector_optional_list.append(
-                        f"if ({name}.get_ptr() != nullptr) amp_tensors_vector.push_back({{ *({name}.get_ptr()) }});\n"
+                        f"if ({name}) amp_tensors_vector.push_back({{ *{name} }});\n"
                     )
                     amp_autocast_optional_list.append(
-                        f"auto NEW_{name}_temp_tensor = ({name}.get_ptr() != nullptr) ? egr::EagerAmpAutoCast(\"{name}\", *({name}.get_ptr()), amp_dst_dtype, op_name) : paddle::experimental::Tensor();\n"
-                    )
-                    amp_autocast_optional_list.append(
-                        f"auto NEW_{name} = ({name}.get_ptr() != nullptr) ? paddle::make_optional<const paddle::experimental::Tensor&>(NEW_{name}_temp_tensor) : {name};\n"
+                        f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
                 else:
                     if is_inplaced and forward_inplace_map and name in forward_inplace_map.keys(
@@ -1407,7 +1404,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   const auto& out_metas = OutputMeta();
   paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns({slot_num_bwd_outputs});
   for (int i = 0; i < {slot_num_bwd_outputs}; ++i) {{
-    returns[i].resize(out_metas[i].size());
+    out_metas[i].size() == 0 ? returns[i].resize(1) : returns[i].resize(out_metas[i].size());
   }}
 """
 

@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/distributed/fleet_executor/dist_model.h"
+
 #include <glog/logging.h>
+
 #include <chrono>  // NOLINT
 
-#include "paddle/fluid/distributed/fleet_executor/dist_model.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/block_desc.h"
@@ -294,8 +296,9 @@ bool DistModel::PrepareProgram() {
 
 bool DistModel::LoadProgram() {
   VLOG(3) << "Loading program from " << config_.model_dir;
-  PADDLE_ENFORCE_NE(config_.model_dir, "", platform::errors::InvalidArgument(
-                                               "Model dir must be provided."));
+  PADDLE_ENFORCE_NE(
+      config_.model_dir, "",
+      platform::errors::InvalidArgument("Model dir must be provided."));
   std::string model_path = config_.model_dir + ".pdmodel";
   framework::proto::ProgramDesc program_proto;
   std::string pb_content;

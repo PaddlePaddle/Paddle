@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
-#include "dgc/dgc.h"
 
+#include "dgc/dgc.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
@@ -118,10 +118,12 @@ class DGCOpKernel : public framework::OpKernel<T> {
         1 - get_period_sparcity(
                 sparsity, static_cast<float>(*current_step - rampup_begin_step),
                 rampup_step);
-    PADDLE_ENFORCE_GE(ratio, 0.0, platform::errors::InvalidArgument(
-                                      "DGC sparsity ratio must >= 0"));
-    PADDLE_ENFORCE_LT(ratio, 1.0, platform::errors::InvalidArgument(
-                                      "DGC sparsity ratio must < 1"));
+    PADDLE_ENFORCE_GE(
+        ratio, 0.0,
+        platform::errors::InvalidArgument("DGC sparsity ratio must >= 0"));
+    PADDLE_ENFORCE_LT(
+        ratio, 1.0,
+        platform::errors::InvalidArgument("DGC sparsity ratio must < 1"));
     int k = static_cast<int>(g->numel() * ratio);
 
     VLOG(10) << "m:" << m << ", use_nesterov:" << use_nesterov

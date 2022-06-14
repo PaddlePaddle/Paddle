@@ -15,6 +15,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
@@ -97,6 +98,24 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
 #endif
 
   Update();
+}
+
+void AnalysisConfig::SetExecStream(void *stream) {
+  PADDLE_ENFORCE_NOT_NULL(stream, platform::errors::InvalidArgument(
+                                      "`stream` should not be nullptr"));
+  exec_stream_ = stream;
+  use_external_stream_ = true;
+  Update();
+}
+
+void *AnalysisConfig::GetExecStream() const {
+  PADDLE_ENFORCE_NOT_NULL(exec_stream_, platform::errors::InvalidArgument(
+                                            "`stream` should not be nullptr"));
+  return exec_stream_;
+}
+
+bool AnalysisConfig::external_stream_enabled() const {
+  return use_external_stream_;
 }
 
 void AnalysisConfig::DisableGpu() {
@@ -238,6 +257,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_fc_padding_);
   // GPU related.
   CP_MEMBER(use_gpu_);
+  CP_MEMBER(use_external_stream_);
+  CP_MEMBER(exec_stream_);
   CP_MEMBER(use_cudnn_);
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
@@ -256,8 +277,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_dla_core_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
-  CP_MEMBER(trt_use_oss_);
+  CP_MEMBER(trt_use_varseqlen_);
   CP_MEMBER(trt_with_interleaved_);
+  CP_MEMBER(tensorrt_transformer_posid_);
+  CP_MEMBER(tensorrt_transformer_maskid_);
   CP_MEMBER(trt_tuned_dynamic_shape_);
   CP_MEMBER(trt_allow_build_at_runtime_);
   CP_MEMBER(collect_shape_range_info_);
@@ -546,7 +569,7 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
-void AnalysisConfig::EnableTensorRtOSS() { trt_use_oss_ = true; }
+void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
@@ -631,11 +654,6 @@ void AnalysisConfig::Update() {
     for (const auto &pass : kTRTSubgraphPasses) {
       if (tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
           (pass == "conv_bn_fuse_pass")) {
-        continue;
-      }
-      // delete_fill_constant_op_pass is not used under trt dynamic shape
-      if ((!min_input_shape_.empty() || trt_tuned_dynamic_shape_) &&
-          pass == "delete_fill_constant_op_pass") {
         continue;
       }
       pass_builder()->AppendPass(pass);
@@ -789,6 +807,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
+  ss << use_external_stream_;
+  ss << exec_stream_;
   ss << use_gpu_fp16_;
   for (auto &item : gpu_fp16_disabled_op_types_) ss << item;
   ss << use_fc_padding_;
@@ -988,6 +1008,8 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
     os.InsertRow(
+        {"use_external_stream", use_external_stream_ ? "true" : "false"});
+    os.InsertRow(
         {"thread_local_stream", thread_local_stream_ ? "true" : "false"});
 
     os.InsertRow({"use_tensorrt", use_tensorrt_ ? "true" : "false"});
@@ -1039,9 +1061,13 @@ std::string AnalysisConfig::Summary() {
                                                         ? shape_range_info_path_
                                                         : "false"});
 
-      os.InsertRow({"tensorrt_use_oss", trt_use_oss_ ? "true" : "false"});
+      os.InsertRow(
+          {"tensorrt_use_varseqlen", trt_use_varseqlen_ ? "true" : "false"});
       os.InsertRow({"tensorrt_with_interleaved",
                     trt_with_interleaved_ ? "true" : "false"});
+      os.InsertRow({"tensorrt_transformer_posid", tensorrt_transformer_posid_});
+      os.InsertRow(
+          {"tensorrt_transformer_maskid", tensorrt_transformer_maskid_});
       os.InsertRow({"tensorrt_use_dla", trt_use_dla_ ? "true" : "false"});
       if (trt_use_dla_) {
         os.InsertRow({"tensorrt_dla_core", std::to_string(trt_dla_core_)});
@@ -1104,8 +1130,9 @@ LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheBuffers(
                     platform::errors::InvalidArgument(
                         "model_cache_buffer should not be empty."));
   PADDLE_ENFORCE_EQ(nnadapter_model_cache_buffers.count(model_cache_token),
-                    false, platform::errors::InvalidArgument(
-                               "model_cache_token has already been set."));
+                    false,
+                    platform::errors::InvalidArgument(
+                        "model_cache_token has already been set."));
 
   nnadapter_model_cache_buffers[model_cache_token] = model_cache_buffer;
   return *this;

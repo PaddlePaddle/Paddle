@@ -33,10 +33,11 @@ class FrameOp : public framework::OperatorWithKernel {
     const int x_rank = x_dims.size();
 
     PADDLE_ENFORCE_GE(
-        x_rank, 1, platform::errors::InvalidArgument(
-                       "Input(X) of FrameOp should be a tensor which contains "
-                       "at least 1 dimension, but got rank %s.",
-                       x_rank));
+        x_rank, 1,
+        platform::errors::InvalidArgument(
+            "Input(X) of FrameOp should be a tensor which contains "
+            "at least 1 dimension, but got rank %s.",
+            x_rank));
     PADDLE_ENFORCE_GT(hop_length, 0,
                       platform::errors::InvalidArgument(
                           "Attribute(hop_length) of FrameOp should be greater "

@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/diag_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/diag_kernel.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -85,16 +84,16 @@ void DiagGradKernel(const Context& dev_ctx,
           (offset >= 0 ? offset * dout_stride_1 : -offset * dout_stride_0);
 
       std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
-      ExtractDiagonalKernel<T><<<std::get<1>(block_grid_size),
-                                 std::get<0>(block_grid_size),
-                                 0,
-                                 dev_ctx.stream()>>>(
-          dout_data,
-          dx_data,
-          start,
-          dx_length,
-          dout_stride_0 + dout_stride_1,
-          dx_stride);
+      ExtractDiagonalKernel<T>
+          <<<std::get<1>(block_grid_size),
+             std::get<0>(block_grid_size),
+             0,
+             dev_ctx.stream()>>>(dout_data,
+                                 dx_data,
+                                 start,
+                                 dx_length,
+                                 dout_stride_0 + dout_stride_1,
+                                 dx_stride);
     }
   } else {
     phi::funcs::SetConstant<Context, T> set_padding_value;

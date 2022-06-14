@@ -405,7 +405,6 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(matrix_nms, ops::MatrixNMSKernel<float>,
                        ops::MatrixNMSKernel<double>);
 REGISTER_OP_VERSION(matrix_nms)
-    .AddCheckpoint(
-        R"ROC(Upgrade matrix_nms: add a new output [RoisNum].)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewOutput(
-            "RoisNum", "The number of RoIs in each image."));
+    .AddCheckpoint(R"ROC(Upgrade matrix_nms: add a new output [RoisNum].)ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewOutput(
+                       "RoisNum", "The number of RoIs in each image."));

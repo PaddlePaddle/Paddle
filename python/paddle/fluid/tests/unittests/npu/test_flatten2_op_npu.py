@@ -16,15 +16,18 @@ from __future__ import print_function
 
 import unittest
 import sys
+
 sys.path.append("..")
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 from op_test import OpTest
+
 paddle.enable_static()
 
 
 class TestFlatten2Op(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "flatten2"
@@ -56,6 +59,7 @@ class TestFlatten2Op(OpTest):
 
 
 class TestFlatten2OpWithCornerAxis(TestFlatten2Op):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.axis = 0
@@ -63,6 +67,7 @@ class TestFlatten2OpWithCornerAxis(TestFlatten2Op):
 
 
 class TestFlatten2OpWithDefaultAxis(TestFlatten2Op):
+
     def init_test_case(self):
         self.in_shape = (10, 2, 2, 3)
         self.new_shape = (10, 12)
@@ -72,6 +77,7 @@ class TestFlatten2OpWithDefaultAxis(TestFlatten2Op):
 
 
 class TestFlatten2OpSixDims(TestFlatten2Op):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
         self.axis = 4

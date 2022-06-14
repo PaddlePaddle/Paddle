@@ -52,9 +52,9 @@ namespace operators {
 
 using inference::Singleton;
 using inference::tensorrt::TensorRTEngine;
-using inference::tensorrt::TRTInt8Calibrator;
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
+using inference::tensorrt::TRTInt8Calibrator;
 
 static void RuntimeStaticShapeCheck(std::vector<int64_t> runtime_input_shape,
                                     std::vector<int64_t> model_input_shape) {
@@ -111,10 +111,10 @@ static void RuntimeDynamicShapeCheck(
   //         "TRT engine runtime input %s dims size(%d) inconsistent "
   //         "with the dynamic shape size(%d)",
   //         x, runtime_input_shape.size(), min_input_shape.size()));
-  auto is_input_shape_valid = [&](
-      const std::vector<int32_t> &runtime_input_shape,
-      const std::vector<int32_t> &min_input_shape,
-      const std::vector<int32_t> &max_input_shape) -> bool {
+  auto is_input_shape_valid =
+      [&](const std::vector<int32_t> &runtime_input_shape,
+          const std::vector<int32_t> &min_input_shape,
+          const std::vector<int32_t> &max_input_shape) -> bool {
     for (size_t i = 0; i < runtime_input_shape.size(); i++) {
       if (runtime_input_shape[i] <= max_input_shape[i] &&
           runtime_input_shape[i] >= min_input_shape[i]) {

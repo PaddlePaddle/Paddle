@@ -14,14 +14,12 @@
 
 #include "paddle/phi/kernels/rnn_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/gpu/rnn_functor.h"
-
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/gpu/rnn_functor.h"
 
 namespace phi {
 
@@ -134,7 +132,7 @@ void RnnKernel(const Context &dev_ctx,
                const DenseTensor &x,
                const std::vector<const DenseTensor *> &pre_state,
                const std::vector<const DenseTensor *> &weight_list,
-               paddle::optional<const DenseTensor &> sequence_length,
+               const paddle::optional<DenseTensor> &sequence_length,
                float dropout_prob,
                bool is_bidirec,
                int input_size,
