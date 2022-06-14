@@ -45,6 +45,7 @@ class TrtConvertArgMaxTest(TrtLayerAutoScanTest):
             for batch in [1, 4]:
                 for axis in [-1, 0, 1, 2, 3]:
                     for keepdims in [True, False]:
+                        self.rank = rank
                         flatten = False
                         dtype = 2
                         ops_config = [{
