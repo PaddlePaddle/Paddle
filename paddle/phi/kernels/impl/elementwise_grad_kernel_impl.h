@@ -444,6 +444,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
     auto& place = *dev_ctx.eigen_device();
     // size(ddout) > size(ddx) or we don't have ddx, ddout can't use memory of
     // ddx using inplace
+
     bool without_ddx = (ddx.get_ptr() == nullptr);
     if (!without_ddx) {
       without_ddx = (ddout->numel() > ddx.get_ptr()->numel());
