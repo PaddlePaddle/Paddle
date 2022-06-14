@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# 
+set +x
 
 # use pre-commit 2.17
 if ! [[ $(pre-commit --version) == *"2.17.0"* ]]; then
-    pip install pre-commit==2.17.0
+    pip install pre-commit==2.17.0 1>nul
 fi
 
 diff_files=$(git diff --numstat develop | awk '{print $NF}')
+echo "Checking code style by pre-commit ..."
 pre-commit run --files ${diff_files};check_error=$?
 
 if test ! -z "$(git diff)"; then
@@ -36,4 +37,5 @@ if [ ${check_error} != 0 ];then
     echo -e '********************************\n'
 fi
 
+set -x
 exit ${check_error}
