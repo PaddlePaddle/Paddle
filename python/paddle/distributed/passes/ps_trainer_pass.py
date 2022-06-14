@@ -375,14 +375,15 @@ class DistributedOpsPass(PassBase):
                         if out_var.name in ins:
                             outputs_idxs[out_id] = min(idx,
                                                        outputs_idxs[out_id])
-            
+
             if attrs['use_ps_gpu']:
                 gpups_inputs_idxs.extend(inputs_idxs)
                 gpups_outputs_idxs.extend(outputs_idxs)
                 gpups_inputs.extend(inputs)
                 gpups_outputs.extend(outputs)
                 gpups_w_size.extend([w.shape[1]] * len(inputs))
-                gpups_min_distributed_idx = min(min(op_idxs), gpups_min_distributed_idx)
+                gpups_min_distributed_idx = min(min(op_idxs),
+                                                gpups_min_distributed_idx)
                 continue
 
             if min(outputs_idxs) - max(inputs_idxs) >= 1:
@@ -430,27 +431,27 @@ class DistributedOpsPass(PassBase):
             if max(gpups_inputs_idxs) > 0:
                 raise ValueError("There can't be ops before embedding in gpups")
 
-            _program.global_block()._insert_op(
-                index=gpups_min_distributed_idx,
-                type="pull_gpups_sparse",
-                inputs={
-                    "Ids": gpups_inputs,
-                },
-                outputs={"Out": gpups_outputs},
-                attrs={
-                    "size": gpups_w_size,
-                    "is_distributed": True,
-                    "is_sparse": True
-                })
+            _program.global_block()._insert_op(index=gpups_min_distributed_idx,
+                                               type="pull_gpups_sparse",
+                                               inputs={
+                                                   "Ids": gpups_inputs,
+                                               },
+                                               outputs={"Out": gpups_outputs},
+                                               attrs={
+                                                   "size": gpups_w_size,
+                                                   "is_distributed": True,
+                                                   "is_sparse": True
+                                               })
             PSGPU = paddle.fluid.core.PSGPU()
             try:
                 gpu_slot = [int(var.name) for var in gpups_inputs]
             except (ValueError):
-                raise ValueError("The slot name in gpups Should be able to convert to integer.")
+                raise ValueError(
+                    "The slot name in gpups Should be able to convert to integer."
+                )
             PSGPU.set_slot_vector(gpu_slot)
             gpu_mf_sizes = [x - 3 for x in gpups_w_size]
             PSGPU.set_slot_dim_vector(gpu_mf_sizes)
-            
 
     def _get_pull_sparse_ops(self, _program, attrs):
         pull_sparse_ops = {}

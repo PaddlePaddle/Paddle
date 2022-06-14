@@ -298,14 +298,16 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
   auto score = ShowClickScore(show, click);
   if (score >= _config.embedx_threshold() &&
       param > common_feature_value.EmbedxG2SumIndex()) {
-    VLOG(1) << "common_feature_value.EmbedxG2SumIndex():"
-            << common_feature_value.EmbedxG2SumIndex();
-    VLOG(1) << "common_feature_value.EmbedxWIndex():"
-            << common_feature_value.EmbedxWIndex();
-    VLOG(1) << "common_feature_value.MfDim():"
-            << common_feature_value.MfDim(const_cast<float*>(v));
+    // VLOG(1) << "common_feature_value.EmbedxG2SumIndex():"
+    //         << common_feature_value.EmbedxG2SumIndex();
+    // VLOG(1) << "common_feature_value.EmbedxWIndex():"
+    //         << common_feature_value.EmbedxWIndex();
+    // VLOG(1) << "common_feature_value.MfDim():"
+    //         << common_feature_value.MfDim(const_cast<float*>(v));
     for (auto i = common_feature_value.EmbedxG2SumIndex();
-         i < common_feature_value.EmbedxWIndex() + common_feature_value.MfDim(const_cast<float*>(v)); ++i) {
+         i < common_feature_value.EmbedxWIndex() +
+                 common_feature_value.MfDim(const_cast<float*>(v));
+         ++i) {
       os << " " << v[i];
     }
   }

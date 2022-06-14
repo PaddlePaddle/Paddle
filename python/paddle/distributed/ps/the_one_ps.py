@@ -588,7 +588,7 @@ class SparseTable(Table):
         self.common.table_name = self.context['grad_name_to_param_name'][
             ctx.origin_varnames()[0]]
 
-        print('new table_name: {}'.format(self.common.table_name))
+        # print('new table_name: {}'.format(self.common.table_name))
         all_table_proto = self.context[
             "user_defined_strategy"].sparse_table_configs
         usr_table_proto = all_table_proto.add()
