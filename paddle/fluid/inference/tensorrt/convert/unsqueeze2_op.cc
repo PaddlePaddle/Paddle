@@ -75,21 +75,18 @@ class Unsqueeze2OpConverter : public OpConverter {
       gather_indices.push_back(in_rank_i);
       in_rank_i++;
     }
-    std::vector<int32_t> all_one(axes.size(), 1);
-    auto* all_one_tensor = Add1DConstantLayer(all_one);
-
-    nvinfer1::ILayer* layer = nullptr;
+    
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     if (engine_->with_dynamic_shape()) {
-      auto shape_tensor = Shape(input);
+      auto* shape_tensor = Shape(input);
+      std::vector<int32_t> all_one(axes.size(), 1);
+      auto* all_one_tensor = Add1DConstantLayer(all_one);
       std::vector<nvinfer1::ITensor*> concat_inputs = {shape_tensor,
                                                        all_one_tensor};
-      auto real_shape_tensor = Gather(Concat(concat_inputs), gather_indices);
-      layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+      auto* real_shape_tensor = Gather(Concat(concat_inputs), gather_indices);
       layer->setInput(1, *real_shape_tensor);
     } else {
-      auto unsqueeze_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-      unsqueeze_layer->setReshapeDimensions(trt_out_dims);
-      layer = dynamic_cast<nvinfer1::ILayer*>(unsqueeze_layer);
+      layer->setReshapeDimensions(trt_out_dims);
     }
     RreplenishLayerAndOutput(layer, "unsqueeze2", {output_name}, test_mode);
   }

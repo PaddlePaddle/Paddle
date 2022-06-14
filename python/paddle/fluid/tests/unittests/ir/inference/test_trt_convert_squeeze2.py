@@ -34,7 +34,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         for dims in [2, 3, 4]:
-            for batch in [3, 4, 8]:
+            for batch in [3, 4]:
                 for axes in [[2], [2, 3], [-1]]:
                     self.batch = batch
                     self.dims = dims
@@ -61,7 +61,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                 # generate input data
                     self.input_shape = [1] * dims
                     for i in range(dims):
-                        self.input_shape[i] = np.random.randint(1, 100)
+                        self.input_shape[i] = np.random.randint(1, 20)
 
                     def generate_input1(attrs: List[Dict[str, Any]], batch):
                         self.input_shape[0] = batch

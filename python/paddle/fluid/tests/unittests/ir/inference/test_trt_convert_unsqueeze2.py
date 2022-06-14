@@ -49,7 +49,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                     # generate input data
                     self.input_shape = [1] * dims
                     for i in range(dims):
-                        self.input_shape[i] = np.random.randint(1, 100)
+                        self.input_shape[i] = np.random.randint(1, 20)
 
                     def generate_input1(attrs: List[Dict[str, Any]], batch):
                         self.input_shape[0] = batch

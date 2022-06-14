@@ -44,11 +44,10 @@ class Squeeze2OpConverter : public OpConverter {
     for (size_t i = 0; i < axes.size(); i++) {
       if (engine_->with_dynamic_shape()) {
         axes[i] += (axes[i] < 0) ? input_dims.nbDims : 0;
-        should_squeeze[axes[i]] = true;
       } else {
         axes[i] += (axes[i] < 0) ? input_dims.nbDims : -1;
-        should_squeeze[axes[i]] = true;
       }
+      should_squeeze[axes[i]] = true;
     }
 
     nvinfer1::Dims trt_out_dims;
@@ -61,16 +60,13 @@ class Squeeze2OpConverter : public OpConverter {
       trt_out_dims.d[trt_out_dims.nbDims] = input_dims.d[i];
       trt_out_dims.nbDims++;
     }
-    nvinfer1::ILayer* layer = nullptr;
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     if (engine_->with_dynamic_shape()) {
       auto* shape_tensor = Shape(input);
       auto* real_shape_tensor = Gather(shape_tensor, gather_indices);
-      layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
       layer->setInput(1, *real_shape_tensor);
     } else {
-      auto squeeze_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-      squeeze_layer->setReshapeDimensions(trt_out_dims);
-      layer = dynamic_cast<nvinfer1::ILayer*>(squeeze_layer);
+      layer->setReshapeDimensions(trt_out_dims);
     }
     RreplenishLayerAndOutput(layer, "squeeze2", {output_name}, test_mode);
   }
