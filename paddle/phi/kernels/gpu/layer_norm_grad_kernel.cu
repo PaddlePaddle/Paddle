@@ -12,20 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/layer_norm_grad_kernel.h"
-
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
+#include "paddle/phi/kernels/layer_norm_grad_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void LayerNormGradKernel(const Context &dev_ctx,
                          const DenseTensor &x,
-                         paddle::optional<const DenseTensor &> scale_opt,
-                         paddle::optional<const DenseTensor &> bias_opt,
+                         const paddle::optional<DenseTensor> &scale_opt,
+                         const paddle::optional<DenseTensor> &bias_opt,
                          const DenseTensor &mean,
                          const DenseTensor &variance,
                          const DenseTensor &out_grad,

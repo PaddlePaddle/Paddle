@@ -40,26 +40,26 @@ class DistributedTensor:
                                       processes,
                                       rank=None,
                                       shard_sizes=None):
-        if not (isinstance(sizes, (list, tuple)) and
-                all(map(lambda x: isinstance(x, int) and x > 0, sizes))):
+        if not (isinstance(sizes, (list, tuple))
+                and all(map(lambda x: isinstance(x, int) and x >= 0, sizes))):
             raise ValueError(
-                "The sizes must be list or tuple and item in sizes must be non-negative integer, but got {}".
-                format(sizes))
+                "The sizes must be list or tuple and item in sizes must be non-negative integer, but got {}"
+                .format(sizes))
         if not (isinstance(dims_mapping, (list, tuple)) and all(
                 map(lambda x: isinstance(x, int) and x >= -1, dims_mapping))):
             raise ValueError(
-                "The dims_mapping must be list or tuple and item in dims_mapping must >= -1, but got {}".
-                format(dims_mapping))
-        if not (isinstance(processes, (list, tuple)) and
-                all(map(lambda x: isinstance(x, int) and x >= 0, processes))):
+                "The dims_mapping must be list or tuple and item in dims_mapping must >= -1, but got {}"
+                .format(dims_mapping))
+        if not (isinstance(processes, (list, tuple)) and all(
+                map(lambda x: isinstance(x, int) and x >= 0, processes))):
             raise ValueError(
-                "The processes must be list or tuple and item in processes must be integer, but got {}".
-                format(processes))
-        if not (isinstance(topology, (list, tuple)) and
-                all(map(lambda x: isinstance(x, int) and x > 0, topology))):
+                "The processes must be list or tuple and item in processes must be integer, but got {}"
+                .format(processes))
+        if not (isinstance(topology, (list, tuple))
+                and all(map(lambda x: isinstance(x, int) and x > 0, topology))):
             raise ValueError(
-                "The topology must be list or tuple and item in topology must be non-negative integer, but got {}".
-                format(topology))
+                "The topology must be list or tuple and item in topology must be non-negative integer, but got {}"
+                .format(topology))
         if rank is not None and not (isinstance(rank, int) and rank >= 0):
             raise ValueError("The rank must >= 0, but got {}".format(rank))
 
@@ -74,13 +74,18 @@ class DistributedTensor:
                         processes,
                         rank=None,
                         shard_sizes=None):
-        DistributedTensor._validate_sizes_and_dist_attr(
-            global_sizes, dims_mapping, topology, processes, rank, shard_sizes)
+        DistributedTensor._validate_sizes_and_dist_attr(global_sizes,
+                                                        dims_mapping, topology,
+                                                        processes, rank,
+                                                        shard_sizes)
 
         local_sizes = []
         # for even sharding, the local sizes of every rank are equal
+
         for idx, item in enumerate(global_sizes):
-            if dims_mapping[idx] == -1:
+            # This is a trick to avoid dims_mapping is []
+            val = dims_mapping[idx] if idx < len(dims_mapping) else -1
+            if val == -1:
                 local_sizes.append(item)
             else:
                 local_sizes.append(item // topology[dims_mapping[idx]])
@@ -94,8 +99,10 @@ class DistributedTensor:
                           processes,
                           rank,
                           shard_sizes=None):
-        local_sizes = DistributedTensor.get_local_sizes(
-            global_sizes, dims_mapping, topology, processes, rank, shard_sizes)
+        local_sizes = DistributedTensor.get_local_sizes(global_sizes,
+                                                        dims_mapping, topology,
+                                                        processes, rank,
+                                                        shard_sizes)
         local_offsets = []
         rank_relatvie = processes.index(rank)
         coordinate = _linear_idx2coordinate(topology, rank_relatvie)
@@ -115,8 +122,10 @@ class DistributedTensor:
                          processes,
                          rank=None,
                          shard_sizes=None):
-        DistributedTensor._validate_sizes_and_dist_attr(
-            local_sizes, dims_mapping, topology, processes, rank, shard_sizes)
+        DistributedTensor._validate_sizes_and_dist_attr(local_sizes,
+                                                        dims_mapping, topology,
+                                                        processes, rank,
+                                                        shard_sizes)
         global_sizes = []
         for idx, item in enumerate(local_sizes):
             if dims_mapping[idx] == -1:
@@ -134,8 +143,10 @@ class DistributedTensor:
                         shard_sizes=None):
         local_offsets = DistributedTensor.get_local_offsets(
             global_sizes, dims_mapping, topology, processes, rank, shard_sizes)
-        local_sizes = DistributedTensor.get_local_sizes(
-            global_sizes, dims_mapping, topology, processes, rank, shard_sizes)
+        local_sizes = DistributedTensor.get_local_sizes(global_sizes,
+                                                        dims_mapping, topology,
+                                                        processes, rank,
+                                                        shard_sizes)
         assert len(local_sizes) == len(
             local_offsets
         ), "The length of local_sizes must be equal to local_offsets, but got {} and {}.".format(

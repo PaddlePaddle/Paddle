@@ -9,9 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/string/faster_tokenizer_op.h"
+
 #include <utf8proc.h>
 
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <codecvt>
 #include <fstream>
@@ -22,10 +25,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#include <boost/algorithm/string.hpp>
-
 #include "paddle/fluid/framework/string_array.h"
-#include "paddle/fluid/operators/string/faster_tokenizer_op.h"
 
 namespace paddle {
 namespace operators {
@@ -38,12 +38,11 @@ using std::ifstream;
 using std::int64_t;
 using std::min;
 using std::runtime_error;
-using std::unordered_map;
-using std::unordered_set;
 using std::shared_ptr;
 using std::size_t;
-using std::int64_t;
 using std::string;
+using std::unordered_map;
+using std::unordered_set;
 using std::vector;
 using std::wstring;
 

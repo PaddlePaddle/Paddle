@@ -457,8 +457,9 @@ TEST(selected_rows_functor, cpu_sum_to) {
   paddle::operators::math::SelectedRowsSumTo<paddle::platform::CPUDeviceContext,
                                              float>
       sum_to_functor;
-  sum_to_functor(ctx, std::vector<phi::SelectedRows*>(
-                          {selected_rows1.get(), selected_rows2.get()}),
+  sum_to_functor(ctx,
+                 std::vector<phi::SelectedRows*>(
+                     {selected_rows1.get(), selected_rows2.get()}),
                  std::vector<int64_t>({0, in1_value->numel()}), output.get());
   auto out_height = output->height();
   EXPECT_EQ(out_height, height);

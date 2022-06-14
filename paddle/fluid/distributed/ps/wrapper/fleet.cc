@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+
 #include <google/protobuf/text_format.h>
 
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
-#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 
 namespace paddle {
 namespace distributed {
@@ -535,8 +536,8 @@ void FleetWrapper::PushSparseFromTensorAsync(
     output_len = 0;
 
     if (tensor->lod().size() > 0) {
-      for (size_t i = 0; i < tensor->lod()[0].size() - 1; ++i) {
-        for (int j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
+      for (int i = 0; i < tensor->lod()[0].size() - 1; ++i) {
+        for (size_t j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
              ++j, output_len += fea_dim) {
           uint64_t real_id = static_cast<uint64_t>(ids[j]);
           if (real_id == padding_id) {
@@ -565,7 +566,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
         }
       }
     } else {
-      for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
+      for (int i = 0; i < len; ++i, output_len += fea_dim) {
         uint64_t real_id = static_cast<uint64_t>(ids[i]);
         if (real_id == padding_id) {
           continue;

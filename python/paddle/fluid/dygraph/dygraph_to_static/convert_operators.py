@@ -188,7 +188,7 @@ def _run_py_logical_not(x):
     return not x
 
 
-def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
+def convert_ifelse(pred, true_fn, false_fn, true_args, false_args):
     """
     A function representation of a Python ``if/else`` statement.
 
@@ -198,15 +198,13 @@ def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
         false_fn(callable): A callable to be performed if ``pred`` is false.
         true_args(tuple): Parameters of ``true_fn``.
         false_args(tuple): Parameters of ``false_fn``.
-        return_vars(tuple): Return variables of ``true_fn`` and ``false_fn``.
 
     Returns:
         ``true_fn(true_args)`` if the predicate ``pred`` is true else ``false_fn(false_args)`` .
 
     """
     if isinstance(pred, Variable):
-        out = _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
-                               return_vars)
+        out = _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args)
     else:
         out = _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args)
 
@@ -219,8 +217,8 @@ def _remove_no_value_return_var(out):
         align_ret = out[0]
         if isinstance(align_ret, tuple):
             for index, item in enumerate(align_ret):
-                if isinstance(item, Variable) and (
-                        RETURN_NO_VALUE_VAR_NAME in item.name):
+                if isinstance(item, Variable) and (RETURN_NO_VALUE_VAR_NAME
+                                                   in item.name):
                     # return None
                     if index == 0:
                         processed_out = (None, ) + out[1:]
@@ -231,8 +229,8 @@ def _remove_no_value_return_var(out):
                     break
 
         for index, item in enumerate(processed_out):
-            if isinstance(item, Variable) and (
-                    RETURN_NO_VALUE_VAR_NAME in item.name):
+            if isinstance(item, Variable) and (RETURN_NO_VALUE_VAR_NAME
+                                               in item.name):
                 processed_out = processed_out[:index]
 
         if not processed_out:
@@ -246,8 +244,7 @@ def _remove_no_value_return_var(out):
         return out
 
 
-def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
-                     return_vars):
+def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args):
     pred = cast_bool_if_necessary(pred)
     return control_flow.cond(pred, lambda: true_fn(*true_args),
                              lambda: false_fn(*false_args))
@@ -316,11 +313,10 @@ def convert_var_shape(x, idx=None, in_control_flow=False):
     #      # Assume x.shape=[3, -1] in static mode
     #      y = paddle.reshape(x, shape=[1, x.shape[1]])
     #      ```
-    if isinstance(x, Variable) and (in_control_flow or has_negative(x.shape,
-                                                                    idx)):
+    if isinstance(x, Variable) and has_negative(x.shape, idx):
         return nn.shape(x) if idx is None else nn.shape(x)[idx]
     else:
-        return x.shape if idx is None else x.shape[idx]
+        return list(x.shape) if idx is None else x.shape[idx]
 
 
 def convert_var_shape_simple(x):
@@ -330,7 +326,8 @@ def convert_var_shape_simple(x):
     if isinstance(x, Variable):
         return nn.shape(x)
     else:
-        return x.shape
+        # Use list() to make returned type consistant with dygraph
+        return list(x.shape)
 
 
 def eval_if_exist_else_none(name, global_symbol_table):
@@ -549,6 +546,7 @@ def _run_paddle_pop(array, *args):
 # TODO(liym27): A better way to slice tensor array.
 #  Maybe support start == end for slice op.
 def _slice_tensor_array(array, start, end):
+
     def true_fn():
         null_array = create_array("float32")
         return null_array

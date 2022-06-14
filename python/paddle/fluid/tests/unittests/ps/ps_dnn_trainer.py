@@ -26,6 +26,7 @@ import warnings
 import ast
 import numpy as np
 import struct
+
 sys.path.append("..")
 from ps_dnn_model import StaticModel
 
@@ -43,6 +44,7 @@ def is_distributed_env():
 
 
 class YamlHelper(object):
+
     def load_yaml(self, yaml_file, other_part=None):
         part_list = ["runner", "hyper_parameters"]
         if other_part:
@@ -121,8 +123,8 @@ class YamlHelper(object):
         for k, v in envs.items():
             max_k = max(max_k, len(k))
 
-        h_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(max_k, " " *
-                                                              spacing, max_v)
+        h_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
+            max_k, " " * spacing, max_v)
         l_format = "    " + "|{{:>{}s}}{{}}{{:^{}s}}|\n".format(max_k, max_v)
         length = max_k + max_v + spacing
 
@@ -260,29 +262,45 @@ def get_model(config):
 
 def parse_args():
     parser = argparse.ArgumentParser("PsTest train script")
-    parser.add_argument(
-        '-m', '--config_yaml', type=str, required=True, help='config file path')
-    parser.add_argument(
-        '-bf16',
-        '--pure_bf16',
-        type=ast.literal_eval,
-        default=False,
-        help="whether use bf16")
+    parser.add_argument('-m',
+                        '--config_yaml',
+                        type=str,
+                        required=True,
+                        help='config file path')
+    parser.add_argument('-bf16',
+                        '--pure_bf16',
+                        type=ast.literal_eval,
+                        default=False,
+                        help="whether use bf16")
 
-    parser.add_argument(
-        '--run_minimize', type=int, default=0, help="test single pass")
-    parser.add_argument(
-        '--run_single_pass', type=int, default=0, help="test single pass")
-    parser.add_argument(
-        '--run_the_one_ps', type=int, default=0, help="test the_one_ps")
-    parser.add_argument(
-        '--debug_new_minimize', type=int, default=0, help="test single pass")
-    parser.add_argument(
-        '--debug_new_pass', type=int, default=0, help="test single pass")
-    parser.add_argument(
-        '--applied_pass_name', type=str, default="", help="test single pass")
-    parser.add_argument(
-        '--debug_the_one_ps', type=int, default=0, help="test the_one_ps")
+    parser.add_argument('--run_minimize',
+                        type=int,
+                        default=0,
+                        help="test single pass")
+    parser.add_argument('--run_single_pass',
+                        type=int,
+                        default=0,
+                        help="test single pass")
+    parser.add_argument('--run_the_one_ps',
+                        type=int,
+                        default=0,
+                        help="test the_one_ps")
+    parser.add_argument('--debug_new_minimize',
+                        type=int,
+                        default=0,
+                        help="test single pass")
+    parser.add_argument('--debug_new_pass',
+                        type=int,
+                        default=0,
+                        help="test single pass")
+    parser.add_argument('--applied_pass_name',
+                        type=str,
+                        default="",
+                        help="test single pass")
+    parser.add_argument('--debug_the_one_ps',
+                        type=int,
+                        default=0,
+                        help="test the_one_ps")
 
     args = parser.parse_args()
     args.abs_dir = os.path.dirname(os.path.abspath(args.config_yaml))
@@ -307,6 +325,7 @@ def bf16_to_fp32(val):
 
 
 class DnnTrainer(object):
+
     def __init__(self, config):
         self.metrics = {}
         self.config = config
@@ -368,8 +387,8 @@ class DnnTrainer(object):
             debug_program(_main_file, loss.block.program)
         elif self.role_maker._is_heter_worker():
             _main_file = ps_log_root_dir + sync_mode + '_run_minimize' + '_debug:_' + str(
-                self.config[
-                    'debug_new_minimize']) + '_heter_worker_main.prototxt'
+                self.config['debug_new_minimize']
+            ) + '_heter_worker_main.prototxt'
             debug_program(_main_file, loss.block.program)
 
     def run_single_pass(self):
@@ -413,14 +432,14 @@ class DnnTrainer(object):
             _main = worker.append_send_ops_pass(_main, compiled_config)
 
         if fleet.is_server():
-            _main_file = ps_log_root_dir + sync_mode + "_" + str(config[
-                "applied_pass_name"]) + '_debug:_' + str(self.config[
-                    'debug_new_pass']) + '_server_main.prototxt'
+            _main_file = ps_log_root_dir + sync_mode + "_" + str(
+                config["applied_pass_name"]) + '_debug:_' + str(
+                    self.config['debug_new_pass']) + '_server_main.prototxt'
             debug_program(_main_file, _main)
         elif fleet.is_worker():
-            _main_file = ps_log_root_dir + sync_mode + "_" + str(config[
-                "applied_pass_name"]) + '_debug:_' + str(self.config[
-                    'debug_new_pass']) + '_worker_main.prototxt'
+            _main_file = ps_log_root_dir + sync_mode + "_" + str(
+                config["applied_pass_name"]) + '_debug:_' + str(
+                    self.config['debug_new_pass']) + '_worker_main.prototxt'
             debug_program(_main_file, _main)
 
     def run_the_one_ps(self):
@@ -451,14 +470,16 @@ class DnnTrainer(object):
             if fleet.is_worker():
                 worker_desc = _runtime_handle.ps_desc_builder.build_worker_desc(
                 )
-                with open(ps_log_root_dir + sync_mode + '_' +
-                          'new_worker_ps_desc', 'w') as f:
+                with open(
+                        ps_log_root_dir + sync_mode + '_' +
+                        'new_worker_ps_desc', 'w') as f:
                     f.write(worker_desc)
             if fleet.is_server():
                 server_desc = _runtime_handle.ps_desc_builder.build_server_desc(
                 )
-                with open(ps_log_root_dir + sync_mode + '_' +
-                          'new_server_ps_desc', 'w') as f:
+                with open(
+                        ps_log_root_dir + sync_mode + '_' +
+                        'new_server_ps_desc', 'w') as f:
                     f.write(server_desc)
 
         else:

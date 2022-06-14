@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/op_compat_sensible_pass.h"
+
 #include <memory>
 #include <mutex>
 #include <unordered_map>
+
 #include "paddle/fluid/framework/op_def_api.h"
 #include "paddle/fluid/framework/op_info.h"
 

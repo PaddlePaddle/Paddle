@@ -24,6 +24,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -1084,7 +1085,7 @@ void PartialGradEngine::Clear() {
 void PartialGradEngine::Execute() {
   PADDLE_ENFORCE_NOT_NULL(task_, platform::errors::PermissionDenied(
                                      "PartialGradEngine has been destructed"));
-  VLOG(10) << "Starts to execute PartialGradEngine";
+  VLOG(3) << "Starts to execute PartialGradEngine";
   results_ = task_->Run();
   Clear();
 }

@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <paddle/fluid/platform/device_context.h>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/sum_op.h"
@@ -205,8 +206,8 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
           reinterpret_cast<T **>(tmp_sr_in_out_array->ptr());
 
       ComputeKernelParameter(length);
-      SumSelectedRowsCUDAKernel<T><<<grids, blocks, 0, stream>>>(
-          sr_in_out_array_data, length, rows);
+      SumSelectedRowsCUDAKernel<T>
+          <<<grids, blocks, 0, stream>>>(sr_in_out_array_data, length, rows);
       dst_write = true;
     }
   }

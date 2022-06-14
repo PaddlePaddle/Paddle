@@ -18,6 +18,7 @@ import json
 import random
 import numpy as np
 import six
+import tempfile
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid.framework import IrGraph
@@ -36,23 +37,21 @@ os.environ["CPU_NUM"] = "1"
 
 
 def conv_net(img, label):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
-        input=img,
-        filter_size=5,
-        num_filters=20,
-        pool_size=2,
-        pool_stride=2,
-        pool_type='max',
-        act="relu")
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(input=img,
+                                                  filter_size=5,
+                                                  num_filters=20,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  pool_type='max',
+                                                  act="relu")
     conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
-        input=conv_pool_1,
-        filter_size=5,
-        num_filters=50,
-        pool_size=2,
-        pool_stride=2,
-        pool_type='avg',
-        act="relu")
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(input=conv_pool_1,
+                                                  filter_size=5,
+                                                  num_filters=50,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  pool_type='avg',
+                                                  act="relu")
     hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
@@ -79,6 +78,7 @@ def pact(x, name=None):
 
 
 class TestUserDefinedQuantization(unittest.TestCase):
+
     def quantization_scale(self,
                            use_cuda,
                            seed,
@@ -89,16 +89,19 @@ class TestUserDefinedQuantization(unittest.TestCase):
                            weight_preprocess_func=None,
                            act_quantize_func=None,
                            weight_quantize_func=None):
+
         def build_program(main, startup, is_test):
             main.random_seed = seed
             startup.random_seed = seed
             with fluid.unique_name.guard():
                 with fluid.program_guard(main, startup):
-                    img = fluid.layers.data(
-                        name='image', shape=[1, 28, 28], dtype='float32')
+                    img = fluid.layers.data(name='image',
+                                            shape=[1, 28, 28],
+                                            dtype='float32')
                     img.stop_gradient = False
-                    label = fluid.layers.data(
-                        name='label', shape=[1], dtype='int64')
+                    label = fluid.layers.data(name='label',
+                                              shape=[1],
+                                              dtype='int64')
                     loss = conv_net(img, label)
                     if not is_test:
                         opt = fluid.optimizer.SGD(learning_rate=0.0001)
@@ -108,18 +111,20 @@ class TestUserDefinedQuantization(unittest.TestCase):
         def get_optimizer():
             return fluid.optimizer.MomentumOptimizer(0.0001, 0.9)
 
-        def load_dict():
-            with open('mapping_table_for_saving_inference_model', 'r') as file:
+        def load_dict(mapping_table_path):
+            with open(mapping_table_path, 'r') as file:
                 data = file.read()
                 data = json.loads(data)
                 return data
 
-        def save_dict(Dict):
-            with open('mapping_table_for_saving_inference_model', 'w') as file:
+        def save_dict(Dict, mapping_table_path):
+            with open(mapping_table_path, 'w') as file:
                 file.write(json.dumps(Dict))
 
         random.seed(0)
         np.random.seed(0)
+        tempdir = tempfile.TemporaryDirectory()
+        mapping_table_path = os.path.join(tempdir.name, 'inference')
 
         main = fluid.Program()
         startup = fluid.Program()
@@ -160,7 +165,7 @@ class TestUserDefinedQuantization(unittest.TestCase):
             executor=exe)
 
         test_transform_pass.apply(test_graph)
-        save_dict(test_graph.out_node_mapping_table)
+        save_dict(test_graph.out_node_mapping_table, mapping_table_path)
 
         add_quant_dequant_pass = AddQuantDequantPass(scope=scope, place=place)
         add_quant_dequant_pass.apply(main_graph)
@@ -180,10 +185,9 @@ class TestUserDefinedQuantization(unittest.TestCase):
         iters = 5
         batch_size = 8
 
-        train_reader = paddle.batch(
-            paddle.reader.shuffle(
-                paddle.dataset.mnist.train(), buf_size=500),
-            batch_size=batch_size)
+        train_reader = paddle.batch(paddle.reader.shuffle(
+            paddle.dataset.mnist.train(), buf_size=500),
+                                    batch_size=batch_size)
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
         with fluid.scope_guard(scope):
             for _ in range(iters):
@@ -202,10 +206,11 @@ class TestUserDefinedQuantization(unittest.TestCase):
             activation_bits=8,
             weight_quantize_type=weight_quant_type)
 
-        mapping_table = load_dict()
+        mapping_table = load_dict(mapping_table_path)
         test_graph.out_node_mapping_table = mapping_table
         if act_quantize_func == None and weight_quantize_func == None:
             freeze_pass.apply(test_graph)
+        tempdir.cleanup()
 
     def test_act_preprocess_cuda(self):
         if fluid.core.is_compiled_with_cuda():

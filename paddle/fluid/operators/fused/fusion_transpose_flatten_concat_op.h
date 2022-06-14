@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/phi/core/ddim.h"
 
 namespace paddle {

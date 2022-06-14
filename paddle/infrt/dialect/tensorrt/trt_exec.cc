@@ -11,10 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include <llvm/Support/CommandLine.h>
 #include <mlir/Pass/PassManager.h>
+
 #include <iostream>
 #include <string>
+
 #include "paddle/infrt/common/global.h"
 #include "paddle/infrt/dialect/infrt/pass/infrt_weights_unfold_pass.h"
 #include "paddle/infrt/dialect/mlir_loader.h"
@@ -23,18 +26,15 @@
 #include "paddle/infrt/dialect/tensorrt/trt_op_converter_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_op_teller_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_type_convert_pass.h"
-
 #include "paddle/infrt/host_context/core_runtime.h"
 #include "paddle/infrt/host_context/kernel_registry.h"
 #include "paddle/infrt/host_context/mlir_to_runtime_translate.h"
-
 #include "paddle/infrt/kernel/basic_kernels.h"
 #include "paddle/infrt/kernel/control_flow_kernels.h"
 #include "paddle/infrt/kernel/tensor_kernels.h"
 #include "paddle/infrt/kernel/tensor_shape_kernels.h"
-#include "paddle/infrt/kernel/test_kernels.h"
-
 #include "paddle/infrt/kernel/tensorrt/registry.h"
+#include "paddle/infrt/kernel/test_kernels.h"
 
 #ifdef INFRT_WITH_PHI
 #include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"

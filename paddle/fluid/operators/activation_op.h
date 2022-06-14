@@ -12,19 +12,20 @@ limitations under the License. */
 
 #pragma once
 #include <glog/logging.h>
+
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
-#include <cmath>
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
 
 #include <type_traits>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -362,9 +363,8 @@ struct Relu6GradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) =
-        dout *
-        ((out > static_cast<T>(0)) * (out < static_cast<T>(threshold)))
-            .template cast<T>();
+        dout * ((out > static_cast<T>(0)) * (out < static_cast<T>(threshold)))
+                   .template cast<T>();
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {

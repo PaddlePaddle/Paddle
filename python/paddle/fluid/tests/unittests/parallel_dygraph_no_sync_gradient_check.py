@@ -32,16 +32,17 @@ out_dim = 20
 
 
 class SimpleNet(fluid.Layer):
+
     def __init__(self, train_id):
         super(SimpleNet, self).__init__()
-        self.w1 = self.create_parameter(
-            shape=[in_dim, out_dim], dtype="float32")
-        self.w2 = self.create_parameter(
-            shape=[in_dim, out_dim], dtype="float32")
+        self.w1 = self.create_parameter(shape=[in_dim, out_dim],
+                                        dtype="float32")
+        self.w2 = self.create_parameter(shape=[in_dim, out_dim],
+                                        dtype="float32")
         self.share_net = Linear(out_dim, 1)
 
-        self.unused_param = self.create_parameter(
-            shape=[out_dim, in_dim], dtype="float32")
+        self.unused_param = self.create_parameter(shape=[out_dim, in_dim],
+                                                  dtype="float32")
 
         # just for test sync_params_buffers
         self.register_buffer("queue", paddle.randn([10, 5]))
@@ -52,8 +53,8 @@ class SimpleNet(fluid.Layer):
 
     def forward(self, x):
         is_use = (paddle.equal_all(
-            x, paddle.ones(shape=(batch, in_dim))).numpy()[0] and
-                  self.trainer_id == 1)
+            x, paddle.ones(shape=(batch, in_dim))).numpy()[0]
+                  and self.trainer_id == 1)
 
         if is_use:
             tmp = paddle.matmul(x, self.w1)
@@ -64,6 +65,7 @@ class SimpleNet(fluid.Layer):
 
 
 class TestDistTraning(unittest.TestCase):
+
     def test_multiple_gpus(self):
         self.trainer_id = dist.get_rank()
         dist.init_parallel_env()

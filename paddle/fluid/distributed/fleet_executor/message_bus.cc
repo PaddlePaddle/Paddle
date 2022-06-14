@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+
 #include <chrono>
 #include <memory>
 #include <set>
@@ -19,7 +21,6 @@
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
-#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 namespace paddle {
@@ -28,8 +29,9 @@ namespace distributed {
 void MessageBus::Init(
     int64_t rank, const std::unordered_map<int64_t, std::string>& rank_to_addr,
     const std::string& addr) {
-  PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
-                                         "MessageBus is already init."));
+  PADDLE_ENFORCE_EQ(
+      is_init_, false,
+      platform::errors::AlreadyExists("MessageBus is already init."));
   rank_ = rank;
   is_init_ = true;
   rank_to_addr_ = rank_to_addr;

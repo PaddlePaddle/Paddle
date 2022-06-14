@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"

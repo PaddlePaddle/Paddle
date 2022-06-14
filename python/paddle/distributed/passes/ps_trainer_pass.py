@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,6 +26,7 @@ from paddle.fluid.framework import Program, Parameter
 
 @register_pass("append_send_ops_pass")
 class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
+
     def __init__(self):
         super(AppendSendOpsPass, self).__init__()
 
@@ -49,29 +50,33 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
         if ps_mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
             dummy_output = program.global_block().create_var(
                 name=framework.generate_control_dev_var_name())
-        program.global_block().append_op(
-            type="send",
-            inputs={"X": send_input_vars},
-            outputs={"Out": dummy_output},
-            attrs={
-                "send_varnames": [queue],
-                "is_sparse": is_sparse,
-                "table_id": table_id,
-                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
+        program.global_block().append_op(type="send",
+                                         inputs={"X": send_input_vars},
+                                         outputs={"Out": dummy_output},
+                                         attrs={
+                                             "send_varnames": [queue],
+                                             "is_sparse":
+                                             is_sparse,
+                                             "table_id":
+                                             table_id,
+                                             RPC_OP_ROLE_ATTR_NAME:
+                                             RPC_OP_ROLE_ATTR_VALUE
+                                         })
 
         return dummy_output
 
     def _append_barrier_op(self, program, dummys, trainer_id):
-        program.global_block().append_op(
-            type="send_barrier",
-            inputs={"X": dummys},
-            outputs={"Out": []},
-            attrs={
-                "trainer_id": trainer_id,
-                "half_async": True,
-                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
+        program.global_block().append_op(type="send_barrier",
+                                         inputs={"X": dummys},
+                                         outputs={"Out": []},
+                                         attrs={
+                                             "trainer_id":
+                                             trainer_id,
+                                             "half_async":
+                                             True,
+                                             RPC_OP_ROLE_ATTR_NAME:
+                                             RPC_OP_ROLE_ATTR_VALUE
+                                         })
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
@@ -92,9 +97,9 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
             is_sparse = 1 if send.is_sparse() else 0
             is_sparse = 2 if send.is_distributed() else is_sparse
             dummys.append(
-                self._append_send_op(main_program,
-                                     send.origin_varnames(), merged_name,
-                                     is_sparse, send.table_id(), ps_mode))
+                self._append_send_op(main_program, send.origin_varnames(),
+                                     merged_name, is_sparse, send.table_id(),
+                                     ps_mode))
         if ps_mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
             trainer_id = get_role_id(attrs['role_maker'])
             self._append_barrier_op(main_program, dummys, trainer_id)
@@ -102,6 +107,7 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
 
 @register_pass("distributed_ops_pass")
 class DistributedOpsPass(PassBase):
+
     def __init__(self):
         super(DistributedOpsPass, self).__init__()
         self.w_2_table_id = {}
@@ -148,32 +154,30 @@ class DistributedOpsPass(PassBase):
                 dtype=core.VarDesc.VarType.INT64,
                 persistable=False,
                 stop_gradient=True)
-            _program.global_block()._insert_op(
-                index=0,
-                type='fill_constant',
-                inputs={},
-                outputs={'Out': show},
-                attrs={
-                    'shape': [1],
-                    'dtype': show.dtype,
-                    'value': 1,
-                })
+            _program.global_block()._insert_op(index=0,
+                                               type='fill_constant',
+                                               inputs={},
+                                               outputs={'Out': show},
+                                               attrs={
+                                                   'shape': [1],
+                                                   'dtype': show.dtype,
+                                                   'value': 1,
+                                               })
 
             clk = _program.global_block().create_var(
                 name="clk",
                 dtype=core.VarDesc.VarType.INT64,
                 persistable=False,
                 stop_gradient=True)
-            _program.global_block()._insert_op(
-                index=0,
-                type='fill_constant',
-                inputs={},
-                outputs={'Out': clk},
-                attrs={
-                    'shape': [1],
-                    'dtype': clk.dtype,
-                    'value': 0,
-                })
+            _program.global_block()._insert_op(index=0,
+                                               type='fill_constant',
+                                               inputs={},
+                                               outputs={'Out': clk},
+                                               attrs={
+                                                   'shape': [1],
+                                                   'dtype': clk.dtype,
+                                                   'value': 0,
+                                               })
 
         for param, ops in push_sparse_ops.items():
             print("push_sparse_ops: {}".format(ops))
@@ -196,25 +200,26 @@ class DistributedOpsPass(PassBase):
             for idx in op_idxs[::-1]:
                 _program.global_block()._remove_op(idx)
 
-            _program.global_block().append_op(
-                type="distributed_push_sparse",
-                inputs={
-                    "Ids": inputs,
-                    'W': w,
-                    "Outputs": outputs,
-                    "Shows": show,
-                    "Clicks": clk
-                },
-                outputs={"Outputs": outputs},
-                attrs={
-                    "is_distributed": is_distributed,
-                    "padding_idx": padding_idx,
-                    "table_id": table_id,
-                    "size": self.emb_size[param],
-                    "use_cvm_op": use_cvm_op
-                })
+            _program.global_block().append_op(type="distributed_push_sparse",
+                                              inputs={
+                                                  "Ids": inputs,
+                                                  'W': w,
+                                                  "Outputs": outputs,
+                                                  "Shows": show,
+                                                  "Clicks": clk
+                                              },
+                                              outputs={"Outputs": outputs},
+                                              attrs={
+                                                  "is_distributed":
+                                                  is_distributed,
+                                                  "padding_idx": padding_idx,
+                                                  "table_id": table_id,
+                                                  "size": self.emb_size[param],
+                                                  "use_cvm_op": use_cvm_op
+                                              })
 
     def _pull_sparse_fuse(self, _program, pull_sparse_ops, attrs, send_ctx):
+
         def dag_check_up_and_reorder(program, inputs, outputs):
             global_block = program.global_block()
             min_output_index = len(global_block.ops)
@@ -374,12 +379,14 @@ class DistributedOpsPass(PassBase):
                 if attrs['use_ps_gpu']:
                     _program.global_block()._insert_op(
                         index=distributed_idx,
-                        type="pull_box_sparse",
-                        inputs={"Ids": inputs,
-                                'W': w},
+                        type="pull_gpups_sparse",
+                        inputs={
+                            "Ids": inputs,
+                            'W': w
+                        },
                         outputs={"Out": outputs},
                         attrs={
-                            "size": w.shape[1],
+                            "size": [w.shape[1] for i in inputs],
                             "is_distributed": True,
                             "is_sparse": True
                         })
@@ -387,8 +394,10 @@ class DistributedOpsPass(PassBase):
                     _program.global_block()._insert_op(
                         index=distributed_idx,
                         type="distributed_lookup_table",
-                        inputs={"Ids": inputs,
-                                'W': w},
+                        inputs={
+                            "Ids": inputs,
+                            'W': w
+                        },
                         outputs={"Outputs": outputs},
                         attrs={
                             "is_distributed": is_distributed,
@@ -404,8 +413,10 @@ class DistributedOpsPass(PassBase):
                     _program.global_block()._insert_op(
                         index=distributed_idx,
                         type="distributed_lookup_table",
-                        inputs={"Ids": [inputs[i]],
-                                'W': w},
+                        inputs={
+                            "Ids": [inputs[i]],
+                            'W': w
+                        },
                         outputs={"Outputs": [outputs[i]]},
                         attrs={
                             "is_distributed": is_distributed,
@@ -440,8 +451,8 @@ class DistributedOpsPass(PassBase):
         for op in _program.global_block().ops:
             if op.type in SPARSE_GRAD_OP_TYPE_DICT.keys():
                 param_name = op.input(SPARSE_GRAD_OP_TYPE_DICT[op.type])[0]
-                if param_name in pull_sparse_ids and op.input("Ids")[
-                        0] in pull_sparse_ids[param_name]:
+                if param_name in pull_sparse_ids and op.input(
+                        "Ids")[0] in pull_sparse_ids[param_name]:
                     ops = push_sparse_ops.get(param_name, [])
                     ops.append(op)
                     push_sparse_ops[param_name] = ops
@@ -452,8 +463,8 @@ class DistributedOpsPass(PassBase):
         attrs = pass_ctx._attrs
         pull_sparse_ops, push_sparse_ops, use_cvm_op = self._get_pull_sparse_ops(
             main_program, attrs)
-        print("is_heter_ps_mode in distributed_ops_pass {}?".format(attrs[
-            'is_heter_ps_mode']))
+        print("is_heter_ps_mode in distributed_ops_pass {}?".format(
+            attrs['is_heter_ps_mode']))
         send_ctx = get_the_one_send_context(
             attrs, split_dense_table=attrs['is_heter_ps_mode'])
         self._pull_sparse_fuse(main_program, pull_sparse_ops, attrs, send_ctx)
@@ -462,6 +473,7 @@ class DistributedOpsPass(PassBase):
 
 @register_pass("delete_optimizer_pass")
 class DeleteOptimizesPass(PassBase):
+
     def __init__(self):
         super(DeleteOptimizesPass, self).__init__()
 
@@ -495,15 +507,14 @@ class DeleteOptimizesPass(PassBase):
 
     def _add_lr_var(self, main_program, attrs):
         # Todo: hard code for pe
-        lr_var = attrs['origin_main_program'].global_block().vars[
-            "learning_rate_0"]
-        main_program.global_block().create_var(
-            name=lr_var.name,
-            shape=lr_var.shape,
-            dtype=lr_var.dtype,
-            type=lr_var.type,
-            lod_level=lr_var.lod_level,
-            persistable=True)
+        lr_var = attrs['origin_main_program'].global_block(
+        ).vars["learning_rate_0"]
+        main_program.global_block().create_var(name=lr_var.name,
+                                               shape=lr_var.shape,
+                                               dtype=lr_var.dtype,
+                                               type=lr_var.type,
+                                               lod_level=lr_var.lod_level,
+                                               persistable=True)
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
@@ -518,6 +529,7 @@ class DeleteOptimizesPass(PassBase):
 
 @register_pass("delete_extra_optimizer_pass")
 class DeleteExtraOptimizerPass(PassBase):
+
     def __init__(self):
         super(DeleteExtraOptimizerPass, self).__init__()
 
@@ -560,6 +572,7 @@ class DeleteExtraOptimizerPass(PassBase):
 
 @register_pass("fake_init_ops_pass")
 class FakeInitOpsPass(PassBase):
+
     def __init__(self):
         super(FakeInitOpsPass, self).__init__()
 
@@ -586,8 +599,8 @@ class FakeInitOpsPass(PassBase):
                     table_param_init_op.append(op)
             init_op_num = len(table_param_init_op)
             if init_op_num != 1:
-                raise ValueError("table init op num should be 1, now is " + str(
-                    init_op_num))
+                raise ValueError("table init op num should be 1, now is " +
+                                 str(init_op_num))
             table_init_op = table_param_init_op[0]
             program.global_block().append_op(
                 type="fake_init",
@@ -604,6 +617,7 @@ class FakeInitOpsPass(PassBase):
 
 @register_pass("ps_gpu_pass")
 class PsGpuPass(PassBase):
+
     def __init__(self):
         super(PsGpuPass, self).__init__()
 
@@ -628,8 +642,8 @@ class PsGpuPass(PassBase):
                     insert_index + 1)
                 new_op_desc.copy_from(op_desc)
                 new_op_desc._set_attr(op_role_attr_name, backward)
-                new_op = paddle.fluid.framework.Operator(program.global_block(),
-                                                         new_op_desc)
+                new_op = paddle.fluid.framework.Operator(
+                    program.global_block(), new_op_desc)
                 program.global_block().ops.insert(insert_index + 1, new_op)
                 program.global_block()._sync_with_cpp()
 
@@ -679,7 +693,7 @@ class PsGpuPass(PassBase):
                     lookup_table_grad_var[name] = 1
 
         for idx, op in list(enumerate(program.global_block().ops)):
-            if op.type == "pull_box_sparse":
+            if op.type == "pull_box_sparse" or op.type == "pull_gpups_sparse":
                 continue
             for key_name in op.input_names:
                 for var in op.input(key_name):
@@ -703,6 +717,7 @@ class PsGpuPass(PassBase):
 
 @register_pass("ps_transpile_pass")
 class PsTranspilePass(PassBase):
+
     def __init__(self):
         super(PsTranspilePass, self).__init__()
 
@@ -716,17 +731,17 @@ class PsTranspilePass(PassBase):
         attrs = pass_ctx._attrs
         t = SingleProcessMultiThread()
         env = get_dist_env()
-        t.transpile(
-            startup_program=startup_program,
-            main_program=main_program,
-            rank=env["trainer_id"],
-            endpoints=env["trainer_endpoints"],
-            current_endpoint=env['current_endpoint'],
-            wait_port=False)
+        t.transpile(startup_program=startup_program,
+                    main_program=main_program,
+                    rank=env["trainer_id"],
+                    endpoints=env["trainer_endpoints"],
+                    current_endpoint=env['current_endpoint'],
+                    wait_port=False)
 
 
 @register_pass("split_heter_worker_ops_pass")
 class SplitHeterWorkerOpsPass(PassBase):
+
     def __init__(self):
         super(SplitHeterWorkerOpsPass, self).__init__()
 
@@ -764,10 +779,10 @@ class SplitHeterWorkerOpsPass(PassBase):
         current_device = role_maker._heter_device_type().lower()
         stage_id = int(role_maker._get_stage_id())
 
-        heter_block_ops_forward = program_block_ops_list[stage_id - 1][
-            "forward"]
-        heter_block_ops_backward = program_block_ops_list[stage_id - 1][
-            "backward"]
+        heter_block_ops_forward = program_block_ops_list[stage_id -
+                                                         1]["forward"]
+        heter_block_ops_backward = program_block_ops_list[stage_id -
+                                                          1]["backward"]
 
         heter_block = heter_program._create_block(pre_block_idx)
         optimizer_block.append(heter_block)
@@ -789,15 +804,17 @@ class SplitHeterWorkerOpsPass(PassBase):
             for _, op in enumerate(heter_block_ops_backward):
                 block_append_op(heter_program, program, heter_block_bp, op)
 
-            bp_entrance_vars = block_var_detail[stage_id - 1]["backward"][
-                "entrance"]
+            bp_entrance_vars = block_var_detail[stage_id -
+                                                1]["backward"]["entrance"]
             add_vars_by_var_list(bp_entrance_vars, program, heter_program,
                                  heter_block_bp)
             bp_exit_vars = block_var_detail[stage_id - 1]["backward"]["exit"]
             add_vars_by_var_list(bp_exit_vars, program, heter_program,
                                  heter_block_bp)
-            backward_comm_info = get_communicate_var_info(
-                program, stage_id, bp_entrance_vars, type="backward")
+            backward_comm_info = get_communicate_var_info(program,
+                                                          stage_id,
+                                                          bp_entrance_vars,
+                                                          type="backward")
 
             grad_to_block_id.append(backward_comm_info["block_input_var_name"] +
                                     ":" + str(heter_block_bp.idx))
@@ -806,8 +823,8 @@ class SplitHeterWorkerOpsPass(PassBase):
             for _, op in enumerate(heter_block_ops_backward):
                 block_append_op(heter_program, program, heter_block, op)
 
-            bp_entrance_vars = block_var_detail[stage_id - 1]["backward"][
-                "entrance"]
+            bp_entrance_vars = block_var_detail[stage_id -
+                                                1]["backward"]["entrance"]
             add_vars_by_var_list(bp_entrance_vars, program, heter_program,
                                  heter_block)
             bp_exit_vars = block_var_detail[stage_id - 1]["backward"]["exit"]
@@ -816,11 +833,13 @@ class SplitHeterWorkerOpsPass(PassBase):
 
             heter_block_bp = heter_block
 
-        forward_comm_info = get_communicate_var_info(
-            program, stage_id, entrance_vars, type="forward")
+        forward_comm_info = get_communicate_var_info(program,
+                                                     stage_id,
+                                                     entrance_vars,
+                                                     type="forward")
 
-        grad_to_block_id.append(forward_comm_info["block_input_var_name"] + ":"
-                                + str(heter_block.idx))
+        grad_to_block_id.append(forward_comm_info["block_input_var_name"] +
+                                ":" + str(heter_block.idx))
 
         first_op_index_bp = len(heter_block_bp.ops)
 
@@ -828,9 +847,11 @@ class SplitHeterWorkerOpsPass(PassBase):
             static_var = insert_communicate_op(program, role_maker, heter_block,
                                                stage_id, first_op_index_fp,
                                                block_var_detail, current_device)
-        static_var_bp = insert_communicate_op(
-            program, role_maker, heter_block_bp, stage_id, first_op_index_bp,
-            block_var_detail, current_device, False)
+        static_var_bp = insert_communicate_op(program, role_maker,
+                                              heter_block_bp, stage_id,
+                                              first_op_index_bp,
+                                              block_var_detail, current_device,
+                                              False)
 
         # add send op
         send_grad_var_list = add_send_op(
@@ -853,11 +874,10 @@ class SplitHeterWorkerOpsPass(PassBase):
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
         }
         # append the listen_and_serv op
-        heter_program.global_block().append_op(
-            type="heter_listen_and_serv",
-            inputs={'X': []},
-            outputs={},
-            attrs=attrs)
+        heter_program.global_block().append_op(type="heter_listen_and_serv",
+                                               inputs={'X': []},
+                                               outputs={},
+                                               attrs=attrs)
         # TODO check heter program
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
@@ -890,6 +910,7 @@ class SplitHeterWorkerOpsPass(PassBase):
 
 @register_pass("split_trainer_ops_pass")
 class SplitTrainerOpsPass(PassBase):
+
     def __init__(self):
         super(SplitTrainerOpsPass, self).__init__()
 
@@ -1014,11 +1035,13 @@ class SplitTrainerOpsPass(PassBase):
                                                bp_ops_list, block_var_detail)
 
         bp_entrance_vars = block_var_detail[0]["backward"]["entrance"]
-        backward_comm_info = get_communicate_var_info(
-            origin_program, 1, bp_entrance_vars, type="backward")
+        backward_comm_info = get_communicate_var_info(origin_program,
+                                                      1,
+                                                      bp_entrance_vars,
+                                                      type="backward")
 
-        grad_to_block_id.append(backward_comm_info["block_input_var_name"] + ":"
-                                + str(backward_block.idx))
+        grad_to_block_id.append(backward_comm_info["block_input_var_name"] +
+                                ":" + str(backward_block.idx))
         optimizer_block.append(backward_block)
         role_maker = attrs['role_maker']
         attrs = {
@@ -1034,12 +1057,11 @@ class SplitTrainerOpsPass(PassBase):
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
         }
         # append the listen_and_serv op
-        program.global_block()._insert_op(
-            index=0,
-            type="heter_listen_and_serv",
-            inputs={'X': []},
-            outputs={},
-            attrs=attrs)
+        program.global_block()._insert_op(index=0,
+                                          type="heter_listen_and_serv",
+                                          inputs={'X': []},
+                                          outputs={},
+                                          attrs=attrs)
 
         ## TODO add check for bp block
         #check_op_device(program.global_block(), DEFAULT_DEVICE)
@@ -1067,6 +1089,7 @@ class SplitTrainerOpsPass(PassBase):
 
 @register_pass("set_heter_pipeline_opt_pass")
 class SetHeterPipelineOptPass(PassBase):
+
     def __init__(self):
         super(SetHeterPipelineOptPass, self).__init__()
 
@@ -1105,6 +1128,7 @@ class SetHeterPipelineOptPass(PassBase):
 
 @register_pass("split_fl_ops_pass")
 class SplitFlOpsPass(PassBase):
+
     def __init__(self):
         super(SplitFlOpsPass, self).__init__()
         self.PART_A_DEVICE_FlAG = 'gpu:0'
@@ -1267,10 +1291,10 @@ class SplitFlOpsPass(PassBase):
 
     def _find_dense_grad_vars(self, bp_op_list):
         program = self.ori_main_program
-        bp_op_input, bp_op_output = find_ops_list_input_output(program,
-                                                               bp_op_list)
-        return (screen_persistables(program, bp_op_input) + screen_persistables(
-            program, bp_op_output))
+        bp_op_input, bp_op_output = find_ops_list_input_output(
+            program, bp_op_list)
+        return (screen_persistables(program, bp_op_input) +
+                screen_persistables(program, bp_op_output))
 
     def _get_partA_program(self, block):
         # 1. create block 0
@@ -1296,7 +1320,7 @@ class SplitFlOpsPass(PassBase):
         # logger.info('bp_op_list: {}'.format(bp_op_list))
         second_block = self._get_block_by_idx(bp_op_list + push_sparse_op_list,
                                               self.partA_program, 1)
-        # 2.1. insert partA recv op 
+        # 2.1. insert partA recv op
         block_input_flag = "backward_joint_{}_{}@fl_ps".format(2, 1)
         grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
         attrs = {
@@ -1309,12 +1333,11 @@ class SplitFlOpsPass(PassBase):
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
         }
-        second_block._insert_op(
-            index=0,
-            type='heter_listen_and_serv',
-            inputs={'X': []},
-            outputs={},
-            attrs=attrs)
+        second_block._insert_op(index=0,
+                                type='heter_listen_and_serv',
+                                inputs={'X': []},
+                                outputs={},
+                                attrs=attrs)
         # 2.2 insert push dense grad op
         send_ops = find_send_op(self.ori_main_program)  # push dense
         delete_same_ops(block, send_ops)
@@ -1340,7 +1363,7 @@ class SplitFlOpsPass(PassBase):
                 op_list3.append(op)
             op_cnt += 1
 
-        # 1. create block 0    
+        # 1. create block 0
         first_block = self._get_block_by_idx(op_list1, self.partB_program, 0)
 
         # 2. create block 1
@@ -1367,12 +1390,11 @@ class SplitFlOpsPass(PassBase):
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
         }
-        first_block._insert_op(
-            index=len(op_list1),
-            type="heter_listen_and_serv",
-            inputs={'X': []},
-            outputs={},
-            attrs=attrs)
+        first_block._insert_op(index=len(op_list1),
+                               type="heter_listen_and_serv",
+                               inputs={'X': []},
+                               outputs={},
+                               attrs=attrs)
 
         #logger.info('partB-first_block:{}'.format(first_block))
         #logger.info('partB-second_block:{}'.format(second_block))

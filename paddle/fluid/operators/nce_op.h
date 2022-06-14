@@ -15,11 +15,13 @@ limitations under the License. */
 #pragma once
 
 #include <math.h>
+
 #include <iterator>
 #include <random>
 #include <set>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"

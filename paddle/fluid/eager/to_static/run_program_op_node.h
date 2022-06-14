@@ -17,7 +17,6 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
-
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -273,7 +272,7 @@ inline void RunProgramGradAPI(
     const paddle::framework::AttributeMap &attrs,
     std::vector<paddle::experimental::Tensor *> &x_grad,      // NOLINT
     std::vector<paddle::experimental::Tensor *> &params_grad  // NOLINT
-    ) {
+) {
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
 
@@ -368,8 +367,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                                egr::kSlotSmallVectorSize>
   operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                   egr::kSlotSmallVectorSize> &grads,  // NOLINT
-             bool create_graph,
-             bool is_new_grad) override {
+             bool create_graph, bool is_new_grad) override {
     VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          egr::kSlotSmallVectorSize>
@@ -379,8 +377,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                           "The hooked_grads.size() of RunProgramGradOp should "
                           "be equal to 1."));
 
-    egr::EagerUtils::FillZeroForEmptyGradInputs(&hooked_grads,
-                                                this->InputMeta());
+    egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&hooked_grads[0],
+                                                       this->InputMeta()[0]);
     VLOG(3) << "hooked_grads[0].size() : " << hooked_grads[0].size();
     std::vector<paddle::experimental::Tensor> x_grad;
     std::vector<paddle::experimental::Tensor> params_grad;

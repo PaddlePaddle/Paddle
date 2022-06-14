@@ -36,6 +36,103 @@ def _set_var_distributed(var):
     main_block._find_var_recursive(var.name).is_distributed = True
 
 
+class FusedBiasDropoutResidualLayerNorm(Layer):
+    """
+    Applies fused_bias_dropout_residual_layer_norm operation.
+
+    Parameters:
+        embed_dim (int): The expected feature size in the input and output.
+        dropout_rate (float, optional): The dropout probability used on attention
+            weights to drop some attention targets for the dropout after attention.
+            0 for no dropout. Default 0.5.
+        bias_attr (ParamAttr|bool, optional): To specify the bias parameter property.
+            Default: None, which means the default bias parameter property is used.
+            If it is set to False, this layer will not have trainable bias parameter.
+            See usage for details in :code:`ParamAttr`.
+        epsilon (float, optional): The small value added to the variance to prevent
+            division by zero. Default: 1e-05.
+
+    Examples:
+
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+            # input: [batch_size, seq_len, embed_dim]
+            x = paddle.rand((2, 4, 128))
+            # residual: [batch_size, seq_len, embed_dim]
+            residual = paddle.rand((2, 4, 128))
+            fused_bias_dropout_residual_ln = paddle.incubate.nn.FusedBiasDropoutResidualLayerNorm(128)
+            output = fused_bias_dropout_residual_ln(x, residual)  # [2, 4, 128]
+    """
+
+    def __init__(self,
+                 embed_dim,
+                 dropout_rate=0.5,
+                 weight_attr=None,
+                 bias_attr=None,
+                 epsilon=1e-5,
+                 name=None):
+        super(FusedBiasDropoutResidualLayerNorm, self).__init__()
+        assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
+                               "but recieved {}".format(embed_dim))
+        self._dtype = self._helper.get_default_dtype()
+        self._bias_attr = bias_attr
+        self._weight_attr = weight_attr
+        self.embed_dim = embed_dim
+        self.linear_bias = self.create_parameter(shape=[embed_dim],
+                                                 attr=self._bias_attr,
+                                                 dtype=self._dtype,
+                                                 is_bias=True)
+        self.ln_scale = self.create_parameter(
+            attr=self._weight_attr,
+            shape=[embed_dim],
+            default_initializer=Constant(value=1.0))
+        self.ln_bias = self.create_parameter(attr=self._bias_attr,
+                                             shape=[embed_dim],
+                                             is_bias=True)
+        self.dropout_rate = dropout_rate
+        self._epsilon = epsilon
+
+        self.name = name
+
+    def forward(self, x, residual):
+        """
+        Applies fused_bias_dropout_residual_layer_norm operation.
+
+        Parameters:
+            x (Tensor): The input tensor. It is a tensor with shape
+                `[batch_size, seq_len, embed_dim]`. The data type should be
+                float32 or float64.
+            residual (Tensor, optional): The residual tensor. It is a tensor
+                with shape `[batch_size, value_length, vdim]`. The data type
+                should be float32 or float64.
+
+        Returns:
+            Tensor|tuple: It is a tensor that has the same shape and data type \
+                as `x`.
+        """
+
+        out = incubate_f.fused_bias_dropout_residual_layer_norm(
+            x=x,
+            residual=residual,
+            bias=self.linear_bias,
+            ln_scale=self.ln_scale,
+            ln_bias=self.ln_bias,
+            dropout_rate=self.dropout_rate,
+            ln_epsilon=self._epsilon,
+            training=self.training,
+            mode='upscale_in_train',
+            name=self.name)
+        return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'embed_dim={}, seq_len={}, dropout_rate={}, epsilon={}, dtype={}{}'.format(
+            self.embed_dim, self.seq_len, self.dropout_rate, self._epsilon,
+            self._dtype, name_str)
+
+
 class FusedMultiHeadAttention(Layer):
     """
     Attention mapps queries and a set of key-value pairs to outputs, and
@@ -61,15 +158,39 @@ class FusedMultiHeadAttention(Layer):
             (True) or post_layer_norm architecture (False). Default False.
         need_weights (bool, optional): Indicate whether to return the attention
             weights. Now, only False is supported. Default False.
-        weight_attr(ParamAttr, optional):  To specify the weight parameter property.
-            Default: None, which means the default weight parameter property is used.
-            See usage for details in :code:`ParamAttr`.
-        bias_attr (ParamAttr|bool, optional): To specify the bias parameter property.
-            Default: None, which means the default bias parameter property is used.
-            If it is set to False, this layer will not have trainable bias parameter.
-            See usage for details in :code:`ParamAttr`.
+        qkv_weight_attr(ParamAttr, optional): To specify the weight parameter property
+            for QKV projection computation. Default: None, which means the default weight
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        qkv_bias_attr(ParamAttr|bool, optional): To specify the bias parameter property
+            for QKV projection computation. The `False` value means the corresponding layer
+            would not have trainable bias parameter. Default: None, which means the
+            default bias parameter property is used. See usage for details in :code:`ParamAttr`.
+        linear_weight_attr(ParamAttr, optional): To specify the weight parameter property
+            for linear projection computation. Default: None, which means the default weight
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        linear_bias_attr(ParamAttr|bool, optional): To specify the bias parameter property
+            for linear projection computation. The `False` value means the corresponding layer would
+            not have trainable bias parameter. Default: None, which means the default bias
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        pre_ln_scale_attr(ParamAttr, optional): To specify the weight parameter property
+            for pre_layer_norm computation. Otherwise, all layers both use it as
+            `attr` to create parameters. Default: None, which means the default weight
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        pre_ln_bias_attr(ParamAttr|bool, optional): To specify the bias parameter property
+            for pre_layer_norm computation. The `False` value means the corresponding layer would
+            not have trainable bias parameter. Default: None, which means the default bias
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        ln_scale_attr(ParamAttr, optional): To specify the weight parameter property
+            for post_layer_norm computation. Default: None, which means the default weight
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        ln_bias_attr(ParamAttr|bool, optional): To specify the bias parameter property
+            for post_layer_norm computation. The `False` value means the corresponding layer would
+            not have trainable bias parameter. Default: None, which means the default bias
+            parameter property is used. See usage for details in :code:`ParamAttr`.
         epsilon (float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
+        nranks (int, optional): Distributed tensor model parallel nranks. Default is 1, means not using tensor parallel.
+        ring_id (int, optional): For distributed tensor model parallel. Default is -1, means not using tensor parallel.
 
     Examples:
 
@@ -94,9 +215,17 @@ class FusedMultiHeadAttention(Layer):
                  vdim=None,
                  normalize_before=False,
                  need_weights=False,
-                 weight_attr=None,
-                 bias_attr=None,
+                 qkv_weight_attr=None,
+                 qkv_bias_attr=None,
+                 linear_weight_attr=None,
+                 linear_bias_attr=None,
+                 pre_ln_scale_attr=None,
+                 pre_ln_bias_attr=None,
+                 ln_scale_attr=None,
+                 ln_bias_attr=None,
                  epsilon=1e-5,
+                 nranks=1,
+                 ring_id=-1,
                  name=None):
         super(FusedMultiHeadAttention, self).__init__()
 
@@ -107,9 +236,8 @@ class FusedMultiHeadAttention(Layer):
 
         self.normalize_before = normalize_before
         self._dtype = self._helper.get_default_dtype()
-        self._weight_attr = weight_attr
-        self._bias_attr = bias_attr
         self._epsilon = epsilon
+        self._ring_id = ring_id
 
         self.embed_dim = embed_dim
         self.num_heads = num_heads
@@ -118,41 +246,61 @@ class FusedMultiHeadAttention(Layer):
         self.vdim = vdim
         self.need_weights = need_weights
         assert self.head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
-        assert need_weights == False, "Only support need_weight is False now."
+        assert need_weights is False, "Only support need_weight is False now."
+
+        # tensor model parallel
+        assert num_heads % nranks == 0
+        num_heads = num_heads // nranks
 
         self.qkv_weight = self.create_parameter(
             shape=[3, num_heads, self.head_dim, embed_dim],
-            attr=self._weight_attr,
+            attr=qkv_weight_attr,
             dtype=self._dtype,
             is_bias=False)
         self.qkv_bias = self.create_parameter(
             shape=[3, num_heads, self.head_dim],
-            attr=self._bias_attr,
+            attr=qkv_bias_attr,
             dtype=self._dtype,
             is_bias=True)
         self.linear_weight = self.create_parameter(
-            shape=[embed_dim, embed_dim],
-            attr=self._weight_attr,
+            shape=[num_heads * self.head_dim, embed_dim],
+            attr=linear_weight_attr,
             dtype=self._dtype,
             is_bias=False)
-        self.linear_bias = self.create_parameter(
-            shape=[embed_dim],
-            attr=self._bias_attr,
-            dtype=self._dtype,
-            is_bias=True)
+        self.linear_bias = self.create_parameter(shape=[embed_dim],
+                                                 attr=linear_bias_attr,
+                                                 dtype=self._dtype,
+                                                 is_bias=True)
 
-        self.pre_ln_scale = self.create_parameter(
-            attr=self._weight_attr,
-            shape=[embed_dim],
-            default_initializer=Constant(value=1.0))
-        self.pre_ln_bias = self.create_parameter(
-            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
-        self.ln_scale = self.create_parameter(
-            attr=self._weight_attr,
-            shape=[embed_dim],
-            default_initializer=Constant(value=1.0))
-        self.ln_bias = self.create_parameter(
-            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
+        # tensor model parallel
+        if nranks > 1:
+            assert ring_id != -1
+            # column parallel
+            _set_var_distributed(self.qkv_weight)
+            _set_var_distributed(self.qkv_bias)
+            # row parallel
+            _set_var_distributed(self.linear_weight)
+
+        if normalize_before:
+            self.pre_ln_scale = self.create_parameter(
+                attr=pre_ln_scale_attr,
+                shape=[embed_dim],
+                default_initializer=Constant(value=1.0))
+            self.pre_ln_bias = self.create_parameter(attr=pre_ln_bias_attr,
+                                                     shape=[embed_dim],
+                                                     is_bias=True)
+            self.ln_scale = None
+            self.ln_bias = None
+        else:
+            self.pre_ln_scale = None
+            self.pre_ln_bias = None
+            self.ln_scale = self.create_parameter(
+                attr=ln_scale_attr,
+                shape=[embed_dim],
+                default_initializer=Constant(value=1.0))
+            self.ln_bias = self.create_parameter(attr=ln_bias_attr,
+                                                 shape=[embed_dim],
+                                                 is_bias=True)
 
         self.dropout_rate = dropout_rate
         self.attn_dropout_rate = attn_dropout_rate
@@ -197,8 +345,6 @@ class FusedMultiHeadAttention(Layer):
             # Support bool or int mask
             attn_mask = _convert_attention_mask(attn_mask, query.dtype)
 
-        assert cache == None, "Only support cache is None now."
-
         out = incubate_f.fused_multi_head_attention(
             x=query,
             qkv_weight=self.qkv_weight,
@@ -211,11 +357,13 @@ class FusedMultiHeadAttention(Layer):
             pre_ln_epsilon=self._epsilon,
             qkv_bias=self.qkv_bias,
             linear_bias=self.linear_bias,
+            cache_kv=cache,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_rate,
             attn_dropout_rate=self.attn_dropout_rate,
             ln_epsilon=self._epsilon,
             training=self.training,
+            ring_id=self._ring_id,
             name=self.name)
         return out
 
@@ -241,14 +389,38 @@ class FusedFeedForward(Layer):
             If None, use the value of `dropout_rate`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into, preprocessing or postprocessing. Default False
-        weight_attr (ParamAttr, optional): The attribute for the learnable weight of this layer.
-            The default value is None and the weight will be initialized to zero. For detailed
-            information, please refer to paddle.ParamAttr.
-        bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias of thi layer.
-            If it is set to False, no bias will be added to the output. If it is set to None or one
-            kind of ParamAttr, a bias parameter will be created according to ParamAttr. For detailed
-            information, please refer to paddle.ParamAttr. The default value is None and the bias
-            will be initialized to zero.
+        linear1_weight_attr(ParamAttr, optional): To specify the weight parameter property
+            for FFN first linear. Default: None, which means the default weight
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        linear1_bias_attr(ParamAttr|bool, optional): To specify the bias parameter property
+            for FFN first linear. The `False` value means the corresponding layer would
+            not have trainable bias parameter. Default: None, which means the default bias
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        linear2_weight_attr(ParamAttr, optional): To specify the weight parameter property
+            for FFN second linear. Default: None, which means the default weight
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        linear2_bias_attr(ParamAttr|bool, optional): To specify the bias parameter property
+            for FFN second linear. The `False` value means the corresponding layer would
+            not have trainable bias parameter. Default: None, which means the default bias
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        ln1_scale_attr(ParamAttr, optional): To specify the weight parameter property
+            for FFN pre_layer_norm. Default: None, which means the default weight
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        ln1_bias_attr(ParamAttr|bool, optional): To specify the bias parameter property
+            for FFN pre_layer_norm. The `False` value means the corresponding layer would
+            not have trainable bias parameter. Default: None, which means the default bias
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        ln2_scale_attr(ParamAttr, optional): To specify the weight parameter property
+            for FFN post_layer_norm. Default: None, which means the default weight
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        ln2_bias_attr(ParamAttr|bool, optional): To specify the bias parameter property
+            for FFN layer_norm. The `False` value means the corresponding layer would
+            not have trainable bias parameter. Default: None, which means the default bias
+            parameter property is used. See usage for details in :code:`ParamAttr`.
+        nranks (int, optional): Distributed tensor model parallel nranks. Default is 1, means not using tensor parallel.
+        ring_id (int, optional): For distributed tensor model parallel. Default is -1, means not using tensor parallel.
+        name (str, optional): The default value is None.  Normally there is no need for user to set
+            this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
@@ -272,8 +444,16 @@ class FusedFeedForward(Layer):
                  activation="relu",
                  act_dropout_rate=None,
                  normalize_before=False,
-                 weight_attr=None,
-                 bias_attr=None,
+                 linear1_weight_attr=None,
+                 linear1_bias_attr=None,
+                 linear2_weight_attr=None,
+                 linear2_bias_attr=None,
+                 ln1_scale_attr=None,
+                 ln1_bias_attr=None,
+                 ln2_scale_attr=None,
+                 ln2_bias_attr=None,
+                 nranks=1,
+                 ring_id=-1,
                  name=None):
 
         super(FusedFeedForward, self).__init__()
@@ -286,48 +466,68 @@ class FusedFeedForward(Layer):
 
         self._dtype = self._helper.get_default_dtype()
         self._d_model = d_model
+
+        assert dim_feedforward % nranks == 0
+        dim_feedforward = dim_feedforward // nranks
         self._dim_feedforward = dim_feedforward
         self._dropout_rate = dropout_rate
         self._act_dropout_rate = dropout_rate if act_dropout_rate is None else act_dropout_rate
         self._act_method = activation
         self._normalize_before = normalize_before
         self._epsilon = epsilon
+        self._ring_id = ring_id
 
         self._linear1_weight = self.create_parameter(
             shape=[d_model, dim_feedforward],
-            attr=weight_attr,
+            attr=linear1_weight_attr,
             dtype=self._dtype,
             is_bias=False)
-        self._linear1_bias = self.create_parameter(
-            shape=[dim_feedforward],
-            attr=bias_attr,
-            dtype=self._dtype,
-            is_bias=True)
+        self._linear1_bias = self.create_parameter(shape=[dim_feedforward],
+                                                   attr=linear1_bias_attr,
+                                                   dtype=self._dtype,
+                                                   is_bias=True)
 
         self._linear2_weight = self.create_parameter(
             shape=[dim_feedforward, d_model],
-            attr=weight_attr,
+            attr=linear2_weight_attr,
             dtype=self._dtype,
             is_bias=False)
 
-        self._linear2_bias = self.create_parameter(
-            shape=[d_model], attr=bias_attr, dtype=self._dtype, is_bias=True)
+        self._linear2_bias = self.create_parameter(shape=[d_model],
+                                                   attr=linear2_bias_attr,
+                                                   dtype=self._dtype,
+                                                   is_bias=True)
 
-        self._ln1_scale = self.create_parameter(
-            shape=[d_model],
-            attr=None,
-            is_bias=False,
-            default_initializer=Constant(1.0))
-        self._ln1_bias = self.create_parameter(
-            shape=[d_model], attr=None, is_bias=True)
+        if nranks > 1:
+            assert ring_id != -1
+            # column parallel
+            _set_var_distributed(self._linear1_weight)
+            _set_var_distributed(self._linear1_bias)
+            _set_var_distributed(self._linear2_weight)
 
-        self._ln2_scale = self.create_parameter(
-            shape=[d_model],
-            attr=None,
-            is_bias=False,
-            default_initializer=Constant(1.0))
-        self._ln2_bias = self.create_parameter(
-            shape=[d_model], attr=None, is_bias=True)
+        if normalize_before:
+            self._ln1_scale = self.create_parameter(
+                shape=[d_model],
+                attr=ln1_scale_attr,
+                is_bias=False,
+                default_initializer=Constant(1.0))
+            self._ln1_bias = self.create_parameter(shape=[d_model],
+                                                   attr=ln1_bias_attr,
+                                                   is_bias=True)
+            self._ln2_scale = None
+            self._ln2_bias = None
+        else:
+            self._ln1_scale = None
+            self._ln1_bias = None
+            self._ln2_scale = self.create_parameter(
+                shape=[d_model],
+                attr=ln2_scale_attr,
+                is_bias=False,
+                default_initializer=Constant(1.0))
+            self._ln2_bias = self.create_parameter(shape=[d_model],
+                                                   attr=ln2_bias_attr,
+                                                   is_bias=True)
+
         self.name = name
 
     def forward(self, src, cache=None):
@@ -348,6 +548,7 @@ class FusedFeedForward(Layer):
             ln2_epsilon=self._epsilon,
             pre_layer_norm=self._normalize_before,
             training=self.training,
+            ring_id=self._ring_id,
             name=self.name)
         return out
 
@@ -453,18 +654,25 @@ class FusedTransformerEncoderLayer(Layer):
             dropout_rate=dropout_rate,
             attn_dropout_rate=attn_dropout_rate,
             normalize_before=self.normalize_before,
-            weight_attr=weight_attrs[0],
-            bias_attr=bias_attrs[0])
+            qkv_weight_attr=weight_attrs[0],
+            qkv_bias_attr=bias_attrs[0],
+            linear_weight_attr=weight_attrs[0],
+            linear_bias_attr=bias_attrs[0],
+            pre_ln_scale_attr=weight_attrs[0],
+            pre_ln_bias_attr=bias_attrs[0],
+            ln_scale_attr=weight_attrs[0],
+            ln_bias_attr=bias_attrs[0])
 
-        self.ffn = FusedFeedForward(
-            d_model,
-            dim_feedforward,
-            dropout_rate=dropout_rate,
-            activation=activation,
-            act_dropout_rate=act_dropout_rate,
-            normalize_before=self.normalize_before,
-            weight_attr=weight_attrs[1],
-            bias_attr=bias_attrs[1])
+        self.ffn = FusedFeedForward(d_model,
+                                    dim_feedforward,
+                                    dropout_rate=dropout_rate,
+                                    activation=activation,
+                                    act_dropout_rate=act_dropout_rate,
+                                    normalize_before=self.normalize_before,
+                                    linear1_weight_attr=weight_attrs[1],
+                                    linear1_bias_attr=bias_attrs[1],
+                                    linear2_weight_attr=weight_attrs[1],
+                                    linear2_bias_attr=bias_attrs[1])
 
     def forward(self, src, src_mask=None, cache=None):
         """
@@ -500,8 +708,9 @@ class FusedTransformerEncoderLayer(Layer):
         if cache is None:
             attn_out = self.fused_attn(src, attn_mask=src_mask)
         else:
-            attn_out, incremental_cache = self.fused_attn(
-                src, attn_mask=src_mask, cache=cache)
+            attn_out, incremental_cache = self.fused_attn(src,
+                                                          attn_mask=src_mask,
+                                                          cache=cache)
 
         ffn_out = self.ffn(attn_out)
 
@@ -870,8 +1079,9 @@ class FusedMultiTransformer(Layer):
                 attr=ln_scale_attr,
                 shape=[embed_dim],
                 default_initializer=Constant(value=1.0))
-            ln_bias = self.create_parameter(
-                attr=ln_bias_attr, shape=[embed_dim], is_bias=True)
+            ln_bias = self.create_parameter(attr=ln_bias_attr,
+                                            shape=[embed_dim],
+                                            is_bias=True)
             qkv_weight = self.create_parameter(
                 shape=[3, num_heads, self.head_dim, embed_dim],
                 attr=qkv_weight_attr,
@@ -887,39 +1097,37 @@ class FusedMultiTransformer(Layer):
                 attr=linear_weight_attr,
                 dtype=self._dtype,
                 is_bias=False)
-            linear_bias = self.create_parameter(
-                shape=[embed_dim],
-                attr=linear_bias_attr,
-                dtype=self._dtype,
-                is_bias=True)
+            linear_bias = self.create_parameter(shape=[embed_dim],
+                                                attr=linear_bias_attr,
+                                                dtype=self._dtype,
+                                                is_bias=True)
 
             ffn_ln_scale = self.create_parameter(
                 shape=[embed_dim],
                 attr=ffn_ln_scale_attr,
                 is_bias=False,
                 default_initializer=Constant(1.0))
-            ffn_ln_bias = self.create_parameter(
-                shape=[embed_dim], attr=ffn_ln_bias_attr, is_bias=True)
+            ffn_ln_bias = self.create_parameter(shape=[embed_dim],
+                                                attr=ffn_ln_bias_attr,
+                                                is_bias=True)
             ffn1_weight = self.create_parameter(
                 shape=[embed_dim, dim_feedforward],
                 attr=ffn1_weight_attr,
                 dtype=self._dtype,
                 is_bias=False)
-            ffn1_bias = self.create_parameter(
-                shape=[dim_feedforward],
-                attr=ffn1_bias_attr,
-                dtype=self._dtype,
-                is_bias=True)
+            ffn1_bias = self.create_parameter(shape=[dim_feedforward],
+                                              attr=ffn1_bias_attr,
+                                              dtype=self._dtype,
+                                              is_bias=True)
             ffn2_weight = self.create_parameter(
                 shape=[dim_feedforward, embed_dim],
                 attr=ffn2_weight_attr,
                 dtype=self._dtype,
                 is_bias=False)
-            ffn2_bias = self.create_parameter(
-                shape=[embed_dim],
-                attr=ffn2_bias_attr,
-                dtype=self._dtype,
-                is_bias=True)
+            ffn2_bias = self.create_parameter(shape=[embed_dim],
+                                              attr=ffn2_bias_attr,
+                                              dtype=self._dtype,
+                                              is_bias=True)
 
             # tensor model parallel
             if nranks > 1:

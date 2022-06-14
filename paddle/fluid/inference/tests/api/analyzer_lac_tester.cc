@@ -148,8 +148,9 @@ TEST(Analyzer_LAC, profile) {
                           "The size of output should be equal to 1."));
     size_t size = GetSize(output[0]);
     size_t batch1_size = sizeof(lac_ref_data) / sizeof(int64_t);
-    PADDLE_ENFORCE_GE(size, batch1_size, paddle::platform::errors::Fatal(
-                                             "The size of batch is invaild."));
+    PADDLE_ENFORCE_GE(
+        size, batch1_size,
+        paddle::platform::errors::Fatal("The size of batch is invaild."));
     int64_t *pdata = static_cast<int64_t *>(output[0].data.data());
     for (size_t i = 0; i < batch1_size; ++i) {
       EXPECT_EQ(pdata[i], lac_ref_data[i]);
