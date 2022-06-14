@@ -596,8 +596,11 @@ class SparseTable(Table):
             if proto.table_name == self.common.table_name:
                 usr_table_proto = proto
                 break
-        table_proto.table_class = 'MemorySparseTable'
-        warnings.warn("The PS mode must use MemorySparseTable.")
+        if usr_table_proto.HasField("table_class"):
+            table_proto.table_class = usr_table_proto.table_class
+        else:
+            table_proto.table_class = 'MemorySparseTable'
+            warnings.warn("The PS mode must use MemorySparseTable.")
         if usr_table_proto.HasField("shard_num"):
             table_proto.shard_num = usr_table_proto.shard_num
         else:
@@ -937,9 +940,10 @@ class TheOnePSRuntime(RuntimeBase):
                 main_program._fleet_opt = {}
             main_program._fleet_opt["use_ps_gpu"] = True
             gpus_env = os.getenv("FLAGS_selected_gpus")
-            main_program._fleet_opt["worker_places"] = [
-                int(s) for s in gpus_env.split(",")
-            ]
+            gpus_env = [int(s) for s in gpus_env.split(",")]
+            main_program._fleet_opt["worker_places"] = gpus_env
+            PSGPU = fluid.core.PSGPU()
+            PSGPU.init_gpu_ps(gpus_env)
 
         def sync_strategy_envs():
             kwargs = {}
