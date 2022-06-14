@@ -15,6 +15,7 @@
 #include "paddle/phi/capi/include/c_device_context.h"
 
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/capi/include/common.h"
 #include "paddle/phi/capi/include/type_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -72,3 +73,5 @@ void* PD_DeviceContextAllocateTensor(const PD_DeviceContext* ctx,
     return cc_tensor->mutable_data(place, phi_dtype, size);
   }
 }
+
+PD_REGISTER_CAPI(device_context);

@@ -14,6 +14,7 @@
 
 #include "paddle/phi/capi/include/c_kernel_factory.h"
 
+#include "paddle/phi/capi/include/common.h"
 #include "paddle/phi/capi/include/type_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 
@@ -145,3 +146,5 @@ PD_KernelArgsDef* PD_KernelGetArgsDef(PD_Kernel* kernel, PD_Status* status) {
   return reinterpret_cast<PD_KernelArgsDef*>(
       const_cast<phi::KernelArgsDef*>(&cc_kernel->args_def()));
 }
+
+PD_REGISTER_CAPI(kernel_factory);

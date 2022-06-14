@@ -11,24 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#pragma once
 
+#if !defined(_WIN32) && !defined(__APPLE__)
+
+#include "paddle/phi/capi/include/c_data_type.h"
+#include "paddle/phi/capi/include/c_device_context.h"
 #include "paddle/phi/capi/include/c_int_array.h"
+#include "paddle/phi/capi/include/c_kernel_context.h"
+#include "paddle/phi/capi/include/c_kernel_factory.h"
+#include "paddle/phi/capi/include/c_kernel_registry.h"
+#include "paddle/phi/capi/include/c_place.h"
+#include "paddle/phi/capi/include/c_scalar.h"
+#include "paddle/phi/capi/include/c_tensor.h"
+#include "paddle/phi/capi/include/data_type.h"
+#include "paddle/phi/capi/include/kernel_registry.h"
 
-#include "paddle/phi/capi/include/common.h"
-#include "paddle/phi/common/int_array.h"
-
-PD_List PD_IntArrayGetDataPointer(PD_IntArray* int_array) {
-  auto cc_int_array = reinterpret_cast<phi::IntArray*>(int_array);
-  const auto& data = cc_int_array->GetData();
-  PD_List list;
-  list.size = data.size();
-  list.data = const_cast<int64_t*>(data.data());
-  return list;
-}
-
-size_t PD_IntArrayGetSize(PD_IntArray* int_array) {
-  auto cc_int_array = reinterpret_cast<phi::IntArray*>(int_array);
-  return cc_int_array->size();
-}
-
-PD_REGISTER_CAPI(int_array);
+#endif

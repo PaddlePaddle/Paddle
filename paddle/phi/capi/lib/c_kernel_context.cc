@@ -15,6 +15,7 @@
 #include "paddle/phi/capi/include/c_kernel_context.h"
 
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/capi/include/common.h"
 #include "paddle/phi/capi/include/type_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 
@@ -218,3 +219,5 @@ PD_DataLayout PD_KernelContextDataLayoutAttrAt(PD_KernelContext* ctx,
   return phi::capi::ToPDDataLayout(
       kernel_context->AttrAt<phi::DataLayout>(index));
 }
+
+PD_REGISTER_CAPI(kernel_context);

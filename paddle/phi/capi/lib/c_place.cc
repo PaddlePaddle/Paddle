@@ -14,6 +14,7 @@
 
 #include "paddle/phi/capi/include/c_place.h"
 
+#include "paddle/phi/capi/include/common.h"
 #include "paddle/phi/common/place.h"
 
 bool PD_PlaceIsHost(PD_Place* place) {
@@ -25,3 +26,5 @@ int8_t PD_PlaceGetDeviceId(PD_Place* place) {
   auto cc_place = reinterpret_cast<phi::Place*>(place);
   return cc_place->GetDeviceId();
 }
+
+PD_REGISTER_CAPI(place);

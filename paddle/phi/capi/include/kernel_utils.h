@@ -13,19 +13,13 @@
 // limitations under the License.
 
 #pragma once
+
+#include "paddle/phi/capi/include/common.h"
+
 #if !defined(_WIN32) && !defined(__APPLE__)
 
 namespace phi {
 namespace capi {
-
-#define PD_CUSTOM_PHI_KERNEL_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg) \
-  _PD_CUSTOM_PHI_KERNEL_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)
-
-#define _PD_CUSTOM_PHI_KERNEL_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)  \
-  struct __test_global_namespace_##uniq_name##__ {};                          \
-  static_assert(std::is_same<::__test_global_namespace_##uniq_name##__,       \
-                             __test_global_namespace_##uniq_name##__>::value, \
-                msg)
 
 #define CUSTOM_PHI_KERNEL(...) \
   ::phi::capi::CustomKernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute

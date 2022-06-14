@@ -14,6 +14,7 @@
 
 #include "paddle/phi/capi/include/c_kernel_registry.h"
 
+#include "paddle/phi/capi/include/common.h"
 #include "paddle/phi/capi/include/type_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -169,3 +170,5 @@ void PD_RegisterPhiKernel(const char* kernel_name_cstr,
   args_def_fn_wrapper(kernel_key, &kernel);
   phi::KernelFactory::Instance().kernels()[kernel_name][kernel_key] = kernel;
 }
+
+PD_REGISTER_CAPI(kernel_registry);

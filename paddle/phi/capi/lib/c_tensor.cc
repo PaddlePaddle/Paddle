@@ -14,6 +14,7 @@
 
 #include "paddle/phi/capi/include/c_tensor.h"
 
+#include "paddle/phi/capi/include/common.h"
 #include "paddle/phi/capi/include/type_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -297,3 +298,5 @@ void PD_TensorShareLoDWith(PD_Tensor* dst,
   const phi::MetaTensor meta_src(cc_src_tensor);
   meta_dst.share_lod(meta_src);
 }
+
+PD_REGISTER_CAPI(tensor);

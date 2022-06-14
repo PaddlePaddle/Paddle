@@ -124,11 +124,7 @@ set(PYBIND_SRCS
     cuda_streams_py.cc)
 
 if(WITH_CUSTOM_DEVICE)
-  file(
-    GLOB_RECURSE CUSTOM_KERNEL_CAPI_SRCS
-    RELATIVE ${CMAKE_SOURCE_DIR}/phi/capi/lib
-    capi/*.cc)
-  set(PYBIND_SRCS ${PYBIND_SRCS} ${CUSTOM_KERNEL_CAPI_SRCS})
+  set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
 endif()
 
 if(NOT ON_INFER)

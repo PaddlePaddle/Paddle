@@ -14,6 +14,8 @@
 
 #include "paddle/phi/capi/include/c_data_type.h"
 
+#include "paddle/phi/capi/include/common.h"
+
 void PD_DeletePointerList(PD_List list) {
   auto data = reinterpret_cast<void**>(list.data);
   if (data) delete[] data;
@@ -43,3 +45,5 @@ void PD_DeleteFloat32List(PD_List list) {
   auto data = reinterpret_cast<float*>(list.data);
   if (data) delete[] data;
 }
+
+PD_REGISTER_CAPI(data_type);

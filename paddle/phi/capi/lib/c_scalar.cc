@@ -14,6 +14,7 @@
 
 #include "paddle/phi/capi/include/c_scalar.h"
 
+#include "paddle/phi/capi/include/common.h"
 #include "paddle/phi/capi/include/type_utils.h"
 #include "paddle/phi/common/scalar.h"
 
@@ -76,3 +77,5 @@ double PD_ScalarGetFloat64Data(PD_Scalar* scalar) {
   auto cc_scalar = reinterpret_cast<phi::Scalar*>(scalar);
   return cc_scalar->to<double>();
 }
+
+PD_REGISTER_CAPI(scalar);
