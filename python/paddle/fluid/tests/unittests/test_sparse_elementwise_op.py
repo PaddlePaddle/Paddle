@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -63,26 +63,27 @@ class TestSparseElementWiseAPI(unittest.TestCase):
             expect_res = op(dense_x, dense_y)
 
             self.assertTrue(
-                np.allclose(
-                    expect_res.numpy(),
-                    actual_res.to_dense().numpy(),
-                    equal_nan=True))
+                np.allclose(expect_res.numpy(),
+                            actual_res.to_dense().numpy(),
+                            equal_nan=True))
 
     def func_test_coo(self, op):
         for sparse_dim in range(len(self.coo_shape) - 1, len(self.coo_shape)):
             for dtype in self.support_dtypes:
-                x = np.random.randint(
-                    -255, 255, size=self.coo_shape).astype(dtype)
-                y = np.random.randint(
-                    -255, 255, size=self.coo_shape).astype(dtype)
+                x = np.random.randint(-255, 255,
+                                      size=self.coo_shape).astype(dtype)
+                y = np.random.randint(-255, 255,
+                                      size=self.coo_shape).astype(dtype)
 
                 dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=False)
                 dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=False)
 
-                s_dense_x = paddle.to_tensor(
-                    x, dtype=dtype, stop_gradient=False)
-                s_dense_y = paddle.to_tensor(
-                    y, dtype=dtype, stop_gradient=False)
+                s_dense_x = paddle.to_tensor(x,
+                                             dtype=dtype,
+                                             stop_gradient=False)
+                s_dense_y = paddle.to_tensor(y,
+                                             dtype=dtype,
+                                             stop_gradient=False)
                 coo_x = s_dense_x.to_sparse_coo(sparse_dim)
                 coo_y = s_dense_y.to_sparse_coo(sparse_dim)
 
@@ -93,20 +94,17 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                 expect_res.backward(expect_res)
 
                 self.assertTrue(
-                    np.allclose(
-                        expect_res.numpy(),
-                        actual_res.to_dense().numpy(),
-                        equal_nan=True))
+                    np.allclose(expect_res.numpy(),
+                                actual_res.to_dense().numpy(),
+                                equal_nan=True))
                 self.assertTrue(
-                    np.allclose(
-                        dense_x.grad.numpy(),
-                        coo_x.grad.to_dense().numpy(),
-                        equal_nan=True))
+                    np.allclose(dense_x.grad.numpy(),
+                                coo_x.grad.to_dense().numpy(),
+                                equal_nan=True))
                 self.assertTrue(
-                    np.allclose(
-                        dense_y.grad.numpy(),
-                        coo_y.grad.to_dense().numpy(),
-                        equal_nan=True))
+                    np.allclose(dense_y.grad.numpy(),
+                                coo_y.grad.to_dense().numpy(),
+                                equal_nan=True))
 
     def test_support_dtypes_csr(self):
         paddle.device.set_device('cpu')

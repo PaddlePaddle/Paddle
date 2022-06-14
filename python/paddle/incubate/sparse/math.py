@@ -24,8 +24,8 @@ from paddle.incubate.sparse import sparse_csr_tensor
 def _cast_coo(x, dtype, name=None):
     indices = x.indices()
     values = cast(x.values(), dtype)
-    return _C_ops.final_state_sparse_create_sparse_coo_tensor(values, indices,
-                                                              x.shape)
+    return _C_ops.final_state_sparse_create_sparse_coo_tensor(
+        values, indices, x.shape)
 
 
 def _cast_csr(x, dtype, name=None):

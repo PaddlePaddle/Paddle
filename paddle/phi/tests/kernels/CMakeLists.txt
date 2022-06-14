@@ -75,7 +75,6 @@ cc_test(
   SRCS test_sparse_elementwise_dev_api.cc
   DEPS phi phi_api_utils)
 
-
 cc_test(
   test_math_function
   SRCS test_math_function.cc
