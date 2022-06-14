@@ -24,9 +24,12 @@ namespace distributed {
 
 int CtrDymfAccessor::Initialize() {
   auto name = _config.embed_sgd_param().name();
+  
   _embed_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
   _embed_sgd_rule->LoadConfig(_config.embed_sgd_param(), 1);
 
+  VLOG(0) << "CtrDymfAccessor::Initialize embed_sgd_param name:" << name
+          << "  embedx_sgd_param name: " << _config.embedx_sgd_param().name();
   name = _config.embedx_sgd_param().name();
   _embedx_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
   _embedx_sgd_rule->LoadConfig(_config.embedx_sgd_param(),
@@ -42,10 +45,22 @@ int CtrDymfAccessor::Initialize() {
   if (_config.ctr_accessor_param().show_scale()) {
     _show_scale = true;
   }
-  VLOG(0) << " INTO CtrDymfAccessor::Initialize()";
+  VLOG(0) << " INTO CtrDymfAccessor::Initialize(); embed_sgd_dim:" << common_feature_value.embed_sgd_dim
+          << " embedx_dim:" << common_feature_value.embedx_dim
+          << "  embedx_sgd_dim:" << common_feature_value.embedx_sgd_dim;
   InitAccessorInfo();
   return 0;
 }
+
+// int CtrDymfAccessor::InitializeDim(int embed_sgd_dim, int embedx_dim, int embedx_sgd_dim) {
+//   common_feature_value.embed_sgd_dim = embed_sgd_dim;
+//   common_feature_value.embedx_dim = embedx_dim;
+//   common_feature_value.embedx_sgd_dim = embedx_sgd_dim;
+//   VLOG(0) << " INTO CtrDymfAccessor::InitializeDim(); embed_sgd_dim:" << embed_sgd_dim
+//           << " embedx_dim:" << embedx_dim<< "  embedx_sgd_dim:" << embedx_sgd_dim;
+//   InitAccessorInfo();
+//   return 0;
+// }
 
 void CtrDymfAccessor::InitAccessorInfo() {
   _accessor_info.dim = common_feature_value.Dim();
@@ -53,9 +68,9 @@ void CtrDymfAccessor::InitAccessorInfo() {
 
   auto embedx_dim = _config.embedx_dim();
   VLOG(0) << "InitAccessorInfo embedx_dim:" << embedx_dim;
-  _accessor_info.select_dim = 3 + embedx_dim;
+  _accessor_info.select_dim = 4 + embedx_dim;
   _accessor_info.select_size = _accessor_info.select_dim * sizeof(float);
-  _accessor_info.update_dim = 4 + embedx_dim;
+  _accessor_info.update_dim = 5 + embedx_dim;
   _accessor_info.update_size = _accessor_info.update_dim * sizeof(float);
   _accessor_info.mf_size =
       (embedx_dim + common_feature_value.embedx_sgd_dim) * sizeof(float);

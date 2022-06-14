@@ -50,6 +50,8 @@ template <typename KeyType, typename ValType, typename GradType>
 class HeterComm {
  public:
   HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource);
+  HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource, 
+            CommonFeatureValueAccessor& accessor);
   virtual ~HeterComm();
   HeterComm(const HeterComm&) = delete;
   HeterComm& operator=(const HeterComm&) = delete;
@@ -67,10 +69,10 @@ class HeterComm {
                   int& uniq_len);  // NOLINT
   void dynamic_merge_grad(int gpu_num,
                           KeyType* d_keys,
-                          GradType* d_grads,
+                          float* d_grads,
                           size_t len,
                           int& uniq_len);
-  void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
+  void pull_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
   void build_ps(int num,
                 KeyType* h_keys,
                 ValType* h_vals,
@@ -92,7 +94,7 @@ class HeterComm {
   template <typename Sgd>
   void push_sparse(int num,
                    KeyType* d_keys,
-                   GradType* d_grads,
+                   float* d_grads,
                    size_t len,
                    Sgd& sgd);  // NOLINT
 #elif defined(PADDLE_WITH_XPU_KP)
@@ -148,6 +150,10 @@ class HeterComm {
   void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) {
     multi_mf_dim_ = multi_mf_dim;
     max_mf_dim_ = max_mf_dim;
+  }
+
+  void set_accessor(CommonFeatureValueAccessor& accessor) {
+   feature_value_accessor_ = accessor;
   }
 #endif
 
@@ -282,9 +288,11 @@ class HeterComm {
                    char* src_val,
                    size_t val_size);
 
+
+  CommonFeatureValueAccessor feature_value_accessor_;
  protected:
   using Table = HashTable<KeyType, ValType>;
-  using PtrTable = HashTable<KeyType, ValType*>;
+  using PtrTable = HashTable<KeyType, float*>;
   std::vector<Table*> tables_;
   std::vector<PtrTable*> ptr_tables_;
   std::shared_ptr<HeterPsResource> resource_;

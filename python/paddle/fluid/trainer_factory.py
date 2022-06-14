@@ -52,6 +52,12 @@ class TrainerFactory(object):
         else:
             trainer_class = opt_info.get("trainer", "MultiTrainer")
             device_worker_class = opt_info.get("device_worker", "Hogwild")
+            if trainer_class == '':
+                trainer_class = "MultiTrainer"
+                opt_info["trainer"] = "MultiTrainer"
+            if device_worker_class == '':
+                device_worker_class = "Hogwild"
+                opt_info["device_worker"] = "Hogwild"
             trainer = globals()[trainer_class]()
             device_worker = globals()[device_worker_class]()
 

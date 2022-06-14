@@ -41,6 +41,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
+// #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #endif
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
@@ -52,6 +53,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include "paddle/fluid/distributed/ps/table/accessor.h"
+#include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
+#include "paddle/fluid/distributed/ps.pb.h"
 #endif
 #ifdef PADDLE_WITH_PSLIB
 #include "afs_api.h"
@@ -95,9 +99,17 @@ class AfsWrapper {
 };
 #endif
 
+enum OptimizerType {
+  OPTIMIZER_NAIVE = 0,
+  OPTIMIZER_ADAGRAD = 1,
+  OPTIMIZER_STDADAGRAD = 2,
+  OPTIMIZER_ADAM = 3,
+  OPTIMIZER_SHARDADAM = 4,
+};
+
 class PSGPUWrapper {
  public:
-  virtual ~PSGPUWrapper();
+  ~PSGPUWrapper();
 
   PSGPUWrapper() {
     HeterPs_ = NULL;
@@ -149,7 +161,7 @@ class PSGPUWrapper {
   void CopyForPull(const paddle::platform::Place& place,
                    uint64_t** gpu_keys,
                    const std::vector<float*>& values,
-                   const FeatureValue* total_values_gpu,
+                   const float* total_values_gpu,
                    const int64_t* gpu_len,
                    const int slot_num,
                    const int hidden_size,
@@ -164,7 +176,7 @@ class PSGPUWrapper {
                    const int batch_size);
   void CopyForPush(const paddle::platform::Place& place,
                    const std::vector<const float*>& grad_values,
-                   FeaturePushValue* total_grad_values_gpu,
+                   float* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
                    const uint64_t total_length,
                    const int batch_size,
@@ -273,13 +285,200 @@ class PSGPUWrapper {
                     float max_bound,
                     float learning_rate,
                     float initial_g2sum,
-                    float initial_range);
+                    float initial_range, 
+                    float beta1_decay_rate,
+                    float beta2_decay_rate, 
+                    float ada_epsilon);
   void SetEmbedxSGD(float mf_create_thresholds,
                     float mf_learning_rate,
                     float mf_initial_g2sum,
                     float mf_initial_range,
                     float mf_min_bound,
-                    float mf_max_bound);
+                    float mf_max_bound,
+                    float mf_beta1_decay_rate, 
+                    float mf_beta2_decay_rate,
+                    float mf_ada_epsilon);
+  
+#ifdef PADDLE_WITH_PSCORE
+  void add_sparse_optimizer(
+      std::unordered_map<std::string, float>& config,  // NOLINT
+      const ::paddle::distributed::SparseCommonSGDRuleParameter& sgd_param,
+      const std::string& prefix = "") {
+    auto optimizer_name = sgd_param.name();
+    if (optimizer_name == "SparseNaiveSGDRule") {
+      config[prefix + "optimizer_type"] = 0;
+      config[prefix + "learning_rate"] = sgd_param.naive().learning_rate();
+      config[prefix + "initial_range"] = sgd_param.naive().initial_range();
+      config[prefix + "min_bound"] = sgd_param.naive().weight_bounds()[0];
+      config[prefix + "max_bound"] = sgd_param.naive().weight_bounds()[1];
+    } else if (optimizer_name == "SparseAdaGradSGDRule") {
+      config[prefix + "optimizer_type"] = 1;
+      config[prefix + "learning_rate"] = sgd_param.adagrad().learning_rate();
+      config[prefix + "initial_range"] = sgd_param.adagrad().initial_range();
+      config[prefix + "initial_g2sum"] = sgd_param.adagrad().initial_g2sum();
+      config[prefix + "min_bound"] = sgd_param.adagrad().weight_bounds()[0];
+      config[prefix + "max_bound"] = sgd_param.adagrad().weight_bounds()[1];
+    } else if (optimizer_name == "StdAdaGradSGDRule") {
+      config[prefix + "optimizer_type"] = 2;
+      config[prefix + "learning_rate"] = sgd_param.adagrad().learning_rate();
+      config[prefix + "initial_range"] = sgd_param.adagrad().initial_range();
+      config[prefix + "initial_g2sum"] = sgd_param.adagrad().initial_g2sum();
+      config[prefix + "min_bound"] = sgd_param.adagrad().weight_bounds()[0];
+      config[prefix + "max_bound"] = sgd_param.adagrad().weight_bounds()[1];
+    } else if (optimizer_name == "SparseAdamSGDRule") {
+      config[prefix + "optimizer_type"] = 3;
+      config[prefix + "learning_rate"] = sgd_param.adam().learning_rate();
+      config[prefix + "initial_range"] = sgd_param.adam().initial_range();
+      config[prefix + "beta1_decay_rate"] = sgd_param.adam().beta1_decay_rate();
+      config[prefix + "beta2_decay_rate"] = sgd_param.adam().beta2_decay_rate();
+      config[prefix + "ada_epsilon"] = sgd_param.adam().ada_epsilon();
+      config[prefix + "min_bound"] = sgd_param.adam().weight_bounds()[0];
+      config[prefix + "max_bound"] = sgd_param.adam().weight_bounds()[1];
+    } else if (optimizer_name == "SparseAdamSharedSGDRule") {
+      config[prefix + "optimizer_type"] = 4;
+      config[prefix + "learning_rate"] = sgd_param.adam().learning_rate();
+      config[prefix + "initial_range"] = sgd_param.adam().initial_range();
+      config[prefix + "beta1_decay_rate"] = sgd_param.adam().beta1_decay_rate();
+      config[prefix + "beta2_decay_rate"] = sgd_param.adam().beta2_decay_rate();
+      config[prefix + "ada_epsilon"] = sgd_param.adam().ada_epsilon();
+      config[prefix + "min_bound"] = sgd_param.adam().weight_bounds()[0];
+      config[prefix + "max_bound"] = sgd_param.adam().weight_bounds()[1];
+    }
+  }
+
+  void InitializeGPUServer(paddle::distributed::PSParameter ps_param) {
+    auto sparse_table =
+      ps_param.server_param().downpour_server_param().downpour_table_param(0);
+    auto sparse_table_accessor = sparse_table.accessor();
+    auto sparse_table_accessor_parameter =
+        sparse_table_accessor.ctr_accessor_param();
+    auto accessor_class = sparse_table_accessor.accessor_class();
+
+    // NOTE(zhangminxu): gpups' sparse table optimizer config,
+    // now only support single sparse table
+    // auto sparse_table = param_.sparse_table(0);
+    std::unordered_map<std::string, float> config;
+    config["embedx_dim"] = sparse_table_accessor.embedx_dim();
+    config["nonclk_coeff"] = sparse_table_accessor_parameter.nonclk_coeff();
+    config["clk_coeff"] = sparse_table_accessor_parameter.click_coeff();
+    
+  
+    if (accessor_class == "CtrDymfAccessor") {
+      // optimizer config for embed_w and embedx
+      add_sparse_optimizer(config, sparse_table_accessor.embed_sgd_param());
+      add_sparse_optimizer(config, sparse_table_accessor.embedx_sgd_param(),
+                          "mf_");
+    }
+
+    // CommonFeatureValueAccessor feature_value_accessor_;
+    feature_value_accessor_.Configure(config);
+    VLOG(0) << "INIT feature_value_accessor_:" << feature_value_accessor_.GetAccessorInfo().dim
+            << "  EMBX:" << feature_value_accessor_.common_feature_value.embedx_sgd_dim;
+    InitializeGPUServer(config);
+  }
+  #endif
+
+//   void InitializeGPUServer(std::unordered_map<std::string, std::string> config) {
+//     float nonclk_coeff = (config.find("sparse_nonclk_coeff") == config.end())
+//                              ? 1.0
+//                              : std::stof(config["sparse_nonclk_coeff"]);
+//     float clk_coeff =
+//         (config.find("sparse_click_coeff") == config.end()) ? 1.0 : std::stof(config["sparse_click_coeff"]);
+//     float min_bound = (config.find("min_bound") == config.end())
+//                           ? -10.0
+//                           : std::stof(config["min_bound"]);
+//     float max_bound = (config.find("max_bound") == config.end())
+//                           ? 10.0
+//                           : std::stof(config["max_bound"]);
+//     float learning_rate = (config.find("sparse_learning_rate") == config.end())
+//                               ? 0.05
+//                               : std::stof(config["sparse_learning_rate"]);
+//     float initial_g2sum = (config.find("sparse_initial_g2sum") == config.end())
+//                               ? 3.0
+//                               : std::stof(config["sparse_initial_g2sum"]);
+//     float initial_range = (config.find("sparse_initial_range") == config.end())
+//                               ? 1e-4
+//                               : std::stof(config["sparse_initial_range"]);
+//     float beta1_decay_rate = (config.find("embed_sparse_beta1_decay_rate") == config.end())
+//                                  ? 0.9
+//                                  : std::stof(config["embed_sparse_beta1_decay_rate"]);
+//     float beta2_decay_rate = (config.find("embed_sparse_beta2_decay_rate") == config.end())
+//                                  ? 0.999
+//                                  : std::stof(config["embed_sparse_beta2_decay_rate"]);
+//     float ada_epsilon = (config.find("embed_sparse_ada_epsilon") == config.end())
+//                                  ? 1e-8
+//                                  : std::stof(config["embed_sparse_ada_epsilon"]);
+//     // mf config settings
+//     float mf_create_thresholds =
+//         (config.find("sparse_embedx_threshold") == config.end())
+//             ? static_cast<float>(1.0)
+//             : std::stof(config["sparse_embedx_threshold"]);
+//     float mf_learning_rate = (config.find("embedx_sparse_learning_rate") == config.end())
+//                                  ? 0.05
+//                                  : std::stof(config["embedx_sparse_learning_rate"]);
+//     float mf_initial_g2sum = (config.find("sparse_initial_g2sum") == config.end())
+//                                  ? 3.0
+//                                  : std::stof(config["sparse_initial_g2sum"]);
+//     float mf_initial_range = (config.find("embedx_sparse_initial_range") == config.end())
+//                                  ? 1e-4
+//                                  : std::stof(config["embedx_sparse_initial_range"]);
+//     float mf_min_bound = (config.find("mf_min_bound") == config.end())
+//                              ? -10.0
+//                              : std::stof(config["mf_min_bound"]);
+//     float mf_max_bound = (config.find("mf_max_bound") == config.end())
+//                              ? 10.0
+//                              : std::stof(config["mf_max_bound"]);
+//     float mf_beta1_decay_rate = (config.find("embedx_sparse_beta1_decay_rate") == config.end())
+//                                  ? 0.9
+//                                  : std::stof(config["embedx_sparse_beta1_decay_rate"]);
+//     float mf_beta2_decay_rate = (config.find("embedx_sparse_beta2_decay_rate") == config.end())
+//                                  ? 0.999
+//                                  : std::stof(config["embedx_sparse_beta2_decay_rate"]);
+//     float mf_ada_epsilon = (config.find("embedx_sparse_ada_epsilon") == config.end())
+//                                  ? 1e-8
+//                                  : std::stof(config["embedx_sparse_ada_epsilon"]);
+//     for (size_t i = 0; i < heter_devices_.size(); i++) {
+// #ifdef PADDLE_WITH_CUDA
+//       PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(heter_devices_[i]));
+// #elif defined(PADDLE_WITH_XPU_KP)
+//       PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(heter_devices_[i]));
+// #endif
+//       this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
+//                          learning_rate, initial_g2sum, initial_range, 
+//                          beta1_decay_rate, beta2_decay_rate, ada_epsilon);
+//       this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
+//                          mf_initial_g2sum, mf_initial_range, mf_min_bound,
+//                          mf_max_bound, mf_beta1_decay_rate, mf_beta2_decay_rate, 
+//                          mf_ada_epsilon);
+      
+//       // set optimizer type(naive,adagrad,std_adagrad,adam,share_adam)
+//       // optimizer_type_ = (config.find("optimizer_type") == config.end())
+//       //                            ? 1
+//       //                            : config["optimizer_type"];
+//       optimizer_name_ = (config.find("embed_sparse_optimizer") == config.end())
+//                                  ? "adagrad"
+//                                  : config["embed_sparse_optimizer"];
+//       CommonFeatureValueAccessor feature_value_accessor_;
+//       feature_value_accessor_.Configure(config);
+//       embedx_dim_ = (config.find("sparse_embedx_dim") == config.end())
+//                                  ? 8
+//                                  : std::stoi(config["sparse_embedx_dim"]);
+//       if(optimizer_name_ == "adagrad") {
+//         embed_sgd_dim_ = 1;
+//         embedx_sgd_dim_ = 1;
+//       } else if (optimizer_name_ == "adam") {
+//         embed_sgd_dim_ = 4;
+//         embedx_sgd_dim_ = embedx_dim_ * 2 + 2;
+//       } else if (optimizer_name_ == "sharedadam") {
+//         embed_sgd_dim_ = 4;
+//         embedx_sgd_dim_ = 4;
+//       } else {
+//         embed_sgd_dim_ = 1;
+//         embedx_sgd_dim_ = 1;
+//       }
+//     }
+//   }
+>>>>>>> 4e395c7ebd... add adam/sharedadam optimzier for gpups;edit optimizer struct;test=develop
   void InitializeGPUServer(std::unordered_map<std::string, float> config) {
     float nonclk_coeff = (config.find("nonclk_coeff") == config.end())
                              ? 1.0
@@ -287,10 +486,10 @@ class PSGPUWrapper {
     float clk_coeff =
         (config.find("clk_coeff") == config.end()) ? 1.0 : config["clk_coeff"];
     float min_bound = (config.find("min_bound") == config.end())
-                          ? -10000.0
+                          ? -10.0
                           : config["min_bound"];
     float max_bound = (config.find("max_bound") == config.end())
-                          ? 10000.0
+                          ? 10.0
                           : config["max_bound"];
     float learning_rate = (config.find("learning_rate") == config.end())
                               ? 1.0
@@ -301,7 +500,15 @@ class PSGPUWrapper {
     float initial_range = (config.find("initial_range") == config.end())
                               ? 1.0
                               : config["initial_range"];
-
+    float beta1_decay_rate = (config.find("beta1_decay_rate") == config.end())
+                                 ? 0.9
+                                 : config["beta1_decay_rate"];
+    float beta2_decay_rate = (config.find("beta2_decay_rate") == config.end())
+                                 ? 0.999
+                                 : config["beta2_decay_rate"];
+    float ada_epsilon = (config.find("ada_epsilon") == config.end())
+                                 ? 1e-8
+                                 : config["ada_epsilon"];
     // mf config settings
     float mf_create_thresholds =
         (config.find("mf_create_thresholds") == config.end())
@@ -322,6 +529,15 @@ class PSGPUWrapper {
     float mf_max_bound = (config.find("mf_max_bound") == config.end())
                              ? 1.0
                              : config["mf_max_bound"];
+    float mf_beta1_decay_rate = (config.find("mf_beta1_decay_rate") == config.end())
+                                 ? 0.9
+                                 : config["mf_beta1_decay_rate"];
+    float mf_beta2_decay_rate = (config.find("mf_beta2_decay_rate") == config.end())
+                                 ? 0.999
+                                 : config["mf_beta2_decay_rate"];
+    float mf_ada_epsilon = (config.find("mf_ada_epsilon") == config.end())
+                                 ? 1e-8
+                                 : config["mf_ada_epsilon"];
     for (size_t i = 0; i < heter_devices_.size(); i++) {
 #ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(heter_devices_[i]));
@@ -334,14 +550,42 @@ class PSGPUWrapper {
                          max_bound,
                          learning_rate,
                          initial_g2sum,
-                         initial_range);
+                         initial_range,
+                         beta1_decay_rate, 
+                         beta2_decay_rate, 
+                         ada_epsilon);
       this->SetEmbedxSGD(mf_create_thresholds,
                          mf_learning_rate,
                          mf_initial_g2sum,
                          mf_initial_range,
                          mf_min_bound,
-                         mf_max_bound);
+                         mf_max_bound, 
+                         mf_beta1_decay_rate, 
+                         mf_beta2_decay_rate, 
+                         mf_ada_epsilon);
     }
+
+    // set optimizer type(naive,adagrad,std_adagrad,adam,share_adam)
+    optimizer_type_ = (config.find("optimizer_type") == config.end())
+                                ? 1
+                                : int(config["optimizer_type"]);
+    embedx_dim_ = (config.find("embedx_dim") == config.end())
+                                ? 8
+                                : int(config["embedx_dim"]);
+    if (optimizer_type_ == 3) { //adam
+      embed_sgd_dim_ = 4;
+      embedx_sgd_dim_ = embedx_dim_ * 2 + 2;
+    } else if (optimizer_type_ == 4) { //sharedadam
+      embed_sgd_dim_ = 4;
+      embedx_sgd_dim_ = 4;
+    } else {
+      embed_sgd_dim_ = 1;
+      embedx_sgd_dim_ = 1;
+    }
+
+    VLOG(0) << "InitializeGPUServer embed_sgd_dim_:" << embed_sgd_dim_ << " embedx_sgd_dim_:"
+            << embedx_sgd_dim_ << "  embedx_dim_:" << embedx_dim_
+            << " optimizer_type_:" << optimizer_type_;
   }
 
   void SetDate(int year, int month, int day) {
@@ -386,7 +630,7 @@ class PSGPUWrapper {
     if (slot_info_initialized_) {
       return;
     }
-    SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
+    SlotRecordDataset* dataset = (SlotRecordDataset*)(dataset_);
     auto slots_vec = dataset->GetSlots();
     slot_offset_vector_.clear();
     for (auto& slot : slot_vector_) {
@@ -427,10 +671,17 @@ class PSGPUWrapper {
     for (size_t i = 0; i < slot_index_vec_.size(); i++) {
       slot_index_vec_[i] = dim_index_map[slot_mf_dim_vector_[i]];
     }
-    val_type_size_ =
-        TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
-    grad_type_size_ =
-        TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
+    //TODO(FENGDANLEI): max_mf 
+    VLOG(0) << "InitSlotInfo embed_sgd_dim_:" << embed_sgd_dim_ << " embedx_sgd_dim_:"
+            << embedx_sgd_dim_ << "  embedx_dim_:" << embedx_dim_
+            << " optimizer_type_:" << optimizer_type_;
+    VLOG(0) << "InitSlotInfo:" << feature_value_accessor_.GetAccessorInfo().size;
+    val_type_size_ =TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().size);
+    // val_type_size_ =
+    //     TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
+    grad_type_size_ = TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().update_size);
+    // grad_type_size_ =
+    //     TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
     slot_info_initialized_ = true;
   }
 #endif
@@ -451,6 +702,13 @@ class PSGPUWrapper {
                   const std::string& conf);
 #endif
 
+#ifdef PADDLE_WITH_PSCORE
+  void SetTableAccessor(paddle::distributed::ValueAccessor* accessor) {
+    cpu_table_accessor_ = dynamic_cast<paddle::distributed::CtrDymfAccessor*>(accessor);
+  }
+#endif
+
+  CommonFeatureValueAccessor feature_value_accessor_;
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
   Dataset* dataset_;
@@ -503,6 +761,13 @@ class PSGPUWrapper {
   int day_;
   bool slot_info_initialized_ = false;
   int use_afs_api_ = 0;
+  int optimizer_type_ = 1;
+  int embed_sgd_dim_ = 1;
+  int embedx_sgd_dim_ = 1;
+  int embedx_dim_ = 8;
+#ifdef PADDLE_WITH_PSCORE
+  paddle::distributed::CtrDymfAccessor* cpu_table_accessor_;
+#endif
 
 #ifdef PADDLE_WITH_CUDA
   std::vector<MemoryPool*> mem_pools_;

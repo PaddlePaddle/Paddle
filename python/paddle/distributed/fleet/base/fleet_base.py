@@ -39,7 +39,7 @@ from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
 from paddle.distributed.fleet.utils.recompute import LegacyRecomputeFunction
 from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
-
+from paddle.distributed.fleet.proto import the_one_ps_pb2
 __all__ = []
 
 _grad_scalar = None
@@ -1618,7 +1618,7 @@ class Fleet(object):
 
         context["valid_strategy"] = copy.deepcopy(valid_strategy)
         # print("valid_strategy:", context["valid_strategy"])
-        # print("user_defined_strategy:", context["user_defined_strategy"])
+        print("user_defined_strategy:", context["user_defined_strategy"])
 
         applied_meta_list = self.strategy_compiler._get_applied_meta_list()
         applied_graph_list = self.strategy_compiler._get_applied_graph_list()
@@ -1648,17 +1648,17 @@ class Fleet(object):
                                                         no_grad_set=no_grad_set)
 
         if meta_optimizer:
-            # print("before minimize program id:", id(loss.block.program))
+            print("before minimize program id:", id(loss.block.program))
             optimize_ops, params_grads = meta_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
-            # print("after minimize program id:", id(loss.block.program))
+            print("after minimize program id:", id(loss.block.program))
 
             default_program = paddle.static.default_main_program()
-            # print("default program id:", id(default_program))
+            print("default program id:", id(default_program))
 
             if id(default_program) != id(loss.block.program):
                 paddle.fluid.framework.switch_main_program(loss.block.program)
-            # print("default program id after switch:", id(default_program))
+            print("default program id after switch:", id(default_program))
 
         else:
             optimize_ops, params_grads = self.user_defined_optimizer.minimize(
@@ -1668,7 +1668,7 @@ class Fleet(object):
         context["program_params_grads"] = params_grads
 
         if graph_optimizer:
-            # print("before graph minimize program id:", id(loss.block.program))
+            print("before graph minimize program id:", id(loss.block.program))
             optimize_ops, params_grads = graph_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
             # since we do not encourage users to use graph operations
@@ -1679,6 +1679,17 @@ class Fleet(object):
             context["graph_optimize_grads"] = params_grads
         else:
             apply_ir_passes(loss.block.program, startup_program, self)
+
+        # ps_param = the_one_ps_pb2.PSParameter()
+        
+        # all_table_proto = context["user_defined_strategy"].sparse_table_configs
+        # ps_param = all_table_proto.add()
+
+        # opt_info = {}
+        # opt_info["fleet_desc"] = ps_param
+        # program = paddle.static.default_main_program()
+        # program._fleet_opt = opt_info
+        # print("ps_param:", ps_param)
 
         if not self._role_maker._is_heter_parameter_server_mode:
             program = paddle.static.default_main_program()
@@ -1691,6 +1702,7 @@ class Fleet(object):
                     opt_info[k] = v
             program._fleet_opt = opt_info
 
+        print("_fleet_opt:", program._fleet_opt)
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
@@ -1765,7 +1777,7 @@ class Fleet(object):
             for k, v in self._user_defined_strategy.trainer_desc_configs.items(
             ):
                 if v or k not in opt_info:
-                    opt_info[k] = v
+                        opt_info[k] = v
             program._fleet_opt = opt_info
             # print("fleet base opt info:", id(program), program._fleet_opt)
 

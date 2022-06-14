@@ -150,7 +150,7 @@ class HashTable {
 
 #if defined(PADDLE_WITH_CUDA)
 
-  template <typename GradType, typename Sgd, typename StreamType>
+  template <typename Sgd, typename StreamType>
   void update(const KeyType* d_keys,
               const GradType* d_grads,
               size_t len,
@@ -189,7 +189,12 @@ class HashTable {
             << " push value size: " << push_grad_value_size_;
   }
 
+  void set_accessor(CommonFeatureValueAccessor& accessor) {
+   feature_value_accessor_ = accessor;
+  }
+
   std::unique_ptr<phi::RWLock> rwlock_{nullptr};
+  CommonFeatureValueAccessor feature_value_accessor_;
 
  private:
 #if defined(PADDLE_WITH_CUDA)
@@ -206,6 +211,7 @@ class HashTable {
   size_t max_mf_dim_ = 8;
   size_t pull_feature_value_size_;
   size_t push_grad_value_size_;
+  
 };
 }  // end namespace framework
 }  // end namespace paddle

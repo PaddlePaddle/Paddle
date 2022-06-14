@@ -591,6 +591,7 @@ class SparseTable(Table):
         print('new table_name: {}'.format(self.common.table_name))
         all_table_proto = self.context[
             "user_defined_strategy"].sparse_table_configs
+        print("all_table_proto:", all_table_proto)
         usr_table_proto = all_table_proto.add()
         for proto in all_table_proto:
             if proto.table_name == self.common.table_name:
@@ -619,8 +620,12 @@ class SparseTable(Table):
             warnings.warn(
                 "The accessor of sparse table is not set, use default value.")
 
+        # table_proto.accessor = usr_table_proto.accessor
         table_proto.accessor.ParseFromString(
             usr_table_proto.accessor.SerializeToString())
+        # table_proto.accessor.CopyFrom(usr_table_proto.accessor)
+        print("usr_table_proto.accessor.SerializeToString():", usr_table_proto.accessor.SerializeToString())
+        print("====table_proto:", table_proto)
         self.accessor._set(table_proto.accessor, self.common.table_name,
                            ctx.program_id(), self.context)
 
@@ -936,6 +941,7 @@ class TheOnePSRuntime(RuntimeBase):
         #with open("test_fl_ps_worker_desc", "w") as f:
         #    f.write(worker_desc)
         if self.context['use_ps_gpu']:
+            #main_program._fleet_opt["fleet_desc"] = worker_desc()
             main_program = self.context['loss'].block.program
             if not main_program._fleet_opt:
                 main_program._fleet_opt = {}
@@ -965,7 +971,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         proto_txt = worker_desc
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
+        if True:
             print("worker: \n{}".format(proto_txt))
             print("communicator send_ctx:")
             for key in send_ctx:

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+// #include <google/protobuf/text_format.h>
 
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
@@ -22,6 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
+// #if defined PADDLE_WITH_HETERPS
+// #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+// #endif
 namespace paddle {
 namespace framework {
 
@@ -46,6 +50,11 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     places_.push_back(place);
   }
 #endif
+
+// #if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
+//   InitializeGPUServer(trainer_desc);
+// #endif
+
   // get filelist from trainer_desc here
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
@@ -78,6 +87,83 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   // set debug here
   SetDebug(trainer_desc.debug());
 }
+
+#if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
+void add_sparse_optimizer(
+    std::unordered_map<std::string, float>& config,  // NOLINT
+    const ::paddle::distributed::SparseCommonSGDRuleParameter& sgd_param,
+    const std::string& prefix = "") {
+  auto optimizer_name = sgd_param.name();
+  if (optimizer_name == "SparseNaiveSGDRule") {
+    config[prefix + "optimizer_type"] = 0;
+    config[prefix + "learning_rate"] = sgd_param.naive().learning_rate();
+    config[prefix + "initial_range"] = sgd_param.naive().initial_range();
+    config[prefix + "min_bound"] = sgd_param.naive().weight_bounds()[0];
+    config[prefix + "max_bound"] = sgd_param.naive().weight_bounds()[1];
+  } else if (optimizer_name == "SparseAdaGradSGDRule") {
+    config[prefix + "optimizer_type"] = 1;
+    config[prefix + "learning_rate"] = sgd_param.adagrad().learning_rate();
+    config[prefix + "initial_range"] = sgd_param.adagrad().initial_range();
+    config[prefix + "initial_g2sum"] = sgd_param.adagrad().initial_g2sum();
+    config[prefix + "min_bound"] = sgd_param.adagrad().weight_bounds()[0];
+    config[prefix + "max_bound"] = sgd_param.adagrad().weight_bounds()[1];
+  } else if (optimizer_name == "StdAdaGradSGDRule") {
+    config[prefix + "optimizer_type"] = 2;
+    config[prefix + "learning_rate"] = sgd_param.adagrad().learning_rate();
+    config[prefix + "initial_range"] = sgd_param.adagrad().initial_range();
+    config[prefix + "initial_g2sum"] = sgd_param.adagrad().initial_g2sum();
+    config[prefix + "min_bound"] = sgd_param.adagrad().weight_bounds()[0];
+    config[prefix + "max_bound"] = sgd_param.adagrad().weight_bounds()[1];
+  } else if (optimizer_name == "SparseAdamSGDRule") {
+    config[prefix + "optimizer_type"] = 3;
+    config[prefix + "learning_rate"] = sgd_param.adam().learning_rate();
+    config[prefix + "initial_range"] = sgd_param.adam().initial_range();
+    config[prefix + "beta1_decay_rate"] = sgd_param.adam().beta1_decay_rate();
+    config[prefix + "beta2_decay_rate"] = sgd_param.adam().beta2_decay_rate();
+    config[prefix + "ada_epsilon"] = sgd_param.adam().ada_epsilon();
+    config[prefix + "min_bound"] = sgd_param.adam().weight_bounds()[0];
+    config[prefix + "max_bound"] = sgd_param.adam().weight_bounds()[1];
+  } else if (optimizer_name == "SparseAdamSharedSGDRule") {
+    config[prefix + "optimizer_type"] = 4;
+    config[prefix + "learning_rate"] = sgd_param.adam().learning_rate();
+    config[prefix + "initial_range"] = sgd_param.adam().initial_range();
+    config[prefix + "beta1_decay_rate"] = sgd_param.adam().beta1_decay_rate();
+    config[prefix + "beta2_decay_rate"] = sgd_param.adam().beta2_decay_rate();
+    config[prefix + "ada_epsilon"] = sgd_param.adam().ada_epsilon();
+    config[prefix + "min_bound"] = sgd_param.adam().weight_bounds()[0];
+    config[prefix + "max_bound"] = sgd_param.adam().weight_bounds()[1];
+  }
+}
+
+// void MultiTrainer::InitializeGPUServer(const TrainerDesc& trainer_desc) {
+//   // optimizer config for hbmps
+//   auto fleet_desc_str = trainer_desc.fleet_desc();
+//   VLOG(0) << "InitializeGPUServer fleet_desc_str" << fleet_desc_str;
+//   google::protobuf::TextFormat::ParseFromString(fleet_desc_str, &_ps_param);
+//   auto sparse_table =
+//       _ps_param.server_param().downpour_server_param().downpour_table_param(0);
+//   auto sparse_table_accessor = sparse_table.accessor();
+//   auto sparse_table_accessor_parameter =
+//       sparse_table_accessor.ctr_accessor_param();
+//   auto accessor_class = sparse_table_accessor.accessor_class();
+
+//   // NOTE(zhangminxu): gpups' sparse table optimizer config,
+//   // now only support single sparse table
+//   // auto sparse_table = param_.sparse_table(0);
+//   std::unordered_map<std::string, float> config;
+//   config["nonclk_coeff"] = sparse_table_accessor_parameter.nonclk_coeff();
+//   config["clk_coeff"] = sparse_table_accessor_parameter.click_coeff();
+ 
+//   if (accessor_class == "CtrDymfAccessor") {
+//     // optimizer config for embed_w and embedx
+//     add_sparse_optimizer(config, sparse_table_accessor.embed_sgd_param());
+//     add_sparse_optimizer(config, sparse_table_accessor.embedx_sgd_param(),
+//                          "mf_");
+//   }
+//   auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+//   ps_gpu_wrapper->InitializeGPUServer(config);
+// }
+#endif
 
 std::string MultiTrainer::GetDumpPath(int tid) {
   if (user_define_dump_filename_ != "") {
@@ -303,6 +389,8 @@ void MultiTrainer::Finalize() {
 #endif
   root_scope_->DropKids();
 }
+
+
 
 }  // end namespace framework
 }  // end namespace paddle

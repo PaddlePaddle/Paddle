@@ -67,13 +67,14 @@ __global__ void PullCopy(float** dest,
 }
 
 __global__ void PullCopy(float** dest,
-                         const FeatureValue* src,
+                         const float* src,
                          const int64_t* len,
                          int slot_num,
                          int total_len,
                          uint64_t** keys,
                          uint64_t max_val_size,
-                         int* gpu_dim) {
+                         int* gpu_dim,
+                         CommonFeatureValueAccessor feature_value_accessor) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;
@@ -86,25 +87,26 @@ __global__ void PullCopy(float** dest,
     }
     int x = low;
     int y = i - (x ? len[x - 1] : 0);
-    FeatureValue* feature_value_ptr =
-        (FeatureValue*)((char*)src + uint64_t(i) * uint64_t(max_val_size));
+    float* feature_value_ptr =
+        (float*)((char*)src + uint64_t(i) * uint64_t(max_val_size));
     int mf_dim = gpu_dim[x] - 3;
     if (*(keys[x] + y) == 0) {
       *(dest[x] + y * (mf_dim + 3)) = 0;
       *(dest[x] + y * (mf_dim + 3) + 1) = 0;
       *(dest[x] + y * (mf_dim + 3) + 2) = 0;
     } else {
-      *(dest[x] + y * (mf_dim + 3)) = feature_value_ptr->show;
-      *(dest[x] + y * (mf_dim + 3) + 1) = feature_value_ptr->clk;
-      *(dest[x] + y * (mf_dim + 3) + 2) = feature_value_ptr->lr;
+      *(dest[x] + y * (mf_dim + 3)) = feature_value_ptr[feature_value_accessor.common_feature_value.ShowIndex()];
+      *(dest[x] + y * (mf_dim + 3) + 1) = feature_value_ptr[feature_value_accessor.common_feature_value.ClickIndex()];
+      *(dest[x] + y * (mf_dim + 3) + 2) = feature_value_ptr[feature_value_accessor.common_feature_value.EmbedWIndex()];
     }
-    if ((feature_value_ptr)->mf_size == 0 || *(keys[x] + y) == 0) {
+
+    if (feature_value_ptr[feature_value_accessor.common_feature_value.MfSizeIndex()] == 0 || *(keys[x] + y) == 0) {
       for (int j = 0; j < mf_dim; j++) {
         *(dest[x] + y * (mf_dim + 3) + 3 + j) = 0;
       }
     } else {
       for (int j = 0; j < mf_dim; j++) {
-        *(dest[x] + y * (mf_dim + 3) + 3 + j) = feature_value_ptr->mf[1 + j];
+        *(dest[x] + y * (mf_dim + 3) + 3 + j) = feature_value_ptr[feature_value_accessor.common_feature_value.EmbedxWIndex() + j];
       }
     }
   }
@@ -161,7 +163,7 @@ __global__ void PushCopy(FeaturePushValue* dest,
   }
 }
 
-__global__ void PushCopyWithPool(FeaturePushValue* dest,
+__global__ void PushCopyWithPool(float* dest,
                                  float** src,
                                  int64_t* len,
                                  int slot_num,
@@ -169,7 +171,8 @@ __global__ void PushCopyWithPool(FeaturePushValue* dest,
                                  int bs,
                                  int* slot_vector,
                                  int* mf_dim_vector,
-                                 size_t grad_value_size) {
+                                 size_t grad_value_size,
+                                CommonFeatureValueAccessor feature_value_accessor) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;
@@ -182,16 +185,24 @@ __global__ void PushCopyWithPool(FeaturePushValue* dest,
     }
     int x = low;
     int y = i - (x ? len[low - 1] : 0);
-    FeaturePushValue* cur =
-        (FeaturePushValue*)((char*)dest + i * grad_value_size);
-    cur->slot = slot_vector[x];
+    float* cur =
+        (float*)((char*)dest + i * grad_value_size);
+
+    cur[feature_value_accessor.common_push_value.SlotIndex()] = 
+        (float)slot_vector[x];
     int mf_dim = mf_dim_vector[x];
-    cur->mf_dim = mf_dim;
-    cur->show = *(src[x] + y * (mf_dim + 3));
-    cur->clk = *(src[x] + y * (mf_dim + 3) + 1);
-    cur->lr_g = *(src[x] + y * (mf_dim + 3) + 2) * -1. * bs;
-    for (int j = 0; j < cur->mf_dim; j++) {
-      cur->mf_g[j] = *(src[x] + y * (mf_dim + 3) + 3 + j) * -1. * bs;
+    cur[feature_value_accessor.common_push_value.MfDimIndex()] = mf_dim;
+
+    cur[feature_value_accessor.common_push_value.ShowIndex()] = 
+      *(src[x] + y * (mf_dim + 3));
+    cur[feature_value_accessor.common_push_value.ClickIndex()] = 
+      *(src[x] + y * (mf_dim + 3) + 1);
+    cur[feature_value_accessor.common_push_value.EmbedGIndex()] = 
+      *(src[x] + y * (mf_dim + 3) + 2) * -1. * bs;
+    // printf("PushCopyWithPool show:%f ,click: %d\n", cur[feature_value_accessor.common_push_value.ShowIndex()], 
+    //                 cur[feature_value_accessor.common_push_value.ClickIndex()]);
+    for (int j = 0; j < mf_dim; j++) {
+      cur[feature_value_accessor.common_push_value.EmbedxGIndex() + j] = *(src[x] + y * (mf_dim + 3) + 3 + j) * -1. * bs;
     }
   }
 }
@@ -229,7 +240,7 @@ void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
 void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
                                uint64_t** gpu_keys,
                                const std::vector<float*>& values,
-                               const FeatureValue* total_values_gpu,
+                               const float* total_values_gpu,
                                const int64_t* gpu_len,
                                const int slot_num,
                                const int hidden_size,
@@ -252,7 +263,8 @@ void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
       total_length,
       gpu_keys,
       val_type_size_,
-      gpu_dim);
+      gpu_dim,
+      feature_value_accessor_);
   cudaStreamSynchronize(stream);
 }
 
@@ -321,7 +333,7 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
 
 void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
                                const std::vector<const float*>& grad_values,
-                               FeaturePushValue* total_grad_values_gpu,
+                               float* total_grad_values_gpu,
                                const std::vector<int64_t>& slot_lengths,
                                const uint64_t total_length,
                                const int batch_size,
@@ -369,7 +381,8 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
       batch_size,
       d_slot_vector,
       d_mf_dim_vector,
-      grad_value_size);
+      grad_value_size, 
+      feature_value_accessor_);
   cudaStreamSynchronize(stream);
 }
 
@@ -379,7 +392,10 @@ void PSGPUWrapper::SetSparseSGD(float nonclk_coeff,
                                 float max_bound,
                                 float learning_rate,
                                 float initial_g2sum,
-                                float initial_range) {
+                                float initial_range, 
+				float beta1_decay_rate,
+                                float beta2_decay_rate, 
+				float ada_epsilon) {
   OptimizerConfig optimizer_config;
   optimizer_config.set_sparse_sgd(nonclk_coeff,
                                   clk_coeff,
@@ -387,7 +403,10 @@ void PSGPUWrapper::SetSparseSGD(float nonclk_coeff,
                                   max_bound,
                                   learning_rate,
                                   initial_g2sum,
-                                  initial_range);
+                                  initial_range,
+                                  beta1_decay_rate, 
+				  beta2_decay_rate, 
+				  ada_epsilon);
   HeterPs_->set_sparse_sgd(optimizer_config);
 }
 
@@ -396,14 +415,20 @@ void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
                                 float mf_initial_g2sum,
                                 float mf_initial_range,
                                 float mf_min_bound,
-                                float mf_max_bound) {
+                                float mf_max_bound, 
+				float mf_beta1_decay_rate,
+                                float mf_beta2_decay_rate, 
+				float mf_ada_epsilon) {
   OptimizerConfig optimizer_config;
   optimizer_config.set_embedx_sgd(mf_create_thresholds,
                                   mf_learning_rate,
                                   mf_initial_g2sum,
                                   mf_initial_range,
-                                  mf_min_bound,
-                                  mf_max_bound);
+                                  mf_min_bound, 
+				  mf_max_bound, 
+				  mf_beta1_decay_rate,
+                                  mf_beta2_decay_rate, 
+				  mf_ada_epsilon);
   HeterPs_->set_embedx_sgd(optimizer_config);
 }
 
