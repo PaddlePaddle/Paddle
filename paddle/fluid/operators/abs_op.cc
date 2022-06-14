@@ -164,7 +164,7 @@ class AbsDoubleGradOp : public framework::OperatorWithKernel {
 };
 
 }  // namespace operators
-}  // namespace 
+}  // namespace paddle
 
 DECLARE_INFER_SHAPE_FUNCTOR(abs, AbsInferShapeFunctor,
                             PD_INFER_META(phi::RealAndImagInferMeta));

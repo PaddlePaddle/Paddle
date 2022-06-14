@@ -37,5 +37,4 @@ if [ ${check_error} != 0 ];then
     echo -e '********************************\n'
 fi
 
-set -x
 exit ${check_error}
