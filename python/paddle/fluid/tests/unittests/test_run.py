@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -51,13 +51,13 @@ def write_file(name, ct):
 
 def get_files(pth, prefix):
     return [
-        f for f in listdir(pth)
-        if isfile(join(pth, f)) and f.startswith(prefix) and f !=
-        f"{prefix}.gpu.log"
+        f for f in listdir(pth) if isfile(join(pth, f)) and f.startswith(prefix)
+        and f != f"{prefix}.gpu.log"
     ]
 
 
 class Collective_Test(unittest.TestCase):
+
     def setUp(self):
         write_file(pyname, colpyfile)
 
@@ -109,6 +109,7 @@ class Collective_Test(unittest.TestCase):
 
 
 class PS_Test(unittest.TestCase):
+
     def setUp(self):
         write_file(pyname, pspyfile)
 

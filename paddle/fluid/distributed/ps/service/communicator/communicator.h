@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <ThreadPool.h>
 #include <stdint.h>
+
 #include <atomic>
 #include <deque>
 #include <map>
@@ -30,6 +31,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
+#include "paddle/fluid/distributed/ps/service/ps_client.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
@@ -41,8 +43,6 @@ limitations under the License. */
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/fluid/distributed/ps/service/ps_client.h"
 
 namespace paddle {
 namespace distributed {
@@ -157,8 +157,9 @@ template <typename T>
 inline void MergeVars(const std::string &var_name,
                       const std::vector<std::shared_ptr<Variable>> &vars,
                       Scope *scope, bool merge_add = true) {
-  PADDLE_ENFORCE_NE(vars.empty(), true, platform::errors::InvalidArgument(
-                                            "vector vars are empty."));
+  PADDLE_ENFORCE_NE(
+      vars.empty(), true,
+      platform::errors::InvalidArgument("vector vars are empty."));
   auto cpu_place = platform::CPUPlace();
   auto &var0 = vars[0];
   auto *out_var = scope->Var(var_name);

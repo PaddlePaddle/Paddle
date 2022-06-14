@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <stack>
+
 #include "paddle/fluid/operators/math/tree2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 

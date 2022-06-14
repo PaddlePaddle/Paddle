@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 #define INT_BITS 32
@@ -58,8 +59,8 @@ struct FastDivMod {
     return result;
   }
 
-  int32_t divisor;
   int32_t shift_val;
+  uint32_t divisor;
   uint32_t multiplier;
 };
 

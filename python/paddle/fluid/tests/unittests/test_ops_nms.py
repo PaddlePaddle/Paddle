@@ -70,6 +70,7 @@ def gen_args(num_boxes, dtype):
 
 
 class TestOpsNMS(unittest.TestCase):
+
     def setUp(self):
         self.num_boxes = 64
         self.threshold = 0.5
@@ -85,11 +86,11 @@ class TestOpsNMS(unittest.TestCase):
                 boxes, scores, category_idxs, categories = gen_args(
                     self.num_boxes, dtype)
                 paddle.set_device(device)
-                out = paddle.vision.ops.nms(
-                    paddle.to_tensor(boxes), self.threshold,
-                    paddle.to_tensor(scores))
-                out = paddle.vision.ops.nms(
-                    paddle.to_tensor(boxes), self.threshold)
+                out = paddle.vision.ops.nms(paddle.to_tensor(boxes),
+                                            self.threshold,
+                                            paddle.to_tensor(scores))
+                out = paddle.vision.ops.nms(paddle.to_tensor(boxes),
+                                            self.threshold)
                 out_py = nms(boxes, self.threshold)
 
                 self.assertTrue(
@@ -102,10 +103,11 @@ class TestOpsNMS(unittest.TestCase):
                 boxes, scores, category_idxs, categories = gen_args(
                     self.num_boxes, dtype)
                 paddle.set_device(device)
-                out = paddle.vision.ops.nms(
-                    paddle.to_tensor(boxes), self.threshold,
-                    paddle.to_tensor(scores),
-                    paddle.to_tensor(category_idxs), categories, self.topk)
+                out = paddle.vision.ops.nms(paddle.to_tensor(boxes),
+                                            self.threshold,
+                                            paddle.to_tensor(scores),
+                                            paddle.to_tensor(category_idxs),
+                                            categories, self.topk)
                 out_py = multiclass_nms(boxes, scores, category_idxs,
                                         self.threshold, self.topk)
 
@@ -119,10 +121,12 @@ class TestOpsNMS(unittest.TestCase):
                 paddle.enable_static()
                 boxes, scores, category_idxs, categories = gen_args(
                     self.num_boxes, dtype)
-                boxes_static = paddle.static.data(
-                    shape=boxes.shape, dtype=boxes.dtype, name="boxes")
-                scores_static = paddle.static.data(
-                    shape=scores.shape, dtype=scores.dtype, name="scores")
+                boxes_static = paddle.static.data(shape=boxes.shape,
+                                                  dtype=boxes.dtype,
+                                                  name="boxes")
+                scores_static = paddle.static.data(shape=scores.shape,
+                                                   dtype=scores.dtype,
+                                                   name="scores")
                 category_idxs_static = paddle.static.data(
                     shape=category_idxs.shape,
                     dtype=category_idxs.dtype,
@@ -175,15 +179,17 @@ class TestOpsNMS(unittest.TestCase):
                     fun,
                     path,
                     input_spec=[
-                        paddle.static.InputSpec(
-                            shape=[None, 4], dtype='float32', name='x')
-                    ], )
+                        paddle.static.InputSpec(shape=[None, 4],
+                                                dtype='float32',
+                                                name='x')
+                    ],
+                )
                 load_func = paddle.jit.load(path)
                 res = load_func(paddle.to_tensor(boxes))
                 self.assertTrue(
                     np.array_equal(origin, res),
-                    "origin out: {}\n inference model out: {}\n".format(origin,
-                                                                        res))
+                    "origin out: {}\n inference model out: {}\n".format(
+                        origin, res))
 
 
 if __name__ == '__main__':

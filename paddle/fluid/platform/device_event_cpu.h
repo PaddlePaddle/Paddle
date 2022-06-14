@@ -16,6 +16,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
+
 #include "paddle/fluid/platform/device_event_base.h"
 
 namespace paddle {

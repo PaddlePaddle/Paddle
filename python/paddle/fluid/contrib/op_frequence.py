@@ -96,9 +96,11 @@ def op_freq_statistic(program):
             else:
                 adj_2_op_freq[op_op] = 1
 
-    uni_op_freq = sorted(
-        uni_op_freq.items(), key=lambda item: item[1], reverse=True)
-    adj_2_op_freq = sorted(
-        adj_2_op_freq.items(), key=lambda item: item[1], reverse=True)
+    uni_op_freq = sorted(uni_op_freq.items(),
+                         key=lambda item: item[1],
+                         reverse=True)
+    adj_2_op_freq = sorted(adj_2_op_freq.items(),
+                           key=lambda item: item[1],
+                           reverse=True)
 
     return uni_op_freq, adj_2_op_freq

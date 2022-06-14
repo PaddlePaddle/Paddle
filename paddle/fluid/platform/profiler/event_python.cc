@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/event_python.h"
+
 #include "paddle/fluid/platform/profiler/chrometracing_logger.h"
 #include "paddle/fluid/platform/profiler/dump/deserialization_reader.h"
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
@@ -29,6 +30,9 @@ HostPythonNode::~HostPythonNode() {
     delete *it;
   }
   for (auto it = device_node_ptrs.begin(); it != device_node_ptrs.end(); ++it) {
+    delete *it;
+  }
+  for (auto it = mem_node_ptrs.begin(); it != mem_node_ptrs.end(); ++it) {
     delete *it;
   }
 }
@@ -75,6 +79,29 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
       device_python_node->stream_id = (*devicenode)->StreamId();
       runtime_python_node->device_node_ptrs.push_back(device_python_node);
     }
+  }
+  // copy MemTraceEventNode
+  for (auto memnode = root->GetMemTraceEventNodes().begin();
+       memnode != root->GetMemTraceEventNodes().end(); memnode++) {
+    MemPythonNode* mem_python_node = new MemPythonNode();
+    mem_python_node->timestamp_ns = (*memnode)->TimeStampNs();
+    mem_python_node->addr = (*memnode)->Addr();
+    mem_python_node->type = (*memnode)->Type();
+    mem_python_node->process_id = (*memnode)->ProcessId();
+    mem_python_node->thread_id = (*memnode)->ThreadId();
+    mem_python_node->increase_bytes = (*memnode)->IncreaseBytes();
+    mem_python_node->place = (*memnode)->Place();
+    mem_python_node->current_allocated = (*memnode)->CurrentAllocated();
+    mem_python_node->current_reserved = (*memnode)->CurrentReserved();
+    host_python_node->mem_node_ptrs.push_back(mem_python_node);
+  }
+  // copy OperatorSupplementEventNode's information if exists
+  OperatorSupplementEventNode* op_supplement_node =
+      root->GetOperatorSupplementEventNode();
+  if (op_supplement_node != nullptr) {
+    host_python_node->input_shapes = op_supplement_node->InputShapes();
+    host_python_node->dtypes = op_supplement_node->Dtypes();
+    host_python_node->callstack = op_supplement_node->CallStack();
   }
   return host_python_node;
 }

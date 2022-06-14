@@ -1,28 +1,33 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
-import numpy
-import paddle.nn.functional as F
-import tempfile
-import warnings
-import json
 import os
+import json
+import tempfile
+import unittest
+import warnings
+import numpy
+
+import paddle
+import paddle.nn.functional as F
+from paddle.fluid.framework import _enable_legacy_dygraph
+
+_enable_legacy_dygraph()
 
 
 class SimpleNet(paddle.nn.Layer):
+
     def __init__(self, data_format="NCHW", class_num=2):
         super(SimpleNet, self).__init__()
         self.conv = paddle.nn.Conv2D(3, 8, (3, 3))
@@ -43,6 +48,7 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class LayoutAutoTune(unittest.TestCase):
+
     def use_autoune(self):
         if paddle.is_compiled_with_cuda():
             paddle.incubate.autotune.set_config(
@@ -101,7 +107,7 @@ class LayoutAutoTune(unittest.TestCase):
         with paddle.amp.auto_cast(level="O2"):
             conv_out = conv(data)
             # conv_out.shape = [1, 14, 12, 8] with NHWC
-            # layout tuner will transpose conv_out to 
+            # layout tuner will transpose conv_out to
             # [1, 8, 14, 12] with NCHW before the following transpose op.
             out = paddle.transpose(conv_out, perm=[0, 3, 1, 2])
             loss = out.mean()
@@ -131,6 +137,7 @@ class LayoutAutoTune(unittest.TestCase):
 
 
 class TestAutoTuneAPI(unittest.TestCase):
+
     def test_set_config_warnings(self):
         with warnings.catch_warnings(record=True) as w:
             config = {"layout": {"enable": 1}}

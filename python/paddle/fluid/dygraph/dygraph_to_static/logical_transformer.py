@@ -57,8 +57,7 @@ class LogicalTransformer(gast.NodeTransformer):
         self.generic_visit(node)
         if isinstance(node.op, gast.Not):
             arg = ast_to_source_code(node.operand)
-            new_node_str = "paddle.jit.dy2static.convert_logical_not({})".format(
-                arg)
+            new_node_str = "_jst.convert_logical_not({})".format(arg)
             # NOTE: gast.parse returns Module(body=[expr(value=...)])
             new_node = gast.parse(new_node_str).body[0].value
             return new_node
@@ -67,13 +66,12 @@ class LogicalTransformer(gast.NodeTransformer):
     def visit_Compare(self, node):
         self.generic_visit(node)
         left_str = ast_to_source_code(node.left).strip()
-        if left_str.startswith("paddle.jit.dy2static.convert_var_shape"):
+        if left_str.startswith("_jst.convert_var_shape"):
             # check left and comparators are all converted var shape
             compare_arg_strs = left_str
             for i, comparator in enumerate(node.comparators):
                 comparator_str = ast_to_source_code(comparator).strip()
-                if not comparator_str.startswith(
-                        "paddle.jit.dy2static.convert_var_shape"):
+                if not comparator_str.startswith("_jst.convert_var_shape"):
                     return node
                 op_str = cmpop_node_to_str(node.ops[i])
                 compare_arg_strs += (", '" + op_str + "', " + comparator_str)
@@ -81,7 +79,7 @@ class LogicalTransformer(gast.NodeTransformer):
             # Now all left and comparators are converted shape
             # Replace some comparsion operation because of difference between
             # Python and Paddle
-            new_node_str = "paddle.jit.dy2static.convert_shape_compare({})".format(
+            new_node_str = "_jst.convert_shape_compare({})".format(
                 compare_arg_strs)
             new_node = gast.parse(new_node_str).body[0].value
             return new_node
@@ -119,7 +117,7 @@ class LogicalTransformer(gast.NodeTransformer):
             nodes = [pre_logic_node] + [post_logic_node]
 
         args = [ast_to_source_code(child) for child in nodes]
-        new_node_str = "paddle.jit.dy2static.convert_logical_{}(lambda:{}, lambda:{})".format(
+        new_node_str = "_jst.convert_logical_{}(lambda:{}, lambda:{})".format(
             api_type, args[0], args[1])
         # NOTE: gast.parse return Module(body=[expr(...)])
         new_node = gast.parse(new_node_str).body[0].value

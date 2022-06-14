@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/graph_send_recv_grad_kernel.h"
-#include "paddle/phi/kernels/cpu/graph_send_recv_funcs.h"
 
 #include <algorithm>
 #include <vector>
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/graph_send_recv_funcs.h"
 
 namespace phi {
 
@@ -121,8 +121,8 @@ void GraphSendRecvGradKernel(const Context& ctx,
                              const DenseTensor& x,
                              const DenseTensor& src_index,
                              const DenseTensor& dst_index,
-                             paddle::optional<const DenseTensor&> out,
-                             paddle::optional<const DenseTensor&> dst_count,
+                             const paddle::optional<DenseTensor>& out,
+                             const paddle::optional<DenseTensor>& dst_count,
                              const DenseTensor& out_grad,
                              const std::string& pool_type,
                              DenseTensor* x_grad) {

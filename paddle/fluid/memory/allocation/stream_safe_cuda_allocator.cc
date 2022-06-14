@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
+
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #ifdef PADDLE_WITH_CUDA

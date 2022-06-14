@@ -27,8 +27,8 @@ using dnnl::primitive;
 using dnnl::reorder;
 using platform::to_void_cast;
 using Tensor = framework::Tensor;
-using framework::DataLayout;
 using dnnl::stream;
+using framework::DataLayout;
 using platform::GetMKLDNNFormat;
 
 template <typename T>

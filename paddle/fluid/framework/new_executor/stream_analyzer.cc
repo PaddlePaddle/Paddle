@@ -13,10 +13,31 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/stream_analyzer.h"
+
+#include <future>
 #include <unordered_set>
+
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
+
+StreamAnalyzer::StreamAnalyzer(const platform::Place& place) : place_(place) {
+  if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    platform::EmplaceDeviceContexts(
+        &d2h_ctxs_, {place},
+        /*disable_setting_default_stream_for_allocator=*/true);
+    platform::EmplaceDeviceContexts(
+        &h2d_ctxs_, {place},
+        /*disable_setting_default_stream_for_allocator=*/true);
+#else
+    PADDLE_THROW(
+        platform::errors::Unimplemented("CUDAPlace is not supported. Please "
+                                        "re-compile with WITH_GPU option."));
+#endif
+  }
+}
 
 /*
  * Parse the var_ids that need to be associated with an event.
@@ -136,10 +157,10 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
   auto* dev_ctx = op_func_node.dev_ctx_;
   if (op_type == interpreter::kMemcpyD2H) {
     VLOG(3) << "Get dev_ctx from d2h_context_pool_";
-    dev_ctx = d2h_ctx_pool_.Get(place_);
+    dev_ctx = d2h_ctxs_[place_].get().get();
   } else if (op_type == interpreter::kMemcpyH2D) {
     VLOG(3) << "Get dev_ctx from h2d_context_pool_";
-    dev_ctx = h2d_ctx_pool_.Get(place_);
+    dev_ctx = h2d_ctxs_[place_].get().get();
   }
 
   return dev_ctx;

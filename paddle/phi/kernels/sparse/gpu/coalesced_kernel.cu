@@ -133,17 +133,15 @@ void CoalescedGPUKernel(const GPUContext& dev_ctx,
 
   // 5. scatter the values
   config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nnz * stride, 1);
-  phi::funcs::sparse::ScatterKernel<T><<<config.block_per_grid,
-                                         config.thread_per_block,
-                                         0,
-                                         dev_ctx.stream()>>>(
-      x_values_ptr,
-      public_indexs.data<int>(),
-      values_indexs_ptr,
-      out_nnz,
-      nnz,
-      stride,
-      out_values.data<T>());
+  phi::funcs::sparse::ScatterKernel<T>
+      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
+          x_values_ptr,
+          public_indexs.data<int>(),
+          values_indexs_ptr,
+          out_nnz,
+          nnz,
+          stride,
+          out_values.data<T>());
 
   // 6. convert index to coordinate
   Dim<DDim::kMaxRank> const_dims;

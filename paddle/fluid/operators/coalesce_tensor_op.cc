@@ -14,6 +14,7 @@
 
 #include <sstream>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -265,11 +266,10 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
           ->ShareDataWith(fused_tensor->Slice(
               static_cast<int64_t>(offset), static_cast<int64_t>(offset + len)))
           .Resize(dim);
-      len = use_align
-                ? platform::Alignment(len * size_of_dtype, context.GetPlace(),
-                                      align_size) /
-                      size_of_dtype
-                : len;
+      len = use_align ? platform::Alignment(len * size_of_dtype,
+                                            context.GetPlace(), align_size) /
+                            size_of_dtype
+                      : len;
       ss << "output(" << out_var_names[i] << ")  dim:(" << dim << ")"
          << " address: " << out_tensors[i]->data() << " len: " << len << ", ";
       offset += len;
@@ -304,12 +304,11 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
           size, 0,
           platform::errors::InvalidArgument(
               "The number of tensor `%s`'s elements is 0.", var_names[i]));
-      auto len =
-          use_align
-              ? platform::Alignment(static_cast<size_t>(size) * size_of_dtype,
-                                    place, align_size) /
-                    size_of_dtype
-              : static_cast<size_t>(size);
+      auto len = use_align ? platform::Alignment(
+                                 static_cast<size_t>(size) * size_of_dtype,
+                                 place, align_size) /
+                                 size_of_dtype
+                           : static_cast<size_t>(size);
       const void *ptr =
           lod_tensors[i]->IsInitialized() ? lod_tensors[i]->data() : nullptr;
       VLOG(4) << size << " " << len;

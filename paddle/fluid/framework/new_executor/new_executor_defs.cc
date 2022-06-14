@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+
 #include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
 // When in inference scenario, the scopes will not be written by two threads in
@@ -385,10 +386,11 @@ InterpretercoreInferShapeContext::GetOutputsVarType(
 void InterpretercoreInferShapeContext::SetOutputDim(const std::string& name,
                                                     const DDim& dim) {
   auto& vars = OutputVars(name);
-  PADDLE_ENFORCE_EQ(vars.size(), 1UL, platform::errors::InvalidArgument(
-                                          "Output(%s) should hold one element, "
-                                          "but now it holds %zu elements.",
-                                          name, vars.size()));
+  PADDLE_ENFORCE_EQ(
+      vars.size(), 1UL,
+      platform::errors::InvalidArgument("Output(%s) should hold one element, "
+                                        "but now it holds %zu elements.",
+                                        name, vars.size()));
   SetDim(vars[0], dim);
 }
 
@@ -653,8 +655,9 @@ void VariableScope::CheckExist(int id) const {
 }
 
 void VariableScope::CheckExist(const std::string& name) const {
-  PADDLE_ENFORCE_EQ(HasVar(name), true, platform::errors::NotFound(
-                                            "%s not in VariableScope.", name));
+  PADDLE_ENFORCE_EQ(
+      HasVar(name), true,
+      platform::errors::NotFound("%s not in VariableScope.", name));
 }
 
 void VariableScope::ClearListener() {
@@ -709,8 +712,9 @@ void VariableScopeListener::onClear() {}
 Instruction::Instruction(size_t id, OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx)
     : id_(id), op_func_node_(op_func_node), dev_ctx_(dev_ctx) {
-  PADDLE_ENFORCE_GE(id, 0, platform::errors::PreconditionNotMet(
-                               "Required id >= 0, but received id = %d", id));
+  PADDLE_ENFORCE_GE(id, 0,
+                    platform::errors::PreconditionNotMet(
+                        "Required id >= 0, but received id = %d", id));
 }
 
 size_t Instruction::Id() const { return id_; }

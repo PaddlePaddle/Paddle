@@ -14,6 +14,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+// clang-format will try to move eager_utils.h in front of other headers
+// according to google c++ style, and that cause compiling problems.
+// clang-format off
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/framework/convert_utils.h"
@@ -31,6 +34,7 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+// clang-format on
 
 namespace paddle {
 namespace pybind {
@@ -730,12 +734,15 @@ PyObject* ToPyObject(
         PADDLE_THROW(
             platform::errors::Fatal("Unable to append string to py_list"));
       }
+      Py_DECREF(val_string);
     }
 
     if (PyDict_SetItem(dict, key_string, py_list) != 0) {
       PADDLE_THROW(
           platform::errors::Fatal("Unable to set key:value for py_dict"));
     }
+    Py_DECREF(py_list);
+    Py_DECREF(key_string);
   }
 
   return dict;
@@ -765,7 +772,7 @@ PyObject* ToPyObject(const std::unordered_map<std::wstring, int>& value) {
 
 // For Final State Dygraph,
 // We directly use paddle::optional(Tensor) as dispensable Tensor
-paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
+paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
@@ -784,7 +791,7 @@ paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
   }
 
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
-    return paddle::make_optional<const paddle::experimental::Tensor&>(
+    return paddle::make_optional<paddle::experimental::Tensor>(
         reinterpret_cast<TensorObject*>(obj)->tensor);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(

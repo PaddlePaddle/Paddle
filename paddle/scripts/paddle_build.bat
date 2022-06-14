@@ -85,6 +85,9 @@ if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
 
+set error_code=0
+type %cache_dir%\error_code.txt
+
 rem ------initialize set git config------
 git config --global core.longpaths true
 
@@ -118,8 +121,6 @@ if "%WITH_CACHE%"=="OFF" (
     goto :mkbuild
 )
 
-set error_code=0
-type %cache_dir%\error_code.txt
 : set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
     rmdir %BUILD_DIR% /s/q
@@ -679,7 +680,12 @@ pip install requests
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
-%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
+%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
+%THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
+%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%PATH%
+
+REM TODO: make ut find .dll in install\onnxruntime\lib
+xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y
 
 if "%WITH_GPU%"=="ON" (
     call:parallel_test_base_gpu

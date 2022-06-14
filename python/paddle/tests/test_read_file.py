@@ -23,6 +23,7 @@ from paddle.vision.ops import read_file, decode_jpeg
 
 
 class TestReadFile(unittest.TestCase):
+
     def setUp(self):
         fake_img = (np.random.random((400, 300, 3)) * 255).astype('uint8')
         cv2.imwrite('fake.jpg', fake_img)

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/cross_entropy.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
