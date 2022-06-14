@@ -29,7 +29,7 @@ from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 import paddle.jit.dy2static as _jst
 
-from ifelse_simple_func import dyfunc_with_if_else, dyfunc_with_if_else_early_return1
+from ifelse_simple_func import dyfunc_with_if_else, dyfunc_with_if_else_early_return1, dyfunc_with_if_else_early_return2
 
 np.random.seed(0)
 
@@ -337,8 +337,14 @@ class TestFunctionTrainEvalMode(unittest.TestCase):
 class TestIfElseEarlyReturn(unittest.TestCase):
 
     def test_ifelse_early_return1(self):
-        answer = np.ones([2, 2])
+        answer = np.zeros([2, 2]) + 1
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
+        out = static_func()
+        self.assertTrue(np.allclose(answer, out.numpy()))
+
+    def test_ifelse_early_return2(self):
+        answer = np.zeros([2, 2]) + 3
+        static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return2)
         out = static_func()
         self.assertTrue(np.allclose(answer, out.numpy()))
 
