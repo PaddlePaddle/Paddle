@@ -218,10 +218,13 @@ def get_cuda_graph_sections(program):
     current_idx = []  # current recording cuda graph ops' idx
     current_cuda_graph_id = -1  # current recording cuda graph id
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+    loss_op_role = int(core.op_proto_and_checker_maker.OpRole.Loss)
+    backward_op_role = int(core.op_proto_and_checker_maker.OpRole.Backward)
+    loss_grad_op_role = loss_op_role | backward_op_role
 
     for idx, op in enumerate(block.ops):
-        assert op.type != 'conditional_block' and op.type != 'while', \
-            "Cuda graph not support conditional block op and while op."
+        if op.type == 'conditional_block' or op.type == 'while':
+            assert op._cuda_graph_attr is None, "Cuda graph not support conditional block op and while op."
         if op.has_attr('is_test') and op.attr('is_test'):
             is_test = True
         # find cuda graph sections
@@ -238,13 +241,23 @@ def get_cuda_graph_sections(program):
                         internal_idx
                     ), "len of internal section should be equal with len of internal idx"
                     for internal_op in internal_section:
-                        if internal_op.attr(
-                                op_role_attr_name) == 256 or internal_op.attr(
-                                    op_role_attr_name) == 257:
+                        loss_related = (int(internal_op.attr(op_role_attr_name))
+                                        == loss_op_role) or int(
+                                            (internal_op.attr(op_role_attr_name)
+                                             ) == loss_grad_op_role)
+                        sub_block_related = (op.type == 'conditional_block'
+                                             or op.type == 'while')
+                        if loss_related or sub_block_related:
+                            # if loss_related is True
                             # The internal section contains loss related ops,
                             # although these ops are between two cuda graph sections with same graph id,
                             # they belong to none of these two sections.
                             # The loss related op should be wrapped by user explicitly.
+
+                            # if sub_block_related is True
+                            # The internal section contains while op or conditional block op.
+                            # These two ops are not supported by cuda graph. Won't extend the section.
+
                             internal_section = []
                             internal_idx = []
                             # Beside clear the internal section, a new cuda graph section should be recorded
