@@ -106,7 +106,7 @@ class TestReduceMaxOpWithOutDtype_bool(TestNPUReduceMaxOp):
         }
         self.outputs = {
             'Out':
-            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(np.bool)
+            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(np.bool_)
         }
 
 

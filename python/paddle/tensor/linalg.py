@@ -348,7 +348,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         reduce_all = True if axis == None or axis == [] or asvector == True else False
         axis = axis if axis != None and axis != [] else [0]
 
-        reduce_type = 'reduce_max' if porder == np.float(
+        reduce_type = 'reduce_max' if porder == np.float64(
             'inf') else 'reduce_min'
         helper.append_op(
             type=reduce_type,

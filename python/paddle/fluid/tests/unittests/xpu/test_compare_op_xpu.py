@@ -223,8 +223,8 @@ def create_paddle_case(op_type, callback):
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
                 exe = paddle.static.Executor(self.place)
-                input_x = np.array([True, False, True]).astype(np.bool)
-                input_y = np.array([True, True, False]).astype(np.bool)
+                input_x = np.array([True, False, True]).astype(np.bool_)
+                input_y = np.array([True, True, False]).astype(np.bool_)
                 real_result = callback(input_x, input_y)
                 res, = exe.run(feed={"x": input_x,
                                      "y": input_y},
@@ -239,8 +239,8 @@ def create_paddle_case(op_type, callback):
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
                 exe = paddle.static.Executor(self.place)
-                input_x = np.array([True, False, True]).astype(np.bool)
-                input_y = np.array([True]).astype(np.bool)
+                input_x = np.array([True, False, True]).astype(np.bool_)
+                input_y = np.array([True]).astype(np.bool_)
                 real_result = callback(input_x, input_y)
                 res, = exe.run(feed={"x": input_x,
                                      "y": input_y},

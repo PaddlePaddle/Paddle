@@ -66,7 +66,7 @@ class TestSizeOp3(TestSizeOp):
 class TestSizeOp4(TestSizeOp):
     def config(self):
         self.shape = [2**10]
-        self.dtype = np.bool
+        self.dtype = np.bool_
 
 
 class TestSizeOp5(TestSizeOp):

@@ -45,7 +45,7 @@ class TestFillZerosLikeOp(OpTest):
 
 class TestFillZerosLikeOpBool(TestFillZerosLikeOp):
     def init_dtype(self):
-        self.dtype = np.bool
+        self.dtype = np.bool_
 
 
 class TestFillZerosLikeOpFp16(TestFillZerosLikeOp):
