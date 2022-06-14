@@ -257,7 +257,6 @@ def get_cuda_graph_sections(program):
                             # if sub_block_related is True
                             # The internal section contains while op or conditional block op.
                             # These two ops are not supported by cuda graph. Won't extend the section.
-
                             internal_section = []
                             internal_idx = []
                             # Beside clear the internal section, a new cuda graph section should be recorded
