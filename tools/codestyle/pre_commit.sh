@@ -19,7 +19,9 @@ if ! [[ $(pre-commit --version) == *"2.17.0"* ]]; then
     pip install pre-commit==2.17.0 1>nul
 fi
 
-diff_files=$(git diff --numstat develop | awk '{print $NF}')
+diff_files=$(git diff --numstat ${BRANCH} | awk '{print $NF}')
+echo -e "diff files between pr and ${BRANCH}:\n${diff_files}"
+
 echo "Checking code style by pre-commit ..."
 pre-commit run --files ${diff_files};check_error=$?
 
