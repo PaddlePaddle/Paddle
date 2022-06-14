@@ -17,6 +17,10 @@ import re
 import logging
 import numpy as np
 import shutil
+try:
+    from tqdm import tqdm
+except:
+    from .utils import tqdm
 from inspect import isgeneratorfunction
 from .... import io
 from .... import core
@@ -359,38 +363,41 @@ class PostTrainingQuantization(object):
         self._set_activation_persistable()
 
         if self._algo in ["KL", "hist"]:
-            _logger.info("Preparation stage ...")
             batch_id = 0
+            with tqdm(
+                    total=self._batch_nums,
+                    bar_format=
+                    'Preparation stage, Run batch:|{bar}| {n_fmt}/{total_fmt}',
+                    ncols=80) as t:
+                for data in self._data_loader():
+                    self._executor.run(program=self._program,
+                                       feed=data,
+                                       fetch_list=self._fetch_list,
+                                       return_numpy=False,
+                                       scope=self._scope)
+                    self._collect_activation_abs_min_max()
+                    batch_id += 1
+                    t.update()
+                    if self._batch_nums and batch_id >= self._batch_nums:
+                        break
+            self._init_sampling_act_histogram()
+
+        batch_id = 0
+        with tqdm(total=self._batch_nums,
+                  bar_format=
+                  'Sampling stage, Run batch:|{bar}| {n_fmt}/{total_fmt}',
+                  ncols=80) as t:
             for data in self._data_loader():
                 self._executor.run(program=self._program,
                                    feed=data,
                                    fetch_list=self._fetch_list,
                                    return_numpy=False,
                                    scope=self._scope)
-                self._collect_activation_abs_min_max()
-                if batch_id % 5 == 0:
-                    _logger.info("Run batch: " + str(batch_id))
+                self._sampling()
                 batch_id += 1
+                t.update()
                 if self._batch_nums and batch_id >= self._batch_nums:
                     break
-            _logger.info("Finish preparation stage, all batch:" + str(batch_id))
-            self._init_sampling_act_histogram()
-
-        _logger.info("Sampling stage ...")
-        batch_id = 0
-        for data in self._data_loader():
-            self._executor.run(program=self._program,
-                               feed=data,
-                               fetch_list=self._fetch_list,
-                               return_numpy=False,
-                               scope=self._scope)
-            self._sampling()
-            if batch_id % 5 == 0:
-                _logger.info("Run batch: " + str(batch_id))
-            batch_id += 1
-            if self._batch_nums and batch_id >= self._batch_nums:
-                break
-        _logger.info("Finish sampling stage, all batch: " + str(batch_id))
 
         if self._algo == 'avg':
             for var_name in self._quantized_act_var_name:

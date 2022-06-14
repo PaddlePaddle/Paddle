@@ -41,6 +41,20 @@ const std::map<std::string, cnnlReduceOp_t> MLUReduceOpMap = {
     {"reduce_prod", CNNL_REDUCE_MUL},
 };
 
+const std::map<std::string, cnnlInterpMode_t> MLUInterpModeMap = {
+    {"bilinear", CNNL_INTERP_BILINEAR},
+    {"nearest", CNNL_INTERP_NEAREST},
+    {"linear", CNNL_INTERP_LINEAR},
+    {"trilinear", CNNL_INTERP_TRILINEAR},
+    {"bicubic", CNNL_INTERP_BICUBIC}};
+
+const std::map<std::string, cnnlInterpBackwardMode_t> MLUInterpBackwardModeMap =
+    {{"bilinear", CNNL_INTERP_BACKWARD_BILINEAR},
+     {"nearest", CNNL_INTERP_BACKWARD_NEAREST},
+     {"linear", CNNL_INTERP_BACKWARD_LINEAR},
+     {"trilinear", CNNL_INTERP_BACKWARD_TRILINEAR},
+     {"bicubic", CNNL_INTERP_BACKWARD_BICUBIC}};
+
 inline cnnlReduceOp_t GetMLUCnnlReduceOp(const std::string reduce_name) {
   auto iter = MLUReduceOpMap.find(reduce_name);
   if (iter != MLUReduceOpMap.end()) {
@@ -48,6 +62,25 @@ inline cnnlReduceOp_t GetMLUCnnlReduceOp(const std::string reduce_name) {
   }
   PADDLE_THROW(platform::errors::InvalidArgument(
       "Not support reduce op type of MLU Device: %s", reduce_name));
+}
+
+inline cnnlInterpMode_t GetMLUCnnlInterpMode(const std::string interp_mode) {
+  auto iter = MLUInterpModeMap.find(interp_mode);
+  if (iter != MLUInterpModeMap.end()) {
+    return iter->second;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Not support interp mode of MLU Device: %s", interp_mode));
+}
+
+inline cnnlInterpBackwardMode_t GetMLUCnnlInterpBackwardMode(
+    const std::string interp_mode) {
+  auto iter = MLUInterpBackwardModeMap.find(interp_mode);
+  if (iter != MLUInterpBackwardModeMap.end()) {
+    return iter->second;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Not support interp mode of MLU Device: %s", interp_mode));
 }
 
 inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
@@ -1234,6 +1267,12 @@ class MLUCnnl {
                          const void* input,
                          const cnnlTensorDescriptor_t output_desc,
                          void* output);
+
+  static void EmbeddingForward(
+      const ExecutionContext& ctx, const int padding_idx,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t indices_desc, const int* indices,
+      const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void EmbeddingBackward(
       const ExecutionContext& ctx, int padding_idx, bool scale_grad_by_freq,
