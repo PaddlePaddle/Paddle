@@ -20,7 +20,7 @@ from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
 from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import BaseNodeVisitor
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_bool_node
 
 __all__ = ['BreakContinueTransformer']
 
@@ -140,7 +140,7 @@ class BreakContinueTransformer(BaseNodeVisitor):
         self._replace_if_stmt(loop_node_index, first_block_index, variable_name)
 
         # 4. For 'break' add break into condition of the loop.
-        assign_false_node = create_fill_constant_node(variable_name, False)
+        assign_false_node = create_bool_node(variable_name, False)
         self._add_stmt_before_cur_node(loop_node_index, assign_false_node)
 
         cond_var_node = gast.UnaryOp(op=gast.Not(),
@@ -177,7 +177,7 @@ class BreakContinueTransformer(BaseNodeVisitor):
         self._replace_if_stmt(loop_node_index, first_block_index, variable_name)
 
         # 4. For 'continue', set continue to False at the beginning of each loop
-        assign_false_node = create_fill_constant_node(variable_name, False)
+        assign_false_node = create_bool_node(variable_name, False)
         loop_node.body.insert(0, assign_false_node)
 
     def _remove_stmts_after_break_continue(self, break_continue_node,
@@ -221,7 +221,7 @@ class BreakContinueTransformer(BaseNodeVisitor):
         i = index_in_list(stmt_list, break_continue_node)
         if i == -1:
             return False
-        assign_true_node = create_fill_constant_node(break_continue_name, True)
+        assign_true_node = create_bool_node(break_continue_name, True)
         stmt_list[i:] = [assign_true_node]
         return True
 
