@@ -319,7 +319,7 @@ __global__ void ChannelClipAndQuantKernelQuantAxis0(const T* in, const T* scale,
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
   for (int64_t i = tid; i < channel_size; i += blockDim.x) {
-    ComputeDataType x = static_cast<ComputeDataType>(in[i]);
+    ComputeDataType x = static_cast<ComputeDataType>(in_c[i]);
     x = bin_cnt_t * inv_s * x;
     x = roundWithTiesToEven(x);
     ComputeDataType max_bound = bin_cnt_t;

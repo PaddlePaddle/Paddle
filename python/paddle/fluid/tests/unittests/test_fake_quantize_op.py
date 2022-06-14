@@ -124,11 +124,8 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
         out_scale[0] = np.max(np.abs(input_data))
         if is_test:
             out_scale[0] = in_scale[0] = out_scale[0] - 1.0
-            clip_data = np.clip(input_data, -in_scale, in_scale)
-        else:
-            clip_data = input_data
         output_data = np.clip(
-            np.round(clip_data.astype(compute_type) / out_scale[0] * bnt),
+            np.round(input_data.astype(compute_type) / out_scale[0] * bnt),
             -bnt - 1, bnt)
         self.inputs = {
             'X': input_data,
