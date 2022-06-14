@@ -114,7 +114,9 @@ void Tensor::copy_(const Tensor &src,
     // Deep Copy AutoGrad info from src to self.
     *autograd_meta_ = *(src.autograd_meta_);
   }
-
+  kernel_key_set.backend_set =
+      kernel_key_set.backend_set |
+      BackendSet(phi::TransToPhiBackend(target_place));
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   auto *dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
   Backend kernel_backend = Backend::UNDEFINED;

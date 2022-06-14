@@ -36,7 +36,7 @@ void Copy(const Context& dev_ctx,
   const auto& src_place = src.place();
 
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
-          << src_place;
+          << dst_place;
 
   dst->Resize(src.dims());
 
