@@ -55,12 +55,12 @@ def find_kernel(content, pattern):
 def prune_phi_kernels():
     tool_dir = os.path.dirname(os.path.abspath(__file__))
     if sys.version_info[0] == 3:
-        all_op = glob.glob(os.path.join(tool_dir,
-                                        '../paddle/phi/kernels/**/*.cc'),
-                           recursive=True)
-        all_op += glob.glob(os.path.join(tool_dir,
-                                         '../paddle/phi/kernels/**/*.cu'),
-                            recursive=True)
+        all_op = glob.glob(
+            os.path.join(tool_dir, '../paddle/phi/kernels/**/*.cc'),
+            recursive=True)
+        all_op += glob.glob(
+            os.path.join(tool_dir, '../paddle/phi/kernels/**/*.cu'),
+            recursive=True)
     elif sys.version_info[0] == 2:
         all_op = find_type_files(
             os.path.join(tool_dir, '../paddle/phi/kernels/'), '.cc')
@@ -140,12 +140,12 @@ def append_fluid_kernels():
     op_white_list.append("tensorrt_engine")
     tool_dir = os.path.dirname(os.path.abspath(__file__))
     if sys.version_info[0] == 3:
-        all_op = glob.glob(os.path.join(tool_dir,
-                                        '../paddle/fluid/operators/**/*.cc'),
-                           recursive=True)
-        all_op += glob.glob(os.path.join(tool_dir,
-                                         '../paddle/fluid/operators/**/*.cu'),
-                            recursive=True)
+        all_op = glob.glob(
+            os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cc'),
+            recursive=True)
+        all_op += glob.glob(
+            os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cu'),
+            recursive=True)
     elif sys.version_info[0] == 2:
         all_op = find_type_files(
             os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cc')
