@@ -206,7 +206,6 @@ class TestContinueInFor(unittest.TestCase):
 
     def run_static_mode(self):
         with fluid.dygraph.guard():
-            print(declarative(self.dygraph_func).code)
             res = declarative(self.dygraph_func)(self.input)
             return res.numpy()
 
