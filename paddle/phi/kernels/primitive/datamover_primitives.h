@@ -26,8 +26,6 @@ namespace phi {
 namespace kps {
 namespace details {
 
-#define INT_BITS 32
-
 template <typename T, int VecSize>
 struct alignas(sizeof(T) * VecSize) VectorType {
   T val[VecSize];
@@ -46,16 +44,14 @@ struct FastDivMod {
 
   FastDivMod() {}
   HOSTDEVICE FastDivMod(uint32_t d) : divisor(d) {
-    static_assert(sizeof(unsigned int) == 4,
-                  "Only Support 32-bit unsigned int.");
-
-    for (shift_val = 0; shift_val < INT_BITS; ++shift_val) {
+    constexpr int kNumBits = 32;
+    for (shift_val = 0; shift_val < kNumBits; ++shift_val) {
       auto shift_limit = 1 << shift_val;
       if (shift_limit >= divisor) break;
     }
     uint64_t long_one = 1;
     uint64_t temp_div =
-        ((long_one << INT_BITS) * ((long_one << shift_val) - divisor)) /
+        ((long_one << kNumBits) * ((long_one << shift_val) - divisor)) /
             divisor +
         1;
     multiplier = temp_div;
@@ -72,7 +68,7 @@ struct FastDivMod {
     return result;
   }
 
-  int32_t divisor;
+  uint32_t divisor;
   int32_t shift_val;
   uint32_t multiplier;
 };
@@ -85,33 +81,43 @@ struct FastDivMod {
 struct BroadcastConfig {
   FastDivMod divmoders[phi::DDim::kMaxRank];
   uint32_t strides[phi::DDim::kMaxRank];
-  int kDims;
-  HOSTDEVICE BroadcastConfig() {}
+  int rank;
 
-  HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
-                             const std::vector<int64_t>& in_dims,
-                             int dim_size) {
-    std::vector<uint32_t> strides_in;
-    std::vector<FastDivMod> divmoders_in;
-    // for divmoders
-    divmoders_in.resize(dim_size);
+  // BroadcastConfig should be defined on host used on device.
+  BroadcastConfig() {}
+  BroadcastConfig(const std::vector<int64_t>& out_dims,
+                  const std::vector<int64_t>& in_dims,
+                  int dim_size) {
+    int64_t out_numel = 1;
     for (int i = 0; i < dim_size; ++i) {
-      divmoders_in[i] = FastDivMod(out_dims[i]);
+      divmoders[i] = FastDivMod(out_dims[i]);
+      out_numel *= out_dims[i];
     }
-    // for strides
-    strides_in.resize(dim_size, 1);
     for (int i = 0; i < dim_size; ++i) {
-      strides_in[i] = in_dims[i] == 1 ? 0 : strides_in[i];
-      strides_in[i] = (i != 0 && strides_in[i] != 0)
-                          ? std::accumulate(in_dims.begin(),
-                                            in_dims.begin() + i,
-                                            1,
-                                            std::multiplies<int64_t>())
-                          : strides_in[i];
+      strides[i] = in_dims[i] == 1 ? 0 : 1;
+      strides[i] = (i != 0 && strides[i] != 0)
+                       ? std::accumulate(in_dims.begin(),
+                                         in_dims.begin() + i,
+                                         1,
+                                         std::multiplies<int64_t>())
+                       : strides[i];
     }
-    kDims = dim_size;
-    memcpy(strides, strides_in.data(), kDims * sizeof(uint32_t));
-    memcpy(divmoders, divmoders_in.data(), kDims * sizeof(FastDivMod));
+    rank = dim_size;
+  }
+
+  __device__ uint64_t GetOffset(uint32_t broadcasted_offset) const {
+    uint32_t div_res = broadcasted_offset;
+    uint32_t offset = 0;
+#pragma unroll
+    for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+      if (i >= rank) {
+        break;
+      }
+      auto divmod_res = divmoders[i].Divmod(div_res);
+      div_res = divmod_res.val[0];
+      offset += divmod_res.val[1] * strides[i];
+    }
+    return offset;
   }
 };
 
@@ -132,7 +138,7 @@ __device__ __forceinline__ void ReadData(T* dst,
     dst[i] = src[i];
   }
 }
-#undef INT_BITS
+
 }  // namespace details
 
 /**
@@ -443,30 +449,22 @@ __device__ __forceinline__ void ReadDataBc(
     const T* __restrict__ src,
     uint32_t block_offset,
     const details::BroadcastConfig& config,
-    int total_num_output,
+    uint32_t total_num_output,
     int stride_nx,
     int stride_ny) {
   uint32_t thread_offset = block_offset + threadIdx.x;
-  uint32_t index_src = 0;
 
 #pragma unroll
   for (int ny = 0; ny < NY; ++ny) {
 #pragma unroll
     for (uint32_t nx = 0; nx < NX; ++nx) {
-      uint32_t index_output = thread_offset + ny * stride_ny + nx * stride_nx;
-      index_src = 0;
+      uint32_t index_dst = thread_offset + ny * stride_ny + nx * stride_nx;
       if (IsBoundary) {
-        if (index_output >= total_num_output) {
+        if (index_dst >= total_num_output) {
           break;
         }
       }
-#pragma unroll
-      for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
-        if (i >= config.kDims) break;
-        auto fast_divmoder = config.divmoders[i].Divmod(index_output);
-        index_output = fast_divmoder.val[0];
-        index_src += fast_divmoder.val[1] * config.strides[i];
-      }
+      uint32_t index_src = config.GetOffset(index_dst);
       dst[nx + ny * NX] = src[index_src];
     }
   }
@@ -788,27 +786,19 @@ __device__ __forceinline__ void ReadDataBc(
     const T* __restrict__ src,
     uint32_t block_offset,
     const details::BroadcastConfig& config,
-    int total_num_output,
+    uint32_t total_num_output,
     int read_lens = NX) {
   uint32_t thread_offset = block_offset + threadIdx.x * NX;
-  uint32_t index_src = 0;
 
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
-    uint32_t index_output = thread_offset + nx;
-    index_src = 0;
+    uint32_t index_dst = thread_offset + nx;
     if (IsBoundary) {
-      if (index_output >= total_num_output) {
+      if (index_dst >= total_num_output) {
         break;
       }
     }
-#pragma unroll
-    for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
-      if (i >= config.kDims) break;
-      auto fast_divmoder = config.divmoders[i].Divmod(index_output);
-      index_output = fast_divmoder.val[0];
-      index_src += fast_divmoder.val[1] * config.strides[i];
-    }
+    uint32_t index_src = config.GetOffset(index_dst);
     dst[nx] = src[index_src];
   }
 }
