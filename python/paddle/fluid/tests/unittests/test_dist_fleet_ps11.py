@@ -74,7 +74,7 @@ class TestPSPassWithBow(unittest.TestCase):
         is_sparse = True
 
         # query
-        q = fluid.layers.data(name="query_ids",
+        q = fluid.layers.data(name="1",
                               shape=[1],
                               dtype="int64",
                               lod_level=1)
@@ -101,7 +101,7 @@ class TestPSPassWithBow(unittest.TestCase):
         # label data
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
         # pt
-        pt = fluid.layers.data(name="pos_title_ids",
+        pt = fluid.layers.data(name="2",
                                shape=[1],
                                dtype="int64",
                                lod_level=1)
@@ -127,7 +127,7 @@ class TestPSPassWithBow(unittest.TestCase):
                 learning_rate=base_lr),
             bias_attr=fluid.ParamAttr(name="__fc_b__"))
         # nt
-        nt = fluid.layers.data(name="neg_title_ids",
+        nt = fluid.layers.data(name="3",
                                shape=[1],
                                dtype="int64",
                                lod_level=1)

@@ -273,7 +273,7 @@ class StaticModel():
                                          dtype="float32")
 
         sparse_input_ids = [
-            paddle.static.data(name="C" + str(i),
+            paddle.static.data(name=str(i),
                                shape=[None, 1],
                                dtype="int64")
             for i in range(1, self.sparse_inputs_slots)
