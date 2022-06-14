@@ -41,7 +41,7 @@ class TestOnesLikeAPI(unittest.TestCase):
 
             # 'bool', 'float32', 'float64', 'int32', 'int64'
             out1 = ones_like(x)
-            out2 = ones_like(x, np.bool)
+            out2 = ones_like(x, np.bool_)
             out3 = ones_like(x, 'float64')
             out4 = ones_like(x, 'int32')
             out5 = ones_like(x, 'int64')
@@ -54,7 +54,7 @@ class TestOnesLikeAPI(unittest.TestCase):
                        fetch_list=[out1, out2, out3, out4, out5])
 
         for i, dtype in enumerate(
-            [np.float32, np.bool, np.float64, np.int32, np.int64]):
+            [np.float32, np.bool_, np.float64, np.int32, np.int64]):
             self.assertEqual(outs[i].dtype, dtype)
             self.assertEqual((outs[i] == np.ones(shape, dtype)).all(), True)
 
@@ -67,7 +67,7 @@ class TestOnesLikeImpeartive(unittest.TestCase):
             0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         paddle.disable_static(place)
         x = paddle.to_tensor(np.ones(shape))
-        for dtype in [np.bool, np.float32, np.float64, np.int32, np.int64]:
+        for dtype in [np.bool_, np.float32, np.float64, np.int32, np.int64]:
             out = ones_like(x, dtype)
             self.assertEqual((out.numpy() == np.ones(shape, dtype)).all(), True)
 

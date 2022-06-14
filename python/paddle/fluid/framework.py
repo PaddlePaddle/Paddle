@@ -178,8 +178,7 @@ def _fallback_legacy_dygraph():
     need_fallback = False
     # Only enable eager on CPU/GPU
     is_not_support = core.is_compiled_with_xpu() or core.is_compiled_with_npu(
-    ) or core.is_compiled_with_ipu() or core.is_compiled_with_mlu(
-    ) or core.is_compiled_with_rocm()
+    ) or core.is_compiled_with_ipu() or core.is_compiled_with_mlu()
 
     if _in_eager_mode_ and is_not_support:
         # switch into legacy dygraph mode
@@ -265,16 +264,16 @@ def ipu_shard_guard(index=None, stage=None):
     Used to shard the graph on IPUs. Set each Op run on which IPU in the sharding and which stage in the pipelining.
 
     Args:
-        index(int, optional): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
+        index(int, optional): Specify which ipu the Tensor is computed on, (such as '0, 1, 2, 3').
             The default value is None, which means the Op only run on IPU 0.
-        stage(int, optional): Specify the computation order of the sharded model(such as ‘0, 1, 2, 3’).
+        stage(int, optional): Specify the computation order of the sharded model(such as '0, 1, 2, 3').
             The sharded model will be computed from small to large. The default value is None, 
             which means no pipelining computation order and run Ops in terms of graph.
     
     **Note**:
-    Only if the enable_manual_shard=True, the ‘index’ is able to be set not None. Please refer 
+    Only if the enable_manual_shard=True, the 'index' is able to be set not None. Please refer 
     to :code:`paddle.static.IpuStrategy` . 
-    Only if the enable_pipelining=True, the ‘stage’ is able to be set not None. Please refer 
+    Only if the enable_pipelining=True, the 'stage' is able to be set not None. Please refer 
     to :code:`paddle.static.IpuStrategy` .
     A index is allowed to match none stage or a stage. A stage is only allowed to match a new or 
     duplicated index.
@@ -1110,7 +1109,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT16
     elif dtype == np.int64:
         return core.VarDesc.VarType.INT64
-    elif dtype == np.bool:
+    elif dtype == np.bool_:
         return core.VarDesc.VarType.BOOL
     elif dtype == np.uint16:
         # since there is still no support for bfloat16 in NumPy,
