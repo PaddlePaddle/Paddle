@@ -1538,9 +1538,7 @@ void BindImperative(py::module *m_ptr) {
              int device_count = platform::GetGPUDeviceCount();
              int device_id = 0;
              if (handle == py::none()) {
-               if (platform::is_gpu_place(self->Place())) {
-                 return self;
-               }
+               device_id = platform::GetCurrentDeviceId();
              } else {
                PyObject *py_obj = handle.ptr();
                PADDLE_ENFORCE_EQ(
@@ -1588,16 +1586,17 @@ void BindImperative(py::module *m_ptr) {
               # required: gpu
               import paddle
               x = paddle.to_tensor(1.0, place=paddle.CPUPlace())
-              print(x.place)        # CPUPlace
+              print(x.place)        # Place(cpu)
 
               y = x.cuda()
-              print(y.place)        # CUDAPlace(0)
+              print(y.place)        # Place(gpu:0)
             
               y = x.cuda(None)
-              print(y.place)        # CUDAPlace(0)
+              print(y.place)        # Place(gpu:0)
 
-              y = x.cuda(1)
-              print(y.place)        # CUDAPlace(1)
+              paddle.device.set_device("gpu:1")
+              y = x.cuda(None)
+              print(y.place)        # Place(gpu:1)
        )DOC")
       .def(
           "_share_memory",
