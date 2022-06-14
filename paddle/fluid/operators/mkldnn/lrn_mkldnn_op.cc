@@ -44,15 +44,11 @@ class LRNMKLDNNHandler
     const float k = ctx.Attr<float>("k");
     bool is_test = ctx.Attr<bool>("is_test");
 
-    auto dims = phi::vectorize(input->dims());
-
-    auto src_md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(),
-                                     input->format());
-
     this->AcquireForwardPrimitiveDescriptor(
         is_test ? dnnl::prop_kind::forward_inference
                 : dnnl::prop_kind::forward_training,
-        dnnl::algorithm::lrn_across_channels, src_md, n, alpha, beta, k);
+        dnnl::algorithm::lrn_across_channels, input->mem_desc(), n, alpha, beta,
+        k);
   }
 
   LRNMKLDNNHandler(const framework::ExecutionContext& ctx,
@@ -72,20 +68,13 @@ class LRNMKLDNNHandler
     const float beta = ctx.Attr<float>("beta");
     const float k = ctx.Attr<float>("k");
 
-    auto dims = phi::vectorize<int64_t>(in_x->dims());
-
-    auto src_md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(),
-                                     in_x->format());
-    auto diff_md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(),
-                                      out_grad->format());
-
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_training, dnnl::algorithm::lrn_across_channels,
-        src_md, n, alpha, beta, k);
+        in_x->mem_desc(), n, alpha, beta, k);
 
     this->AcquireBackwardPrimitiveDescriptor(
-        dnnl::algorithm::lrn_across_channels, src_md, diff_md, n, alpha, beta,
-        k);
+        dnnl::algorithm::lrn_across_channels, in_x->mem_desc(),
+        out_grad->mem_desc(), n, alpha, beta, k);
   }
 
   std::shared_ptr<dnnl::memory> AcquireWorkspaceMemory(Tensor* workspace) {

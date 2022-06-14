@@ -147,11 +147,16 @@ void NaiveExecutor::ResetTrtOps(int num) {
       int engine_predictor_id = trtop->Attr<int>("predictor_id");
       std::string engine_name =
           engine_key + std::to_string(engine_predictor_id);
-      operators::TensorRTEngine *trt_engine =
-          paddle::inference::Singleton<
+      operators::TensorRTEngine *trt_engine = nullptr;
+      // can't get trt engine if int8 calibration table data process.
+      if (paddle::inference::Singleton<
               inference::tensorrt::TRTEngineManager>::Global()
-              .Get(engine_name);
-      if (trt_engine->with_dynamic_shape()) {
+              .Has(engine_name)) {
+        trt_engine = paddle::inference::Singleton<
+                         inference::tensorrt::TRTEngineManager>::Global()
+                         .Get(engine_name);
+      }
+      if (trt_engine && trt_engine->with_dynamic_shape()) {
         LOG(INFO) << "rebuild trt engine, this may cost a lot of time!";
         trt_engine->ResetContext();
         trt_engine->ClearTensorMap();

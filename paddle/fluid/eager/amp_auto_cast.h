@@ -21,7 +21,7 @@ namespace egr {
 
 static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
                             const paddle::experimental::DataType& dst_dtype) {
-  auto place = tensor.inner_place();
+  auto place = tensor.place();
   auto data_type = tensor.dtype();
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||

@@ -444,7 +444,7 @@ module  {
     %387 = "pd.flatten_contiguous_range"(%386) {start_axis = 1 : si32, stop_axis = 3 : si32} : (!infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<CPU, FP32, NCHW>
     %388 = "pd.matmul_v2"(%387, %245) {trans_x = false, trans_y = false} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<CPU, FP32, NCHW>
     %389 = "pd.elementwise_add"(%388, %30) {axis = 1 : si32} : (!infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>) -> !infrt.dense_tensor<CPU, FP32, NCHW>
-    infrt.return %270 : !infrt.dense_tensor<CPU, FP32, NCHW>
+    infrt.return %389 : !infrt.dense_tensor<CPU, FP32, NCHW>
   }
 
   func @main() {

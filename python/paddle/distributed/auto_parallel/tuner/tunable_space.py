@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Notice that the following codes are modified from KerasTuner to implement our own tuner. 
+# Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/hyperparameters.py.
+
 import collections
 import contextlib
 import copy

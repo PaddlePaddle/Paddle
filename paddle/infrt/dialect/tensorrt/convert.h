@@ -15,7 +15,7 @@
 
 #include <glog/logging.h>
 #include <llvm/Support/ErrorHandling.h>
-#include <llvm/include/mlir/IR/Attributes.h>
+#include <mlir/IR/Attributes.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/PatternMatch.h>
@@ -320,9 +320,9 @@ inline ::llvm::SmallVector<::mlir::Value, 4> CreatePaddleTrtPoolingOp(
   }
 
   // if global_pooling == true or adaptive == true, padding will be ignored
-  if (global_pooling.getValue() || adaptive.getValue()) {
-    paddings_attr = builder.getI32ArrayAttr({0, 0});
-  }
+  // if (global_pooling.getValue() || adaptive.getValue()) {
+  //   paddings_attr = builder.getI32ArrayAttr({0, 0});
+  // }
 
   // if global_pooling == true, then we should update kernel size to input dims.
   if (global_pooling.getValue() == true) {

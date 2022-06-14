@@ -16,8 +16,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_concat_op.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/phi/api/include/tensor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -55,26 +57,39 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
                           rank, nranks));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
-    PADDLE_ENFORCE_EQ(
-        nranks, comm->nranks(),
-        platform::errors::InvalidArgument("nranks: %s should equal to %s",
-                                          nranks, comm->nranks()));
-
     framework::Tensor temp_out;
     framework::DDim temp_out_dims = x->dims();
     temp_out_dims[0] *= nranks;
     temp_out.mutable_data<T>(temp_out_dims, place);
-    int64_t send_numel = x->numel();
-    const T* send_buff = x->data<T>();
-    T* recv_buff = temp_out.data<T>();
-    gpuStream_t stream = nullptr;
-    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-    stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
-        send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
-        comm->comm(), stream));
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup* pg = map->get(rid);
+      std::vector<phi::DenseTensor> in_tensor;
+      std::vector<phi::DenseTensor> out_tensor;
+      in_tensor.push_back(*x);
+      out_tensor.push_back(temp_out);
+      auto task = pg->AllGather(in_tensor, out_tensor);
+      task->Wait();
+    } else {
+      auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
+      PADDLE_ENFORCE_EQ(
+          nranks, comm->nranks(),
+          platform::errors::InvalidArgument("nranks: %s should equal to %s",
+                                            nranks, comm->nranks()));
+
+      int64_t send_numel = x->numel();
+      const T* send_buff = x->data<T>();
+      T* recv_buff = temp_out.data<T>();
+      gpuStream_t stream = nullptr;
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
+          send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
+          comm->comm(), stream));
+    }
 
     std::vector<framework::Tensor> inputs;
     int axis = x->dims().size() - 1;

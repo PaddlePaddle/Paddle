@@ -25,9 +25,9 @@ KernelSignature PixelShuffleOpArgumentMapping(
 KernelSignature PixelShuffleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("pixel_shuffle_grad",
-                         {GradVarName("Out")},
+                         {"Out@GRAD"},
                          {"upscale_factor", "data_format"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

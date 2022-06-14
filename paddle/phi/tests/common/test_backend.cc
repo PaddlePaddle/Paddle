@@ -64,7 +64,11 @@ TEST(Backend, StringToBackend) {
   EXPECT_EQ(phi::Backend::NPU, pexp::StringToBackend("NPU"));
   EXPECT_EQ(phi::Backend::MKLDNN, pexp::StringToBackend("MKLDNN"));
   EXPECT_EQ(phi::Backend::GPUDNN, pexp::StringToBackend("GPUDNN"));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  EXPECT_EQ(phi::Backend::GPU, pexp::StringToBackend("KPS"));
+#else
   EXPECT_EQ(phi::Backend::KPS, pexp::StringToBackend("KPS"));
+#endif
   EXPECT_EQ(static_cast<phi::Backend>(
                 static_cast<size_t>(phi::Backend::NUM_BACKENDS) + 1),
             pexp::StringToBackend("CustomBackend"));

@@ -879,7 +879,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 }
 
 // TODO(liuyuhui): If BKCL support non-blocking communication, it should be
-// fixed as same as multi gpus card trainging.
+// fixed as same as multi gpus card training.
 void Reducer::MarkGroupReady(size_t group_index) {
   PADDLE_ENFORCE_GE(
       group_index, next_group_,
@@ -957,7 +957,7 @@ void Reducer::FusedAllReduceSchedule(const int run_order, Group &group,
 // default stream for communicating, so there exist some problems in
 // synchronization. And need to add a WaitComm there.
 // TODO(liuyuhui): If BKCL support non-blocking communication, it should be
-// fixed as multi gpus card trainging.
+// fixed as multi gpus card training.
 #ifdef PADDLE_WITH_XPU_BKCL
     if (platform::is_xpu_place(group.dense_tensors_[0].place())) {
       parallel_ctx_->WaitComm(run_order);

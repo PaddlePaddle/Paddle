@@ -51,7 +51,6 @@ class Context(object):
         legacy_env_list = [
             'DISTRIBUTED_TRAINER_ENDPOINTS',
             'PADDLE_ELASTIC_JOB_ID',
-            'PADDLE_DISTRI_BACKEND',
             'FLAGS_START_PORT',
         ]
 

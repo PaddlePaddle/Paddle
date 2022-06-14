@@ -311,7 +311,20 @@ class TestStrategyConfig(unittest.TestCase):
         }
         strategy.fleet_desc_configs = configs
         self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.ctr_accessor_param.show_scale, False)
+        self.assertEqual(strategy.sparse_table_configs[0]
                          .accessor.embed_sgd_param.adagrad.initial_range, 0)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {}
+        configs['emb'] = {
+            "sparse_accessor_class": "DownpourCtrDoubleAccessor",
+            "embed_sparse_optimizer": "std_adagrad"
+        }
+        strategy.fleet_desc_configs = configs
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.embed_sgd_param.adagrad.initial_range,
+                         0.0001)
 
     def test_trainer_desc_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()

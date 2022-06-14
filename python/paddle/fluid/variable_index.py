@@ -306,8 +306,9 @@ def get_value_for_bool_tensor(var, item):
         return paddle.empty(var_shape, dtype=var.dtype)
 
     from .layers.control_flow import cond
-    return cond(item.any(), lambda: idx_not_empty(var, item),
-                lambda: idx_empty(var))
+    return cond(
+        paddle.logical_not(item.any()), lambda: idx_empty(var),
+        lambda: idx_not_empty(var, item))
 
 
 def _getitem_impl_(var, item):
@@ -375,7 +376,13 @@ def _getitem_impl_(var, item):
             if start is None:
                 start = 0 if step > 0 else MAX_INTEGER
             if end is None:
-                end = MAX_INTEGER if step > 0 else -1
+                if var.shape[dim] != -1 and (
+                        paddle.fluid.framework._non_static_mode() or
+                        var.desc.type() != core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                ):
+                    end = var.shape[dim] if step > 0 else -1
+                else:
+                    end = MAX_INTEGER if step > 0 else -1
 
         elif isinstance(slice_item, list):
             all_bool = True

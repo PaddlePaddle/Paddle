@@ -14,6 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <tuple>
+#include <vector>
+
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
@@ -28,6 +31,59 @@ namespace experimental {
 
 ////////////////// Forward api impls //////////////////////
 
+std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adam_impl(
+    const Tensor& param,
+    const Tensor& grad,
+    const Tensor& learning_rate,
+    const Tensor& moment1,
+    const Tensor& moment2,
+    const Tensor& beta1_pow,
+    const Tensor& beta2_pow,
+    paddle::optional<const Tensor&> master_param,
+    paddle::optional<const Tensor&> skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    bool lazy_mode,
+    int64_t min_row_size_to_use_multithread,
+    bool multi_precision,
+    bool use_global_beta_pow);
+
+std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adamw_impl(
+    const Tensor& param,
+    const Tensor& grad,
+    const Tensor& learning_rate,
+    const Tensor& moment1,
+    const Tensor& moment2,
+    const Tensor& beta1_pow,
+    const Tensor& beta2_pow,
+    paddle::optional<const Tensor&> master_param,
+    paddle::optional<const Tensor&> skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    float lr_ratio,
+    float coeff,
+    bool with_decay,
+    bool lazy_mode,
+    int64_t min_row_size_to_use_multithread,
+    bool multi_precision,
+    bool use_global_beta_pow);
+
+std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
+    const Tensor& x,
+    const Tensor& scale,
+    const Tensor& bias,
+    const Tensor& mean,
+    const Tensor& variance,
+    float momentum,
+    float epsilon,
+    const std::string& data_layout,
+    bool is_test,
+    bool use_global_stats,
+    bool trainable_statistics,
+    bool fuse_with_relu);
+
 Tensor conv2d_impl(const Tensor& input,
                    const Tensor& filter,
                    const std::vector<int>& strides,
@@ -39,20 +95,6 @@ Tensor conv2d_impl(const Tensor& input,
                    bool use_addto,
                    int workspace_size_MB,
                    bool exhaustive_search);
-
-std::vector<std::vector<Tensor>> conv2d_grad_impl(
-    const Tensor& input,
-    const Tensor& filter,
-    const Tensor& out_grad,
-    const std::vector<int>& strides,
-    const std::vector<int>& paddings,
-    const std::string& paddding_algorithm,
-    int groups,
-    const std::vector<int>& dilations,
-    const std::string& data_format,
-    bool use_addto,
-    int workspace_size_MB,
-    bool exhaustive_search);
 
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
 
@@ -73,41 +115,37 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
     bool multi_precision,
     float rescale_grad);
 
+std::tuple<Tensor, Tensor> sgd_impl(
+    const Tensor& param,
+    const Tensor& learning_rate,
+    const Tensor& grad,
+    paddle::optional<const Tensor&> master_param,
+    bool multi_precision);
+
 ////////////////// Backward(grad) api impls //////////////////////
 
-std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
-                                    const Tensor& out_grad);
+void add_n_grad_impl(const std::vector<Tensor>& x,
+                     const Tensor& out_grad,
+                     std::vector<Tensor*> x_grad);
 
-std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
-    const Tensor& x,
-    const Tensor& scale,
-    const Tensor& bias,
-    const Tensor& mean,
-    const Tensor& variance,
-    float momentum,
-    float epsilon,
-    const std::string& data_layout,
-    bool is_test,
-    bool use_global_stats,
-    bool trainable_statistics,
-    bool fuse_with_relu);
+void conv2d_grad_impl(const Tensor& input,
+                      const Tensor& filter,
+                      const Tensor& out_grad,
+                      const std::vector<int>& strides,
+                      const std::vector<int>& paddings,
+                      const std::string& paddding_algorithm,
+                      int groups,
+                      const std::vector<int>& dilations,
+                      const std::string& data_format,
+                      bool use_addto,
+                      int workspace_size_MB,
+                      bool exhaustive_search,
+                      Tensor* input_grad,
+                      Tensor* filter_grad);
 
-/************************   backward api impl   ***************************/
+void imag_grad_impl(const Tensor& out_grad, Tensor* x_grad);
 
-std::vector<Tensor> concat_grad_impl(const std::vector<Tensor>& x,
-                                     const Tensor& out_grad,
-                                     const Scalar& axis);
-
-Tensor imag_grad_impl(const Tensor& x);
-
-Tensor real_grad_impl(const Tensor& x);
-
-std::vector<Tensor> stack_grad_impl(const std::vector<Tensor>& x,
-                                    const Tensor& out_grad,
-                                    int axis);
-std::vector<Tensor> meshgrid_impl(const std::vector<Tensor>& inputs);
-std::vector<Tensor> meshgrid_grad_impl(const std::vector<Tensor>& inputs,
-                                       const std::vector<Tensor>& outputs_grad);
+void real_grad_impl(const Tensor& out_grad, Tensor* x_grad);
 
 }  // namespace experimental
 }  // namespace paddle

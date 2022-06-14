@@ -245,6 +245,7 @@ int32_t CuBLASBatchedGemmPlugin::enqueue(const nvinfer1::PluginTensorDesc *input
         std::cout<<"dim "<<i << " : "<<inputDesc[0].dims.d[i]<<std::endl;
     }
     */
+
     int nBatch = 1;
     for (int i = 0; i < inputDesc[0].dims.nbDims - 1; ++i) {
         nBatch *= inputDesc[0].dims.d[i];
@@ -335,8 +336,6 @@ void CuBLASBatchedGemmPlugin::serialize(void *buffer) const noexcept
     offset += size;
     size_t size_bias = getElementSize(mType) * nN_ * batchcount_;
     memcpy(data + offset, bias_.values, size_bias);
-
-    //reinterpret_cast<char*&>(buffer) += offset;
 }
 
 void CuBLASBatchedGemmPlugin::setPluginNamespace(const char *pluginNamespace) noexcept

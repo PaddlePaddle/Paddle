@@ -18,57 +18,64 @@ import unittest
 import numpy as np
 import sys
 sys.path.append("..")
-from op_test_xpu import OpTest, XPUOpTest
-from op_test import skip_check_grad_ci
+
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from op_test import OpTest
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+paddle.enable_static()
 
 
-class TestXPUReduceMaxOp(XPUOpTest):
-    def setUp(self):
-        self.init_op_type()
-        self.initTestCase()
-        self.use_xpu = True
-        self.use_mkldnn = False
-        self.attrs = {
-            'dim': self.axis,
-            'keep_dim': self.keep_dim,
-            'reduce_all': self.reduce_all
-        }
-        self.inputs = {'X': np.random.random(self.shape).astype("float32")}
-        if self.attrs['reduce_all']:
-            self.outputs = {'Out': self.inputs['X'].max()}
-        else:
-            self.outputs = {
-                'Out': self.inputs['X'].max(axis=self.axis,
-                                            keepdims=self.attrs['keep_dim'])
+class XPUTestReduceMaxOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'reduce_max'
+
+    class XPUTestReduceMaxBase(XPUOpTest):
+        def setUp(self):
+            self.place = paddle.XPUPlace(0)
+            self.init_case()
+            self.set_case()
+
+        def set_case(self):
+            self.op_type = 'reduce_max'
+            self.attrs = {
+                'use_xpu': True,
+                'reduce_all': self.reduce_all,
+                'keep_dim': self.keep_dim
             }
+            self.inputs = {'X': np.random.random(self.shape).astype("float32")}
+            if self.attrs['reduce_all']:
+                self.outputs = {'Out': self.inputs['X'].max()}
+            else:
+                self.outputs = {
+                    'Out': self.inputs['X'].max(axis=self.axis,
+                                                keepdims=self.attrs['keep_dim'])
+                }
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (0, )
+            self.reduce_all = False
+            self.keep_dim = False
 
-    def test_check_grad(self):
-        if paddle.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(place, ['X'], 'Out')
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
 
-    def init_op_type(self):
-        self.op_type = "reduce_max"
-        self.use_mkldnn = False
-        self.keep_dim = False
-        self.reduce_all = False
+        def test_check_grad(self):
+            pass
 
-    def initTestCase(self):
-        self.shape = (5, 6, 10)
-        self.axis = (-1, )
+    class XPUTestReduceMaxCase1(XPUTestReduceMaxBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (0, )
+            self.reduce_all = False
+            self.keep_dim = True
 
+
+support_types = get_xpu_op_support_types('reduce_max')
+for stype in support_types:
+    create_test_class(globals(), XPUTestReduceMaxOp, stype)
 
 if __name__ == '__main__':
     unittest.main()

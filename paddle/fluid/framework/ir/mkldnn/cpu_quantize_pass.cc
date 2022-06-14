@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"
-
 #include <sstream>
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -226,12 +226,21 @@ void CPUQuantizePass::DequantizeOutput(Graph* g, Node* op, Node* output,
 
 bool CPUQuantizePass::AreScalesPresentForVarNames(
     std::vector<std::string> names) const {
-  auto& scales = Get<VarQuantScale>("quant_var_scales");
   bool present = true;
-  for (auto name : names) {
-    if (scales.find(name) == scales.end()) {
-      present = false;
-      LogScaleIsMissingForVarName(name);
+  if (var_quant_scales_->empty()) {
+    auto& scales = Get<VarQuantScale>("quant_var_scales");
+    for (auto name : names) {
+      if (scales.find(name) == scales.end()) {
+        present = false;
+        LogScaleIsMissingForVarName(name);
+      }
+    }
+  } else {
+    for (auto name : names) {
+      if (var_quant_scales_->find(name) == var_quant_scales_->end()) {
+        present = false;
+        LogScaleIsMissingForVarName(name);
+      }
     }
   }
   return present;
@@ -239,12 +248,21 @@ bool CPUQuantizePass::AreScalesPresentForVarNames(
 
 bool CPUQuantizePass::AreScalesPresentForNodes(
     std::initializer_list<Node*> nodes) const {
-  auto& scales = Get<VarQuantScale>("quant_var_scales");
   bool present = true;
-  for (auto node : nodes) {
-    if (scales.count(node->Name()) == 0) {
-      present = false;
-      LogScaleIsMissingForVarNode(node);
+  if (var_quant_scales_->empty()) {
+    auto& scales = Get<VarQuantScale>("quant_var_scales");
+    for (auto node : nodes) {
+      if (scales.count(node->Name()) == 0) {
+        present = false;
+        LogScaleIsMissingForVarNode(node);
+      }
+    }
+  } else {
+    for (auto node : nodes) {
+      if (var_quant_scales_->count(node->Name()) == 0) {
+        present = false;
+        LogScaleIsMissingForVarNode(node);
+      }
     }
   }
   return present;
@@ -252,8 +270,11 @@ bool CPUQuantizePass::AreScalesPresentForNodes(
 
 std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataByName(
     const std::string& name) const {
-  auto& scales = Get<VarQuantScale>("quant_var_scales");
-  return scales.at(name);
+  if (var_quant_scales_->empty()) {
+    auto& scales = Get<VarQuantScale>("quant_var_scales");
+    return scales.at(name);
+  }
+  return var_quant_scales_->at(name);
 }
 
 std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataForNode(
@@ -288,6 +309,23 @@ bool CPUQuantizePass::IsOpQuantized(const Node* node) const {
     return (output->IsOp() && (output->Op()->Type() == "quantize" ||
                                platform::HasOpINT8DataType(output->Op())));
   });
+}
+
+void CPUQuantizePass::GetQuantInfo(Graph* graph) const {
+  std::unordered_map<std::string, std::vector<float>> info_map{};
+  GetInfoFromTheFirstOp(graph, "has_quant_info", "var_quant_scales", &info_map);
+
+  for (auto iter = info_map.begin(); iter != info_map.end(); iter++) {
+    LoDTensor tensor;
+    const int size = static_cast<int>(iter->second.size());
+    auto* data = tensor.mutable_data<double>({size}, platform::CPUPlace());
+    for (int i = 0; i < size; i++) {
+      data[i] = static_cast<double>(iter->second[i]);
+    }
+
+    auto pair = std::make_pair(false, tensor);
+    var_quant_scales_->insert(std::make_pair(iter->first, pair));
+  }
 }
 
 void CPUQuantizePass::QuantizeConv(Graph* graph,
@@ -1138,6 +1176,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(param_scope(), platform::errors::InvalidArgument(
                                              "Scope cannot be nullptr."));
 
+  GetQuantInfo(graph);
   QuantizeConv(graph, false /* with_residual_data */);
   QuantizeConv(graph, true /* with_residual_data */);
   QuantizePool(graph);

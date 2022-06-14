@@ -47,9 +47,9 @@ class CastMKLDNNKernel : public framework::OpKernel<T> {
                                                    dev_ctx.GetEngine());
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x->format(), platform::to_void_cast(x->data<T>()));
-    auto reorder_dst_memory_p =
-        reorder_handler.AcquireDstMemory(out, x->format(), dev_ctx.GetPlace());
+        x->mem_desc(), platform::to_void_cast(x->data<T>()));
+    auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+        out, x->mem_desc(), dev_ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                     reorder_src_memory_p);
 
@@ -58,7 +58,7 @@ class CastMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
+    out->set_mem_desc(reorder_dst_memory_p->get_desc());
   }
 };
 }  // namespace operators

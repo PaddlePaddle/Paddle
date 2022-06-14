@@ -21,8 +21,8 @@ namespace egr {
 
 static inline paddle::experimental::DataType GetPromoteType(
     const std::string& op_name,
-    const std::vector<std::vector<paddle::experimental::Tensor>>&
-        amp_tensors_vector,
+    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>& amp_tensors_vector,
     const paddle::experimental::DataType& amp_dtype) {
   auto dst_type = amp_dtype;
   if (egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype() ==
@@ -86,8 +86,8 @@ static inline paddle::experimental::DataType GetPromoteType(
 
 inline paddle::experimental::DataType GetAmpDestDtype(
     const std::string& op_name,
-    const std::vector<std::vector<paddle::experimental::Tensor>>&
-        amp_tensors_vector) {
+    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>& amp_tensors_vector) {
   auto amp_dtype =
       egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype();
   auto amp_level = egr::Controller::Instance().GetAMPLevel();

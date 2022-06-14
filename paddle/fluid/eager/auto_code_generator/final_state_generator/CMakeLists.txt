@@ -16,9 +16,9 @@ add_custom_target(eager_final_state_codegen
     COMMAND "${PYTHON_EXECUTABLE}" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/final_state_generator/eager_gen.py" 
             "--api_yaml_path=${api_yaml_path}"
             "--backward_yaml_path=${backward_yaml_path}"
-            "--forwards_cc_path=${tmp_forwards_cc_path}" 
+            "--forwards_cc_path=${tmp_forwards_cc_path}"
             "--forwards_h_path=${tmp_forwards_h_path}"
-            "--nodes_cc_path=${tmp_nodes_cc_path}" 
+            "--nodes_cc_path=${tmp_nodes_cc_path}"
             "--nodes_h_path=${tmp_nodes_h_path}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_forwards_cc_path} ${forwards_cc_path}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_forwards_h_path} ${forwards_h_path}

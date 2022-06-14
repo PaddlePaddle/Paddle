@@ -57,7 +57,7 @@ namespace tensorrt {
   // TODO(wilber): The build option shoule be fiiled from mlir info.
   backends::tensorrt::BuildOptions options;
   options.max_batch = 4;
-  options.workspace = 1024;
+  options.workspace = 128;
 
   // Parse mlir Region which only has one block.
   mlir::Operation& operation = *create_engine_op.operation;
@@ -146,6 +146,10 @@ namespace tensorrt {
           op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
     } else if (trt::ScaleNdOp op = llvm::dyn_cast<trt::ScaleNdOp>(operation)) {
       ScaleNdFunc(
+          op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ElementWiseOp op =
+                   llvm::dyn_cast<trt::ElementWiseOp>(operation)) {
+      EltwiseFunc(
           op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
     } else {
       CHECK(false) << "not supported operation.";

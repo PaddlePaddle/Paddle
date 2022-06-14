@@ -14,11 +14,11 @@
 from __future__ import print_function
 import numpy as np
 import paddle
-from ..fluid.layer_helper import LayerHelper
+from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import layers
-from ..framework import core
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
+from ..framework import core, in_dygraph_mode, _non_static_mode
+from ..fluid.framework import _in_legacy_dygraph
 from paddle.common_ops_import import convert_np_dtype_to_dtype_
 from paddle.common_ops_import import Variable
 from paddle.common_ops_import import VarDesc
@@ -92,7 +92,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             #  [0 2 1 1]]]
     """
     if in_dygraph_mode():
-        _, ids, = _C_ops.final_state_argsort(x, axis, descending)
+        _, ids = _C_ops.final_state_argsort(x, axis, descending)
         return ids
 
     if _in_legacy_dygraph():
@@ -398,10 +398,20 @@ def nonzero(x, as_tuple=False):
     shape = x.shape
     rank = len(shape)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        outs = _C_ops.final_state_where_index(x)
+    elif paddle.in_dynamic_mode():
         outs = _C_ops.where_index(x)
     else:
-        outs = layers.where(x)
+        helper = LayerHelper("where_index", **locals())
+
+        outs = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.INT64)
+
+        helper.append_op(
+            type='where_index',
+            inputs={'Condition': x},
+            outputs={'Out': [outs]})
 
     if not as_tuple:
         return outs
@@ -472,9 +482,13 @@ def sort(x, axis=-1, descending=False, name=None):
             #  [4. 7. 4. 6.]
             #  [5. 7. 7. 9.]]]
     """
-    if paddle.in_dynamic_mode():
-        out, _ = _C_ops.argsort(x, 'axis', axis, 'descending', descending)
-        return out
+    if in_dygraph_mode():
+        outs, _ = _C_ops.final_state_argsort(x, axis, descending)
+        return outs
+
+    if _in_legacy_dygraph():
+        outs, _ = _C_ops.argsort(x, 'axis', axis, 'descending', descending)
+        return outs
     helper = LayerHelper("sort", **locals())
     out = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=False)
@@ -592,10 +606,10 @@ def where(condition, x=None, y=None, name=None):
           #             [3]]),)
     """
     if np.isscalar(x):
-        x = layers.fill_constant([1], np.array([x]).dtype.name, x)
+        x = paddle.full([1], x, np.array([x]).dtype.name)
 
     if np.isscalar(y):
-        y = layers.fill_constant([1], np.array([y]).dtype.name, y)
+        y = paddle.full([1], y, np.array([y]).dtype.name)
 
     if x is None and y is None:
         return nonzero(condition, as_tuple=True)

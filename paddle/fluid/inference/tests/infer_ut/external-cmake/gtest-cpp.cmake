@@ -8,10 +8,12 @@ set(GTEST_REPOSITORY     https://github.com/google/googletest.git)
 set(GTEST_TAG            release-1.8.1)
 INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIR})
 IF(WIN32)
+    # if use CMAKE_INSTALL_LIBDIR, the path of lib actually is install/gtest/lib/gtest.lib but GTEST_LIBRARIES 
+    # is install/gtest/gtest.lib
     set(GTEST_LIBRARIES
-        "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/gtest.lib" CACHE FILEPATH "gtest libraries." FORCE)
+        "${GTEST_INSTALL_DIR}/lib/gtest.lib" CACHE FILEPATH "gtest libraries." FORCE)
     set(GTEST_MAIN_LIBRARIES
-        "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/gtest_main.lib" CACHE FILEPATH "gtest main libraries." FORCE)
+        "${GTEST_INSTALL_DIR}/lib/gtest_main.lib" CACHE FILEPATH "gtest main libraries." FORCE)
 ELSE()
     set(GTEST_LIBRARIES
         "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgtest.a" CACHE FILEPATH "gtest libraries." FORCE)

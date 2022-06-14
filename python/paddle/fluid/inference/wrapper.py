@@ -14,6 +14,7 @@
 
 from ..core import AnalysisConfig, PaddleDType, PaddlePlace
 from ..core import PaddleInferPredictor, PaddleInferTensor
+from .. import core
 
 import numpy as np
 
@@ -39,4 +40,16 @@ def tensor_copy_from_cpu(self, data):
         )
 
 
+def tensor_share_external_data(self, data):
+    '''
+    Support input type check based on tensor.share_external_data.
+    '''
+    if isinstance(data, core.LoDTensor):
+        self.share_external_data_bind(data)
+    else:
+        raise TypeError(
+            "In share_external_data, we only support LoDTensor data type.")
+
+
 Tensor.copy_from_cpu = tensor_copy_from_cpu
+Tensor.share_external_data = tensor_share_external_data

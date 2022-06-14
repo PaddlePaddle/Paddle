@@ -68,6 +68,10 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
     return dense_tensor_inputs.count(name) > 0;
   }
 
+  bool IsDenseTensorInputs(const std::string& name) const override {
+    return dense_tensor_inputs.count(name) > 0;
+  }
+
   bool IsSelectedRowsInput(const std::string& name) const override {
     return selected_rows_inputs.count(name) > 0;
   }

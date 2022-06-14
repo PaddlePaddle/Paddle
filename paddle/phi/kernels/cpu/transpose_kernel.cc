@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/transpose_kernel.h"
+
 #include <vector>
-#include "paddle/phi/api/ext/dispatch.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -75,6 +76,7 @@ PD_REGISTER_KERNEL(transpose,
                    double,
                    int32_t,
                    int64_t,
+                   phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

@@ -25,6 +25,8 @@ os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
 
 import paddle
 import paddle.nn as nn
+from paddle.fluid.framework import _enable_legacy_dygraph
+_enable_legacy_dygraph()
 
 np.random.seed(0)
 

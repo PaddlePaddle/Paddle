@@ -23,9 +23,9 @@ KernelSignature ModeOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature ModeGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("mode_grad",
-                         {"X", "Indices", GradVarName("Out")},
+                         {"X", "Indices", "Out@GRAD"},
                          {"axis", "keepdim"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

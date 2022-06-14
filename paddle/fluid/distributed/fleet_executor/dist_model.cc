@@ -168,7 +168,7 @@ bool DistModel::Init() {
   if (!PrepareFeedAndFetch()) {
     return false;
   }
-  if (!CommInit()) {
+  if (config_.nranks > 1 && !CommInit()) {
     return false;
   }
   if (!PrepareFleetExe()) {

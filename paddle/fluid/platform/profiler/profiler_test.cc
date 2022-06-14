@@ -46,7 +46,7 @@ TEST(ProfilerTest, TestHostTracer) {
                        3);
   }
   auto profiler_result = profiler->Stop();
-  auto& nodetree = profiler_result->GetNodeTrees();
+  auto nodetree = profiler_result->GetNodeTrees();
   std::set<std::string> host_events;
   for (const auto pair : nodetree->Traverse(true)) {
     for (const auto evt : pair.second) {
@@ -79,7 +79,7 @@ TEST(ProfilerTest, TestCudaTracer) {
   hipStreamSynchronize(stream);
 #endif
   auto profiler_result = profiler->Stop();
-  auto& nodetree = profiler_result->GetNodeTrees();
+  auto nodetree = profiler_result->GetNodeTrees();
   std::vector<std::string> runtime_events;
   for (const auto pair : nodetree->Traverse(true)) {
     for (const auto host_node : pair.second) {

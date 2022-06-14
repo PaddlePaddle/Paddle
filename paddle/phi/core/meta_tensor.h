@@ -45,10 +45,10 @@ class MetaTensor {
       : tensor_(const_cast<TensorBase*>(&tensor)) {}
   MetaTensor(TensorBase& tensor) : tensor_(&tensor) {}  // NOLINT
 
-  MetaTensor(const MetaTensor&) = default;
   MetaTensor(MetaTensor&&) = default;
-  MetaTensor& operator=(const MetaTensor&) = delete;
-  MetaTensor& operator=(MetaTensor&&) = delete;
+  MetaTensor& operator=(MetaTensor&&) = default;
+  MetaTensor(const MetaTensor&) = default;
+  MetaTensor& operator=(const MetaTensor&) = default;
 
   virtual ~MetaTensor() = default;
 
@@ -63,6 +63,8 @@ class MetaTensor {
   virtual void share_lod(const MetaTensor& meta_tensor);
   virtual void share_meta(const MetaTensor& meta_tensor);
   virtual void share_dims(const MetaTensor& meta_tensor);
+
+  virtual bool initialized() const;
 
  private:
   // Because the lod in compiletime and runtime is different,

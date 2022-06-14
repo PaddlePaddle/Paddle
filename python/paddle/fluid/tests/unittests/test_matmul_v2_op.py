@@ -385,9 +385,9 @@ create_test_fp16_class(TestMatMulOp17)
 
 def create_test_bf16_class(parent, atol=0.01):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
-        "core is not compiled with CUDA and cudnn version need larger than 8.1.0"
-    )
+        not core.is_compiled_with_cuda() or
+        not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and not support the bfloat16")
     class TestMatMulOpBf16Case(parent):
         def get_numeric_grad(self, place, check_name):
             scope = core.Scope()

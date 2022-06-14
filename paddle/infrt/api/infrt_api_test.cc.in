@@ -57,4 +57,161 @@ TEST(InfRtPredictor, predictor) {
   ASSERT_EQ(output->dims(), ::phi::DDim({16, 10}));
 }
 
+TEST(InfRtPredictor, cpu_predictor) {
+  std::vector<std::string> shared_libs;
+
+  InfRtConfig config;
+
+  config.set_model_dir("@CMAKE_BINARY_DIR@/models/resnet50/model.pdmodel");
+  config.set_param_dir("@CMAKE_BINARY_DIR@/models/resnet50/model.pdiparams");
+
+  std::unique_ptr<InfRtPredictor> predictor = CreateInfRtPredictor(config);
+
+  ::infrt::backends::CpuPhiAllocator cpu_allocator;
+  ::phi::DenseTensor* input = predictor->GetInput(0);
+  input->Resize({2, 3, 256, 256});
+  input->AllocateFrom(&cpu_allocator, ::phi::DataType::FLOAT32);
+  auto* input_data = reinterpret_cast<float*>(input->data());
+  for (int i = 0; i < input->numel(); i++) input_data[i] = 1.0;
+
+  for(int i = 0; i < 10; i++) {
+    predictor->Run();
+  }
+  auto start = std::chrono::steady_clock::now();
+  for(int i = 0; i < 10; i++) {
+    predictor->Run();
+  }
+  auto end = std::chrono::steady_clock::now();
+  auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
+  std::cout <<"One predict period costs " << msec.count()/1000 << "ms.\n";
+
+  // get and print output tensor
+  auto* output = predictor->GetOutput(0);
+
+  ASSERT_EQ(output->dims(), ::phi::DDim({2, 1000}));
+  const std::vector<float> true_vals {
+    -3.319006264209747314e-01, -1.418896913528442383e+00,
+        -6.934890151023864746e-01, -1.498023152351379395e+00,
+        3.078042864799499512e-01, -1.340998053550720215e+00,
+        3.508620023727416992e+00, 2.274388313293457031e+00,
+        -1.321727275848388672e+00, -8.888689428567886353e-02,
+        -3.319006264209747314e-01, -1.418896913528442383e+00,
+        -6.934890151023864746e-01, -1.498023152351379395e+00,
+        3.078042864799499512e-01, -1.340998053550720215e+00,
+        3.508620023727416992e+00, 2.274388313293457031e+00,
+        -1.321727275848388672e+00, -8.888689428567886353e-02
+  };
+
+  for (size_t i = 0; i < true_vals.size(); i+=100) {
+    CHECK_NEAR(output->data<float>()[i*100], true_vals[i], 1e-5);
+  }
+}
+
+
+#ifdef INFRT_WITH_TRT
+TEST(InfRtPredictor, trt_predictor) {
+  std::vector<std::string> shared_libs;
+
+  InfRtConfig config;
+  config.enable_tensorrt();
+
+  config.set_model_dir("@CMAKE_BINARY_DIR@/models/resnet50/model.pdmodel");
+  config.set_param_dir("@CMAKE_BINARY_DIR@/models/resnet50/model.pdiparams");
+
+  std::unique_ptr<InfRtPredictor> predictor = CreateInfRtPredictor(config);
+
+  ::infrt::backends::CpuPhiAllocator cpu_allocator;
+  ::phi::DenseTensor* input = predictor->GetInput(0);
+  input->Resize({2, 3, 256, 256});
+  input->AllocateFrom(&cpu_allocator, ::phi::DataType::FLOAT32);
+  auto* input_data = reinterpret_cast<float*>(input->data());
+  for (int i = 0; i < input->numel(); i++) input_data[i] = 1.0;
+  predictor->Run();
+
+  // get and print output tensor
+  auto* output = predictor->GetOutput(0);
+
+  ASSERT_EQ(output->dims(), ::phi::DDim({2, 1000}));
+  const std::vector<float> true_vals {
+    -3.319006264209747314e-01, -1.418896913528442383e+00,
+        -6.934890151023864746e-01, -1.498023152351379395e+00,
+        3.078042864799499512e-01, -1.340998053550720215e+00,
+        3.508620023727416992e+00, 2.274388313293457031e+00,
+        -1.321727275848388672e+00, -8.888689428567886353e-02,
+        -3.319006264209747314e-01, -1.418896913528442383e+00,
+        -6.934890151023864746e-01, -1.498023152351379395e+00,
+        3.078042864799499512e-01, -1.340998053550720215e+00,
+        3.508620023727416992e+00, 2.274388313293457031e+00,
+        -1.321727275848388672e+00, -8.888689428567886353e-02
+  };
+
+  for (size_t i = 0; i < true_vals.size(); i+=100) {
+    CHECK_NEAR(output->data<float>()[i*100], true_vals[i], 1e-5);
+  }
+}
+#endif
+
+#ifdef INFRT_WITH_GPU
+TEST(InfRtPredictor, gpu_predictor) {
+  std::vector<std::string> shared_libs;
+
+  InfRtConfig config;
+  config.enable_gpu();
+
+  config.set_model_dir("@CMAKE_BINARY_DIR@/models/resnet50/model.pdmodel");
+  config.set_param_dir("@CMAKE_BINARY_DIR@/models/resnet50/model.pdiparams");
+
+  std::unique_ptr<InfRtPredictor> predictor = CreateInfRtPredictor(config);
+
+  ::infrt::backends::GpuPhiAllocator gpu_allocator;
+
+
+  ::phi::DenseTensor* input = predictor->GetInput(0);
+  input->Resize({2, 3, 256, 256});
+  input->AllocateFrom(&gpu_allocator, ::phi::DataType::FLOAT32);
+  auto* data = reinterpret_cast<float*>(input->data());
+
+  std::vector<float> input_data(2 * 3 * 256 * 256, 1.0);
+  cudaMemcpy(data,
+             input_data.data(),
+             sizeof(float) * input->numel(),
+             cudaMemcpyHostToDevice);
+
+  for(int i = 0; i < 10; i++) {
+    predictor->Run();
+  }
+  auto start = std::chrono::steady_clock::now();
+  for(int i = 0; i < 1000; i++) {
+    predictor->Run();
+  }
+  auto end = std::chrono::steady_clock::now();
+  auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
+  std::cout <<"One predict period costs " << msec.count()/1000 << "ms.\n";
+
+  auto* output = predictor->GetOutput(0);
+  std::vector<float> output_data(output->numel());
+  cudaMemcpy(output_data.data(),
+             output->data<float>(),
+             sizeof(float) * output->numel(),
+             cudaMemcpyDeviceToHost);
+
+  ASSERT_EQ(output->dims(), ::phi::DDim({2, 1000}));
+  const std::vector<float> true_vals {
+    -3.319006264209747314e-01, -1.418896913528442383e+00,
+        -6.934890151023864746e-01, -1.498023152351379395e+00,
+        3.078042864799499512e-01, -1.340998053550720215e+00,
+        3.508620023727416992e+00, 2.274388313293457031e+00,
+        -1.321727275848388672e+00, -8.888689428567886353e-02,
+        -3.319006264209747314e-01, -1.418896913528442383e+00,
+        -6.934890151023864746e-01, -1.498023152351379395e+00,
+        3.078042864799499512e-01, -1.340998053550720215e+00,
+        3.508620023727416992e+00, 2.274388313293457031e+00,
+        -1.321727275848388672e+00, -8.888689428567886353e-02
+  };
+  for (size_t i = 0; i < true_vals.size(); i+=100) {
+    CHECK_NEAR(output_data[i*100], true_vals[i], 1e-5);
+  }
+}
+#endif
+
 }  // namespace infrt

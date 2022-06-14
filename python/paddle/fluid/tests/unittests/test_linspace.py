@@ -21,11 +21,13 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestLinspaceOpCommonCase(OpTest):
     def setUp(self):
         self.op_type = "linspace"
+        self.python_api = paddle.linspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([0]).astype(dtype),
@@ -37,12 +39,13 @@ class TestLinspaceOpCommonCase(OpTest):
         self.outputs = {'Out': np.arange(0, 11).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestLinspaceOpReverseCase(OpTest):
     def setUp(self):
         self.op_type = "linspace"
+        self.python_api = paddle.linspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
@@ -54,12 +57,13 @@ class TestLinspaceOpReverseCase(OpTest):
         self.outputs = {'Out': np.arange(10, -1, -1).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestLinspaceOpNumOneCase(OpTest):
     def setUp(self):
         self.op_type = "linspace"
+        self.python_api = paddle.linspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
@@ -71,7 +75,7 @@ class TestLinspaceOpNumOneCase(OpTest):
         self.outputs = {'Out': np.array(10, dtype=dtype)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestLinspaceAPI(unittest.TestCase):
@@ -122,6 +126,11 @@ class TestLinspaceAPI(unittest.TestCase):
         self.assertEqual((out1.numpy() == np_out1).all(), True)
         self.assertEqual((out2.numpy() == np_out2).all(), True)
         self.assertEqual((out3.numpy() == np_out3).all(), True)
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_variable_input2()
+            self.test_imperative()
 
 
 class TestLinspaceOpError(unittest.TestCase):

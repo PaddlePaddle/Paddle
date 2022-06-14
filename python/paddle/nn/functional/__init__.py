@@ -114,6 +114,8 @@ from .pooling import max_unpool3d  # noqa: F401
 from .vision import affine_grid  # noqa: F401
 from .vision import grid_sample  # noqa: F401
 from .vision import pixel_shuffle  # noqa: F401
+from .vision import pixel_unshuffle  # noqa: F401
+from .vision import channel_shuffle  # noqa: F401
 from .input import one_hot  # noqa: F401
 from .input import embedding  # noqa: F401
 from ...fluid.layers import gather_tree  # noqa: F401
@@ -213,6 +215,8 @@ __all__ = [     #noqa
            'grid_sample',
            'local_response_norm',
            'pixel_shuffle',
+           'pixel_unshuffle',
+           'channel_shuffle',
            'embedding',
            'gather_tree',
            'one_hot',

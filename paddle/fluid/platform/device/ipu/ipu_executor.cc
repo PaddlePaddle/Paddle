@@ -14,11 +14,79 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device/ipu/ipu_executor.h"
 
-using float16 = paddle::platform::float16;
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
+#include "paddle/fluid/platform/device/ipu/ipu_names.h"
+#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 
 namespace paddle {
 namespace platform {
 namespace ipu {
+
+namespace {
+
+// Get paddle prefix and popart postfix of weight states
+// Format: {popart_postfix, paddle_prefix}
+std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
+    const std::string &opt_type) {
+  std::vector<std::pair<std::string, std::string>> pre_post_fix;
+  // Weight self
+  pre_post_fix.push_back(std::make_pair("", ""));
+
+  // Weight states
+  // TODO(alleng) support pair("Accl1___", "_moment1_{id!=0}")
+  if (opt_type == "adam" || opt_type == "lamb" || opt_type == "adamw") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment1_0"));
+    pre_post_fix.push_back(std::make_pair("Accl2___", "_moment2_0"));
+    pre_post_fix.push_back(std::make_pair("Step___", "_beta1_pow_acc_0"));
+  } else if (opt_type == "momentum") {
+    pre_post_fix.push_back(std::make_pair("Accl___", "_velocity_0"));
+  } else if (opt_type == "adamax") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment_0"));
+    pre_post_fix.push_back(std::make_pair("Accl2___", "_inf_norm__0"));
+    pre_post_fix.push_back(std::make_pair("Step___", "_beta1_pow_acc_0"));
+  } else if (opt_type == "adagrad") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment_0"));
+  } else if (opt_type == "adadelta") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "__avg_squared_grad_0"));
+    pre_post_fix.push_back(
+        std::make_pair("Accl2___", "__avg_squared_update_0"));
+  } else if (opt_type == "rmsprop") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_mean_square_0"));
+    pre_post_fix.push_back(std::make_pair("Accl2___", "_mean_grad_0"));
+    pre_post_fix.push_back(std::make_pair("Accl3___", "_momentum__0"));
+  }
+  return pre_post_fix;
+}
+
+class PdIArray final : public popart::IArray {
+ public:
+  explicit PdIArray(const Tensor *tensor) {
+    tensor_.ShareDataWith(*tensor);
+    for (int i = 0; i < tensor->dims().size(); ++i) {
+      shape_.push_back(tensor->dims().at(i));
+    }
+  }
+
+ public:
+  void *data() { return tensor_.data(); }
+  popart::DataType dataType() const {
+    return PhiDType2PopartDType(tensor_.dtype());
+  }
+  std::size_t rank() const { return tensor_.dims().size(); }
+  int64_t dim(size_t index) const { return tensor_.dims().at(index); }
+  std::size_t nelms() const {
+    return std::accumulate(shape_.begin(), shape_.end(),
+                           static_cast<int64_t>(1), std::multiplies<int64_t>());
+  }
+  const popart::Shape shape() const { return shape_; }
+
+ private:
+  Tensor tensor_;
+  std::vector<int64_t> shape_;
+};
+
+}  // namespace
 
 Executor::~Executor() {
   Detach();
@@ -28,6 +96,7 @@ Executor::~Executor() {
 
 void Executor::Prepare(const std::string &proto) {
   VLOG(10) << "enter Executor::Prepare";
+  compile_only_ = GetBoolEnv("IPU_COMPILE_ONLY");
 
   AcquireDevice();
   executor_resources_ = std::make_unique<ExecutorResources>();
@@ -54,9 +123,18 @@ void Executor::Prepare(const std::string &proto) {
   }
   VLOG(10) << "Creating session from Onnx Model...done";
 
-  VLOG(10) << "Preparing session device...";
-  session_->prepareDevice();
-  VLOG(10) << "Preparing session device...done";
+  if (compile_only_) {
+    LOG(INFO)
+        << "Save the offline cache as offline_cache.popart in current path.";
+    VLOG(10) << "Compile only...";
+    session_->compileAndExport("./offline_cache.popart");
+    VLOG(10) << "Compile only...done";
+    return;
+  } else {
+    VLOG(10) << "Preparing session device...";
+    session_->prepareDevice();
+    VLOG(10) << "Preparing session device...done";
+  }
 
   SetWeightsIO();
 
@@ -73,18 +151,23 @@ void Executor::Prepare(const std::string &proto) {
 void Executor::Run(const std::vector<const Tensor *> &inputs,
                    const std::vector<Tensor *> &outputs,
                    const framework::ExecutionContext &ctx) {
+  if (compile_only_) {
+    LOG(INFO) << "If IPU_COMPILE_ONLY=True, skip exe.run";
+    return;
+  }
+
   VLOG(10) << "enter Executor::Run";
   // inputs
   std::map<popart::TensorId, popart::IArray &> popart_inputs;
-  std::map<popart::TensorId, PaddleIArray> input_wrappers;
+  std::map<popart::TensorId, PdIArray> input_wrappers;
   for (size_t i = 0; i < inputs.size(); i++) {
     auto tensor_id = compiler_resources_->inputs[i];
-    input_wrappers.emplace(tensor_id, PaddleIArray(inputs[i]));
+    input_wrappers.emplace(tensor_id, PdIArray(inputs[i]));
     popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
   }
   // anchors
   std::map<popart::TensorId, popart::IArray &> popart_anchors;
-  std::map<popart::TensorId, PaddleIArray> anchor_wrappers;
+  std::map<popart::TensorId, PdIArray> anchor_wrappers;
   for (size_t i = 0; i < outputs.size(); i++) {
     auto tensor_id = compiler_resources_->outputs[i];
     // get dims & dtype from session
@@ -106,10 +189,10 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
     auto *tensor = outputs[i];
     tensor->Resize(phi::make_ddim(output_shape));
     auto fetch_dtype = fetch_info.dataType();
-    auto paddle_type = PopartType2VarType(fetch_dtype);
+    auto paddle_type = PopartDType2VarType(fetch_dtype);
     tensor->mutable_data(ctx.GetPlace(),
                          framework::TransToPhiDataType(paddle_type));
-    anchor_wrappers.emplace(tensor_id, PaddleIArray(tensor));
+    anchor_wrappers.emplace(tensor_id, PdIArray(tensor));
     popart_anchors.emplace(tensor_id, anchor_wrappers.at(tensor_id));
   }
   VLOG(10) << "Prepared inputs/anchors";
@@ -132,7 +215,12 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
 
   popart::StepIO stepio(popart_inputs, popart_anchors);
   VLOG(10) << "Running...";
-  session_->run(stepio);
+  if (ipu_strategy_->popart_options.createImplicitPipeliningFwdOnlyProgram &&
+      ipu_strategy_->runtime_options.enable_eval) {
+    session_->run("implicitPipeliningFwdOnly", stepio);
+  } else {
+    session_->run(stepio);
+  }
   VLOG(10) << "Running...done";
 }
 
@@ -154,6 +242,7 @@ void Executor::AcquireDevice() {
   bool use_ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
   bool enable_distribution = ipu_strategy_->enable_distribution;
   if (use_ipu_model) {
+    VLOG(10) << "Create IPU model device...";
     std::map<std::string, std::string> deviceOpts{
         {
             "numIPUs", std::to_string(ipu_strategy_->num_ipus),
@@ -162,23 +251,40 @@ void Executor::AcquireDevice() {
     };
     device_ = popart::DeviceManager::createDeviceManager().createIpuModelDevice(
         deviceOpts);
+    VLOG(10) << "Create IPU model device...done";
+  } else if (compile_only_) {
+    VLOG(10) << "Create offline device...";
+    std::map<std::string, std::string> deviceOpts{
+        {
+            "numIPUs", std::to_string(ipu_strategy_->num_ipus),
+        },
+        {"ipuVersion", "ipu2"},
+    };
+    device_ =
+        popart::DeviceManager::createDeviceManager().createOfflineIPUDevice(
+            deviceOpts);
+    VLOG(10) << "Create offline device...done";
   } else if (enable_distribution) {
+    VLOG(10) << "Create distribution device...";
     auto ipus_per_replica = ipu_strategy_->num_ipus /
                             ipu_strategy_->popart_options.replicatedGraphCount;
     auto device_id = popdist_get_device(ipus_per_replica);
     device_ = popart::DeviceManager::createDeviceManager().acquireDeviceById(
         device_id);
     PADDLE_ENFORCE_NOT_NULL(
-        device_, platform::errors::Unavailable(
-                     "Can't attach IPU in distribution, ipu_num = %d.",
-                     RequestIpus(ipu_strategy_->num_ipus)));
+        device_,
+        errors::Unavailable("Can't attach IPU in distribution, ipu_num = %d.",
+                            RequestIpus(ipu_strategy_->num_ipus)));
+    VLOG(10) << "Create distribution device...done";
   } else {
+    VLOG(10) << "Create IPU device...";
     device_ =
         popart::DeviceManager::createDeviceManager().acquireAvailableDevice(
             RequestIpus(ipu_strategy_->num_ipus));
-    PADDLE_ENFORCE_NOT_NULL(device_, platform::errors::Unavailable(
-                                         "Can't attach IPU, ipu_num = %d.",
-                                         RequestIpus(ipu_strategy_->num_ipus)));
+    PADDLE_ENFORCE_NOT_NULL(
+        device_, errors::Unavailable("Can't attach IPU, ipu_num = %d.",
+                                     RequestIpus(ipu_strategy_->num_ipus)));
+    VLOG(10) << "Create IPU device...done";
   }
   VLOG(10) << "leave Executor::AcquireDevice";
 }
@@ -226,13 +332,13 @@ void Executor::SetWeightsIO() {
 void Executor::ConvertWeights(bool align_to_popart) {
   for (auto weight_pair : executor_resources_->weights_and_opt_state) {
     auto paddle_var = scope_->GetVar(weight_pair.second);
-    auto paddle_var_dtype = PdDataType2PopartType(
+    auto paddle_var_dtype = PhiDType2PopartDType(
         paddle_var->GetMutable<framework::LoDTensor>()->dtype());
 
     PADDLE_ENFORCE_EQ((paddle_var_dtype == popart::DataType::FLOAT ||
                        paddle_var_dtype == popart::DataType::FLOAT16),
                       true,
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "Currently, we only support FLOAT16 and FLOAT with "
                           "Paddle, but received type is %s.",
                           paddle_var_dtype));
@@ -242,7 +348,7 @@ void Executor::ConvertWeights(bool align_to_popart) {
     PADDLE_ENFORCE_EQ((popart_var_dtype == popart::DataType::FLOAT ||
                        popart_var_dtype == popart::DataType::FLOAT16),
                       true,
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "Currently, we only support FLOAT16 and FLOAT with "
                           "popart, but received type is %s.",
                           popart_var_dtype));
@@ -276,8 +382,8 @@ void Executor::ConvertWeights(bool align_to_popart) {
                num_elem * sizeof(float));
       }
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Convert Paddle FLOAT16 to popart FLOAT"));
+      PADDLE_THROW(
+          errors::Unimplemented("Convert Paddle FLOAT16 to popart FLOAT"));
     }
   }
 }

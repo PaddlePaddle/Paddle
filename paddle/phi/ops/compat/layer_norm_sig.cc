@@ -25,11 +25,10 @@ KernelSignature LayerNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature LayerNormGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "layer_norm_grad",
-      {"X", "Mean", "Variance", "Scale", "Bias", GradVarName("Y")},
-      {"epsilon", "begin_norm_axis", "is_test"},
-      {GradVarName("X"), GradVarName("Scale"), GradVarName("Bias")});
+  return KernelSignature("layer_norm_grad",
+                         {"X", "Scale", "Bias", "Mean", "Variance", "Y@GRAD"},
+                         {"epsilon", "begin_norm_axis", "is_test"},
+                         {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
 }
 
 }  // namespace phi

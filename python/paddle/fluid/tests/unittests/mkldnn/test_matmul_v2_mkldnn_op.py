@@ -67,6 +67,8 @@ class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
         self.y_shape = (100, )
         self.trans_x = False
         self.trans_y = False
+        self._cpu_only = True
+        self.use_mkldnn = True
 
     def set_inputs(self, x, y):
         self.inputs = {'X': x, 'Y': y}

@@ -26,6 +26,8 @@ using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class ConcatXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::LoDTensor>("X");
@@ -79,10 +81,10 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
     std::vector<std::vector<int>> xdims_list;
-    std::vector<const T*> ptrs;
+    std::vector<const XPUType*> ptrs;
     for (unsigned int i = 0; i < ins.size(); ++i) {
       if (ins[i] && ins[i]->numel() > 0) {
-        ptrs.push_back(ins[i]->data<T>());
+        ptrs.push_back(reinterpret_cast<const XPUType*>(ins[i]->data<T>()));
         int size = ins[i]->dims().size();
         std::vector<int> tmp_dims(size);
         for (int j = 0; j < size; ++j) {
@@ -96,8 +98,9 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
                                                 "No tensor need concat"));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    int r = xpu::concat<T>(dev_ctx.x_context(), ptrs, out->data<T>(),
-                           xdims_list, axis);
+    int r = xpu::concat<XPUType>(dev_ctx.x_context(), ptrs,
+                                 reinterpret_cast<XPUType*>(out->data<T>()),
+                                 xdims_list, axis);
     PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                       platform::errors::External(
                           "XPU concat kernel return wrong value[%d %s]", r,
@@ -107,6 +110,8 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
 
 template <typename DeviceContext, typename T>
 class ConcatGradXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out_grad =
@@ -134,12 +139,12 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
     axis = ComputeAxis(static_cast<int64_t>(axis),
                        static_cast<int64_t>(ins[0]->dims().size()));
     // get output tensor that the name is not kEmptyVarName
-    std::vector<T*> ptrs(outs.size());
+    std::vector<XPUType*> ptrs(outs.size());
     for (size_t j = 0; j < outs.size(); ++j) {
       if (out_var_names[j] != framework::kEmptyVarName &&
           outs[j]->numel() != 0UL) {
         outs[j]->mutable_data<T>(ctx.GetPlace());
-        ptrs[j] = outs[j]->data<T>();
+        ptrs[j] = reinterpret_cast<XPUType*>(outs[j]->data<T>());
       } else {
         ptrs[j] = nullptr;
       }
@@ -173,8 +178,10 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
     xdims_list[axis] = total_length;
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::split<T>(dev_ctx.x_context(), out_grad->data<T>(), ptrs,
-                          xdims_list, split_list, axis);
+    int r = xpu::split<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(out_grad->data<T>()), ptrs, xdims_list,
+        split_list, axis);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
         platform::errors::External(
@@ -189,9 +196,13 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    concat, ops::ConcatXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    concat, ops::ConcatXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::ConcatXPUKernel<paddle::platform::XPUDeviceContext,
+                         paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
     concat_grad,
-    ops::ConcatGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    ops::ConcatGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::ConcatGradXPUKernel<paddle::platform::XPUDeviceContext,
+                             paddle::platform::float16>);
 
 #endif

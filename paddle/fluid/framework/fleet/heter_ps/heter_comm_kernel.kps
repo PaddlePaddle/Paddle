@@ -1,0 +1,362 @@
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#ifdef PADDLE_WITH_HETERPS
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
+
+#if defined(PADDLE_WITH_XPU_KP)
+#include <xpu/runtime.h>
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/math.h"
+#include "xpu/kernel/simd.h"
+#endif
+
+namespace paddle {
+namespace framework {
+
+#if defined(PADDLE_WITH_XPU_KP)
+
+struct XPUCustomGradMerger {
+  template <typename T>
+  __device__ T operator()(const T& a, const T& b) const {
+    T out;
+    out.slot = a.slot;
+    out.show = a.show + b.show;
+    out.clk = a.clk + b.clk;
+    out.lr_g = a.lr_g + b.lr_g;
+    for (int i = 0; i < MF_DIM; ++i) {
+      out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
+    }
+    return out;
+  }
+} xpu_merger;
+
+template <typename T>
+__global__ void fill_idx_kernel(T* idx, long long len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+  const int buf_size = 1024;
+  __local__ T local_idx[buf_size];
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    int read_len = min(len_per_loop, len - i);
+    for (int k = 0; k < read_len; k++) {
+      int real_idx = i + k;
+      local_idx[k] = real_idx;
+    }
+    LM2GM(local_idx, idx + i, read_len * sizeof(T));
+  }
+}
+
+template <typename T>
+__global__ void calc_shard_offset_kernel(T* idx, T* left, T* right,
+                                         long long len, const int total_xpu) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+
+  const int buf_size = 1024;
+  __local__ T local_idx[buf_size];
+  __local__ T local_left[total_xpu];
+  __local__ T local_right[total_xpu];
+
+  for (int i = 0; i < total_xpu; i++) {
+    local_left[i] = -1;
+    local_right[i] = -1;
+  }
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    // read batch from GM will boost performance
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(idx + i, local_idx, read_len * sizeof(T));
+    for (int k = 0; k < read_len; k++) {
+      if (local_idx[k] != local_idx[k + 1]) {
+        int real_idx = i + k;
+        local_right[local_idx[k]] = real_idx;
+        local_left[local_idx[k + 1]] = real_idx + 1;
+      }
+    }
+    if (i == 0) {
+      local_left[local_idx[i]] = i;
+    }
+    if (i + read_len == len) {
+      local_right[local_idx[len - 1]] = len - 1;
+    }
+  }
+  // to be optimized: call LM2GM too frequently
+  // all_reduce between threads to get global left & global right && LM2GM
+  for (int i = 0; i < total_xpu; i++) {
+    if (local_left[i] != -1) LM2GM(local_left + i, left + i, sizeof(T));
+    if (local_right[i] != -1) LM2GM(local_right + i, right + i, sizeof(T));
+  }
+}
+
+template <typename KeyType, typename T>
+__global__ void calc_shard_index_kernel(KeyType* d_keys, long long len,
+                                        T* shard_index, int total_xpu) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+  const int buf_size = 512;
+  __local__ KeyType local_keys[buf_size];
+  __local__ T local_shard_index[buf_size];
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    // read batch from GM will boost performance
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(d_keys + i, local_keys, read_len * sizeof(KeyType));
+    for (int k = 0; k < read_len; k++) {
+      local_shard_index[k] = local_keys[k] % total_xpu;
+    }
+    LM2GM(local_shard_index, shard_index + i, read_len * sizeof(T));
+  }
+}
+
+template <typename KeyType, typename T>
+__global__ void fill_shard_key_kernel(KeyType* d_shard_keys, KeyType* d_keys,
+                                      T* idx, long long len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+  const int buf_size = 400;
+  __local__ KeyType local_keys[buf_size];
+  __local__ KeyType local_shard_keys[buf_size];
+  __local__ T local_idx[buf_size];
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    // read batch from GM will boost performance
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(d_keys + i, local_keys, read_len * sizeof(KeyType));
+    GM2LM(idx + i, local_idx, read_len * sizeof(T));
+    for (int k = 0; k < read_len; k++) {
+      local_shard_keys[k] = local_keys[local_idx[k]];
+    }
+    LM2GM(local_shard_keys, d_shard_keys + i, read_len * sizeof(KeyType));
+  }
+}
+
+// local mem too large, cause compile error
+template <typename KeyType, typename GradType, typename T>
+__global__ void fill_shard_grads_kernel(KeyType* d_shard_keys, KeyType* d_keys,
+                                        GradType* d_shard_grads,
+                                        GradType* d_grads, T* idx,
+                                        long long len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+
+  const int buf_size = 100;
+  __local__ KeyType local_keys[buf_size];
+  __local__ GradType local_grads[buf_size];
+  __local__ KeyType local_shard_keys[buf_size];
+  __local__ GradType local_shard_grads[buf_size];
+  __local__ T local_idx[buf_size];
+
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    // read batch from GM will boost performance
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(d_keys + i, local_keys, read_len * sizeof(KeyType));
+    GM2LM(d_grads + i, local_grads, read_len * sizeof(GradType));
+    GM2LM(idx + i, local_idx, read_len * sizeof(T));
+    for (int k = 0; k < read_len; k++) {
+      local_shard_keys[k] = local_keys[local_idx[k]];
+      local_shard_grads[k] = local_grads[local_idx[k]];
+    }
+    LM2GM(local_shard_keys, d_shard_keys + i, read_len * sizeof(KeyType));
+    LM2GM(local_shard_grads, d_shard_grads + i, read_len * sizeof(GradType));
+  }
+}
+
+template <typename ValType, typename T>
+__global__ void fill_dvals_kernel(ValType* d_shard_vals, ValType* d_vals,
+                                  T* idx, long long len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+  const int buf_size = 50;
+  __local__ ValType local_vals[buf_size];
+  __local__ ValType local_shard_vals[buf_size];
+  __local__ T local_idx[buf_size];
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    // read batch from GM will boost performance
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(idx + i, local_idx, read_len * sizeof(T));
+    GM2LM(d_shard_vals + i, local_shard_vals, read_len * sizeof(ValType));
+    for (int k = 0; k < read_len; k++) {
+      local_vals[local_idx[k]] = local_shard_vals[k];
+    }
+    LM2GM(local_vals, d_vals + i, read_len * sizeof(ValType));
+  }
+}
+
+template <typename T, typename StreamType>
+void HeterCommKernel::fill_idx(T* idx, long long len,
+                               const StreamType& stream) {
+  fill_idx_kernel<T><<<4, 64, stream>>>(idx, len);
+}
+
+template <typename T, typename StreamType>
+void HeterCommKernel::calc_shard_offset(T* idx, T* left, T* right,
+                                        long long len, int total_devs,
+                                        const StreamType& stream) {
+  calc_shard_offset_kernel<T><<<4, 64, stream>>>(idx, left, right, len,
+                                                 total_devs);
+}
+
+template <typename KeyType, typename T, typename StreamType>
+void HeterCommKernel::calc_shard_index(KeyType* d_keys, long long len,
+                                       T* shard_index, int total_devs,
+                                       const StreamType& stream) {
+  calc_shard_index_kernel<KeyType, T><<<4, 64, stream>>>(
+      d_keys, len, shard_index, total_devs);
+}
+
+template <typename KeyType, typename T, typename StreamType>
+void HeterCommKernel::fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys,
+                                     T* idx, long long len,
+                                     const StreamType& stream) {
+  fill_shard_key_kernel<KeyType, T><<<4, 64, stream>>>(d_shard_keys, d_keys,
+                                                       idx, len);
+}
+
+template <typename KeyType, typename GradType, typename T, typename StreamType>
+void HeterCommKernel::fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
+                                       GradType* d_shard_grads,
+                                       GradType* d_grads, T* idx, long long len,
+                                       const StreamType& stream) {
+  fill_shard_grads_kernel<KeyType, GradType, T><<<4, 64, stream>>>(
+      d_shard_keys, d_keys, d_shard_grads, d_grads, idx, len);
+}
+
+template <typename ValType, typename T, typename StreamType>
+void HeterCommKernel::fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
+                                 long long len, const StreamType& stream) {
+  fill_dvals_kernel<ValType, T><<<4, 64, stream>>>(d_shard_vals, d_vals, idx,
+                                                   len);
+}
+
+template <typename KeyT, typename ValueT, typename StreamType>
+void HeterCommKernel::sort_pairs(void* d_temp_storage,
+                                 size_t& temp_storage_bytes,  // NOLINT
+                                 const KeyT* d_keys_in,       // NOLINT
+                                 KeyT* d_keys_out, const ValueT* d_values_in,
+                                 ValueT* d_values_out, int num_items,
+                                 int begin_bit, int end_bit, StreamType stream,
+                                 bool debug_synchronous) {}
+
+template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
+          typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
+          typename NumRunsOutputIteratorT, typename StreamType>
+void HeterCommKernel::reduce_by_key(void* d_temp_storage,
+                                    size_t& temp_storage_bytes,  // NOLINT
+                                    KeysInputIteratorT d_keys_in,
+                                    UniqueOutputIteratorT d_unique_out,
+                                    ValuesInputIteratorT d_values_in,
+                                    AggregatesOutputIteratorT d_aggregates_out,
+                                    NumRunsOutputIteratorT d_num_runs_out,
+                                    int num_items, StreamType stream,
+                                    bool debug_synchronous) {}
+
+template void HeterCommKernel::fill_idx<int, XPUStream>(
+    int* idx, long long len, const XPUStream& stream);
+
+template void HeterCommKernel::calc_shard_offset<int, XPUStream>(
+    int* idx, int* left, int* right, long long len, int total_devs,
+    const XPUStream& stream);
+template void HeterCommKernel::calc_shard_index<unsigned long, int, XPUStream>(
+    unsigned long* d_keys, long long len, int* shard_index, int total_devs,
+    const XPUStream& stream);
+
+template void HeterCommKernel::fill_shard_key<unsigned long, int, XPUStream>(
+    unsigned long* d_shard_keys, unsigned long* d_keys, int* idx, long long len,
+    const XPUStream& stream);
+
+template void HeterCommKernel::fill_shard_grads<
+    unsigned long, paddle::framework::FeaturePushValue, int, XPUStream>(
+    unsigned long* d_shard_keys, unsigned long* d_keys,
+    paddle::framework::FeaturePushValue* d_shard_grads,
+    paddle::framework::FeaturePushValue* d_grads, int* idx, long long len,
+    const XPUStream& stream);
+
+template void
+HeterCommKernel::fill_dvals<paddle::framework::FeatureValue, int, XPUStream>(
+    paddle::framework::FeatureValue* d_shard_vals,
+    paddle::framework::FeatureValue* d_vals, int* idx, long long len,
+    const XPUStream& stream);
+
+template void HeterCommKernel::sort_pairs<
+    unsigned long, paddle::framework::FeaturePushValue, XPUStream>(
+    void* d_temp_storage,
+    size_t& temp_storage_bytes,      // NOLINT
+    const unsigned long* d_keys_in,  // NOLINT
+    unsigned long* d_keys_out,
+    const paddle::framework::FeaturePushValue* d_values_in,
+    paddle::framework::FeaturePushValue* d_values_out, int num_items,
+    int begin_bit, int end_bit, XPUStream stream, bool debug_synchronous);
+
+template void HeterCommKernel::sort_pairs<int, int, XPUStream>(
+    void* d_temp_storage,
+    size_t& temp_storage_bytes,  // NOLINT
+    const int* d_keys_in,        // NOLINT
+    int* d_keys_out, const int* d_values_in, int* d_values_out, int num_items,
+    int begin_bit, int end_bit, XPUStream stream, bool debug_synchronous);
+
+template void HeterCommKernel::reduce_by_key<
+    unsigned long*, unsigned long*, paddle::framework::FeaturePushValue*,
+    paddle::framework::FeaturePushValue*, int*, XPUStream>(
+    void* d_temp_storage,
+    size_t& temp_storage_bytes,  // NOLINT
+    unsigned long* d_keys_in, unsigned long* d_unique_out,
+    paddle::framework::FeaturePushValue* d_values_in,
+    paddle::framework::FeaturePushValue* d_aggregates_out, int* d_num_runs_out,
+    int num_items, XPUStream stream, bool debug_synchronous);
+
+#endif
+
+}  // end namespace framework
+}  // end namespace paddle
+#endif

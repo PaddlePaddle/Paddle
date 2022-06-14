@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/kernel_context.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -121,12 +122,18 @@ paddle::framework::FetchList InterpreterCore::Run(
   Prepare(feed_names, feed_tensors, is_build);
 
   if (is_build) {
+    // add listener before run and is_build=true
+    global_scope_->ResetListener();
+
     ExecuteInstructionList(vec_instruction_);
   }
 
   if (create_local_scope_) {
     ClearLoDTensorArrayInLocalScope();
   }
+
+  // clear the listener after run
+  global_scope_->ClearListener();
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
@@ -162,12 +169,18 @@ paddle::framework::FetchList InterpreterCore::Run(
     Convert(&op_func_nodes);
 
   } else {
+    // add listener before run and is_build=true
+    global_scope_->ResetListener();
+
     ExecuteInstructionList(vec_instruction_);
   }
 
   if (create_local_scope_) {
     ClearLoDTensorArrayInLocalScope();
   }
+
+  // clear the listener after run
+  global_scope_->ClearListener();
 
   // return Fetch Tensors
   auto* fetch_var = global_scope_->Var(interpreter::kFetchVarName);
@@ -192,7 +205,8 @@ void InterpreterCore::BuildOperatorDependences() {
   // Schedule
   auto op_nums = vec_instruction_.size();
   dependecy_count_.resize(op_nums);
-  auto op2downstream = interpreter::build_op_downstream_map(vec_instruction_);
+  auto op2downstream = interpreter::build_op_downstream_map(
+      vec_instruction_, &op_happens_before_);
   for (size_t op = 0; op < vec_instruction_.size(); ++op) {
     auto op_list = op2downstream[op];
     std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
@@ -213,18 +227,21 @@ void InterpreterCore::Convert(
 
   auto op_nums = nodes.size();
   vec_instruction_.reserve(op_nums);
-
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
-    auto& instr = vec_instruction_.back();
+  }
 
+  BuildOperatorDependences();
+
+  // calculate last_live_ops_
+  for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
+    auto& instr = vec_instruction_[op_idx];
     OpInOutInfo info;
-    std::vector<size_t> gc_check_input_list;
+    std::set<size_t> gc_check_inputs;
 
-    for (auto& item : op_func_node.input_index) {
+    for (auto& item : instr.Inputs()) {
       for (auto id : item.second) {
         if (id == kEmptyVarIndex) {
           continue;
@@ -232,38 +249,24 @@ void InterpreterCore::Convert(
         input_var2op_info_.at(id).push_back(op_idx);
         // var can be gc-ed
         if (!info.IsBuilt()) {
-          info.Build(op_func_node.operator_base_.get());
+          info.Build(instr.OpBase());
         }
         auto* var_desc = global_scope_->VarDesc(id);
         if (var_desc) {
           if (info.IsInArgBufferNeeded(var_desc->Name())) {
-            gc_check_input_list.push_back(id);
+            gc_check_inputs.insert(id);
           }
         } else {
-          gc_check_input_list.push_back(id);
+          gc_check_inputs.insert(id);
         }
       }
     }
-    std::sort(gc_check_input_list.begin(), gc_check_input_list.end());
-    auto last =
-        std::unique(gc_check_input_list.begin(), gc_check_input_list.end());
-    gc_check_input_list.erase(last, gc_check_input_list.end());
 
-    for (auto var_id : gc_check_input_list) {
+    for (auto var_id : gc_check_inputs) {
       paddle::framework::Variable* var = global_scope_->Var(var_id);
       if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<LoDTensorArray>()) {
-        vec_meta_info[var_id].var_ref_count_++;
-        // TODO(zhiqiu): not all var needs to be checked, var need to be checked
-        // only
-        // after the last_live_op. For example,
-        // b = op1(a)
-        // c = op2(a, b)
-        // in this case, a is the input of op1 and op2, we only need to check
-        // a after op2, because op2 always uses a after op1.
-        instr.AddGCCheckVar(var_id);
-        VLOG(4) << "clear " << global_scope_->GetNameById(var_id) << " after "
-                << instr.OpBase()->Type();
+        last_live_ops_[var_id].insert(op_idx);
       } else {
         VLOG(4) << "not clear " << global_scope_->GetNameById(var_id)
                 << " after " << instr.OpBase()->Type()
@@ -274,21 +277,47 @@ void InterpreterCore::Convert(
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    // checkout ouput
+    // checkout output
     for (auto& item : vec_instruction_[i].Outputs()) {
-      for (auto id : item.second) {
-        if (input_var2op_info_.at(id).size() == 0) {
-          // output var not be used by any kernel
-          vec_instruction_[i].AddGCCheckVar(id);
-          VLOG(4) << "clear " << global_scope_->GetNameById(id) << " after "
-                  << vec_instruction_[i].OpBase()->Type();
-          vec_meta_info[id].var_ref_count_++;
+      for (auto var_id : item.second) {
+        if (input_var2op_info_.at(var_id).size() == 0) {
+          last_live_ops_[var_id].insert(i);
         }
       }
     }
   }
 
-  BuildOperatorDependences();
+  // shrink, find the downstream op that has no other op in the
+  // downstream list happens before it
+  // For example,
+  // b = op1(a)
+  // c = op2(a, b)
+  // in this case, a is the input of op1 and op2, we only need to check
+  // a after op2, because op2 always uses a after op1.
+  for (size_t i = 0; i < last_live_ops_.size(); ++i) {
+    std::set<size_t> minumum_last_live_ops;
+    for (size_t item : last_live_ops_[i]) {
+      bool not_before_any = true;
+      // find the op that is not executed before any
+      for (size_t other_item : last_live_ops_[i]) {
+        if (op_happens_before_[item][other_item]) {
+          VLOG(8) << "happens_before: " << item << "->" << other_item
+                  << ", so skip " << item;
+          not_before_any = false;
+          break;
+        }
+      }
+      if (not_before_any) {
+        VLOG(8) << "last live op of var " << i << " "
+                << global_scope_->GetNameById(i) << " : " << item << " "
+                << vec_instruction_[item].OpBase()->Type();
+        minumum_last_live_ops.insert(item);
+        vec_instruction_[item].AddGCCheckVar(i);
+      }
+    }
+    last_live_ops_[i] = minumum_last_live_ops;
+    vec_meta_info[i].var_ref_count_ = last_live_ops_[i].size();
+  }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
@@ -400,8 +429,17 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
     }
     outs_map.emplace(var_name_item.first, std::move(out_vars));
   }
+
   // set runtime_ctx and infershape_ctx_
-  instr_node->ResetContext(ins_map, outs_map);
+  if (instr_node->OpBase()->Type() == "cinn_launch") {  // OP use scope in
+                                                        // kernel
+    Scope* local_scope = create_local_scope_
+                             ? global_scope_->GetMutableLocalScope()
+                             : global_scope_->GetMutableScope();
+    instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
+  } else {
+    instr_node->ResetContext(ins_map, outs_map);
+  }
 }
 
 void InterpreterCore::BuildSkipShareLoDInfo() {
@@ -489,6 +527,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   VLOG(4) << "End run " << place << " " << op->DebugStringEx(global_scope_);
 
   if (!instr_node.InplaceBackMap().empty()) {
+    platform::RecordEvent inplaceback_event(
+        "InplaceVarsBack", platform::TracerEventType::UserDefined, 10);
     auto& m = instr_node.InplaceBackMap();
     // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
     for (auto& p : m) {
@@ -530,6 +570,8 @@ void InterpreterCore::ExecuteInstructionList(
     return;
   }
 
+  platform::RecordEvent record_prepare(
+      "PrepareAtomic", platform::TracerEventType::UserDefined, 1);
   // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
   // those for the next step
   auto atomic_deps = async_work_queue_->AtomicDeps();
@@ -537,6 +579,7 @@ void InterpreterCore::ExecuteInstructionList(
 
   async_work_queue_->PrepareAtomicDeps(dependecy_count_);
   async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+  record_prepare.End();
 
   exception_holder_.Clear();
 
@@ -573,6 +616,9 @@ void InterpreterCore::RunNextInstructions(
     const Instruction& instr, std::queue<size_t>* reserved_next_ops,
     std::vector<std::atomic<size_t>>* atomic_deps,
     std::vector<std::atomic<size_t>>* atomic_var_ref) {
+  platform::RecordEvent record("RunNextInstructions",
+                               platform::TracerEventType::UserDefined, 10);
+  VLOG(4) << "atomic 1:" << atomic_deps;
   auto& next_instr = instr.NextInstructions();
 
   auto IsReady = [atomic_deps](size_t next_id) {
@@ -708,6 +754,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
       instr.KernelType() != OpFuncType::kQueueAsync) {
     return;
   }
+  platform::RecordEvent record("RecordStreamForGC",
+                               platform::TracerEventType::UserDefined, 10);
 
   gpuStream_t stream = reinterpret_cast<const platform::CUDADeviceContext&>(
                            instr.DeviceContext())
@@ -799,6 +847,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
 void InterpreterCore::CheckGC(
     const Instruction& instr,
     std::vector<std::atomic<size_t>>* atomic_var_ref) {
+  platform::RecordEvent record("CheckGC",
+                               platform::TracerEventType::UserDefined, 10);
   size_t instr_id = instr.Id();
   auto& var_scope = *global_scope_;
 
