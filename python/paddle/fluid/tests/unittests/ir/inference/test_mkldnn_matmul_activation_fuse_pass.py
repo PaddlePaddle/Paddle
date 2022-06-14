@@ -25,12 +25,12 @@ class TestMatmulActivationMkldnnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         transpose_X = draw(st.booleans())
         transpose_Y = draw(st.booleans())
-        alpha = draw(st.sampled_from([0.5, 1, 2]))
-        batch_size = draw(st.sampled_from([1, 4]))
-        channel = draw(st.sampled_from([1, 4]))
-        input_dim = draw(st.sampled_from([32, 64]))
-        activation_type = draw(st.sampled_from(
-            ['relu', 'gelu', 'tanh', 'sigmoid', 'swish', 'mish']))
+        alpha = draw(st.sampled_from([1, 2]))
+        batch_size = draw(st.sampled_from([4]))
+        channel = draw(st.sampled_from([8]))
+        input_dim = draw(st.sampled_from([32]))
+        activation_type = draw(st.sampled_from(['relu', 'gelu', 'tanh', 'sigmoid', 'swish', 'mish', 'sqrt',
+                               'hard_swish', 'sigmoid', 'abs', 'relu6', 'clip', 'tanh', 'hard_sigmoid', 'leaky_relu']))
 
         def generate_input(type):
             if transpose_X and transpose_Y:
@@ -63,10 +63,32 @@ class TestMatmulActivationMkldnnFusePass(PassAutoScanTest):
                                  'alpha': alpha
                              })
 
-        activation_op = OpConfig(type=activation_type,
-                                 inputs={'X': ['matmul_output']},
-                                 outputs={'Out': ['activation_output']},
-                                 attrs={})
+        if activation_type == "relu6":
+            activation_op = OpConfig(activation_type,
+                                     inputs={"X": ["matmul_output"]},
+                                     outputs={"Out": ["activation_output"]},
+                                     threshold=draw(st.floats(min_value=1.0, max_value=10.0)))
+        elif activation_type == "leaky_relu":
+            activation_op = OpConfig(activation_type,
+                                     inputs={"X": ["matmul_output"]},
+                                     outputs={"Out": ["activation_output"]},
+                                     alpha=draw(st.floats(min_value=0.1, max_value=1.0)))
+        elif activation_type == "swish":
+            activation_op = OpConfig(activation_type,
+                                     inputs={"X": ["matmul_output"]},
+                                     outputs={"Out": ["activation_output"]},
+                                     beta=draw(st.floats(min_value=0.1, max_value=1.0)))
+        elif activation_type == "clip":
+            activation_op = OpConfig(activation_type,
+                                     inputs={"X": ["matmul_output"]},
+                                     outputs={"Out": ["activation_output"]},
+                                     min=draw(
+                                         st.floats(min_value=0.1, max_value=0.49)),
+                                     max=draw(st.floats(min_value=0.5, max_value=1.0)))
+        else:
+            activation_op = OpConfig(activation_type,
+                                     inputs={"X": ["matmul_output"]},
+                                     outputs={"Out": ["activation_output"]})
 
         model_net = [matmul_op, activation_op]
 

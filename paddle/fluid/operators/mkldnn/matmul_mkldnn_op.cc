@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mkldnn/matmul_mkldnn_op.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 #include <tuple>
 
@@ -430,6 +431,32 @@ class MatMulMKLDNNHandler
     float scale_out = ComputeOutputScale(ctx);
     if (scale_out != 1.0f) {
       matmul_attrs.set_output_scales(0, {scale_out});
+    }
+
+    if (ctx.HasAttr("activation_type")) {
+      const auto activation_type = ctx.Attr<std::string>("activation_type"); 
+      const float activation_scale = ctx.HasAttr("activation_scale")
+                              ? ctx.Attr<float>("activation_scale")
+                              : 1.0f;
+      const float alpha = ctx.HasAttr("activation_alpha")
+                              ? ctx.Attr<float>("activation_alpha")
+                              : 0.0f;
+      const float beta = ctx.HasAttr("activation_beta")
+                             ? ctx.Attr<float>("activation_beta")
+                             : 0.0f;
+
+      if (activation_type == "hard_sigmoid") {
+        post_operations.append_eltwise(activation_scale,
+                                       dnnl::algorithm::eltwise_linear,
+                                       alpha, beta);
+        post_operations.append_eltwise(
+            activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+      } else if (activation_type != "") {
+        const auto activation_algorithm =
+            paddle::platform::AcquireActivationAlgorithm(activation_type);
+        post_operations.append_eltwise(activation_scale, activation_algorithm,
+                                       alpha, beta);
+      }
     }
 
     matmul_attrs.set_post_ops(post_operations);
