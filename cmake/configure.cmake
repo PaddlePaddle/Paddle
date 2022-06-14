@@ -85,10 +85,6 @@ if(WITH_FLPS)
   add_definitions(-DPADDLE_WITH_FLPS)
 endif()
 
-if(WITH_FLPS) 
-    add_definitions(-DPADDLE_WITH_FLPS)
-endif()
-
 if(WITH_GLOO)
   add_definitions(-DPADDLE_WITH_GLOO)
 endif()

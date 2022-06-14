@@ -123,7 +123,6 @@ class DistributedOpsPass(PassBase):
         if attrs['use_ps_gpu']:
             return
         if len(push_sparse_ops) == 0:
-            print("push_sparse_ops size is 0 !!\n")
             return
         show = None
         clk = None
@@ -180,7 +179,6 @@ class DistributedOpsPass(PassBase):
                                                })
 
         for param, ops in push_sparse_ops.items():
-            print("push_sparse_ops: {}".format(ops))
             all_ops = _program.global_block().ops
             op_idxs = [all_ops.index(op) for op in ops]
             inputs = [
