@@ -129,6 +129,11 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
 
     const T* residual_ptr = add_residual ? x.data<T>() : nullptr;
     if (!pre_layer_norm) {
+      PADDLE_ENFORCE_EQ(add_residual, true,
+                        platform::errors::InvalidArgument(
+                            "Attribute add_residual is expected to be true "
+                            "when pre_layer_norm is false."));
+
       fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
           ctx, linear2_out.data<T>(), residual_ptr, linear2_bias_ptr,
           ln2_scale_ptr, ln2_bias_ptr, dropout2_out->data<T>(),

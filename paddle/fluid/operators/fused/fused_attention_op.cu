@@ -254,6 +254,11 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
           ctx.cuda_device_context(), out_linear_out_data, residual_ptr,
           out_linear_bias_data, final_out_data, dropout_mask_out_data);
     } else {
+      PADDLE_ENFORCE_EQ(add_residual, true,
+                        platform::errors::InvalidArgument(
+                            "Attribute add_residual is expected to be true "
+                            "when pre_layer_norm is false."));
+
       const U *ln_scale_2_ptr = ln_scale_2 ? ln_scale_2->data<U>() : nullptr;
       const U *ln_bias_2_ptr = ln_bias_2 ? ln_bias_2->data<U>() : nullptr;
       T *bias_dropout_residual_out_ptr =

@@ -368,3 +368,11 @@ REGISTER_OPERATOR(fused_feedforward, ops::FusedFeedForwardOp,
                   ops::FusedFeedForwardOpGradMaker<paddle::framework::OpDesc>,
                   ops::FusedFeedForwardOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_feedforward_grad, ops::FusedFeedForwardOpGrad);
+
+REGISTER_OP_VERSION(fused_feedforward)
+    .AddCheckpoint(
+        R"ROC(
+              Add a new attribute [add_residual] )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "add_residual", "A flag to indicate whether to add residual.",
+            true));

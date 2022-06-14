@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -656,3 +657,11 @@ REGISTER_OPERATOR(fused_attention, ops::FusedAttentionOp,
                   ops::FusedAttentionGradOpMaker<paddle::framework::OpDesc>,
                   ops::FusedAttentionGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_attention_grad, ops::FusedAttentionGradOp);
+
+REGISTER_OP_VERSION(fused_attention)
+    .AddCheckpoint(
+        R"ROC(
+              Add a new attribute [add_residual] )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "add_residual", "A flag to indicate whether to add residual.",
+            true));
