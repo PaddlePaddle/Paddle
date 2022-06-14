@@ -52,7 +52,6 @@ class Unsqueeze2OpConverter : public OpConverter {
       // axes[i] is relative to cur_out_rank
       // we make [axes[i], cur_out_rank - 2] shift right
       // and make (axes[i]) to true!
-      std::cout << "axes[i]" << axes[i] << std::endl;
       for (int j = cur_out_rank - 1; j > axes[i]; j--) {
         should_unsqueeze[j] = should_unsqueeze[j - 1];
       }

@@ -24,24 +24,18 @@ from typing import Optional, List, Callable, Dict, Any, Set
 class TrtConvertSplitTest(TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        inputs = program_config.inputs
-        attrs = [
-            program_config.ops[i].attrs for i in range(len(program_config.ops))
-        ]
-        if len(inputs['in_data'].shape) <= max(attrs[0]['axes']):
-            return False
         return True
 
     def sample_program_configs(self):
         for dims in [2, 3, 4]:
-            for batch in [3, 4, 8]:
-                for axes in [[2], [2, 3], [-1]]:
+            for batch in [3, 4]:
+                for axes in [[-2, 3], [1], [2], [2, 3]]:
                     self.batch = batch
                     self.dims = dims
                     self.axes = axes
                     dics = [{"axes": axes}]
                     ops_config = [{
-                        "op_type": "squeeze2",
+                        "op_type": "unsqueeze2",
                         "op_inputs": {
                             "X": ["in_data"]
                         },
@@ -51,22 +45,14 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                         },
                         "op_attrs": dics[0]
                     }]
-                    # new_axes is the update of axes
-                    new_axes = list(axes)
-                    for i in range(len(new_axes)):
-                        if (new_axes[i] < 0):
-                            new_axes[i] += dims
-                    if (max(new_axes) >= dims):
-                        continue
-                # generate input data
+
+                    # generate input data
                     self.input_shape = [1] * dims
                     for i in range(dims):
                         self.input_shape[i] = np.random.randint(1, 100)
 
                     def generate_input1(attrs: List[Dict[str, Any]], batch):
                         self.input_shape[0] = batch
-                        for i in new_axes:
-                            self.input_shape[i] = 1
                         return np.random.random(self.input_shape).astype(
                             np.float32)
 

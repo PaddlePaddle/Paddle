@@ -55,7 +55,6 @@ class Squeeze2OpConverter : public OpConverter {
     trt_out_dims.nbDims = 0;
     std::vector<int32_t> gather_indices;
     for (size_t i = 0; i < should_squeeze.size(); i++) {
-      std::cout << should_squeeze[i] << std::endl;
       if (should_squeeze[i]) continue;
       gather_indices.push_back(i);
       // for static shape
