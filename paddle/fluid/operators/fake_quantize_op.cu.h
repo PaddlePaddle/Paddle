@@ -257,7 +257,6 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
     ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
     x = x > max_bound ? max_bound : x;
     x = x < min_bound ? min_bound : x;
-    // Dequant
     out[i] = static_cast<T>((x * s) / bin_cnt_t);
   }
 }
