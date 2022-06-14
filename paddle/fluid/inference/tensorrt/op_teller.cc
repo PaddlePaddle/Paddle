@@ -839,7 +839,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto interp_method =
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "bilinear") {
-        VLOG(3) << "The interp_method of op_type " << op_type << " is not bilinear";
+        VLOG(3) << "The interp_method of op_type " << op_type
+                << " is not bilinear";
         return false;
       }
 

@@ -1,8 +1,11 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -44,8 +47,7 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
         BOOST_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
     bool align_corners =
         BOOST_GET_CONST(bool, op_desc.GetAttr("align_corners"));
-    auto align_mode =
-        BOOST_GET_CONST(int, op_desc.GetAttr("align_mode"));
+    auto align_mode = BOOST_GET_CONST(int, op_desc.GetAttr("align_mode"));
 
     auto resize_inputs = op_desc.Inputs();
     auto input_names = op_desc.Input("X");
@@ -117,7 +119,8 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     }
 
     layer->setScales(scales.data(), scales.size());
-    RreplenishLayerAndOutput(layer, "bilinear_interp_v2", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "bilinear_interp_v2", {output_name},
+                             test_mode);
   }
 };
 
