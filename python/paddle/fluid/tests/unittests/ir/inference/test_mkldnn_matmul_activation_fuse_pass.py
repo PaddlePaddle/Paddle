@@ -119,6 +119,7 @@ class TestMatmulActivationMkldnnFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(quant=False,
+                            max_examples=300,
                             passes=['matmul_activation_mkldnn_fuse_pass'])
 
 
