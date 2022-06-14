@@ -144,19 +144,19 @@ void CsrMaskedMatmulKernel(const Context& dev_ctx,
           "The shape of Input(x) and Input(y) is not suitable for matmul "
           "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
 
-  PADDLE_ENFORCE_GE(
+  PADDLE_ENFORCE_EQ(
       maskdim_vec[mask_ndims - 2],
       xdim_vec[x_ndims - 2],
       phi::errors::PreconditionNotMet(
           "The shape of Input(x) and Input(y) is not suitable for matmul "
-          "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
+          "opetation, mask_dim[-2] must be eaqual to x_dim[-2]."));
 
-  PADDLE_ENFORCE_GE(
+  PADDLE_ENFORCE_EQ(
       maskdim_vec[mask_ndims - 1],
       ydim_vec[y_ndims - 1],
       phi::errors::PreconditionNotMet(
           "The shape of Input(x) and Input(y) is not suitable for matmul "
-          "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
+          "opetation, mask_dim[-1] must be eaqual to y_dim[-1]."));
 
   // InferMeta of SparseCsrTensor 'out'
   out->set_dims(mask.dims());
@@ -199,7 +199,7 @@ PD_REGISTER_KERNEL(csr_dense_matmul,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(csr_masked_mm,
+PD_REGISTER_KERNEL(csr_masked_matmul,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::CsrMaskedMatmulKernel,

@@ -19,7 +19,7 @@ __all__ = []
 
 
 @dygraph_only
-def mm(x, y, name=None):
+def matmul(x, y, name=None):
     """
     Warning:    
         This API is only used from ``CUDA 11.0`` .
@@ -52,34 +52,36 @@ def mm(x, y, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
-            from paddle.fluid.framework import _test_eager_guard
-            
+            from paddle.fluid.framework import _test_eager_guard 
             paddle.seed(100)
-            paddle.set_device('gpu')
 
-            with _test_eager_guard():
-                # csr @ dense -> dense
+            # csr @ dense -> dense
+
+            with _test_eager_guard():         
                 crows = [0, 2, 3, 5]
                 cols = [1, 3, 2, 0, 1]
                 values = [1., 2., 3., 4., 5.]
                 dense_shape = [3, 4]
                 csr = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+                # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True, 
+                #        crows=[0, 2, 3, 5], 
+                #        cols=[1, 3, 2, 0, 1], 
+                #        values=[1., 2., 3., 4., 5.])
                 dense = paddle.randn([4, 3])
                 
-                out = paddle.incubate.sparse.mm(csr, dense)
+                out = paddle.incubate.sparse.matmul(csr, dense)
                 # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [[-1.94294846 , -3.33990622 ,  0.62359387 ],
                 #         [-4.12815523 ,  3.46535444 , -3.27413893 ],
                 #         [-0.15209436 , -19.23207283, -3.35593438 ]])
 
     """
-    return _C_ops.final_state_sparse_mm(x, y)
+    return _C_ops.final_state_sparse_matmul(x, y)
 
 
 @dygraph_only
-def masked_mm(x, y, mask, name=None):
+def masked_matmul(x, y, mask, name=None):
     """
     Warning:    
         This API is only used from ``CUDA 11.3`` .
@@ -111,29 +113,31 @@ def masked_mm(x, y, mask, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
             from paddle.fluid.framework import _test_eager_guard
-            
             paddle.seed(100)
-            paddle.set_device('gpu')
+
+            # dense @ dense * csr_mask -> csr
 
             with _test_eager_guard():
-                # dense @ dense * csr_mask -> csr
                 crows = [0, 2, 3, 5]
                 cols = [1, 3, 2, 0, 1]
                 values = [1., 2., 3., 4., 5.]
                 dense_shape = [3, 4]
                 mask = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-                
+                # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+                #       crows=[0, 2, 3, 5],
+                #       cols=[1, 3, 2, 0, 1],
+                #       values=[1., 2., 3., 4., 5.])
+
                 x = paddle.rand([3, 5])
                 y = paddle.rand([5, 4])
 
-                out = paddle.incubate.sparse.masked_mm(x, y, mask)
+                out = paddle.incubate.sparse.masked_matmul(x, y, mask)
                 # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True, 
                 #        crows=[0, 2, 3, 5], 
                 #        cols=[1, 3, 2, 0, 1], 
                 #        values=[0.98986477, 0.97800624, 1.14591956, 0.68561077, 0.94714981])
 
     """
-    return _C_ops.final_state_sparse_masked_mm(x, y, mask)
+    return _C_ops.final_state_sparse_masked_matmul(x, y, mask)

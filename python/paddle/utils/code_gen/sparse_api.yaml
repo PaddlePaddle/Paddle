@@ -97,13 +97,24 @@
     layout : x
     data_type : dtype
 
-- api: masked_mm
+- api: masked_matmul
   args : (Tensor x, Tensor y, Tensor mask)
   output : Tensor(out)
   kernel :
-    func : csr_masked_mm{dense, dense, sparse_csr -> sparse_csr}
+    func : csr_masked_matmul{dense, dense, sparse_csr -> sparse_csr}
     layout : x
-  backward: masked_mm_grad
+  backward: masked_matmul_grad
+
+- api: matmul
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  kernel :
+    func : csr_dense_matmul{sparse_csr, dense -> dense},
+           csr_csr_matmul{sparse_csr, sparse_csr -> sparse_csr},
+           coo_dense_matmul{sparse_coo, dense -> dense},
+           coo_coo_matmul{sparse_coo, sparse_coo -> sparse_coo}
+    layout : x
+  backward: matmul_grad
 
 - api: maxpool
   args : (Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides)
@@ -113,14 +124,3 @@
     layout : x
   intermediate : rulebook
   backward : sparse_maxpool_grad
-
-- api: mm
-  args : (Tensor x, Tensor y)
-  output : Tensor(out)
-  kernel :
-    func : csr_dense_matmul{sparse_csr, dense -> dense},
-           csr_csr_matmul{sparse_csr, sparse_csr -> sparse_csr},
-           coo_dense_matmul{sparse_coo, dense -> dense},
-           coo_coo_matmul{sparse_coo, sparse_coo -> sparse_coo}
-    layout : x
-  backward: mm_grad

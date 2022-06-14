@@ -61,7 +61,7 @@ class TestCsrDenseMatmul2D(unittest.TestCase):
 
             csr = paddle.to_tensor(np_x, stop_gradient=False).to_sparse_csr()
             dense = paddle.to_tensor(np_dense, stop_gradient=False)
-            out = paddle.incubate.sparse.mm(csr, dense)
+            out = paddle.incubate.sparse.matmul(csr, dense)
 
             self.assertTrue(np.allclose(np_out, out.numpy()))
 
@@ -102,7 +102,7 @@ class TestCsrMaskedMatmul2D(unittest.TestCase):
             x = paddle.to_tensor(np_x, stop_gradient=False)
             y = paddle.to_tensor(np_y, stop_gradient=False)
             mask = paddle.to_tensor(np.ones([10, 6]) * np_mask).to_sparse_csr()
-            out = paddle.incubate.sparse.masked_mm(x, y, mask)
+            out = paddle.incubate.sparse.masked_matmul(x, y, mask)
 
             self.assertTrue(np.allclose(np_out.indptr, out.crows().numpy()))
             self.assertTrue(np.allclose(np_out.indices, out.cols().numpy()))

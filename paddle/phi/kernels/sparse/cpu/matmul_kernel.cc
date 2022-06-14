@@ -53,7 +53,7 @@ PD_REGISTER_KERNEL(csr_dense_matmul,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(csr_masked_mm,
+PD_REGISTER_KERNEL(csr_masked_matmul,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::CsrMaskedMatmulKernel,

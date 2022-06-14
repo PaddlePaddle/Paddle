@@ -141,7 +141,7 @@ PD_REGISTER_KERNEL(csr_dense_matmul_grad,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(csr_masked_mm_grad,
+PD_REGISTER_KERNEL(csr_masked_matmul_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::CsrMaskedMatmulGradKernel,
