@@ -704,6 +704,37 @@ class TestAmpDecorator(unittest.TestCase):
             self.assertEqual((param.dtype == paddle.float32), True)
 
 
+class TestStateDictHookForAMP(unittest.TestCase):
+
+    def test_state_dict_hook(self):
+
+        def func_isinstance():
+            paddle.seed(100)
+            model = paddle.nn.Linear(2, 4)
+            model = paddle.amp.decorate(models=model,
+                                        level='O2',
+                                        save_dtype='float32')
+            param_value_ori = {}
+            for param in model.parameters():
+                param_value_ori[param.name] = param.numpy()
+
+            state_dict = model.state_dict()
+            for key, value in state_dict.items():
+                state_dict[key] = value.cast("float16")
+            model.set_state_dict(state_dict)
+
+            param_value_now = {}
+            for param in model.parameters():
+                param_value_now[param.name] = param.numpy()
+
+            for key in param_value_ori.keys():
+                print(np.equal(param_value_ori[key], param_value_now[key]))
+
+        with _test_eager_guard():
+            func_isinstance()
+        func_isinstance()
+
+
 class TestPureFp16SaveLoad(unittest.TestCase):
 
     def test_save_dtype_exception(self):
