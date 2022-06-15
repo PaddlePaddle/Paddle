@@ -316,6 +316,7 @@ void deal_operator_base(const platform::Place& place,
 
 void build_op_func_list(const platform::Place& place,
                         const framework::BlockDesc& block,
+                        const std::set<std::string>& skip_gc_vars,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope, bool use_local_scope) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
@@ -555,7 +556,7 @@ void build_op_func_list(const platform::Place& place,
 
     for (auto& var_name : delete_vars) {
       auto* var = var_scope->FindVar(var_name);
-      if (var == nullptr) {
+      if (var == nullptr || skip_gc_vars.find(var_name) != skip_gc_vars.end()) {
         continue;
       }
 

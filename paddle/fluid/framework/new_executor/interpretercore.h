@@ -55,6 +55,8 @@ class InterpreterCore {
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
 
+  void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
+
  private:
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
 
@@ -99,6 +101,7 @@ class InterpreterCore {
 
   const platform::Place& place_;
   const BlockDesc& block_;  // not owned
+
   // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
   // copy a new program and block, the copy_program_ here is used to
   // hold the program, otherwise block_ maybe not valid after the
@@ -129,6 +132,13 @@ class InterpreterCore {
   std::vector<paddle::platform::DeviceEvent> gc_event_;
   bool create_local_scope_{true};
   Scope* local_scope_{nullptr};  // not owned
+
+  std::set<std::string> skip_gc_vars_;
 };
+
+std::shared_ptr<InterpreterCore> CreateInterpreterCore(
+    const platform::Place& place, const ProgramDesc& prog,
+    VariableScope* global_scope, const std::vector<std::string>& fetch_names);
+
 }  // namespace framework
 }  // namespace paddle

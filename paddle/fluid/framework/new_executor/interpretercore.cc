@@ -60,8 +60,10 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     : place_(place),
       block_(block),
       global_scope_(global_scope),
-      stream_analyzer_(place) {
+      stream_analyzer_(place),
+      skip_gc_vars_(std::set<std::string>()) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
+
   is_build_ = false;
   async_work_queue_.reset(new interpreter::AsyncWorkQueue(
       kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_));
@@ -111,6 +113,15 @@ InterpreterCore::~InterpreterCore() {
 
 void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   copy_program_ = prog;
+}
+
+void InterpreterCore::SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
+  PADDLE_ENFORCE_EQ(
+      skip_gc_vars_.empty(), true,
+      phi::errors::Unimplemented("The skip_gc_vars_ for interpretercore %p has "
+                                 "been set before, not allow to change it.",
+                                 this));
+  skip_gc_vars_ = skip_gc_vars;
 }
 
 paddle::framework::FetchList InterpreterCore::Run(
@@ -164,7 +175,8 @@ paddle::framework::FetchList InterpreterCore::Run(
                                                          create_local_scope_);
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::build_op_func_list(
-        place_, block_, &op_func_nodes, global_scope_, create_local_scope_);
+        place_, block_, skip_gc_vars_, &op_func_nodes, global_scope_,
+        create_local_scope_);
     is_build_ = true;
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
@@ -286,6 +298,15 @@ void InterpreterCore::Convert(
           last_live_ops_[var_id].insert(i);
         }
       }
+    }
+  }
+
+  // clear the last_live_ops list for all vars in skip_gc_vars
+  for (const std::string& skip_gc_var : skip_gc_vars_) {
+    int var_id = global_scope_->GetIdByName(skip_gc_var);
+    if (var_id != -1) {
+      last_live_ops_[var_id].clear();
+      VLOG(8) << "Skip gc for var: " << skip_gc_var;
     }
   }
 
@@ -918,7 +939,8 @@ void InterpreterCore::Prepare(
     FeedInput();
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::build_op_func_list(
-        place_, block_, &op_func_nodes, global_scope_, create_local_scope_);
+        place_, block_, skip_gc_vars_, &op_func_nodes, global_scope_,
+        create_local_scope_);
     is_build_ = true;
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
@@ -956,6 +978,21 @@ void InterpreterCore::SetFeedVarsInplaceSkip(
   for (auto& feed_name : feed_names) {
     global_scope_->SetVarSikpInplace(feed_name, true);
   }
+}
+
+std::shared_ptr<InterpreterCore> CreateInterpreterCore(
+    const platform::Place& place, const ProgramDesc& prog,
+    VariableScope* global_scope, const std::vector<std::string>& fetch_names) {
+  std::shared_ptr<InterpreterCore> core = nullptr;
+  // NOTE(Aurelius84): `add_fetch` will modify BlockDesc, so we should copy
+  // a new program.
+  auto new_prog = std::make_shared<framework::ProgramDesc>(prog);
+  auto* block = new_prog->MutableBlock(0);
+  interpreter::add_fetch(fetch_names, block);
+
+  core = std::make_shared<InterpreterCore>(place, *block, global_scope);
+  core->SetCopyProgram(new_prog);
+  return core;
 }
 
 }  // namespace framework
