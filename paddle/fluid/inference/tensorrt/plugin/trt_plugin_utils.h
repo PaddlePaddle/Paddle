@@ -73,8 +73,7 @@ struct Serializer<const char*> {
 
   static void Deserialize(void const** buffer, size_t* buffer_size,
                           const char** value) {
-    *value = static_cast<char const*>(*buffer);
-    size_t data_size = strnlen(*value, *buffer_size) + 1;
+    *value = static_cast<char const*>(*buffer); size_t data_size = strnlen(*value, *buffer_size) + 1;
     assert(*buffer_size >= data_size);
     reinterpret_cast<char const*&>(*buffer) += data_size;
     *buffer_size -= data_size;
@@ -137,6 +136,92 @@ inline void SerializeCudaPointer(void** buffer, T* value, int size) {
   cudaMemcpy((*buffer), value, size * sizeof(T), cudaMemcpyDeviceToHost);
   reinterpret_cast<char*&>(*buffer) += size * sizeof(T);
 }
+
+template <typename T>
+struct CudaDeleter {
+    void operator()(T* buf) {
+        cudaFree(buf);
+    }
+};
+
+template <typename T>
+using cuda_unique_ptr = std::unique_ptr<T, CudaDeleter<T>>;
+
+inline uint32_t getElementSize(nvinfer1::DataType t) noexcept {
+    switch (t) {
+        case nvinfer1::DataType::kINT32: return 4;
+        case nvinfer1::DataType::kFLOAT: return 4;
+        case nvinfer1::DataType::kHALF: return 2;
+        case nvinfer1::DataType::kBOOL:
+        case nvinfer1::DataType::kINT8: return 1;
+    }
+    return 0;
+} 
+
+struct WeightsWithOwnership : public nvinfer1::Weights {
+    WeightsWithOwnership() {
+        values = nullptr;
+        count = 0;
+    }
+    ~WeightsWithOwnership() {
+        operator delete[](const_cast<void*>(values));
+    }
+
+    WeightsWithOwnership(const WeightsWithOwnership&) = delete;
+    WeightsWithOwnership operator=(const WeightsWithOwnership&) = delete;
+    WeightsWithOwnership(const WeightsWithOwnership&&) = delete;
+    WeightsWithOwnership operator=(const WeightsWithOwnership&&) = delete;
+
+    void convertAndCopy(const nvinfer1::Weights& src, nvinfer1::DataType type) {
+        this->type = type;
+        this->count = src.count;
+
+        if (type == nvinfer1::DataType::kFLOAT) {
+            auto destBuf = new float[src.count];
+            this->values = destBuf;
+
+            if (src.type == nvinfer1::DataType::kFLOAT) {
+                std::copy_n(static_cast<const float*>(src.values), src.count, destBuf);
+            } else {
+                PADDLE_ENFORCE_EQ(src.type, nvinfer1::DataType::kHALF, platform::errors::InvalidArgument(
+                                  "The src.type should be nvinfer1::DataType::kHALF"));
+                const auto s = static_cast<const half*>(src.values);
+                auto d = static_cast<float*>(const_cast<void*>(this->values));
+                for (auto it = 0; it < src.count; it++) {
+                    d[it] = __half2float(s[it]);
+                }
+            }
+        } else if (type == nvinfer1::DataType::kHALF) {
+            auto destBuf = new half[src.count];
+            this->values = destBuf;
+
+            if (src.type == nvinfer1::DataType::kHALF) {
+                std::copy_n(static_cast<const half*>(src.values), src.count, destBuf);
+            } else {
+                PADDLE_ENFORCE_EQ(src.type, nvinfer1::DataType::kFLOAT, platform::errors::InvalidArgument(
+                                  "The src.type should be nvinfer1::DataType::kFLOAT"));
+                const auto s = static_cast<const float*>(src.values);
+                auto d = static_cast<half*>(const_cast<void*>(this->values));
+
+                for (auto it = 0; it < src.count; it++) {
+                    d[it] = __float2half(s[it]);
+                }
+            }
+        } else {
+            //TODO throw exception
+        }
+    }
+
+    void convertAndCopy(const char*& srcBuf, size_t count, nvinfer1::DataType type) noexcept {
+        this->type = type;
+        this->count = count;
+        const auto nbBytes = count * getElementSize(type);
+        auto destBuf = new char[nbBytes];
+        this->values = destBuf;
+        std::copy_n(srcBuf, nbBytes, destBuf);
+        srcBuf += nbBytes;
+    }
+};
 
 }  // namespace plugin
 }  // namespace tensorrt

@@ -100,6 +100,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_map_matmul_v2_to_matmul_pass",             //
       "trt_map_matmul_to_mul_pass",                   //
       "fc_fuse_pass",                                 //
+      "batched_gemm_fuse_pass",                       //
       "conv_elementwise_add_fuse_pass",               //
       "tensorrt_subgraph_pass",                       //
       "conv_bn_fuse_pass",                            //
