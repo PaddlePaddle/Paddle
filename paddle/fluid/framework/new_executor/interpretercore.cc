@@ -63,8 +63,6 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       stream_analyzer_(place) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
   is_build_ = false;
-  async_work_queue_.reset(new interpreter::AsyncWorkQueue(
-      kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (IsInterpretercoreFastGCEnabled()) {
@@ -127,6 +125,17 @@ paddle::framework::FetchList InterpreterCore::Run(
     // add listener before run and is_build=true
     global_scope_->ResetListener();
 
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    if (async_work_queue_ == nullptr) {
+      async_work_queue_ = std::make_unique<interpreter::AsyncWorkQueue>(
+          kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
+      // prepare for the first time.
+      async_work_queue_->PrepareAtomicDeps(dependecy_count_);
+      async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+    }
+
     ExecuteInstructionList(vec_instruction_);
   }
 
@@ -173,6 +182,17 @@ paddle::framework::FetchList InterpreterCore::Run(
   } else {
     // add listener before run and is_build=true
     global_scope_->ResetListener();
+
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    if (async_work_queue_ == nullptr) {
+      async_work_queue_ = std::make_unique<interpreter::AsyncWorkQueue>(
+          kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
+      // prepare for the first time.
+      async_work_queue_->PrepareAtomicDeps(dependecy_count_);
+      async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+    }
 
     ExecuteInstructionList(vec_instruction_);
   }
@@ -343,10 +363,6 @@ void InterpreterCore::Convert(
   if (FLAGS_new_executor_use_inplace && !inplaced) {
     BuildInplace();
   }
-
-  // prepare for the first time.
-  async_work_queue_->PrepareAtomicDeps(dependecy_count_);
-  async_work_queue_->PrepareAtomicVarRef(vec_meta_info);
 }
 
 bool InterpreterCore::BuildInplaceCheckVarIsOnlyInput(size_t var_index) {
