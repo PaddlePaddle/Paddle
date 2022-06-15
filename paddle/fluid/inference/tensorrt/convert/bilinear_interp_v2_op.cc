@@ -67,9 +67,8 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     bool has_scale_input = false;
     bool has_scale_input_attr =
         (resize_inputs.find("Scale") != resize_inputs.end());
-    if (has_scale_input_attr) {
-      has_scale_input = (op_desc.Input("Scale").size() > 0) ? true : false;
-    }
+    bool has_scale_input =
+        has_scale_input_attr && (op_desc.Input("Scale").size() > 0);
     if (has_scale_input) {
       auto* scale_var = scope.FindVar(op_desc.Input("Scale")[0]);
       auto* scale_tensor = scale_var->GetMutable<framework::LoDTensor>();
@@ -99,7 +98,6 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     }
 
     std::vector<float> scales;
-    scales.reserve(3);
 
     if (engine_->with_dynamic_shape()) {
       scales.push_back(1.f);
