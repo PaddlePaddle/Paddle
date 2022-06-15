@@ -189,63 +189,6 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
     }
     hit[i] = true;
   }
-  // if (dump_mode_ == 3) {
-  //   for (auto& field : *dump_fields_) {
-  //     Variable* var = scope.FindVar(field);
-  //     if (var == nullptr) {
-  //       VLOG(0) << "Note: field[" << field
-  //               << "] cannot be find in scope, so it was skipped.";
-  //       continue;
-  //     }
-  //     bool is_new = false;
-  //     LoDTensor* tensor = var->GetMutable<LoDTensor>();
-  //     if (!tensor->IsInitialized()) {
-  //       VLOG(0) << "Note: field[" << field
-  //               << "] is not initialized, so it was skipped.";
-  //       continue;
-  //     }
-  //     if (platform::is_gpu_place(tensor->place())) {
-  //     auto cpu_tensor = new LoDTensor();
-  //       TensorCopySync(*tensor, platform::CPUPlace(), cpu_tensor);
-  //       cpu_tensor->set_lod(tensor->lod());
-  //       is_new = true;
-  //       tensor = cpu_tensor;
-  //     }
-  //     if (!CheckValidOutput(tensor, batch_size)) {
-  //       VLOG(0) << "Note: field[" << field << "] cannot pass check, so it was
-  //       "
-  //                                             "skipped. Maybe the dimension
-  //                                             is "
-  //                                             "wrong ";
-  //       continue;
-  //     }
-  //     dump_tensors.push_back(tensor);
-  //     is_new_tensor.push_back(true);
-  //   }
-  //   for (size_t i = 0; i < batch_size; ++i) {
-  //     if (!hit[i]) {
-  //       continue;
-  //     }
-  //     for (size_t j = 0; j < dump_tensors.size(); j++) {
-  //       auto& tensor = dump_tensors[j];
-  //       auto bound = GetTensorBound(tensor, i);
-  //       if (i > 0) ars[i] += "\t";
-  //       ars[i] += PrintLodTensor(tensor, bound.first, bound.second, ' ',
-  //       false);
-  //     }
-  //     if (ars[i].size() > 0) ars[i] += "\n";
-  //     writer_ << ars[i];
-  //     // ars[i] = ars[i] + "\t" + field + ":" +
-  //     //         std::to_string(bound.second - bound.first);
-  //     // ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
-  //   }
-  //   for(int i = 0;i < is_new_tensor.size();i++){
-  //     if(is_new_tensor[i]){
-  //       delete dump_tensors
-  //     }
-  //   }
-  //   return;
-  // }
 
   if (dump_mode_ != 3) {
     for (size_t i = 0; i < ins_id_vec.size(); i++) {
