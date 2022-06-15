@@ -1608,12 +1608,10 @@ class Model(object):
                 evaluation at the end of epoch. If None, will not do evaluation. 
                 An instance of paddle.io.Dataset or paddle.io.Dataloader 
                 is recomended. Default: None.
-            batch_size (int, optional): Integer number. The batch size of train_data
-                and eval_data. When train_data and eval_data are both the
-                instance of Dataloader, this parameter will be ignored.
-                Default: 1.
-            epochs (int, optional): Integer number. The number of epochs to train
-                the model. Default: 1.
+            batch_size (int, optional): The batch size of train_data and eval_data. When 
+                train_data and eval_data are both the instance of Dataloader, this
+                parameter will be ignored. Default: 1.
+            epochs (int, optional): The number of epochs to train the model. Default: 1.
             eval_freq (int, optional): The frequency, in number of epochs, an evalutation
                 is performed. Default: 1.
             log_freq (int, optional): The frequency, in number of steps, the training logs
@@ -1641,9 +1639,9 @@ class Model(object):
             accumulate_grad_batches (int, optional): The number of batches to accumulate gradident 
                 during training process before optimizer updates. It can mimic large batch
                 size. Default: 1.
-            num_iters (int|None, optional): Integer number. The number of iterations to train
-                the model. If None, follow `epochs` to train the model, otherwise, train
-                the model `num_iters` times. Default: None.
+            num_iters (int|None, optional): The number of iterations to evaluate the model.
+                If None, evaluate on whole input dataset, otherwise, evaluate `num_iters` times.
+                Default: None.
 
         Returns:
             None
@@ -1825,9 +1823,9 @@ class Model(object):
             eval_data (Dataset|DataLoader): An iterable data loader is used for
                 evaluation. An instance of paddle.io.Dataset or 
                 paddle.io.Dataloader is recomended.
-            batch_size (int, optional): Integer number. The batch size of train_data
-                and eval_data.  When eval_data is the instance of Dataloader,
-                this argument will be ignored. Default: 1.
+            batch_size (int, optional): The batch size of train_data and eval_data.
+                When eval_data is the instance of Dataloader, this argument will be
+                ignored. Default: 1.
             log_freq (int, optional): The frequency, in number of steps, the eval logs
                 are printed. Default: 10.
             verbose (int, optional): The verbosity mode, should be 0, 1, or 2. 0 = silent,
@@ -1839,9 +1837,9 @@ class Model(object):
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
-            num_iters (int|None, optional): Integer number. The number of iterations to
-                evaluate the model. If None, evaluate on whole input dataset,
-                otherwise, evaluate `num_iters` times. Default: None.
+            num_iters (int|None, optional): The number of iterations to evaluate the model.
+                If None, evaluate on whole input dataset, otherwise, evaluate `num_iters` times.
+                Default: None.
         Returns:
             dict: Result of metric. The key is the names of Metric,
                 value is a scalar or numpy.array.
@@ -1930,12 +1928,11 @@ class Model(object):
             test_data (Dataset|DataLoader): An iterable data loader is used for
                 predict. An instance of paddle.io.Dataset or paddle.io.Dataloader
                 is recomended.
-            batch_size (int, optional): Integer number. The batch size of train_data and eval_data.
-                When train_data and eval_data are both the instance of Dataloader, this
-                argument will be ignored. Default: 1.
+            batch_size (int, optional): The batch size of test_data. When test_data is the
+                instance of Dataloader, this argument will be ignored. Default: 1.
             num_workers (int, optional): The number of subprocess to load data, 0 for no subprocess 
-                used and loading data in main process. When train_data and eval_data are
-                both the instance of Dataloader, this argument will be ignored. Default: 0.
+                used and loading data in main process. When test_data is the instance of Dataloader,
+                this argument will be ignored. Default: 0.
             stack_outputs (bool, optional): Whether stack output field like a batch, as for an output
                 filed of a sample is in shape [X, Y], test_data contains N samples, predict
                 output field will be in shape [N, X, Y] if stack_output is True, and will
