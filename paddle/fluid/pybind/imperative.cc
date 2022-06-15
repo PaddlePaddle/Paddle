@@ -1535,38 +1535,40 @@ void BindImperative(py::module *m_ptr) {
                 "Cannot copy this Tensor to GPU in CPU version Paddle, "
                 "Please recompile or reinstall Paddle with CUDA support."));
 #else
-             int device_count = platform::GetGPUDeviceCount();
-             int device_id = 0;
-             if (handle == py::none()) {
-               device_id = platform::GetCurrentDeviceId();
-             } else {
-               PyObject *py_obj = handle.ptr();
-               PADDLE_ENFORCE_EQ(
-                   PyCheckInteger(py_obj), true,
-                   platform::errors::InvalidArgument(
-                       " 'device_id' must be a positive integer"));
-               device_id = py::cast<int>(handle);
-             }
-             PADDLE_ENFORCE_GE(
-                 device_id, 0,
-                 platform::errors::InvalidArgument(
-                     "Can not copy Tensor to Invalid CUDAPlace(%d), device id "
-                     "must inside [0, %d)",
-                     device_id, device_count));
-             PADDLE_ENFORCE_LT(
-                 device_id, device_count,
-                 platform::errors::InvalidArgument(
-                     "Can not copy Tensor to Invalid CUDAPlace(%d), device id "
-                     "must inside [0, %d)",
-                     device_id, device_count));
-             platform::CUDAPlace place = platform::CUDAPlace(device_id);
-             if (platform::is_same_place(self->Place(), place)) {
-               return self;
-             } else {
-               auto new_var = self->NewVarBase(place, blocking);
-               new_var->SetOverridedStopGradient(self->OverridedStopGradient());
-               return new_var;
-             }
+            int device_count = platform::GetGPUDeviceCount();
+            int device_id = 0;
+            if (handle == py::none()) {
+              auto default_place =
+                  imperative::GetCurrentTracer()->ExpectedPlace();
+              device_id = default_place.GetDeviceId();
+            } else {
+              PyObject *py_obj = handle.ptr();
+              PADDLE_ENFORCE_EQ(
+                  PyCheckInteger(py_obj), true,
+                  platform::errors::InvalidArgument(
+                      " 'device_id' must be a positive integer"));
+              device_id = py::cast<int>(handle);
+            }
+            PADDLE_ENFORCE_GE(
+                device_id, 0,
+                platform::errors::InvalidArgument(
+                    "Can not copy Tensor to Invalid CUDAPlace(%d), device id "
+                    "must inside [0, %d)",
+                    device_id, device_count));
+            PADDLE_ENFORCE_LT(
+                device_id, device_count,
+                platform::errors::InvalidArgument(
+                    "Can not copy Tensor to Invalid CUDAPlace(%d), device id "
+                    "must inside [0, %d)",
+                    device_id, device_count));
+            platform::CUDAPlace place = platform::CUDAPlace(device_id);
+            if (platform::is_same_place(self->Place(), place)) {
+              return self;
+            } else {
+              auto new_var = self->NewVarBase(place, blocking);
+              new_var->SetOverridedStopGradient(self->OverridedStopGradient());
+              return new_var;
+            }
 #endif
           },
           py::arg("device_id") = py::none(), py::arg("blocking") = true, R"DOC(
