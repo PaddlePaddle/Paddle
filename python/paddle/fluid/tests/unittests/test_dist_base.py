@@ -320,8 +320,7 @@ class TestDistRunnerBase(object):
         sys.stdout.buffer.write(pickle.dumps(out_losses))
 
         if args.save_model:
-            temp_dir = tempfile.TemporaryDirectory()
-            model_save_dir = os.path.join(temp_dir.name, "model_tmp/")
+            model_save_dir = "/tmp"
             if fleet.worker_index() == 0:
                 model_save_dir_fluid = os.path.join(model_save_dir,
                                                     "fluid_persistables")
@@ -349,7 +348,6 @@ class TestDistRunnerBase(object):
                                           fleet._origin_program)
             fleet.save_inference_model(exe, infer_save_dir_fleet,
                                        feeded_var_names, [avg_cost])
-            temp_dir.cleanup()
 
     def run_trainer(self, args):
         self.lr = args.lr
@@ -1420,8 +1418,7 @@ class TestDistBase(unittest.TestCase):
             tr_env['FLAGS_cudnn_deterministic'] = '0'
             print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
 
-            path = os.path.join(self.temp_dir.name,
-                                "tmp/" + "tr{}_err.log".format(i))
+            path = os.path.join(self.temp_dir.name + "tr{}_err.log".format(i))
             tr_pipe = open(path, "wb")
 
             print_to_err(
