@@ -173,7 +173,7 @@ def construct_program_and_find_ins_outs(section, origin_program, section_idx):
                 # This in var is generated from op outside this section
                 # Only record once for same input
                 ins.append(in_name)
-            elif later_ins.count(in_name) == 0:
+            elif later_ins.count(in_name) == 0 and outs.count(in_name) > 0:
                 # this is var is generated from op inside this section, and only will be used inside this section
                 outs.remove(in_name)
         for out_name in op.output_arg_names:
@@ -274,6 +274,7 @@ def get_cuda_graph_sections(program):
                         current_section.append(internal_section[i])
                         current_idx.append(internal_idx[i])
                 internal_section = []
+                internal_idx = []
                 current_section.append(op)
                 current_idx.append(idx)
             else:
