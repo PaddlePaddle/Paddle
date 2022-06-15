@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
 from paddle.dataset.common import download, DATA_HOME
 from paddle.distributed.fleet.dataset import TreeIndex
@@ -113,6 +115,12 @@ class TestTreeIndex(unittest.TestCase):
 
 class TestIndexSampler(unittest.TestCase):
 
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_layerwise_sampler(self):
         path = download(
             "https://paddlerec.bj.bcebos.com/tree-based/data/mini_tree.pb",
@@ -120,7 +128,8 @@ class TestIndexSampler(unittest.TestCase):
 
         tdm_layer_counts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         #tree = TreeIndex("demo", path)
-        file_name = "test_in_memory_dataset_tdm_sample_run.txt"
+        file_name = os.path.join(self.temp_dir.name,
+                                 "test_in_memory_dataset_tdm_sample_run.txt")
         with open(file_name, "w") as f:
             #data = "29 d 29 d 29 29 29 29 29 29 29 29 29 29 29 29\n"
             data = "1 1 1 15 15 15\n"
