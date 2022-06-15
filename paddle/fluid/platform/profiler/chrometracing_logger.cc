@@ -142,6 +142,7 @@ void ChromeTracingLogger::LogMemTraceEventNode(
       StringTracerMemEventType(mem_node.Type()), mem_node.Place().c_str(),
       mem_node.Addr(), mem_node.CurrentAllocated(), mem_node.CurrentReserved(),
       mem_node.IncreaseBytes());
+  pid_tid_set_.insert({mem_node.ProcessId(), mem_node.ThreadId()});
 }
 
 void ChromeTracingLogger::LogHostTraceEventNode(

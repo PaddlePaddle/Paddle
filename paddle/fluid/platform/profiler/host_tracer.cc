@@ -135,6 +135,9 @@ void HostTracer::StartTracing() {
       state_ == TracerState::READY || state_ == TracerState::STOPED, true,
       platform::errors::PreconditionNotMet("TracerState must be READY"));
   HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
+  HostEventRecorder<CommonMemEvent>::GetInstance().GatherEvents();
+  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance()
+      .GatherEvents();
   HostTraceLevel::GetInstance().SetLevel(options_.trace_level);
   state_ = TracerState::STARTED;
 }
