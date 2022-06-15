@@ -74,15 +74,14 @@ def to_sr_output_type(s):
 # -------------- transform argument names from yaml to opmaker ------------
 def to_opmaker_name(s):
     if s.endswith("_grad"):
-        return 'GradVarName("{}")'.format(
-            to_pascal_case(s.removesuffix("_grad")))
+        return 'GradVarName("{}")'.format(to_pascal_case(s[:-5]))
     else:
         return '"{}"'.format(to_pascal_case(s))
 
 
 def to_opmaker_name_cstr(s):
     if s.endswith("_grad"):
-        return '"{}@GRAD"'.format(to_pascal_case(s.removesuffix("_grad")))
+        return '"{}@GRAD"'.format(to_pascal_case(s[:-5]))
     else:
         return '"{}"'.format(to_pascal_case(s))
 
@@ -97,9 +96,9 @@ def to_input_name(s):
     x -> dx
     x -> d2x
     x -> d3x
-    
+
     NOTE: for first order backward api
-    x -> x_grad 
+    x -> x_grad
     is more common.
     """
     match = re.match(r"(d\d*)(\w+)", s)

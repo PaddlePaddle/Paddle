@@ -14,6 +14,7 @@
 
 import argparse
 import os
+import re
 from itertools import chain
 from pathlib import Path
 
@@ -45,8 +46,8 @@ env.tests["supports_inplace"] = supports_inplace
 env.tests["supports_no_need_buffer"] = supports_no_need_buffer
 
 
-def main(api_yaml_path, backward_yaml_path, output_op_path,
-         output_arg_map_path):
+def main(api_yaml_path, backward_yaml_path, api_args_compat_yaml_path,
+         api_version_yaml_path, output_op_path, output_arg_map_path):
     with open(api_yaml_path, "rt") as f:
         apis = yaml.safe_load(f)
     forward_api_dict = to_named_dict(apis)
@@ -54,6 +55,80 @@ def main(api_yaml_path, backward_yaml_path, output_op_path,
     with open(backward_yaml_path, "rt") as f:
         backward_apis = yaml.safe_load(f)
     backward_api_dict = to_named_dict(backward_apis)
+
+    with open(api_version_yaml_path, "rt") as f:
+        api_versions = yaml.safe_load(f)
+    # add api version info into api
+    for api_version in api_versions:
+        forward_api_dict[api_version['api']]['version'] = api_version['version']
+
+    with open(api_args_compat_yaml_path, "rt") as f:
+        api_args_map = yaml.safe_load(f)
+    # replace args name for OpMaker
+    for api_args in api_args_map:
+        forward_api_item = forward_api_dict[api_args['api']]
+        has_backward = True if forward_api_item['backward'] else False
+        if has_backward:
+            backward_api_item = backward_api_dict[forward_api_item['backward']]
+        key_set = ['inputs', 'attrs', 'outputs']
+        args_map = {}
+        for key in key_set:
+            if key in api_args:
+                args_map.update(api_args[key])
+                for args_item in forward_api_item[key]:
+                    if args_item['name'] in api_args[key]:
+                        args_item['name'] = api_args[key][args_item['name']]
+                if has_backward:
+                    for args_item in backward_api_item['forward'][key]:
+                        if args_item['name'] in api_args[key]:
+                            args_item['name'] = api_args[key][args_item['name']]
+        forward_api_item['infer_meta']['param'] = [
+            args_map[param] if param in args_map else param
+            for param in forward_api_item['infer_meta']['param']
+        ]
+        forward_api_item['kernel']['param'] = [
+            args_map[param] if param in args_map else param
+            for param in forward_api_item['kernel']['param']
+        ]
+        if forward_api_item['inplace']:
+            inplace_map = {}
+            for key, val in forward_api_item['inplace'].items():
+                if key in args_map:
+                    key = args_map[key]
+                if val in args_map:
+                    val = args_map[val]
+                inplace_map[key] = val
+            forward_api_item['inplace'] = inplace_map
+
+        if has_backward:
+            for args_item in backward_api_item['inputs']:
+                if args_item['name'] in args_map:
+                    args_item['name'] = args_map[args_item['name']]
+                elif args_item['name'].endswith(
+                        '_grad') and args_item['name'][:-5] in args_map:
+                    args_item['name'] = args_map[args_item['name']
+                                                 [:-5]] + '_grad'
+            for args_item in backward_api_item['attrs']:
+                if args_item['name'] in args_map:
+                    args_item['name'] = args_map[args_item['name']]
+            for args_item in backward_api_item['outputs']:
+                if args_item['name'].endswith(
+                        '_grad') and args_item['name'][:-5] in args_map:
+                    args_item['name'] = args_map[args_item['name']
+                                                 [:-5]] + '_grad'
+            backward_api_item['infer_meta']['param'] = [
+                args_map[param] if param in args_map else param
+                for param in backward_api_item['infer_meta']['param']
+            ]
+            backward_api_item['kernel']['param'] = [
+                args_map[param] if param in args_map else param
+                for param in backward_api_item['kernel']['param']
+            ]
+            if backward_api_item['no_need_buffer']:
+                backward_api_item['no_need_buffer'] = [
+                    args_map[param] if param in args_map else param
+                    for param in backward_api_item['no_need_buffer']
+                ]
 
     # fill backward field for an api if another api claims it as forward
     for name, backward_api in backward_api_dict.items():
@@ -101,6 +176,12 @@ if __name__ == "__main__":
     parser.add_argument('--backward_api_yaml_path',
                         type=str,
                         help="parsed backward api yaml file.")
+    parser.add_argument('--api_args_compat_yaml_path',
+                        type=str,
+                        help="api args compat yaml file.")
+    parser.add_argument('--api_version_yaml_path',
+                        type=str,
+                        help="api version yaml file.")
     parser.add_argument("--output_op_path",
                         type=str,
                         help="path to save generated operators.")
@@ -110,5 +191,6 @@ if __name__ == "__main__":
         help="path to save generated argument mapping functions.")
 
     args = parser.parse_args()
-    main(args.api_yaml_path, args.backward_api_yaml_path, args.output_op_path,
-         args.output_arg_map_path)
+    main(args.api_yaml_path, args.backward_api_yaml_path,
+         args.api_args_compat_yaml_path, args.api_version_yaml_path,
+         args.output_op_path, args.output_arg_map_path)

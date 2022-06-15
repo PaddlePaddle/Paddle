@@ -1,0 +1,10 @@
+- backward_api : trace_grad
+  forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int offset, int axis1, int axis2)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : trace_grad
+  no_need_buffer : x

@@ -2191,15 +2191,6 @@
     func : top_k
   backward : top_k_grad
 
-- api : trace
-  args : (Tensor x, int offset, int axis1, int axis2)
-  output : Tensor
-  infer_meta :
-    func : TraceInferMeta
-  kernel :
-    func : trace
-  backward : trace_grad
-
 - api : transpose
   args : (Tensor x, int[] axis)
   output : Tensor
