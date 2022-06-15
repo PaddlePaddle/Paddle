@@ -36,6 +36,9 @@ class DeserializationReader {
   KernelEventInfo HandleKernelEventInfoProto(const DeviceTraceEventProto&);
   MemcpyEventInfo HandleMemcpyEventInfoProto(const DeviceTraceEventProto&);
   MemsetEventInfo HandleMemsetEventInfoProto(const DeviceTraceEventProto&);
+  MemTraceEventNode* RestoreMemTraceEventNode(const MemTraceEventNodeProto&);
+  OperatorSupplementEventNode* RestoreOperatorSupplementEventNode(
+      const OperatorSupplementEventNodeProto&);
   std::string filename_;
   std::ifstream input_file_stream_;
   NodeTreesProto* node_trees_proto_;

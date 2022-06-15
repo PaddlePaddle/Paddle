@@ -138,7 +138,7 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
                const platform::CUDADeviceContext &ctx) {
   framework::Scope scope;
   auto place = ctx.GetPlace();
-  paddle::optional<const framework::LoDTensor &> scale_opt = paddle::none;
+  paddle::optional<framework::LoDTensor> scale_opt;
   if (scale.size() > 0) {
     auto var_scale = scope.Var("Scale");
     auto tensor_scale = var_scale->GetMutable<framework::LoDTensor>();
@@ -147,7 +147,7 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
     scale_opt = *tensor_scale;
   }
 
-  paddle::optional<const framework::LoDTensor &> bias_opt = paddle::none;
+  paddle::optional<framework::LoDTensor> bias_opt;
   if (bias.size() > 0) {
     auto var_bias = scope.Var("Bias");
     auto tensor_bias = var_bias->GetMutable<framework::LoDTensor>();

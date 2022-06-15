@@ -107,8 +107,18 @@ XPUOpMap& get_kp_ops() {
       {"reduce_prod", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_all", XPUKernelSet({pOpKernelType(vartype::BOOL, XPUPlace())})},
       {"reduce_any", XPUKernelSet({pOpKernelType(vartype::BOOL, XPUPlace())})},
+      {"pull_box_sparse",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"push_box_sparse",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_amax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_amin", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"c_sync_calc_stream",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"c_sync_comm_stream",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"c_allreduce_sum",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu_kp_kernels;

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <NvInfer.h>
 #include <glog/logging.h>
+
 #include <string>
 
 #include "cuda_runtime_api.h"  // NOLINT
@@ -90,7 +91,9 @@ void TensorRTEngine::FreezeNetwork() {
 
   bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
   if (enable_int8) {
-    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+    if (!use_dla_) {
+      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+    }
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
 
     if (calibrator_) {

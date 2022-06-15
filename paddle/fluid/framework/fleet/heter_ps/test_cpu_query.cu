@@ -13,10 +13,13 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
@@ -235,4 +238,9 @@ TEST(TEST_FLEET, test_cpu_cache) {
     }
     index++;
   }
+  auto iter = paddle::framework::GraphGpuWrapper::GetInstance();
+  std::vector<int> device;
+  device.push_back(0);
+  device.push_back(1);
+  iter->set_device(device);
 }

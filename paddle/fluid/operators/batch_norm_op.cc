@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/batch_norm_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/fluid/framework/data_layout.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -64,7 +66,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
         (x_dims[i] == -1) || (x_dims[i] > 0), true,
         platform::errors::InvalidArgument(
             "Each dimension of input tensor is expected to be -1 or a "
-            "positive number, but recieved %d. Input's shape is [%s].",
+            "positive number, but received %d. Input's shape is [%s].",
             x_dims[i], x_dims));
   }
 
@@ -167,10 +169,11 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
       bn_param_type,
       framework::TransToProtoVarType(ctx.Input<Tensor>("Mean")->dtype()),
       platform::errors::InvalidArgument("Mean input should be of float type"));
-  PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
-                                       ctx.Input<Tensor>("Variance")->dtype()),
-                    platform::errors::InvalidArgument(
-                        "Variance input should be of float type"));
+  PADDLE_ENFORCE_EQ(
+      bn_param_type,
+      framework::TransToProtoVarType(ctx.Input<Tensor>("Variance")->dtype()),
+      platform::errors::InvalidArgument(
+          "Variance input should be of float type"));
 
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   framework::LibraryType library = framework::LibraryType::kPlain;

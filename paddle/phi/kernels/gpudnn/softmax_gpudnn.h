@@ -493,14 +493,11 @@ __global__ void WarpSoftmaxBackward(T* dst,
   }
 }
 
-#define SOFTMAX_WARP_FORWARD_CASE(Log2Elements, AccT)                      \
-  case Log2Elements:                                                       \
-    WarpSoftmaxForward<T,                                                  \
-                       VecT,                                               \
-                       AccT,                                               \
-                       Log2Elements,                                       \
-                       LogMode><<<blocks, threads, 0, dev_ctx.stream()>>>( \
-        dst, src, batch_size, stride, element_count);                      \
+#define SOFTMAX_WARP_FORWARD_CASE(Log2Elements, AccT)        \
+  case Log2Elements:                                         \
+    WarpSoftmaxForward<T, VecT, AccT, Log2Elements, LogMode> \
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(          \
+            dst, src, batch_size, stride, element_count);    \
     break;
 
 /*
@@ -533,14 +530,11 @@ void SwitchWarpSoftmaxForward(const int blocks,
   }
 }
 
-#define SOFTMAX_WARP_BACKWARD_CASE(Log2Elements, AccT)                      \
-  case Log2Elements:                                                        \
-    WarpSoftmaxBackward<T,                                                  \
-                        VecT,                                               \
-                        AccT,                                               \
-                        Log2Elements,                                       \
-                        LogMode><<<blocks, threads, 0, dev_ctx.stream()>>>( \
-        dst, grad, src, batch_size, stride, element_count);                 \
+#define SOFTMAX_WARP_BACKWARD_CASE(Log2Elements, AccT)          \
+  case Log2Elements:                                            \
+    WarpSoftmaxBackward<T, VecT, AccT, Log2Elements, LogMode>   \
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(             \
+            dst, grad, src, batch_size, stride, element_count); \
     break;
 
 /*
@@ -621,7 +615,8 @@ static void GetLaunchConfig(
 
 template <typename T,
           typename AccT,
-          template <typename, typename> class Functor>
+          template <typename, typename>
+          class Functor>
 __global__ void NormalSoftmaxForward(
     T* output, const T* input, int high_dim, int mid_dim, int low_dim) {
   using kMode = kps::details::ReduceMode;
@@ -668,7 +663,8 @@ __global__ void NormalSoftmaxForward(
 
 template <typename T,
           typename AccT,
-          template <typename, typename> class Functor,
+          template <typename, typename>
+          class Functor,
           bool LogMode>
 __global__ void NormalSoftmaxBackward(T* input_grad,
                                       const T* output_grad,
@@ -726,17 +722,13 @@ void LaunchNormalSoftmaxForward(const GPUContext& dev_ctx,
   dim3 grid, block;
   GetLaunchConfig(high_dim, mid_dim, low_dim, &grid, &block);
   if (LogMode) {
-    NormalSoftmaxForward<
-        T,
-        AccT,
-        LogSoftmaxForwardFunctor><<<grid, block, 0, dev_ctx.stream()>>>(
-        output_data, input_data, high_dim, mid_dim, low_dim);
+    NormalSoftmaxForward<T, AccT, LogSoftmaxForwardFunctor>
+        <<<grid, block, 0, dev_ctx.stream()>>>(
+            output_data, input_data, high_dim, mid_dim, low_dim);
   } else {
-    NormalSoftmaxForward<
-        T,
-        AccT,
-        SoftmaxForwardFunctor><<<grid, block, 0, dev_ctx.stream()>>>(
-        output_data, input_data, high_dim, mid_dim, low_dim);
+    NormalSoftmaxForward<T, AccT, SoftmaxForwardFunctor>
+        <<<grid, block, 0, dev_ctx.stream()>>>(
+            output_data, input_data, high_dim, mid_dim, low_dim);
   }
 }
 
@@ -752,27 +744,21 @@ void LaunchNormalSoftmaxBackward(const GPUContext& dev_ctx,
   dim3 grid, block;
   GetLaunchConfig(high_dim, mid_dim, low_dim, &grid, &block);
   if (LogMode) {
-    NormalSoftmaxBackward<T,
-                          AccT,
-                          LogSoftmaxBackwardFunctor,
-                          LogMode><<<grid, block, 0, dev_ctx.stream()>>>(
-        input_grad_data,
-        output_grad_data,
-        output_data,
-        high_dim,
-        mid_dim,
-        low_dim);
+    NormalSoftmaxBackward<T, AccT, LogSoftmaxBackwardFunctor, LogMode>
+        <<<grid, block, 0, dev_ctx.stream()>>>(input_grad_data,
+                                               output_grad_data,
+                                               output_data,
+                                               high_dim,
+                                               mid_dim,
+                                               low_dim);
   } else {
-    NormalSoftmaxBackward<T,
-                          AccT,
-                          SoftmaxBackwardFunctor,
-                          LogMode><<<grid, block, 0, dev_ctx.stream()>>>(
-        input_grad_data,
-        output_grad_data,
-        output_data,
-        high_dim,
-        mid_dim,
-        low_dim);
+    NormalSoftmaxBackward<T, AccT, SoftmaxBackwardFunctor, LogMode>
+        <<<grid, block, 0, dev_ctx.stream()>>>(input_grad_data,
+                                               output_grad_data,
+                                               output_data,
+                                               high_dim,
+                                               mid_dim,
+                                               low_dim);
   }
 }
 
@@ -888,19 +874,6 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
 #endif
 }
 
-template <typename T>
-static bool CanUseCudnnSoftmax(const GPUContext& dev_ctx) {
-  if (dev_ctx.cudnn_handle() != nullptr) {
-    if (std::is_same<T, phi::dtype::bfloat16>::value) {
-#if CUDNN_VERSION < 8100
-      return false;
-#endif
-    }
-    return true;
-  }
-  return false;
-}
-
 #if CUDNN_VERSION < 8100
 template <>
 inline void SoftmaxForwardCudnnKernel<phi::dtype::bfloat16>(
@@ -927,6 +900,25 @@ inline void SoftmaxBackwardCudnnKernel<phi::dtype::bfloat16>(
 }
 #endif
 
+template <typename T>
+bool UseCudnnSoftmax(const GPUContext& ctx, int softmax_dim, bool last_dim) {
+  bool cudnn_available = ctx.cudnn_handle();
+  if (!ctx.cudnn_handle()) {
+    if (std::is_same<T, phi::dtype::bfloat16>::value) {
+#if CUDNN_VERSION < 8100
+      cudnn_available = false;
+#endif
+    }
+  }
+  constexpr int max_dim = 512;
+  if (!cudnn_available || !last_dim ||
+      (softmax_dim <= max_dim && sizeof(T) <= 4)) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
 template <typename T, bool LogMode = false>
 void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
                                     const DenseTensor& x,
@@ -941,10 +933,7 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
   int dim = tensor_dims[1];
   int D = tensor_dims[2];
 
-  constexpr int max_dim = 512;
-
-  if (D == 1 &&
-      (!CanUseCudnnSoftmax<T>(dev_ctx) || (dim <= max_dim && sizeof(T) <= 4))) {
+  if (D == 1 && !UseCudnnSoftmax<T>(dev_ctx, dim, true)) {
     int dim_log2 = static_cast<int>(Log2Ceil(dim));
     int dim_ceil = 1 << dim_log2;
     int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
@@ -1016,10 +1005,7 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
   int dim = tensor_dims[1];
   int D = tensor_dims[2];
 
-  constexpr int max_dim = 512;
-
-  if (D == 1 &&
-      (!CanUseCudnnSoftmax<T>(dev_ctx) || (dim <= max_dim && sizeof(T) <= 4))) {
+  if (D == 1 && !UseCudnnSoftmax<T>(dev_ctx, dim, true)) {
     int dim_log2 = Log2Ceil(dim);
     int dim_ceil = 1 << dim_log2;
     int warp_size = (dim_ceil < 32) ? dim_ceil : 32;

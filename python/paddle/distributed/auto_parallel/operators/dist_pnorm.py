@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,7 +22,6 @@ from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from .common import set_comm_op_dist_attr_for_program
 from .dist_default import DistributedDefaultImpl0
-from ..reshard import Resharder
 from ..process_group import new_process_group
 from ..utils import is_dim_shard, is_dim_replicate, _get_corresponding_rank
 from ..utils import compute_compatible_dim_mapping, set_dist_op_desc_original_id, _get_comm_group
@@ -35,6 +34,7 @@ from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 
 
 class DistributedPNorm(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedPNorm, self).__init__(op_type)
 
@@ -53,19 +53,21 @@ def _insert_fill_constant_op(block, op_role):
     attrs['value'] = int("1")
     attrs['dtype'] = out.dtype
     attrs['op_role'] = op_role
-    utils.get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=[0], op_type='fill_constant')
-    fill_constant_op = block.append_op(
-        type='fill_constant',
-        inputs=inputs,
-        outputs={'Out': [out]},
-        attrs=attrs)
+    utils.get_shape_tensor_inputs(inputs=inputs,
+                                  attrs=attrs,
+                                  shape=[0],
+                                  op_type='fill_constant')
+    fill_constant_op = block.append_op(type='fill_constant',
+                                       inputs=inputs,
+                                       outputs={'Out': [out]},
+                                       attrs=attrs)
     out.stop_gradient = True
     return out, fill_constant_op
 
 
 # Row Parallel
 class DistributedPNormImpl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedPNormImpl, self).__init__(name)
         self._forward_implemented = True
@@ -117,7 +119,8 @@ class DistributedPNormImpl(DistributedOperatorImpl):
 
         compatible_dim_mapping = compute_compatible_dim_mapping(
             batch_dim_mappings)
-        assert compatible_dim_mapping is not None, "There is no compatible dim mapping."
+        if compatible_dim_mapping is None:
+            return False
 
         for arg_name in op_desc.input_arg_names():
             dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
@@ -193,15 +196,14 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         # set fill_constant op dist_attr
         constant_op_dist_attr = OperatorDistributedAttribute()
         constant_op_dist_attr.process_mesh = ref_process_mesh
-        constant_op_dist_attr.set_output_dims_mapping(fill_constant_out.name,
-                                                      constant_out_dims_mapping)
+        constant_op_dist_attr.set_output_dims_mapping(
+            fill_constant_out.name, constant_out_dims_mapping)
         ctx.set_op_dist_attr_for_program(fill_constant_op,
                                          constant_op_dist_attr)
-        barrier_op = main_block.append_op(
-            type='barrier',
-            inputs={'X': [fill_constant_out]},
-            outputs={'Out': [fill_constant_out]},
-            attrs={'ring_id': group.id})
+        barrier_op = main_block.append_op(type='barrier',
+                                          inputs={'X': [fill_constant_out]},
+                                          outputs={'Out': [fill_constant_out]},
+                                          attrs={'ring_id': group.id})
         # set barrier op dist attr
         set_comm_op_dist_attr_for_program(barrier_op, ref_process_mesh,
                                           constant_out_dist_attr, ctx)
@@ -223,16 +225,16 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         ]
         ctx.set_tensor_dist_attr_for_program(allgather_out,
                                              allgather_out_dist_attr)
-        c_allgather_op = main_block.append_op(
-            type='c_allgather',
-            inputs={'X': [X_var]},
-            outputs={'Out': [allgather_out]},
-            attrs={
-                'ring_id': group.id,
-                'use_calc_stream': True,
-                'nranks': group.nranks,
-                'op_role': src_op.attr('op_role')
-            })
+        c_allgather_op = main_block.append_op(type='c_allgather',
+                                              inputs={'X': [X_var]},
+                                              outputs={'Out': [allgather_out]},
+                                              attrs={
+                                                  'ring_id': group.id,
+                                                  'use_calc_stream': True,
+                                                  'nranks': group.nranks,
+                                                  'op_role':
+                                                  src_op.attr('op_role')
+                                              })
         # set c_allgather op dist_attr
         allgather_op_dist_attr = OperatorDistributedAttribute()
         allgather_op_dist_attr.process_mesh = op_dist_attr.process_mesh
@@ -323,6 +325,8 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         process_mesh_shape = op_dist_attr.process_mesh.topology
         process_mesh_group = op_dist_attr.process_mesh.processes
         dims_mapping = [0] + [-1 for _ in range(len(new_X_grad.shape) - 1)]
+        from ..reshard import Resharder
+
         partition_idx = Resharder.compute_partition_index(
             rank_id, new_X_grad.shape, dims_mapping, process_mesh_shape,
             process_mesh_group)
@@ -342,11 +346,10 @@ class DistributedPNormImpl(DistributedOperatorImpl):
             "infer_flags": infer_flags,
             "op_role": backward_op.attr('op_role')
         }
-        slice_op = main_block.append_op(
-            type='slice',
-            inputs={'Input': [new_X_grad]},
-            outputs={'Out': [X_grad_var]},
-            attrs=attrs)
+        slice_op = main_block.append_op(type='slice',
+                                        inputs={'Input': [new_X_grad]},
+                                        outputs={'Out': [X_grad_var]},
+                                        attrs=attrs)
         X_grad_var_dims_mapping = op_dist_attr.get_output_dims_mapping(
             X_grad_var.name)
         slice_op_dist_attr = OperatorDistributedAttribute()

@@ -91,6 +91,7 @@ class IfElseTransformer(gast.NodeTransformer):
 
 
 class NameVisitor(gast.NodeVisitor):
+
     def __init__(self, after_node=None, end_node=None):
         # The start node (exclusive) of the visitor
         self.after_node = after_node
@@ -159,8 +160,8 @@ class NameVisitor(gast.NodeVisitor):
                 else:
                     # Blocks the vars in `if.body` and only inserts the vars both created in 'if/else' branch
                     # into name_ids.
-                    new_name_ids = self._find_new_name_ids(body_name_ids,
-                                                           else_name_ids)
+                    new_name_ids = self._find_new_name_ids(
+                        body_name_ids, else_name_ids)
                     for new_name_id in new_name_ids:
                         before_if_name_ids[new_name_id].append(gast.Store())
 
@@ -219,14 +220,15 @@ class NameVisitor(gast.NodeVisitor):
         return copy.deepcopy(self.name_ids)
 
     def _find_new_name_ids(self, body_name_ids, else_name_ids):
+
         def is_required_ctx(ctxs, required_ctx):
             for ctx in ctxs:
                 if isinstance(ctx, required_ctx):
                     return True
             return False
 
-        candidate_name_ids = set(body_name_ids.keys()) & set(else_name_ids.keys(
-        ))
+        candidate_name_ids = set(body_name_ids.keys()) & set(
+            else_name_ids.keys())
         store_ctx = gast.Store
         new_name_ids = set()
         for name_id in candidate_name_ids:
@@ -309,18 +311,18 @@ def parse_cond_args(parent_ids_dict,
 
     arg_name_ids.sort()
     args = [
-        gast.Name(
-            id=name_id, ctx=gast.Load(), annotation=None, type_comment=None)
-        for name_id in arg_name_ids
+        gast.Name(id=name_id,
+                  ctx=gast.Load(),
+                  annotation=None,
+                  type_comment=None) for name_id in arg_name_ids
     ]
-    arguments = gast.arguments(
-        args=args,
-        posonlyargs=[],
-        vararg=None,
-        kwonlyargs=[],
-        kw_defaults=None,
-        kwarg=None,
-        defaults=[])
+    arguments = gast.arguments(args=args,
+                               posonlyargs=[],
+                               vararg=None,
+                               kwonlyargs=[],
+                               kw_defaults=None,
+                               kwarg=None,
+                               defaults=[])
 
     return arguments
 
@@ -398,9 +400,8 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
         return vars
 
     def _modified_vars(child_dict, parent_dict):
-        return set([
-            var for var in _vars_with_store(child_dict) if var in parent_dict
-        ])
+        return set(
+            [var for var in _vars_with_store(child_dict) if var in parent_dict])
 
     def _vars_loaded(ids_dict):
         """
@@ -446,8 +447,8 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
     new_vars_to_create = new_vars_in_one_of_body_or_orelse & used_vars_after_ifelse | new_vars_in_body_and_orelse
 
     # 4. generate return_ids of if/else node.
-    return_ids = list(modified_vars_from_parent | new_vars_in_body_and_orelse |
-                      new_vars_to_create)
+    return_ids = list(modified_vars_from_parent | new_vars_in_body_and_orelse
+                      | new_vars_to_create)
     return_ids.sort()
 
     return return_ids, modified_vars_from_parent, new_vars_to_create
@@ -506,7 +507,7 @@ def create_convert_ifelse_node(return_name_ids,
                                is_if_expr=False):
     """
     Create `paddle.jit.dy2static.convert_ifelse(
-            pred, true_fn, false_fn, true_args, false_args, return_vars)`
+            pred, true_fn, false_fn, true_args, false_args)`
     to replace original `python if/else` statement.
     """
 
@@ -515,9 +516,10 @@ def create_convert_ifelse_node(return_name_ids,
             return gast.Tuple(elts=[], ctx=gast.Load())
 
         gast_names = [
-            gast.Name(
-                id=name_id, ctx=gast.Load(), annotation=None, type_comment=None)
-            for name_id in name_ids
+            gast.Name(id=name_id,
+                      ctx=gast.Load(),
+                      annotation=None,
+                      type_comment=None) for name_id in name_ids
         ]
         name_node = gast.Tuple(elts=gast_names, ctx=gast.Load())
         return name_node
@@ -533,18 +535,14 @@ def create_convert_ifelse_node(return_name_ids,
         true_func_source = true_func.name
         false_func_source = false_func.name
 
-    return_vars = create_name_nodes(return_name_ids)
-
     convert_ifelse_layer = gast.parse(
-        'paddle.jit.dy2static.convert_ifelse('
-        '{pred}, {true_fn}, {false_fn}, {true_args}, {false_args}, {return_vars})'.
-        format(
+        '_jst.convert_ifelse('
+        '{pred}, {true_fn}, {false_fn}, {true_args}, {false_args})'.format(
             pred=ast_to_source_code(pred),
             true_fn=true_func_source,
             false_fn=false_func_source,
             true_args=ast_to_source_code(true_args),
-            false_args=ast_to_source_code(false_args),
-            return_vars=ast_to_source_code(return_vars))).body[0].value
+            false_args=ast_to_source_code(false_args))).body[0].value
 
     if return_name_ids:
         _, cond_node = create_assign_node(return_name_ids, convert_ifelse_layer)

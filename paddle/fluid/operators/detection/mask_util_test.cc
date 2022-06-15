@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detection/mask_util.h"
+
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/memory/memory.h"
 
 namespace paddle {

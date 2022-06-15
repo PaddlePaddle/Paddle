@@ -37,8 +37,7 @@ def fusion_gru(
                lod,
                h0,
                wh,
-               np.zeros(
-                   (1, wh.shape[1]), dtype='float32'),
+               np.zeros((1, wh.shape[1]), dtype='float32'),
                is_reverse,
                act_state,
                act_gate,
@@ -46,6 +45,7 @@ def fusion_gru(
 
 
 class TestFusionGRUOp(OpTest):
+
     def set_confs(self):
         pass
 
@@ -76,9 +76,10 @@ class TestFusionGRUOp(OpTest):
             N, self.D).astype('float32') if self.with_h0 else np.zeros(
                 (N, self.D), dtype='float32')
 
-        _, _, _, hidden = fusion_gru(
-            x, self.lod, h0, wx, wh, bias, self.is_reverse, self.origin_mode,
-            ACTIVATION[self.act_state], ACTIVATION[self.act_gate])
+        _, _, _, hidden = fusion_gru(x, self.lod, h0, wx, wh, bias,
+                                     self.is_reverse, self.origin_mode,
+                                     ACTIVATION[self.act_state],
+                                     ACTIVATION[self.act_gate])
 
         self.inputs = {'X': (x, self.lod), 'WeightX': wx, 'WeightH': wh}
 
@@ -105,39 +106,46 @@ class TestFusionGRUOp(OpTest):
 
 
 class TestFusionGRUOpNoInitial(TestFusionGRUOp):
+
     def set_confs(self):
         self.with_h0 = False
 
 
 class TestFusionGRUOpNoBias(TestFusionGRUOp):
+
     def set_confs(self):
         self.with_bias = False
 
 
 class TestFusionGRUOpReverse(TestFusionGRUOp):
+
     def set_confs(self):
         self.is_reverse = True
 
 
 class TestFusionGRUOpMD1(TestFusionGRUOp):
+
     def set_confs(self):
         self.M = 36
         self.D = 8
 
 
 class TestFusionGRUOpMD2(TestFusionGRUOp):
+
     def set_confs(self):
         self.M = 8
         self.D = 8
 
 
 class TestFusionGRUOpMD3(TestFusionGRUOp):
+
     def set_confs(self):
         self.M = 17
         self.D = 15
 
 
 class TestFusionGRUOpBS1(TestFusionGRUOp):
+
     def set_confs(self):
         self.lod = [[3]]
         self.D = 16

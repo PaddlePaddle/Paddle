@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+import tempfile
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 from paddle.static import InputSpec
@@ -22,6 +25,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import _compatible_non_tensor_
 
 
 class TestInputSpec(unittest.TestCase):
+
     def test_default(self):
         tensor_spec = InputSpec([3, 4])
         self.assertEqual(tensor_spec.dtype,
@@ -112,6 +116,7 @@ class TestInputSpec(unittest.TestCase):
 
 
 class NetWithNonTensorSpec(paddle.nn.Layer):
+
     def __init__(self, in_num, out_num):
         super(NetWithNonTensorSpec, self).__init__()
         self.linear_1 = paddle.nn.Linear(in_num, out_num)
@@ -152,11 +157,16 @@ class NetWithNonTensorSpec(paddle.nn.Layer):
 
 
 class TestNetWithNonTensorSpec(unittest.TestCase):
+
     def setUp(self):
         self.in_num = 16
         self.out_num = 16
         self.x_spec = paddle.static.InputSpec([-1, 16], name='x')
         self.x = paddle.randn([4, 16])
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     @classmethod
     def setUpClass(cls):
@@ -179,7 +189,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         self.check_result(specs, 'list')
 
     def check_result(self, specs, path):
-        path = './net_non_tensor_' + path
+        path = os.path.join(self.temp_dir.name, './net_non_tensor_', path)
 
         net = NetWithNonTensorSpec(self.in_num, self.out_num)
         net.eval()
@@ -215,7 +225,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         net = paddle.jit.to_static(net, input_spec=specs)
         net.eval()
 
-        path = './net_twice'
+        path = os.path.join(self.temp_dir.name, './net_twice')
 
         # NOTE: check input_specs_compatible
         new_specs = [self.x_spec, True, "bn", 10]
@@ -233,6 +243,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
 
 
 class NetWithNonTensorSpecPrune(paddle.nn.Layer):
+
     def __init__(self, in_num, out_num):
         super(NetWithNonTensorSpecPrune, self).__init__()
         self.linear_1 = paddle.nn.Linear(in_num, out_num)
@@ -252,6 +263,7 @@ class NetWithNonTensorSpecPrune(paddle.nn.Layer):
 
 
 class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
+
     def setUp(self):
         self.in_num = 16
         self.out_num = 16
@@ -259,6 +271,7 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
         self.y_spec = paddle.static.InputSpec([16], name='y')
         self.x = paddle.randn([4, 16])
         self.y = paddle.randn([16])
+        self.temp_dir = tempfile.TemporaryDirectory()
 
     @classmethod
     def setUpClass(cls):
@@ -266,7 +279,7 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
 
     def test_non_tensor_with_prune(self):
         specs = [self.x_spec, self.y_spec, True]
-        path = './net_non_tensor_prune_'
+        path = os.path.join(self.temp_dir.name, './net_non_tensor_prune_')
 
         net = NetWithNonTensorSpecPrune(self.in_num, self.out_num)
         net.eval()
@@ -298,6 +311,7 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
 
 
 class UnHashableObject:
+
     def __init__(self, val):
         self.val = val
 
@@ -306,6 +320,7 @@ class UnHashableObject:
 
 
 class TestCompatibleNonTensorSpec(unittest.TestCase):
+
     def test_case(self):
         self.assertTrue(_compatible_non_tensor_spec([1, 2, 3], [1, 2, 3]))
         self.assertFalse(_compatible_non_tensor_spec([1, 2, 3], [1, 2]))
@@ -313,8 +328,8 @@ class TestCompatibleNonTensorSpec(unittest.TestCase):
 
         # not supported unhashable object.
         self.assertTrue(
-            _compatible_non_tensor_spec(
-                UnHashableObject(1), UnHashableObject(1)))
+            _compatible_non_tensor_spec(UnHashableObject(1),
+                                        UnHashableObject(1)))
 
 
 if __name__ == '__main__':

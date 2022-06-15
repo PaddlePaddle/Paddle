@@ -13,15 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/device_event.h"
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/place.h"
 
-using ::paddle::platform::kCUDA;
 using ::paddle::platform::kCPU;
+using ::paddle::platform::kCUDA;
 
-using paddle::platform::DeviceEvent;
 using paddle::platform::DeviceContextPool;
+using paddle::platform::DeviceEvent;
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>

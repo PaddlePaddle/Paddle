@@ -46,7 +46,7 @@ class CoreRuntime : public std::enable_shared_from_this<CoreRuntime> {
 
   //! Get the results of the execution.
   llvm::SmallVector<ValueRef, 4>  //
-      GetResults(llvm::ArrayRef<std::string> arg_names);
+  GetResults(llvm::ArrayRef<std::string> arg_names);
 
   std::shared_ptr<CoreRuntime> getptr() {
     return std::shared_ptr<CoreRuntime>(this);

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pscore/heter_listen_and_serv_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 
 PADDLE_DEFINE_EXPORTED_int32(rpc_send_thread_num, 12,
@@ -63,7 +64,7 @@ void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
     PADDLE_ENFORCE_EQ(pieces.size(), 2,
                       platform::errors::PreconditionNotMet(
                           "Invalid format of message_and_id argument. "
-                          "Expected \"message:block_id\". Recieved %s",
+                          "Expected \"message:block_id\". Received %s",
                           grad_and_id.c_str()));
     PADDLE_ENFORCE_EQ(out_map->count(pieces[0]), 0,
                       platform::errors::AlreadyExists(
@@ -82,7 +83,7 @@ void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
   PADDLE_ENFORCE_GE(num_blocks, 1,
                     platform::errors::PreconditionNotMet(
                         "Invalid number of blocks in server program. Expected "
-                        "equal or greater than 1. Recieved %zu",
+                        "equal or greater than 1. Received %zu",
                         num_blocks));
   std::vector<int> block_list;
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
@@ -92,8 +93,9 @@ void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
     auto blkid = block_list[i];
     auto it = message_to_block_id.find_value(blkid);
     heter_server_->RegisterServiceHandler(
-        it->first, [&](const MultiVarMsg *request, MultiVarMsg *response,
-                       brpc::Controller *cntl) -> int {
+        it->first,
+        [&](const MultiVarMsg *request, MultiVarMsg *response,
+            brpc::Controller *cntl) -> int {
           return send_and_recv_variable_handler_->Handle(request, response,
                                                          cntl);
         });

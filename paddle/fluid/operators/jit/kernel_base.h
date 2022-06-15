@@ -14,6 +14,7 @@
 
 #pragma once
 #include <cstdint>
+
 #include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -25,6 +26,7 @@ typedef enum {
   kNone = 0,
   // sort by alphabet
   kAdam = 1,
+  kAdamW,
   kCRFDecoding,
   kEmbSeqPool,
   kGRUH1,
@@ -283,6 +285,15 @@ struct AdamTuple {
   typedef adam_attr_t attr_type;
   typedef void (*func_type)(T, T, T, T, int64_t, const T*, const T*, const T*,
                             const T*, T*, T*, T*);
+};
+
+template <typename T>
+struct AdamWTuple {
+  static constexpr KernelType kernel_type = kAdamW;
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(T, T, T, T, T, T, T, int64_t, const T*, const T*,
+                            const T*, const T*, T*, T*, T*);
 };
 
 typedef struct matmul_attr_s {

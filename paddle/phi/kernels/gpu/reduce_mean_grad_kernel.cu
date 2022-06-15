@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/reduce_mean_grad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/reduce_grad.h"
+#include "paddle/phi/kernels/reduce_mean_grad_kernel.h"
 
 namespace phi {
 
@@ -29,8 +28,23 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
                           bool keep_dim,
                           bool reduce_all,
                           DenseTensor* x_grad) {
-  ReduceGradKernel<T, Context, kps::DivideFunctor>(
-      dev_ctx, x, out_grad, dims, keep_dim, reduce_all, x_grad);
+  int dim_size = x.dims().size();
+  std::vector<int> reduce_dims =
+      funcs::details::GetReduceDim(dims, dim_size, reduce_all);
+  int reduce_num = 1;
+  for (auto i : reduce_dims) {
+    reduce_num *= (x.dims())[i];
+  }
+  using MPType = typename kps::details::MPTypeTrait<T>::Type;
+  ReduceGradKernel<T, T, Context, kps::DivideFunctor<T, MPType>>(
+      dev_ctx,
+      x,
+      out_grad,
+      dims,
+      keep_dim,
+      reduce_all,
+      x_grad,
+      kps::DivideFunctor<T, MPType>(reduce_num));
 }
 
 }  // namespace phi

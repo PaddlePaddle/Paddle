@@ -25,6 +25,7 @@ paddle.enable_static()
 
 
 class SimpleNet(nn.Layer):
+
     def __init__(self, input_size, output_size):
         super(SimpleNet, self).__init__()
         self.linear1 = nn.Linear(input_size, output_size)
@@ -38,7 +39,7 @@ class SimpleNet(nn.Layer):
         x = self.linear1(x)
         # currently, paddle's relu may hide nan/inf, relu(nan) = 0, relu(inf)= inf
         # so, do not use it here.
-        #x = self.relu1(x) 
+        #x = self.relu1(x)
         x = self.linear2(x)
         #x = self.relu2(x)
         x = self.linear3(x)
@@ -47,6 +48,7 @@ class SimpleNet(nn.Layer):
 
 
 class AMPTest(unittest.TestCase):
+
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
 
@@ -63,8 +65,9 @@ class AMPTest(unittest.TestCase):
 
         opt = paddle.fluid.optimizer.Adam(
             learning_rate=0.0001, parameter_list=model.parameters())  # 定义优化器
-        opt = paddle.static.amp.decorate(
-            opt, init_loss_scaling=128.0, use_dynamic_loss_scaling=True)
+        opt = paddle.static.amp.decorate(opt,
+                                         init_loss_scaling=128.0,
+                                         use_dynamic_loss_scaling=True)
         opt.minimize(loss)
         return model, loss, opt
 
@@ -105,8 +108,10 @@ class AMPTest(unittest.TestCase):
                     train_data[i][10] = np.inf
                 loss_, weight_, moment1_, beta_pow1_, found_inf = exe.run(
                     main_prog,
-                    feed={"X": train_data[i],
-                          "Y": labels[i]},
+                    feed={
+                        "X": train_data[i],
+                        "Y": labels[i]
+                    },
                     fetch_list=fetch_list)
                 print(loss_, weight_[0][0], moment1_[0][0], beta_pow1_,
                       found_inf)

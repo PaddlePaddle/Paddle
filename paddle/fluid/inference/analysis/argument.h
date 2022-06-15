@@ -216,8 +216,12 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
-  DECL_ARGUMENT_FIELD(tensorrt_use_oss, TensorRtUseOSS, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_varseqlen, TensorRtUseOSS, bool);
   DECL_ARGUMENT_FIELD(tensorrt_with_interleaved, TensorRtWithInterleaved, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_transformer_posid, TensorRtTransformerPosid,
+                      std::string);
+  DECL_ARGUMENT_FIELD(tensorrt_transformer_maskid, TensorRtTransformerMaskid,
+                      std::string);
   DECL_ARGUMENT_FIELD(tensorrt_shape_range_info_path,
                       TensorRtShapeRangeInfoPath, std::string);
   DECL_ARGUMENT_FIELD(tensorrt_tuned_dynamic_shape, TensorRtTunedDynamicShape,

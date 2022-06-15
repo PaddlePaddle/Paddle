@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/ProcessGroupHCCL.h"
+
 #include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/distributed/collective/HCCLTools.h"
 #include "paddle/fluid/memory/malloc.h"
@@ -216,15 +217,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHCCL::AllReduce(
     std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
     std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
     const AllreduceOptions& opts) {
-  return Collective(in_tensors, out_tensors,
-                    [&](phi::DenseTensor& input, phi::DenseTensor& output,
-                        HcclComm comm, const aclrtStream& stream) {
-                      return platform::dynload::HcclAllReduce(
-                          input.data(), output.data(), input.numel(),
-                          platform::ToHCCLDataType(input.dtype()),
-                          ToHCCLRedType(opts.reduce_op), comm, stream);
-                    },
-                    CommType::ALLREDUCE);
+  return Collective(
+      in_tensors, out_tensors,
+      [&](phi::DenseTensor& input, phi::DenseTensor& output, HcclComm comm,
+          const aclrtStream& stream) {
+        return platform::dynload::HcclAllReduce(
+            input.data(), output.data(), input.numel(),
+            platform::ToHCCLDataType(input.dtype()),
+            ToHCCLRedType(opts.reduce_op), comm, stream);
+      },
+      CommType::ALLREDUCE);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHCCL::Broadcast(

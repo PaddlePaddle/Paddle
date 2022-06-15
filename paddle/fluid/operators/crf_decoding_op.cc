@@ -158,11 +158,12 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             (label_dims.size() == 2UL && label_dims[1] == 1) ||
                 label_dims.size() == 1UL,
-            true, platform::errors::InvalidArgument(
-                      "The Input(Label) should be a 2-D tensor with last "
-                      "dimension fixed to 1 or a 1-D tensor. But received: "
-                      "input rank %u, input shape [%s].",
-                      label_dims.size(), label_dims));
+            true,
+            platform::errors::InvalidArgument(
+                "The Input(Label) should be a 2-D tensor with last "
+                "dimension fixed to 1 or a 1-D tensor. But received: "
+                "input rank %u, input shape [%s].",
+                label_dims.size(), label_dims));
       }
       if (ctx->IsRuntime() || (emission_dims[0] > 0 && label_dims[0] > 0)) {
         PADDLE_ENFORCE_EQ(

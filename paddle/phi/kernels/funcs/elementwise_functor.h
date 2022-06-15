@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/hostdevice.h"
 #if defined(__xpu__)
 #include <xpu/runtime.h>
+
 #include "xpu/kernel/math_xpu2.h"  //pow()
 #endif
 
@@ -540,6 +541,13 @@ struct InverseModuloFunctor<
     T res = fmod(b, a);
     if ((res != 0) && ((a < 0) != (res < 0))) res += a;
     return res;
+  }
+};
+
+template <typename T>
+struct ElementwiseHeavisideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return a == static_cast<T>(0) ? b : static_cast<T>(a > 0);
   }
 };
 

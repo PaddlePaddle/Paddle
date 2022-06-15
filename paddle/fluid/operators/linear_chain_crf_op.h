@@ -28,9 +28,10 @@ static inline T NormalizeL1(T* x, size_t len) {
   // Right now, we just bet that sum won't be zero. If this really happens, we
   // will figure out what should be done then.
   PADDLE_ENFORCE_GT(
-      sum, 0., platform::errors::InvalidArgument(
-                   "The unnormalized probabilities of all possible unfinished "
-                   "sequences must be greater than 0."));
+      sum, 0.,
+      platform::errors::InvalidArgument(
+          "The unnormalized probabilities of all possible unfinished "
+          "sequences must be greater than 0."));
   T s = 1. / sum;
   for (size_t i = 0; i < len; ++i) x[i] *= s;
   return sum;
@@ -44,8 +45,8 @@ struct ScalarMul {
   T scalar;
 };
 
-using framework::LoDTensor;
 using framework::LoD;
+using framework::LoDTensor;
 using framework::Tensor;
 
 template <typename DeviceContext, typename T>

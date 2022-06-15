@@ -21,6 +21,7 @@ DELTA = 0.00001
 
 
 class TestIsTensorApi(unittest.TestCase):
+
     def test_is_tensor_real(self, dtype="float32"):
         """Test is_tensor api with a real tensor
         """
