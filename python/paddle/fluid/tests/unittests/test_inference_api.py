@@ -115,5 +115,25 @@ class TestInferenceBaseAPI(unittest.TestCase):
             predictor.run()
 
 
+class TestInferenceMkldnnAPI(unittest.TestCase):
+
+    def get_config(self, model, params):
+        config = Config()
+        config.set_model_buffer(model, len(model), params, len(params))
+        config.enable_mkldnn()
+        config.enable_mkldnn_fc_passes()
+        return config
+
+    def test_apis(self):
+        program, params = get_sample_model()
+        config = self.get_config(program, params)
+        predictor = create_predictor(config)
+        in_names = predictor.get_input_names()
+        in_handle = predictor.get_input_handle(in_names[0])
+        in_data = np.ones((1, 6, 32, 32)).astype(np.float32)
+        in_handle.copy_from_cpu(in_data)
+        predictor.run()
+
+
 if __name__ == '__main__':
     unittest.main()

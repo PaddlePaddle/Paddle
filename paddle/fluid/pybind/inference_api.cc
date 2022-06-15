@@ -701,7 +701,24 @@ void BindAnalysisConfig(py::module *m) {
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
       .def("enable_quantizer", &AnalysisConfig::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &AnalysisConfig::EnableMkldnnBfloat16)
-      .def("enable_mkldnn_fc_passes", &AnalysisConfig::EnableMkldnnFcPasses)
+      .def("enable_mkldnn_fc_passes", &AnalysisConfig::EnableMkldnnFcPasses,
+           R"DOC(
+           Enable Mkldnn FC 
+
+           Args:
+                None.
+
+           Returns:
+                None.
+
+           Examples:
+               .. code-block:: python
+
+                from paddle.fluid.core import AnalysisConfig
+                config = AnalysisConfig(self.path)
+                config.enable_mkldnn()
+                config.enable_mkldnn_fc_passes()
+           )DOC")
 #ifdef PADDLE_WITH_MKLDNN
       .def("quantizer_config", &AnalysisConfig::mkldnn_quantizer_config,
            py::return_value_policy::reference)
