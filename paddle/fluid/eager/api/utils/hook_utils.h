@@ -29,5 +29,8 @@ void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
                                  std::shared_ptr<egr::TensorVoidHook>&& hook);
 void RetainGradForTensor(const paddle::experimental::Tensor& tensor);
 
+std::shared_ptr<paddle::experimental::Tensor> FetchGradForTensor(
+    const paddle::experimental::Tensor& tensor, egr::GradNodeBase* target_node);
+
 }  // namespace egr_utils_api
 }  // namespace egr

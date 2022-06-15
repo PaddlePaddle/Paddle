@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
+#include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/grad_tensor_holder.h"
@@ -70,6 +71,45 @@ class GeneralGrad {
           (no_grad_var_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
         } else {  // normal input
           (input_target_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
+        }
+      }
+    }
+  }
+
+  // Fetch grad for tensor in target_node passing by, not endding_nodes
+  void RegisterFetchGradHookForTensor(
+      const std::vector<paddle::experimental::Tensor>& inputs) {
+    VLOG(6) << "Running in RegisterFetchGradHookForTensor.";
+    if (!inputs.empty()) {
+      size_t num_inputs = inputs.size();
+      for (size_t i = 0; i < num_inputs; i++) {
+        AutogradMeta* auto_grad_meta =
+            EagerUtils::unsafe_autograd_meta(inputs[i]);
+        auto* target_node = auto_grad_meta->GetMutableGradNode().get();
+
+        if (orig_to_copied_node_mapping_.count(target_node)) {
+          target_node = orig_to_copied_node_mapping_[target_node].get();
+          if (copied_node_to_endding_node_mapping_.count(target_node)) {
+            VLOG(6) << "No need to call FetchGradForTensor for endding_nodes";
+            continue;
+          }
+        } else {
+          VLOG(6) << "Unable to find target node in "
+                     "orig_to_copied_node_mapping_, likely indicating an "
+                     "unused input";
+        }
+
+        PADDLE_ENFORCE_NOT_NULL(
+            target_node, paddle::platform::errors::Fatal(
+                             "There is no grad op for inputs:[%d] or it's"
+                             "stop_gradient=True.",
+                             i));
+
+        if (!IsEnddingNodes(target_node)) {
+          // Fetch grad for tensor in target_node passing by.
+          auto fetched_grad =
+              egr_utils_api::FetchGradForTensor(inputs[i], target_node);
+          results_map_[target_node] = fetched_grad;
         }
       }
     }
@@ -229,25 +269,22 @@ class GeneralGrad {
           auto& target_result =
               (iter->second)->Buffers()[rank_info.first][rank_info.second];
           // save the target result
-          results_map_[input_target_node.first] = target_result;
+          results_map_[input_target_node.first] =
+              std::make_shared<paddle::experimental::Tensor>(target_result);
         }
       }
     }
   }
 
-  // Set input target grad_var from node_input_buffer by inputmeta
-  void SetResultForInputTargetVar(GradTensorHolder input_buffers,
-                                  GradNodeBase* node) {
-    auto iter = GetInputTargetNodesInputMetaMap()->find(node);
-    if (iter != GetInputTargetNodesInputMetaMap()->end()) {
-      VLOG(6) << "Get target result by inputmeta";
-      // out rank_info of forward op
-      auto rank_info = (iter->second)->OutRankInfo();
-      // rank_info is a pair, first means slot_id, second means rank.
-      auto& target_result =
-          input_buffers.Buffers()[rank_info.first][rank_info.second];
-      // save the target result
-      results_map_[node] = target_result;
+  void SetResultForEnddingNodes(
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                           kSlotSmallVectorSize>
+          grad_output,
+      GradNodeBase* node) {
+    if (IsEnddingNodes(node)) {
+      VLOG(6) << "Set result for endding_nodes_ with grad_output_tensors";
+      results_map_[node] =
+          std::make_shared<paddle::experimental::Tensor>(grad_output[0][0]);
     }
   }
 
@@ -267,22 +304,21 @@ class GeneralGrad {
       auto* target_node = auto_grad_meta->GetMutableGradNode().get();
       if (orig_to_copied_node_mapping_.count(target_node)) {
         target_node = orig_to_copied_node_mapping_[target_node].get();
-        if (copied_node_to_end_node_mapping_.count(target_node)) {
-          target_node = copied_node_to_end_node_mapping_[target_node];
+        if (copied_node_to_endding_node_mapping_.count(target_node)) {
+          target_node = copied_node_to_endding_node_mapping_[target_node];
         }
       } else {
         VLOG(6) << "Unable to find target node in "
                    "orig_to_copied_node_mapping_, likely indicating an unused "
                    "input";
       }
-
       auto iter = results_map_.find(target_node);
       if (iter != results_map_.end()) {
         // set StopGradient = !create_graph
         AutogradMeta* tensor_auto_grad_meta =
-            EagerUtils::autograd_meta(&(iter->second));
+            EagerUtils::autograd_meta(iter->second.get());
         tensor_auto_grad_meta->SetStopGradient(!create_graph);
-        results.emplace_back(iter->second);
+        results.emplace_back(*(iter->second.get()));
       } else {
         PADDLE_ENFORCE_EQ(allow_unused, true,
                           paddle::platform::errors::InvalidArgument(
@@ -298,7 +334,7 @@ class GeneralGrad {
   }
 
   void SetNodeToAccumulationNode(GradNodeBase* node) {
-    if (node->name() == "GradNodeAccumulation") return;
+    if (dynamic_cast<egr::GradNodeAccumulation*>(node)) return;
     if (!(depending_nodes_)[node].empty()) {
       auto precedding_nodes = (depending_nodes_)[node];
       for (auto pre_nodes : precedding_nodes) {
@@ -310,6 +346,7 @@ class GeneralGrad {
             if (edge_.GetGradNode() == node) {
               auto autograd_meta = egr::AutogradMeta(edge_);
               Edge& pre_node_edge = pre_nodes_edges[i][j].GetMutableEdge();
+
               if (grad_node_trans_mapping_.count(node)) {
                 pre_node_edge.SetGradNode(grad_node_trans_mapping_[node]);
               } else {
@@ -318,14 +355,28 @@ class GeneralGrad {
                 pre_node_edge.SetGradNode(shared_grad_node_accumulation);
                 grad_node_trans_mapping_[node] = shared_grad_node_accumulation;
               }
+
               auto* grad_node = pre_node_edge.GetGradNode();
               needed_nodes_.emplace(grad_node);
-              copied_node_to_end_node_mapping_[node] = grad_node;
+              endding_nodes_.emplace(grad_node);
+              copied_node_to_endding_node_mapping_[node] = grad_node;
               input_target_nodes_inputmeta_map_[grad_node] =
                   input_target_nodes_inputmeta_map_[node];
-              VLOG(3) << "Setting next_node(" << node->name()
-                      << ")to AccumulationNode " << grad_node << " for node "
-                      << pre_nodes->name();
+
+              VLOG(6)
+                  << node->name() << " (addr:" << node
+                  << ") has been transformed to GradNodeAccumulation (addr: "
+                  << grad_node << ")";
+
+              // Copy Hook func
+              if (node->GradientHooksRegistered()) {
+                VLOG(6) << "Copy hook func from node: " << node->name()
+                        << " (addr: " << node
+                        << ") to GradNodeAccumulation (addr: " << grad_node
+                        << ")";
+                grad_node->SetGradientHookFuntions(
+                    node->GetGradientHookFuntions());
+              }
             }
           }
         }
@@ -348,8 +399,6 @@ class GeneralGrad {
 
       if (IsInputTargetNodes(node)) {
         if (IsEnddingNodes(node)) {
-          VLOG(3) << "Setting node: " << node->name() << " addr: " << node
-                  << " to Accumulation node";
           SetNodeToAccumulationNode(node);
           continue;
         }
@@ -366,9 +415,10 @@ class GeneralGrad {
           if (IsInputTargetNodes(node)) {
             if (meta.size() != 1 && !IsNeededNodes(next_node.get()) &&
                 IsNeededNodes(node) && !IsEnddingNodes(node)) {
-              VLOG(3) << "Setting empty edge for node: " << node->name()
-                      << " addr: " << node << " in slot:" << i;
-              meta[i][j].SetEdge(egr::Edge());
+              VLOG(6) << "Clear meta[" << i << "][" << j
+                      << "] for node: " << node->name() << " (addr: " << node
+                      << ")";
+              meta[i][j].Clear();
             }
           }
           // Update BFS queue
@@ -406,6 +456,7 @@ class GeneralGrad {
       SetResultForInputTargetVar(node_input_buffers_dict);
     } else {
       GenSubGraph(queue);
+      RegisterFetchGradHookForTensor(inputs);
     }
   }
 
@@ -443,7 +494,7 @@ class GeneralGrad {
     results_map_.clear();
     copied_grad_nodes_.clear();
     orig_to_copied_node_mapping_.clear();
-    copied_node_to_end_node_mapping_.clear();
+    copied_node_to_endding_node_mapping_.clear();
     needed_nodes_.clear();
     grad_node_trans_mapping_.clear();
     endding_nodes_.clear();
@@ -534,13 +585,15 @@ class GeneralGrad {
   std::unordered_map<GradNodeBase* /* next node */,
                      std::unordered_set<GradNodeBase*> /* pre nodes */>
       depending_nodes_;
-  std::unordered_map<GradNodeBase*, paddle::experimental::Tensor> results_map_;
+  std::unordered_map<GradNodeBase*,
+                     std::shared_ptr<paddle::experimental::Tensor>>
+      results_map_;
 
   std::vector<std::shared_ptr<GradNodeBase>> copied_grad_nodes_;
   std::unordered_map<GradNodeBase*, std::shared_ptr<GradNodeBase>>
       orig_to_copied_node_mapping_;
   std::unordered_map<GradNodeBase*, GradNodeBase*>
-      copied_node_to_end_node_mapping_;
+      copied_node_to_endding_node_mapping_;
   std::unordered_set<GradNodeBase*> needed_nodes_;
   // Record which grad_node has been transformed to AccumulationNode
   std::unordered_map<GradNodeBase*, std::shared_ptr<GradNodeBase>>
@@ -746,7 +799,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
 
-  VLOG(6) << "startup_ops' size is :" << queue.size();
+  VLOG(6) << "Startup_ops's size is :" << queue.size();
 
   /* --- Topological Visit --- */
   // 1. Pop queue
@@ -781,12 +834,6 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     std::unique_ptr<GradTensorHolder> node_input_buffer =
         std::move(node_input_buffer_iter->second);
 
-    // Set input target grad_var from node_input_buffer by inputmeta
-    if (!inputs.empty() && is_general_grad) {
-      GeneralGrad::Instance().SetResultForInputTargetVar(*node_input_buffer,
-                                                         node);
-    }
-
     // no_grad_vars
     if (!no_grad_vars.empty() && is_general_grad) {
       auto iter =
@@ -809,6 +856,11 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                          kSlotSmallVectorSize>
         grad_output_tensors = (*node)(node_input_buffer->Buffers(),
                                       create_graph, is_general_grad);
+
+    if (!inputs.empty() && is_general_grad) {
+      GeneralGrad::Instance().SetResultForEnddingNodes(grad_output_tensors,
+                                                       node);
+    }
 
     // retain_grad or not
     if (!retain_graph) {

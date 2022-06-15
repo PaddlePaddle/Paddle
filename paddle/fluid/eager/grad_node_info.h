@@ -105,6 +105,12 @@ class Edge {
     }
   }
 
+  void Clear() {
+    in_slot_id_ = 0;
+    in_rank_ = 0;
+    grad_node_ = nullptr;
+  }
+
  private:
   size_t in_slot_id_;
   size_t in_rank_;
@@ -150,6 +156,13 @@ class GradSlotMeta {
   }
   Edge& GetMutableEdge() { return adj_edge_; }
   const Edge& GetEdge() const { return adj_edge_; }
+
+  void Clear() {
+    meta_ = nullptr;
+    stop_gradient_ = true;
+    adj_edge_.Clear();
+    place_.Reset(phi::AllocationType::UNDEFINED);
+  }
 
  private:
   bool stop_gradient_{false};
@@ -243,6 +256,19 @@ class GradNodeBase {
    * Apply GradientHook
    * **/
   inline bool GradientHooksRegistered() { return !gradient_hooks_.empty(); }
+
+  std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
+  GetGradientHookFuntions() {
+    VLOG(6) << "GetGradientHookFuntions ";
+    return gradient_hooks_;
+  }
+
+  void SetGradientHookFuntions(
+      std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
+          hooks) {
+    VLOG(6) << "SetGradientHookFuntions ";
+    gradient_hooks_ = hooks;
+  }
 
   paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                        kSlotSmallVectorSize>
