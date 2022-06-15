@@ -314,8 +314,8 @@ void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
     (void)end_bit;
     (void)debug_synchronous;
 
-    platform::XPUDeviceContext xpu_dev_ctx(place);
-    auto ctx_xpu = xpu_dev_ctx.x_context();
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
 
     // TODO: remove cast.
     xpu::ctx_guard RAII_GUARD(ctx_xpu);
@@ -369,8 +369,8 @@ void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
     (void)end_bit;
     (void)debug_synchronous;
 
-    platform::XPUDeviceContext xpu_dev_ctx(place);
-    auto ctx_xpu = xpu_dev_ctx.x_context();
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
 
     int r = xpu::sort_pairs<KeyT, ValueT>(
         ctx_xpu,
@@ -407,8 +407,8 @@ void HeterCommKernel::reduce_by_key(const paddle::platform::Place& place,
     // Not used.
     (void)debug_synchronous;
 
-    platform::XPUDeviceContext xpu_dev_ctx(place);
-    auto ctx_xpu = xpu_dev_ctx.x_context();
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
 
     // TODO: remove cast.
     xpu::ctx_guard RAII_GUARD(ctx_xpu);

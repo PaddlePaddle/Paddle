@@ -98,6 +98,7 @@ class XPUCacheArray {
 
   int prefetch(const int dev_id, XPUStream stream = NULL) { return 0; }
   size_t size() { return size_; }
+  size_t capacity() { return capacity_; }
 
  private:
   long long capacity_;

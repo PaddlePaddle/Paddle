@@ -107,8 +107,8 @@ void HashTable<KeyType, ValType>::get(const paddle::platform::Place& place,
   PADDLE_ENFORCE_GE(
       xpu_size, len,
       platform::errors::External("XPU get kernel len size %d is greate than xpu_size %d", len, xpu_size));
-  platform::XPUDeviceContext xpu_dev_ctx(place);
-  auto ctx_xpu = xpu_dev_ctx.x_context();
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
   int r = xpu::get_pairs<KeyType, ValType>(
       ctx_xpu, d_keys, d_vals_in, len,  d_vals,
       xpu_id, xpu_num
@@ -178,8 +178,8 @@ void HashTable<KeyType, ValType>::insert(const paddle::platform::Place& place,
     return;
   }
   #if defined(PADDLE_WITH_XPU_CACHE_BFID)
-  platform::XPUDeviceContext xpu_dev_ctx(place);
-  auto ctx_xpu = xpu_dev_ctx.x_context();
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
   KeyType* d_keys_out = container_->get_keys();
   ValType* d_vals_out = container_->get_vals();
 
@@ -212,8 +212,10 @@ void HashTable<unsigned long, FeatureValue>::insert(const paddle::platform::Plac
   if (len == 0) {
       return;
   }
-  platform::XPUDeviceContext xpu_dev_ctx(place);
-  auto ctx_xpu = xpu_dev_ctx.x_context();
+  PADDLE_ENFORCE_LE(len, container_->capacity(), platform::errors::External("XPU insert len[%d] must less than capacity[%d]", len, container_->capacity()));
+
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
   unsigned long* d_keys_out = container_->get_keys();
   FeatureValue* d_vals_out = container_->get_vals();
   uint32_t xpu_id = container_->get_xpu_id();
@@ -297,8 +299,8 @@ void HashTable<unsigned long, FeatureValue>::update(const paddle::platform::Plac
   if (len == 0) {
     return;
   }
-  platform::XPUDeviceContext xpu_dev_ctx(place);
-  auto ctx_xpu = xpu_dev_ctx.x_context();
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
 
   unsigned long* d_keys_out = container_->get_keys();
   FeatureValue* d_vals_out = container_->get_vals();
