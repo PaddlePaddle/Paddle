@@ -49,8 +49,7 @@ class ActivationOpConverter : public OpConverter {
         << "convert a fluid Activation op to tensorrt activation layer whose "
            "type is "
         << op_type_;
-    const nvinfer1::ITensor* input_tensor =
-        engine_->GetITensor(op_desc.Input("X")[0]);
+    auto* input_tensor = engine_->GetITensor(op_desc.Input("X")[0]);
 
     auto op_pair = ops.find(op_type_);
     nvinfer1::IActivationLayer* layer = nullptr;
