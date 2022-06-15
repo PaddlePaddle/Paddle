@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
-#include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 
 namespace paddle {
@@ -1052,12 +1051,11 @@ template <typename T>
 void TransposeGPUKernelDriver(const phi::GPUContext& ctx, const Tensor& in,
                               const std::vector<int32_t>& perm, Tensor* out) {
   const int rank = perm.size();
-  PADDLE_ENFORCE_LT(
-      rank, phi::DDim::kMaxRank,
-      platform::errors::OutOfRange(
-          "The maximum dimension rank of "
-          "tensor is expected to be less than %d, but here is %d.",
-          phi::DDim::kMaxRank, rank));
+  PADDLE_ENFORCE_LT(rank, phi::DDim::kMaxRank,
+                    platform::errors::OutOfRange(
+                        "The maximum dimension rank of tensor is "
+                        "expected to be less than %d, but here is %d.",
+                        phi::DDim::kMaxRank, rank));
 
   auto ret = TransposeSimple<T>::run(ctx, in, perm, out);
   if (!ret) {
@@ -1066,25 +1064,12 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx, const Tensor& in,
     tuner->AddCallBack(
         phi::autotune::MakeCallback<T>(SimplifyThenLaunch<phi::GPUContext, T>));
 
-    bool use_autotune = phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
-    if (use_autotune) {
-      auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
-      auto key = phi::autotune::TransposeKey(
-          phi::vectorize(in.dims()), perm,
-          paddle::experimental::CppTypeToDataType<T>::Type());
+    size_t key = phi::autotune::TransposeKey(
+        phi::vectorize(in.dims()), perm,
+        paddle::experimental::CppTypeToDataType<T>::Type());
 
-      if (cache.Find(key)) {
-        auto best_idx = cache.Get(key);
-        tuner->RunBestKernel(best_idx, rank, ctx, in, out, perm);
-      } else {
-        // All avaliable kernels have ran while picking the best kernel,
-        // so there may be no need for another kernel run.
-        auto best_idx = tuner->PickBestKernel(ctx, rank, ctx, in, out, perm);
-        cache.Set(key, best_idx);
-      }
-    } else {
-      tuner->RunDefaultKernel(rank, ctx, in, out, perm);
-    }
+    tuner->Run(ctx, key, phi::autotune::AlgorithmType::kTranspose, rank, ctx,
+               in, out, perm);
   }
 }
 

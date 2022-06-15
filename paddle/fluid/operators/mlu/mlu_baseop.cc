@@ -901,14 +901,11 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
       cnnlAddN(handle, inputs_desc, inputs, input_num, output_desc, output));
 }
 
-/* static */ void MLUCnnl::Log(const ExecutionContext& ctx,
-                               cnnlComputationPreference_t prefer,
-                               const cnnlTensorDescriptor_t input_desc,
-                               const void* input,
-                               const cnnlTensorDescriptor_t output_desc,
-                               void* output) {
+/* static */ void MLUCnnl::Log(
+    const ExecutionContext& ctx, cnnlComputationPreference_t prefer,
+    cnnlLogBase_t log_base, const cnnlTensorDescriptor_t input_desc,
+    const void* input, const cnnlTensorDescriptor_t output_desc, void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
-  cnnlLogBase_t log_base = CNNL_LOG_E;
 
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlLog_v2(handle, prefer, log_base, input_desc,
                                         input, output_desc, output));
@@ -1925,9 +1922,9 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
     const cnnlTensorDescriptor_t output_desc, void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
-  PADDLE_ENFORCE_MLU_SUCCESS(
-      cnnlInterpBackward(handle, align_corners, half_pixel_centers, mode,
-                         input_desc, input, output_desc, output));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlInterpBackward_v2(
+      handle, align_corners, half_pixel_centers, mode, NULL, true, input_desc,
+      input, output_desc, output));
 }
 
 /* static */ void MLUCnnl::Cast(const ExecutionContext& ctx,
@@ -1940,6 +1937,25 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlCastDataType(handle, input_desc, input,
                                               cast_type, output_desc, output));
+}
+
+/*static*/ void MLUCnnl::Clip(const ExecutionContext& ctx,
+                              const cnnlTensorDescriptor_t x_desc,
+                              const void* x, const void* min, const void* max,
+                              void* y) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlClip(handle, x_desc, x, min, max, y));
+}
+
+/*static*/ void MLUCnnl::HardtanhBackward(
+    const ExecutionContext& ctx, const cnnlTensorDescriptor_t x_desc,
+    const void* x, const cnnlTensorDescriptor_t diff_y_desc, const void* diff_y,
+    const float max_val, const float min_val,
+    const cnnlTensorDescriptor_t diff_x_desc, void* diff_x) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlHardtanhBackward(handle, x_desc, x, diff_y_desc, diff_y, max_val,
+                           min_val, diff_x_desc, diff_x));
 }
 
 /* static */ void MLUCnnl::PoolingBackward(
@@ -2781,6 +2797,18 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 
   PADDLE_ENFORCE_MLU_SUCCESS(
       cnnlReciprocal(handle, input_desc, input, output_desc, output));
+}
+
+/* static */ void MLUCnnl::EmbeddingForward(
+    const ExecutionContext& ctx, const int padding_idx,
+    const cnnlTensorDescriptor_t weight_desc, const void* weight,
+    const cnnlTensorDescriptor_t indices_desc, const int* indices,
+    const cnnlTensorDescriptor_t output_desc, void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlEmbeddingForward_v2(
+      handle, weight_desc, weight, indices_desc, indices, padding_idx,
+      nullptr /*max_norm*/, nullptr /*norm_type*/, output_desc, output));
 }
 
 /* static */ void MLUCnnl::EmbeddingBackward(
