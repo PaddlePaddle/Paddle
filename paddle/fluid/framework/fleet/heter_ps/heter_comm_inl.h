@@ -867,7 +867,7 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                                                         KeyType* d_keys,
-                                                        float* d_vals, //new edit from ValType
+                                                        float* d_vals,
                                                         size_t len) {
   if (len == 0) {
     return;

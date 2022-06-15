@@ -277,7 +277,6 @@ struct FeatureValue {
   }
 };
 
-
 struct FeaturePushValue {
   float show;
   float clk;

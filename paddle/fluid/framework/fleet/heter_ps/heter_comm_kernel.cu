@@ -140,8 +140,6 @@ __global__ void dy_mf_fill_shard_grads_kernel(KeyType* d_shard_keys,
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     d_shard_keys[i] = d_keys[idx[i]];
-    // *(float*)((char*)d_shard_grads + i * grad_value_size) =
-    //     *(float*)((char*)d_grads + uint64_t(idx[i]) * grad_value_size);
     float* cur = (float*)((char*)d_shard_grads + i * grad_value_size);
     float* shard_val = (float*)((char*)d_grads + uint64_t(idx[i]) * grad_value_size);
 

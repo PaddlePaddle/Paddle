@@ -36,7 +36,6 @@ HeterPs::HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource,
           capacity, resource, feature_value_accessor);
   feature_value_accessor_ = feature_value_accessor;
   optimizer_type_ = optimizer_type;
-  // opt_ = Optimizer<FeatureValue, FeaturePushValue>();
 }
 
 HeterPs::~HeterPs() {}

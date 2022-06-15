@@ -133,7 +133,6 @@ class MultiTrainer : public TrainerBase {
 #ifdef PADDLE_WITH_HETERPS
   std::vector<platform::Place> places_;
 #endif
-
   int mpi_rank_;
   int mpi_size_;
   int dump_file_num_;

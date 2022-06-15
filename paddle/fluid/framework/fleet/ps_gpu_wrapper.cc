@@ -1036,9 +1036,6 @@ void PSGPUWrapper::EndPass() {
       auto* downpour_value =
           (paddle::distributed::FixedFeatureValue*)(*(reinterpret_cast<uint64_t*>(gpu_val+ feature_value_accessor_.common_feature_value.CpuPtrIndex())));
       size_t downpour_value_size = downpour_value->size();
-      VLOG(0) << "downpour_value_size:" <<downpour_value_size;
-      VLOG(0) << "CtrDymfAccessor dim: " << cpu_table_accessor_->GetAccessorInfo().dim
-              << "  MF_FIM:" << cpu_table_accessor_->GetAccessorInfo().mf_size / sizeof(float);
       if (gpu_val[feature_value_accessor_.common_feature_value.MfSizeIndex()] > 0 &&
              downpour_value_size == (cpu_table_accessor_->GetAccessorInfo().dim - 
               cpu_table_accessor_->GetAccessorInfo().mf_size / sizeof(float))) { // cpu_accessor 
@@ -1072,10 +1069,8 @@ void PSGPUWrapper::EndPass() {
               gpu_val[feature_value_accessor_.common_feature_value.EmbedxWIndex() + x];
         }
       }
-      VLOG(0) << "dump to cpu "<< index << " : "<< feature_value_accessor_.ParseToString(gpu_val, feature_value_accessor_.GetAccessorInfo().dim)
-            << " =====CPU "<< cpu_table_accessor_->GetAccessorInfo().dim 
-            << "-" << downpour_value->size()
-            << "  :" << cpu_table_accessor_->ParseToString(cpu_val, downpour_value->size());
+      VLOG(5) << "dump to cpu "<< index << " : "<< feature_value_accessor_.ParseToString(gpu_val, feature_value_accessor_.GetAccessorInfo().dim)
+            << " ===== CPU:" << cpu_table_accessor_->ParseToString(cpu_val, downpour_value->size());
 
     }
 #endif

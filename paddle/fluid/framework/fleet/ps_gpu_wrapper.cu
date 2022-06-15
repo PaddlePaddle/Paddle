@@ -199,8 +199,6 @@ __global__ void PushCopyWithPool(float* dest,
       *(src[x] + y * (mf_dim + 3) + 1);
     cur[feature_value_accessor.common_push_value.EmbedGIndex()] = 
       *(src[x] + y * (mf_dim + 3) + 2) * -1. * bs;
-    // printf("PushCopyWithPool show:%f ,click: %d\n", cur[feature_value_accessor.common_push_value.ShowIndex()], 
-    //                 cur[feature_value_accessor.common_push_value.ClickIndex()]);
     for (int j = 0; j < mf_dim; j++) {
       cur[feature_value_accessor.common_push_value.EmbedxGIndex() + j] = *(src[x] + y * (mf_dim + 3) + 3 + j) * -1. * bs;
     }
