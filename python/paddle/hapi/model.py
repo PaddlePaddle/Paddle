@@ -1934,9 +1934,9 @@ class Model(object):
                 used and loading data in main process. When test_data is the instance of Dataloader,
                 this argument will be ignored. Default: 0.
             stack_outputs (bool, optional): Whether stack output field like a batch, as for an output
-                filed of a sample is in shape [X, Y], test_data contains N samples, predict
+                field of a sample is in shape [X, Y], test_data contains N samples, predict
                 output field will be in shape [N, X, Y] if stack_output is True, and will
-                be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
+                be a length N list in shape [[X, Y], [X, Y], ..., [X, Y]] if stack_outputs
                 is False. stack_outputs as False is used for LoDTensor output situation,
                 it is recommended set as True if outputs contains no LoDTensor. Default: False.
             verbose (int, optional): The verbosity mode, should be 0, 1, or 2. 0 = silent,
