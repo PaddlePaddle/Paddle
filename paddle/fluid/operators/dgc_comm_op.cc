@@ -1,11 +1,8 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,7 +20,6 @@ class DGCCommOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "DGCCommOp");
-    OP_INOUT_CHECK(ctx->HasInput("Gather"), "Input", "Gather", "DGCCommOp");
     OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "DGCCommOp");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "DGCCommOp");
 
@@ -53,8 +49,6 @@ class DGCCommOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor) encoded grad with 2 * k value in dgc. ");
-    AddInput("Gather",
-             "(Tensor) gather var with 2 * k * nranks value in dgc. ");
     AddInput("Grad", "(Tensor) the grad of the param in dgc. ");
 
     AddAttr<int>("nranks",

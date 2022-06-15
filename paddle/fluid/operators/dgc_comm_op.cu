@@ -1,11 +1,8 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,7 +25,6 @@ class DGCCommOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto x = ctx.Input<phi::DenseTensor>("X");
-    auto gather = ctx.Input<phi::DenseTensor>("Gather");
     auto grad = ctx.Input<phi::DenseTensor>("Grad");
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
@@ -49,7 +45,7 @@ class DGCCommOpCUDAKernel : public framework::OpKernel<T> {
 
     framework::Tensor gather_res;
     gather_res =
-        ctx.AllocateTmpTensor<T, DeviceContext>(gather->dims(), dev_ctx);
+        ctx.AllocateTmpTensor<T, DeviceContext>({2 * k * nranks}, dev_ctx);
 
     const T* x_buff = x->data<T>();
 
