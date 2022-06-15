@@ -427,7 +427,7 @@ class DistributedOpsPass(PassBase):
                             "op_device": op_device
                         })
 
-        if attrs['use_ps_gpu']:
+        if attrs['use_ps_gpu'] and len(gpups_inputs) > 0:
             if max(gpups_inputs_idxs) > 0:
                 raise ValueError("There can't be ops before embedding in gpups")
 

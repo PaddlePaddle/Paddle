@@ -977,6 +977,12 @@ if(WITH_DISTRIBUTE)
   endif()
 endif()
 
+if(NOT WITH_HETERPS)
+  list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
+  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps11")
+  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps12")
+endif()
+
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
 # profiler will random hang in linux cuda 10.1 or 10.2
 # see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
