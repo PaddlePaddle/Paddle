@@ -66,13 +66,17 @@ template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
   explicit XPUCacheArray(long long capacity) : capacity_(capacity), size_(0) {
-    xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
-    xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
+    xpu_malloc(reinterpret_cast<void**>(&keys_), capacity_ * sizeof(KeyType));
+    xpu_malloc(reinterpret_cast<void**>(&vals_), capacity_ * sizeof(ValType));
+    cpu_keys_ = (KeyType*)malloc(capacity_ * sizeof(KeyType));
+    cpu_vals_ = (ValType*)malloc(capacity_ * sizeof(ValType));
   }
 
   virtual ~XPUCacheArray() {
-    xpu_free(keys);
-    xpu_free(vals);
+    xpu_free(keys_);
+    xpu_free(vals_);
+    free(cpu_keys_);
+    free(cpu_vals_);
   }
 
   void print() {}
@@ -81,8 +85,16 @@ class XPUCacheArray {
   void set_size(long long size) { size_ = size; }
   uint32_t get_xpu_id() {return xpu_id_;}
   uint32_t get_xpu_num() {return xpu_num_;}
-  KeyType* get_keys() {return keys;}
-  ValType* get_vals() {return vals;}
+  KeyType* get_keys() {return keys_;}
+  ValType* get_vals() {return vals_;}
+  KeyType* get_cpu_keys() {
+    xpu_memcpy(cpu_keys_, keys_, size_ * sizeof(KeyType), XPU_DEVICE_TO_HOST);
+    return cpu_keys_;
+  }
+  ValType* get_cpu_vals() {
+    xpu_memcpy(cpu_vals_, vals_, size_ * sizeof(ValType), XPU_DEVICE_TO_HOST);
+    return cpu_vals_;
+  }
 
   int prefetch(const int dev_id, XPUStream stream = NULL) { return 0; }
   size_t size() { return size_; }
@@ -90,8 +102,10 @@ class XPUCacheArray {
  private:
   long long capacity_;
   long long size_;
-  KeyType* keys;
-  ValType* vals;
+  KeyType* keys_;
+  ValType* vals_;
+  KeyType* cpu_keys_;
+  ValType* cpu_vals_;
   uint32_t xpu_id_ = 0;
   uint32_t xpu_num_ = 1;
 };
@@ -115,7 +129,7 @@ class HashTable {
 
   void show();
 
-#if defined(PADDLE_WITH_XPU_KP)  
+#if defined(PADDLE_WITH_XPU_KP)
   void set_xpu_id(uint32_t xpu_id) { container_->set_xpu_id(xpu_id); }
   void set_xpu_num(uint32_t xpu_num) { container_->set_xpu_num(xpu_num); }
 #endif
