@@ -384,7 +384,7 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
         require_any_grad || egr::EagerUtils::ComputeRequireGrad(
                                 trace_backward, &(ins_auto_grad_metas[i]));
   }
-  if (require_any_grad) {
+  if (require_any_grad && (vec_map.size() > 1)) {
     VLOG(6) << " Construct Grad for Custom Op: " << op_type;
     ConstructFwdAndBwdMap(vec_map, op_type);
     for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {

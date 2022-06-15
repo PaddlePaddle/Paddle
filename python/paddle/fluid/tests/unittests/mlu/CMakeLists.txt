@@ -12,18 +12,18 @@ string(REPLACE ".py" "" TEST_DIST_OPS "${TEST_DIST_OPS}")
 if(WITH_MLU)
   foreach(TEST_OP ${TEST_DIST_OPS})
     list(REMOVE_ITEM TEST_OPS ${TEST_OP})
-  endforeach(TEST_OP)
+  endforeach()
   list(REMOVE_ITEM TEST_OPS "test_spawn_mlu")
 
   foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
-  endforeach(TEST_OP)
+  endforeach()
 
   if(WITH_CNCL)
     list(APPEND TEST_DIST_OPS "test_spawn_mlu")
     foreach(TEST_OP ${TEST_DIST_OPS})
       py_test_modules(${TEST_OP} MODULES ${TEST_OP})
-    endforeach(TEST_OP)
+    endforeach()
     bash_test_modules(test_launch_async_mlu START_BASH test_launch_async_mlu.sh
                       ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     bash_test_modules(test_launch_cloud_mlu START_BASH test_launch_cloud_mlu.sh
@@ -50,5 +50,5 @@ if(WITH_MLU)
     set_tests_properties(test_collective_allgather_api_mlu PROPERTIES TIMEOUT
                                                                       120)
     set_tests_properties(test_c_comm_init_op_mlu PROPERTIES TIMEOUT 120)
-  endif(WITH_CNCL)
+  endif()
 endif()

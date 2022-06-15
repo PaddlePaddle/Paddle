@@ -19,6 +19,9 @@ from .unary import sqrt
 from .unary import sin
 from .unary import tanh
 
+from .binary import matmul
+from .binary import masked_matmul
+
 from .math import add
 from .math import divide
 from .math import multiply
@@ -26,12 +29,14 @@ from .math import subtract
 
 from . import nn
 
-__all__ = [  # noqa
+__all__ = [
     'sparse_coo_tensor',
     'sparse_csr_tensor',
     'sqrt',
     'sin',
     'tanh',
+    'matmul',
+    'masked_matmul',
     'add',
     'subtract',
     'multiply',

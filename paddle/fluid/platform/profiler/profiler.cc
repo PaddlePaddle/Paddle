@@ -101,9 +101,10 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
     tracer.Get().StopTracing();
     tracer.Get().CollectTraceData(&collector);
   }
-  std::unique_ptr<NodeTrees> tree(new NodeTrees(collector.HostEvents(),
-                                                collector.RuntimeEvents(),
-                                                collector.DeviceEvents()));
+  std::unique_ptr<NodeTrees> tree(
+      new NodeTrees(collector.HostEvents(), collector.RuntimeEvents(),
+                    collector.DeviceEvents(), collector.MemEvents(),
+                    collector.OperatorSupplementEvents()));
   cpu_utilization_.RecordEndTimeInfo();
   ExtraInfo extrainfo;
   extrainfo.AddExtraInfo(std::string("System Cpu Utilization"),

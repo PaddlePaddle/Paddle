@@ -32,7 +32,8 @@ if(WIN32)
   set(MKLML_SHARED_IOMP_LIB ${MKLML_LIB_DIR}/libiomp5md.dll)
 else()
   #TODO(intel-huying):
-  #  Now enable csrmm function in mklml library temporarily, it will be updated as offical version later.
+  #  Now enable csrmm function in mklml library temporarily,
+  #  it will be updated as offical version later.
   set(MKLML_VER
       "csrmm_mklml_lnx_2019.0.5"
       CACHE STRING "" FORCE)
@@ -51,8 +52,9 @@ message(STATUS "MKLML_VER: ${MKLML_VER}, MKLML_URL: ${MKLML_URL}")
 set(MKLML_PREFIX_DIR ${THIRD_PARTY_PATH}/mklml)
 set(MKLML_SOURCE_DIR ${THIRD_PARTY_PATH}/mklml/src/extern_mklml)
 
-# Ninja Generator can not establish the correct dependency relationship between the imported library with target,
-# the product file in the ExternalProject need to be specified manually, please refer to
+# Ninja Generator can not establish the correct dependency relationship
+# between the imported library with target, the product file
+# in the ExternalProject need to be specified manually, please refer to
 # https://stackoverflow.com/questions/54866067/cmake-and-ninja-missing-and-no-known-rule-to-make-it
 # It is the same to all other ExternalProject.
 ExternalProject_Add(

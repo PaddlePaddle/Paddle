@@ -108,6 +108,7 @@ void MLUOpTensorKernel(const framework::ExecutionContext& ctx,
 enum BINARY_FUNCTOR {
   DIV,
   DIVNONAN,
+  MAXIMUM,
 };
 
 template <BINARY_FUNCTOR func>
@@ -124,6 +125,16 @@ inline void MLUBinary<DIV>(const framework::ExecutionContext& ctx,
                            const cnnlTensorDescriptor_t y_desc, const void* y,
                            const cnnlTensorDescriptor_t out_desc, void* out) {
   MLUCnnl::Div(ctx, prefer, x_desc, x, y_desc, y, out_desc, out);
+}
+
+template <>
+inline void MLUBinary<MAXIMUM>(
+    const framework::ExecutionContext& ctx,
+    cnnlComputationPreference_t prefer,  // useless, only for compatible
+    const cnnlTensorDescriptor_t x_desc, const void* x,
+    const cnnlTensorDescriptor_t y_desc, const void* y,
+    const cnnlTensorDescriptor_t out_desc, void* out) {
+  MLUCnnl::Maximum(ctx, x_desc, x, y_desc, y, out_desc, out);
 }
 
 template <BINARY_FUNCTOR Functor, typename T>

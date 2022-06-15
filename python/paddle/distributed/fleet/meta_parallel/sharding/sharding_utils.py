@@ -201,8 +201,8 @@ def ShardingScaler(scaler):
                     else:
                         param_grads_fp32.append(param.grad)
 
-        temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
-        temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
+        temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
+        temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
 
         device = "cpu" if optimizer.offload else "gpu"
         dev_id = 0 if device == "cpu" else int(
