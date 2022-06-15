@@ -57,13 +57,15 @@ class TestDistMnistNCCL2DGC(TestDistBase):
     def tearDown(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            result = count_of_sparse_all_reduce_calls(
-                'test_dist_mnist_dgc_nccl_tr0_err.log')
+            log_file = os.path.join(self.temp_dir.name,
+                                    'test_dist_mnist_dgc_nccl_tr0_err.log')
+            result = count_of_sparse_all_reduce_calls(log_file)
             # only 1 layer use dgc now, run_step=5, rampup_begin_step=2, so 1 * (5 - 2) = 3
 
             # temp close this test. In python3 CI, the log is right, but the result
             # has a problem, may be in multi process mode, log is not written in time.
             # self.assertEqual(result, 3)
+        self.temp_dir.cleanup()
 
 
 class TestDistMnistNCCL2DGCMultiCards(TestDistBase):
@@ -86,10 +88,13 @@ class TestDistMnistNCCL2DGCMultiCards(TestDistBase):
     def tearDown(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            result = count_of_sparse_all_reduce_calls(
+            log_file = os.path.join(
+                self.temp_dir.name,
                 'test_dist_mnist_dgc_nccl_dgc_2cards_local.log')
+            result = count_of_sparse_all_reduce_calls(log_file)
             # same as above, but use two cards
             self.assertEqual(result, 6)
+        self.temp_dir.cleanup()
 
 
 if __name__ == "__main__":
