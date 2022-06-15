@@ -78,7 +78,8 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                                 ops=ops,
                                 weights={},
                                 inputs={
-                                    "input_data": TensorConfig(data_gen=partial(
+                                    "input_data":
+                                    TensorConfig(data_gen=partial(
                                         generate_input1, dims, batch, dics))
                                 },
                                 outputs=["output_data"])
