@@ -168,7 +168,7 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
   //   if (name.compare("adam") == 0) {
   //     common_feature_value.embed_sgd_dim = 4;
   //     common_feature_value.embedx_sgd_dim = sparse_embedx_dim * 2 + 2;
-  //   } else if (name.compare("sharedadam") == 0) {
+  //   } else if (name.compare("shared_adam") == 0) {
   //     common_feature_value.embed_sgd_dim = 4;
   //     common_feature_value.embedx_sgd_dim = 4;
   //   } else {
@@ -193,7 +193,7 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
     if (optimizer_type == 3) { //adam
       common_feature_value.embed_sgd_dim = 4;
       common_feature_value.embedx_sgd_dim = sparse_embedx_dim * 2 + 2;
-    } else if (optimizer_type == 4) { //sharedadam
+    } else if (optimizer_type == 4) { //shared_adam
       common_feature_value.embed_sgd_dim = 4;
       common_feature_value.embedx_sgd_dim = 4;
     } else {
@@ -285,7 +285,7 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
       << " mf: ";
     if (param_size > common_feature_value.EmbedxG2SumIndex()) {
       for (auto i = common_feature_value.EmbedxG2SumIndex();
-          i < common_feature_value.Dim(); ++i) {
+          i < int(common_feature_value.Size() / sizeof(float)); ++i) {
         os << " " << v[i];
       }
     }

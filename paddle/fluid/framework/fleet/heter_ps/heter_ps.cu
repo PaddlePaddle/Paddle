@@ -83,7 +83,7 @@ void HeterPs::push_sparse(int num,
     auto optimizer = SparseAdamOptimizer(feature_value_accessor_);
     VLOG(0) << "INTO push_sparse SparseAdamOptimizer EmbedDim():" << optimizer.EmbedDim();
     comm_->push_sparse(num, d_keys, d_grads, len, optimizer);
-  } else if (optimizer_type_ == 4) { //sharedadam
+  } else if (optimizer_type_ == 4) { //shared_adam
     auto optimizer = SparseAdamSharedOptimizer(feature_value_accessor_);
     comm_->push_sparse(num, d_keys, d_grads, len, optimizer);
   } else {

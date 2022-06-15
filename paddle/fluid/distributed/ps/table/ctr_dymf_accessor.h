@@ -151,7 +151,6 @@ class CtrDymfAccessor : public ValueAccessor {
   CtrDymfAccessor() {}
   virtual ~CtrDymfAccessor() {}
   virtual int Initialize();
-  // virtual int InitializeDim(int embed_sgd_dim, int embedx_dim, int embedx_sgd_dim);
   // 初始化AccessorInfo
   virtual void InitAccessorInfo();
   // 判断该value是否进行shrink

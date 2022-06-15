@@ -47,7 +47,6 @@ void HeterPs::pull_sparse(int num,
   comm_->pull_sparse(num, d_keys, d_vals, len);
 }
 
-
 int HeterPs::get_index_by_devid(int devid) {
   return comm_->get_index_by_devid(devid);
 }
@@ -71,7 +70,6 @@ void HeterPs::push_sparse(int num,
   comm_->push_sparse(num, d_keys, d_grads, len);
   // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
 }
-
 
 }  // end namespace framework
 }  // end namespace paddle

@@ -122,9 +122,6 @@ class MultiTrainer : public TrainerBase {
 
   void MergeDenseParam();
 #endif
-// #if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
-//   void InitializeGPUServer(const TrainerDesc& trainer_desc);
-// #endif
 
  protected:
   int thread_num_;
@@ -135,12 +132,7 @@ class MultiTrainer : public TrainerBase {
   std::vector<std::string> trainable_param_;
 #ifdef PADDLE_WITH_HETERPS
   std::vector<platform::Place> places_;
-  // _ps_param for gpups optimizer config
 #endif
-
-// #if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
-//   ::paddle::distributed::PSParameter _ps_param;
-// #endif
 
   int mpi_rank_;
   int mpi_size_;

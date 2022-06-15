@@ -52,16 +52,6 @@ int CtrDymfAccessor::Initialize() {
   return 0;
 }
 
-// int CtrDymfAccessor::InitializeDim(int embed_sgd_dim, int embedx_dim, int embedx_sgd_dim) {
-//   common_feature_value.embed_sgd_dim = embed_sgd_dim;
-//   common_feature_value.embedx_dim = embedx_dim;
-//   common_feature_value.embedx_sgd_dim = embedx_sgd_dim;
-//   VLOG(0) << " INTO CtrDymfAccessor::InitializeDim(); embed_sgd_dim:" << embed_sgd_dim
-//           << " embedx_dim:" << embedx_dim<< "  embedx_sgd_dim:" << embedx_sgd_dim;
-//   InitAccessorInfo();
-//   return 0;
-// }
-
 void CtrDymfAccessor::InitAccessorInfo() {
   _accessor_info.dim = common_feature_value.Dim();
   _accessor_info.size = common_feature_value.Size();
@@ -315,12 +305,6 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
   auto score = ShowClickScore(show, click);
   if (score >= _config.embedx_threshold() &&
       param > common_feature_value.EmbedxG2SumIndex()) {
-    // VLOG(1) << "common_feature_value.EmbedxG2SumIndex():"
-    //         << common_feature_value.EmbedxG2SumIndex();
-    // VLOG(1) << "common_feature_value.EmbedxWIndex():"
-    //         << common_feature_value.EmbedxWIndex();
-    // VLOG(1) << "common_feature_value.MfDim():"
-    //         << common_feature_value.MfDim(const_cast<float*>(v));
     for (auto i = common_feature_value.EmbedxG2SumIndex();
          i < common_feature_value.EmbedxWIndex() +
                  common_feature_value.MfDim(const_cast<float*>(v));

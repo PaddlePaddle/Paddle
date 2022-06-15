@@ -69,7 +69,6 @@ class HeterPs : public HeterPsBase {
  private:
   std::shared_ptr<HeterComm<FeatureKey, float*, float*>> comm_;
 #if defined(PADDLE_WITH_CUDA)
-  // Optimizer<FeatureValue, FeaturePushValue> opt_;
   CommonFeatureValueAccessor feature_value_accessor_;
   int optimizer_type_;
 #endif

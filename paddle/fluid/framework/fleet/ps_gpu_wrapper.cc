@@ -272,8 +272,6 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   auto& local_dim_keys = gpu_task->feature_dim_keys_;
   auto& local_dim_ptr = gpu_task->value_dim_ptr_;
 
-  auto& device_keys = gpu_task->device_keys_;
-  auto& device_vals = gpu_task->device_values_;
   auto& device_dim_keys = gpu_task->device_dim_keys_;
   auto& device_dim_ptr = gpu_task->device_dim_ptr_;
   auto& device_dim_mutex = gpu_task->dim_mutex_;
@@ -619,17 +617,6 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     for (std::thread& t : threads) {
       t.join();
     }
-  } else {
-    for (int i = 0; i < thread_keys_shard_num_; i++) {
-      for (int j = 0; j < device_num; j++) {
-        task_futures.emplace_back(
-            hbm_thread_pool_[i]->enqueue(prepare_dev_value_func, j, i));
-      }
-    }
-    for (auto& f : task_futures) {
-      f.wait();
-    }
-    task_futures.clear();
   }
   timeline.Pause();
   VLOG(0) << "GpuPs prepare for build hbm cost " << timeline.ElapsedSec()
@@ -678,8 +665,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
             << " feature_value_DIM:" << feature_value_accessor_.GetAccessorInfo().dim;
     size_t feature_value_size = 
         TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().size);
-    // size_t feature_value_size =
-    //     TYPEALIGN(8, sizeof(FeatureValue) + ((mf_dim + 1 + 1) * sizeof(float)));
     auto& device_dim_keys = gpu_task->device_dim_keys_[i][j];
     auto& device_dim_ptrs = gpu_task->device_dim_ptr_[i][j];
     size_t len = device_dim_keys.size();
@@ -786,9 +771,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_PSCORE
       VLOG(0) << "cpu build "<< k << " cpuptr: " << (uint64_t)(device_dim_ptrs[k])
               << " |: "<< cpu_table_accessor_->ParseToString(ptr_val, dim);
-      // paddle::distributed::CtrDymfAccessor accessor;
-      // accessor.InitializeDim(embed_sgd_dim_, mf_dim, embedx_sgd_dim_);
-      // VLOG(0) << "cpu_table_accessor_ DIM:" << cpu_table_accessor_->GetAccessorInfo().dim;
       val[feature_value_accessor_.common_feature_value.DeltaScoreIndex()] =
           ptr_val[cpu_table_accessor_->common_feature_value.DeltaScoreIndex()];
       val[feature_value_accessor_.common_feature_value.ShowIndex()] =
@@ -799,13 +781,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
           ptr_val[cpu_table_accessor_->common_feature_value.SlotIndex()];
       val[feature_value_accessor_.common_feature_value.EmbedWIndex()] = 
           ptr_val[cpu_table_accessor_->common_feature_value.EmbedWIndex()];
-      // val->lr_sgd_dim = 1;
-      // val->mf_sgd_dim = 1;
-      // // sgd: embed_sgd_dim=1; adam: embed_sgd_dim=1*2+2
-      // for (int i = 0; i < val->lr_sgd_dim; i++) {
-      //   val->lr_g2sum[i] = ptr_val[cpu_table_accessor_->common_feature_value.EmbedG2SumIndex() + i];
-      // }
-      // VLOG(0)<< "EmbedDim:" << feature_value_accessor_.common_feature_value.EmbedDim();
       for (int i = 0; i < feature_value_accessor_.common_feature_value.EmbedDim(); i++) {
         val[feature_value_accessor_.common_feature_value.EmbedG2SumIndex() + i] =
           ptr_val[cpu_table_accessor_->common_feature_value.EmbedG2SumIndex() + i];
@@ -816,12 +791,8 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       //     (uint64_t)(device_dim_ptrs[k]);
       *(reinterpret_cast<uint64_t*>(val + feature_value_accessor_.common_feature_value.CpuPtrIndex())) = (uint64_t)(device_dim_ptrs[k]);
       // (uint64_t*)(val + feature_value_accessor_.common_feature_value.CpuPtrIndex()) = (uint64_t)(device_dim_ptrs[k]);
-      // ptr_val[cpu_table_accessor_->common_feature_value.MfDimIndex()] = float(mf_dim);
-      // val->mf_dim = mf_dim;
+      ptr_val[cpu_table_accessor_->common_feature_value.MfDimIndex()] = float(mf_dim);
       val[feature_value_accessor_.common_feature_value.MfDimIndex()] = mf_dim;
-      // VLOG(0) << " dim:" << dim
-      //         << " DIM:" << feature_value_accessor_.GetAccessorInfo().dim
-      //         << " MF_DIM:" << feature_value_accessor_.GetAccessorInfo().mf_size / sizeof(float);
       if (dim > cpu_table_accessor_->GetAccessorInfo().dim - 
               cpu_table_accessor_->GetAccessorInfo().mf_size / sizeof(float)) {
         val[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 
@@ -1062,10 +1033,8 @@ void PSGPUWrapper::EndPass() {
     }
 #endif
 #ifdef PADDLE_WITH_PSCORE
-      // paddle::distributed::CtrDymfAccessor accessor;
-      // accessor.InitializeDim(embed_sgd_dim_, mf_dim, embedx_sgd_dim_);
       auto* downpour_value =
-          (paddle::distributed::FixedFeatureValue*)(reinterpret_cast<uint64_t*>(gpu_val+ feature_value_accessor_.common_feature_value.CpuPtrIndex()));
+          (paddle::distributed::FixedFeatureValue*)(*(reinterpret_cast<uint64_t*>(gpu_val+ feature_value_accessor_.common_feature_value.CpuPtrIndex())));
       size_t downpour_value_size = downpour_value->size();
       VLOG(0) << "downpour_value_size:" <<downpour_value_size;
       VLOG(0) << "CtrDymfAccessor dim: " << cpu_table_accessor_->GetAccessorInfo().dim
@@ -1104,11 +1073,11 @@ void PSGPUWrapper::EndPass() {
         }
       }
       VLOG(0) << "dump to cpu "<< index << " : "<< feature_value_accessor_.ParseToString(gpu_val, feature_value_accessor_.GetAccessorInfo().dim)
-            << " =====CPU:" << cpu_table_accessor_->ParseToString(cpu_val, cpu_table_accessor_->GetAccessorInfo().update_dim);
+            << " =====CPU "<< cpu_table_accessor_->GetAccessorInfo().dim 
+            << "-" << downpour_value->size()
+            << "  :" << cpu_table_accessor_->ParseToString(cpu_val, downpour_value->size());
 
     }
-
-    
 #endif
     free(test_build_values);
   };
@@ -1148,73 +1117,8 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                               const std::vector<float*>& values,
                               const std::vector<int64_t>& slot_lengths,
                               const int hidden_size) {
-  }
-// void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
-//                               const int table_id,
-//                               const std::vector<const uint64_t*>& keys,
-//                               const std::vector<float*>& values,
-//                               const std::vector<int64_t>& slot_lengths,
-//                               const int hidden_size) {
-//   platform::Timer all_timer;
-//   platform::Timer pull_gpups_timer;
-//   all_timer.Start();
-//   int64_t total_length =
-//       std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-//   VLOG(3) << "Begine Gpu/Xpu Ps PullSparse";
-//   auto buf = memory::Alloc(place, total_length * sizeof(FeatureValue));
-//   FeatureValue* total_values_gpu = reinterpret_cast<FeatureValue*>(buf->ptr());
-//   if (platform::is_cpu_place(place)) {
-//     PADDLE_THROW(platform::errors::Unimplemented(
-//         "Warning:: CPUPlace is not supported in GpuPs now."));
-//   } else if (platform::is_gpu_place(place)) {
-// #ifdef PADDLE_WITH_CUDA
-//     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
-//     int device_id = place.GetDeviceId();
-//     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
-//     LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
-//     uint64_t* total_keys = reinterpret_cast<uint64_t*>(
-//         total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
-
-//     // construct slot_level lod info
-//     auto slot_lengths_lod = slot_lengths;
-//     for (size_t i = 1; i < slot_lengths_lod.size(); i++) {
-//       slot_lengths_lod[i] += slot_lengths_lod[i - 1];
-//     }
-//     auto buf_key = memory::Alloc(place, keys.size() * sizeof(uint64_t*));
-//     auto buf_length =
-//         memory::Alloc(place, slot_lengths.size() * sizeof(int64_t));
-//     uint64_t** gpu_keys = reinterpret_cast<uint64_t**>(buf_key->ptr());
-//     int64_t* gpu_len = reinterpret_cast<int64_t*>(buf_length->ptr());
-//     cudaMemcpy(gpu_keys, keys.data(), keys.size() * sizeof(uint64_t*),
-//                cudaMemcpyHostToDevice);
-//     cudaMemcpy(gpu_len, slot_lengths_lod.data(),
-//                slot_lengths.size() * sizeof(int64_t), cudaMemcpyHostToDevice);
-
-//     this->CopyKeys(place, gpu_keys, total_keys, gpu_len,
-//                    static_cast<int>(slot_lengths.size()),
-//                    static_cast<int>(total_length));
-//     VLOG(3) << "Begin call PullSparseGPU in GPUPS, dev: " << devid_2_index
-//             << " len: " << total_length;
-//     pull_gpups_timer.Start();
-//     HeterPs_->pull_sparse(devid_2_index, total_keys, total_values_gpu,
-//                           static_cast<int>(total_length));
-//     pull_gpups_timer.Pause();
-
-//     VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
-//             << "]";
-//     this->CopyForPull(place, gpu_keys, values, total_values_gpu, gpu_len,
-//                       static_cast<int>(slot_lengths.size()), hidden_size,
-//                       total_length);
-//   } else {
-//     PADDLE_THROW(platform::errors::PreconditionNotMet(
-//         "GpuPs: PullSparse Only Support CUDAPlace Now."));
-//   }
-//   all_timer.Pause();
-//   VLOG(3) << "GpuPs PullSparse total costs: " << all_timer.ElapsedSec()
-//           << " s, of which GPUPS costs: " << pull_gpups_timer.ElapsedSec()
-//           << " s";
-//   VLOG(3) << "End PullSparse";
-// }
+  VLOG(0) << "Warning:: recommand use pull_gpups_sparse op instead. This PullSparse is not used.";
+}
 
 void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                               const int table_id,
@@ -1231,8 +1135,6 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
       std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
   size_t feature_value_size = 0;
 
-  // feature_value_size = TYPEALIGN(
-  //     8, sizeof(FeatureValue) + sizeof(float) * (index_dim_vec_.back() + 1));
   feature_value_size = TYPEALIGN( 8, feature_value_accessor_.GetAccessorInfo().size);
   VLOG(0) << "PULLSPASE" << feature_value_accessor_.GetAccessorInfo().size;
   
