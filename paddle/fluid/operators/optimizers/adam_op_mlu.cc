@@ -237,8 +237,8 @@ class AdamWMLUKernel : public AdamMLUKernel<T> {
                                         ctx.device_context(), &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
-    VLOG(3) << "Skip update" << skip_update;
     bool with_decay = ctx.Attr<bool>("with_decay");
+    VLOG(3) << "Skip update: " << skip_update << ", With decay: " << with_decay;
     if (!skip_update && with_decay) {
       if (ctx.HasInput("MasterParam")) {
         PADDLE_THROW(platform::errors::Unimplemented(

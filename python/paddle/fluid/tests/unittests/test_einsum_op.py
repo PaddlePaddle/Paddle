@@ -39,7 +39,9 @@ class TestEinsumBinary(OpTest):
             'Out':
             out,
             "InnerCache": [('cache_' + str(i), np.array([1.0]))
-                           for i in range(len(self.operands))]
+                           for i in range(len(self.operands))],
+            "XShape": [('xshape_' + str(i), np.array([1.0]))
+                       for i in range(len(self.operands))],
         }
 
     def init_input(self):
@@ -48,14 +50,13 @@ class TestEinsumBinary(OpTest):
             self.inputs.append(np.random.random(s).astype(t))
 
     def set_mandatory(self):
-        self.disable = False
         self.shapes = [(10, 10, 20), (20, 6)]
         self.types = [np.float64, np.float64]
         self.equation = "mij,jk->ki"
 
     def test_check_output(self):
         if not self.disable:
-            self.check_output(no_check_set=["InnerCache"])
+            self.check_output(no_check_set=["InnerCache", "XShape"])
 
     def test_grad(self):
         if not self.disable:

@@ -107,9 +107,9 @@ class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("LossScaling", "(Tensor) 1-dim tensor, updated loss scaling.");
     AddOutput("OutGoodSteps", "(Tensor) 1-dim tensor, pdated good steps.");
     AddOutput("OutBadSteps", "(Tensor) 1-dim tensor, updated bad steps.");
-    AddOutput("StopUpdate",
-              "(Tensor) 1-dim tensor. Stop updating loss scaling, and just "
-              "zero inputs. It has higher priority than Attr(stop_update).")
+    AddInput("StopUpdate",
+             "(Tensor) 1-dim tensor. Stop updating loss scaling, and just "
+             "zero inputs. It has higher priority than Attr(stop_update).")
         .AsDispensable();
     AddAttr<int>("incr_every_n_steps",
                  "A value represents increasing loss scaling every n "

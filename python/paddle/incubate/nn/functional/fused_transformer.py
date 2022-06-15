@@ -45,6 +45,7 @@ def fused_feedforward(x,
                       pre_layer_norm=False,
                       training=True,
                       mode='upscale_in_train',
+                      ring_id=-1,
                       name=None):
     r"""
     This is a fusion operator to compute feed forward layer in transformer model architecture.
@@ -88,6 +89,7 @@ def fused_feedforward(x,
 
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
+        ring_id (int, optional): For distributed forward in tensor model parallel, only support NCCL. Default is -1, means not using tensor parallel.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -128,11 +130,11 @@ def fused_feedforward(x,
             'pre_layer_norm', pre_layer_norm, 'ln1_epsilon', ln1_epsilon,
             'ln2_epsilon', ln2_epsilon, 'act_method', activation,
             'dropout1_rate', dropout1_rate, 'dropout2_rate', dropout2_rate,
-            "dropout1_is_test", not training, "dropout2_is_test", not training,
-            "dropout1_fix_seed", seed is not None, "dropout2_fix_seed", seed
-            is not None, "dropout1_seed", seed if seed is not None else 0,
-            "dropout2_seed", seed if seed is not None else 0,
-            'dropout1_implementation', mode, 'dropout2_implementation', mode)
+            "is_test", not training, "dropout1_fix_seed", seed is not None,
+            "dropout2_fix_seed", seed is not None, "dropout1_seed",
+            seed if seed is not None else 0, "dropout2_seed",
+            seed if seed is not None else 0, 'dropout1_implementation', mode,
+            'dropout2_implementation', mode, 'ring_id', ring_id)
         return out
 
     helper = LayerHelper("fused_feedforward")
@@ -199,14 +201,14 @@ def fused_feedforward(x,
                          'pre_layer_norm': pre_layer_norm,
                          'ln1_epsilon': ln1_epsilon,
                          'ln2_epsilon': ln2_epsilon,
-                         'dropout1_is_test': not training,
-                         'dropout2_is_test': not training,
+                         'is_test': not training,
                          'dropout1_fix_seed': seed is not None,
                          'dropout2_fix_seed': seed is not None,
                          'dropout1_seed': seed if seed is not None else 0,
                          'dropout2_seed': seed if seed is not None else 0,
                          'dropout1_implementation': mode,
-                         'dropout2_implementation': mode
+                         'dropout2_implementation': mode,
+                         'ring_id': ring_id,
                      })
     return out
 

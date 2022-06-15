@@ -2872,3 +2872,130 @@ def cosine_embedding_loss(input1,
         return paddle.mean(out, name=name)
     elif reduction == 'sum':
         return paddle.sum(out, name=name)
+
+
+def triplet_margin_with_distance_loss(input,
+                                      positive,
+                                      negative,
+                                      distance_function=None,
+                                      margin=1.0,
+                                      swap=False,
+                                      reduction='mean',
+                                      name=None):
+    r"""
+    Measures the triplet loss given an input
+    tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
+    This is used for measuring a relative similarity between samples. A triplet
+    is composed by `input`, `positive` and `negative` (i.e., `input`, `positive examples` and `negative
+    examples` respectively). The shapes of all input tensors should be
+    :math:`(N, D)`.
+
+    The loss function for each sample in the mini-batch is:
+
+    .. math::
+        L(input, pos, neg) = \max \{d(input_i, pos_i) - d(input_i, neg_i) + {\rm margin}, 0\}
+
+
+    where the default distance function
+
+    .. math::
+        d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_p
+
+    or user can defined their own distance functions. `margin` is a nonnegative margin representing the minimum difference 
+    between the positive and negative distances that is required for the loss to be 0. If `swap` is true, it will compare distance of (input, negative) with
+    distance of (negative, positive) and change it to the smaller one. For more details see http://www.bmva.org/bmvc/2016/papers/paper119/paper119.pdf.
+
+    Parameters:
+
+        input (Tensor):Input tensor, the data type is float32 or float64.
+            the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+
+        positive (Tensor):Positive tensor, the data type is float32 or float64.
+            The shape of label is the same as the shape of input.
+
+        negative (Tensor):Negative tensor, the data type is float32 or float64.
+            The shape of label is the same as the shape of input.
+
+        distance_function (callable, optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
+	
+	    margin (float, optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
+            between the positive and negative distances required for the loss to be 0.
+	
+        swap (bool, optional):The distance swap changes the negative distance to the swap distance (distance between positive samples
+                and negative samples) if swap distance smaller than negative distance. Default: ``False``.
+
+        reduction (str, optional):Indicate how to average the loss by batch_size.
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default: ``'mean'``
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+	    
+    Returns:
+        Output: Tensor. The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            input = paddle.to_tensor([[1, 5, 3], [0, 3, 2], [1, 4, 1]], dtype=paddle.float32)
+            positive= paddle.to_tensor([[5, 1, 2], [3, 2, 1], [3, -1, 1]], dtype=paddle.float32)
+            negative = paddle.to_tensor([[2, 1, -3], [1, 1, -1], [4, -2, 1]], dtype=paddle.float32)
+            loss = F.triplet_margin_with_distance_loss(input, positive, negative, margin=1.0, reduction='none')
+            print(loss)
+            # Tensor([0.        , 0.57496738, 0.        ])
+
+
+            loss = F.triplet_margin_with_distance_loss(input, positive, negative, margin=1.0, reduction='mean')
+            print(loss)
+            # Tensor([0.19165580])
+
+    """
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError("'reduction' in 'triplet_margin_with_distance_loss' "
+                         "should be 'sum', 'mean' or 'none', "
+                         "but received {}.".format(reduction))
+    if margin < 0:
+        raise ValueError(
+            "The margin between positive samples and negative samples should be greater than 0."
+        )
+    if not _non_static_mode():
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'triplet_margin_with_distance_loss')
+        check_variable_and_dtype(positive, 'positive', ['float32', 'float64'],
+                                 'triplet_margin_with_distance_loss')
+        check_variable_and_dtype(negative, 'negative', ['float32', 'float64'],
+                                 'triplet_margin_with_distance_loss')
+
+    if not (input.shape == positive.shape == negative.shape):
+        raise ValueError("input's shape must equal to "
+                         "positive's shape and  "
+                         "negative's shape")
+
+    distance_function = distance_function if distance_function is not None \
+        else paddle.nn.PairwiseDistance(2)
+
+    positive_dist = distance_function(input, positive)
+    negative_dist = distance_function(input, negative)
+
+    if swap:
+        swap_dist = distance_function(positive, negative)
+        negative_dist = paddle.minimum(negative_dist, swap_dist)
+
+    if not paddle.all(positive_dist > 0) or not paddle.all(negative_dist > 0):
+        raise ValueError(
+            "The positive distance or negative distance should be greater than 0, "
+            "The distance functions should be checked.")
+
+    loss = paddle.clip(positive_dist - negative_dist + margin, min=0.0)
+
+    if reduction == 'mean':
+        return paddle.mean(loss, name=name)
+    elif reduction == 'sum':
+        return paddle.sum(loss, name=name)
+    elif reduction == 'none':
+        return loss

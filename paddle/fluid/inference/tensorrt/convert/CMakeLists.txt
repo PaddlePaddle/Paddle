@@ -60,7 +60,8 @@ list(
   roll_op.cc
   transformer_input_convert_op.cc
   remove_padding_op.cc
-  recover_padding_op.cc)
+  recover_padding_op.cc
+  top_k_op.cc)
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
