@@ -70,6 +70,19 @@ class GraphShard {
     }
     return res;
   }
+  std::vector<uint64_t> get_all_neighbor_id() {
+    std::vector<uint64_t> res;
+    std::unordered_set<uint64_t> uset;
+    for (size_t i = 0; i < bucket.size(); i++) {
+      size_t neighbor_size = bucket[i]->get_neighbor_size();
+      for (size_t j = 0; j < neighbor_size; j++) {
+        uset.emplace(bucket[i]->get_neighbor_id(j));
+        //res.push_back(bucket[i]->get_neighbor_id(j));
+      }
+    }
+    res.assign(uset.begin(), uset.end());
+    return res;
+  }
   std::set<uint64_t> get_all_feature_ids() {
     std::set<uint64_t> total_res;
     std::set<uint64_t> res;
@@ -486,8 +499,11 @@ class GraphTable : public Table {
                      const std::string &edge_type);
 
   std::vector<std::vector<uint64_t>> get_all_id(int type, int slice_num);
+  std::vector<std::vector<uint64_t>> get_all_neighbor_id(int type, int slice_num);
   std::vector<std::vector<uint64_t>> get_all_id(int type, int idx,
                                                 int slice_num);
+  std::vector<std::vector<uint64_t>> get_all_neighbor_id(int type_id, int idx,
+                                                         int slice_num);
   int get_all_feature_ids(int type, int idx,
                         int slice_num, std::vector<std::vector<uint64_t>>* output);
   int32_t load_nodes(const std::string &path, std::string node_type);

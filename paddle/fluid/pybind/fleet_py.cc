@@ -357,6 +357,8 @@ void BindGraphGpuWrapper(py::module* m) {
                &GraphGpuWrapper::upload_batch))
       .def("get_all_id", py::overload_cast<int, int, int>(&GraphGpuWrapper::get_all_id))
       .def("get_all_id", py::overload_cast<int, int>(&GraphGpuWrapper::get_all_id))
+      .def("get_all_neighbor_id", py::overload_cast<int, int, int>(&GraphGpuWrapper::get_all_neighbor_id))
+      .def("get_all_neighbor_id", py::overload_cast<int, int>(&GraphGpuWrapper::get_all_neighbor_id))
       .def("load_next_partition", &GraphGpuWrapper::load_next_partition)
       .def("make_partitions", &GraphGpuWrapper::make_partitions)
       .def("make_complementary_graph",

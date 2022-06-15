@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/data_set.h"
 #include "google/protobuf/text_format.h"
+#include "gflags/gflags.h"
 #if (defined PADDLE_WITH_DISTRIBUTE) && (defined PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
 #endif
@@ -34,6 +35,8 @@
 #endif
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
+DECLARE_bool(graph_get_neighbor_id);
+
 namespace paddle {
 namespace framework {
 
@@ -469,6 +472,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
           type_total_key[i].push_back(gpu_graph_device_keys[i][j]);
         }
       }
+
       for (size_t i = 0; i < readers_.size(); i++) {
         readers_[i]->SetDeviceKeys(&type_total_key[i], node_idx);
         readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
@@ -503,6 +507,14 @@ void DatasetImpl<T>::LoadIntoMemory() {
                 << "] = " << gpu_graph_device_keys[i].size();
         for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
           gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
+        }
+      }
+      if (FLAGS_graph_get_neighbor_id) {
+        auto gpu_graph_neighbor_keys = gpu_graph_ptr->get_all_neighbor_id(0, edge_idx, thread_num_);
+        for (size_t i = 0; i < gpu_graph_neighbor_keys.size(); i++) {
+          for (size_t k = 0; k < gpu_graph_neighbor_keys[i].size(); k++) {
+            gpu_graph_total_keys_.push_back(gpu_graph_neighbor_keys[i][k]);
+          }
         }
       }
     }

@@ -53,7 +53,10 @@ class GraphGpuWrapper {
   void set_search_level(int level);
   void init_search_level(int level);
   std::vector<std::vector<uint64_t>> get_all_id(int type, int slice_num);
+  std::vector<std::vector<uint64_t>> get_all_neighbor_id(int type, int slice_num);
   std::vector<std::vector<uint64_t>> get_all_id(int type, int idx,
+                                                int slice_num);
+  std::vector<std::vector<uint64_t>> get_all_neighbor_id(int type, int idx,
                                                 int slice_num);
   int get_all_feature_ids(int type, int idx, int slice_num,
                         std::vector<std::vector<uint64_t>>* output);
