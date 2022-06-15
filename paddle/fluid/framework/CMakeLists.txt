@@ -57,7 +57,7 @@ foreach(OP_DEF_FILE ${OP_DEF_FILES})
   get_filename_component(OP_NAME ${OP_DEF_FILE} NAME_WE)
   file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt
        "{\"${OP_NAME}\",R\"(${OP_DEF_CONTENT})\"},\n")
-endforeach(OP_DEF_FILE)
+endforeach()
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt "{\"\",\"\"}};\n}")
 
 proto_library(heter_service_proto SRCS heter_service.proto)
@@ -91,7 +91,7 @@ if(WITH_GPU)
       tensor
       SRCS tensor.cc tensor_util.cu
       DEPS place memory data_type device_context profiler dense_tensor)
-  endif(WIN32)
+  endif()
 elseif(WITH_ROCM)
   hip_library(
     tensor
@@ -284,7 +284,7 @@ if(WITH_GPU)
       data_type_transform
       SRCS data_type_transform.cu
       DEPS tensor)
-  endif(WIN32)
+  endif()
   nv_test(
     data_type_transform_test
     SRCS data_type_transform_test.cc data_type_transform_test.cu
@@ -575,7 +575,7 @@ if(WITH_PYTHON)
       COMMENT
         "Copy generated python proto into directory paddle/distributed/fleet/proto."
     )
-  else(NOT WIN32)
+  else()
     string(REPLACE "/" "\\" proto_dstpath
                    "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
     string(
@@ -592,7 +592,7 @@ if(WITH_PYTHON)
       COMMENT
         "Copy generated python proto into directory paddle/distributed/fleet/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-  endif(NOT WIN32)
+  endif()
 endif()
 
 if(WITH_PSCORE)
@@ -606,7 +606,7 @@ if(WITH_PSCORE)
     COMMENT
       "Copy generated python proto into directory paddle/distributed/fleet/proto."
   )
-endif(WITH_PSCORE)
+endif()
 
 cc_library(
   lod_rank_table
@@ -651,7 +651,7 @@ else()
          feed_fetch_method
          graph_to_program_pass
          variable_helper)
-endif(TENSORRT_FOUND)
+endif()
 
 cc_library(
   executor_gc_helper

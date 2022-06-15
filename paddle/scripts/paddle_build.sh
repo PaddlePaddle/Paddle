@@ -481,10 +481,10 @@ EOF
 }
 
 function cmake_gen_and_build() {
-    startTime_s=100
+    startTime_s=`date +%s`
     cmake_gen $1
     build $2
-    endTime_s=200
+    endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -955,6 +955,9 @@ function fetch_upstream_develop_if_not_exist() {
 }
 
 function check_whl_size() {
+    if [ ${BRANCH} != 'develop' ];then
+        return
+    fi
 
     set +x
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/*.whl|awk '{print $1}'`
@@ -1094,6 +1097,10 @@ function check_approvals_of_unittest() {
             fi
         fi
     elif [ $check_times == 3 ]; then
+        if [ ${BRANCH} != 'develop' ];then
+            return
+        fi
+
         rm -f fluidInference_so_size
         curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
         oriBuildSize=`cat fluidInference_so_size`
@@ -3276,6 +3283,10 @@ function build_develop() {
 }
 
 function check_coverage_build() {
+    if [ ${BRANCH} != 'develop' ];then
+        return
+    fi
+
     rm -f build_size
     curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
     curl -O https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/coverage_build_size

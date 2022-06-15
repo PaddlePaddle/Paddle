@@ -16,11 +16,13 @@ limitations under the License. */
 
 #include <paddle/fluid/memory/allocation/allocator.h>
 #include <stdio.h>
+
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/mixed_vector.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -91,37 +93,25 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
                          index_sort.data<int>(), scores_sel.data<T>(),
                          {static_cast<int>(scores.numel()), 1},
                          index_sort.numel(), 0);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                    platform::errors::External("XPU API(gather) return "
-                                               "wrong value[%d %s]",
-                                               r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
 
   r = xpu::gather<T>(dev_ctx.x_context(), bbox_deltas.data<T>(),
                      index_sort.data<int>(), bbox_sel.data<T>(),
                      {static_cast<int>(bbox_deltas.numel()) / 4, 4},
                      index_sort.numel(), 0);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                    platform::errors::External("XPU API(gather) return "
-                                               "wrong value[%d %s]",
-                                               r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
 
   r = xpu::gather<T>(dev_ctx.x_context(), anchors.data<T>(),
                      index_sort.data<int>(), anchor_sel.data<T>(),
                      {static_cast<int>(anchors.numel()) / 4, 4},
                      index_sort.numel(), 0);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                    platform::errors::External("XPU API(gather) return "
-                                               "wrong value[%d %s]",
-                                               r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
 
   r = xpu::gather<T>(dev_ctx.x_context(), variances.data<T>(),
                      index_sort.data<int>(), var_sel.data<T>(),
                      {static_cast<int>(variances.numel()) / 4, 4},
                      index_sort.numel(), 0);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                    platform::errors::External("XPU API(gather) return "
-                                               "wrong value[%d %s]",
-                                               r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
 
   int num = scores.numel();
   int pre_nms_num = (pre_nms_top_n <= 0 || pre_nms_top_n > num) ? scores.numel()
@@ -137,10 +127,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
                           var_sel.data<T>(), bbox_sel.data<T>(),
                           proposals.data<T>(), pre_nms_num, !pixel_offset, true,
                           im_shape.data<T>());
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                    platform::errors::External("XPU API(box_decoder) return "
-                                               "wrong value[%d %s]",
-                                               r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "box_decoder");
 
   // 3. filter
   Tensor keep_index, keep_num_t;
@@ -151,10 +138,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
                                  im_shape.data<T>(), keep_index.data<int>(),
                                  keep_num_t.data<int>(), pre_nms_num, min_size,
                                  false, pixel_offset);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                        "XPU API(remove_small_boxes) return "
-                                        "wrong value[%d %s]",
-                                        r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "remove_small_boxes");
   int keep_num;
   const auto xpu_place = dev_ctx.GetPlace();
   memory::Copy(platform::CPUPlace(), &keep_num, xpu_place,
@@ -176,18 +160,12 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   r = xpu::gather<T>(dev_ctx.x_context(), proposals.data<T>(),
                      keep_index.data<int>(), proposals_filter.data<T>(),
                      {pre_nms_num, 4}, keep_num, 0);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                    platform::errors::External("XPU API(gather) return "
-                                               "wrong value[%d %s]",
-                                               r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
 
   r = xpu::gather<T>(dev_ctx.x_context(), scores_sel.data<T>(),
                      keep_index.data<int>(), scores_filter.data<T>(),
                      {pre_nms_num, 1}, keep_num, 0);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                    platform::errors::External("XPU API(gather) return "
-                                               "wrong value[%d %s]",
-                                               r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
 
   if (nms_thresh <= 0) {
     if (dev_ctx.x_context()->xpu_stream) {
@@ -201,10 +179,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   r = xpu::nms<T>(dev_ctx.x_context(), proposals_filter.data<T>(), nullptr,
                   keep_index.data<int>(), 1, 1, keep_num, -1, nms_thresh, -1, 0,
                   &nms_keep_num, pixel_offset);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                    platform::errors::External("XPU API(nms) return the"
-                                               "wrong value[%d %s]",
-                                               r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "nms");
   if (post_nms_top_n > 0 && post_nms_top_n < nms_keep_num) {
     keep_index.Resize({post_nms_top_n});
   } else {
@@ -217,17 +192,11 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   r = xpu::gather<T>(dev_ctx.x_context(), proposals_filter.data<T>(),
                      keep_index.data<int>(), proposals_nms.data<T>(),
                      {keep_num, 4}, keep_index.numel(), 0);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                    platform::errors::External("XPU API(gather) return "
-                                               "wrong value[%d %s]",
-                                               r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
   r = xpu::gather<T>(dev_ctx.x_context(), scores_filter.data<T>(),
                      keep_index.data<int>(), scores_nms.data<T>(),
                      {keep_num, 1}, keep_index.numel(), 0);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                    platform::errors::External("XPU API(gather) return "
-                                               "wrong value[%d %s]",
-                                               r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
   if (dev_ctx.x_context()->xpu_stream) {
     dev_ctx.Wait();
   }
@@ -286,17 +255,11 @@ class XPUGenerateProposalsV2Kernel : public framework::OpKernel<T> {
     int r = xpu::transpose<T>(dev_ctx.x_context(), bbox_deltas->data<T>(),
                               bbox_deltas_swap.data<T>(),
                               {num, c_bbox, h_bbox, w_bbox}, axis);
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                      platform::errors::External("XPU API(transpose) return "
-                                                 "wrong value[%d %s]",
-                                                 r, XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
     r = xpu::transpose<T>(dev_ctx.x_context(), scores->data<T>(),
                           scores_swap.data<T>(),
                           {num, c_score, h_score, w_score}, axis);
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                      platform::errors::External("XPU API(transpose) return "
-                                                 "wrong value[%d %s]",
-                                                 r, XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 
     anchors.Resize({anchors.numel() / 4, 4});
     variances.Resize({variances.numel() / 4, 4});
