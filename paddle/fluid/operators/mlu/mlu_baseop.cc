@@ -1116,7 +1116,7 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
                         indices_desc, indices, output_desc, output));
 }
 
-/* static */ void MLUCnnl::ScatterFunctor(
+/* static */ void MLUCnnl::ScatterRefFunctor(
     const ExecutionContext& ctx, const cnnlTensorDescriptor_t params_desc,
     const void* params, const cnnlTensorDescriptor_t updates_desc,
     const void* updates, const cnnlTensorDescriptor_t indices_desc,
@@ -1126,6 +1126,19 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlScatterRef(handle, params_desc, params,
                                             indices_desc, indices, updates_desc,
                                             updates, 0, mode));
+}
+
+/* static */ void MLUCnnl::ScatterFunctor(
+    const ExecutionContext& ctx, const cnnlTensorDescriptor_t params_desc,
+    void* params, const cnnlTensorDescriptor_t updates_desc,
+    const void* updates, const cnnlTensorDescriptor_t indices_desc,
+    const void* indices, const int dim, const cnnlScatterMode_t mode) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlScatter(
+      handle, dim, params_desc, params, indices_desc, indices, updates_desc,
+      updates, params_desc, params, /* output_desc, output, same with params*/
+      mode));
 }
 
 /* static */ void MLUCnnl::StridedSliceGrad(
