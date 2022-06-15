@@ -295,8 +295,7 @@ class FMHARef {
       phi::SoftmaxBackwardCUDAKernelDriver<T>(
           dev_ctx_, softmax_out_tensor, *softmax_out_grad_tensor, softmax_axis,
           src_mask_out_grad_tensor);
-      // recall LaunchElementwiseCudaKernel fw:  src_mask_out = qk_out +
-      // src_mask
+      // recall BroadcastKernel fw:  src_mask_out = qk_out + src_mask
       // Special case when dy is not needed and dx doesn't reduce
       if (qk_out_grad_tensor != nullptr && src_mask_grad_tensor == nullptr &&
           qk_out_tensor.dims() == src_mask_out_tensor.dims()) {

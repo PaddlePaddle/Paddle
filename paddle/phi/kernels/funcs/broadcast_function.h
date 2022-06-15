@@ -315,9 +315,8 @@ __device__ void VectorizedBroadcastKernelImpl(
                                          Arity,
                                          kCallElementwiseAny>()(
       func, args, result, read_lens);
-  phi::funcs::
-      ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
-          outs, result, block_offset, num, read_lens);
+  phi::funcs::ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
+      outs, result, block_offset, num, read_lens);
 }
 
 template <typename InT,

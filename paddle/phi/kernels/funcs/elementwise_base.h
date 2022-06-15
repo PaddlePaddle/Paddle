@@ -682,7 +682,7 @@ struct SameDimsElementwisePrimitiveCaller {
 };
 
 template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
-struct ElementwiseWriteDataCallerBc {
+struct ElementwiseWriteDataCaller {
   __device__ __forceinline__ void operator()(
       phi::Array<_ptr_ OutT *, NumOuts> outs,
       ConditionalT<OutT, NumOuts> src[VecSize],
@@ -706,7 +706,7 @@ struct ElementwiseWriteDataCallerBc {
 };
 
 template <typename OutT, int VecSize, bool IsBoundary>
-struct ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, 1> {
+struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
   __device__ __forceinline__ void operator()(phi::Array<_ptr_ OutT *, 1> outs,
                                              OutT src[VecSize],
                                              kps::IndexType block_offset,
@@ -744,7 +744,7 @@ __device__ void VectorizedElementwiseKernelImpl(
                                      ArgsT,
                                      Arity>()(func, args, result, read_lens);
 
-  ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
+  ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
       outs, result, offset, num, read_lens);
 }
 
@@ -781,11 +781,11 @@ __global__ void VectorizedElementwiseKernel(
 }
 
 template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
-void LaunchElementwiseCudaKernel(const KPDevice &ctx,
-                                 const std::vector<const DenseTensor *> &ins,
-                                 std::vector<DenseTensor *> *outs,
-                                 int read_lens,
-                                 Functor func) {
+void LaunchElementwiseKernel(const KPDevice &ctx,
+                             const std::vector<const DenseTensor *> &ins,
+                             std::vector<DenseTensor *> *outs,
+                             int read_lens,
+                             Functor func) {
   // There are at least 1 output, but maybe 0 input (ins.size() == 0).
   // For large tensor numel * sizeof(T) > 2^31, we must use int64_t as index
   // type.
@@ -869,15 +869,15 @@ void ElementwiseKernel(const KPDevice &ctx,
 #endif
   switch (vec_size) {
     case VecSizeL:
-      LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeL>(
+      LaunchElementwiseKernel<OutT, Functor, kArity, NumOuts, VecSizeL>(
           ctx, ins, outs, read_lens, func);
       break;
     case VecSizeM:
-      LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeM>(
+      LaunchElementwiseKernel<OutT, Functor, kArity, NumOuts, VecSizeM>(
           ctx, ins, outs, read_lens, func);
       break;
     case VecSizeS:
-      LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeS>(
+      LaunchElementwiseKernel<OutT, Functor, kArity, NumOuts, VecSizeS>(
           ctx, ins, outs, read_lens, func);
       break;
     default: {
