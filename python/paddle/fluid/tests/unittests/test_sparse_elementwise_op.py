@@ -52,8 +52,8 @@ class TestSparseElementWiseAPI(unittest.TestCase):
 
     def func_test_csr(self, op):
         for dtype in self.support_dtypes:
-            x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
-            y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+            x = np.random.randint(-255, 255, size=self.csr_shape).astype(dtype)
+            y = np.random.randint(-255, 255, size=self.csr_shape).astype(dtype)
 
             dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=False)
             dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=False)
