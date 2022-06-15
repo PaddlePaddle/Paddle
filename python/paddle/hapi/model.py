@@ -1100,6 +1100,7 @@ class Model(object):
                 label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
                 loss = model.train_batch([data], [label])
                 print(loss)
+                # [array([2.192784], dtype=float32)]
         """
         loss = self._adapter.train_batch(inputs, labels, update)
         if fluid._non_static_mode() and self._input_info is None:
@@ -1148,11 +1149,12 @@ class Model(object):
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
                     parameters=model.parameters())
                 model.prepare(optim,
-                                paddle.nn.CrossEntropyLoss())
+                            paddle.nn.CrossEntropyLoss())
                 data = np.random.random(size=(4,784)).astype(np.float32)
                 label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
                 loss = model.eval_batch([data], [label])
                 print(loss)
+                # [array([2.3555532], dtype=float32)]
         """
         loss = self._adapter.eval_batch(inputs, labels)
         if fluid._non_static_mode() and self._input_info is None:
@@ -1196,9 +1198,12 @@ class Model(object):
 
                 model = paddle.Model(net, input, label)
                 model.prepare()
-                data = np.random.random(size=(4,784)).astype(np.float32)
+                data = np.random.random(size=(1, 784)).astype(np.float32)
                 out = model.predict_batch([data])
                 print(out)
+                # [array([[0.08189095, 0.16740078, 0.06889386, 0.05085445, 0.10729759,
+                #          0.02217775, 0.14518553, 0.1591538 , 0.01808308, 0.17906217]],
+                #          dtype=float32)]
         """
         loss = self._adapter.predict_batch(inputs)
         if fluid._non_static_mode() and self._input_info is None:
@@ -1863,6 +1868,7 @@ class Model(object):
                 model.prepare(metrics=paddle.metric.Accuracy())
                 result = model.evaluate(val_dataset, batch_size=64)
                 print(result)
+                # {'acc': 0.0699}
         """
 
         if eval_data is not None and isinstance(eval_data, Dataset):
@@ -1974,6 +1980,7 @@ class Model(object):
                 model.prepare()
                 result = model.predict(test_dataset, batch_size=64)
                 print(len(result[0]), result[0][0].shape)
+                # 157 (64, 10)
 
                 # declarative mode
                 device = paddle.set_device('cpu')
@@ -1984,6 +1991,7 @@ class Model(object):
 
                 result = model.predict(test_dataset, batch_size=64)
                 print(len(result[0]), result[0][0].shape)
+                # 157 (64, 10)
         """
 
         if test_data is not None and isinstance(test_data, Dataset):
@@ -2195,6 +2203,7 @@ class Model(object):
 
                 params_info = model.summary()
                 print(params_info)
+                # {'total_params': 61610, 'trainable_params': 61610}
 
         """
         assert (input_size is not None or self._inputs
