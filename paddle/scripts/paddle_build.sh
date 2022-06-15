@@ -3640,6 +3640,7 @@ function main() {
         paddle_whl=paddlepaddle-0.0.0-cp37-cp37m-linux_x86_64.whl
         mkdir -p /workspace/Paddle/build/python/dist/
         touch /workspace/Paddle/build/python/dist/${paddle_whl}
+        # commit
         exit 0
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
