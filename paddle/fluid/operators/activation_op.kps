@@ -14,7 +14,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 
 namespace paddle {
@@ -60,42 +59,6 @@ struct CudaSoftReluGradFunctor : public BaseActivationFunctor<T> {
     MPType t = static_cast<MPType>(threshold);
     return (out > -t && out < t) ? static_cast<T>(dout * (one - exp(-out)))
                                  : static_cast<T>(0.0f);
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() {
-    return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-template <typename T>
-struct CudaRelu6Functor : public BaseActivationFunctor<T> {
-  T zero = static_cast<T>(0.0f);
-  float threshold;
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
-  }
-
-  // relu6(x) = min(max(0, x), 6)
-  __device__ __forceinline__ T operator()(const T x) const {
-    T t = static_cast<T>(threshold);
-    return x <= zero ? zero : (x < t ? x : t);
-  }
-};
-
-template <typename T>
-struct CudaRelu6GradFunctor : public BaseActivationFunctor<T> {
-  T zero = static_cast<T>(0.0f);
-  float threshold;
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
-  }
-
-  // dx = (out > 0 && out < t) ? dout : 0
-  __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    T t = static_cast<T>(threshold);
-    return (out > zero && out < t) ? dout : zero;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -205,6 +168,7 @@ USE_PHI_FUNCTOR(CudaTanh)
 USE_PHI_FUNCTOR(CudaBRelu)
 USE_PHI_FUNCTOR(CudaLeakyRelu)
 USE_PHI_FUNCTOR(CudaThresholdedRelu)
+USE_PHI_FUNCTOR(CudaRelu6)
 USE_PHI_FUNCTOR(CudaHardShrink)
 USE_PHI_FUNCTOR(CudaSoftShrink)
 USE_PHI_FUNCTOR(CudaTanhShrink)
@@ -252,61 +216,64 @@ using CudaELUGradNegativeAlphaFunctor =
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-#define REGISTER_ACTIVATION_CUDA_KERNEL(act_type, op_name, functor,            \
-                                        grad_functor)                          \
-  REGISTER_OP_CUDA_KERNEL(                                                     \
-      act_type, ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext, \
-                                          ops::functor<float>>,                \
-      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,           \
-                                ops::functor<double>>,                         \
-      ops::ActivationCudaKernel<plat::CUDADeviceContext,                       \
-                                ops::functor<plat::float16>>,                  \
-      ops::ActivationCudaKernel<plat::CUDADeviceContext,                       \
-                                ops::functor<plat::bfloat16>>);                \
-  REGISTER_OP_CUDA_KERNEL(                                                     \
-      act_type##_grad,                                                         \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
-                                    ops::grad_functor<float>>,                 \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
-                                    ops::grad_functor<double>>,                \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
-                                    ops::grad_functor<plat::float16>>,         \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
+#define REGISTER_ACTIVATION_CUDA_KERNEL(act_type, op_name, functor,    \
+                                        grad_functor)                  \
+  REGISTER_OP_CUDA_KERNEL(                                             \
+      act_type,                                                        \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
+                                ops::functor<float>>,                  \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
+                                ops::functor<double>>,                 \
+      ops::ActivationCudaKernel<plat::CUDADeviceContext,               \
+                                ops::functor<plat::float16>>,          \
+      ops::ActivationCudaKernel<plat::CUDADeviceContext,               \
+                                ops::functor<plat::bfloat16>>);        \
+  REGISTER_OP_CUDA_KERNEL(                                             \
+      act_type##_grad,                                                 \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+                                    ops::grad_functor<float>>,         \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+                                    ops::grad_functor<double>>,        \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+                                    ops::grad_functor<plat::float16>>, \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
                                     ops::grad_functor<plat::bfloat16>>);
 
-#define REGISTER_ACTIVATION_CUDA_KERNEL_INT(act_type, op_name, functor,        \
-                                            grad_functor)                      \
-  REGISTER_OP_CUDA_KERNEL(                                                     \
-      act_type, ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext, \
-                                          ops::functor<float>>,                \
-      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,           \
-                                ops::functor<double>>,                         \
-      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,           \
-                                ops::functor<int>>,                            \
-      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,           \
-                                ops::functor<int64_t>>,                        \
-      ops::ActivationCudaKernel<plat::CUDADeviceContext,                       \
-                                ops::functor<plat::float16>>,                  \
-      ops::ActivationCudaKernel<plat::CUDADeviceContext,                       \
-                                ops::functor<plat::bfloat16>>);                \
-  REGISTER_OP_CUDA_KERNEL(                                                     \
-      act_type##_grad,                                                         \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
-                                    ops::grad_functor<float>>,                 \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
-                                    ops::grad_functor<double>>,                \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
-                                    ops::grad_functor<int>>,                   \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
-                                    ops::grad_functor<int64_t>>,               \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
-                                    ops::grad_functor<plat::float16>>,         \
-      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
+#define REGISTER_ACTIVATION_CUDA_KERNEL_INT(act_type, op_name, functor, \
+                                            grad_functor)               \
+  REGISTER_OP_CUDA_KERNEL(                                              \
+      act_type,                                                         \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,    \
+                                ops::functor<float>>,                   \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,    \
+                                ops::functor<double>>,                  \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,    \
+                                ops::functor<int>>,                     \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,    \
+                                ops::functor<int64_t>>,                 \
+      ops::ActivationCudaKernel<plat::CUDADeviceContext,                \
+                                ops::functor<plat::float16>>,           \
+      ops::ActivationCudaKernel<plat::CUDADeviceContext,                \
+                                ops::functor<plat::bfloat16>>);         \
+  REGISTER_OP_CUDA_KERNEL(                                              \
+      act_type##_grad,                                                  \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,            \
+                                    ops::grad_functor<float>>,          \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,            \
+                                    ops::grad_functor<double>>,         \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,            \
+                                    ops::grad_functor<int>>,            \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,            \
+                                    ops::grad_functor<int64_t>>,        \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,            \
+                                    ops::grad_functor<plat::float16>>,  \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,            \
                                     ops::grad_functor<plat::bfloat16>>);
 
 REGISTER_OP_CUDA_KERNEL(
-    relu6, ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
-                                     ops::CudaRelu6Functor<float>>,
+    relu6,
+    ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
+                              ops::CudaRelu6Functor<float>>,
     ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
                               ops::CudaRelu6Functor<double>>,
     ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
@@ -318,8 +285,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ActivationCudaKernel<plat::CUDADeviceContext,
                               ops::CudaRelu6Functor<plat::bfloat16>>);
 REGISTER_OP_CUDA_KERNEL(
-    relu6_grad, ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                              ops::CudaRelu6GradFunctor<float>>,
+    relu6_grad,
+    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+                                  ops::CudaRelu6GradFunctor<float>>,
     ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
                                   ops::CudaRelu6GradFunctor<double>>,
     ops::ActivationGradCudaKernel<plat::CUDADeviceContext,

@@ -1787,6 +1787,16 @@
   inplace : (x -> out)
   backward : relu_grad
 
+- api : relu6
+  args : (Tensor x, float threshold)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : relu6
+  backward : relu6_grad
+
 - api : reshape
   args : (Tensor x, IntArray shape)
   output : Tensor(out), Tensor(xshape)
