@@ -20,9 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #include "paddle/phi/kernels/autotune/cache.h"
-#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -871,15 +871,13 @@ inline void LaunchPermuteKernel(const phi::GPUContext& ctx, const IndexT count,
   if (perm_type == PermuteType::kNormalPermute) {
     size_t tail_count = count - main_count * VecSize;
     size_t offset = count - tail_count;
-    GeneralPermuteKernel<
-        T, IndexT, VecSize,
-        Rank><<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
-        params, src, dst, main_count, tail_count, offset);
+    GeneralPermuteKernel<T, IndexT, VecSize, Rank>
+        <<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
+            params, src, dst, main_count, tail_count, offset);
   } else {
-    VectorizedPermuteKernel<
-        T, IndexT, VecSize,
-        Rank><<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
-        params, main_count, src, dst);
+    VectorizedPermuteKernel<T, IndexT, VecSize, Rank>
+        <<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
+            params, main_count, src, dst);
   }
 }
 
@@ -976,9 +974,8 @@ inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
   dim3 blocks(num_tile_cols, num_tile_rows, num_batches);
   dim3 threads(kTileSize, kBlockRows, 1);
 
-  BatchTransposeKernel<T, IndexT,
-                       VecSize><<<blocks, threads, 0, ctx.stream()>>>(
-      src, dst, rows, cols);
+  BatchTransposeKernel<T, IndexT, VecSize>
+      <<<blocks, threads, 0, ctx.stream()>>>(src, dst, rows, cols);
 }
 
 template <typename T, typename IndexT>
