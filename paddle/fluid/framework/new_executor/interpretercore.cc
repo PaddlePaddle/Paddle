@@ -56,12 +56,13 @@ bool IsInterpretercoreFastGCEnabled() {
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
+                                 const std::set<std::string>& skip_gc_vars,
                                  VariableScope* global_scope)
     : place_(place),
       block_(block),
+      skip_gc_vars_(skip_gc_vars),
       global_scope_(global_scope),
-      stream_analyzer_(place),
-      skip_gc_vars_(std::set<std::string>()) {
+      stream_analyzer_(place) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
   is_build_ = false;
@@ -113,15 +114,6 @@ InterpreterCore::~InterpreterCore() {
 
 void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   copy_program_ = prog;
-}
-
-void InterpreterCore::SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
-  PADDLE_ENFORCE_EQ(
-      skip_gc_vars_.empty(), true,
-      phi::errors::Unimplemented("The skip_gc_vars_ for interpretercore %p has "
-                                 "been set before, not allow to change it.",
-                                 this));
-  skip_gc_vars_ = skip_gc_vars;
 }
 
 paddle::framework::FetchList InterpreterCore::Run(
@@ -982,7 +974,8 @@ void InterpreterCore::SetFeedVarsInplaceSkip(
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(
     const platform::Place& place, const ProgramDesc& prog,
-    VariableScope* global_scope, const std::vector<std::string>& fetch_names) {
+    VariableScope* global_scope, const std::vector<std::string>& fetch_names,
+    const std::set<std::string>& skip_gc_vars) {
   std::shared_ptr<InterpreterCore> core = nullptr;
   // NOTE(Aurelius84): `add_fetch` will modify BlockDesc, so we should copy
   // a new program.
@@ -990,7 +983,8 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCore(
   auto* block = new_prog->MutableBlock(0);
   interpreter::add_fetch(fetch_names, block);
 
-  core = std::make_shared<InterpreterCore>(place, *block, global_scope);
+  core = std::make_shared<InterpreterCore>(place, *block, skip_gc_vars,
+                                           global_scope);
   core->SetCopyProgram(new_prog);
   return core;
 }

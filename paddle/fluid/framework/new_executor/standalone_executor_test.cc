@@ -189,7 +189,7 @@ TEST(StandaloneExecutor, skip_gc_vars) {
 
   VariableScope startup_scope(&scope);
   std::shared_ptr<InterpreterCore> startup_core =
-      CreateInterpreterCore(place, startup_prog, &startup_scope, {});
+      CreateInterpreterCore(place, startup_prog, &startup_scope);
   startup_core->Run({}, {});
 
   std::set<std::string> skip_gc_vars = {"uniform_0.tmp_0", "transpose_0.tmp_0",
@@ -209,8 +209,7 @@ TEST(StandaloneExecutor, skip_gc_vars) {
 
   VariableScope main_scope(&scope);
   std::shared_ptr<InterpreterCore> main_core =
-      CreateInterpreterCore(place, main_prog, &main_scope, {});
-  main_core->SetSkipGcVars(skip_gc_vars);
+      CreateInterpreterCore(place, main_prog, &main_scope, {}, skip_gc_vars);
 
   main_core->Run({}, {});
   check_gc_result(main_scope, skip_gc_vars, true);
