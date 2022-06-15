@@ -81,7 +81,9 @@ const std::unordered_map<std::string, nvinfer1::UnaryOperation>
         {"atanh", nvinfer1::UnaryOperation::kATANH},
         {"ceil", nvinfer1::UnaryOperation::kCEIL},
         {"floor", nvinfer1::UnaryOperation::kFLOOR},
+#if IS_TRT_VERSION_GE(7000)
         {"erf", nvinfer1::UnaryOperation::kERF},
+#endif
 };
 
 class ExpOpConverter : public UnaryOpConverter {
@@ -154,10 +156,12 @@ class FloorOpConverter : public UnaryOpConverter {
  public:
   FloorOpConverter() { op_type_ = "floor"; }
 };
+#if IS_TRT_VERSION_GE(7000)
 class ErfOpConverter : public UnaryOpConverter {
  public:
   ErfOpConverter() { op_type_ = "erf"; }
 };
+#endif
 
 }  // namespace tensorrt
 }  // namespace inference
@@ -180,4 +184,6 @@ REGISTER_TRT_OP_CONVERTER(acosh, AcoshOpConverter);
 REGISTER_TRT_OP_CONVERTER(atanh, AtanhOpConverter);
 REGISTER_TRT_OP_CONVERTER(ceil, CeilOpConverter);
 REGISTER_TRT_OP_CONVERTER(floor, FloorOpConverter);
+#if IS_TRT_VERSION_GE(7000)
 REGISTER_TRT_OP_CONVERTER(erf, ErfOpConverter);
+#endif
