@@ -300,6 +300,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << " op does not support input's dim is 1 in tensorrt.";
         return false;
       }
+#if !IS_TRT_VERSION_GE(7000)
+      if (op_type == "erf") {
+        VLOG(3) << op_type << " op does not support tensorrt.";
+        return false;
+      }
+#endif
     }
 
     if (op_type == "pool2d") {
