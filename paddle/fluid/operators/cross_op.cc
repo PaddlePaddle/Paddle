@@ -61,6 +61,18 @@ class CrossGradOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     ctx->SetOutputDim(framework::GradVarName("Y"), ctx->GetInputDim("Y"));
+
+    auto x_dims = ctx->GetInputsDim("X");
+    auto y_dims = ctx->GetInputsDim("Y");
+    for (size_t i = 0; i < x_dims.size(); ++i) {
+      PADDLE_ENFORCE_EQ(x_dims[i], y_dims[i],
+                        phi::errors::InvalidArgument(
+                            "The 'shape' of Input(X) should be equal to "
+                            "the 'shape' of Input(Y). But received "
+                            "Input(X).dimensions = [%s], "
+                            "Input(Y).dimensions = [%s]",
+                            x_dims[i], y_dims[i]));
+    }
   }
 
  protected:
