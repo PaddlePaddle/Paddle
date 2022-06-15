@@ -243,7 +243,7 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetInputTensor(
                         "The in variable named %s is not found in the "
                         "ONNXPredictor.",
                         name));
-  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr));
+  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr, this));
   res->input_or_output_ = true;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -264,7 +264,7 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetOutputTensor(
                         "The out variable named %s is not found in the "
                         "ONNXPredictor.",
                         name));
-  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr));
+  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr, this));
   res->input_or_output_ = false;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -309,7 +309,7 @@ bool ONNXRuntimePredictor::ZeroCopyRun() {
   return true;
 }
 
-std::unique_ptr<PaddlePredictor> ONNXRuntimePredictor::Clone() {
+std::unique_ptr<PaddlePredictor> ONNXRuntimePredictor::Clone(void *stream) {
   LOG(ERROR) << "Not support Clone(), Please create new Predictor";
   return nullptr;
 }
@@ -323,6 +323,16 @@ ONNXRuntimePredictor::~ONNXRuntimePredictor() {
   binding_->ClearBoundOutputs();
 
   memory::Release(place_);
+}
+
+const void *ONNXRuntimePredictor::GetDeviceContexts() const {
+  // TODO(inference): Support private device contexts.
+  paddle::platform::DeviceContextPool &pool =
+      paddle::platform::DeviceContextPool::Instance();
+  const auto &dev_ctxs = pool.device_contexts();
+  return &const_cast<std::map<
+      phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> &>(
+      dev_ctxs);
 }
 
 }  // namespace paddle

@@ -511,8 +511,8 @@ struct Loader {
   template <typename Array, typename ArgsT>
   static __device__ void Apply(const Array &in,
                                ArgsT *args,
+                               kps::IndexType offset,
                                int num,
-                               int64_t data_offset,
                                int read_lens,
                                bool is_boundary) {
     using Type = std::tuple_element_t<Index, ArgsT>;
@@ -521,13 +521,13 @@ struct Loader {
     if (is_boundary) {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, true>(
           args,
-          reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
+          reinterpret_cast<const _ptr_ Type *>(in[Index]) + offset,
           num,
           read_lens);
     } else {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, false>(
           args,
-          reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
+          reinterpret_cast<const _ptr_ Type *>(in[Index]) + offset,
           num,
           read_lens);
     }
@@ -682,45 +682,11 @@ struct SameDimsElementwisePrimitiveCaller {
 };
 
 template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
-struct ElementwiseWriteDataCaller {
-  __device__ __forceinline__ void operator()(
-      phi::Array<_ptr_ OutT *, NumOuts> outs,
-      ConditionalT<OutT, NumOuts> src[VecSize],
-      int64_t block_offset,
-      int num) {
-    OutT dst[NumOuts][VecSize];
-#pragma unroll
-    for (int i = 0; i < VecSize; ++i) {
-#pragma unroll
-      for (int j = 0; j < NumOuts; ++j) {
-        dst[j][i] = (src[i])[j];
-      }
-    }
-#pragma unroll
-    for (int i = 0; i < NumOuts; ++i) {
-      kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
-          outs[i] + block_offset, dst[i], num);
-    }
-  }
-};
-
-template <typename OutT, int VecSize, bool IsBoundary>
-struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
-  __device__ __forceinline__ void operator()(phi::Array<_ptr_ OutT *, 1> outs,
-                                             OutT src[VecSize],
-                                             int64_t block_offset,
-                                             int num) {
-    kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
-        outs[0] + block_offset, src, num);
-  }
-};
-
-template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
 struct ElementwiseWriteDataCallerBc {
   __device__ __forceinline__ void operator()(
       phi::Array<_ptr_ OutT *, NumOuts> outs,
       ConditionalT<OutT, NumOuts> src[VecSize],
-      int64_t block_offset,
+      kps::IndexType block_offset,
       int num,
       int read_lens) {
     OutT dst[NumOuts][VecSize];
@@ -743,7 +709,7 @@ template <typename OutT, int VecSize, bool IsBoundary>
 struct ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, 1> {
   __device__ __forceinline__ void operator()(phi::Array<_ptr_ OutT *, 1> outs,
                                              OutT src[VecSize],
-                                             int64_t block_offset,
+                                             kps::IndexType block_offset,
                                              int num,
                                              int read_lens) {
     kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
@@ -758,11 +724,10 @@ template <typename OutT,
           int VecSize,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
-
     const phi::Array<const _ptr_ char *__restrict__, Arity> &in,
     phi::Array<_ptr_ OutT *, NumOuts> outs,
+    kps::IndexType offset,
     int num,
-    int64_t offset,
     int read_lens,
     Functor func) {
   using Traits = paddle::platform::FunctionTraits<Functor>;
@@ -771,7 +736,7 @@ __device__ void VectorizedElementwiseKernelImpl(
   ConditionalT<OutT, NumOuts> result[VecSize];
 
   Unroller<Loader, VecSize, Arity>::step(
-      in, args, num, offset, read_lens, IsBoundary);
+      in, args, offset, num, read_lens, IsBoundary);
 
   SameDimsElementwisePrimitiveCaller<ConditionalT<OutT, NumOuts>,
                                      VecSize,
@@ -787,12 +752,12 @@ template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 __global__ void VectorizedElementwiseKernel(
     phi::Array<const _ptr_ char *__restrict__, Arity> ins,
     phi::Array<_ptr_ OutT *, NumOuts> outs,
-    int64_t numel,
-    int64_t main_offset,
+    kps::IndexType numel,
+    kps::IndexType main_offset,
     int read_lens,
     Functor func) {
-  int64_t offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
-  int64_t stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
+  kps::IndexType data_offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
+  kps::IndexType stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
   for (; data_offset < main_offset; data_offset += stride) {
     VectorizedElementwiseKernelImpl<OutT,
                                     Functor,
@@ -800,10 +765,10 @@ __global__ void VectorizedElementwiseKernel(
                                     NumOuts,
                                     VecSize,
                                     false>(
-        ins, outs, read_lens * BLOCK_NUM_X, offset, read_lens, func);
+        ins, outs, data_offset, read_lens * BLOCK_NUM_X, read_lens, func);
   }
 
-  int remain = numel - offset;
+  int remain = numel - data_offset;
   if (remain > 0) {
     VectorizedElementwiseKernelImpl<OutT,
                                     Functor,
@@ -811,7 +776,7 @@ __global__ void VectorizedElementwiseKernel(
                                     NumOuts,
                                     VecSize,
                                     true>(
-        ins, outs, num, offset, read_lens, func);
+        ins, outs, data_offset, remain, read_lens, func);
   }
 }
 
@@ -819,6 +784,7 @@ template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 void LaunchElementwiseCudaKernel(const KPDevice &ctx,
                                  const std::vector<const DenseTensor *> &ins,
                                  std::vector<DenseTensor *> *outs,
+                                 int read_lens,
                                  Functor func) {
   // There are at least 1 output, but maybe 0 input (ins.size() == 0).
   // For large tensor numel * sizeof(T) > 2^31, we must use int64_t as index

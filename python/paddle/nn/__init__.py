@@ -107,6 +107,8 @@ from .layer.loss import MarginRankingLoss  # noqa: F401
 from .layer.loss import CTCLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
 from .layer.loss import HingeEmbeddingLoss  # noqa: F401
+from .layer.loss import CosineEmbeddingLoss  # noqa: F401
+from .layer.loss import TripletMarginWithDistanceLoss
 from .layer.norm import BatchNorm  # noqa: F401
 from .layer.norm import SyncBatchNorm  # noqa: F401
 from .layer.norm import GroupNorm  # noqa: F401
@@ -153,7 +155,7 @@ from . import functional  # noqa: F401
 from . import initializer  # noqa: F401
 from . import quant  # noqa: F401
 
-#TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
+# TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
 import paddle.utils.deprecated as deprecated
 
 
@@ -190,7 +192,7 @@ def weight_norm(*args):
     return utils.weight_norm(*args)
 
 
-__all__ = [  #noqa
+__all__ = [  # noqa
     'BatchNorm',
     'CELU',
     'GroupNorm',
@@ -311,5 +313,7 @@ __all__ = [  #noqa
     'MaxUnPool3D',
     'HingeEmbeddingLoss',
     'Identity',
+    'CosineEmbeddingLoss',
     'RReLU',
+    'TripletMarginWithDistanceLoss',
 ]

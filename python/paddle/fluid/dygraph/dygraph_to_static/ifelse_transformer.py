@@ -507,7 +507,7 @@ def create_convert_ifelse_node(return_name_ids,
                                is_if_expr=False):
     """
     Create `paddle.jit.dy2static.convert_ifelse(
-            pred, true_fn, false_fn, true_args, false_args, return_vars)`
+            pred, true_fn, false_fn, true_args, false_args)`
     to replace original `python if/else` statement.
     """
 
@@ -535,17 +535,14 @@ def create_convert_ifelse_node(return_name_ids,
         true_func_source = true_func.name
         false_func_source = false_func.name
 
-    return_vars = create_name_nodes(return_name_ids)
-
     convert_ifelse_layer = gast.parse(
         '_jst.convert_ifelse('
-        '{pred}, {true_fn}, {false_fn}, {true_args}, {false_args}, {return_vars})'
-        .format(pred=ast_to_source_code(pred),
-                true_fn=true_func_source,
-                false_fn=false_func_source,
-                true_args=ast_to_source_code(true_args),
-                false_args=ast_to_source_code(false_args),
-                return_vars=ast_to_source_code(return_vars))).body[0].value
+        '{pred}, {true_fn}, {false_fn}, {true_args}, {false_args})'.format(
+            pred=ast_to_source_code(pred),
+            true_fn=true_func_source,
+            false_fn=false_func_source,
+            true_args=ast_to_source_code(true_args),
+            false_args=ast_to_source_code(false_args))).body[0].value
 
     if return_name_ids:
         _, cond_node = create_assign_node(return_name_ids, convert_ifelse_layer)

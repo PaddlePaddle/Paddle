@@ -15,6 +15,7 @@
 import unittest
 import os
 import json
+import tempfile
 
 import paddle
 import paddle.distributed.auto_parallel.cost as cost_model
@@ -35,6 +36,12 @@ def check_cost(cost):
 
 
 class TestCost(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_base_cost(self):
         cost = cost_model.Cost(memory=100, flops=200, time=0.5)
@@ -65,8 +72,8 @@ class TestCost(unittest.TestCase):
 
     def test_comm_cost(self):
         # Build cluster
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        cluster_json_path = os.path.join(file_dir, "auto_parallel_cluster.json")
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster.json")
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
@@ -84,10 +91,6 @@ class TestCost(unittest.TestCase):
         allreduce_cost = cost_model._g_op_cost_factory["c_allreduce_sum"](
             op_desc=desc, comm_context=CommContext(cluster))
         self.assertTrue(check_cost(allreduce_cost.cost))
-
-        # Remove unnecessary files
-        if os.path.exists(cluster_json_path):
-            os.remove(cluster_json_path)
 
     def test_cost_estimator(self):
         train_program = paddle.static.Program()

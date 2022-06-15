@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace egr {
@@ -67,6 +68,8 @@ void GradTensorHolder::CopyValueFromTensor(
       // Fill 1.0, use full to support complex, one_like don't support it.
       buffer_[slot_id][rank] =
           paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
+      egr::EagerUtils::autograd_meta(&(buffer_[slot_id][rank]))
+          ->SetStopGradient(false);
     }
   }
 }
@@ -74,8 +77,6 @@ void GradTensorHolder::CopyValueFromTensor(
 void GradTensorHolder::add(size_t slot_id, size_t rank,
                            const paddle::experimental::Tensor& t,
                            bool create_graph) {
-  // TODO(jiabin): We need to deal with empty input_buffer with slot size not
-  // empty;
   PADDLE_ENFORCE(slot_id < buffer_.size(),
                  paddle::platform::errors::Fatal(
                      "Invalid slot_id for GradTensorHolder::add() "
@@ -129,6 +130,25 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
         paddle::imperative::SelectedRowsAddTensor(buffer_tensor, t,
                                                   &new_buffer);
         buffer_tensor.set_impl(new_buffer.impl());
+      }
+    } else if (t.is_sparse_coo_tensor()) {
+      auto t_sparse = std::dynamic_pointer_cast<phi::SparseCooTensor>(t.impl());
+      paddle::experimental::Tensor t_values(
+          std::make_shared<phi::DenseTensor>(t_sparse->non_zero_elements()));
+      // In fact, the gradient of SparseTensor is still a SparseTensor
+      if (buffer_tensor.is_sparse_coo_tensor()) {
+        auto buffer_sparse = std::dynamic_pointer_cast<phi::SparseCooTensor>(
+            buffer_tensor.impl());
+        paddle::experimental::Tensor buffer_values(
+            std::make_shared<phi::DenseTensor>(
+                buffer_sparse->non_zero_elements()));
+        if (create_graph) {
+          buffer_values =
+              add_final_state_dygraph_function(t_values, buffer_values);
+        } else {
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
+              t_values, &buffer_values);
+        }
       }
     } else {
       // TODO(jiabin): Support Other TensorBase later
