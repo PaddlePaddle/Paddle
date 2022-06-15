@@ -65,6 +65,19 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Checking whether operator produce NAN/INF or not. It will be "
     "extremely slow so please use this flag wisely.");
 
+/**
+ * Operator related FLAG
+ * Name: FLAGS_check_nan_inf
+ * Since Version: 0.13.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Checking whether operator produce NAN/INF or not.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    enable_opt_get_features, false,
+    "Checking whether operator produce NAN/INF or not. It will be "
+    "extremely slow so please use this flag wisely.");
+
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
@@ -714,6 +727,19 @@ PADDLE_DEFINE_EXPORTED_bool(
     "It controls whether to apply IR pass to program when using Fleet APIs");
 
 /**
+ * Distributed related FLAG
+ * Name: FLAGS_graph_load_in_parallel
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Control whether load graph node and edge with multi threads parallely
+ *       If it is not set, load graph data with one thread
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    graph_load_in_parallel, false,
+    "It controls whether load graph node and edge with mutli threads parallely.");
+
+/**
  * KP kernel related FLAG
  * Name: FLAGS_run_kp_kernel
  * Since Version: 2.3.0
@@ -811,7 +837,13 @@ DEFINE_bool(enable_slotpool_wait_release, false,
 DEFINE_bool(enable_slotrecord_reset_shrink, false,
             "enable slotrecord obejct reset shrink memory, default false");
 DEFINE_bool(enable_ins_parser_file, false,
-            "enable parser ins file , default false");
+            "enable parser ins file, default false");
+PADDLE_DEFINE_EXPORTED_bool(
+    gpugraph_enable_hbm_table_collision_stat, false,
+    "enable hash collisions stat for hbm table, default false");
+PADDLE_DEFINE_EXPORTED_double(
+    gpugraph_hbm_table_load_factor, 0.75,
+    "the load factor of hbm table, default 0.75");
 
 /**
  * ProcessGroupNCCL related FLAG

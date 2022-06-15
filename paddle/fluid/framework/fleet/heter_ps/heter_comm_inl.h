@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
+DECLARE_double(gpugraph_hbm_table_load_factor);
+
 namespace paddle {
 namespace framework {
 template <typename KeyType, typename ValType, typename GradType>
@@ -30,6 +32,8 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
   resource_ = resource;
   storage_.resize(resource_->total_device());
   multi_mf_dim_ = resource->multi_mf();
+  load_factor_ = FLAGS_gpugraph_hbm_table_load_factor;
+  VLOG(0) << "load_factor = " << load_factor_;
   for (int i = 0; i < resource_->total_device(); ++i) {
 #if defined(PADDLE_WITH_CUDA)
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
@@ -128,21 +132,21 @@ void HeterComm<KeyType, ValType, GradType>::memory_copy(
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
                                                            int end_index,
-                                                           int keylen,
-                                                           int vallen) {
+                                                           size_t keylen,
+                                                           size_t vallen) {
 #if defined(PADDLE_WITH_CUDA)
   auto& allocator = allocators_[start_index];
   auto& nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
     platform::CUDADeviceGuard guard(resource_->dev_id(nodes[i].dev_num));
-    allocator->DeviceAllocate(
+    PADDLE_ENFORCE_GPU_SUCCESS(allocator->DeviceAllocate(
         resource_->dev_id(nodes[i].dev_num),
         (void**)&(nodes[i].key_storage),  // NOLINT
-        keylen, resource_->remote_stream(nodes[i].dev_num, start_index));
-    allocator->DeviceAllocate(
+        keylen, resource_->remote_stream(nodes[i].dev_num, start_index)));
+    PADDLE_ENFORCE_GPU_SUCCESS(allocator->DeviceAllocate(
         resource_->dev_id(nodes[i].dev_num),
         (void**)&(nodes[i].val_storage),  // NOLINT
-        vallen, resource_->remote_stream(nodes[i].dev_num, start_index));
+        vallen, resource_->remote_stream(nodes[i].dev_num, start_index)));
     nodes[i].key_bytes_len = keylen;
     nodes[i].val_bytes_len = vallen;
   }
@@ -170,10 +174,10 @@ void HeterComm<KeyType, ValType, GradType>::destroy_storage(int start_index,
   for (size_t i = 0; i < nodes.size(); ++i) {
     platform::CUDADeviceGuard guard(resource_->dev_id(nodes[i].dev_num));
 
-    allocator->DeviceFree(resource_->dev_id(nodes[i].dev_num),
-                          nodes[i].key_storage);
-    allocator->DeviceFree(resource_->dev_id(nodes[i].dev_num),
-                          nodes[i].val_storage);
+    PADDLE_ENFORCE_GPU_SUCCESS(allocator->DeviceFree(
+        resource_->dev_id(nodes[i].dev_num), nodes[i].key_storage));
+    PADDLE_ENFORCE_GPU_SUCCESS(allocator->DeviceFree(
+        resource_->dev_id(nodes[i].dev_num), nodes[i].val_storage));
   }
 #endif
 }
@@ -376,6 +380,22 @@ template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::show_one_table(int gpu_num) {
   if (!multi_mf_dim_) {
     tables_[gpu_num]->show();
+  }
+}
+
+template <typename KeyType, typename ValType, typename GradType>
+void HeterComm<KeyType, ValType, GradType>::show_table_collisions() {
+  size_t idx = 0;
+  for (auto& table : tables_) {
+    if (table != nullptr) {
+      table->show_collision(idx++);
+    }
+  }
+  idx = 0;
+  for (auto& table : ptr_tables_) {
+    if (table != nullptr) {
+      table->show_collision(idx++);
+    }
   }
 }
 

@@ -899,8 +899,8 @@ NodeQueryResult GpuPsGraphTable::query_node_list(int gpu_id, int idx, int start,
   return result;
 }
 
-int GpuPsGraphTable::get_feature_of_nodes(int gpu_id, std::shared_ptr<phi::Allocation> d_nodes,
-        std::shared_ptr<phi::Allocation> d_feature, int node_num, int slot_num) {
+int GpuPsGraphTable::get_feature_of_nodes(int gpu_id, int64_t* d_nodes,
+                                        int64_t* d_feature , int node_num, int slot_num) {
   if (node_num == 0) {
     return -1;
   }
@@ -928,7 +928,7 @@ int GpuPsGraphTable::get_feature_of_nodes(int gpu_id, std::shared_ptr<phi::Alloc
   auto d_shard_actual_size = memory::Alloc(place, node_num * sizeof(int));
   int* d_shard_actual_size_ptr = reinterpret_cast<int*>(d_shard_actual_size->ptr());
 
-  uint64_t* key = (uint64_t*)d_nodes->ptr();
+  uint64_t* key = (uint64_t*)d_nodes;
   split_input_to_shard((uint64_t*)(key), d_idx_ptr, node_num, d_left_ptr, d_right_ptr, gpu_id);
 
   heter_comm_kernel_->fill_shard_key(d_shard_keys_ptr, key, d_idx_ptr, node_num, stream);
@@ -988,7 +988,7 @@ int GpuPsGraphTable::get_feature_of_nodes(int gpu_id, std::shared_ptr<phi::Alloc
                             d_shard_vals_ptr, d_shard_actual_size_ptr);
 
   int grid_size = (node_num - 1) / block_size_ + 1;
-  uint64_t* result = (uint64_t*)d_feature->ptr();
+  uint64_t* result = (uint64_t*)d_feature;
   fill_dvalues<<<grid_size, block_size_, 0, stream>>>(d_shard_vals_ptr, result,
           d_shard_actual_size_ptr, d_idx_ptr, slot_num, node_num);
 

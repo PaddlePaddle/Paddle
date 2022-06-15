@@ -21,6 +21,9 @@
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/platform/enforce.h"
 #ifdef PADDLE_WITH_HETERPS
+
+DECLARE_double(gpugraph_hbm_table_load_factor);
+
 namespace paddle {
 namespace framework {
 enum GraphTableType { EDGE_TABLE, FEATURE_TABLE };
@@ -34,7 +37,8 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
   GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource, int topo_aware,
                   int graph_table_num)
       : HeterComm<uint64_t, int64_t, int>(1, resource) {
-    load_factor_ = 0.25;
+    load_factor_ = FLAGS_gpugraph_hbm_table_load_factor;
+    VLOG(0) << "load_factor = " << load_factor_;
     rw_lock.reset(new pthread_rwlock_t());
     this->graph_table_num_ = graph_table_num;
     this->feature_table_num_ = 1;
@@ -104,9 +108,6 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
     }
   }
   ~GpuPsGraphTable() {
-    // if (cpu_table_status != -1) {
-    //   end_graph_sampling();
-    // }
   }
   void build_graph_on_single_gpu(GpuPsCommGraph &g, int gpu_id, int idx);
   void build_graph_fea_on_single_gpu(GpuPsCommGraphFea &g, int gpu_id);
@@ -127,9 +128,8 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
                                                 uint64_t *key, int sample_size,
                                                 int len, bool cpu_query_switch);
 
-  int get_feature_of_nodes(int gpu_id,
-                    std::shared_ptr<phi::Allocation> d_walk,
-                    std::shared_ptr<phi::Allocation> d_offset, int size, int slot_num);
+  int get_feature_of_nodes(int gpu_id, int64_t* d_walk,
+                        int64_t* d_offset, int size, int slot_num);
 
   NodeQueryResult query_node_list(int gpu_id, int idx, int start,
                                   int query_size);
@@ -140,6 +140,7 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
                                                  uint64_t *src_sample_res,
                                                  int *actual_sample_size);
   int init_cpu_table(const paddle::distributed::GraphParameter &graph);
+
   int gpu_num;
   int graph_table_num_, feature_table_num_;
   std::vector<GpuPsCommGraph> gpu_graph_list_;

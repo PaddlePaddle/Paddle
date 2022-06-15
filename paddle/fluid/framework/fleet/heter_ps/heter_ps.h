@@ -55,6 +55,7 @@ class HeterPs : public HeterPsBase {
   void show_one_table(int gpu_num) override;
   void push_sparse(int num, FeatureKey* d_keys, FeaturePushValue* d_grads,
                    size_t len) override;
+  void show_table_collisions() override;
 
  private:
   std::shared_ptr<HeterComm<FeatureKey, FeatureValue, FeaturePushValue>> comm_;

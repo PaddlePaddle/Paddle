@@ -41,11 +41,10 @@ std::vector<std::vector<uint64_t>> GraphGpuWrapper::get_all_id(int type,
       ->cpu_graph_table_->get_all_id(type, idx, slice_num);
 }
 
-std::vector<std::vector<uint64_t>> GraphGpuWrapper::get_all_feature_ids(int type,
-                                                               int idx,
-                                                               int slice_num) {
+int GraphGpuWrapper::get_all_feature_ids(int type, int idx, int slice_num,
+                                        std::vector<std::vector<uint64_t>>* output) {
   return ((GpuPsGraphTable *)graph_table)
-      ->cpu_graph_table_->get_all_feature_ids(type, idx, slice_num);
+      ->cpu_graph_table_->get_all_feature_ids(type, idx, slice_num, output);
 }
 
 void GraphGpuWrapper::set_up_types(std::vector<std::string> &edge_types,
@@ -160,6 +159,7 @@ void GraphGpuWrapper::init_search_level(int level) { search_level = level; }
 
 void GraphGpuWrapper::init_service() {
   table_proto.set_task_pool_size(24);
+  table_proto.set_shard_num(1000);
   table_proto.set_search_level(search_level);
   table_proto.set_table_name("cpu_graph_table_");
   table_proto.set_use_cache(false);
@@ -183,6 +183,10 @@ void GraphGpuWrapper::init_service() {
   g->init_cpu_table(table_proto);
   g->cpu_graph_table_->set_feature_separator(feature_separator_);
   graph_table = (char *)g;
+}
+
+void GraphGpuWrapper::finalize() {
+  ((GpuPsGraphTable *)graph_table)->show_table_collisions();
 }
 
 void GraphGpuWrapper::upload_batch(int idx,
@@ -230,9 +234,8 @@ NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
       ->graph_neighbor_sample_v3(q, cpu_switch);
 }
 
-int GraphGpuWrapper::get_feature_of_nodes(int gpu_id,
-        std::shared_ptr<phi::Allocation> d_walk,
-        std::shared_ptr<phi::Allocation> d_offset, uint32_t size, int slot_num) const {
+int GraphGpuWrapper::get_feature_of_nodes(int gpu_id, int64_t* d_walk,
+                            int64_t* d_offset, uint32_t size, int slot_num) {
   platform::CUDADeviceGuard guard(gpu_id);
   PADDLE_ENFORCE_NOT_NULL(graph_table);
   return ((GpuPsGraphTable *)graph_table)

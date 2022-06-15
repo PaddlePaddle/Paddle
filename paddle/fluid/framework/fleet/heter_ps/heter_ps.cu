@@ -83,6 +83,10 @@ void HeterPs::set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) {
   comm_->set_multi_mf_dim(multi_mf_dim, max_mf_dim);
 }
 
+void HeterPs::show_table_collisions() {
+  comm_->show_table_collisions();
+}
+
 }  // end namespace framework
 }  // end namespace paddle
 #endif

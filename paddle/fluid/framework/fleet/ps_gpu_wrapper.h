@@ -173,6 +173,7 @@ class PSGPUWrapper {
     pre_build_threads_.join();
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
+    HeterPs_->show_table_collisions();
   }
 
   void InitializeGPU(const std::vector<int>& dev_ids) {
