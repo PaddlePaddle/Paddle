@@ -956,6 +956,18 @@ interpreter::CostInfo InterpreterCore::DryRun(
   interpreter::CostInfo cost_info;
   {
     interpreter::ProfilerGuard(place_, &cost_info);
+
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    if (async_work_queue_ == nullptr) {
+      async_work_queue_ = std::make_unique<interpreter::AsyncWorkQueue>(
+          kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
+      // prepare for the first time.
+      async_work_queue_->PrepareAtomicDeps(dependecy_count_);
+      async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+    }
+
     ExecuteInstructionList(vec_instruction_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
