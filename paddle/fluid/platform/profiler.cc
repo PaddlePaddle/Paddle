@@ -251,19 +251,20 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
     dtypes[it->first] = shape_ctx.GetInputsVarType(it->first);
   }
 
-  const std::vector<std::string> *callstack = nullptr;
+  const std::vector<std::string> *callstack_ptr = nullptr;
+  std::vector<std::string> callstack;
   auto iter = attrs.find(
       framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
   if (iter != attrs.end()) {
-    callstack = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
-    if (callstack->empty()) callstack = nullptr;
+    callstack_ptr = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+    callstack = *callstack_ptr;
   }
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
       PosixInNsec(), type, input_shapes, dtypes, callstack);
 }
 
-RecordMemEvent::RecordMemEvent(const void *ptr, const Place &place, size_t size,
-                               uint64_t current_allocated,
+RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
+                               size_t size, uint64_t current_allocated,
                                uint64_t current_reserved,
                                const TracerMemEventType type) {
   if (type == TracerMemEventType::Allocate) {

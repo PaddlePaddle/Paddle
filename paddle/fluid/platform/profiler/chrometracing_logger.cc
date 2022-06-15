@@ -17,6 +17,7 @@ limitations under the License. */
 #include <cstdio>
 #include <ctime>
 #include <limits>
+#include <regex>
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -125,7 +126,7 @@ void ChromeTracingLogger::LogMemTraceEventNode(
       std::string(
           R"JSON(
   { 
-    "name": "[memory]", "pid": %lld, "tid": "%lld",
+    "name": "[memory]", "pid": %lld, "tid": "%lld(C++)",
     "ts": %lld, 
     "ph": "i", "cat": "%s", 
     "args": {
@@ -137,7 +138,7 @@ void ChromeTracingLogger::LogMemTraceEventNode(
     }
   },
   )JSON"),
-      mem_node.ProcessId(), mem_node.ThreadId(), mem_node.TimeStampNs(),
+      mem_node.ProcessId(), mem_node.ThreadId(), nsToUs(mem_node.TimeStampNs()),
       StringTracerMemEventType(mem_node.Type()), mem_node.Place().c_str(),
       mem_node.Addr(), mem_node.CurrentAllocated(), mem_node.CurrentReserved(),
       mem_node.IncreaseBytes());
@@ -164,6 +165,8 @@ void ChromeTracingLogger::LogHostTraceEventNode(
     input_shapes = op_supplement_node->InputShapes();
     input_dtypes = op_supplement_node->Dtypes();
     callstack = op_supplement_node->CallStack();
+    callstack = std::regex_replace(callstack, std::regex("\""), "\'");
+    callstack = std::regex_replace(callstack, std::regex("\n"), "\\n");
   }
   switch (host_node.Type()) {
     case TracerEventType::ProfileStep:

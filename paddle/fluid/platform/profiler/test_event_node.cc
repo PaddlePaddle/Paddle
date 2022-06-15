@@ -21,6 +21,7 @@ using paddle::platform::CudaRuntimeTraceEventNode;
 using paddle::platform::DeviceTraceEvent;
 using paddle::platform::DeviceTraceEventNode;
 using paddle::platform::HostTraceEvent;
+using paddle::platform::HostTraceEventNode;
 using paddle::platform::KernelEventInfo;
 using paddle::platform::MemcpyEventInfo;
 using paddle::platform::MemsetEventInfo;

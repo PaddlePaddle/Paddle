@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/platform/event.h"
@@ -45,6 +46,12 @@ class RecordMemEvent {
 
 class RecordOpInfoSupplement {
  public:
+  /**
+   * @param type:  Operator type name.
+   * @param attrs: Attribute map of op.
+   * @param shape_ctx: Infershape context object.
+   * @param ctx: Runtime context object.
+   */
   explicit RecordOpInfoSupplement(const std::string& type,
                                   const framework::AttributeMap& attrs,
                                   const framework::InferShapeContext& shape_ctx,

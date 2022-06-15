@@ -92,27 +92,29 @@ void ProcessOperatorSupplementEvents(
       std::string callstack;
       for (auto it = evt.input_shapes.begin(); it != evt.input_shapes.end();
            it++) {
-        input_shapes[it->first].reserve(it->second.size());
         for (auto idx = 0lu; idx < it->second.size(); idx++) {
+          input_shapes[it->first].push_back(std::vector<int64_t>());
           for (auto dim_idx = 0; dim_idx < it->second.at(idx).size();
                dim_idx++) {
-            input_shapes[it->first].at(idx).at(dim_idx) =
-                it->second.at(idx).at(dim_idx);
+            input_shapes[it->first][idx].push_back(
+                it->second.at(idx).at(dim_idx));
           }
         }
       }
       for (auto it = evt.dtypes.begin(); it != evt.dtypes.end(); it++) {
-        dtypes[it->first].reserve(it->second.size());
         for (auto idx = 0lu; idx < it->second.size(); idx++) {
-          dtypes[it->first].at(idx) =
-              framework::proto::VarType::Type_Name(it->second.at(idx));
+          dtypes[it->first].push_back(
+              framework::proto::VarType::Type_Name(it->second.at(idx)));
         }
       }
 
       std::ostringstream result_string;
-      std::copy(evt.callstack->begin(), evt.callstack->end(),
-                std::ostream_iterator<std::string>(result_string, "\n"));
-
+      for (auto it = evt.callstack.begin(); it != evt.callstack.end(); it++) {
+        result_string << (*it) << std::endl;
+      }
+      event.input_shapes = input_shapes;
+      event.dtypes = dtypes;
+      event.callstack = result_string.str();
       event.process_id = op_supplement_events.process_id;
       event.thread_id = tid;
       collector->AddOperatorSupplementEvent(std::move(event));

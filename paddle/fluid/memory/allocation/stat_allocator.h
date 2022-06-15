@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/stats.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
 namespace paddle {
 namespace memory {
@@ -33,11 +34,24 @@ class StatAllocator : public Allocator {
     if (platform::is_cpu_place(allocation->place())) {
       HOST_MEMORY_STAT_UPDATE(Allocated, allocation->place().GetDeviceId(),
                               -allocation->size());
+      platform::RecordMemEvent(
+          allocation->ptr(), allocation->place(), allocation->size(),
+          HOST_MEMORY_STAT_CURRENT_VALUE(Allocated,
+                                         allocation->place().GetDeviceId()),
+          HOST_MEMORY_STAT_PEAK_VALUE(Allocated,
+                                      allocation->place().GetDeviceId()),
+          platform::TracerMemEventType::Free);
     } else {
       DEVICE_MEMORY_STAT_UPDATE(Allocated, allocation->place().GetDeviceId(),
                                 -allocation->size());
+      platform::RecordMemEvent(
+          allocation->ptr(), allocation->place(), allocation->size(),
+          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated,
+                                           allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated,
+                                        allocation->place().GetDeviceId()),
+          platform::TracerMemEventType::Free);
     }
-
     underlying_allocator_->Free(allocation);
   }
 
@@ -50,9 +64,23 @@ class StatAllocator : public Allocator {
         platform::is_cuda_pinned_place(place)) {
       HOST_MEMORY_STAT_UPDATE(Allocated, place.GetDeviceId(),
                               allocation->size());
+      platform::RecordMemEvent(
+          allocation->ptr(), allocation->place(), allocation->size(),
+          HOST_MEMORY_STAT_CURRENT_VALUE(Allocated,
+                                         allocation->place().GetDeviceId()),
+          HOST_MEMORY_STAT_PEAK_VALUE(Allocated,
+                                      allocation->place().GetDeviceId()),
+          platform::TracerMemEventType::Allocate);
     } else {
       DEVICE_MEMORY_STAT_UPDATE(Allocated, place.GetDeviceId(),
                                 allocation->size());
+      platform::RecordMemEvent(
+          allocation->ptr(), allocation->place(), allocation->size(),
+          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated,
+                                           allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated,
+                                        allocation->place().GetDeviceId()),
+          platform::TracerMemEventType::Allocate);
     }
     return allocation.release();
   }

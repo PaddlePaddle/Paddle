@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -1512,6 +1513,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        1, platform::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->Info().infer_shape_(&infer_shape_ctx);
+    record_event.End();
+    platform::RecordOpInfoSupplement(Type(), Attrs(), infer_shape_ctx,
+                                     *runtime_ctx);
   }
 
   if (FLAGS_enable_unused_var_check) {
