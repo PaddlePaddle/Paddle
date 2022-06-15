@@ -302,31 +302,22 @@ static __global__ void BNForwardTraining2DChannelLastWriteRes(
   int outer_size = C;
   int inner_size = N * HxW;
 
-  extern __shared__ __align__(sizeof(BatchNormParamType<T>)) char smem_buf[];
-
-  BatchNormParamType<T> *smem_mean =
-      reinterpret_cast<BatchNormParamType<T> *>(smem_buf);
-  BatchNormParamType<T> *smem_inv_var =
-      reinterpret_cast<BatchNormParamType<T> *>(
-          smem_buf + blockDim.x * sizeof(BatchNormParamType<T>));
-
   int outer_loop_stride = gridDim.x * blockDim.x;
   int inner_loop_stride = gridDim.y * blockDim.y;
 
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < outer_size;
        i += outer_loop_stride) {
-    if (threadIdx.y == 0) {
-      smem_mean[threadIdx.x] = compute_mean[i];
-      smem_inv_var[threadIdx.x] = compute_inv_var[i];
-    }
-    __syncthreads();
+    BatchNormParamType<T> mean_val = compute_mean[i];
+    BatchNormParamType<T> inv_var_val = compute_inv_var[i];
+    BatchNormParamType<T> scale_val = scale[i];
+    BatchNormParamType<T> bias_val = bias[i];
 
     for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
          j += inner_loop_stride) {
       const int index = j * outer_size + i;
       BatchNormParamType<T> x_sub_mean =
-          static_cast<BatchNormParamType<T>>(x[index]) - smem_mean[threadIdx.x];
-      y[index] = scale[i] * x_sub_mean * smem_inv_var[threadIdx.x] + bias[i];
+          static_cast<BatchNormParamType<T>>(x[index]) - mean_val;
+      y[index] = scale_val * x_sub_mean * inv_var_val + bias_val;
     }
   }
 }
@@ -495,31 +486,22 @@ static __global__ void BNForwardTraining2DWriteRes(
   int outer_size = C;
   int inner_size = N * HxW;
 
-  extern __shared__ __align__(sizeof(BatchNormParamType<T>)) char smem_buf[];
-
-  BatchNormParamType<T> *smem_mean =
-      reinterpret_cast<BatchNormParamType<T> *>(smem_buf);
-  BatchNormParamType<T> *smem_inv_var =
-      reinterpret_cast<BatchNormParamType<T> *>(
-          smem_buf + blockDim.y * sizeof(BatchNormParamType<T>));
-
   int outer_loop_stride = gridDim.y * blockDim.y;
   int inner_loop_stride = gridDim.x * blockDim.x;
 
   for (int i = blockIdx.y * blockDim.y + threadIdx.y; i < outer_size;
        i += outer_loop_stride) {
-    if (threadIdx.x == 0) {
-      smem_mean[threadIdx.y] = compute_mean[i];
-      smem_inv_var[threadIdx.y] = compute_inv_var[i];
-    }
-    __syncthreads();
+    BatchNormParamType<T> mean_val = compute_mean[i];
+    BatchNormParamType<T> inv_var_val = compute_inv_var[i];
+    BatchNormParamType<T> scale_val = scale[i];
+    BatchNormParamType<T> bias_val = bias[i];
 
     for (int j = blockIdx.x * blockDim.x + threadIdx.x; j < inner_size;
          j += inner_loop_stride) {
       const int index = (j / HxW * C + i) * HxW + j % HxW;
       BatchNormParamType<T> x_sub_mean =
-          static_cast<BatchNormParamType<T>>(x[index]) - smem_mean[threadIdx.y];
-      y[index] = scale[i] * x_sub_mean * smem_inv_var[threadIdx.y] + bias[i];
+          static_cast<BatchNormParamType<T>>(x[index]) - mean_val;
+      y[index] = scale_val * x_sub_mean * inv_var_val + bias_val;
     }
   }
 }
@@ -908,6 +890,8 @@ void BatchNormKernel(const Context &ctx,
         dim3 block;
         dim3 grid;
         const int block_size = 512;
+        const int MAX_GRID_SIZE = 128;
+        const int WARP_SIZE = 32;
 
         // init intermediate storage
         DenseTensor block_data_tensor;
@@ -933,8 +917,9 @@ void BatchNormKernel(const Context &ctx,
                          block_size / block_y);
           }
 
-          int grid_x = std::min(
-              (N * H * W * D + block_x * 16 - 1) / (block_x * 16), 128);
+          int grid_x =
+              std::min((N * H * W * D + block_x * 16 - 1) / (block_x * 16),
+                       MAX_GRID_SIZE);
           int grid_y = (C + block_y - 1) / block_y;
 
           block.x = block_x;
@@ -972,21 +957,20 @@ void BatchNormKernel(const Context &ctx,
                   block_data_ptr,
                   flag_ptr);
 
-          size_t smem_size = block.y * 2 * sizeof(BatchNormParamType<T>);
-          BNForwardTraining2DWriteRes<T>
-              <<<grid, block, smem_size, ctx.stream()>>>(
-                  transformed_x.template data<T>(),
-                  scale.template data<BatchNormParamType<T>>(),
-                  bias.template data<BatchNormParamType<T>>(),
-                  C,
-                  N,
-                  H * W * D,
-                  transformed_y.template data<T>(),
-                  compute_mean_tensor.data<BatchNormParamType<T>>(),
-                  compute_inv_var_tensor.data<BatchNormParamType<T>>());
+          BNForwardTraining2DWriteRes<T><<<grid, block, 0, ctx.stream()>>>(
+              transformed_x.template data<T>(),
+              scale.template data<BatchNormParamType<T>>(),
+              bias.template data<BatchNormParamType<T>>(),
+              C,
+              N,
+              H * W * D,
+              transformed_y.template data<T>(),
+              compute_mean_tensor.data<BatchNormParamType<T>>(),
+              compute_inv_var_tensor.data<BatchNormParamType<T>>());
         } else {
           // init block&grid config
-          int block_x = std::min(phi::funcs::details::GetLastPow2(C), 32);
+          int block_x =
+              std::min(phi::funcs::details::GetLastPow2(C), WARP_SIZE);
           int block_y =
               std::min(phi::funcs::details::GetLastPow2(N * H * W * D / 16),
                        block_size / block_x);
@@ -995,8 +979,9 @@ void BatchNormKernel(const Context &ctx,
                                block_size / block_y);
           }
           int grid_x = (C + block_x - 1) / block_x;
-          int grid_y = std::min(
-              (N * H * W * D + block_y * 16 - 1) / (block_y * 16), 128);
+          int grid_y =
+              std::min((N * H * W * D + block_y * 16 - 1) / (block_y * 16),
+                       MAX_GRID_SIZE);
 
           block.x = block_x;
           block.y = block_y;
@@ -1033,9 +1018,8 @@ void BatchNormKernel(const Context &ctx,
                   block_data_ptr,
                   flag_ptr);
 
-          size_t smem_size = block.x * 2 * sizeof(BatchNormParamType<T>);
           BNForwardTraining2DChannelLastWriteRes<T>
-              <<<grid, block, smem_size, ctx.stream()>>>(
+              <<<grid, block, 0, ctx.stream()>>>(
                   transformed_x.template data<T>(),
                   scale.template data<BatchNormParamType<T>>(),
                   bias.template data<BatchNormParamType<T>>(),
