@@ -30,6 +30,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"
 #endif
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/platform/os_info.h"
 
 PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler, false,
@@ -236,6 +237,45 @@ RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
       name, start_end_ns, start_end_ns, EventRole::kOrdinary, type);
 }
 
+RecordOpInfoSupplement::RecordOpInfoSupplement(
+    const std::string &type, const framework::AttributeMap &attrs,
+    const framework::InferShapeContext &shape_ctx,
+    const framework::RuntimeContext &ctx) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
+    return;
+  }
+  std::map<std::string, std::vector<framework::DDim>> input_shapes;
+  std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
+  for (auto it = ctx.inputs.begin(); it != ctx.inputs.end(); it++) {
+    input_shapes[it->first] = shape_ctx.GetInputsDim(it->first);
+    dtypes[it->first] = shape_ctx.GetInputsVarType(it->first);
+  }
+
+  const std::vector<std::string> *callstack_ptr = nullptr;
+  std::vector<std::string> callstack;
+  auto iter = attrs.find(
+      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  if (iter != attrs.end()) {
+    callstack_ptr = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+    callstack = *callstack_ptr;
+  }
+  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
+      PosixInNsec(), type, input_shapes, dtypes, callstack);
+}
+
+RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
+                               size_t size, uint64_t current_allocated,
+                               uint64_t current_reserved,
+                               const TracerMemEventType type) {
+  if (type == TracerMemEventType::Allocate) {
+    platform::MemEvenRecorder::Instance().PushMemRecord(
+        ptr, place, size, current_allocated, current_reserved);
+  } else if (type == TracerMemEventType::Free) {
+    platform::MemEvenRecorder::Instance().PopMemRecord(
+        ptr, place, size, current_allocated, current_reserved);
+  }
+}
+
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
                                     size_t size) {
   if (g_state == ProfilerState::kDisabled) return;
@@ -248,9 +288,53 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
                           new MemEvenRecorder::RecordMemEvent(place, size)));
 }
 
+void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
+                                    size_t size, uint64_t current_allocated,
+                                    uint64_t current_reserved) {
+  if (g_state == ProfilerState::kDisabled &&
+      FLAGS_enable_host_event_recorder_hook == false)
+    return;
+  std::lock_guard<std::mutex> guard(mtx_);
+  if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
+    HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
+        PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
+        TracerMemEventType::Allocate, size, place, current_allocated,
+        current_reserved);
+    return;
+  }
+  auto &events = address_memevent_[place];
+  PADDLE_ENFORCE_EQ(events.count(ptr), 0,
+                    platform::errors::InvalidArgument(
+                        "The Place can't exist in the stage of PushMemRecord"));
+  events.emplace(ptr, std::unique_ptr<RecordMemEvent>(
+                          new MemEvenRecorder::RecordMemEvent(place, size)));
+}
+
 void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
   if (g_state == ProfilerState::kDisabled) return;
   std::lock_guard<std::mutex> guard(mtx_);
+  auto &events = address_memevent_[place];
+  auto iter = events.find(ptr);
+  // The ptr maybe not in address_memevent
+  if (iter != events.end()) {
+    events.erase(iter);
+  }
+}
+
+void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place,
+                                   size_t size, uint64_t current_allocated,
+                                   uint64_t current_reserved) {
+  if (g_state == ProfilerState::kDisabled &&
+      FLAGS_enable_host_event_recorder_hook == false)
+    return;
+  std::lock_guard<std::mutex> guard(mtx_);
+  if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
+    HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
+        PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
+        TracerMemEventType::Free, -size, place, current_allocated,
+        current_reserved);
+    return;
+  }
   auto &events = address_memevent_[place];
   auto iter = events.find(ptr);
   // The ptr maybe not in address_memevent

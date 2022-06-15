@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.pb.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
@@ -102,6 +103,10 @@ struct MemEvenRecorder {
  public:
   void PushMemRecord(const void* ptr, const Place& place, size_t size);
   void PopMemRecord(const void* ptr, const Place& place);
+  void PushMemRecord(const void* ptr, const Place& place, size_t size,
+                     uint64_t current_allocated, uint64_t current_reserved);
+  void PopMemRecord(const void* ptr, const Place& place, size_t size,
+                    uint64_t current_allocated, uint64_t current_reserved);
   void Flush();
   static MemEvenRecorder& Instance() { return recorder; }
 
