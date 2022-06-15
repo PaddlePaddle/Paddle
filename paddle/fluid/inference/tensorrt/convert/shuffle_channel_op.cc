@@ -44,39 +44,19 @@ class ShuffleChannelOpConverter : public OpConverter {
 
 #if IS_TRT_VERSION_GE(8000)
     if (engine_->with_dynamic_shape()) {
-      auto* input_shape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input);
-      auto* input_shape_tensor = input_shape_layer->getOutput(0);
-      auto* channel_index_tensor =
-          Add1DConstantLayer(1, output_name + "_channel_index_tensor_");
-      auto* channel_shape_tensor =
-          TRT_ENGINE_ADD_LAYER(engine_, Gather, *input_shape_tensor,
-                               *channel_index_tensor, 0)
-              ->getOutput(0);
+      auto* input_shape_tensor = Shape(input);
+      auto* channel_shape_tensor = GetEleTensorOfShape(input_shape_tensor, 1);
       auto* group_tensor =
           Add1DConstantLayer(group, output_name + "_group_tensor_");
-
-      auto* new_channel_shape_tensor =
-          TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *channel_shape_tensor,
-                               *group_tensor,
-                               nvinfer1::ElementWiseOperation::kDIV)
-              ->getOutput(0);
-
+      auto* new_channel_shape_tensor = Div(channel_shape_tensor, group_tensor);
       std::vector<int32_t> shape_dim3{0, 2, 3};
-      auto* shape_dim3_index_tensor =
-          Add1DConstantLayer(shape_dim3, output_name + "_shape_dim3_tensor_");
-      auto* shape_dim3_tensor =
-          TRT_ENGINE_ADD_LAYER(engine_, Gather, *input_shape_tensor,
-                               *shape_dim3_index_tensor, 0)
-              ->getOutput(0);
+      auto* shape_dim3_tensor = Gather(input_shape_tensor, shape_dim3);
 
       std::vector<nvinfer1::ITensor*> itensors;
       itensors.push_back(shape_dim3_tensor);
       itensors.push_back(group_tensor);
       itensors.push_back(new_channel_shape_tensor);
-      auto* reshape_tensor =
-          TRT_ENGINE_ADD_LAYER(engine_, Concatenation, itensors.data(),
-                               itensors.size())
-              ->getOutput(0);
+      auto* reshape_tensor = Concat(itensors);
 
       auto* reshape_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *reshape_tensor);
