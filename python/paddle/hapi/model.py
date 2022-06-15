@@ -954,7 +954,7 @@ class Model(object):
             import paddle.nn as nn
             import paddle.vision.transforms as T
             from paddle.static import InputSpec
-    
+
             device = paddle.set_device('cpu') # or 'gpu'
 
             net = nn.Sequential(
@@ -962,7 +962,7 @@ class Model(object):
                 nn.Linear(784, 200),
                 nn.Tanh(),
                 nn.Linear(200, 10))
-    
+
             # inputs and labels are not required for dynamic graph.
             input = InputSpec([None, 784], 'float32', 'x')
             label = InputSpec([None, 1], 'int64', 'label')
@@ -974,7 +974,7 @@ class Model(object):
             model.prepare(optim,
                             paddle.nn.CrossEntropyLoss(),
                             paddle.metric.Accuracy())
-            
+
             transform = T.Compose([
                 T.Transpose(),
                 T.Normalize([127.5], [127.5])
@@ -1177,7 +1177,7 @@ class Model(object):
 
             .. code-block:: python
               :name: code-example-predict-batch
-            
+
                 import numpy as np
                 import paddle
                 import paddle.nn as nn
@@ -1235,7 +1235,7 @@ class Model(object):
 
             .. code-block:: python
               :name: code-example-save
-            
+
                 import paddle
                 import paddle.nn as nn
                 import paddle.vision.transforms as T
@@ -1265,7 +1265,7 @@ class Model(object):
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
                     parameters=model.parameters())
                 model.prepare(optim, paddle.nn.CrossEntropyLoss())
-                
+
                 transform = T.Compose([
                     T.Transpose(),
                     T.Normalize([127.5], [127.5])
@@ -1534,6 +1534,7 @@ class Model(object):
                 for details. For convenience, 'amp_configs' could be set to
                 'O1' or 'O2' if no more parameters are needed. 'amp_configs'
                 could be None in float32 training. Default: None.
+
         Returns:
             None
         """
@@ -1638,7 +1639,7 @@ class Model(object):
             num_iters (int|None): Integer number. The number of iterations to train
                 the model. If None, follow `epochs` to train the model, otherwise, train
                 the model `num_iters` times. Default: None.
-            
+
         Returns:
             None
 
@@ -1648,7 +1649,7 @@ class Model(object):
 
             .. code-block:: python
               :name: code-example-fit-1
-            
+
                 import paddle
                 import paddle.vision.transforms as T
                 from paddle.vision.datasets import MNIST
@@ -1664,10 +1665,10 @@ class Model(object):
                 ])
                 train_dataset = MNIST(mode='train', transform=transform)
                 val_dataset = MNIST(mode='test', transform=transform)
-            
+
                 input = InputSpec([None, 1, 28, 28], 'float32', 'image')
                 label = InputSpec([None, 1], 'int64', 'label')
-            
+
                 model = paddle.Model(
                     paddle.vision.models.LeNet(),
                     input, label)
@@ -1708,10 +1709,10 @@ class Model(object):
                 val_dataset = MNIST(mode='test', transform=transform)
                 val_loader = paddle.io.DataLoader(val_dataset,
                     batch_size=64)
-            
+
                 input = InputSpec([None, 1, 28, 28], 'float32', 'image')
                 label = InputSpec([None, 1], 'int64', 'label')
-            
+
                 model = paddle.Model(
                     paddle.vision.models.LeNet(), input, label)
                 optim = paddle.optimizer.Adam(
@@ -2180,10 +2181,10 @@ class Model(object):
 
                 import paddle
                 from paddle.static import InputSpec
-            
+
                 input = InputSpec([None, 1, 28, 28], 'float32', 'image')
                 label = InputSpec([None, 1], 'int64', 'label')
-            
+
                 model = paddle.Model(paddle.vision.models.LeNet(),
                     input, label)
                 optim = paddle.optimizer.Adam(
