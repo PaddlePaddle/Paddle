@@ -28,7 +28,7 @@ RUN apt-get update && \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib \
-    automake locales clang-format swig  \
+    automake locales swig  \
     liblapack-dev liblapacke-dev \
     net-tools libtool module-init-tools && \
     apt-get clean -y
@@ -191,6 +191,11 @@ RUN pip3.6 --no-cache-dir install pytest astroid isort && \
     pip --no-cache-dir install pylint pytest astroid isort
 
 #For pre-commit
+RUN pip3.6 --no-cache-dir install --upgrade pip && \
+    pip3.7 --no-cache-dir install --upgrade pip && \
+    pip3.8 --no-cache-dir install --upgrade pip && \
+    pip3.9 --no-cache-dir install --upgrade pip
+
 RUN pip3.6 --no-cache-dir install pre-commit==2.1.1 pylint==2.12.0 && \
     pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.8 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \

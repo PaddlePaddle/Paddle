@@ -45,8 +45,7 @@ RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && ta
 ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
 
 
-RUN apt-get update && \
-  apt-get install -y python2.7 python2.7-dev \
+RUN apt-get install -y python2.7 python2.7-dev \
   python3.6 python3.6-dev \
   python3.7 python3.7-dev \
   python3.8 python3.8-dev python3.8-distutils \
@@ -126,6 +125,11 @@ RUN pip3.6 --no-cache-dir install pytest astroid isort && \
     pip2.7 --no-cache-dir install pytest astroid isort
 
 #For pre-commit
+RUN pip3.6 --no-cache-dir install --upgrade pip && \
+    pip3.7 --no-cache-dir install --upgrade pip && \
+    pip3.8 --no-cache-dir install --upgrade pip && \
+    pip3.9 --no-cache-dir install --upgrade pip
+
 RUN pip3.6 --no-cache-dir install pre-commit==2.1.1 pylint==2.12.0 && \
     pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.8 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
@@ -160,10 +164,5 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     make -j8 && make install && \
     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache && \
     cd ../ && rm -rf ccache-3.7.9 ccache-3.7.9.tar.gz
-
-# clang-form 3.8.0
-RUN wget https://paddle-ci.cdn.bcebos.com/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && \ 
-    tar xf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && cd clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && \
-    cp -r * /usr/local && cd .. && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz 
 
 EXPOSE 22
