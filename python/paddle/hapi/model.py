@@ -934,14 +934,14 @@ class Model(object):
     Args:
         network (paddle.nn.Layer): The network is an instance of
             paddle.nn.Layer.
-        inputs (InputSpec|list|tuple|dict|None): `inputs`, entry points of network,
+        inputs (InputSpec|list|tuple|dict|None, optional): `inputs`, entry points of network,
             could be a InputSpec instance, or list/tuple of InputSpec instances,
             or dict ({name: InputSpec}), and it couldn't be None in static
-            graph.
-        labels (InputSpec|list|tuple|None): `labels`, entry points of network,
+            graph. Default: None.
+        labels (InputSpec|list|tuple|None, optional): `labels`, entry points of network,
             could be a InputSpec instnace or list/tuple of InputSpec instances,
             or None. For static graph, if labels is required in loss,
-            labels must be set. Otherwise, it could be None.
+            labels must be set. Otherwise, it could be None. Default: None.
 
 
     Examples:
@@ -972,8 +972,8 @@ class Model(object):
                 parameters=model.parameters())
 
             model.prepare(optim,
-                            paddle.nn.CrossEntropyLoss(),
-                            paddle.metric.Accuracy())
+                        paddle.nn.CrossEntropyLoss(),
+                        paddle.metric.Accuracy())
 
             transform = T.Compose([
                 T.Transpose(),
@@ -1061,12 +1061,12 @@ class Model(object):
             inputs (numpy.ndarray|Tensor|list): Batch of input data. It could 
                 be a numpy array or paddle.Tensor, or a list of arrays or 
                 tensors (in case the model has multiple inputs).
-            labels (numpy.ndarray|Tensor|list): Batch of labels. It could be 
+            labels (numpy.ndarray|Tensor|list, optional): Batch of labels. It could be 
                 a numpy array or paddle.Tensor, or a list of arrays or tensors 
                 (in case the model has multiple labels). If has no labels, 
-                set None. Default is None.
-            update (bool): Whether update parameters after loss.backward() computing.
-                Using it to accumulate gradients. Default is True.
+                set None. Default: None.
+            update (bool, optional): Whether update parameters after loss.backward() computing.
+                Set it to False to accumulate gradients. Default: True.
 
         Returns:
             A list of scalar training loss if the model has no metrics,
@@ -1116,10 +1116,10 @@ class Model(object):
             inputs (numpy.ndarray|Tensor|list): Batch of input data. It could 
                 be a numpy array or paddle.Tensor, or a list of arrays or 
                 tensors (in case the model has multiple inputs).
-            labels (numpy.ndarray|Tensor|list): Batch of labels. It could be 
+            labels (numpy.ndarray|Tensor|list, optional): Batch of labels. It could be 
                 a numpy array or paddle.Tensor, or a list of arrays or tensors 
                 (in case the model has multiple labels). If has no labels, 
-                set None. Default is None.
+                set None. Default: None.
 
         Returns:
             A list of scalar testing loss if the model has no metrics,
@@ -1305,14 +1305,14 @@ class Model(object):
                 optimizer states. The files would be `path.pdparams` and
                 `path.pdopt` separately, and the latter is not necessary
                 when no need to restore.
-            skip_mismatch (bool): Whether to skip the loading of mismatch
+            skip_mismatch (bool, optional): Whether to skip the loading of mismatch
                 parameter or raise an error when mismatch happens (not found
                 the parameter in file storing model states of or receives a
-                mismatch shape).
-            reset_optimizer (bool): If True, ignore the providing file storing
+                mismatch shape). Default: False.
+            reset_optimizer (bool, optional): If True, ignore the providing file storing
                 optimizer states and initialize optimizer states from scratch.
                 Otherwise, restore optimizer states from `path.pdopt` if
-                a optimizer has been set to the model. Default False.
+                a optimizer has been set to the model. Default: False.
 
         Returns:
             None
@@ -1514,16 +1514,16 @@ class Model(object):
         Configures the model before runing.
 
         Args:
-            optimizer (Optimizer|None): Optimizer must be set in training
+            optimizer (Optimizer|None, optional): Optimizer must be set in training
                 and should be a Optimizer instance. It can be None in eval
-                and test mode.
-            loss (Loss|callable function|None): Loss function can
+                and test mode. Default: None.
+            loss (Loss|Callable|None, optional): Loss function can
                 be a `paddle.nn.Layer` instance or any callable function
                 taken the predicted values and ground truth values as input.
-                It can be None when there is no loss.
-            metrics (Metric|list of Metric|None): If metrics is set, all
-                metrics will be calculated and output in train/eval mode.
-            amp_configs (str|dict|None): AMP configurations. If AMP or pure
+                It can be None when there is no loss. Default: None.
+            metrics (Metric|list[Metric]|None, optional): If metrics is set, all
+                metrics will be calculated and output in train/eval mode. Default: None.
+            amp_configs (str|dict|None, optional): AMP configurations. If AMP or pure
                 float16 training is used, the key 'level' of 'amp_configs'
                 should be set to 'O1' or 'O2' respectively. Otherwise, the
                 value of 'level' defaults to 'O0', which means float32
@@ -1601,47 +1601,47 @@ class Model(object):
         evaluation will be done at the end of each epoch.
 
         Args:
-            train_data (Dataset|DataLoader): An iterable data loader is used for 
+            train_data (Dataset|DataLoader, optional): An iterable data loader is used for 
                 train. An instance of paddle paddle.io.Dataset or 
                 paddle.io.Dataloader is recomended. Default: None.
-            eval_data (Dataset|DataLoader): An iterable data loader is used for
+            eval_data (Dataset|DataLoader, optional): An iterable data loader is used for
                 evaluation at the end of epoch. If None, will not do evaluation. 
                 An instance of paddle.io.Dataset or paddle.io.Dataloader 
                 is recomended. Default: None.
-            batch_size (int): Integer number. The batch size of train_data
+            batch_size (int, optional): Integer number. The batch size of train_data
                 and eval_data. When train_data and eval_data are both the
                 instance of Dataloader, this parameter will be ignored.
                 Default: 1.
-            epochs (int): Integer number. The number of epochs to train
+            epochs (int, optional): Integer number. The number of epochs to train
                 the model. Default: 1.
-            eval_freq (int): The frequency, in number of epochs, an evalutation
+            eval_freq (int, optional): The frequency, in number of epochs, an evalutation
                 is performed. Default: 1.
-            log_freq (int): The frequency, in number of steps, the training logs
+            log_freq (int, optional): The frequency, in number of steps, the training logs
                 are printed. Default: 10.
-            save_dir(str|None): The directory to save checkpoint during training.
+            save_dir(str|None, optional): The directory to save checkpoint during training.
                 If None, will not save checkpoint. Default: None.
-            save_freq (int): The frequency, in number of epochs, to save
+            save_freq (int, optional): The frequency, in number of epochs, to save
                 checkpoint. Default: 1.
-            verbose (int): The verbosity mode, should be 0, 1, or 2. 0 = silent,
+            verbose (int, optional): The verbosity mode, should be 0, 1, or 2. 0 = silent,
                 1 = progress bar, 2 = one line per epoch. Default: 2.
-            drop_last (bool): Whether drop the last incomplete batch of
+            drop_last (bool, optional): Whether drop the last incomplete batch of
                 train_data when dataset size is not divisible by the batch size.
                 When train_data is an instance of Dataloader, this parameter
                 will be ignored. Default: False.
-            shuffle (bool): Whther to shuffle train_data. When train_data is
+            shuffle (bool, optional): Whther to shuffle train_data. When train_data is
                 an instance of Dataloader, this parameter will be ignored.
                 Default: True.
-            num_workers (int): The number of subprocess to load data, 0 for no
+            num_workers (int, optional): The number of subprocess to load data, 0 for no
                 subprocess used and loading data in main process.
                 When train_data and eval_data are both the instance of
                 Dataloader, this parameter will be ignored. Default: 0.
-            callbacks (Callback|None): A list of `Callback` instances to apply
+            callbacks (Callback|None, optional): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
-            accumulate_grad_batches (int): The number of batches to accumulate gradident 
+            accumulate_grad_batches (int, optional): The number of batches to accumulate gradident 
                 during training process before optimizer updates. It can mimic large batch
                 size. Default: 1.
-            num_iters (int|None): Integer number. The number of iterations to train
+            num_iters (int|None, optional): Integer number. The number of iterations to train
                 the model. If None, follow `epochs` to train the model, otherwise, train
                 the model `num_iters` times. Default: None.
 
@@ -1825,21 +1825,21 @@ class Model(object):
             eval_data (Dataset|DataLoader): An iterable data loader is used for
                 evaluation. An instance of paddle.io.Dataset or 
                 paddle.io.Dataloader is recomended.
-            batch_size (int): Integer number. The batch size of train_data
+            batch_size (int, optional): Integer number. The batch size of train_data
                 and eval_data.  When eval_data is the instance of Dataloader,
                 this argument will be ignored. Default: 1.
-            log_freq (int): The frequency, in number of steps, the eval logs
+            log_freq (int, optional): The frequency, in number of steps, the eval logs
                 are printed. Default: 10.
-            verbose (int): The verbosity mode, should be 0, 1, or 2. 0 = silent,
+            verbose (int, optional): The verbosity mode, should be 0, 1, or 2. 0 = silent,
                 1 = progress bar, 2 = one line per epoch. Default: 2.
-            num_workers (int): The number of subprocess to load data,
+            num_workers (int, optional): The number of subprocess to load data,
                 0 for no subprocess used and loading data in main process. When
                 train_data and eval_data are both the instance of Dataloader,
                 this parameter will be ignored. Default: 0.
-            callbacks (Callback|None): A list of `Callback` instances to apply
+            callbacks (Callback|None, optional): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
-            num_iters (int|None): Integer number. The number of iterations to
+            num_iters (int|None, optional): Integer number. The number of iterations to
                 evaluate the model. If None, evaluate on whole input dataset,
                 otherwise, evaluate `num_iters` times. Default: None.
         Returns:
@@ -1930,21 +1930,21 @@ class Model(object):
             test_data (Dataset|DataLoader): An iterable data loader is used for
                 predict. An instance of paddle.io.Dataset or paddle.io.Dataloader
                 is recomended.
-            batch_size (int): Integer number. The batch size of train_data and eval_data.
+            batch_size (int, optional): Integer number. The batch size of train_data and eval_data.
                 When train_data and eval_data are both the instance of Dataloader, this
                 argument will be ignored. Default: 1.
-            num_workers (int): The number of subprocess to load data, 0 for no subprocess 
+            num_workers (int, optional): The number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
                 both the instance of Dataloader, this argument will be ignored. Default: 0.
-            stack_outputs (bool): Whether stack output field like a batch, as for an output
+            stack_outputs (bool, optional): Whether stack output field like a batch, as for an output
                 filed of a sample is in shape [X, Y], test_data contains N samples, predict
                 output field will be in shape [N, X, Y] if stack_output is True, and will
                 be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
                 is False. stack_outputs as False is used for LoDTensor output situation,
                 it is recommended set as True if outputs contains no LoDTensor. Default: False.
-            verbose (int): The verbosity mode, should be 0, 1, or 2. 0 = silent,
+            verbose (int, optional): The verbosity mode, should be 0, 1, or 2. 0 = silent,
                 1 = progress bar, 2 = one line per batch. Default: 1.
-            callbacks(Callback): A Callback instance, default None.
+            callbacks(Callback, optional): A Callback instance, Default: None.
 
         Returns:
             list: output of models.
