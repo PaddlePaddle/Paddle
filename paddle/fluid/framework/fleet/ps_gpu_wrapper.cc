@@ -769,7 +769,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     }
 #endif
 #ifdef PADDLE_WITH_PSCORE
-      VLOG(0) << "cpu build "<< k << " cpuptr: " << (uint64_t)(device_dim_ptrs[k])
+      VLOG(5) << "cpu build "<< k << " cpuptr: " << (uint64_t)(device_dim_ptrs[k])
               << " |: "<< cpu_table_accessor_->ParseToString(ptr_val, dim);
       val[feature_value_accessor_.common_feature_value.DeltaScoreIndex()] =
           ptr_val[cpu_table_accessor_->common_feature_value.DeltaScoreIndex()];
@@ -814,7 +814,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
           val[feature_value_accessor_.common_feature_value.EmbedxWIndex() + x] = 0;
         }
       }
-      VLOG(0) << "build "<< k << " : "<< feature_value_accessor_.ParseToString(val, feature_value_accessor_.GetAccessorInfo().dim);
+      VLOG(5) << "build "<< k << " : "<< feature_value_accessor_.ParseToString(val, feature_value_accessor_.GetAccessorInfo().dim);
     }
 #endif
 
@@ -1199,14 +1199,6 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     pull_gpups_timer.Start();
     HeterPs_->pull_sparse(
         devid_2_index, total_keys, total_values_gpu, total_length);
-
-    // char* tmp_mem = (char*)malloc(total_length * feature_value_size);
-    // cudaMemcpy(tmp_mem, total_values_gpu, total_length * feature_value_size,
-    //             cudaMemcpyDeviceToHost);
-    // for (int i =0 ; i < 20; i++){
-    //     float* val = (float*)(void*)&tmp_mem[(i)*feature_value_size];
-    //     VLOG(0) << "pullsparse_cpu "<< i << " : "<< feature_value_accessor_.ParseToString(val, feature_value_accessor_.GetAccessorInfo().dim);
-    // }
 
     VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
             << "]";

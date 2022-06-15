@@ -24,12 +24,9 @@ namespace distributed {
 
 int CtrDymfAccessor::Initialize() {
   auto name = _config.embed_sgd_param().name();
-  
   _embed_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
   _embed_sgd_rule->LoadConfig(_config.embed_sgd_param(), 1);
 
-  VLOG(0) << "CtrDymfAccessor::Initialize embed_sgd_param name:" << name
-          << "  embedx_sgd_param name: " << _config.embedx_sgd_param().name();
   name = _config.embedx_sgd_param().name();
   _embedx_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
   _embedx_sgd_rule->LoadConfig(_config.embedx_sgd_param(),

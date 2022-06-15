@@ -169,8 +169,6 @@ __global__ void dy_mf_update_kernel(Table* table,
     if (it != table->end()) {
       float* cur = (float*)(grads + i * grad_value_size);
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, cur);
-      // printf("dy_mf_update_kernel: %d, %s", keys[i], 
-      //       sgd.feature_value_accessor_.ParseToString(cur, sgd.feature_value_accessor_.GetAccessorInfo().dim));
     } else {
       if (keys[i] != 0) {
         printf("warning::push miss key: %llu", keys[i]);
@@ -244,9 +242,6 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys,
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-  VLOG(0) << "GET:" << feature_value_accessor_.common_feature_value.EmbedDim()
-        << "  " << feature_value_accessor_.common_feature_value.EmbedXDim()
-        << "  " << feature_value_accessor_.common_feature_value.EmbedWDim();
   dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_, d_keys, d_vals, len, pull_feature_value_size_, feature_value_accessor_);
 }

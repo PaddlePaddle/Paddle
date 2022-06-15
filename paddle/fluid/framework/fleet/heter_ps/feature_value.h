@@ -158,30 +158,6 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
  
   __host__ __device__ CommonFeatureValueAccessor() {}
   __host__ __device__ ~CommonFeatureValueAccessor() {}
-  // __host__ __device__ virtual int Initialize() {
-  //   std::string name = (_config.find("embed_sparse_optimizer") == _config.end())
-  //                                ? "adagrad"
-  //                                : _config["embed_sparse_optimizer"];
-  //   int sparse_embedx_dim = (_config.find("sparse_embedx_dim") == _config.end())
-  //                                ? 8
-  //                                : std::stoi(_config["sparse_embedx_dim"]);
-  //   if (name.compare("adam") == 0) {
-  //     common_feature_value.embed_sgd_dim = 4;
-  //     common_feature_value.embedx_sgd_dim = sparse_embedx_dim * 2 + 2;
-  //   } else if (name.compare("shared_adam") == 0) {
-  //     common_feature_value.embed_sgd_dim = 4;
-  //     common_feature_value.embedx_sgd_dim = 4;
-  //   } else {
-  //     common_feature_value.embed_sgd_dim = 1;
-  //     common_feature_value.embedx_sgd_dim = 1;
-  //   }
-    
-  //   common_feature_value.embedx_dim = sparse_embedx_dim;
-
-  //   // VLOG(0) << " INTO FeatureValueAccessor::Initialize()";
-  //   InitAccessorInfo();
-  //   return 0;
-  // }
 
   __host__ __device__ virtual int Initialize() {
     int optimizer_type = (_config.find("optimizer_type") == _config.end())
@@ -223,40 +199,6 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
         (embedx_dim + common_feature_value.embedx_sgd_dim) * sizeof(float);
   }
 
-  // friend std::ostream& operator<<(std::ostream& out, CommonFeatureValueAccessor& v) {
-  //   /*
-  //       uint64_t cpu_ptr;
-  //       float delta_score;
-  //       float show;
-  //       float click;
-  //       float embed_w;
-  //       std::vector<float> embed_g2sum;
-  //       float slot;
-  //       float mf_dim
-  //       float mf_size
-  //       std::vector<float> embedx_g2sum;
-  //       std::vector<float> embedx_w;
-  //   */
-  //   out << v[0] << " " << v[1] << " " << v[2] << " " << v[3] << " " << v[4];
-  //   //    << v[5] << " " << v[6];
-  //   for (int i = common_feature_value.EmbedG2SumIndex();
-  //       i < common_feature_value.EmbedxWIndex(); i++) {
-  //     out << " " << v[i];
-  //   }
-  //   out << " " << common_feature_value.Slot(v) << " "
-  //     << common_feature_value.MfDim(v)
-  //     << common_feature_value.MfSize(v);
-  
-  //   for (int x = 0; x < common_feature_value.EmbedXDim(); x++) {
-  //     out << " " << v[common_feature_value.EmbedxG2SumIndex() + x];
-  //   }
-  //   for (int x = 0; x < common_feature_value.MfDim(v); x++) {
-  //     out << " " << v[common_feature_value.EmbedxWIndex() + x];
-  //   }
-  //   return out;
-  // }
-
-
   __host__ __device__ std::string ParseToString(const float* v, int param_size) {
     /*
         uint64_t cpu_ptr; // 2float
@@ -295,8 +237,6 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
  public:
   CommonFeatureValue common_feature_value;
   CommonPushValue common_push_value;
-  // SparseValueSGDRule* _embed_sgd_rule;
-  // SparseValueSGDRule* _embedx_sgd_rule;
 };
 
 
@@ -306,26 +246,17 @@ struct FeatureValue {
   float clk;
   int slot;
   float lr;
+  float lr_g2sum;
   int mf_size;
   int mf_dim;
   uint64_t cpu_ptr;
-  int lr_sgd_dim;
-  int mf_sgd_dim;
-  float lr_g2sum[1];
-  float mf_g2sum[1];
   float mf[0];
 
   friend std::ostream& operator<<(std::ostream& out, FeatureValue& val) {
     out << "show: " << val.show << " clk: " << val.clk << " slot: " << val.slot
         << " lr: " << val.lr << " mf_dim: " << val.mf_dim
         << "cpuptr: " << val.cpu_ptr << " mf_size: " << val.mf_size << " mf:";
-    for (int i = 0; i < val.lr_sgd_dim; ++i) {
-      out << " " << val.lr_g2sum[i];
-    }
-    for (int i = 0; i < val.mf_sgd_dim; ++i) {
-      out << " " << val.mf_g2sum[i];
-    }
-    for (int i = 0; i < val.mf_dim; ++i) {
+    for (int i = 0; i < val.mf_dim + 1; ++i) {
       out << " " << val.mf[i];
     }
     return out;
@@ -336,102 +267,15 @@ struct FeatureValue {
     clk = in.clk;
     slot = in.slot;
     lr = in.lr;
+    lr_g2sum = in.lr_g2sum;
     mf_size = in.mf_size;
     mf_dim = in.mf_dim;
     cpu_ptr = in.cpu_ptr;
-    lr_sgd_dim = in.lr_sgd_dim;
-    mf_sgd_dim = in.mf_sgd_dim;
-
-    for (int i = 0; i < lr_sgd_dim; ++i) {
-      lr_g2sum[i] = in.lr_g2sum[i];
-    }
-    for (int i = 0; i < mf_sgd_dim; ++i) {
-      mf_g2sum[i] = in.mf_g2sum[i];
-    }
-    for (int i = 0; i < mf_dim; i++) {
+    for (int i = 0; i < mf_dim + 1; i++) {
       mf[i] = in.mf[i];
     }
   }
 };
-
-// struct AdamFeatureValue {
-//   float delta_score;
-//   float show;
-//   float clk;
-//   int slot;
-//   float lr;
-//   int mf_size;
-//   int mf_dim;
-//   int lr_sgd_dim;
-//   int mf_sgd_dim;
-//   uint64_t cpu_ptr;
-//   float lr_g2sum[0];
-//   float mf_g2sum[0];
-//   float mf[0];
-
-
-//   __device__ __forceinline__ void operator=(const FeatureValue& in) {
-//     delta_score = in.delta_score;
-//     show = in.show;
-//     clk = in.clk;
-//     slot = in.slot;
-//     lr = in.lr;
-//     mf_size = in.mf_size;
-//     mf_dim = in.mf_dim;
-//     cpu_ptr = in.cpu_ptr;
-//     lr_sgd_dim = in.lr_sgd_dim;
-//     mf_sgd_dim = in.mf_sgd_dim;
-
-//     for (int i = 0; i < lr_sgd_dim; ++i) {
-//       lr_g2sum[i] = in.lr_g2sum[i];
-//     }
-//     for (int i = 0; i < mf_sgd_dim; ++i) {
-//       mf_g2sum[i] = in.mf_g2sum[i];
-//     }
-//     for (int i = 0; i < mf_dim; i++) {
-//       mf[i] = in.mf[i];
-//     }
-//   }
-// };
-
-// struct AdamSharedFeatureValue {
-//   float delta_score;
-//   float show;
-//   float clk;
-//   int slot;
-//   float lr;
-//   int mf_size;
-//   int mf_dim;
-//   int lr_sgd_dim;
-//   int mf_sgd_dim;
-//   uint64_t cpu_ptr;
-//   float lr_g2sum[4];
-//   float mf_g2sum[4];
-//   float mf[0];
-
-//   __device__ __forceinline__ void operator=(const FeatureValue& in) {
-//     delta_score = in.delta_score;
-//     show = in.show;
-//     clk = in.clk;
-//     slot = in.slot;
-//     lr = in.lr;
-//     mf_size = in.mf_size;
-//     mf_dim = in.mf_dim;
-//     cpu_ptr = in.cpu_ptr;
-//     lr_sgd_dim = in.lr_sgd_dim;
-//     mf_sgd_dim = in.mf_sgd_dim;
-
-//     for (int i = 0; i < lr_sgd_dim; ++i) {
-//       lr_g2sum[i] = in.lr_g2sum[i];
-//     }
-//     for (int i = 0; i < mf_sgd_dim; ++i) {
-//       mf_g2sum[i] = in.mf_g2sum[i];
-//     }
-//     for (int i = 0; i < mf_dim; i++) {
-//       mf[i] = in.mf[i];
-//     }
-//   }
-// };
 
 
 struct FeaturePushValue {
