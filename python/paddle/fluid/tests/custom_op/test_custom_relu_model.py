@@ -227,6 +227,7 @@ class TestStaticModel(unittest.TestCase):
 
     def tearDown(self):
         paddle.disable_static()
+        self.temp_dir.cleanup()
 
     def test_train_eval(self):
         for device in self.devices:
