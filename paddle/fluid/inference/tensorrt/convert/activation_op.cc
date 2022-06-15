@@ -63,8 +63,7 @@ class ActivationOpConverter : public OpConverter {
               ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
               : 20.0f;
       auto* layer_clip = TRT_ENGINE_ADD_LAYER(
-          engine_, Activation, *const_cast<nvinfer1::ITensor*>(input_tensor),
-          nvinfer1::ActivationType::kCLIP);
+          engine_, Activation, *input_tensor, nvinfer1::ActivationType::kCLIP);
       layer_clip->setAlpha(-3.40282e+038);
       layer_clip->setBeta(threshold / beta);
       layer = TRT_ENGINE_ADD_LAYER(engine_, Activation,
@@ -72,9 +71,8 @@ class ActivationOpConverter : public OpConverter {
       layer->setAlpha(1.0f / beta);
       layer->setBeta(beta);
     } else {
-      layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Activation, *const_cast<nvinfer1::ITensor*>(input_tensor),
-          op_pair->second);
+      layer = TRT_ENGINE_ADD_LAYER(engine_, Activation, *input_tensor,
+                                   op_pair->second);
     }
 
 #if IS_TRT_VERSION_GE(5130)
