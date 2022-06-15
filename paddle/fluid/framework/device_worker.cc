@@ -164,8 +164,7 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
                              int dump_interval) {  // dump_mode: 0: no random,
                                                    // 1: random with insid hash,
                                                    // 2: random with random
-  // 3: in sequential order of the records
-  // number
+  // 3: simple mode
   size_t batch_size = device_reader_->GetCurBatchSize();
   auto& ins_id_vec = device_reader_->GetInsIdVec();
   auto& ins_content_vec = device_reader_->GetInsContentVec();
