@@ -44,7 +44,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 for op_type in [
                         "exp", "log", "sqrt", "abs", "sin", "cos", "tan",
                         "sinh", "cosh", "asin", "acos", "atan", "asinh",
-                        "acosh", "atanh", "ceil", "floor"
+                        "atanh", "ceil", "floor"
                 ]:
                     self.dims = dims
                     dics = [{}]

@@ -77,7 +77,6 @@ const std::unordered_map<std::string, nvinfer1::UnaryOperation>
         {"acos", nvinfer1::UnaryOperation::kACOS},
         {"atan", nvinfer1::UnaryOperation::kATAN},
         {"asinh", nvinfer1::UnaryOperation::kASINH},
-        {"acosh", nvinfer1::UnaryOperation::kACOSH},
         {"atanh", nvinfer1::UnaryOperation::kATANH},
         {"ceil", nvinfer1::UnaryOperation::kCEIL},
         {"floor", nvinfer1::UnaryOperation::kFLOOR},
@@ -140,10 +139,6 @@ class AsinhOpConverter : public UnaryOpConverter {
  public:
   AsinhOpConverter() { op_type_ = "asinh"; }
 };
-class AcoshOpConverter : public UnaryOpConverter {
- public:
-  AcoshOpConverter() { op_type_ = "acosh"; }
-};
 class AtanhOpConverter : public UnaryOpConverter {
  public:
   AtanhOpConverter() { op_type_ = "atanh"; }
@@ -180,7 +175,6 @@ REGISTER_TRT_OP_CONVERTER(asin, AsinOpConverter);
 REGISTER_TRT_OP_CONVERTER(acos, AcosOpConverter);
 REGISTER_TRT_OP_CONVERTER(atan, AtanOpConverter);
 REGISTER_TRT_OP_CONVERTER(asinh, AsinhOpConverter);
-REGISTER_TRT_OP_CONVERTER(acosh, AcoshOpConverter);
 REGISTER_TRT_OP_CONVERTER(atanh, AtanhOpConverter);
 REGISTER_TRT_OP_CONVERTER(ceil, CeilOpConverter);
 REGISTER_TRT_OP_CONVERTER(floor, FloorOpConverter);
