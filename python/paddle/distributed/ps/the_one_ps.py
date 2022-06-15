@@ -138,7 +138,7 @@ class Accessor:
         if not accessor_proto.HasField("accessor_class"):
             # DownpourSparseValueAccessor
             if context['use_ps_gpu']:
-                accessor_proto.accessor_class = "CtrCommonAccessor"
+                accessor_proto.accessor_class = "CtrDymfAccessor"
             else:
                 accessor_proto.accessor_class = "SparseAccessor"
         if not accessor_proto.HasField("fea_dim"):
@@ -601,10 +601,16 @@ class SparseTable(Table):
         if usr_table_proto.HasField("shard_num"):
             table_proto.shard_num = usr_table_proto.shard_num
         else:
-            table_proto.shard_num = 1000
-            warnings.warn(
-                "The shard_num of sparse table is not set, use default value 1000."
-            )
+            if self.context['use_ps_gpu']:
+                table_proto.shard_num = 37
+                warnings.warn(
+                    "The shard_num of sparse table is not set, use default value 37 in gpups."
+                )
+            else:
+                table_proto.shard_num = 1000
+                warnings.warn(
+                    "The shard_num of sparse table is not set, use default value 1000 in cpups."
+                )
 
         if usr_table_proto.accessor.ByteSize() == 0:
             warnings.warn(

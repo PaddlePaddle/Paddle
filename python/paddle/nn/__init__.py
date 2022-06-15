@@ -108,6 +108,7 @@ from .layer.loss import CTCLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
 from .layer.loss import HingeEmbeddingLoss  # noqa: F401
 from .layer.loss import CosineEmbeddingLoss  # noqa: F401
+from .layer.loss import TripletMarginWithDistanceLoss
 from .layer.loss import MultiLabelSoftMarginLoss
 from .layer.norm import BatchNorm  # noqa: F401
 from .layer.norm import SyncBatchNorm  # noqa: F401
@@ -155,7 +156,7 @@ from . import functional  # noqa: F401
 from . import initializer  # noqa: F401
 from . import quant  # noqa: F401
 
-#TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
+# TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
 import paddle.utils.deprecated as deprecated
 
 
@@ -316,4 +317,5 @@ __all__ = [  # noqa
     'CosineEmbeddingLoss',
     'RReLU',
     'MultiLabelSoftMarginLoss',
+    'TripletMarginWithDistanceLoss',
 ]

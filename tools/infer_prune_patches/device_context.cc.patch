@@ -1,0 +1,46 @@
+diff --git a/paddle/fluid/platform/device_context.cc b/paddle/fluid/platform/device_context.cc
+index 904e4854ba..4f8c955d8c 100644
+--- a/paddle/fluid/platform/device_context.cc
++++ b/paddle/fluid/platform/device_context.cc
+@@ -466,15 +466,15 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
+   place_ = place;
+   CUDADeviceGuard guard(place_.device);
+   stream_.reset(new stream::CUDAStream(place, priority, flag));
+-  InitEigenContext();
+-  InitCuBlasContext();
+-  InitCuDNNContext();
++  //InitEigenContext();
++  //InitCuBlasContext();
++  //InitCuDNNContext();
+ #ifndef PADDLE_WITH_HIP
+ #if CUDA_VERSION >= 11060
+-  InitCuBlasLtContext();
++  //InitCuBlasLtContext();
+ #endif
+-  InitCuSparseContext();
+-  InitCuSolverContext();
++  //InitCuSparseContext();
++  //InitCuSolverContext();
+ #endif
+ }
+ 
+@@ -506,14 +506,14 @@ void CUDAContext::SetStream(gpuStream_t stream) {
+ 
+ CUDAContext::~CUDAContext() {
+   CUDADeviceGuard guard(place_.device);
+-  DestoryCuDNNContext();
+-  DestoryCuBlasContext();
++  //DestoryCuDNNContext();
++  //DestoryCuBlasContext();
+ #ifndef PADDLE_WITH_HIP
+ #if CUDA_VERSION >= 11060
+-  InitCuBlasLtContext();
++  //InitCuBlasLtContext();
+ #endif
+-  DestoryCuSparseContext();
+-  DestoryCuSolverContext();
++  //DestoryCuSparseContext();
++  //DestoryCuSolverContext();
+ #endif
+ }
+ 
