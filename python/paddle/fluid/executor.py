@@ -1441,6 +1441,7 @@ class Executor(object):
                 # while use program to geet _StandaloneExecutor
                 if key not in self._executor_cache._cached_executors:
                     if isinstance(program, compiler.CompiledProgram):
+                        program._compile(scope, self.place)
                         compiled_graph = program._graph
                         ir_graph = framework.IrGraph(compiled_graph,
                                                      for_test=True)
