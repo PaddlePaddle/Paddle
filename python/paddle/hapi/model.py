@@ -1149,12 +1149,12 @@ class Model(object):
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
                     parameters=model.parameters())
                 model.prepare(optim,
-                            paddle.nn.CrossEntropyLoss())
+                            paddle.nn.CrossEntropyLoss(), metrics=paddle.metric.Accuracy())
                 data = np.random.random(size=(4,784)).astype(np.float32)
                 label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
-                loss = model.eval_batch([data], [label])
-                print(loss)
-                # [array([2.3555532], dtype=float32)]
+                loss, acc = model.eval_batch([data], [label])
+                print(loss, acc)
+                # [array([2.8825705], dtype=float32)] [0.0]
         """
         loss = self._adapter.eval_batch(inputs, labels)
         if fluid._non_static_mode() and self._input_info is None:
@@ -1647,7 +1647,7 @@ class Model(object):
             None
 
         Examples:
-            1. An example use Dataset and set btch size, shuffle in fit.
+            1. An example use Dataset and set batch size, shuffle in fit.
                How to make a batch is done internally.
 
             .. code-block:: python
