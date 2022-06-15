@@ -1634,8 +1634,8 @@ class Model(object):
                 When train_data and eval_data are both the instance of
                 Dataloader, this parameter will be ignored. Default: 0.
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
-                during training. If None, `ProgBarLogger` and `ModelCheckpoint`
-                are automatically inserted. Default: None.
+                during training. If None, :ref:`api_paddle_callbacks_ProgBarLogger` and
+                :ref:`api_paddle_callbacks_ModelCheckpoint` are automatically inserted. Default: None.
             accumulate_grad_batches (int, optional): The number of batches to accumulate gradident 
                 during training process before optimizer updates. It can mimic large batch
                 size. Default: 1.
