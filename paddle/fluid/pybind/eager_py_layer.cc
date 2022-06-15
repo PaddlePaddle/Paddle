@@ -240,6 +240,8 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
   PyObject* outputs_tuple = nullptr;
   if (PyTuple_Check(outputs)) {
     outputs_tuple = outputs;
+  } else if (PyList_Check(outputs)) {
+    outputs_tuple = PyList_AsTuple(outputs);
   } else {
     outputs_tuple = PyTuple_New(1);
     Py_INCREF(outputs);

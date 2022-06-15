@@ -663,13 +663,13 @@ void ConvCudnnGradGradKernel(
 }
 
 template <typename T, typename Context>
-void DepthwiseConvCudnnGradGradKernel(
+void DepthwiseConvDoubleGradGPUDNNKernel(
     const Context& ctx,
-    const paddle::optional<DenseTensor>& input_grad_grad,
-    const paddle::optional<DenseTensor>& filter_grad_grad,
-    const DenseTensor& out_grad,
     const DenseTensor& input,
     const DenseTensor& filter,
+    const DenseTensor& out_grad,
+    const paddle::optional<DenseTensor>& input_grad_grad,
+    const paddle::optional<DenseTensor>& filter_grad_grad,
     const std::vector<int>& strides,
     const std::vector<int>& paddings_t,
     const std::string& padding_algorithm,
@@ -680,9 +680,9 @@ void DepthwiseConvCudnnGradGradKernel(
     int workspace_size_MB,
     bool exhaustive_search_t,
     bool fuse_relu,
-    DenseTensor* out_grad_grad,
     DenseTensor* input_grad,
-    DenseTensor* filter_grad) {
+    DenseTensor* filter_grad,
+    DenseTensor* out_grad_grad) {
   ConvCudnnGradGradKernel<T>(ctx,
                              input,
                              filter,
@@ -763,7 +763,7 @@ PD_REGISTER_KERNEL(conv3d_grad_grad,
 PD_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::DepthwiseConvCudnnGradGradKernel,
+                   phi::DepthwiseConvDoubleGradGPUDNNKernel,
                    float,
                    phi::dtype::float16) {}
 #else
@@ -789,7 +789,7 @@ PD_REGISTER_KERNEL(conv3d_grad_grad,
 PD_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::DepthwiseConvCudnnGradGradKernel,
+                   phi::DepthwiseConvDoubleGradGPUDNNKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -816,7 +816,7 @@ PD_REGISTER_KERNEL(conv3d_grad_grad,
 PD_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::DepthwiseConvCudnnGradGradKernel,
+                   phi::DepthwiseConvDoubleGradGPUDNNKernel,
                    float,
                    double,
                    phi::dtype::float16) {}

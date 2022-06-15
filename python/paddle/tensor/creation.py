@@ -352,7 +352,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             data = np.array([data])
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
-            if data.dtype == np.object:
+            if data.dtype == np.object_:
                 raise ValueError(
                     "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
@@ -962,7 +962,7 @@ def tril(x, diagonal=0, name=None):
 
 def triu(x, diagonal=0, name=None):
     r"""
-    This op returns the upper triangular part of a matrix (2-D tensor) or batch of matrices
+    Return the upper triangular part of a matrix (2-D tensor) or batch of matrices
     :attr:`x`, the other elements of the result tensor are set to 0.
     The upper triangular part of the matrix is defined as the elements on and
     above the diagonal.

@@ -222,7 +222,7 @@ void RunBrpcPushDense() {
       worker_ptr_->PullDense(temp_region.data(), temp_region.size(), 0);
   pull_status.wait();
 
-  for (size_t idx = 0; idx < tensor->numel(); ++idx) {
+  for (int64_t idx = 0; idx < tensor->numel(); ++idx) {
     EXPECT_FLOAT_EQ(temp[idx], 1.0);
   }
 
@@ -236,7 +236,7 @@ void RunBrpcPushDense() {
   pull_status = worker_ptr_->PullDense(regions.data(), regions.size(), 0);
   pull_status.wait();
 
-  for (size_t idx = 0; idx < tensor->numel(); ++idx) {
+  for (int64_t idx = 0; idx < tensor->numel(); ++idx) {
     EXPECT_FLOAT_EQ(w[idx], float(idx));
   }
 
@@ -265,7 +265,7 @@ void RunBrpcPushDense() {
       worker_ptr_->PullDense(regions.data(), regions.size(), 0);
   pull_update_status.wait();
 
-  for (size_t idx = 0; idx < tensor->numel(); ++idx) {
+  for (int64_t idx = 0; idx < tensor->numel(); ++idx) {
     EXPECT_FLOAT_EQ(w[idx], float(idx) - 1.0);
   }
 
