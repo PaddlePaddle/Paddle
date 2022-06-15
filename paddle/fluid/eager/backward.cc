@@ -690,7 +690,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     const std::vector<paddle::experimental::Tensor>& inputs = {},
     bool allow_unused = false,
     const std::vector<paddle::experimental::Tensor>& no_grad_vars = {}) {
-  VLOG(6) << "Start Backward";
+  VLOG(3) << "Start Backward";
 
   // *Gradient Hook should happen at node-level
   // *Inplace version check should perform at node-level
@@ -808,7 +808,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   //    |- node(grads)
   //    |- Prepare for next node
   // 3. Update queue
-  VLOG(6) << "Run Backward";
+  VLOG(3) << "Run Backward";
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     VLOG(6) << "GradNode " << node->name() << " is ready.";
@@ -892,7 +892,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
         // Since we make edge has as same rank as bwd outputs, we indexing them
         // with the same rank(i, j)
         auto next_node_shared = edge.GetMutableGradNode();
-
+        VLOG(3) << "Found pending node: " << next_node_shared->name();
         // Next node could be nullptr if it is leaf tensor with no
         // AccumulationNode attached
         // Or it could also originated from dispensable inputs
@@ -967,7 +967,7 @@ void Backward(
     const std::vector<paddle::experimental::Tensor>& tensors,  // outputs
     const std::vector<paddle::experimental::Tensor>& grad_tensors,
     bool retain_graph) {
-  VLOG(6) << "Run in Backward";
+  VLOG(3) << "Run in Backward";
   paddle::platform::RecordEvent backward_record_event(
       "backward", paddle::platform::TracerEventType::Operator, 1);
   RunBackward(tensors, grad_tensors, retain_graph);
@@ -980,7 +980,7 @@ std::vector<paddle::experimental::Tensor> Grad(
     const std::vector<paddle::experimental::Tensor>& grad_tensors,
     bool retain_graph, bool create_graph, bool only_inputs, bool allow_unused,
     const std::vector<paddle::experimental::Tensor>& no_grad_vars) {
-  VLOG(6) << "Run in Grad";
+  VLOG(3) << "Run in Grad";
 
   DuplicateCheck(inputs, true /* is_input */);
   DuplicateCheck(tensors, false /* is_input */);

@@ -85,6 +85,7 @@ disable_win_inference_api_test="^trt_quant_int8_yolov3_r50_test$|\
 ^lite_resnet50_test$|\
 ^test_trt_dynamic_shape_transformer_prune$|\
 ^lite_mul_model_test$|\
+^trt_split_converter_test$|\
 ^paddle_infer_api_copy_tensor_tester$"
 
 
@@ -190,10 +191,6 @@ if [ -f "$PADDLE_ROOT/added_ut" ];then
         echo "Added UT should pass three additional executions"
         echo "========================================"
         exit 8;
-    fi
-    if nvcc --version | grep 11.2; then
-        echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
-        exit 0;
     fi
 fi
 set -e

@@ -1887,7 +1887,7 @@ def split(x, num_or_sections, axis=0, name=None):
 
 def squeeze(x, axis=None, name=None):
     """
-    This OP will squeeze the dimension(s) of size 1 of input tensor x's shape. 
+    Squeeze the dimension(s) of size 1 of input tensor x's shape. 
     
     Note that the output Tensor will share data with origin Tensor and doesn't have a 
     Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, 
@@ -1944,7 +1944,7 @@ def squeeze(x, axis=None, name=None):
 
     Examples:
         .. code-block:: python
-
+	  :name: code-example1
             import paddle
             
             x = paddle.rand([5, 1, 10])
@@ -2139,13 +2139,13 @@ def unique(x,
             :ref:`api_guide_Name`. Default: None.
 
     Returns: 
-        tuple: (out, indices, inverse, counts). `out` is the unique tensor for `x`. `indices` is \
+        tuple (out, indices, inverse, counts). `out` is the unique tensor for `x`. `indices` is \
             provided only if `return_index` is True. `inverse` is provided only if `return_inverse` \
             is True. `counts` is provided only if `return_counts` is True.
 
     Examples:
         .. code-block:: python
-
+	  :name: code-example1
             import paddle
 
             x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
