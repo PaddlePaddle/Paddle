@@ -258,6 +258,7 @@ const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
         {"min", nvinfer1::ElementWiseOperation::kMIN},
         {"pow", nvinfer1::ElementWiseOperation::kPOW},
         {"max", nvinfer1::ElementWiseOperation::kMAX},
+        {"floordiv", nvinfer1::ElementWiseOperation::kFLOOR_DIV},
 };
 
 class ElementwiseWeightAddOpConverter : public ElementwiseWeightOpConverter {
@@ -320,6 +321,12 @@ class ElementwiseTensorPowOpConverter : public ElementwiseTensorOpConverter {
   ElementwiseTensorPowOpConverter() { op_type_ = "pow"; }
 };
 
+class ElementwiseTensorFloordivOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorFloordivOpConverter() { op_type_ = "floordiv"; }
+};
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -349,3 +356,5 @@ REGISTER_TRT_OP_CONVERTER(elementwise_min_tensor,
                           ElementwiseTensorMinOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_pow_tensor,
                           ElementwiseTensorPowOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_tensor,
+                          ElementwiseTensorFloordivOpConverter);
