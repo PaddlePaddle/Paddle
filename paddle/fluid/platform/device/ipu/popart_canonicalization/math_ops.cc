@@ -441,6 +441,15 @@ Node *arg_max_handler(Graph *graph, Node *node) {
                       {{"axis", axis}, {"keepdims", int64_t{0}}});
 }
 
+Node *arg_min_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto axis = BOOST_GET_CONST(int64_t, op->GetAttr("axis"));
+  return CreateBaseOp(graph, node, "popart_argmin",
+                      {GetInputVarNode("X", node)},
+                      {GetOutputVarNode("Out", node)},
+                      {{"axis", axis}, {"keepdims", int64_t{0}}});
+}
+
 }  // namespace
 }  // namespace ipu
 }  // namespace platform
@@ -459,3 +468,4 @@ REGISTER_HANDLER(cross_entropy2, cross_entropy2_handler);
 REGISTER_HANDLER(cumsum, cumsum_handler);
 REGISTER_HANDLER(matmul_v2, matmul_v2_handler);
 REGISTER_HANDLER(arg_max, arg_max_handler);
+REGISTER_HANDLER(arg_min, arg_min_handler);
