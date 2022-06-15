@@ -790,8 +790,8 @@ if(WITH_DISTRIBUTE)
   py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
   py_test_modules(test_communicator_async MODULES test_communicator_async ENVS
                   ${dist_ENVS})
-  py_test_modules(test_communicator_ps_gpu MODULES test_communicator_ps_gpu
-                  ENVS ${dist_ENVS})
+  # py_test_modules(test_communicator_ps_gpu MODULES test_communicator_ps_gpu
+  #                 ENVS ${dist_ENVS})
   py_test_modules(test_communicator_geo MODULES test_communicator_geo ENVS
                   ${dist_ENVS})
   py_test_modules(
