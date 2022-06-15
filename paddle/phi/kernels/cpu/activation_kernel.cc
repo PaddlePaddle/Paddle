@@ -89,7 +89,7 @@ DEFINE_CPU_ACTIVATION_KERNEL(Log1p, Log1pFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Round, RoundFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Floor, FloorFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Ceil, CeilFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Opposite, OppositeFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Negative, NegativeFunctor)
 
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
@@ -183,10 +183,10 @@ PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)
-PD_REGISTER_KERNEL(opposite,
+PD_REGISTER_KERNEL(negative,
                    CPU,
                    ALL_LAYOUT,
-                   phi::OppositeKernel,
+                   phi::NegativeKernel,
                    float,
                    double,
                    int16_t,

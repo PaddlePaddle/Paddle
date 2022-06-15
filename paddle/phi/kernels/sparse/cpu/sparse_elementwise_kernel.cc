@@ -346,7 +346,7 @@ DEFINE_COO_ELEMENTWISE_KERNEL(Divide)
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sparse_elementwise_add_csr,
+PD_REGISTER_KERNEL(sparse_csr_add,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseAddCsrKernel,
@@ -359,7 +359,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_add_csr,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(sparse_elementwise_add_coo,
+PD_REGISTER_KERNEL(sparse_coo_add,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseAddCooKernel,
@@ -372,7 +372,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_add_coo,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(sparse_elementwise_sub_csr,
+PD_REGISTER_KERNEL(sparse_csr_subtract,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseSubtractCsrKernel,
@@ -385,7 +385,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_sub_csr,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(sparse_elementwise_sub_coo,
+PD_REGISTER_KERNEL(sparse_coo_subtract,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseSubtractCooKernel,
@@ -398,7 +398,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_sub_coo,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(sparse_elementwise_mul_csr,
+PD_REGISTER_KERNEL(sparse_csr_multiply,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseMultiplyCsrKernel,
@@ -411,7 +411,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_mul_csr,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(sparse_elementwise_mul_coo,
+PD_REGISTER_KERNEL(sparse_coo_multiply,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseMultiplyCooKernel,
@@ -424,7 +424,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_mul_coo,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(sparse_elementwise_div_csr,
+PD_REGISTER_KERNEL(sparse_csr_divide,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseDivideCsrKernel,
@@ -437,7 +437,7 @@ PD_REGISTER_KERNEL(sparse_elementwise_div_csr,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(sparse_elementwise_div_coo,
+PD_REGISTER_KERNEL(sparse_coo_divide,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseDivideCooKernel,

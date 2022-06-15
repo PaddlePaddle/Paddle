@@ -1815,7 +1815,7 @@ struct CeilFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct OppositeFunctor : public BaseActivationFunctor<T> {
+struct NegativeFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     out.device(d) = -x;

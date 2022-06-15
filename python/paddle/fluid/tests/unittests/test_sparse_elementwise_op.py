@@ -52,19 +52,34 @@ class TestSparseElementWiseAPI(unittest.TestCase):
 
     def func_test_csr(self, op):
         for dtype in self.support_dtypes:
-            x = np.random.randint(-255, 255, size=self.csr_shape).astype(dtype)
-            y = np.random.randint(-255, 255, size=self.csr_shape).astype(dtype)
-            dense_x = paddle.to_tensor(x).astype(dtype)
-            dense_y = paddle.to_tensor(y).astype(dtype)
-            csr_x = dense_x.to_sparse_csr()
-            csr_y = dense_y.to_sparse_csr()
+            x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+            y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+
+            dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=False)
+            dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=False)
+
+            s_dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=False)
+            s_dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=False)
+            csr_x = s_dense_x.to_sparse_csr()
+            csr_y = s_dense_y.to_sparse_csr()
 
             actual_res = get_actual_res(csr_x, csr_y, op)
+            actual_res.backward(actual_res)
+
             expect_res = op(dense_x, dense_y)
+            expect_res.backward(expect_res)
 
             self.assertTrue(
                 np.allclose(expect_res.numpy(),
                             actual_res.to_dense().numpy(),
+                            equal_nan=True))
+            self.assertTrue(
+                np.allclose(dense_x.grad.numpy(),
+                            csr_x.grad.to_dense().numpy(),
+                            equal_nan=True))
+            self.assertTrue(
+                np.allclose(dense_y.grad.numpy(),
+                            csr_y.grad.to_dense().numpy(),
                             equal_nan=True))
 
     def func_test_coo(self, op):

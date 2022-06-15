@@ -85,10 +85,12 @@ def add(x, y, name=None):
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
     assert x.is_sparse_csr() == y.is_sparse_csr(
     ), f"Expect sparse tensor type to be same"
-    if x.is_sparse_coo() and y.is_sparse_coo():
-        return _C_ops.final_state_sparse_add_coo(x, y)
-
-    return _C_ops.final_state_sparse_add_csr(x, y)
+    if x.is_sparse_coo() or x.is_sparse_csr():
+        return _C_ops.final_state_sparse_add(x, y)
+    else:
+        raise ValueError(
+            "Currently, sparse.add only support the input of SparseCooTensor or SparseCsrTensor"
+        )
 
 
 def subtract(x, y, name=None):
@@ -135,10 +137,12 @@ def subtract(x, y, name=None):
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
     assert x.is_sparse_csr() == y.is_sparse_csr(
     ), f"Expect sparse tensor type to be same"
-    if x.is_sparse_coo() and y.is_sparse_coo():
-        return _C_ops.final_state_sparse_sub_coo(x, y)
-
-    return _C_ops.final_state_sparse_sub_csr(x, y)
+    if x.is_sparse_coo() or x.is_sparse_csr():
+        return _C_ops.final_state_sparse_subtract(x, y)
+    else:
+        raise ValueError(
+            "Currently, sparse.subtract only support the input of SparseCooTensor or SparseCsrTensor"
+        )
 
 
 def multiply(x, y, name=None):
@@ -185,10 +189,12 @@ def multiply(x, y, name=None):
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
     assert x.is_sparse_csr() == y.is_sparse_csr(
     ), f"Expect sparse tensor type to be same"
-    if x.is_sparse_coo() and y.is_sparse_coo():
-        return _C_ops.final_state_sparse_mul_coo(x, y)
-
-    return _C_ops.final_state_sparse_mul_csr(x, y)
+    if x.is_sparse_coo() or x.is_sparse_csr():
+        return _C_ops.final_state_sparse_multiply(x, y)
+    else:
+        raise ValueError(
+            "Currently, sparse.multiply only support the input of SparseCooTensor or SparseCsrTensor"
+        )
 
 
 def divide(x, y, name=None):
@@ -237,12 +243,18 @@ def divide(x, y, name=None):
     ), f"Expect sparse tensor type to be same"
 
     if x.dtype in [int32, int64]:
-        cx = _cast(x, 'float32')
-        cy = _cast(y, 'float32')
-        if x.is_sparse_coo() and y.is_sparse_coo():
-            return _C_ops.final_state_sparse_div_coo(cx, cy)
-        return _C_ops.final_state_sparse_div_csr(cx, cy)
+        if x.is_sparse_coo() or x.is_sparse_csr():
+            cx = _cast(x, 'float32')
+            cy = _cast(y, 'float32')
+            return _C_ops.final_state_sparse_divide(cx, cy)
+        else:
+            raise ValueError(
+                "Currently, sparse.divide only support the input of SparseCooTensor or SparseCsrTensor"
+            )
     else:
-        if x.is_sparse_coo() and y.is_sparse_coo():
-            return _C_ops.final_state_sparse_div_coo(x, y)
-        return _C_ops.final_state_sparse_div_csr(x, y)
+        if x.is_sparse_coo() or x.is_sparse_csr():
+            return _C_ops.final_state_sparse_divide(x, y)
+        else:
+            raise ValueError(
+                "Currently, sparse.divide only support the input of SparseCooTensor or SparseCsrTensor"
+            )
