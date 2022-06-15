@@ -20,6 +20,7 @@ from __future__ import print_function
 # See details in https://github.com/serge-sans-paille/gast/
 import os
 from paddle.utils import gast
+from paddle.fluid.dygraph.dygraph_to_static.early_return_transformer import EarlyReturnTransformer
 from paddle.fluid.dygraph.dygraph_to_static.assert_transformer import AssertTransformer
 from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import BasicApiTransformer
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
@@ -87,6 +88,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.visit(node_wrapper.node)
 
         transformers = [
+            EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
             TensorShapeTransformer,  # Tensor.shape -> layers.shape(Tensor)
             ListTransformer,  # List used in control flow
