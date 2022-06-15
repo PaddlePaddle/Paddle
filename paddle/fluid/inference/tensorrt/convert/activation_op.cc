@@ -53,7 +53,7 @@ class ActivationOpConverter : public OpConverter {
         engine_->GetITensor(op_desc.Input("X")[0]);
 
     auto op_pair = ops.find(op_type_);
-
+    nvinfer1::IActivationLayer* layer = nullptr;
     if (op_type_ == "softplus") {
       const float beta = op_desc.HasAttr("beta")
                              ? BOOST_GET_CONST(float, op_desc.GetAttr("beta"))
