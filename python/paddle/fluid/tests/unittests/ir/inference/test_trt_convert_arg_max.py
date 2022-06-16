@@ -77,12 +77,18 @@ class TrtConvertArgMaxTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
- 
+
         def generate_dynamic_shape(attrs):
             if self.rank == 3:
-                self.dynamic_shape.min_input_shape = {"arg_max_input": [1, 8, 16]}
-                self.dynamic_shape.max_input_shape = {"arg_max_input": [4, 8, 16]}
-                self.dynamic_shape.opt_input_shape = {"arg_max_input": [3, 8, 16]}
+                self.dynamic_shape.min_input_shape = {
+                    "arg_max_input": [1, 8, 16]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "arg_max_input": [4, 8, 16]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "arg_max_input": [3, 8, 16]
+                }
             else:
                 self.dynamic_shape.min_input_shape = {
                     "arg_max_input": [1, 8, 16, 24]
@@ -124,7 +130,6 @@ class TrtConvertArgMaxTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), 1e-5
-
 
     def test(self):
         self.run_test()
