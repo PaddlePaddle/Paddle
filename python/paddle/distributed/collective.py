@@ -378,6 +378,7 @@ def new_group(ranks=None, backend=None):
         _group_map_by_name[group_name] = group
         _group_map[gid] = group
 
+        paddle.distributed.barrier(group=group)
         return group
 
     if not backend:
