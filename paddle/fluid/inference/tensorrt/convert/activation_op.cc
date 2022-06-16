@@ -89,10 +89,10 @@ class ActivationOpConverter : public OpConverter {
     if (op_type_ == "selu") {
       const float alpha = op_desc.HasAttr("alpha")
                               ? BOOST_GET_CONST(float, op_desc.GetAttr("alpha"))
-                              : 1.0f;
+                              : 1.0507009873554804934193349852946;
       const float scale = op_desc.HasAttr("scale")
                               ? BOOST_GET_CONST(float, op_desc.GetAttr("scale"))
-                              : 1.0f;
+                              : 1.6732632423543772848170429916717;
       layer->setAlpha(alpha);
       layer->setBeta(scale);
     }
@@ -134,13 +134,13 @@ const std::unordered_map<std::string, nvinfer1::ActivationType>
         {"tanh", nvinfer1::ActivationType::kTANH},
 #if IS_TRT_VERSION_GE(5130)
         {"relu6", nvinfer1::ActivationType::kCLIP},
-#endif
         {"elu", nvinfer1::ActivationType::kELU},
         {"selu", nvinfer1::ActivationType::kSELU},
         {"softsign", nvinfer1::ActivationType::kSOFTSIGN},
         {"softplus", nvinfer1::ActivationType::kSOFTPLUS},
         {"stanh", nvinfer1::ActivationType::kSCALED_TANH},
         {"thresholded_relu", nvinfer1::ActivationType::kTHRESHOLDED_RELU}};
+#endif
 
 class ReluOpConverter : public ActivationOpConverter {
  public:
@@ -157,6 +157,7 @@ class TanhOpConverter : public ActivationOpConverter {
   TanhOpConverter() { op_type_ = "tanh"; }
 };
 
+#if IS_TRT_VERSION_GE(5130)
 class Relu6OpConverter : public ActivationOpConverter {
  public:
   Relu6OpConverter() { op_type_ = "relu6"; }
@@ -191,6 +192,7 @@ class ThreasholdedReluOpConverter : public ActivationOpConverter {
  public:
   ThreasholdedReluOpConverter() { op_type_ = "thresholded_relu"; }
 };
+#endif
 
 }  // namespace tensorrt
 }  // namespace inference
@@ -199,6 +201,7 @@ class ThreasholdedReluOpConverter : public ActivationOpConverter {
 REGISTER_TRT_OP_CONVERTER(relu, ReluOpConverter);
 REGISTER_TRT_OP_CONVERTER(sigmoid, SigmoidOpConverter);
 REGISTER_TRT_OP_CONVERTER(tanh, TanhOpConverter);
+#if IS_TRT_VERSION_GE(5130)
 REGISTER_TRT_OP_CONVERTER(relu6, Relu6OpConverter);
 REGISTER_TRT_OP_CONVERTER(elu, EluOpConverter);
 REGISTER_TRT_OP_CONVERTER(selu, SeluOpConverter);
@@ -206,3 +209,4 @@ REGISTER_TRT_OP_CONVERTER(softsign, SoftsignOpConverter);
 REGISTER_TRT_OP_CONVERTER(softplus, SoftplusOpConverter);
 REGISTER_TRT_OP_CONVERTER(stanh, STanhOpConverter);
 REGISTER_TRT_OP_CONVERTER(thresholded_relu, ThreasholdedReluOpConverter);
+#endif
