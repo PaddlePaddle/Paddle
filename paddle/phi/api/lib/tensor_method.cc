@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_base.h"
 
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -118,7 +119,11 @@ void Tensor::copy_(const Tensor &src,
       kernel_key_set.backend_set |
       BackendSet(phi::TransToPhiBackend(target_place));
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-  auto *dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto place = phi::TransToPhiPlace(kernel_key.backend());
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.GetMutable(
+      place.GetType() == target_place.GetType() ? target_place : place);
+
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::UNDEFINED;
   DataType kernel_data_type = DataType::UNDEFINED;
