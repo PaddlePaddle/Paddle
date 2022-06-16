@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,55 +21,51 @@ from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
 
 
-class TrtConvertActivationTest(TrtLayerAutoScanTest):
+class TrtConvertSplitTest(TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-        self.trt_param.workspace_size = 1073741824
-
-        def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
-            if dims == 1:
-                return np.random.random([32]).astype(np.float32)
-            elif dims == 2:
-                return np.random.random([3, 32]).astype(np.float32)
-            elif dims == 3:
-                return np.random.random([3, 32, 32]).astype(np.float32)
-            else:
-                return np.random.random([batch, 3, 32, 32]).astype(np.float32)
-
-        for dims in [1, 2, 3, 4]:
-            for batch in [1, 4]:
-                for op_type in [
-                        "exp", "log", "sqrt", "abs", "sin", "cos", "tan",
-                        "sinh", "cosh", "asin", "acos", "atan", "asinh",
-                        "atanh", "ceil", "floor"
-                ]:
+        for dims in [2, 3, 4]:
+            for batch in [3, 4]:
+                for axes in [[-2, 3], [1], [2], [2, 3]]:
+                    self.batch = batch
                     self.dims = dims
-                    dics = [{}]
-
+                    self.axes = axes
+                    dics = [{"axes": axes}]
                     ops_config = [{
-                        "op_type": op_type,
+                        "op_type": "unsqueeze2",
                         "op_inputs": {
-                            "X": ["input_data"]
+                            "X": ["in_data"]
                         },
                         "op_outputs": {
-                            "Out": ["output_data"]
+                            "Out": ["out_data"],
+                            "XShape": ["XShape_data"]
                         },
                         "op_attrs": dics[0]
                     }]
-                    ops = self.generate_op_config(ops_config)
 
+                    # generate input data
+                    self.input_shape = [1] * dims
+                    for i in range(dims):
+                        self.input_shape[i] = np.random.randint(1, 20)
+
+                    def generate_input1(attrs: List[Dict[str, Any]], batch):
+                        self.input_shape[0] = batch
+                        return np.random.random(self.input_shape).astype(
+                            np.float32)
+
+                    ops = self.generate_op_config(ops_config)
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={},
                         inputs={
-                            "input_data":
-                            TensorConfig(data_gen=partial(
-                                generate_input1, dims, batch, dics))
+                            "in_data":
+                            TensorConfig(
+                                data_gen=partial(generate_input1, dics, batch))
                         },
-                        outputs=["output_data"])
+                        outputs=["out_data"])
 
                     yield program_config
 
@@ -77,28 +73,14 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
         def generate_dynamic_shape(attrs):
-            if self.dims == 1:
-                self.dynamic_shape.min_input_shape = {"input_data": [1]}
-                self.dynamic_shape.max_input_shape = {"input_data": [64]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [32]}
-            elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {"input_data": [1, 16]}
-                self.dynamic_shape.max_input_shape = {"input_data": [4, 32]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [3, 32]}
-            elif self.dims == 3:
-                self.dynamic_shape.min_input_shape = {"input_data": [1, 16, 16]}
-                self.dynamic_shape.max_input_shape = {"input_data": [4, 32, 32]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [3, 32, 32]}
-            else:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 3, 16, 16]
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 3, 32, 32]
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [1, 3, 32, 32]
-                }
+            max_shape = list(self.input_shape)
+            min_shape = list(self.input_shape)
+            opt_shape = list(self.input_shape)
+            for i in range(len(self.input_shape)):
+                max_shape[i] = max_shape[i] + 1
+            self.dynamic_shape.min_input_shape = {"in_data": min_shape}
+            self.dynamic_shape.max_input_shape = {"in_data": max_shape}
+            self.dynamic_shape.opt_input_shape = {"in_data": opt_shape}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -106,14 +88,12 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.dims == 1:
-                return 0, 3
             return 1, 2
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
+        self.trt_param.max_batch_size = 9
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
@@ -132,7 +112,11 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), 1e-5
 
+    def add_skip_trt_case(self):
+        pass
+
     def test(self):
+        self.add_skip_trt_case()
         self.run_test()
 
 
