@@ -73,14 +73,15 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                 np.allclose(expect_res.numpy(),
                             actual_res.to_dense().numpy(),
                             equal_nan=True))
-            self.assertTrue(
-                np.allclose(dense_x.grad.numpy(),
-                            csr_x.grad.to_dense().numpy(),
-                            equal_nan=True))
-            self.assertTrue(
-                np.allclose(dense_y.grad.numpy(),
-                            csr_y.grad.to_dense().numpy(),
-                            equal_nan=True))
+            if not (op == __truediv__ and dtype in ['int32', 'int64']):
+                self.assertTrue(
+                    np.allclose(dense_x.grad.numpy(),
+                                csr_x.grad.to_dense().numpy(),
+                                equal_nan=True))
+                self.assertTrue(
+                    np.allclose(dense_y.grad.numpy(),
+                                csr_y.grad.to_dense().numpy(),
+                                equal_nan=True))
 
     def func_test_coo(self, op):
         for sparse_dim in range(len(self.coo_shape) - 1, len(self.coo_shape)):
