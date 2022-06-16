@@ -1078,7 +1078,6 @@ class Model(object):
             .. code-block:: python
               :name: code-example-train-batch
             
-                import numpy as np
                 import paddle
                 import paddle.nn as nn
                 from paddle.static import InputSpec
@@ -1096,8 +1095,8 @@ class Model(object):
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
                     parameters=model.parameters())
                 model.prepare(optim, paddle.nn.CrossEntropyLoss())
-                data = np.random.random(size=(4,784)).astype(np.float32)
-                label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
+                data = paddle.rand((4, 784), dtype="float32")
+                label = paddle.randint(0, 10, (4, 1), dtype="int64")
                 loss = model.train_batch([data], [label])
                 print(loss)
                 # [array([2.192784], dtype=float32)]
@@ -1131,7 +1130,6 @@ class Model(object):
             .. code-block:: python
               :name: code-example-eval-batch
 
-                import numpy as np
                 import paddle
                 import paddle.nn as nn
                 from paddle.static import InputSpec
@@ -1150,8 +1148,8 @@ class Model(object):
                     parameters=model.parameters())
                 model.prepare(optim,
                             paddle.nn.CrossEntropyLoss(), metrics=paddle.metric.Accuracy())
-                data = np.random.random(size=(4,784)).astype(np.float32)
-                label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
+                data = paddle.rand((4, 784), dtype="float32")
+                label = paddle.randint(0, 10, (4, 1), dtype="int64")
                 loss, acc = model.eval_batch([data], [label])
                 print(loss, acc)
                 # [array([2.8825705], dtype=float32)] [0.0]
@@ -1180,7 +1178,6 @@ class Model(object):
             .. code-block:: python
               :name: code-example-predict-batch
 
-                import numpy as np
                 import paddle
                 import paddle.nn as nn
                 from paddle.static import InputSpec
@@ -1198,7 +1195,7 @@ class Model(object):
 
                 model = paddle.Model(net, input, label)
                 model.prepare()
-                data = np.random.random(size=(1, 784)).astype(np.float32)
+                data = paddle.rand((1, 784), dtype="float32")
                 out = model.predict_batch([data])
                 print(out)
                 # [array([[0.08189095, 0.16740078, 0.06889386, 0.05085445, 0.10729759,
