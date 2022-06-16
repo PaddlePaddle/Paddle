@@ -153,7 +153,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "preln_skip_layernorm",
       "transformer_input_convert",
       "recover_padding",
-      "remove_padding"};
+      "remove_padding",
+      "squeeze2",
+      "unsqueeze2"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -242,7 +244,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "multiclass_nms3",
       "transformer_input_convert",
       "recover_padding",
-      "remove_padding"};
+      "remove_padding",
+      "squeeze2",
+      "unsqueeze2"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -884,6 +888,44 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "HardSwish op has only 1 output, but got "
                 << desc.Output("Out").size();
         return false;
+      }
+    }
+
+    if (op_type == "squeeze2") {
+      std::vector<int> axes;
+      if (desc.HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+      }
+      if (axes.size() == 0) {
+        VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
+                   "missing.";
+        return false;
+      }
+      if (!with_dynamic_shape) {
+        if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+          VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                     "supported in static shape";
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "unsqueeze2") {
+      std::vector<int> axes;
+      if (desc.HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+      }
+      if (axes.size() == 0) {
+        VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
+                   "missing.";
+        return false;
+      }
+      if (!with_dynamic_shape) {
+        if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+          VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                     "supported in static shape";
+          return false;
+        }
       }
     }
 
