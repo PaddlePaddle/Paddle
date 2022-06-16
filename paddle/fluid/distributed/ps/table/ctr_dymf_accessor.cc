@@ -296,7 +296,7 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
   auto score = ShowClickScore(show, click);
   if (score >= _config.embedx_threshold() &&
       param > common_feature_value.EmbedxG2SumIndex()) {
-    VLOG(0) << "common_feature_value.EmbedxG2SumIndex():"
+    VLOG(3) << "common_feature_value.EmbedxG2SumIndex():"
             << common_feature_value.EmbedxG2SumIndex();
     for (auto i = common_feature_value.EmbedxG2SumIndex();
          i < common_feature_value.Dim(); ++i) {

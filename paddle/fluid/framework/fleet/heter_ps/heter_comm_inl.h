@@ -772,27 +772,37 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   memory_copy(dst_place, h_right, src_place, d_right_ptr,
               total_device * sizeof(int), stream);
 
-  for (int i = 0; i < total_device; ++i) {
-    int shard_len = h_right[i] - h_left[i] + 1;
-    if (h_left[i] == -1 || h_right[i] == -1) {
-      continue;
+  if (!direct_access_) {
+    for (int i = 0; i < total_device; ++i) {
+      int shard_len = h_right[i] - h_left[i] + 1;
+      if (h_left[i] == -1 || h_right[i] == -1) {
+        continue;
+      }
+      create_storage(num, i, shard_len * sizeof(KeyType),
+                     shard_len * val_type_size);
     }
-    create_storage(num, i, shard_len * sizeof(KeyType),
-                   shard_len * val_type_size);
+    walk_to_dest(num, total_device, h_left, h_right, d_shard_keys_ptr, NULL);
   }
-  walk_to_dest(num, total_device, h_left, h_right, d_shard_keys_ptr, NULL);
-
   for (int i = 0; i < total_device; ++i) {
     if (h_left[i] == -1) {
       continue;
     }
     auto& node = path_[num][i].nodes_.back();
-    sync_stream(node.in_stream);
+    if (!direct_access_) {
+      sync_stream(node.in_stream);
+    }
     AnyDeviceGuard guard(resource_->dev_id(i));
     ptr_tables_[i]->rwlock_->RDLock();
-    ptr_tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
-                        node.val_storage, h_right[i] - h_left[i] + 1,
-                        resource_->remote_stream(i, num));
+    if (!direct_access_) {
+      ptr_tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
+                          node.val_storage, h_right[i] - h_left[i] + 1,
+                          resource_->remote_stream(i, num));
+    } else {
+      ptr_tables_[i]->get(
+          d_shard_keys_ptr + h_left[i],
+          reinterpret_cast<char*>(d_shard_vals_ptr) + h_left[i] * val_type_size,
+          h_right[i] - h_left[i] + 1, resource_->remote_stream(i, num));
+    }
   }
 
   for (int i = 0; i < total_device; ++i) {
@@ -802,21 +812,25 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     }
     ptr_tables_[i]->rwlock_->UNLock();
   }
-  walk_to_src(num, total_device, h_left, h_right,
-              reinterpret_cast<char*>(d_shard_vals_ptr), val_type_size);
-  for (int i = 0; i < total_device; ++i) {
-    auto& node = path_[num][i].nodes_.front();
-    sync_stream(node.out_stream);
+  if (!direct_access_) {
+    walk_to_src(num, total_device, h_left, h_right,
+                reinterpret_cast<char*>(d_shard_vals_ptr), val_type_size);
+    for (int i = 0; i < total_device; ++i) {
+      auto& node = path_[num][i].nodes_.front();
+      sync_stream(node.out_stream);
+    }
   }
   heter_comm_kernel_->dy_mf_fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr, len,
                                        val_type_size, stream);
 
   sync_stream(stream);
-  for (int i = 0; i < total_device; ++i) {
-    if (h_left[i] == -1 || h_right[i] == -1) {
-      continue;
+  if (!direct_access_) {
+    for (int i = 0; i < total_device; ++i) {
+      if (h_left[i] == -1 || h_right[i] == -1) {
+        continue;
+      }
+      destroy_storage(num, i);
     }
-    destroy_storage(num, i);
   }
 }
 
@@ -912,26 +926,28 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   memory_copy(dst_place, h_right, src_place, d_right_ptr,
               total_device * sizeof(int), stream);
 
-  for (int i = 0; i < total_device; ++i) {
-    int shard_len = h_right[i] - h_left[i] + 1;
-    if (h_left[i] == -1 || h_right[i] == -1) {
-      continue;
+  if (!direct_access_) {
+    for (int i = 0; i < total_device; ++i) {
+      int shard_len = h_right[i] - h_left[i] + 1;
+      if (h_left[i] == -1 || h_right[i] == -1) {
+        continue;
+      }
+      if (!multi_mf_dim_) {
+        create_storage(dev_num, i, shard_len * sizeof(KeyType),
+                       shard_len * sizeof(GradType));
+      } else {
+        create_storage(dev_num, i, shard_len * sizeof(KeyType),
+                       shard_len * grad_value_size);
+      }
     }
-    if (!multi_mf_dim_) {
-      create_storage(dev_num, i, shard_len * sizeof(KeyType),
-                     shard_len * sizeof(GradType));
-    } else {
-      create_storage(dev_num, i, shard_len * sizeof(KeyType),
-                     shard_len * grad_value_size);
-    }
-  }
 
-  if (!multi_mf_dim_) {
-    walk_to_dest(dev_num, total_device, h_left, h_right, d_shard_keys_ptr,
-                 d_shard_grads_ptr);
-  } else {
-    walk_to_dest(dev_num, total_device, h_left, h_right, d_shard_keys_ptr,
-                 reinterpret_cast<char*>(d_shard_grads_ptr), grad_value_size);
+    if (!multi_mf_dim_) {
+      walk_to_dest(dev_num, total_device, h_left, h_right, d_shard_keys_ptr,
+                   d_shard_grads_ptr);
+    } else {
+      walk_to_dest(dev_num, total_device, h_left, h_right, d_shard_keys_ptr,
+                   reinterpret_cast<char*>(d_shard_grads_ptr), grad_value_size);
+    }
   }
 
   for (int i = 0; i < total_device; ++i) {
@@ -939,7 +955,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
       continue;
     }
     auto& node = path_[dev_num][i].nodes_.back();
-    sync_stream(node.in_stream);
+    if (!direct_access_) {
+      sync_stream(node.in_stream);
+    }
 
     AnyDeviceGuard guard(resource_->dev_id(i));
     if (!multi_mf_dim_) {
@@ -950,9 +968,17 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
                          resource_->remote_stream(i, dev_num));
     } else {
       ptr_tables_[i]->rwlock_->WRLock();
-      ptr_tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
-                             node.val_storage, h_right[i] - h_left[i] + 1, sgd,
-                             resource_->remote_stream(i, dev_num));
+      if (!direct_access_) {
+        ptr_tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
+                               node.val_storage, h_right[i] - h_left[i] + 1,
+                               sgd, resource_->remote_stream(i, dev_num));
+      } else {
+        ptr_tables_[i]->update(d_shard_keys_ptr + h_left[i],
+                                 reinterpret_cast<char*>(d_shard_grads_ptr) +
+                                     grad_value_size * h_left[i],
+                                 h_right[i] - h_left[i] + 1, sgd,
+                                 resource_->remote_stream(i, dev_num));
+        }
     }
   }
 
@@ -966,12 +992,14 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
       }
     }
   }
-
-  for (int i = 0; i < total_device; ++i) {
-    if (h_left[i] == -1 || h_right[i] == -1) {
-      continue;
+  
+  if (!direct_access_) {
+    for (int i = 0; i < total_device; ++i) {
+      if (h_left[i] == -1 || h_right[i] == -1) {
+        continue;
+      }
+      destroy_storage(dev_num, i);
     }
-    destroy_storage(dev_num, i);
   }
 }
 
