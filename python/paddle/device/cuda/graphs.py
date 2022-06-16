@@ -248,13 +248,13 @@ def get_cuda_graph_sections(program):
                         sub_block_related = (op.type == 'conditional_block'
                                              or op.type == 'while')
                         if loss_related or sub_block_related:
-                            # if loss_related is True
+                            # If loss_related is True
                             # The internal section contains loss related ops,
                             # although these ops are between two cuda graph sections with same graph id,
                             # they belong to none of these two sections.
                             # The loss related op should be wrapped by user explicitly.
 
-                            # if sub_block_related is True
+                            # If sub_block_related is True
                             # The internal section contains while op or conditional block op.
                             # These two ops are not supported by cuda graph. Won't extend the section.
                             internal_section = []
