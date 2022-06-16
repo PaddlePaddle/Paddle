@@ -64,7 +64,6 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     float scale_w = 1.f;
 
     // Scales Priority: Scale(tensor) > scale(attr) > out_d/out_h/out_w(attr)
-    bool has_scale_input = false;
     bool has_scale_input_attr =
         (resize_inputs.find("Scale") != resize_inputs.end());
     bool has_scale_input =
@@ -83,14 +82,19 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
         scale_w = scale_attr[1];
       }
     }
+
+    // axis are different in static/dynamic mode
+    bool with_dynamic = engine_->with_dynamic_shape();
+    int h_axis = (data_layout == framework::DataLayout::kNCHW) + with_dynamic;
+    int w_axis =
+        (data_layout == framework::DataLayout::kNCHW) + 1 + with_dynamic;
+
+    if (scale_w > 0. && scale_h > 0.) {
+      out_h = static_cast<int>(in_dim.d[h_axis] * scale_h);
+      out_w = static_cast<int>(in_dim.d[w_axis] * scale_w);
+    }
+
     if (out_h > 0 && out_w > 0) {
-      // axis are different in static/dynamic mode
-      bool with_dynamic = engine_->with_dynamic_shape();
-
-      int h_axis = (data_layout == framework::DataLayout::kNCHW) + with_dynamic;
-      int w_axis =
-          (data_layout == framework::DataLayout::kNCHW) + 1 + with_dynamic;
-
       scale_h =
           static_cast<float>(out_h) / static_cast<float>(in_dim.d[h_axis]);
       scale_w =

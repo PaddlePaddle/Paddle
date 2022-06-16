@@ -816,6 +816,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
 
+      if (resize_inputs.find("OutSize") != resize_inputs.end()) {
+        if (desc.Input("OutSize").size() >= 1) {
+          VLOG(3) << "The Paddle-TRT doesn't support the OutSize for op_type "
+                  << op_type;
+          return false;
+        }
+      }
+
       auto data_layout = framework::StringToDataLayout(
           BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != framework::DataLayout::kNCHW &&
