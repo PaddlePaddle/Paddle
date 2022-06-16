@@ -132,16 +132,19 @@ void ChromeTracingLogger::LogMemTraceEventNode(
     "args": {
       "place": "%s",
       "addr": "%llu",
+      "increase_bytes": %lld,
       "current_allocated": %llu,
       "current_reserved": %llu,
-      "increase_bytes": %lld
+      "peak_allocated": %llu,
+      "peak_reserved": %llu
     }
   },
   )JSON"),
       mem_node.ProcessId(), mem_node.ThreadId(), nsToUs(mem_node.TimeStampNs()),
       StringTracerMemEventType(mem_node.Type()), mem_node.Place().c_str(),
-      mem_node.Addr(), mem_node.CurrentAllocated(), mem_node.CurrentReserved(),
-      mem_node.IncreaseBytes());
+      mem_node.Addr(), mem_node.IncreaseBytes(), mem_node.CurrentAllocated(),
+      mem_node.CurrentReserved(), mem_node.PeakAllocated(),
+      mem_node.PeakReserved());
   pid_tid_set_.insert({mem_node.ProcessId(), mem_node.ThreadId()});
 }
 

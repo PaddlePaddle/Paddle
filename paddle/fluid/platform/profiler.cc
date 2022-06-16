@@ -266,13 +266,16 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
 RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
                                size_t size, uint64_t current_allocated,
                                uint64_t current_reserved,
+                               uint64_t peak_allocated, uint64_t peak_reserved,
                                const TracerMemEventType type) {
   if (type == TracerMemEventType::Allocate) {
     platform::MemEvenRecorder::Instance().PushMemRecord(
-        ptr, place, size, current_allocated, current_reserved);
+        ptr, place, size, current_allocated, current_reserved, peak_allocated,
+        peak_reserved);
   } else if (type == TracerMemEventType::Free) {
     platform::MemEvenRecorder::Instance().PopMemRecord(
-        ptr, place, size, current_allocated, current_reserved);
+        ptr, place, size, current_allocated, current_reserved, peak_allocated,
+        peak_reserved);
   }
 }
 
@@ -290,7 +293,9 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
 
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
                                     size_t size, uint64_t current_allocated,
-                                    uint64_t current_reserved) {
+                                    uint64_t current_reserved,
+                                    uint64_t peak_allocated,
+                                    uint64_t peak_reserved) {
   if (g_state == ProfilerState::kDisabled &&
       FLAGS_enable_host_event_recorder_hook == false)
     return;
@@ -299,7 +304,7 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
     HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
         PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
         TracerMemEventType::Allocate, size, place, current_allocated,
-        current_reserved);
+        current_reserved, peak_allocated, peak_reserved);
     return;
   }
   auto &events = address_memevent_[place];
@@ -323,7 +328,9 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
 
 void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place,
                                    size_t size, uint64_t current_allocated,
-                                   uint64_t current_reserved) {
+                                   uint64_t current_reserved,
+                                   uint64_t peak_allocated,
+                                   uint64_t peak_reserved) {
   if (g_state == ProfilerState::kDisabled &&
       FLAGS_enable_host_event_recorder_hook == false)
     return;
@@ -332,7 +339,7 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place,
     HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
         PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
         TracerMemEventType::Free, -size, place, current_allocated,
-        current_reserved);
+        current_reserved, peak_allocated, peak_reserved);
     return;
   }
   auto &events = address_memevent_[place];

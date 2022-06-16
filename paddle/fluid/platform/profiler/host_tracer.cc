@@ -68,6 +68,8 @@ void ProcessHostMemEvents(
       event.place = evt.place.DebugString();
       event.current_allocated = evt.current_allocated;
       event.current_reserved = evt.current_reserved;
+      event.peak_allocated = evt.peak_allocated;
+      event.peak_reserved = evt.peak_reserved;
       event.process_id = host_mem_events.process_id;
       event.thread_id = tid;
       collector->AddMemEvent(std::move(event));
