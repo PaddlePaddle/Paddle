@@ -587,6 +587,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   }
 
   int dev_id = resource_->dev_id(num);
+
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(num, 0);
@@ -634,14 +635,13 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   FidType* d_fid_seq_ptr = reinterpret_cast<FidType*>(d_fid_seq->ptr());
   memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(), h_fid_seq -> size() * sizeof(FidType), stream);
   VLOG(0) << "heter comm inl pull sparse memory copy d_fid_seq from cpu to xpu";
-
   // alloc d_shard_vals
   auto d_shard_vals = memory::Alloc(place, len * sizeof(ValType));
   VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
   ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
-
+  
   // local search
-  tables_[dev_id]->get(place, reinterpret_cast<KeyType*>(d_fid_seq_ptr),
+  tables_[num]->get(place, reinterpret_cast<KeyType*>(d_fid_seq_ptr),
                        reinterpret_cast<ValType*>(d_shard_vals_ptr),
                        h_fid_seq->size(),
                        stream);
@@ -968,7 +968,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   }
 
   // update
-  tables_[dev_id]->update(place, d_fid_seq_ptr, d_fgrad_all_ptr, h_fid_seq -> size(), stream);
+  tables_[dev_num]->update(place, d_fid_seq_ptr, d_fgrad_all_ptr, h_fid_seq -> size(), stream);
   VLOG(0) << "heter comm inl push sparse update finish";
 
 #else
