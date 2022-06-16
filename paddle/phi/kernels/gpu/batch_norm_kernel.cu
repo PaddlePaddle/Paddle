@@ -884,8 +884,8 @@ void BatchNormKernel(const Context &ctx,
 //         static_cast<void *>(saved_variance->template mutable_data<
 //                             BatchNormParamType<T>>(ctx.GetPlace()))));
 #else
-      // const bool use_native_kernel = (x_dims.size() == 2 && N >= 131070);
-      const bool use_native_kernel = true;
+      const bool use_native_kernel = ((x_dims.size() == 2 && N >= 131070) ||
+                                      (x_dims.size() == 3 && N >= 880801));
       if (use_native_kernel) {
         dim3 block;
         dim3 grid;
