@@ -165,17 +165,15 @@ def main():
     parser.add_argument(
         '--api_yaml_path',
         help='path to sparse api yaml file',
-        default='/Users/songqi/CLionProjects/Paddle/python/paddle/utils/code_gen/sparse_bw_api.yaml')
+        default='python/paddle/utils/code_gen/sparse_bw_api.yaml')
 
-    parser.add_argument(
-        '--api_header_path',
-        help='output of generated api header code file',
-        default='/Users/songqi/CLionProjects/Paddle/paddle/phi/api/backward/sparse_bw_api.h')
+    parser.add_argument('--api_header_path',
+                        help='output of generated api header code file',
+                        default='paddle/phi/api/backward/sparse_bw_api.h')
 
-    parser.add_argument(
-        '--api_source_path',
-        help='output of generated api source code file',
-        default='/Users/songqi/CLionProjects/Paddle/paddle/phi/api/lib/sparse_bw_api.cc')
+    parser.add_argument('--api_source_path',
+                        help='output of generated api source code file',
+                        default='paddle/phi/api/lib/sparse_bw_api.cc')
 
     options = parser.parse_args()
 
