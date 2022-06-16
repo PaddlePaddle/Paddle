@@ -201,24 +201,24 @@ class DistributedOpsPass(PassBase):
             for idx in op_idxs[::-1]:
                 _program.global_block()._remove_op(idx)
 
-            _program.global_block().append_op(
-                type="distributed_push_sparse",
-                inputs={
-                    "Ids": inputs,
-                    'W': w,
-                    "Outputs": outputs,
-                    "Shows": show,
-                    "Clicks": clk,
-                },
-                outputs={"Outputs": outputs},
-                attrs={
-                    "is_distributed": is_distributed,
-                    "padding_idx": padding_idx,
-                    "table_id": table_id,
-                    "size": self.emb_size[param],
-                    "use_cvm_op": use_cvm_op,
-                    "slots": slots
-                })
+            _program.global_block().append_op(type="distributed_push_sparse",
+                                              inputs={
+                                                  "Ids": inputs,
+                                                  'W': w,
+                                                  "Outputs": outputs,
+                                                  "Shows": show,
+                                                  "Clicks": clk,
+                                              },
+                                              outputs={"Outputs": outputs},
+                                              attrs={
+                                                  "is_distributed":
+                                                  is_distributed,
+                                                  "padding_idx": padding_idx,
+                                                  "table_id": table_id,
+                                                  "size": self.emb_size[param],
+                                                  "use_cvm_op": use_cvm_op,
+                                                  "slots": slots
+                                              })
 
     def _pull_sparse_fuse(self, _program, pull_sparse_ops, attrs, send_ctx):
 

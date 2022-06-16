@@ -233,8 +233,9 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.save_persistables(exe, dirname=dirname)
 
         model_dir = tempfile.mkdtemp()
-        fleet.save_inference_model(
-            exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
+        fleet.save_inference_model(exe, model_dir,
+                                   [feed.name for feed in self.feeds],
+                                   self.avg_cost)
         if fleet.is_first_worker():
             self.check_model_right(model_dir)
         shutil.rmtree(model_dir)
