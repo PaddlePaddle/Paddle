@@ -3412,7 +3412,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("current_allocated",
                      &paddle::platform::MemPythonNode::current_allocated)
       .def_readwrite("current_reserved",
-                     &paddle::platform::MemPythonNode::current_reserved);
+                     &paddle::platform::MemPythonNode::current_reserved)
+      .def_readwrite("peak_allocated",
+                     &paddle::platform::MemPythonNode::peak_allocated)
+      .def_readwrite("peak_reserved",
+                     &paddle::platform::MemPythonNode::peak_reserved);
 
   py::class_<paddle::platform::DevicePythonNode>(m, "DevicePythonNode")
       .def(py::init<>())
@@ -3483,6 +3487,14 @@ All parameter, weight, gradient are variables in Paddle.
             name, type, 1, paddle::platform::EventRole::kOrdinary);
       }))
       .def("end", [](platform::RecordEvent *event) { event->End(); });
+
+  py::enum_<paddle::platform::TracerMemEventType>(m, "TracerMemEventType")
+      .value("Allocate", paddle::platform::TracerMemEventType::Allocate)
+      .value("Free", paddle::platform::TracerMemEventType::Free)
+      .value("ReservedAllocate",
+             paddle::platform::TracerMemEventType::ReservedAllocate)
+      .value("ReservedFree",
+             paddle::platform::TracerMemEventType::ReservedFree);
 
   py::enum_<paddle::platform::TracerEventType>(m, "TracerEventType")
       .value("Operator", paddle::platform::TracerEventType::Operator)
