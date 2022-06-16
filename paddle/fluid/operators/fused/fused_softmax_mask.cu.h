@@ -75,8 +75,10 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst, const T* src, const T* mask,
   static_assert(ELEMENTS_PER_THREADS % VEC_SIZE == 0, "");
   constexpr int VEC_NUMS = ELEMENTS_PER_THREADS / VEC_SIZE;
   using VecT = phi::AlignedVector<T, VEC_SIZE>;
+  using VecAccT = phi::AlignedVector<float, VEC_SIZE>;
 
   VecT elements[VEC_NUMS];
+  VecAccT elements_acc[VEC_NUMS];
   VecT tmp_mask;
   float max_val = -std::numeric_limits<float>::infinity();
 
@@ -96,18 +98,17 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst, const T* src, const T* mask,
   for (int i = 0; (i * warp_size + threadIdx.x) * VEC_SIZE < seq_len; ++i) {
 #pragma unroll
     for (int j = 0; j < VEC_SIZE; ++j) {
-      float tmp = __expf(static_cast<float>(elements[i][j]) - max_val);
+      float tmp = std::exp(static_cast<float>(elements[i][j]) - max_val);
       sum_val += tmp;
-      elements[i][j] = static_cast<T>(tmp);
+      elements_acc[i][j] = tmp;
     }
   }
   sum_val = warpReduceSum(sum_val);
-  float mean_val = __fdividef(1.0f, sum_val + 1e-6f);
 
   for (int i = 0; (i * warp_size + threadIdx.x) * VEC_SIZE < seq_len; ++i) {
 #pragma unroll
     for (int j = 0; j < VEC_SIZE; ++j) {
-      float tmp = static_cast<float>(elements[i][j]) * mean_val;
+      float tmp = elements_acc[i][j] / sum_val;
       elements[i][j] = static_cast<T>(tmp);
     }
     phi::Store(elements[i], dst + (i * warp_size + threadIdx.x) * VEC_SIZE);
