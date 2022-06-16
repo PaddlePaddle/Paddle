@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <sstream>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
@@ -82,7 +83,8 @@ float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
 #endif
 
 const char* StringTracerMemEventType(TracerMemEventType type) {
-  static const char* categary_name_[] = {"Allocate", "Free"};
+  static const char* categary_name_[] = {"Allocate", "Free", "ReservedAllocate",
+                                         "ReservedFree"};
   return categary_name_[static_cast<int>(type)];
 }
 
