@@ -492,8 +492,8 @@ class HDFSClient(FS):
         if ret == 134:
             raise FSShellCmdAborted(cmd)
 
-#       return ret, output.splitlines()
-#return ret_code, ret_out.splitlines(), ret_err.splitlines()
+        return ret, output.splitlines()
+        #return ret_code, ret_out.splitlines(), ret_err.splitlines()
 
     @_handle_errors()
     def list_dirs(self, fs_path):

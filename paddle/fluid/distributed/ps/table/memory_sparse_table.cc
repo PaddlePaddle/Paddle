@@ -53,6 +53,7 @@ int32_t MemorySparseTable::Initialize() {
   profiler.register_profiler("sparse table save shard while");
   profiler.register_profiler("sparse table save check one key");
   profiler.register_profiler("sparse table save shard close");
+  profiler.register_profiler("sprase table top push");
   InitializeValue();
   VLOG(0) << "initalize MemorySparseTable succ";
   return 0;
@@ -375,6 +376,7 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
         if (_config.enable_sparse_table_cache() &&
             (save_param == 1 || save_param == 2) &&
             _value_accesor->Save(it.value().data(), 4)) {
+          CostTimer timer10("sprase table top push");
           tk.push(i, _value_accesor->GetField(it.value().data(), "show"));
         }
 
@@ -415,10 +417,10 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
       }
     } while (is_write_failed);
     feasign_size_all += feasign_size;
-//    CostTimer timer3("sparse table save shard updatestat " + std::to_string(i));
-//    for (auto it = shard.begin(); it != shard.end(); ++it) {
-//      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
-//    }
+    CostTimer timer3("sparse table save shard updatestat " + std::to_string(i));
+    for (auto it = shard.begin(); it != shard.end(); ++it) {
+      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+    }
     LOG(INFO) << "MemorySparseTable save prefix success, path: "
               << channel_config.path << " feasign_size: " << feasign_size;
   }

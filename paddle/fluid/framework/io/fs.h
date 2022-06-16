@@ -63,12 +63,16 @@ extern const std::string& hdfs_command();
 
 extern void hdfs_set_command(const std::string& x);
 
+extern const std::string& dataset_hdfs_command();
+
+extern void dataset_hdfs_set_command(const std::string& x);
+
 extern const std::string& download_cmd();
 
 extern void set_download_command(const std::string& x);
 
 extern std::shared_ptr<FILE> hdfs_open_read(std::string path, int* err_no,
-                                            const std::string& converter);
+                                            const std::string& converter, bool read_data);
 
 extern std::shared_ptr<FILE> hdfs_open_write(std::string path, int* err_no,
                                              const std::string& converter);
@@ -87,7 +91,7 @@ extern void hdfs_mv(const std::string& src, const std::string& dest);
 
 // aut-detect fs
 extern std::shared_ptr<FILE> fs_open_read(const std::string& path, int* err_no,
-                                          const std::string& converter);
+                                          const std::string& converter, bool read_data=false);
 
 extern std::shared_ptr<FILE> fs_open_write(const std::string& path, int* err_no,
                                            const std::string& converter);

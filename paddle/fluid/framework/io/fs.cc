@@ -391,7 +391,7 @@ int fs_select_internal(const std::string& path) {
 
 std::shared_ptr<FILE> fs_open_read(const std::string& path, int* err_no,
                                    const std::string& converter,
-                                   bool read_data = false) {
+                                   bool read_data) {
   switch (fs_select_internal(path)) {
     case 0:
       return localfs_open_read(path, converter);
