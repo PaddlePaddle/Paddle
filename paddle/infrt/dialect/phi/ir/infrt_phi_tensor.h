@@ -14,7 +14,6 @@
 
 #pragma once
 
-// clang-format off
 #include <mlir/Dialect/Traits.h>
 #include <mlir/IR/Attributes.h>
 #include <mlir/IR/Builders.h>
@@ -30,12 +29,10 @@
 #include <mlir/Interfaces/LoopLikeInterface.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 
+#include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensorDialect.h.inc"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensorTypes.h.inc"
-
-#include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
 // NOLINT
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h.inc"
-// clang-format on
