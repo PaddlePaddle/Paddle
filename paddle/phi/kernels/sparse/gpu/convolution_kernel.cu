@@ -111,8 +111,8 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
 
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n * in_channels, 1);
-  GatherKernel<T, IntT><<<config.block_per_grid.x,
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n * in_channels/sizeof(T), 1);
+  GatherKernel<T, IntT, sizeof(T)><<<config.block_per_grid.x,
                           config.thread_per_block.x,
                           0,
                           dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
