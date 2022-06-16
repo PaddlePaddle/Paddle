@@ -18,6 +18,7 @@ import site
 import unittest
 import paddle
 import paddle.static as static
+import tempfile
 import subprocess
 import numpy as np
 from paddle.vision.transforms import Compose, Normalize
