@@ -104,9 +104,11 @@ struct MemEvenRecorder {
   void PushMemRecord(const void* ptr, const Place& place, size_t size);
   void PopMemRecord(const void* ptr, const Place& place);
   void PushMemRecord(const void* ptr, const Place& place, size_t size,
-                     uint64_t current_allocated, uint64_t current_reserved);
+                     uint64_t current_allocated, uint64_t current_reserved,
+                     uint64_t peak_allocated, uint64_t peak_reserved);
   void PopMemRecord(const void* ptr, const Place& place, size_t size,
-                    uint64_t current_allocated, uint64_t current_reserved);
+                    uint64_t current_allocated, uint64_t current_reserved,
+                    uint64_t peak_allocated, uint64_t peak_reserved);
   void Flush();
   static MemEvenRecorder& Instance() { return recorder; }
 

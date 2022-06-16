@@ -36,10 +36,14 @@ class StatAllocator : public Allocator {
                               -allocation->size());
       platform::RecordMemEvent(
           allocation->ptr(), allocation->place(), allocation->size(),
-          HOST_MEMORY_STAT_CURRENT_VALUE(Allocated,
-                                         allocation->place().GetDeviceId()),
-          HOST_MEMORY_STAT_PEAK_VALUE(Allocated,
-                                      allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated,
+                                           allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved,
+                                        allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated,
+                                           allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved,
+                                        allocation->place().GetDeviceId()),
           platform::TracerMemEventType::Free);
     } else {
       DEVICE_MEMORY_STAT_UPDATE(Allocated, allocation->place().GetDeviceId(),
@@ -48,7 +52,11 @@ class StatAllocator : public Allocator {
           allocation->ptr(), allocation->place(), allocation->size(),
           DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated,
                                            allocation->place().GetDeviceId()),
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated,
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved,
+                                        allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated,
+                                           allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved,
                                         allocation->place().GetDeviceId()),
           platform::TracerMemEventType::Free);
     }
@@ -66,10 +74,14 @@ class StatAllocator : public Allocator {
                               allocation->size());
       platform::RecordMemEvent(
           allocation->ptr(), allocation->place(), allocation->size(),
-          HOST_MEMORY_STAT_CURRENT_VALUE(Allocated,
-                                         allocation->place().GetDeviceId()),
-          HOST_MEMORY_STAT_PEAK_VALUE(Allocated,
-                                      allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated,
+                                           allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved,
+                                        allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated,
+                                           allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved,
+                                        allocation->place().GetDeviceId()),
           platform::TracerMemEventType::Allocate);
     } else {
       DEVICE_MEMORY_STAT_UPDATE(Allocated, place.GetDeviceId(),
@@ -78,7 +90,11 @@ class StatAllocator : public Allocator {
           allocation->ptr(), allocation->place(), allocation->size(),
           DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated,
                                            allocation->place().GetDeviceId()),
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated,
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved,
+                                        allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated,
+                                           allocation->place().GetDeviceId()),
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved,
                                         allocation->place().GetDeviceId()),
           platform::TracerMemEventType::Allocate);
     }
