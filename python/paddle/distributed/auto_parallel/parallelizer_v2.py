@@ -17,7 +17,10 @@ from collections import defaultdict
 
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
+from paddle.fluid.optimizer import append_backward_new
+from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.passes import new_pass
+from paddle.incubate.autograd import prim_enabled
 
 from .reshard import Resharder
 from .partitioner import Partitioner
@@ -62,11 +65,13 @@ class Parallelizer:
             self._apply_pre_optimization(serial_main_program,
                                          serial_startup_program, serial_loss,
                                          serial_optimizer, params_grads)
-
             # Do logical partition
             partitioner = Partitioner(self._dist_context, rank)
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
                 serial_main_program, serial_startup_program, params_grads)
+            if prim_enabled():
+                assert set(self._dist_context.grads_params.keys()
+                           ) == self._dist_context.synced_gradient, ""
             # Generate optimizer
             self._generate_optimizer(dist_main_prog, dist_startup_prog,
                                      serial_optimizer, dist_params_grads)
@@ -101,11 +106,24 @@ class Parallelizer:
         self._dist_context.dist_startup_programs[rank] = dist_startup_prog
 
     def _generate_backward(self, main_program, startup_program, loss):
-        with program_guard(main_program, startup_program):
-            params_grads = append_backward(
-                loss, distop_context=self._dist_context.dist_op_context)
-        self._completer.complete_backward_annotation(main_program)
-        self._dist_context.block_state.parse_backward_blocks(main_program)
+        if not prim_enabled():
+            with program_guard(main_program, startup_program):
+                params_grads = append_backward(
+                    loss, distop_context=self._dist_context.dist_op_context)
+            self._completer.complete_backward_annotation(main_program)
+            self._dist_context.block_state.parse_backward_blocks(main_program)
+        else:
+            with program_guard(main_program, startup_program):
+                params_grads = append_backward_new([loss])
+            self._completer.complete_prim_annotation(main_program)
+            self._dist_context.block_state.parse_forward_blocks(main_program)
+            self._dist_context.block_state.parse_backward_blocks(main_program)
+            self._dist_context.grads_params = dict()
+            for p, g in params_grads:
+                self._dist_context.grads_params[g.name] = p.name
+            self._dist_context.synced_gradient = set()
+            nranks = paddle.distributed.get_world_size()
+            self._dist_context.data_parallel_group = list(range(nranks))
         return params_grads
 
     def _generate_optimizer(self, main_program, startup_program, optimizer,

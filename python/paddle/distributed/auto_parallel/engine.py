@@ -32,6 +32,7 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Operator
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.incubate.autograd import prim_enabled
 from paddle.distributed import fleet
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
@@ -158,14 +159,8 @@ class Engine:
                 inputs = [self._set_data_parallel(var) for var in inputs]
                 labels = [self._set_data_parallel(var) for var in labels]
 
-            # self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
             feed_vars = {"inputs": inputs, "labels": labels}
 
-            # self._fetch_vars[mode] = {
-            #     "outputs": flatten(outputs),
-            #     "loss": losses,
-            #     "metrics": metrics
-            # }
             fetch_vars = {
                 "outputs": flatten(outputs),
                 "loss": losses,
@@ -374,9 +369,13 @@ class Engine:
         if isinstance(fetches, dict):
             fetch_var_names = list(map(_to_name_str, fetches.values()))
             usr_fetches = dict(zip(fetch_var_names, list(fetches.keys())))
-        elif isinstance(fetches, list):
+        elif isinstance(fetches, (list, set)):
             fetch_var_names = list(map(_to_name_str, fetches))
             usr_fetches = dict(zip(fetch_var_names, fetch_var_names))
+        else:
+            raise TypeError(
+                "'fetches''s type should be 'list', 'set' or 'dict', \
+                but got {}".format(str(type(fetches))))
         return dict(filter(lambda x: self._local_var(x[0]),
                            usr_fetches.items()))
 
@@ -400,11 +399,7 @@ class Engine:
                            batch_size,
                            epochs=1,
                            steps_per_epoch=None):
-        dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
-        dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
-        dist_context = self._dist_contexts[self.mode]
-        dist_main_block = dist_main_prog.global_block()
-
+        dist_main_block = self.main_program.global_block()
         # NOTE: Get feed_list from dist_program, then insert dataloader op
         # with sharded var shape. Because predict_program does not contain
         # labels var, so we will filter dataset's value with length of feed_list.
@@ -415,7 +410,7 @@ class Engine:
             if var.name in dist_main_block.vars:
                 feed_list.append(dist_main_block.vars[var.name])
         dp_world_size, dp_rank = self._get_data_parallel_info(
-            feed_list[0], dist_context)
+            feed_list[0], self.dist_context)
 
         # remove the first three ops if multi run fit/evaluate/predict
         op_size = len(dist_main_block.ops)
@@ -426,7 +421,7 @@ class Engine:
 
         # insert read op at the end of program
         places = paddle.static.cuda_places()
-        with static.program_guard(dist_main_prog, dist_startup_prog):
+        with static.program_guard(self.main_program, self.startup_program):
             dataloader = NonIterableGeneratorLoader(
                 dataset,
                 feed_list,
@@ -448,7 +443,7 @@ class Engine:
                               type=new_op_desc.type())
             dist_main_block.ops.insert(0, new_op)
             dist_op = DistributedOperator(new_op)
-            dist_context.add_dist_op_for_program(dist_op)
+            self.dist_context.add_dist_op_for_program(dist_op)
         for _ in range(new_op_size - op_size):
             dist_main_block._remove_op(new_op_size, sync=False)
         dist_main_block._sync_with_cpp()
@@ -466,6 +461,17 @@ class Engine:
         return specs
 
     def _set_data_parallel(self, var):
+        if prim_enabled():
+            self._default_strategy = 'dp'
+            auto.shard_tensor(var,
+                              dist_attr={
+                                  "process_mesh":
+                                  list(range(self._nranks)),
+                                  "dims_mapping":
+                                  [-1 for _ in range(len(var.shape))]
+                              })
+            return var
+
         if self._nranks == 1:
             self._default_strategy = 'serial'
             auto.shard_tensor(var,
@@ -483,12 +489,14 @@ class Engine:
                                   "dims_mapping":
                                   [0] + [-1 for _ in range(len(var.shape) - 1)]
                               })
-
         return var
 
     def _get_data_parallel_info(self, var, dist_context):
         # get data parallel world size and current data parallel rank
         from .utils import _get_comm_group, _get_corresponding_rank
+
+        if prim_enabled():
+            return self._nranks, self._cur_rank
 
         tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
         process_mesh = tensor_dist_attr.process_mesh

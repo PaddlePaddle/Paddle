@@ -15,6 +15,7 @@
 from .completion import Completer
 from .dist_context import get_default_distributed_context
 from .utils import print_program_with_dist_attr
+from paddle.incubate.autograd import prim_enabled
 
 # from .tuner.parallel_tuner import ParallelTuner
 
@@ -44,11 +45,14 @@ class Planner:
         return self._completer
 
     def plan(self):
-        self._completer.complete_forward_annotation()
-        # if self._strategy.auto_search:
-        #     self._parallel_tuner.tune()
-        # else:
-        #     self._completer.complete_forward_annotation()
-        # parse forward sub block
-        self._dist_context.block_state.parse_forward_blocks(
-            self._dist_context.serial_main_program)
+        if not prim_enabled():
+            self._completer.complete_forward_annotation()
+            # if self._strategy.auto_search:
+            #     self._parallel_tuner.tune()
+            # else:
+            #     self._completer.complete_forward_annotation()
+            # parse forward sub block
+            self._dist_context.block_state.parse_forward_blocks(
+                self._dist_context.serial_main_program)
+        else:
+            pass
