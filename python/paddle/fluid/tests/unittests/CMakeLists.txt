@@ -367,7 +367,7 @@ if(APPLE)
   if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_desc_clone)
     list(REMOVE_ITEM TEST_OPS test_program_code)
-  endif(NOT WITH_DISTRIBUTE)
+  endif()
   message(
     WARNING
       "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass \n test_detection_map_op \n test_dist_se_resnext_*"
@@ -683,7 +683,8 @@ endif()
 
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
-endforeach(TEST_OP)
+endforeach()
+set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
                 FLAGS_inner_op_parallelism=4)
 if(WITH_GPU
@@ -872,8 +873,8 @@ if(WITH_DISTRIBUTE)
                         test_fleet_localsgd_meta_optimizer ENVS ${dist_ENVS})
 
       endif()
-    endif(NOT WIN32)
-  endif(NOT APPLE)
+    endif()
+  endif()
   if(WITH_DGC)
     # if with dgc, test all dgc tests.
     # NOTE. dist dgc tests is already in DIST_TEST_OPS
@@ -937,7 +938,7 @@ if(WITH_DISTRIBUTE)
         message(
           FATAL_ERROR "available ports have been exhausted:${dist_ut_port}")
       endif()
-    endforeach(TEST_OP)
+    endforeach()
     # solve it later.
     bash_test_modules(
       test_fleet_launch_ps
@@ -973,15 +974,15 @@ if(WITH_DISTRIBUTE)
         "PADDLE_DIST_UT_PORT=${dist_ut_port}+20"
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
-  endif(NOT APPLE)
+  endif()
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
-# Coverage pipeline use cuda 10.1 now, profiler will random hang in cuda 10.1,
+# profiler will random hang in linux cuda 10.1 or 10.2
 # see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
-# We guess there are some bugs in cuda 10.1 or 10.2,
-# since this unittest is stable in cuda 11 (py3 pipeline) now.
-if(NOT WITH_COVERAGE)
+# We guess there are some bugs in linux cuda 10.1 or 10.2,
+# since this unittest is stable in cuda 11.2 and 10.2 (windows-ci pipeline) now.
+if(NOT (LINUX AND CUDA_VERSION LESS 11.0))
   py_test_modules(test_parallel_executor_profiler MODULES
                   test_parallel_executor_profiler)
   set_tests_properties(test_parallel_executor_profiler
