@@ -740,6 +740,19 @@ PADDLE_DEFINE_EXPORTED_bool(
     "It controls whether load graph node and edge with mutli threads parallely.");
 
 /**
+ * Distributed related FLAG
+ * Name: FLAGS_graph_get_neighbor_id
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Control get all neighbor id when running sub part graph
+ *       If it is not set, do not need get neighbor id when run all part graph
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    graph_get_neighbor_id, false,
+    "It controls get all neighbor id when running sub part graph.");
+
+/**
  * KP kernel related FLAG
  * Name: FLAGS_run_kp_kernel
  * Since Version: 2.3.0

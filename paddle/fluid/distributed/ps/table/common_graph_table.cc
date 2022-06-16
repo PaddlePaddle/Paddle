@@ -1638,6 +1638,30 @@ std::vector<std::vector<uint64_t>> GraphTable::get_all_id(int type_id, int slice
   return res;
 }
 
+std::vector<std::vector<uint64_t>> GraphTable::get_all_neighbor_id(int type_id, int slice_num) {
+  std::vector<std::vector<uint64_t>> res(slice_num);
+  auto &search_shards = type_id == 0 ? edge_shards : feature_shards;
+  std::vector<std::future<std::vector<uint64_t>>> tasks;
+  for (int idx = 0; idx < search_shards.size(); idx++) {
+    for (int j = 0; j < search_shards[idx].size(); j++) {
+      tasks.push_back(_shards_task_pool[j % task_pool_size_]->enqueue(
+        [&search_shards, idx, j]() -> std::vector<uint64_t> {
+          return search_shards[idx][j]->get_all_neighbor_id();
+        }));
+    }
+  }
+  for (size_t i = 0; i < tasks.size(); ++i) {
+    tasks[i].wait();
+  }
+  for (size_t i = 0; i < tasks.size(); i++) {
+    auto ids = tasks[i].get();
+    for (auto &id : ids) {
+      res[(uint64_t)(id) % slice_num].push_back(id);
+    }
+  }
+  return res;
+}
+
 std::vector<std::vector<uint64_t>> GraphTable::get_all_id(int type_id, int idx,
                                                           int slice_num) {
   std::vector<std::vector<uint64_t>> res(slice_num);
@@ -1648,6 +1672,29 @@ std::vector<std::vector<uint64_t>> GraphTable::get_all_id(int type_id, int idx,
     tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
         [&search_shards, i]() -> std::vector<uint64_t> {
           return search_shards[i]->get_all_id();
+        }));
+  }
+  for (size_t i = 0; i < tasks.size(); ++i) {
+    tasks[i].wait();
+  }
+  VLOG(0) << "end task, task_pool_size_[" << task_pool_size_ << "]";
+  for (size_t i = 0; i < tasks.size(); i++) {
+    auto ids = tasks[i].get();
+    for (auto &id : ids) res[id % slice_num].push_back(id);
+  }
+  return res;
+}
+
+std::vector<std::vector<uint64_t>> GraphTable::get_all_neighbor_id(int type_id, int idx,
+                                                          int slice_num) {
+  std::vector<std::vector<uint64_t>> res(slice_num);
+  auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
+  std::vector<std::future<std::vector<uint64_t>>> tasks;
+  VLOG(0) << "begin task, task_pool_size_[" << task_pool_size_ << "]";
+  for (int i = 0; i < search_shards.size(); i++) {
+    tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
+        [&search_shards, i]() -> std::vector<uint64_t> {
+          return search_shards[i]->get_all_neighbor_id();
         }));
   }
   for (size_t i = 0; i < tasks.size(); ++i) {
