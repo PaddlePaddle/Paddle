@@ -290,9 +290,9 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.trans_y = False
 
 
-support_types = get_xpu_op_support_types('matmul_v2')
-for stype in support_types:
-    create_test_class(globals(), XPUTestMatmulV2Op, stype)
+#support_types = get_xpu_op_support_types('matmul_v2')
+#for stype in support_types:
+#    create_test_class(globals(), XPUTestMatmulV2Op, stype)
 
 if __name__ == "__main__":
     paddle.enable_static()
