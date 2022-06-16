@@ -21,27 +21,27 @@ namespace paddle {
 namespace framework {
 
 HeterPsBase* HeterPsBase::get_instance(
-    size_t capacity, std::shared_ptr<HeterPsResource> resource) {
-  return new HeterPs(capacity, resource);
+    size_t capacity, std::shared_ptr<HeterPsResource> resource,
+    CommonFeatureValueAccessor feature_value_accessor,
+    int optimizer_type) {
+  return new HeterPs(capacity, resource, feature_value_accessor, optimizer_type);
 }
 
-HeterPs::HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource) {
+HeterPs::HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource, 
+                  CommonFeatureValueAccessor feature_value_accessor,
+                  int optimizer_type) {
   comm_ =
-      std::make_shared<HeterComm<FeatureKey, FeatureValue, FeaturePushValue>>(
-          capacity, resource);
-  opt_ = Optimizer<FeatureValue, FeaturePushValue>();
+      std::make_shared<HeterComm<FeatureKey, float*, float*>>(
+          capacity, resource, feature_value_accessor);
+  feature_value_accessor_ = feature_value_accessor;
+  optimizer_type_ = optimizer_type;
 }
 
 HeterPs::~HeterPs() {}
 
-void HeterPs::pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals,
+void HeterPs::pull_sparse(int num, FeatureKey* d_keys, float* d_vals,
                           size_t len) {
   comm_->pull_sparse(num, d_keys, d_vals, len);
-}
-
-void HeterPs::build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
-                       size_t len, size_t chunk_size, int stream_num) {
-  comm_->build_ps(num, h_keys, h_vals, len, chunk_size, stream_num);
 }
 
 void HeterPs::build_ps(int num, FeatureKey* h_keys, char* pool, size_t len,
@@ -68,9 +68,20 @@ void HeterPs::end_pass() { comm_->end_pass(); }
 void HeterPs::show_one_table(int gpu_num) { comm_->show_one_table(gpu_num); }
 
 void HeterPs::push_sparse(int num, FeatureKey* d_keys,
-                          FeaturePushValue* d_grads, size_t len) {
-  comm_->push_sparse(num, d_keys, d_grads, len, opt_);
-  // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
+                          float* d_grads, size_t len) {
+  if (optimizer_type_ == 3) { //adam
+    auto optimizer = SparseAdamOptimizer(feature_value_accessor_);
+    VLOG(5) << "INTO push_sparse SparseAdamOptimizer, EmbedDim():" << optimizer.EmbedDim();
+    comm_->push_sparse(num, d_keys, d_grads, len, optimizer);
+  } else if (optimizer_type_ == 4) { //shared_adam
+    auto optimizer = SparseAdamSharedOptimizer(feature_value_accessor_);
+    VLOG(5) << "INTO push_sparse SparseAdamSharedOptimizer, EmbedDim():" << optimizer.EmbedDim();
+    comm_->push_sparse(num, d_keys, d_grads, len, optimizer);
+  } else {
+    auto optimizer = SparseAdagradOptimizer(feature_value_accessor_);
+    VLOG(5) << "INTO push_sparse SparseAdagradOptimizer, EmbedDim():" << optimizer.EmbedDim();
+    comm_->push_sparse(num, d_keys, d_grads, len, optimizer);
+  }
 }
 
 void HeterPs::set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
@@ -81,6 +92,10 @@ void HeterPs::set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
 
 void HeterPs::set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) {
   comm_->set_multi_mf_dim(multi_mf_dim, max_mf_dim);
+}
+
+void HeterPs::set_accessor(CommonFeatureValueAccessor& accessor) {
+  comm_->set_accessor(accessor);
 }
 
 void HeterPs::show_table_collisions() {

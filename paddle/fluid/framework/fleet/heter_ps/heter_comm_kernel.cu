@@ -117,15 +117,32 @@ __global__ void fill_dvals_kernel(ValType* d_shard_vals, ValType* d_vals,
   }
 }
 
-template <typename KeyType, typename GradType, typename T>
+template <typename KeyType, typename T>
 __global__ void dy_mf_fill_shard_grads_kernel(
-    KeyType* d_shard_keys, KeyType* d_keys, GradType* d_shard_grads,
-    GradType* d_grads, T* idx, size_t len, size_t grad_value_size) {
+    KeyType* d_shard_keys, KeyType* d_keys, float* d_shard_grads,
+    float* d_grads, T* idx, size_t len, size_t grad_value_size,
+    CommonFeatureValueAccessor feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     d_shard_keys[i] = d_keys[idx[i]];
-    *(GradType*)((char*)d_shard_grads + i * grad_value_size) =
-        *(GradType*)((char*)d_grads + uint64_t(idx[i]) * grad_value_size);
+    float* cur = (float*)((char*)d_shard_grads + i * grad_value_size);
+    float* shard_val = (float*)((char*)d_grads + uint64_t(idx[i]) * grad_value_size);
+
+    cur[feature_value_accessor.common_push_value.SlotIndex()] =
+      shard_val[feature_value_accessor.common_push_value.SlotIndex()];
+    cur[feature_value_accessor.common_push_value.ShowIndex()] =
+      shard_val[feature_value_accessor.common_push_value.ShowIndex()];
+    cur[feature_value_accessor.common_push_value.ClickIndex()] =
+      shard_val[feature_value_accessor.common_push_value.ClickIndex()];
+    cur[feature_value_accessor.common_push_value.MfDimIndex()] =
+      shard_val[feature_value_accessor.common_push_value.MfDimIndex()];
+    cur[feature_value_accessor.common_push_value.EmbedGIndex()] =
+      shard_val[feature_value_accessor.common_push_value.EmbedGIndex()];
+
+    for (int x = 0; x < int(shard_val[feature_value_accessor.common_push_value.MfDimIndex()]); x++) {
+      cur[feature_value_accessor.common_push_value.EmbedxGIndex() + x] = 
+        shard_val[feature_value_accessor.common_push_value.EmbedxGIndex() + x];
+    }
   }
 }
 
@@ -134,33 +151,66 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
                                        const uint32_t* index, const char* input,
                                        char* output, int n,
                                        size_t grad_value_size,
-                                       DynamicGradMerger& merger_) {
+                                       DynamicGradMerger& merger_,
+                                      CommonFeatureValueAccessor& feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (i < n) {
     uint32_t start = offset[i];
     uint32_t num = fea_num[i];
     int ori_index = index[start];
-    FeaturePushValue& out = *(FeaturePushValue*)(output + i * grad_value_size);
-    FeaturePushValue& in =
-        *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
-    merger_.update_one(out, in);
+    float* out = (float*)(output + i * grad_value_size);
+    float* in =
+        (float*)(input + size_t(ori_index) * grad_value_size);
+    merger_.update_one(out, in, feature_value_accessor);
     for (int j = 1; j < num; ++j) {
       ori_index = index[start + j];
-      in = *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
-      merger_.merge_one(out, in);
+      in = (float*)(input + size_t(ori_index) * grad_value_size);
+      merger_.merge_one(out, in, feature_value_accessor);
     }
   }
 }
 
-template <typename ValType, typename T>
-__global__ void dy_mf_fill_dvals_kernel(ValType* d_shard_vals, ValType* d_vals,
-                                        T* idx, size_t len, size_t val_size) {
+template <typename T>
+__global__ void dy_mf_fill_dvals_kernel(float* d_shard_vals, float* d_vals,
+                                        T* idx, size_t len, size_t val_size,
+                                       CommonFeatureValueAccessor feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     uint64_t new_offset = uint64_t(idx[i]) * val_size;
-    *(ValType*)((char*)d_vals + new_offset) =
-        *(ValType*)((char*)d_shard_vals + i * val_size);
+    float* cur = (float*)((char*)d_vals + new_offset);
+    float* shard_val = (float*)((char*)d_shard_vals + uint64_t(i) * val_size);
+    cur[feature_value_accessor.common_feature_value.SlotIndex()] =
+      shard_val[feature_value_accessor.common_feature_value.SlotIndex()];
+    cur[feature_value_accessor.common_feature_value.ShowIndex()] =
+      shard_val[feature_value_accessor.common_feature_value.ShowIndex()];
+    cur[feature_value_accessor.common_feature_value.ClickIndex()] =
+      shard_val[feature_value_accessor.common_feature_value.ClickIndex()];
+    cur[feature_value_accessor.common_feature_value.MfDimIndex()] =
+      shard_val[feature_value_accessor.common_feature_value.MfDimIndex()];
+    cur[feature_value_accessor.common_feature_value.EmbedWIndex()] =
+      shard_val[feature_value_accessor.common_feature_value.EmbedWIndex()];
+    cur[feature_value_accessor.common_feature_value.MfSizeIndex()] =
+      shard_val[feature_value_accessor.common_feature_value.MfSizeIndex()];
+    cur[feature_value_accessor.common_feature_value.CpuPtrIndex()] =
+      shard_val[feature_value_accessor.common_feature_value.CpuPtrIndex()];
+    cur[feature_value_accessor.common_feature_value.DeltaScoreIndex()] =
+      shard_val[feature_value_accessor.common_feature_value.DeltaScoreIndex()];
+    cur[feature_value_accessor.common_feature_value.EmbedWIndex()] =
+      shard_val[feature_value_accessor.common_feature_value.EmbedWIndex()];
+    for (int i = 0; i < feature_value_accessor.common_feature_value.EmbedDim(); i++) {
+      cur[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + i] = 
+        shard_val[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + i];
+    }
+
+    for (int x = 0; x < feature_value_accessor.common_feature_value.EmbedXDim(); x++) {
+      cur[feature_value_accessor.common_feature_value.EmbedxG2SumIndex() + x]  = 
+        shard_val[feature_value_accessor.common_feature_value.EmbedxG2SumIndex() + x];
+    }
+    for (int x = 0; x < feature_value_accessor.common_feature_value.EmbedWDim(); x++) {
+      cur[feature_value_accessor.common_feature_value.EmbedxWIndex() + x] = 
+        shard_val[feature_value_accessor.common_feature_value.EmbedxWIndex() + x];
+    }
   }
 }
 
@@ -254,16 +304,16 @@ void HeterCommKernel::reduce_by_key(void* d_temp_storage,
       debug_synchronous));
 }
 
-template <typename KeyType, typename GradType, typename T, typename StreamType>
+template <typename KeyType, typename T, typename StreamType>
 void HeterCommKernel::dy_mf_fill_shard_grads(
-    KeyType* d_shard_keys, KeyType* d_keys, GradType* d_shard_grads,
-    GradType* d_grads, T* idx, long long len, size_t grad_value_size,
+    KeyType* d_shard_keys, KeyType* d_keys, float* d_shard_grads,
+    float* d_grads, T* idx, long long len, size_t grad_value_size,
     const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
   dy_mf_fill_shard_grads_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_shard_keys, d_keys, d_shard_grads, d_grads, idx, c_len,
-      grad_value_size);
+      grad_value_size, feature_value_accessor_);
 }
 
 template <typename StreamType>
@@ -273,17 +323,17 @@ void HeterCommKernel::merge_gradient(
     DynamicGradMerger& merger_, const StreamType& stream) {
   int grid_size = (n - 1) / block_size_ + 1;
   merge_gradients_kernel<<<grid_size, block_size_, 0, stream>>>(
-      offset, fea_num, index, input, output, n, grad_value_size, merger_);
+      offset, fea_num, index, input, output, n, grad_value_size, merger_, feature_value_accessor_);
 }
 
-template <typename ValType, typename T, typename StreamType>
-void HeterCommKernel::dy_mf_fill_dvals(ValType* d_shard_vals, ValType* d_vals,
+template <typename T, typename StreamType>
+void HeterCommKernel::dy_mf_fill_dvals(float* d_shard_vals, float* d_vals,
                                        T* idx, long long len, size_t val_size,
                                        const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
   dy_mf_fill_dvals_kernel<<<grid_size, block_size_, 0, stream>>>(
-      d_shard_vals, d_vals, idx, c_len, val_size);
+      d_shard_vals, d_vals, idx, c_len, val_size, feature_value_accessor_);
 }
 
 template void HeterCommKernel::fill_idx<int, cudaStream_t>(
@@ -312,10 +362,10 @@ template void HeterCommKernel::fill_shard_key<unsigned long, int, cudaStream_t>(
     const cudaStream_t& stream);
 
 template void HeterCommKernel::fill_shard_grads<
-    unsigned long, paddle::framework::FeaturePushValue, int, cudaStream_t>(
+    unsigned long, float, int, cudaStream_t>(
     unsigned long* d_shard_keys, unsigned long* d_keys,
-    paddle::framework::FeaturePushValue* d_shard_grads,
-    paddle::framework::FeaturePushValue* d_grads, int* idx, long long len,
+    float* d_shard_grads,
+    float* d_grads, int* idx, long long len,
     const cudaStream_t& stream);
 
 template void
@@ -352,10 +402,9 @@ template void HeterCommKernel::reduce_by_key<
     int num_items, cudaStream_t stream, bool debug_synchronous);
 
 template void HeterCommKernel::dy_mf_fill_shard_grads<
-    unsigned long, paddle::framework::FeaturePushValue, int, cudaStream_t>(
+    unsigned long, int, cudaStream_t>(
     unsigned long* d_shard_keys, unsigned long* d_keys,
-    paddle::framework::FeaturePushValue* d_shard_grads,
-    paddle::framework::FeaturePushValue* d_grads, int* idx, long long len,
+    float* d_shard_grads, float* d_grads, int* idx, long long len,
     size_t grad_value_size, const cudaStream_t& stream);
 
 template void HeterCommKernel::merge_gradient<cudaStream_t>(
@@ -363,10 +412,9 @@ template void HeterCommKernel::merge_gradient<cudaStream_t>(
     const char* input, char* output, int n, size_t grad_value_size,
     DynamicGradMerger& merger_, const cudaStream_t& stream);
 
-template void HeterCommKernel::dy_mf_fill_dvals<paddle::framework::FeatureValue,
-                                                int, cudaStream_t>(
-    paddle::framework::FeatureValue* d_shard_vals,
-    paddle::framework::FeatureValue* d_vals, int* idx, long long len,
+template void HeterCommKernel::dy_mf_fill_dvals<int, cudaStream_t>(
+    float* d_shard_vals,
+    float* d_vals, int* idx, long long len,
     size_t val_size, const cudaStream_t& stream);
 #endif
 

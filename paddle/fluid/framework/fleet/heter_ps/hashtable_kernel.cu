@@ -84,7 +84,8 @@ template <typename Table>
 __global__ void dy_mf_search_kernel(Table* table,
                                     const typename Table::key_type* const keys,
                                     char* vals, size_t len,
-                                    size_t pull_feature_value_size) {
+                                    size_t pull_feature_value_size,
+                                    CommonFeatureValueAccessor feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   // return;
   if (i < len) {
@@ -92,19 +93,39 @@ __global__ void dy_mf_search_kernel(Table* table,
 
     if (it != table->end()) {
       uint64_t offset = i * pull_feature_value_size;
-      FeatureValue* cur = (FeatureValue*)(vals + offset);
-      FeatureValue& input = *(FeatureValue*)(it->second);
-      cur->slot = input.slot;
-      cur->show = input.show;
-      cur->clk = input.clk;
-      cur->mf_dim = input.mf_dim;
-      cur->lr = input.lr;
-      cur->mf_size = input.mf_size;
-      cur->cpu_ptr = input.cpu_ptr;
-      cur->delta_score = input.delta_score;
-      cur->lr_g2sum = input.lr_g2sum;
-      for (int j = 0; j < cur->mf_dim + 1; ++j) {
-        cur->mf[j] = input.mf[j];
+      float* cur = (float*)(vals + offset);
+      float* input = it->second;
+      
+      cur[feature_value_accessor.common_feature_value.SlotIndex()] =
+        input[feature_value_accessor.common_feature_value.SlotIndex()];
+      cur[feature_value_accessor.common_feature_value.ShowIndex()] =
+        input[feature_value_accessor.common_feature_value.ShowIndex()];
+      cur[feature_value_accessor.common_feature_value.ClickIndex()] =
+        input[feature_value_accessor.common_feature_value.ClickIndex()];
+      cur[feature_value_accessor.common_feature_value.MfDimIndex()] =
+        input[feature_value_accessor.common_feature_value.MfDimIndex()];
+      cur[feature_value_accessor.common_feature_value.EmbedWIndex()] =
+        input[feature_value_accessor.common_feature_value.EmbedWIndex()];
+      cur[feature_value_accessor.common_feature_value.MfSizeIndex()] =
+        input[feature_value_accessor.common_feature_value.MfSizeIndex()];
+      cur[feature_value_accessor.common_feature_value.CpuPtrIndex()] =
+        input[feature_value_accessor.common_feature_value.CpuPtrIndex()];
+      cur[feature_value_accessor.common_feature_value.DeltaScoreIndex()] =
+        input[feature_value_accessor.common_feature_value.DeltaScoreIndex()];
+      cur[feature_value_accessor.common_feature_value.EmbedWIndex()] =
+        input[feature_value_accessor.common_feature_value.EmbedWIndex()];
+      for (int i = 0; i < feature_value_accessor.common_feature_value.EmbedDim(); i++) {
+        cur[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + i] = 
+          input[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + i];
+      }
+
+      for (int x = 0; x < feature_value_accessor.common_feature_value.EmbedXDim(); x++) {
+        cur[feature_value_accessor.common_feature_value.EmbedxG2SumIndex() + x]  = 
+          input[feature_value_accessor.common_feature_value.EmbedxG2SumIndex() + x];
+      }
+      for (int x = 0; x < feature_value_accessor.common_feature_value.EmbedWDim(); x++) {
+        cur[feature_value_accessor.common_feature_value.EmbedxWIndex() + x] = 
+          input[feature_value_accessor.common_feature_value.EmbedxWIndex() + x];
       }
     }
   }
@@ -135,8 +156,8 @@ __global__ void dy_mf_update_kernel(Table* table,
   if (i < len) {
     auto it = table->find(keys[i]);
     if (it != table->end()) {
-      FeaturePushValue* cur = (FeaturePushValue*)(grads + i * grad_value_size);
-      sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, *cur);
+      float* cur = (float*)(grads + i * grad_value_size);
+      sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, cur);
     } else {
       printf("warning: push miss key: %d", keys[i]);
     }
@@ -199,7 +220,7 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
-      container_, d_keys, d_vals, len, pull_feature_value_size_);
+      container_, d_keys, d_vals, len, pull_feature_value_size_, feature_value_accessor_);
 }
 
 template <typename KeyType, typename ValType>
@@ -273,27 +294,6 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, StreamType stream) {
         }
       }
 #endif
-#ifdef PADDLE_WITH_PSCORE
-      auto* downpour_value =
-          (paddle::distributed::FixedFeatureValue*)(gpu_val.cpu_ptr);
-      int downpour_value_size = downpour_value->size();
-      if (gpu_val.mf_size > 0 && downpour_value_size == 7) {
-        downpour_value->resize(gpu_val.mf_size + downpour_value_size);
-      }
-      float* cpu_val = downpour_value->data();
-      // cpu_val[0] = 0;
-      cpu_val[2] = gpu_val.delta_score;
-      cpu_val[3] = gpu_val.show;
-      cpu_val[4] = gpu_val.clk;
-      cpu_val[5] = gpu_val.lr;
-      cpu_val[6] = gpu_val.lr_g2sum;
-      cpu_val[0] = gpu_val.slot;
-      if (gpu_val.mf_size > 0) {
-        for (int x = 0; x < gpu_val.mf_size; x++) {
-          cpu_val[x + 7] = gpu_val.mf[x];
-        }
-      }
-#endif
     }
   };
 
@@ -310,9 +310,9 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, StreamType stream) {
 }
 
 template <typename KeyType, typename ValType>
-template <typename GradType, typename Sgd, typename StreamType>
+template <typename Sgd, typename StreamType>
 void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
-                                         const GradType* d_grads, size_t len,
+                                         const float* d_grads, size_t len,
                                          Sgd sgd, StreamType stream) {
   if (len == 0) {
     return;
@@ -336,8 +336,8 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
       push_grad_value_size_);
 }
 
-template class HashTable<unsigned long, paddle::framework::FeatureValue>;
-template class HashTable<unsigned long, paddle::framework::FeatureValue*>;
+template class HashTable<unsigned long, float>;
+template class HashTable<unsigned long, float*>;
 template class HashTable<long, int>;
 template class HashTable<unsigned long, int>;
 template class HashTable<unsigned long, unsigned long>;
@@ -347,13 +347,13 @@ template class HashTable<long, long>;
 template class HashTable<long, unsigned long>;
 template class HashTable<long, unsigned int>;
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue>::get<
+template void HashTable<unsigned long, float>::get<
     cudaStream_t>(const unsigned long* d_keys,
-                  paddle::framework::FeatureValue* d_vals, size_t len,
+                  float* d_vals, size_t len,
                   cudaStream_t stream);
 
 template void
-HashTable<unsigned long, paddle::framework::FeatureValue*>::get<cudaStream_t>(
+HashTable<unsigned long, float*>::get<cudaStream_t>(
     const unsigned long* d_keys, char* d_vals, size_t len, cudaStream_t stream);
 
 template void HashTable<long, int>::get<cudaStream_t>(const long* d_keys,
@@ -376,12 +376,12 @@ template void HashTable<long, unsigned int>::get<cudaStream_t>(
 //    const unsigned long* d_keys, char* d_vals, size_t len, cudaStream_t
 //    stream);
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue>::insert<
+template void HashTable<unsigned long, float>::insert<
     cudaStream_t>(const unsigned long* d_keys,
-                  const paddle::framework::FeatureValue* d_vals, size_t len,
+                  const float* d_vals, size_t len,
                   cudaStream_t stream);
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue*>::
+template void HashTable<unsigned long, float*>::
     insert<cudaStream_t>(const unsigned long* d_keys, size_t len, char* pool,
                          size_t feature_value_size, size_t start_index,
                          cudaStream_t stream);
@@ -411,28 +411,20 @@ template void HashTable<long, unsigned int>::insert<cudaStream_t>(
     const long* d_keys, const unsigned int* d_vals, size_t len,
     cudaStream_t stream);
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue>::
+template void HashTable<unsigned long, float*>::
     dump_to_cpu<cudaStream_t>(int devid, cudaStream_t stream);
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
-    paddle::framework::FeaturePushValue,
-    Optimizer<paddle::framework::FeatureValue,
-              paddle::framework::FeaturePushValue>,
-    cudaStream_t>(const unsigned long* d_keys,
-                  const paddle::framework::FeaturePushValue* d_grads,
-                  size_t len, Optimizer<paddle::framework::FeatureValue,
-                                        paddle::framework::FeaturePushValue>
-                                  sgd,
-                  cudaStream_t stream);
-
 template void
-HashTable<unsigned long, paddle::framework::FeatureValue*>::update<
-    Optimizer<paddle::framework::FeatureValue,
-              paddle::framework::FeaturePushValue>,
-    cudaStream_t>(const unsigned long* d_keys, const char* d_grads, size_t len,
-                  Optimizer<paddle::framework::FeatureValue,
-                            paddle::framework::FeaturePushValue>
-                      sgd,
+HashTable<unsigned long, float*>::update<SparseAdagradOptimizer, cudaStream_t>(const unsigned long* d_keys, const char* d_grads, size_t len,
+                  SparseAdagradOptimizer sgd,
+                  cudaStream_t stream);
+template void
+HashTable<unsigned long, float*>::update<SparseAdamOptimizer, cudaStream_t>(const unsigned long* d_keys, const char* d_grads, size_t len,
+                  SparseAdamOptimizer sgd,
+                  cudaStream_t stream);
+template void
+HashTable<unsigned long, float*>::update<SparseAdamSharedOptimizer, cudaStream_t>(const unsigned long* d_keys, const char* d_grads, size_t len,
+                  SparseAdamSharedOptimizer sgd,
                   cudaStream_t stream);
 
 // template void HashTable<unsigned long,
