@@ -27,10 +27,3 @@ PD_REGISTER_KERNEL(matmul,
                    double,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
-
-PD_REGISTER_KERNEL(matmul_with_flatten,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::MatmulWithFlattenKernel,
-                   float,
-                   double) {}

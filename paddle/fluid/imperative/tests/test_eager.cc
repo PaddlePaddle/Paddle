@@ -99,4 +99,4 @@ TEST(test_var_helper, eager_var_helper) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP_ITSELF(mul);
+USE_OP(mul);

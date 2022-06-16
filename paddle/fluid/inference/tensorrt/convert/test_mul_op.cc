@@ -47,4 +47,4 @@ TEST(MulOpConverter, main) {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP_ITSELF(mul);
+USE_OP(mul);

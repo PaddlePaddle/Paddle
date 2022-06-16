@@ -60,28 +60,4 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                             DenseTensor* out_d_ddx,
                             DenseTensor* out_d_ddy);
 
-template <typename T, typename Context>
-void MatmulWithFlattenGradKernel(const Context& dev_ctx,
-                                 const DenseTensor& x,
-                                 const DenseTensor& y,
-                                 const DenseTensor& out_grad,
-                                 int x_num_col_dims,
-                                 int y_num_col_dims,
-                                 DenseTensor* x_grad,
-                                 DenseTensor* y_grad);
-
-template <typename T, typename Context>
-void MatmulWithFlattenDoubleGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
-    const DenseTensor& out_grad,
-    const paddle::optional<DenseTensor>& x_grad_grad,
-    const paddle::optional<DenseTensor>& y_grad_grad,
-    int x_num_col_dims,
-    int y_num_col_dims,
-    DenseTensor* x_grad,
-    DenseTensor* y_grad,
-    DenseTensor* out_grad_grad);
-
 }  // namespace phi
