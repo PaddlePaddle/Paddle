@@ -206,7 +206,11 @@ void SparseCooToCsrCPUKernel(const CPUContext& dev_ctx,
   if (batchs > 1) {
     for (int i = 0; i < non_zero_num; i++) {
       if (i == non_zero_num - 1 || batchs_ptr[i] != batchs_ptr[i + 1]) {
-        offsets[batchs_ptr[i]] = i + 1;
+        const int start = batchs_ptr[i];
+        const int end = i == non_zero_num - 1 ? batchs : batchs_ptr[i + 1];
+        for (int j = start; j < end; j++) {
+          offsets[j] = i + 1;
+        }
       }
     }
   } else {
@@ -232,6 +236,9 @@ void SparseCooToCsrCPUKernel(const CPUContext& dev_ctx,
     }
     for (IntT i = coo_rows_ptr[batch_non_zero_num - 1] + 1; i < rows + 1; i++) {
       csr_crows_data[b * (rows + 1) + i] = batch_non_zero_num;
+    }
+    if (batch_non_zero_num == 0) {
+      memset(csr_crows_data + b * (rows + 1), 0, sizeof(IntT) * (rows + 1));
     }
   }
 
