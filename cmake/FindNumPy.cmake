@@ -26,7 +26,7 @@ if(PYTHON_EXECUTABLE)
     OUTPUT_VARIABLE NUMPY_PATH)
 elseif(_numpy_out)
   message(STATUS "Python executable not found.")
-endif(PYTHON_EXECUTABLE)
+endif()
 
 find_path(PYTHON_NUMPY_INCLUDE_DIR numpy/arrayobject.h
           HINTS "${NUMPY_PATH}" "${PYTHON_INCLUDE_PATH}")
@@ -35,7 +35,7 @@ if(PYTHON_NUMPY_INCLUDE_DIR)
   set(PYTHON_NUMPY_FOUND
       1
       CACHE INTERNAL "Python numpy found")
-endif(PYTHON_NUMPY_INCLUDE_DIR)
+endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(NumPy DEFAULT_MSG PYTHON_NUMPY_INCLUDE_DIR)
