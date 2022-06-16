@@ -269,34 +269,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     return false;
 
   for (auto& teller : tellers_) {
-    std::unordered_set<std::string> act_op_list = {"relu",
-                                                   "relu6",
-                                                   "sigmoid",
-                                                   "elu",
-                                                   "selu",
-                                                   "softsign",
-                                                   "softplus",
-                                                   "stanh",
-                                                   "thresholded_relu",
-                                                   "exp",
-                                                   "log",
-                                                   "sqrt",
-                                                   "abs",
-                                                   "sin",
-                                                   "cos",
-                                                   "tan",
-                                                   "tanh",
-                                                   "sinh",
-                                                   "cosh",
-                                                   "asin",
-                                                   "acos",
-                                                   "atan",
-                                                   "asinh",
-                                                   "atanh",
-                                                   "ceil",
-                                                   "floor",
-                                                   "erf"
-    };
+    std::unordered_set<std::string> act_op_list = {
+        "relu",     "relu6", "sigmoid",
+        "elu",      "selu",  "softsign",
+        "softplus", "stanh", "thresholded_relu",
+
+        "exp",      "log",   "sqrt",
+        "abs",      "sin",   "cos",
+        "tan",      "tanh",  "sinh",
+        "cosh",     "asin",  "acos",
+        "atan",     "asinh", "atanh",
+        "ceil",     "floor", "erf"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
