@@ -138,7 +138,7 @@ class TestFillConstantBool(OpTest):
         self.__class__.use_npu = True
 
     def init_dtype(self):
-        self.dtype = np.BOOL
+        self.dtype = np.bool_
 
     def test_check_output(self):
         self.check_output_with_place(self.place)

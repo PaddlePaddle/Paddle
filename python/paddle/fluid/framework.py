@@ -1101,7 +1101,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT16
     elif dtype == np.int64:
         return core.VarDesc.VarType.INT64
-    elif dtype == np.bool:
+    elif dtype == np.bool_:
         return core.VarDesc.VarType.BOOL
     elif dtype == np.uint16:
         # since there is still no support for bfloat16 in NumPy,
