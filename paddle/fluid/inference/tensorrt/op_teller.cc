@@ -273,7 +273,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         "relu",     "relu6", "sigmoid",
         "elu",      "selu",  "softsign",
         "softplus", "stanh", "thresholded_relu",
-
         "exp",      "log",   "sqrt",
         "abs",      "sin",   "cos",
         "tan",      "tanh",  "sinh",
