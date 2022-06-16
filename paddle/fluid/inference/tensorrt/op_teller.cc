@@ -75,6 +75,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       "relu",
       "exp",
       "log",
+      "sqrt",
+      "abs",
+      "sin",
+      "cos",
+      "tan",
+      "sinh",
+      "cosh",
+      "asin",
+      "acos",
+      "atan",
+      "asinh",
+      "atanh",
+      "ceil",
+      "floor",
+      "erf",
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -148,6 +163,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       "relu",
       "exp",
       "log",
+      "sqrt",
+      "abs",
+      "sin",
+      "cos",
+      "tan",
+      "sinh",
+      "cosh",
+      "asin",
+      "acos",
+      "atan",
+      "asinh",
+      "atanh",
+      "ceil",
+      "floor",
+      "erf",
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -227,8 +257,31 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     return false;
 
   for (auto& teller : tellers_) {
-    if (op_type == "relu" || op_type == "relu6" || op_type == "tanh" ||
-        op_type == "sigmoid" || op_type == "exp" || op_type == "log") {
+    std::unordered_set<std::string> act_op_list = {"relu",
+                                                   "elu",
+                                                   "selu",
+                                                   "softsign",
+                                                   "softplus",
+                                                   "stanh",
+                                                   "thresholded_relu",
+                                                   "exp",
+                                                   "log",
+                                                   "sqrt",
+                                                   "abs",
+                                                   "sin",
+                                                   "cos",
+                                                   "tan",
+                                                   "sinh",
+                                                   "cosh",
+                                                   "asin",
+                                                   "acos",
+                                                   "atan",
+                                                   "asinh",
+                                                   "atanh",
+                                                   "ceil",
+                                                   "floor",
+                                                   "erf"};
+    if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
@@ -244,6 +297,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << " op does not support input's dim is 1 in tensorrt.";
         return false;
       }
+#if !IS_TRT_VERSION_GE(7000)
+      if (op_type == "erf") {
+        VLOG(3) << op_type << " op does not support tensorrt.";
+        return false;
+      }
+#endif
     }
 
     if (op_type == "pool2d") {
