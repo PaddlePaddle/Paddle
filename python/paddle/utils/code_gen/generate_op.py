@@ -45,14 +45,23 @@ env.tests["supports_inplace"] = supports_inplace
 env.tests["supports_no_need_buffer"] = supports_no_need_buffer
 
 
+def restruct_io(api):
+    api["input_dict"] = to_named_dict(api["inputs"])
+    api["attr_dict"] = to_named_dict(api["attrs"])
+    api["output_dict"] = to_named_dict(api["outputs"])
+    return api
+
+
 def main(api_yaml_path, backward_yaml_path, output_op_path,
          output_arg_map_path):
     with open(api_yaml_path, "rt") as f:
         apis = yaml.safe_load(f)
+        apis = [restruct_io(api) for api in apis]
     forward_api_dict = to_named_dict(apis)
 
     with open(backward_yaml_path, "rt") as f:
         backward_apis = yaml.safe_load(f)
+        backward_apis = [restruct_io(api) for api in backward_apis]
     backward_api_dict = to_named_dict(backward_apis)
 
     # fill backward field for an api if another api claims it as forward
