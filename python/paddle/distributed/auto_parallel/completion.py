@@ -27,6 +27,7 @@ from .dist_op import DistributedOperator
 from .dist_attribute import TensorDistributedAttribute
 from .dist_attribute import OperatorDistributedAttribute
 from .process_mesh import ProcessMesh
+from .process_group import get_world_process_group
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 
@@ -765,16 +766,28 @@ class Completer:
         else:
             self._dist_context._serial_main_program = serial_main_program
 
-        self._dist_context.initialize()
+        if not self._dist_context.data_parallel:
+            print("not data parallel 2", flush=True)
+            self._dist_context.initialize(with_graph=True)
 
-        self._prepare()
+            # self._dist_context.validate_dist_attr_for_program()
 
-        self._update_process_mesh()
+            self._prepare()
 
-        self._update_dims_mapping()
+            self._update_process_mesh()
 
-        # Copy the corresponding distributed attribute from graph to serial_main_program
-        self._dist_context.copy_dist_attr_from_graph_to_program()
+            self._update_dims_mapping()
+
+            # Copy the corresponding distributed attribute from graph to serial_main_program
+            self._dist_context.copy_dist_attr_from_graph_to_program()
+        else:
+            print("data parallel 2", flush=True)
+            self._dist_context.initialize(with_graph=False)
+
+            # A fast and special completion for data parallel
+            self._update_dist_attr_for_dp()
+            print_program_with_dist_attr(self._dist_context.serial_main_program,
+                                         self._dist_context)
 
         # NOTE:[HighOrderGrad] update vars and ops distributed attribute in high order gradient
         self._complete_high_order_grad_annotation(serial_main_program)
@@ -785,6 +798,51 @@ class Completer:
         self._dist_context.validate_dist_attr_for_program()
 
         return serial_main_program
+
+    def _update_dist_attr_for_dp(self):
+        # TODO: we must ensure the world process group contains all ranks
+        ranks = get_world_process_group().ranks
+        print("ranks", ranks, flush=True)
+        process_mesh = ProcessMesh(ranks)
+        for dist_tensor in self._dist_context._dist_tensors_for_program.values(
+        ):
+            serial_tensor = dist_tensor.serial_tensor
+            tensor_dist_attr = dist_tensor.dist_attr
+            tensor_dist_attr.process_mesh = process_mesh
+            if not serial_tensor.is_parameter:
+                old_dims_mapping = tensor_dist_attr.dims_mapping
+                if len(old_dims_mapping) > 0:
+                    new_dims_mapping = [0] + [
+                        -1 for _ in range(len(old_dims_mapping) - 1)
+                    ]
+                    tensor_dist_attr.dims_mapping = new_dims_mapping
+
+        for dist_op in self._dist_context._dist_ops_for_program.values():
+            serial_op = dist_op.serial_op
+            op_dist_attr = dist_op.dist_attr
+            op_dist_attr.process_mesh = process_mesh
+            for arg_name in serial_op.input_arg_names:
+                serial_tensor = dist_op.get_serial_input(arg_name)
+                if not serial_tensor.is_parameter:
+                    old_dims_mapping = op_dist_attr.get_input_dims_mapping(
+                        arg_name)
+                    if len(old_dims_mapping) > 0:
+                        new_dims_mapping = [0] + [
+                            -1 for _ in range(len(old_dims_mapping) - 1)
+                        ]
+                        op_dist_attr.set_input_dims_mapping(
+                            arg_name, new_dims_mapping)
+            for arg_name in serial_op.output_arg_names:
+                serial_tensor = dist_op.get_serial_output(arg_name)
+                if not serial_tensor.is_parameter:
+                    old_dims_mapping = op_dist_attr.get_output_dims_mapping(
+                        arg_name)
+                    if len(old_dims_mapping) > 0:
+                        new_dims_mapping = [0] + [
+                            -1 for _ in range(len(old_dims_mapping) - 1)
+                        ]
+                        op_dist_attr.set_output_dims_mapping(
+                            arg_name, new_dims_mapping)
 
     def _complete_high_order_grad_annotation(self, serial_main_program=None):
         """

@@ -949,6 +949,10 @@ class Resharder:
                         raise ValueError("Bool var is not supported reshard.")
                     is_reshard = True
                 if tensor_dims_mapping != op_output_dims_mapping:
+                    print("reshard",
+                          dist_tensor.serial_tensor.name,
+                          dist_op.serial_op.type,
+                          flush=True)
                     raise ValueError(
                         "It is not supported that tensor dims mapping is different from op output dims mapping."
                     )
