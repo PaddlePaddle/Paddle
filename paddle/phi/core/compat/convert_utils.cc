@@ -28,27 +28,28 @@ namespace phi {
 
 Backend TransToPhiBackend(const phi::Place& place) {
   auto allocation_type = place.GetType();
-  if (allocation_type == phi::AllocationType::CPU) {
-    return Backend::CPU;
-  } else if (allocation_type == phi::AllocationType::GPU) {
-    return Backend::GPU;
-  } else if (allocation_type == phi::AllocationType::GPUPINNED) {
-    return Backend::GPU;
-  } else if (allocation_type == phi::AllocationType::XPU) {
-    return Backend::XPU;
-  } else if (allocation_type == phi::AllocationType::NPU) {
-    return Backend::NPU;
-  } else if (allocation_type == phi::AllocationType::IPU) {
-    return Backend::IPU;
-  } else if (allocation_type == phi::AllocationType::MLU) {
-    return Backend::MLU;
-  } else if (allocation_type == phi::AllocationType::CUSTOM) {
-    return static_cast<Backend>(
-        static_cast<size_t>(Backend::NUM_BACKENDS) +
-        GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Unsupported transform %s to phi Backend.", place));
+  switch (allocation_type) {
+    case phi::AllocationType::GPU:
+      return Backend::GPU;
+    case AllocationType::CPU:
+      return Backend::CPU;
+    case AllocationType::GPUPINNED:
+      return Backend::GPU;
+    case AllocationType::XPU:
+      return Backend::XPU;
+    case AllocationType::NPU:
+      return Backend::NPU;
+    case AllocationType::IPU:
+      return Backend::IPU;
+    case AllocationType::MLU:
+      return Backend::MLU;
+    case AllocationType::CUSTOM:
+      return static_cast<Backend>(
+          static_cast<size_t>(Backend::NUM_BACKENDS) +
+          GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Unsupported transform %s to phi Backend.", place));
   }
 }
 

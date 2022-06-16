@@ -25,6 +25,7 @@ from paddle.hapi.logger import setup_logger
 
 
 class TestSetupLogger(unittest.TestCase):
+
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
         self.save_file = os.path.join(self.save_dir, 'logger.txt')

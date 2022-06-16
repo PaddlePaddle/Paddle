@@ -35,6 +35,7 @@ from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedElementwise(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedElementwise, self).__init__(op_type)
 
@@ -45,6 +46,7 @@ register_distributed_operator_impl_container(
 
 # Replicated Elementwise
 class DistributedElementwiseImpl0(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedElementwiseImpl0, self).__init__(name)
         self._forward_implemented = False
@@ -52,21 +54,8 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
-        if is_elementwise_op(op_desc.type()):
-            return True
-        else:
+        if not is_elementwise_op(op_desc.type()):
             return False
-
-    def is_output_compatible(self, dist_op):
-        op_desc = dist_op.serial_op.desc
-        op_desc = dist_op.serial_op.desc
-        if is_elementwise_op(op_desc.type()):
-            return True
-        else:
-            return False
-
-    def is_auto_compatible(self, dist_op):
-        op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
         dims_mapping_list = []
         input_arg_names = op_desc.input_arg_names()
@@ -76,11 +65,64 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
             if max_dims_mapping_len < len(dims_mapping):
                 max_dims_mapping_len = len(dims_mapping)
             dims_mapping_list.append(dims_mapping)
+
+        for idx in range(max_dims_mapping_len):
+            dim_mappings = []
+            for dims_mapping in dims_mapping_list:
+                if idx < len(dims_mapping):
+                    dim_mappings.append(dims_mapping[-(idx + 1)])
+            if compute_compatible_dim_mapping(dim_mappings) is None:
+                return False
+        return True
+
+    def is_output_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        if not is_elementwise_op(op_desc.type()):
+            return False
+        op_dist_attr = dist_op.dist_attr
+        dims_mapping_list = []
         output_arg_names = op_desc.output_arg_names()
+        max_dims_mapping_len = -1
         for arg_name in output_arg_names:
             dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
-            assert len(dims_mapping) == max_dims_mapping_len
+            if max_dims_mapping_len < len(dims_mapping):
+                max_dims_mapping_len = len(dims_mapping)
             dims_mapping_list.append(dims_mapping)
+
+        for idx in range(max_dims_mapping_len):
+            dim_mappings = []
+            for dims_mapping in dims_mapping_list:
+                if idx < len(dims_mapping):
+                    dim_mappings.append(dims_mapping[-(idx + 1)])
+            if compute_compatible_dim_mapping(dim_mappings) is None:
+                return False
+        return True
+
+    def is_auto_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        if not is_elementwise_op(op_desc.type()):
+            return False
+        op_dist_attr = dist_op.dist_attr
+        dims_mapping_list = []
+
+        input_arg_names = op_desc.input_arg_names()
+        input_max_dims_mapping_len = -1
+        for arg_name in input_arg_names:
+            dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+            if input_max_dims_mapping_len < len(dims_mapping):
+                input_max_dims_mapping_len = len(dims_mapping)
+            dims_mapping_list.append(dims_mapping)
+
+        output_arg_names = op_desc.output_arg_names()
+        output_max_dims_mapping_len = -1
+        for arg_name in output_arg_names:
+            dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+            if output_max_dims_mapping_len < len(dims_mapping):
+                output_max_dims_mapping_len = len(dims_mapping)
+            dims_mapping_list.append(dims_mapping)
+
+        assert input_max_dims_mapping_len == output_max_dims_mapping_len
+        max_dims_mapping_len = input_max_dims_mapping_len
 
         for idx in range(max_dims_mapping_len):
             dim_mappings = []
@@ -96,38 +138,62 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
         changed = False
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
+        dims_mapping_list = []
+
         input_arg_names = op_desc.input_arg_names()
         input_dims_mapping_dict = {}
         input_dims_mapping_lens = {}
-        max_dims_mapping_len = -1
+        input_max_dims_mapping_len = -1
         for arg_name in input_arg_names:
             dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
-            if max_dims_mapping_len < len(dims_mapping):
-                max_dims_mapping_len = len(dims_mapping)
+            if input_max_dims_mapping_len < len(dims_mapping):
+                input_max_dims_mapping_len = len(dims_mapping)
             input_dims_mapping_dict[arg_name] = dims_mapping
             input_dims_mapping_lens[arg_name] = len(dims_mapping)
-
-        dims_mapping_list = []
         for arg_name in input_arg_names:
-            if input_dims_mapping_lens[arg_name] < max_dims_mapping_len:
-                new_dims_mapping = [-1 for _ in range(max_dims_mapping_len)]
+            if input_dims_mapping_lens[arg_name] < input_max_dims_mapping_len:
+                new_dims_mapping = [
+                    -1 for _ in range(input_max_dims_mapping_len)
+                ]
                 for i in range(input_dims_mapping_lens[arg_name]):
-                    new_idx = (max_dims_mapping_len -
+                    new_idx = (input_max_dims_mapping_len -
                                input_dims_mapping_lens[arg_name]) + i
                     new_dims_mapping[new_idx] = input_dims_mapping_dict[
                         arg_name][i]
                 dims_mapping_list.append(new_dims_mapping)
             else:
                 dims_mapping_list.append(input_dims_mapping_dict[arg_name])
+
         output_arg_names = op_desc.output_arg_names()
+        output_dims_mapping_dict = {}
+        output_dims_mapping_lens = {}
+        output_max_dims_mapping_len = -1
         for arg_name in output_arg_names:
             dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
-            assert len(dims_mapping) == max_dims_mapping_len
-            dims_mapping_list.append(dims_mapping)
+            if output_max_dims_mapping_len < len(dims_mapping):
+                output_max_dims_mapping_len = len(dims_mapping)
+            output_dims_mapping_dict[arg_name] = dims_mapping
+            output_dims_mapping_lens[arg_name] = len(dims_mapping)
+        for arg_name in output_arg_names:
+            if output_dims_mapping_lens[arg_name] < output_max_dims_mapping_len:
+                new_dims_mapping = [
+                    -1 for _ in range(output_max_dims_mapping_len)
+                ]
+                for i in range(output_dims_mapping_lens[arg_name]):
+                    new_idx = (output_max_dims_mapping_len -
+                               output_dims_mapping_lens[arg_name]) + i
+                    new_dims_mapping[new_idx] = output_dims_mapping_dict[
+                        arg_name][i]
+                dims_mapping_list.append(new_dims_mapping)
+            else:
+                dims_mapping_list.append(output_dims_mapping_dict[arg_name])
 
+        assert input_max_dims_mapping_len == output_max_dims_mapping_len
+        max_dims_mapping_len = input_max_dims_mapping_len
         compatible_dims_mapping = compute_compatible_dims_mapping(
             dims_mapping_list)
-        assert compatible_dims_mapping is not None, "There is no compatible dim mapping."
+        if compatible_dims_mapping is None:
+            return False
 
         for arg_name in input_arg_names:
             if input_dims_mapping_lens[arg_name] < max_dims_mapping_len:
@@ -144,16 +210,28 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
                     changed = True
             else:
                 if compatible_dims_mapping != input_dims_mapping_dict[arg_name]:
-                    op_dist_attr.set_input_dims_mapping(arg_name,
-                                                        compatible_dims_mapping)
+                    op_dist_attr.set_input_dims_mapping(
+                        arg_name, compatible_dims_mapping)
                     changed = True
 
         for arg_name in output_arg_names:
-            dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
-            if compatible_dims_mapping != dims_mapping:
-                op_dist_attr.set_output_dims_mapping(arg_name,
-                                                     compatible_dims_mapping)
-                changed = True
+            if output_dims_mapping_lens[arg_name] < max_dims_mapping_len:
+                new_dims_mapping = [
+                    -1 for _ in range(output_dims_mapping_lens[arg_name])
+                ]
+                for i in range(output_dims_mapping_lens[arg_name]):
+                    new_idx = (max_dims_mapping_len -
+                               output_dims_mapping_lens[arg_name]) + i
+                    new_dims_mapping[i] = compatible_dims_mapping[new_idx]
+                if new_dims_mapping != output_dims_mapping_dict[arg_name]:
+                    op_dist_attr.set_output_dims_mapping(
+                        arg_name, new_dims_mapping)
+                    changed = True
+            else:
+                if compatible_dims_mapping != output_dims_mapping_dict[arg_name]:
+                    op_dist_attr.set_output_dims_mapping(
+                        arg_name, compatible_dims_mapping)
+                    changed = True
 
         return changed
 

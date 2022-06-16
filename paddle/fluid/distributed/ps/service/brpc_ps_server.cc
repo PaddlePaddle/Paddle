@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
+
 #include <thread>  // NOLINT
+
 #include "butil/object_pool.h"
 #include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/ps/table/depends/sparse_utils.h"
@@ -304,11 +306,6 @@ int32_t BrpcPsService::PullDense(Table *table, const PsRequestMessage &request,
   }
   CostTimer timer("pserver_server_pull_dense");
   uint32_t num = *(const uint32_t *)request.params(0).c_str();
-  if (num < 0) {
-    set_response_code(response, -1,
-                      "PsRequestMessage.datas[0] is invalid, num must >= 0");
-    return 0;
-  }
 
   auto res_data = butil::get_object<std::vector<float>>();
   res_data->resize(num * table->ValueAccesor()->GetAccessorInfo().select_size /

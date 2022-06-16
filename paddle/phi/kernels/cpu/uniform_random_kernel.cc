@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/uniform_random_kernel.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -54,7 +55,6 @@ void UniformRandomRawKernel(const Context &dev_ctx,
                             float diag_val,
                             DenseTensor *out) {
   out->Resize(phi::make_ddim(shape.GetData()));
-  VLOG(4) << out->dims();
   T *data = dev_ctx.template Alloc<T>(out);
   auto size = out->numel();
   std::shared_ptr<std::mt19937_64> engine;

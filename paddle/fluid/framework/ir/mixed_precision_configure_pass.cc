@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mixed_precision_configure_pass.h"
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -25,9 +26,10 @@ void MixedPrecisionConfigurePass::InsertCastOps(
   VLOG(3) << "Insert the cast op before and after the kernel that does not "
              "supports fp16 precision";
 
-  auto update_cast_desc = [&](
-      framework::OpDesc& desc, const std::string& x_name,
-      const std::string& out_name, const int in_dtype, const int out_dtype) {
+  auto update_cast_desc = [&](framework::OpDesc& desc,
+                              const std::string& x_name,
+                              const std::string& out_name, const int in_dtype,
+                              const int out_dtype) {
     desc.SetType("cast");
     desc.SetInput("X", {x_name});
     desc.SetOutput("Out", {out_name});

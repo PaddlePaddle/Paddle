@@ -94,7 +94,17 @@ T *Tensor::mutable_data(PlaceType place) {
       return tensor->mutable_data<T>(paddle::platform::CPUPlace());
     }
     case static_cast<int>(PlaceType::kGPU): {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      paddle::platform::CUDAPlace gpu_place(device_);
+      auto *dev_ctxs = reinterpret_cast<const std::map<
+          phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
+                                            *>(device_contexs_);
+      auto *dev_ctx =
+          static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
+      return dev_ctx->Alloc<T>(tensor, tensor->numel() * sizeof(T));
+#else
       return tensor->mutable_data<T>(paddle::platform::CUDAPlace(device_));
+#endif
     }
     case static_cast<int>(PlaceType::kXPU): {
       return tensor->mutable_data<T>(paddle::platform::XPUPlace(device_));
@@ -181,12 +191,14 @@ void Tensor::CopyFromCpu(const T *data) {
     std::memcpy(static_cast<void *>(t_data), data, ele_size);
   } else if (place_ == PlaceType::kGPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+
     paddle::platform::CUDAPlace gpu_place(device_);
-    auto *t_data = tensor->mutable_data<T>(gpu_place);
-    auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
-        pool.Get(gpu_place));
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        device_contexs_);
+    auto *dev_ctx =
+        static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
+    auto *t_data = dev_ctx->Alloc<T>(tensor, tensor->numel() * sizeof(T));
 
     paddle::memory::Copy(gpu_place, static_cast<void *>(t_data),
                          paddle::platform::CPUPlace(), data, ele_size,
@@ -224,8 +236,23 @@ void Tensor::CopyFromCpu(const T *data) {
         "with NPU."));
 #endif
   } else {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto device_type_id =
+        static_cast<size_t>(place_) - static_cast<size_t>(PlaceType::kCUSTOM);
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    paddle::platform::CustomPlace custom_place(
+        phi::GetGlobalDeviceType(device_type_id), device_);
+    auto *t_data = tensor->mutable_data<T>(custom_place);
+    auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
+        pool.Get(custom_place));
+    paddle::memory::Copy(custom_place, static_cast<void *>(t_data),
+                         paddle::platform::CPUPlace(), data, ele_size,
+                         dev_ctx->stream());
+#else
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "The analysis predictor supports CPU, GPU, NPU and XPU now."));
+#endif
   }
 }
 
@@ -325,8 +352,9 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 #ifdef PADDLE_WITH_MKLDNN
     if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
       paddle::framework::innerTransDataLayoutFromMKLDNN(
-          tensor->layout(), paddle::platform::MKLDNNDeviceContext::tls()
-                                .get_cur_paddle_data_layout(),
+          tensor->layout(),
+          paddle::platform::MKLDNNDeviceContext::tls()
+              .get_cur_paddle_data_layout(),
           *tensor, &out, paddle::platform::CPUPlace(), true);
     else
       std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
@@ -343,11 +371,12 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 #endif
   } else if (place_ == PlaceType::kGPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
     auto gpu_place = t_place;
-    auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
-        pool.Get(gpu_place));
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        device_contexs_);
+    auto *dev_ctx =
+        static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
     paddle::memory::Copy(paddle::platform::CPUPlace(),
                          static_cast<void *>(data), gpu_place, t_data,
                          ele_num * sizeof(T), dev_ctx->stream());
@@ -398,8 +427,20 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
         "with NPU."));
 #endif
   } else {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto custom_place = t_place;
+    auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
+        pool.Get(custom_place));
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         static_cast<void *>(data), custom_place, t_data,
+                         ele_num * sizeof(T), dev_ctx->stream());
+// TODO(wangran16): sync_stream
+#else
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "The analysis predictor supports CPU, GPU, NPU and XPU now."));
+#endif
   }
 }
 
@@ -519,7 +560,8 @@ template PD_INFER_DECL uint8_t *Tensor::mutable_data<uint8_t>(PlaceType place);
 template PD_INFER_DECL int8_t *Tensor::mutable_data<int8_t>(PlaceType place);
 template PD_INFER_DECL float16 *Tensor::mutable_data<float16>(PlaceType place);
 
-Tensor::Tensor(void *scope) : scope_{scope} {}
+Tensor::Tensor(void *scope, const void *device_contexts)
+    : scope_{scope}, device_contexs_(device_contexts) {}
 
 template <typename T>
 void *Tensor::FindTensor() const {
@@ -674,8 +716,39 @@ void Tensor::ORTCopyFromCpu(const T *data) {
                               OrtMemTypeDefault);
   size_t size = std::accumulate(begin(shape_), end(shape_), 1UL,
                                 std::multiplies<size_t>());
-  auto ort_value = GetOrtVaule(memory_info, const_cast<T *>(data), size,
-                               shape_.data(), shape_.size());
+  size_t buffer_size = size * sizeof(T);
+  if (buffer_size > buffer_.size()) {
+    buffer_.resize(buffer_size);
+  }
+  std::memcpy(static_cast<void *>(buffer_.data()), data, buffer_size);
+
+  auto onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED;
+  if (std::is_same<T, float>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+  } else if (std::is_same<T, double>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE;
+  } else if (std::is_same<T, int64_t>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64;
+  } else if (std::is_same<T, int32_t>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32;
+  } else if (std::is_same<T, uint8_t>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8;
+  } else if (std::is_same<T, int8_t>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8;
+  } else if (std::is_same<T, float16>::value) {
+    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16;
+  }
+
+  if (onnx_dtype == ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED) {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Found undefined data type for onnxruntime, only supports "
+        "float16/float32/float64/int8/uint8/int32/int64."));
+  }
+
+  auto ort_value =
+      Ort::Value::CreateTensor(memory_info, buffer_.data(), buffer_size,
+                               shape_.data(), shape_.size(), onnx_dtype);
+
   binding->BindInput(name_.c_str(), ort_value);
 }
 
@@ -794,8 +867,9 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t, T *data,
 #ifdef PADDLE_WITH_MKLDNN
     if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
       paddle::framework::innerTransDataLayoutFromMKLDNN(
-          tensor->layout(), paddle::platform::MKLDNNDeviceContext::tls()
-                                .get_cur_paddle_data_layout(),
+          tensor->layout(),
+          paddle::platform::MKLDNNDeviceContext::tls()
+              .get_cur_paddle_data_layout(),
           *tensor, &out, paddle::platform::CPUPlace(), true);
     else
       std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/sparse_accessor.h"
+
 #include <gflags/gflags.h>
+
 #include "glog/logging.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -169,7 +171,7 @@ bool SparseAccessor::NeedExtendMF(float* value) {
   return score >= _config.embedx_threshold();
 }
 
-bool SparseAccessor::HasMF(size_t size) {
+bool SparseAccessor::HasMF(int size) {
   return size > sparse_feature_value.EmbedxG2SumIndex();
 }
 
@@ -199,7 +201,7 @@ int32_t SparseAccessor::Merge(float** update_values,
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* other_update_value = other_update_values[value_item];
-    for (auto i = 0u; i < total_dim; ++i) {
+    for (size_t i = 0; i < total_dim; ++i) {
       if (i != SparsePushValue::SlotIndex()) {
         update_value[i] += other_update_value[i];
       }

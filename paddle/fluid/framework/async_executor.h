@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <time.h>
+
 #include <map>
 #include <memory>
 #include <mutex>   // NOLINT
@@ -24,6 +25,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <typeinfo>
 #include <vector>
+
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/executor.h"

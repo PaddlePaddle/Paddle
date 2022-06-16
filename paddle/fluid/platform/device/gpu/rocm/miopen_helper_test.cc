@@ -15,13 +15,13 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #define GOOGLE_GLOG_DLL_DECL
 
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+
 TEST(MIOpenHelper, ScopedTensorDescriptor) {
-  using paddle::platform::ScopedTensorDescriptor;
   using paddle::platform::DataLayout;
+  using paddle::platform::ScopedTensorDescriptor;
 
   ScopedTensorDescriptor tensor_desc;
   std::vector<int> shape = {2, 4, 6, 6};

@@ -27,6 +27,7 @@ paddle.seed(2020)
 
 
 class GridGenerator(nn.Layer):
+
     def __init__(self, in_channels, num_fiducial):
         super(GridGenerator, self).__init__()
         self.eps = 1e-6
@@ -35,13 +36,14 @@ class GridGenerator(nn.Layer):
         initializer = nn.initializer.Constant(value=0.0)
         param_attr = ParamAttr(learning_rate=0.0, initializer=initializer)
         bias_attr = ParamAttr(learning_rate=0.0, initializer=initializer)
-        self.fc = nn.Linear(
-            in_channels, 6, weight_attr=param_attr, bias_attr=bias_attr)
+        self.fc = nn.Linear(in_channels,
+                            6,
+                            weight_attr=param_attr,
+                            bias_attr=bias_attr)
 
     @paddle.jit.to_static(input_spec=[
-        paddle.static.InputSpec(
-            shape=[None, 3, 32, 100], dtype='float32'), paddle.static.InputSpec(
-                shape=[32, 100], dtype='float32')
+        paddle.static.InputSpec(shape=[None, 3, 32, 100], dtype='float32'),
+        paddle.static.InputSpec(shape=[32, 100], dtype='float32')
     ])
     def forward(self, batch_C_prime, I_r_size):
         """
@@ -91,17 +93,16 @@ class GridGenerator(nn.Layer):
                     hat_C[i, j] = r
                     hat_C[j, i] = r
         hat_C = (hat_C**2) * paddle.log(hat_C)
-        delta_C = paddle.concat(
-            [
-                paddle.concat(
-                    [paddle.ones((F, 1)), C, hat_C], axis=1),
-                paddle.concat(
-                    [paddle.zeros((2, 3)), paddle.transpose(
-                        C, perm=[1, 0])],
-                    axis=1), paddle.concat(
-                        [paddle.zeros((1, 3)), paddle.ones((1, F))], axis=1)
-            ],
-            axis=0)
+        delta_C = paddle.concat([
+            paddle.concat([paddle.ones((F, 1)), C, hat_C], axis=1),
+            paddle.concat(
+                [paddle.zeros((2, 3)),
+                 paddle.transpose(C, perm=[1, 0])],
+                axis=1),
+            paddle.concat([paddle.zeros(
+                (1, 3)), paddle.ones((1, F))], axis=1)
+        ],
+                                axis=0)
         inv_delta_C = paddle.inverse(delta_C)
         return inv_delta_C
 
@@ -114,8 +115,8 @@ class GridGenerator(nn.Layer):
         P_diff = P_tile - C_tile
         rbf_norm = paddle.norm(P_diff, p=2, axis=2, keepdim=False)
 
-        rbf = paddle.multiply(
-            paddle.square(rbf_norm), paddle.log(rbf_norm + eps))
+        rbf = paddle.multiply(paddle.square(rbf_norm),
+                              paddle.log(rbf_norm + eps))
         P_hat = paddle.concat([paddle.ones((n, 1)), P, rbf], axis=1)
         return P_hat
 
@@ -128,6 +129,7 @@ class GridGenerator(nn.Layer):
 
 
 class TestGridGenerator(unittest.TestCase):
+
     def setUp(self):
         self.x = paddle.uniform(shape=[1, 20, 2], dtype='float32')
 

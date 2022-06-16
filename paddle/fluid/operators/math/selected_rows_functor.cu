@@ -33,7 +33,7 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height, input2.height(),
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height  = "
+                                          "But received first input height  = "
                                           "[%d], second input height = [%d]",
                                           in1_height, input2.height()));
     output->set_height(in1_height);
@@ -57,13 +57,13 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
         in1_row_numel, in2_value.numel() / in2_rows.size(),
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, in2_value.numel() / in2_rows.size()));
     PADDLE_ENFORCE_EQ(
         in1_row_numel, out_value->numel() / out_rows.size(),
         platform::errors::InvalidArgument(
             "The input and oupput width must be equal."
-            "But recieved input width = [%d], output width = [%d]",
+            "But received input width = [%d], output width = [%d]",
             in1_row_numel, out_value->numel() / out_rows.size()));
 
     auto* out_data = out_value->data<T>();
@@ -72,15 +72,15 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
     auto in1_place = input1.place();
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(in1_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the GPU place."));
+                          "The running environment is not on the GPU place."));
     auto in2_place = input2.place();
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(in2_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the GPU place."));
+                          "The running environment is not on the GPU place."));
     auto out_place = context.GetPlace();
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(out_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the GPU place."));
+                          "The running environment is not on the GPU place."));
 
     memory::Copy(out_place, out_data, in1_place, in1_data,
                  in1_value.numel() * sizeof(T), context.stream());
@@ -126,13 +126,13 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument(
             "The two inputs height must be equal."
-            "But recieved first input height = [%d], first input height = [%d]",
+            "But received first input height = [%d], first input height = [%d]",
             in1_height, in2_dims[0]));
     PADDLE_ENFORCE_EQ(
         in1_height, out_dims[0],
         platform::errors::InvalidArgument(
             "The input and output height must be equal."
-            "But recieved input height = [%d], output height = [%d]",
+            "But received input height = [%d], output height = [%d]",
             in1_height, out_dims[0]));
 
     auto& in1_value = input1.value();
@@ -143,13 +143,13 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
         in1_row_numel, input2.numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, input2.numel() / in1_height));
     PADDLE_ENFORCE_EQ(
         in1_row_numel, output->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The input and output width must be equal."
-            "But recieved input width = [%d], output width = [%d]",
+            "But received input width = [%d], output width = [%d]",
             in1_row_numel, output->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
@@ -163,10 +163,10 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
     paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
-    SelectedRowsAddTensorKernel<
-        T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), out_data,
-        in1_row_numel);
+    SelectedRowsAddTensorKernel<T, block_size>
+        <<<grid, threads, 0, context.stream()>>>(
+            in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), out_data,
+            in1_row_numel);
 
     auto out_eigen = framework::EigenVector<T>::Flatten(*output);
     auto in2_eigen = framework::EigenVector<T>::Flatten(input2);
@@ -186,13 +186,13 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument(
             "The two inputs height must be equal."
-            "But recieved first input height = [%d], first input height = [%d]",
+            "But received first input height = [%d], first input height = [%d]",
             in1_height, in2_dims[0]));
     PADDLE_ENFORCE_EQ(
         in1_height, out_dims[0],
         platform::errors::InvalidArgument(
             "The input and output height must be equal."
-            "But recieved input height = [%d], output height = [%d]",
+            "But received input height = [%d], output height = [%d]",
             in1_height, out_dims[0]));
 
     auto& in1_value = input1.value();
@@ -203,13 +203,13 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
         in1_row_numel, input2.numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, input2.numel() / in1_height));
     PADDLE_ENFORCE_EQ(
         in1_row_numel, output->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The input and output width must be equal."
-            "But recieved input width = [%d], output width = [%d]",
+            "But received input width = [%d], output width = [%d]",
             in1_row_numel, output->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
@@ -223,10 +223,10 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
     paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
-    SelectedRowsAddTensorKernel<
-        T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), out_data,
-        in1_row_numel);
+    SelectedRowsAddTensorKernel<T, block_size>
+        <<<grid, threads, 0, context.stream()>>>(
+            in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), out_data,
+            in1_row_numel);
 
     auto out_eigen = framework::EigenVector<T>::Flatten(*output);
     auto in2_eigen = framework::EigenVector<T>::Flatten(input2);
@@ -254,7 +254,7 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height, input2->height(),
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height = "
+                                          "But received first input height = "
                                           "[%d], second input height = [%d]",
                                           in1_height, input2->height()));
 
@@ -273,11 +273,11 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
     auto in1_place = input1.place();
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(in1_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the GPU place."));
+                          "The running environment is not on the GPU place."));
     auto in2_place = input2->place();
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(in1_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the GPU place."));
+                          "The running environment is not on the GPU place."));
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
@@ -322,7 +322,7 @@ struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height = "
+                                          "But received first input height = "
                                           "[%d], second input height = [%d]",
                                           in1_height, in2_dims[0]));
 
@@ -334,7 +334,7 @@ struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
         in1_row_numel, input2->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, input2->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
@@ -343,10 +343,10 @@ struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
     paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
-    SelectedRowsAddToTensorKernel<
-        T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), in2_data,
-        in1_row_numel);
+    SelectedRowsAddToTensorKernel<T, block_size>
+        <<<grid, threads, 0, context.stream()>>>(
+            in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), in2_data,
+            in1_row_numel);
   }
 };
 
@@ -359,7 +359,7 @@ struct SelectedRowsAddToTensor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height = "
+                                          "But received first input height = "
                                           "[%d], second input height = [%d]",
                                           in1_height, in2_dims[0]));
 
@@ -371,7 +371,7 @@ struct SelectedRowsAddToTensor<phi::GPUContext, T> {
         in1_row_numel, input2->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, input2->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
@@ -380,10 +380,10 @@ struct SelectedRowsAddToTensor<phi::GPUContext, T> {
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
     paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
-    SelectedRowsAddToTensorKernel<
-        T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), in2_data,
-        in1_row_numel);
+    SelectedRowsAddToTensorKernel<T, block_size>
+        <<<grid, threads, 0, context.stream()>>>(
+            in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), in2_data,
+            in1_row_numel);
   }
 };
 
@@ -675,7 +675,7 @@ struct UpdateToTensor<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height = "
+                                          "But received first input height = "
                                           "[%d], second input height = [%d]",
                                           in1_height, in2_dims[0]));
 
@@ -687,7 +687,7 @@ struct UpdateToTensor<platform::CUDADeviceContext, T> {
         in1_row_numel, input2->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, input2->numel() / in1_height));
 
     auto* in1_data = in1_value.template data<T>();
@@ -695,9 +695,9 @@ struct UpdateToTensor<platform::CUDADeviceContext, T> {
 
     dim3 threads(platform::PADDLE_CUDA_NUM_THREADS, 1);
     dim3 grid(in1_rows.size(), 1);
-    UpdateToTensorKernel<T, platform::PADDLE_CUDA_NUM_THREADS><<<
-        grid, threads, 0, context.stream()>>>(in1_data, in1_rows.cuda_data(),
-                                              op, in2_data, in1_row_numel);
+    UpdateToTensorKernel<T, platform::PADDLE_CUDA_NUM_THREADS>
+        <<<grid, threads, 0, context.stream()>>>(in1_data, in1_rows.cuda_data(),
+                                                 op, in2_data, in1_row_numel);
   }
 };
 }  // namespace scatter

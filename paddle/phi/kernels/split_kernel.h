@@ -14,10 +14,9 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 

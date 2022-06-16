@@ -12,14 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
-
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
+#include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -46,7 +45,7 @@ __global__ void MaxPoolCudaKernel(const T* in_features_ptr,
  * x: (N, D, H, W, C)
  * kernel: (D, H, W, C, OC)
  * out: (N, D, H, W, OC)
-**/
+ **/
 template <typename T, typename IntT = int>
 void MaxPoolGPUKernel(const GPUContext& dev_ctx,
                       const SparseCooTensor& x,
@@ -104,7 +103,7 @@ void MaxPoolGPUKernel(const GPUContext& dev_ctx,
 #endif
                out_features_ptr,
                out_features_ptr + out->non_zero_elements().numel(),
-               static_cast<T>(-FLT_MAX));
+               static_cast<T>(0));
   // TODO(zhangkaihuo) Replacing multiple calls with one kernel may be faster
   for (int i = 0; i < kernel_size; i++) {
     if (counter[i] <= 0) {
@@ -113,16 +112,16 @@ void MaxPoolGPUKernel(const GPUContext& dev_ctx,
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, counter[i] * in_channels, 1);
-    MaxPoolCudaKernel<T, IntT><<<config.block_per_grid.x,
-                                 config.thread_per_block.x,
-                                 0,
-                                 dev_ctx.stream()>>>(
-        in_features_ptr,
-        rulebook_ptr + offsets[i] + rulebook_len,
-        counter[i],
-        rulebook_len,
-        in_channels,
-        out_features_ptr);
+    MaxPoolCudaKernel<T, IntT>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(in_features_ptr,
+                               rulebook_ptr + offsets[i] + rulebook_len,
+                               counter[i],
+                               rulebook_len,
+                               in_channels,
+                               out_features_ptr);
   }
 }
 

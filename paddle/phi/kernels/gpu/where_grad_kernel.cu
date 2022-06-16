@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/where_grad_kernel.h"
 
 namespace phi {
@@ -47,9 +49,9 @@ void WhereGradKernel(const Context& ctx,
 
   auto stream = ctx.stream();
   auto config = backends::gpu::GetGpuLaunchConfig1D(ctx, numel);
-  WhereGradCUDAKernel<
-      T><<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-      numel, dout, cond_data, dx, dy);
+  WhereGradCUDAKernel<T>
+      <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
+          numel, dout, cond_data, dx, dy);
 }
 
 }  // namespace phi

@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/platform/device_tracer.h"
+
 #include <deque>
 #include <forward_list>
 #include <fstream>
@@ -20,7 +22,6 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "glog/logging.h"
-#include "paddle/fluid/platform/device_tracer.h"
 
 DECLARE_bool(enable_host_event_recorder_hook);
 
@@ -255,7 +256,9 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
             }
             break;
           }
-          default: { break; }
+          default: {
+            break;
+          }
         }
       } else if (status == CUPTI_ERROR_MAX_LIMIT_REACHED) {
         // Seems not an error in this case.

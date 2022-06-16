@@ -30,13 +30,15 @@ from paddle.utils.download import get_weights_path_from_url
 model_urls = {
     "alexnet": (
         "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/AlexNet_pretrained.pdparams",
-        "7f0f9f737132e02732d75a1459d98a43", )
+        "7f0f9f737132e02732d75a1459d98a43",
+    )
 }
 
 __all__ = []
 
 
 class ConvPoolLayer(nn.Layer):
+
     def __init__(self,
                  input_channels,
                  output_channels,

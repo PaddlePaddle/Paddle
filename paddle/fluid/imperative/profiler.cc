@@ -18,7 +18,9 @@
 #include "gperftools/profiler.h"
 #endif
 #include <glog/logging.h>
+
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/platform/flags.h"
 
 PADDLE_DEFINE_EXPORTED_string(

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
@@ -171,17 +172,19 @@ class CropGradKernel : public framework::OpKernel<T> {
     size_t rank =
         context.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
     PADDLE_ENFORCE_GE(
-        rank, 1, platform::errors::InvalidArgument(
-                     "The number of dimensions of the input 'Out@GRAD' for "
-                     "CropGrad must be greater than or equal "
-                     "to 1, but the value received is %d.",
-                     rank));
+        rank, 1,
+        platform::errors::InvalidArgument(
+            "The number of dimensions of the input 'Out@GRAD' for "
+            "CropGrad must be greater than or equal "
+            "to 1, but the value received is %d.",
+            rank));
     PADDLE_ENFORCE_LE(
-        rank, 6, platform::errors::InvalidArgument(
-                     "The number of dimensions of the input 'Out@GRAD' for "
-                     "CropGrad must be less than or equal "
-                     "to 6, but the value received is %d.",
-                     rank));
+        rank, 6,
+        platform::errors::InvalidArgument(
+            "The number of dimensions of the input 'Out@GRAD' for "
+            "CropGrad must be less than or equal "
+            "to 6, but the value received is %d.",
+            rank));
     switch (rank) {
       case 1:
         CropGradFunction<DeviceContext, T, 1>(context);

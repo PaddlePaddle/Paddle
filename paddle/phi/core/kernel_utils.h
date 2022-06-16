@@ -75,7 +75,7 @@ namespace phi {
                     "Kernel's Input should appear before Attributes."); \
       static_assert(out_idx == 0,                                       \
                     "Kernel's Input should appear before Outputs.");    \
-      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);      \
+      const std::pair<int, int>& range = ctx->InputRangeAt(in_idx);     \
       const tensor_type& arg = ctx->InputAt<tensor_type>(range.first);  \
       KernelCallHelper<Tail...>::                                       \
           template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>( \
@@ -85,7 +85,7 @@ namespace phi {
 
 #define PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(tensor_type)     \
   template <typename... Tail>                                              \
-  struct KernelCallHelper<paddle::optional<const tensor_type&>, Tail...> { \
+  struct KernelCallHelper<const paddle::optional<tensor_type>&, Tail...> { \
     template <int dev_ctx_idx,                                             \
               int in_idx,                                                  \
               int attr_idx,                                                \
@@ -96,7 +96,7 @@ namespace phi {
                     "Kernel's Input should appear before Attributes.");    \
       static_assert(out_idx == 0,                                          \
                     "Kernel's Input should appear before Outputs.");       \
-      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);         \
+      const std::pair<int, int>& range = ctx->InputRangeAt(in_idx);        \
       auto arg = ctx->OptionalInputAt<tensor_type>(range.first);           \
       KernelCallHelper<Tail...>::                                          \
           template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(    \
@@ -117,7 +117,7 @@ namespace phi {
                     "Kernel's Input should appear before Attributes.");      \
       static_assert(out_idx == 0,                                            \
                     "Kernel's Input should appear before Outputs.");         \
-      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);           \
+      const std::pair<int, int>& range = ctx->InputRangeAt(in_idx);          \
       std::vector<const tensor_type*> arg = std::move(                       \
           ctx->InputsBetween<tensor_type>(range.first, range.second));       \
       KernelCallHelper<Tail...>::                                            \
@@ -129,7 +129,7 @@ namespace phi {
 #define PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_MULTI_INPUT(tensor_type)  \
   template <typename... Tail>                                                 \
   struct KernelCallHelper<                                                    \
-      paddle::optional<const std::vector<const tensor_type*>>,                \
+      const paddle::optional<std::vector<const tensor_type*>>&,               \
       Tail...> {                                                              \
     template <int dev_ctx_idx,                                                \
               int in_idx,                                                     \
@@ -141,8 +141,8 @@ namespace phi {
                     "Kernel's Input should appear before Attributes.");       \
       static_assert(out_idx == 0,                                             \
                     "Kernel's Input should appear before Outputs.");          \
-      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);            \
-      paddle::optional<const std::vector<const tensor_type*>> arg =           \
+      const std::pair<int, int>& range = ctx->InputRangeAt(in_idx);           \
+      paddle::optional<std::vector<const tensor_type*>> arg =                 \
           ctx->OptionalInputsBetween<tensor_type>(range.first, range.second); \
       KernelCallHelper<Tail...>::                                             \
           template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(       \
@@ -195,7 +195,7 @@ namespace phi {
               int out_idx,                                               \
               typename... PreviousArgs>                                  \
     static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {    \
-      const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);     \
+      const std::pair<int, int>& range = ctx->OutputRangeAt(out_idx);    \
       tensor_type* arg = ctx->MutableOutputAt<tensor_type>(range.first); \
       KernelCallHelper<Tail...>::                                        \
           template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(  \
@@ -212,7 +212,7 @@ namespace phi {
               int out_idx,                                                    \
               typename... PreviousArgs>                                       \
     static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {         \
-      const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);          \
+      const std::pair<int, int>& range = ctx->OutputRangeAt(out_idx);         \
       std::vector<tensor_type*> arg = std::move(                              \
           ctx->MutableOutputBetween<tensor_type>(range.first, range.second)); \
       KernelCallHelper<Tail...>::                                             \
@@ -233,9 +233,8 @@ template <typename Return,
           Return (*kernel_fn)(DevCtx, Args...)>
 struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   static void Compute(KernelContext* ctx) {
-    KernelCallHelper<DevCtx,
-                     Args...,
-                     TypeTag<int>>::template Compute<0, 0, 0, 0>(ctx);
+    KernelCallHelper<DevCtx, Args..., TypeTag<int>>::
+        template Compute<0, 0, 0, 0>(ctx);
   }
 
   static void VariadicCompute(const DeviceContext& dev_ctx, Args... args) {

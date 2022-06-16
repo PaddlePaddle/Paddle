@@ -20,6 +20,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -149,7 +150,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
                           output_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(out_type_match, true,
                       platform::errors::InvalidArgument(
-                          "Ouput(Child) & Output(LeafMask) holds the wrong "
+                          "Output(Child) & Output(LeafMask) holds the wrong "
                           "type, it holds %s, but "
                           "desires to be %s or %s",
                           paddle::framework::DataTypeToString(output_type),

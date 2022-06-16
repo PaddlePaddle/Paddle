@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/eager/grad_tensor_holder.h"
+
 #include <sstream>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-#include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/core/selected_rows.h"
-
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/selected_rows.h"
 
 PD_DECLARE_KERNEL(full_like, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
@@ -45,7 +44,9 @@ TEST(GradTensorHolder, Constructor) {
       meta);
   paddle::experimental::Tensor et = paddle::experimental::Tensor(dt);
 
-  std::vector<std::vector<paddle::experimental::Tensor>> inputs;
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
+      inputs;
   inputs.push_back({et});
 
   GradTensorHolder grad_tensor_holder4 = GradTensorHolder(std::move(inputs));

@@ -22,6 +22,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/small_vector.h"
 
@@ -50,19 +51,19 @@ class KernelContext {
 
   void EmplaceBackInputWithoutSetRange(const TensorBase* input);
 
-  void EmplaceBackInputs(paddle::SmallVector<const TensorBase*> inputs);
+  void EmplaceBackInputs(paddle::small_vector<const TensorBase*> inputs);
 
   void EmplaceBackInputsWithoutSetRange(
-      paddle::SmallVector<const TensorBase*> inputs);
+      paddle::small_vector<const TensorBase*> inputs);
 
   void EmplaceBackOutput(TensorBase* output);
 
   void EmplaceBackOutputWithoutSetRange(TensorBase* output);
 
-  void EmplaceBackOutputs(paddle::SmallVector<TensorBase*> outputs);
+  void EmplaceBackOutputs(paddle::small_vector<TensorBase*> outputs);
 
   void EmplaceBackOutputsWithoutSetRange(
-      paddle::SmallVector<TensorBase*> outputs);
+      paddle::small_vector<TensorBase*> outputs);
 
   void EmplaceBackAttr(Attribute attr);
 
@@ -80,11 +81,11 @@ class KernelContext {
   }
 
   template <typename TensorType>
-  paddle::optional<const TensorType&> OptionalInputAt(size_t idx) const {
-    const auto& input = inputs_.at(idx);
-    return input ? paddle::optional<const TensorType&>{static_cast<
-                       const TensorType&>(*input)}
-                 : paddle::optional<const TensorType&>{paddle::none};
+  paddle::optional<TensorType> OptionalInputAt(size_t idx) const {
+    const auto* input = inputs_.at(idx);
+    return input ? paddle::make_optional<TensorType>(
+                       *(static_cast<const TensorType*>(input)))
+                 : paddle::none;
   }
 
   template <typename TensorType>
@@ -98,7 +99,7 @@ class KernelContext {
   }
 
   template <typename TensorType>
-  paddle::optional<const std::vector<const TensorType*>> OptionalInputsBetween(
+  paddle::optional<std::vector<const TensorType*>> OptionalInputsBetween(
       size_t start, size_t end) {
     const auto& first = inputs_.at(start);
 
@@ -108,9 +109,9 @@ class KernelContext {
         auto* t = static_cast<const TensorType*>(inputs_.at(i));
         v.emplace_back(t);
       }
-      return paddle::optional<const std::vector<const TensorType*>>(v);
+      return paddle::optional<std::vector<const TensorType*>>(std::move(v));
     }
-    return paddle::optional<const std::vector<const TensorType*>>(paddle::none);
+    return paddle::none;
   }
 
   template <typename TensorType>
@@ -137,12 +138,13 @@ class KernelContext {
  private:
   DeviceContext* dev_ctx_;
 
-  paddle::SmallVector<const TensorBase*> inputs_;
-  paddle::SmallVector<TensorBase*> outputs_;
-  paddle::SmallVector<Attribute> attrs_;
+  paddle::small_vector<const TensorBase*> inputs_;
+  paddle::small_vector<TensorBase*> outputs_;
+  paddle::small_vector<Attribute, kAttrSmallVectorSize> attrs_;
 
-  paddle::SmallVector<std::pair<int, int>> input_range_;
-  paddle::SmallVector<std::pair<int, int>> output_range_;
+  paddle::small_vector<std::pair<int, int>, kInputSmallVectorSize> input_range_;
+  paddle::small_vector<std::pair<int, int>, kOutputSmallVectorSize>
+      output_range_;
 };
 
 }  // namespace phi

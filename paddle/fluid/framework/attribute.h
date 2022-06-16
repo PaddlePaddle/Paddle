@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
+
 #include <functional>
 #include <iosfwd>
 #include <string>
@@ -203,10 +204,15 @@ struct ExtractAttribute<std::vector<double>> {
 
   const std::string& attr_name_;
 };
+
 template <typename T>
 inline proto::AttrType AttrTypeID() {
   Attribute tmp = T();
   return static_cast<proto::AttrType>(tmp.which() - 1);
+}
+
+inline proto::AttrType AttrTypeID(const Attribute& attr) {
+  return static_cast<proto::AttrType>(attr.which() - 1);
 }
 
 class AttrReader {
@@ -237,7 +243,7 @@ class AttrReader {
     return *attr_value;
   }
 
-  inline const Attribute& GetAttr(const std::string& name) const {
+  const Attribute* GetAttr(const std::string& name) const {
     auto it = attrs_.find(name);
     bool found = it != attrs_.end();
     if (!found) {
@@ -246,11 +252,10 @@ class AttrReader {
         found = it != default_attrs_->end();
       }
     }
-    PADDLE_ENFORCE_EQ(found, true,
-                      platform::errors::NotFound(
-                          "Attribute (%s) should be in AttributeMap.", name));
-
-    return it->second;
+    if (found) {
+      return &it->second;
+    }
+    return nullptr;
   }
 
  private:

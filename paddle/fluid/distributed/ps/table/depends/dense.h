@@ -15,13 +15,14 @@
 #pragma once
 
 #include <math.h>  // for sqrt in CPU and CUDA
+
 #include <functional>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/distributed/common/utils.h"
 
 namespace paddle {

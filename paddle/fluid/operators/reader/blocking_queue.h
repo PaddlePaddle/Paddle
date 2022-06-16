@@ -161,9 +161,10 @@ class BlockingQueue {
 
  private:
   inline void EnforceNotKilled() {
-    PADDLE_ENFORCE_NE(killed_, true, platform::errors::Fatal(
-                                         "Blocking queue is killed because the "
-                                         "data reader raises an exception."));
+    PADDLE_ENFORCE_NE(
+        killed_, true,
+        platform::errors::Fatal("Blocking queue is killed because the "
+                                "data reader raises an exception."));
   }
 
  private:
