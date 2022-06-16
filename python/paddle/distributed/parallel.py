@@ -254,7 +254,6 @@ def init_parallel_env():
         _set_group_map_by_name(_default_group_name, group)
         _set_group_map(0, group)
         parallel_helper._set_parallel_ctx(True)
-
         paddle.distributed.barrier(group=group)
         return group
 
