@@ -254,6 +254,7 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
           ctx.cuda_device_context(), out_linear_out_data, residual_ptr,
           out_linear_bias_data, final_out_data, dropout_mask_out_data);
     } else {
+      // TODO(Xreki): support post layer_norm case when add_residual is false.
       PADDLE_ENFORCE_EQ(add_residual, true,
                         platform::errors::InvalidArgument(
                             "Attribute add_residual is expected to be true "

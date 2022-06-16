@@ -129,6 +129,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
 
     const T* residual_ptr = add_residual ? x.data<T>() : nullptr;
     if (!pre_layer_norm) {
+      // TODO(Xreki): support post layer_norm case when add_residual is false.
       PADDLE_ENFORCE_EQ(add_residual, true,
                         platform::errors::InvalidArgument(
                             "Attribute add_residual is expected to be true "

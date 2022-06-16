@@ -206,9 +206,6 @@ struct FusedResidualDropoutBiasTester {
   }
 
   void Run() {
-    // LOG(INFO) << "dropout_prob=" << dropout_prob << ", is_upscale_in_train="
-    // << is_upscale_in_train << ", is_test=" << is_test << ", has_bias=" <<
-    // has_bias << ", add_residual=" << add_residual;
     SetUp();
     BaseForward();
     FusedForward();
