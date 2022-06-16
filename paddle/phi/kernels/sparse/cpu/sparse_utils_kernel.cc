@@ -218,7 +218,6 @@ void SparseCooToCsrCPUKernel(const CPUContext& dev_ctx,
   }
 
   for (int b = 0; b < batchs; b++) {
-    if (offsets[b] == 0) continue;
     int batch_start = 0;
     int batch_non_zero_num = offsets[b];
     if (b > 0) {
