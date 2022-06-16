@@ -55,7 +55,6 @@ class FeatureValueAccessor {
   __host__ __device__  virtual GpuAccessorInfo GetAccessorInfo() { return _accessor_info; }
 
  protected:
-  // TableAccessorParameter _config;
   std::unordered_map<std::string, float> _config;
   GpuAccessorInfo _accessor_info;
 };
@@ -80,9 +79,9 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
       std::vector<float> embedx_w;
        */
 
-    __host__ __device__ int Dim() { return 8 + embed_sgd_dim + embedx_sgd_dim + embedx_dim; } // has cpu_ptr
+    __host__ __device__ int Dim() { return 8 + embed_sgd_dim + embedx_sgd_dim + embedx_dim; } // has cpu_ptr(1)
     __host__ __device__ int DimSize(size_t dim, int embedx_dim) { return sizeof(float); }
-    __host__ __device__ int Size() { return (Dim()-1) * sizeof(float) + sizeof(uint64_t); }
+    __host__ __device__ int Size() { return (Dim()-1) * sizeof(float) + sizeof(uint64_t); } // cpu_ptr:uint64
     __host__ __device__ int EmbedDim() { return embed_sgd_dim;}
     __host__ __device__ int EmbedXDim() { return embedx_sgd_dim;}
     __host__ __device__ int EmbedWDim() { return embedx_dim;}

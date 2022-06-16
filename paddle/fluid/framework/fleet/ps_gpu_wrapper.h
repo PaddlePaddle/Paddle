@@ -41,7 +41,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
-// #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #endif
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
@@ -359,7 +358,6 @@ class PSGPUWrapper {
                           "mf_");
     }
 
-    // CommonFeatureValueAccessor feature_value_accessor_;
     feature_value_accessor_.Configure(config);
     VLOG(0) << "INIT feature_value_accessor_:" << feature_value_accessor_.GetAccessorInfo().dim
             << "  EMBX:" << feature_value_accessor_.common_feature_value.embedx_sgd_dim;

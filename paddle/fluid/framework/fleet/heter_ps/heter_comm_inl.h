@@ -690,7 +690,6 @@ void HeterComm<KeyType, ValType, GradType>::dynamic_merge_grad(
 
   size_t temp_storage_bytes;
 
-  // VLOG(1) << "hetercomm merge_grad: max_mf_dim: " << max_mf_dim_;
   size_t grad_value_size = TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().update_size);
 
   auto d_merge_keys = memory::Alloc(place, len * sizeof(KeyType));
@@ -915,7 +914,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   auto d_idx = memory::Alloc(place, len * sizeof(int));
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
   size_t val_type_size = TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().size);
-  VLOG(0) << "PULLSPARSE len:" << len << "  val_type_size: " << val_type_size;  
+  VLOG(5) << "pull_sparse len:" << len << "  val_type_size: " << val_type_size;  
   auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
   auto d_shard_vals = memory::Alloc(place, len * val_type_size);
