@@ -37,6 +37,10 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
         def generate_input1(attrs: List[Dict[str, Any]]):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
+        def generate_input2(attrs: List[Dict[str, Any]]):
+            return np.random.uniform(low=0.5, high=6.0,
+                                     size=(2)).astype("float32")
+
         for data_layout in ["NCHW", "NHWC"]:
             for scale_y in [2.0, -1.0, 0.0]:
                 for scale_x in [2.0, -1.0, 0.0]:
@@ -60,63 +64,27 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
                                     "Scale": ["input_scale"]
                                 },
                                 "op_outputs": {
-                                    "Out": [
-                                        "bilinear_interp_v2_output_data"
-                                    ]
+                                    "Out": ["bilinear_interp_v2_output_data"]
                                 },
                                 "op_attrs": dics[0]
                             }]
-                            ops = self.generate_op_config(
-                                ops_config)
+                            ops = self.generate_op_config(ops_config)
 
                             program_config = ProgramConfig(
                                 ops=ops,
-                                weights={},
+                                weights={
+                                    "input_scale":
+                                    TensorConfig(
+                                        data_gen=partial(generate_input2, dics))
+                                },
                                 inputs={
                                     "input_data":
-                                    TensorConfig(data_gen=partial(
-                                        generate_input1, dics))
+                                    TensorConfig(
+                                        data_gen=partial(generate_input1, dics))
                                 },
-                                outputs=[
-                                    "bilinear_interp_v2_output_data"
-                                ])
+                                outputs=["bilinear_interp_v2_output_data"])
 
                             yield program_config
-
-        for out_h in [32, 64, 128, 192]:
-            for out_w in [32, 64]:
-                for data_layout in ["NCHW", "NHWC"]:
-                    dics = [{
-                        "data_layout": data_layout,
-                        "interp_method": "bilinear",
-                        "align_corners": False,
-                        "align_mode": 0,
-                        "out_h": out_h,
-                        "out_w": out_w
-                    }]
-
-                    ops_config = [{
-                        "op_type": "bilinear_interp_v2",
-                        "op_inputs": {
-                            "X": ["input_data"]
-                        },
-                        "op_outputs": {
-                            "Out": ["bilinear_interp_v2_output_data"]
-                        },
-                        "op_attrs": dics[0]
-                    }]
-                    ops = self.generate_op_config(ops_config)
-
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "input_data":
-                            TensorConfig(data_gen=partial(generate_input1, dics))
-                        },
-                        outputs=["bilinear_interp_v2_output_data"])
-
-                    yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
