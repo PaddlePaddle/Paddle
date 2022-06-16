@@ -107,8 +107,16 @@ class TestBatchNorm(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for p in places:
+            # [N, C]
             shape = [200000, 4]
+            x = np.random.randn(*shape).astype("float32")
+            y1, g1 = compute_baseline(x)
+            y2, g2 = compute_1d(x)
+            self.assertTrue(np.allclose(g1, g2))
+            self.assertTrue(np.allclose(y1, y2))
 
+            # [N, C, L]
+            shape = [1000000, 4, 4]
             x = np.random.randn(*shape).astype("float32")
             y1, g1 = compute_baseline(x)
             y2, g2 = compute_1d(x)
