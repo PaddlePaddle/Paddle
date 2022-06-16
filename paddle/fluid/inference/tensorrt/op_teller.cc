@@ -295,7 +295,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                                                    "atanh",
                                                    "ceil",
                                                    "floor",
-                                                   "erf"};
+                                                   "erf"
+    };
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
