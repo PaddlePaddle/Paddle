@@ -636,7 +636,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(), h_fid_seq -> size() * sizeof(FidType), stream);
   VLOG(0) << "heter comm inl pull sparse memory copy d_fid_seq from cpu to xpu";
   // alloc d_shard_vals
-  auto d_shard_vals = memory::Alloc(place, len * sizeof(ValType));
+  auto d_shard_vals = memory::Alloc(place, h_fid_seq->size() * sizeof(ValType));
   VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
   ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
   
@@ -648,25 +648,26 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   VLOG(0) << "heter comm inl pull sparse fill d_shard_val by table->get";
 
   // allreduce
-  auto d_all_values = memory::Alloc(place, h_fid_seq->size() * sizeof(ValType));
+  auto d_all_vals = memory::Alloc(place, h_fid_seq->size() * sizeof(ValType));
   VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
-  ValType* d_all_values_ptr = reinterpret_cast<ValType*>(d_all_values->ptr());
+  ValType* d_all_vals_ptr = reinterpret_cast<ValType*>(d_all_vals->ptr());
 
   VLOG(0) << "heter comm inl pull sparse use " << resource_->total_device() << " device";
   if (resource_->total_device() > 1) {
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
     VLOG(0) << "heter comm inl pull sparse all reduce start";
-    bkcl_all_reduce(comm->comm(), d_shard_vals_ptr, d_all_values_ptr,
+    bkcl_all_reduce(comm->comm(), d_shard_vals_ptr, d_all_vals_ptr,
         h_fid_seq -> size() * sizeof(ValType) / sizeof(float),
         BKCL_FLOAT, BKCL_ADD, stream);
     VLOG(0) << "heter comm inl pull sparse all reduce finish";
   } else {
     VLOG(0) << "heter comm inl pull unnecessary all reduce";
+    d_all_vals_ptr = d_shard_vals_ptr;
   }
 
   // fill to d_val
-  heter_comm_kernel_->fill_dvals(d_all_values_ptr, d_vals, d_bfids_ptr, len, stream);
-  VLOG(0) << "heter comm inl pull sparse fill d_all_values to d_vals";
+  heter_comm_kernel_->fill_dvals(d_all_vals_ptr, d_vals, d_bfids_ptr, len, stream);
+  VLOG(0) << "heter comm inl pull sparse fill d_all_vals to d_vals";
 #else
   int total_device = resource_->total_device();
   int h_left[total_device];   // NOLINT
@@ -942,33 +943,34 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   VLOG(0) << "heter comm inl push sparse memory copy d_fid_seq from cpu to xpu";
 
   // merge grad
-  auto d_fgrad = memory::Alloc(place, h_fid_seq -> size() * sizeof(GradType));
+  auto d_shard_grads = memory::Alloc(place, h_fid_seq -> size() * sizeof(GradType));
   VLOG(0) << "heter comm inl push sparse alloc xpu memory for d_bfids " << h_fid_seq->size() * sizeof(GradType);
-  GradType* d_fgrad_ptr = reinterpret_cast<GradType*>(d_fgrad->ptr());
+  GradType* d_shard_grads_ptr = reinterpret_cast<GradType*>(d_shard_grads->ptr());
 
   VLOG(0) << "heter comm inl push sparse start merge grad";
-  heter_comm_kernel_->merge_grad(d_bfids_ptr, d_grads, len, d_fgrad_ptr);
+  heter_comm_kernel_->merge_grad(d_bfids_ptr, d_grads, len, d_shard_grads_ptr);
   VLOG(0) << "heter comm inl push sparse finish merge grad";
 
   // allreduce
-  auto d_fgrad_all = memory::Alloc(place, h_fid_seq -> size() * sizeof(GradType));
-  VLOG(0) << "heter comm inl push sparse alloc xpu memory for d_fgrad_all " << h_fid_seq->size() * sizeof(GradType);
-  GradType* d_fgrad_all_ptr = reinterpret_cast<GradType*>(d_fgrad_all->ptr());
+  auto d_all_grads = memory::Alloc(place, h_fid_seq -> size() * sizeof(GradType));
+  VLOG(0) << "heter comm inl push sparse alloc xpu memory for d_all_grads " << h_fid_seq->size() * sizeof(GradType);
+  GradType* d_all_grads_ptr = reinterpret_cast<GradType*>(d_all_grads->ptr());
 
   VLOG(0) << "heter comm inl push sparse use " << resource_->total_device() << " device";
   if (resource_->total_device() > 1) {
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
     VLOG(0) << "heter comm inl push sparse all reduce start";
-    bkcl_all_reduce(comm->comm(), d_fgrad_ptr, d_fgrad_all_ptr,
+    bkcl_all_reduce(comm->comm(), d_shard_grads_ptr, d_all_grads_ptr,
         h_fid_seq -> size() * sizeof(GradType) / sizeof(float),
         BKCL_FLOAT, BKCL_ADD, stream);
     VLOG(0) << "heter comm inl push sparse all reduce finish";
   } else {
     VLOG(0) << "heter comm inl push sparse unnecessary all reduce";
+    d_all_grads_ptr = d_shard_grads_ptr;
   }
 
   // update
-  tables_[dev_num]->update(place, d_fid_seq_ptr, d_fgrad_all_ptr, h_fid_seq -> size(), stream);
+  tables_[dev_num]->update(place, d_fid_seq_ptr, d_all_grads_ptr, h_fid_seq -> size(), stream);
   VLOG(0) << "heter comm inl push sparse update finish";
 
 #else
