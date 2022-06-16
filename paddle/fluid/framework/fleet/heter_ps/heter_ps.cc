@@ -21,26 +21,27 @@ namespace paddle {
 namespace framework {
 
 HeterPsBase* HeterPsBase::get_instance(
-    size_t capacity, std::shared_ptr<HeterPsResource> resource) {
-  return new HeterPs(capacity, resource);
+    size_t capacity, std::shared_ptr<HeterPsResource> resource,
+    CommonFeatureValueAccessor feature_value_accessor,
+    int optimizer_type) {
+  return new HeterPs(capacity, resource, feature_value_accessor, optimizer_type);
 }
 
-HeterPs::HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource) {
+HeterPs::HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource, 
+                  CommonFeatureValueAccessor feature_value_accessor,
+                  int optimizer_type) {
   comm_ =
-      std::make_shared<HeterComm<FeatureKey, FeatureValue, FeaturePushValue>>(
+      std::make_shared<HeterComm<FeatureKey, float*, float*>>(
           capacity, resource);
+  feature_value_accessor_ = feature_value_accessor;
+  optimizer_type_ = optimizer_type;
 }
 
 HeterPs::~HeterPs() {}
 
-void HeterPs::pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals,
+void HeterPs::pull_sparse(int num, FeatureKey* d_keys, float* d_vals,
                           size_t len) {
   comm_->pull_sparse(num, d_keys, d_vals, len);
-}
-
-void HeterPs::build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
-                       size_t len, size_t chunk_size, int stream_num) {
-  comm_->build_ps(num, h_keys, h_vals, len, chunk_size, stream_num);
 }
 
 int HeterPs::get_index_by_devid(int devid) {
@@ -60,7 +61,7 @@ void HeterPs::end_pass() { comm_->end_pass(); }
 void HeterPs::show_one_table(int gpu_num) { comm_->show_one_table(gpu_num); }
 
 void HeterPs::push_sparse(int num, FeatureKey* d_keys,
-                          FeaturePushValue* d_grads, size_t len) {
+                          float* d_grads, size_t len) {
   comm_->push_sparse(num, d_keys, d_grads, len);
   // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
 }

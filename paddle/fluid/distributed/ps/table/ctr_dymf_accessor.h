@@ -52,10 +52,10 @@ class CtrDymfAccessor : public ValueAccessor {
     int ClickIndex() { return ShowIndex() + 1; }
     int EmbedWIndex() { return ClickIndex() + 1; }
     int EmbedG2SumIndex() { return EmbedWIndex() + 1; }
-    int SlotIndex() { return EmbedG2SumIndex() + 1; }
+    int SlotIndex() { return EmbedG2SumIndex() + embed_sgd_dim; }
     int MfDimIndex() { return SlotIndex() + 1; }
     int EmbedxG2SumIndex() { return MfDimIndex() + 1; }
-    int EmbedxWIndex() { return EmbedxG2SumIndex() + 1; }
+    int EmbedxWIndex() { return EmbedxG2SumIndex() + embedx_sgd_dim; }
 
     float& UnseenDays(float* val) { return val[UnseenDaysIndex()]; }
     float& DeltaScore(float* val) { return val[DeltaScoreIndex()]; }

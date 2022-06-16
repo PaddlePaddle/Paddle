@@ -17,6 +17,9 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#endif
 
 namespace paddle {
 namespace distributed {
@@ -121,6 +124,13 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
       worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
           paddle::distributed::PSClientFactory::Create(ps_param));
       worker_ptr_->Configure(ps_param, dense_pull_regions, ps_env_, index);
+#if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
+      VLOG(0) << "FleetWrapper::InitWorker  InitializeGPUServer"; 
+      auto* accessor = worker_ptr_->GetTableAccessor(0);
+      auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+      ps_gpu_wrapper->InitializeGPUServer(ps_param);
+      ps_gpu_wrapper->SetTableAccessor(accessor);
+#endif
     }
   } else {
     VLOG(3) << "Client can be initialized only once";
@@ -478,11 +488,11 @@ void FleetWrapper::PushSparseFromTensorAsync(
   int batch_size = -1;
   bool batch_size_consist = true;
   for (auto* input : *inputs) {
-    int cur_batch_size =
+    size_t cur_batch_size =
         input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
-      batch_size = cur_batch_size;
-    } else if (batch_size != cur_batch_size) {
+      batch_size = int(cur_batch_size);
+    } else if (batch_size != int(cur_batch_size)) {
       // CHECK(batch_size == cur_batch_size);  // NOLINT
       batch_size_consist = false;
       break;
@@ -490,12 +500,12 @@ void FleetWrapper::PushSparseFromTensorAsync(
   }
   CHECK(batch_size > 0);  // NOLINT
 
-  int show_size =
+  size_t show_size =
       shows->lod().size() ? shows->lod()[0].size() - 1 : shows->dims()[0];
-  CHECK(show_size == batch_size || show_size == 1);
-  int clk_size =
+  CHECK(show_size == size_t(batch_size) || show_size == 1);
+  size_t clk_size =
       clks->lod().size() ? clks->lod()[0].size() - 1 : clks->dims()[0];
-  CHECK(clk_size == batch_size || clk_size == 1);
+  CHECK(clk_size == size_t(batch_size) || clk_size == 1);
 
   CHECK(outputs->size() == inputs->size());
   std::vector<uint64_t> push_keys;
@@ -536,7 +546,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
 
     if (tensor->lod().size() > 0) {
       for (size_t i = 0; i < tensor->lod()[0].size() - 1; ++i) {
-        for (int j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
+        for (size_t j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
              ++j, output_len += fea_dim) {
           uint64_t real_id = static_cast<uint64_t>(ids[j]);
           if (real_id == padding_id) {
@@ -591,7 +601,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
         ++input_idx;
       }
     }
-    CHECK(output_len == g_tensor->numel());
+    CHECK(int64_t(output_len) == g_tensor->numel());
   }
 
   std::vector<float*> push_g_vec(input_idx, nullptr);

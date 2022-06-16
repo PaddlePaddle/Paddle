@@ -41,24 +41,35 @@ struct DynamicGradMerger {
     return out;
   }
 
-  template <typename T>
-  __device__ __forceinline__ void update_one(T& output, const T& input) {
-    output.slot = input.slot;
-    output.show = input.show;
-    output.clk = input.clk;
-    output.mf_dim = input.mf_dim;
-    output.lr_g = input.lr_g;
-    for (int i = 0; i < output.mf_dim; ++i) {
-      output.mf_g[i] = input.mf_g[i];
+  __device__ __forceinline__ void update_one(float* output, const float* input,
+                                            CommonFeatureValueAccessor& feature_value_accessor) {
+    output[feature_value_accessor.common_push_value.SlotIndex()] = 
+        input[feature_value_accessor.common_push_value.SlotIndex()];
+    output[feature_value_accessor.common_push_value.ShowIndex()] = 
+        input[feature_value_accessor.common_push_value.ShowIndex()];
+    output[feature_value_accessor.common_push_value.ClickIndex()] = 
+        input[feature_value_accessor.common_push_value.ClickIndex()];
+    output[feature_value_accessor.common_push_value.MfDimIndex()] = 
+        input[feature_value_accessor.common_push_value.MfDimIndex()];
+    output[feature_value_accessor.common_push_value.EmbedGIndex()] = 
+        input[feature_value_accessor.common_push_value.EmbedGIndex()];
+    for (int j = 0; j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]); j++) {
+      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] = 
+          input[feature_value_accessor.common_push_value.EmbedxGIndex() + j];
     }
   }
-  template <typename T>
-  __device__ __forceinline__ void merge_one(T& output, const T& input) {
-    output.show += input.show;
-    output.clk += input.clk;
-    output.lr_g += input.lr_g;
-    for (int i = 0; i < input.mf_dim; ++i) {
-      output.mf_g[i] += input.mf_g[i];
+
+  __device__ __forceinline__ void merge_one(float* output, const float* input,
+                                          CommonFeatureValueAccessor& feature_value_accessor) {
+    output[feature_value_accessor.common_push_value.ShowIndex()] += 
+        input[feature_value_accessor.common_push_value.ShowIndex()];
+    output[feature_value_accessor.common_push_value.ClickIndex()] += 
+        input[feature_value_accessor.common_push_value.ClickIndex()];
+    output[feature_value_accessor.common_push_value.EmbedGIndex()] += 
+        input[feature_value_accessor.common_push_value.EmbedGIndex()];
+    for (int j = 0; j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]); j++) {
+      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] += 
+          input[feature_value_accessor.common_push_value.EmbedxGIndex() + j];
     }
   }
 };
@@ -67,6 +78,8 @@ class HeterCommKernel {
  public:
   HeterCommKernel() {}
   explicit HeterCommKernel(const int block_size) : block_size_(block_size) {}
+
+  explicit HeterCommKernel(const int block_size, CommonFeatureValueAccessor& feature_value_accessor) : block_size_(block_size), feature_value_accessor_(feature_value_accessor) {}
 
   template <typename T, typename StreamType>
   void fill_idx(T* idx, long long len, const StreamType& stream);
@@ -116,10 +129,9 @@ class HeterCommKernel {
 
                      StreamType stream = NULL, bool debug_synchronous = false);
 
-  template <typename KeyType, typename GradType, typename T,
-            typename StreamType>
+  template <typename KeyType, typename T, typename StreamType>
   void dy_mf_fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
-                              GradType* d_shard_grads, GradType* d_grads,
+                              float* d_shard_grads, float* d_grads,
                               T* idx, long long len, size_t grad_value_size,
                               const StreamType& stream);
 
@@ -129,11 +141,12 @@ class HeterCommKernel {
                       int n, size_t grad_value_size, DynamicGradMerger& merger_,
                       const StreamType& stream);
 
-  template <typename ValType, typename T, typename StreamType>
-  void dy_mf_fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
+  template <typename T, typename StreamType>
+  void dy_mf_fill_dvals(float* d_shard_vals, float* d_vals, T* idx,
                         long long len, size_t val_size,
                         const StreamType& stream);
 
+  CommonFeatureValueAccessor feature_value_accessor_;
  private:
   int block_size_{256};
 };

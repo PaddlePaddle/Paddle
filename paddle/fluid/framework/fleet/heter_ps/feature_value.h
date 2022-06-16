@@ -17,12 +17,227 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 
 #include <iostream>
+#include <sstream>
+#include <unordered_map>
+
 
 namespace paddle {
 namespace framework {
 #define MF_DIM 8
 
 typedef uint64_t FeatureKey;
+
+struct GpuAccessorInfo {
+  // value维度
+  size_t dim;
+  // value各个维度的size
+  size_t size;
+  // push value维度
+  size_t update_dim;
+  // push value各个维度的size
+  size_t update_size;
+  // value中mf动态长度部分总size大小, sparse下生效
+  size_t mf_size;
+};
+
+class FeatureValueAccessor {
+ public:
+  __host__ __device__  FeatureValueAccessor() {}
+  __host__ __device__ ~FeatureValueAccessor() {}
+
+  __host__ __device__ virtual int Configure(std::unordered_map<std::string, float> config) {
+    _config = config;
+    Initialize();
+    return 0;
+  }
+  __host__ __device__  virtual int Initialize() = 0;
+
+  __host__ __device__  virtual GpuAccessorInfo GetAccessorInfo() { return _accessor_info; }
+
+ protected:
+  std::unordered_map<std::string, float> _config;
+  GpuAccessorInfo _accessor_info;
+};
+
+// adagrad: embed_sgd_dim=1, embedx_sgd_dim=1,embedx_dim=n
+// adam std:  embed_sgd_dim=4, embedx_sgd_dim=n*2+2,embedx_dim=n
+// adam shared:  embed_sgd_dim=4, embedx_sgd_dim=4,embedx_dim=n
+class CommonFeatureValueAccessor : public FeatureValueAccessor {
+ public:
+  struct CommonFeatureValue {
+    /*
+      uint64_t cpu_ptr;
+      float delta_score;
+      float show;
+      float click;
+      float embed_w;
+      std::vector<float> embed_g2sum;
+      float slot;
+      float mf_dim
+      float mf_size
+      std::vector<float> embedx_g2sum;
+      std::vector<float> embedx_w;
+       */
+
+    __host__ __device__ int Dim() { return 8 + embed_sgd_dim + embedx_sgd_dim + embedx_dim; } // has cpu_ptr(1)
+    __host__ __device__ int DimSize(size_t dim, int embedx_dim) { return sizeof(float); }
+    __host__ __device__ int Size() { return (Dim()-1) * sizeof(float) + sizeof(uint64_t); } // cpu_ptr:uint64
+    __host__ __device__ int EmbedDim() { return embed_sgd_dim;}
+    __host__ __device__ int EmbedXDim() { return embedx_sgd_dim;}
+    __host__ __device__ int EmbedWDim() { return embedx_dim;}
+    __host__ __device__ int CpuPtrIndex() {return 0; } // cpuprt uint64
+    __host__ __device__ int DeltaScoreIndex() { return CpuPtrIndex() + 2; } 
+    __host__ __device__ int ShowIndex() { return DeltaScoreIndex() + 1; }
+    __host__ __device__ int ClickIndex() { return ShowIndex() + 1; }
+    __host__ __device__ int EmbedWIndex() { return ClickIndex() + 1; }
+    __host__ __device__ int EmbedG2SumIndex() { return EmbedWIndex() + 1; }
+    __host__ __device__ int SlotIndex() { return EmbedG2SumIndex() + embed_sgd_dim; }
+    __host__ __device__ int MfDimIndex() { return SlotIndex() + 1; }
+    __host__ __device__ int MfSizeIndex() { return MfDimIndex() + 1; } // actual mf size (ex. 0)
+    __host__ __device__ int EmbedxG2SumIndex() { return MfSizeIndex() + 1; }
+    __host__ __device__ int EmbedxWIndex() { return EmbedxG2SumIndex() + embedx_sgd_dim; }
+
+    __host__ __device__ uint64_t CpuPtr(float* val) {return *(reinterpret_cast<uint64_t*>(val)); }
+    __host__ __device__ float& DeltaScore(float* val) { return val[DeltaScoreIndex()]; }
+    __host__ __device__ float& Show(float* val) { return val[ShowIndex()]; }
+    __host__ __device__ float& Click(float* val) { return val[ClickIndex()]; }
+    __host__ __device__ float& Slot(float* val) { return val[SlotIndex()]; }
+    __host__ __device__ float& MfDim(float* val) { return val[MfDimIndex()]; }
+    __host__ __device__ float& MfSize(float* val) { return val[MfSizeIndex()]; }
+    __host__ __device__ float& EmbedW(float* val) { return val[EmbedWIndex()]; }
+    __host__ __device__ float& EmbedG2Sum(float* val) { return val[EmbedG2SumIndex()]; }
+    __host__ __device__ float& EmbedxG2Sum(float* val) { return val[EmbedxG2SumIndex()]; }
+    __host__ __device__ float& EmbedxW(float* val) { return val[EmbedxWIndex()]; }
+
+    int embed_sgd_dim;
+    int embedx_dim;
+    int embedx_sgd_dim;
+  };
+
+  struct CommonPushValue {
+    /*
+       float slot;
+       float show;
+       float click;
+       float mf_dim;
+       float embed_g;
+       std::vector<float> embedx_g;
+       */
+
+    __host__ __device__ int Dim(int embedx_dim) { return 5 + embedx_dim; }
+
+    __host__ __device__ int DimSize(int dim, int embedx_dim) { return sizeof(float); }
+    __host__ __device__ int Size(int embedx_dim) { return Dim(embedx_dim) * sizeof(float); }
+    __host__ __device__ int SlotIndex() { return 0; }
+    __host__ __device__ int ShowIndex() { return CommonPushValue::SlotIndex() + 1; }
+    __host__ __device__ int ClickIndex() { return CommonPushValue::ShowIndex() + 1; }
+    __host__ __device__ int MfDimIndex() { return CommonPushValue::ClickIndex() + 1; }
+    __host__ __device__ int EmbedGIndex() { return CommonPushValue::MfDimIndex() + 1; }
+    __host__ __device__ int EmbedxGIndex() { return CommonPushValue::EmbedGIndex() + 1; }
+    __host__ __device__ float& Slot(float* val) {
+      return val[CommonPushValue::SlotIndex()];
+    }
+    __host__ __device__ float& Show(float* val) {
+      return val[CommonPushValue::ShowIndex()];
+    }
+    __host__ __device__ float& Click(float* val) {
+      return val[CommonPushValue::ClickIndex()];
+    }
+    __host__ __device__ float& MfDim(float* val) {
+      return val[CommonPushValue::MfDimIndex()];
+    }
+    __host__ __device__ float& EmbedG(float* val) {
+      return val[CommonPushValue::EmbedGIndex()];
+    }
+    __host__ __device__ float* EmbedxG(float* val) {
+      return val + CommonPushValue::EmbedxGIndex();
+    }
+  };
+
+ 
+  __host__ __device__ CommonFeatureValueAccessor() {}
+  __host__ __device__ ~CommonFeatureValueAccessor() {}
+
+  __host__ __device__ virtual int Initialize() {
+    int optimizer_type = (_config.find("optimizer_type") == _config.end())
+                                 ? 1
+                                 : int(_config["optimizer_type"]);
+    int sparse_embedx_dim = (_config.find("embedx_dim") == _config.end())
+                                ? 8
+                                : int(_config["embedx_dim"]);
+    if (optimizer_type == 3) { //adam
+      common_feature_value.embed_sgd_dim = 4;
+      common_feature_value.embedx_sgd_dim = sparse_embedx_dim * 2 + 2;
+    } else if (optimizer_type == 4) { //shared_adam
+      common_feature_value.embed_sgd_dim = 4;
+      common_feature_value.embedx_sgd_dim = 4;
+    } else {
+      common_feature_value.embed_sgd_dim = 1;
+      common_feature_value.embedx_sgd_dim = 1;
+    }
+    
+    common_feature_value.embedx_dim = sparse_embedx_dim;
+
+    // VLOG(0) << " INTO FeatureValueAccessor::Initialize()";
+    InitAccessorInfo();
+    return 0;
+  }
+
+  // 初始化AccessorInfo
+  __host__ __device__ virtual void InitAccessorInfo() {
+    _accessor_info.dim = common_feature_value.Dim();
+    _accessor_info.size = common_feature_value.Size();
+
+    int embedx_dim = (_config.find("embedx_dim") == _config.end())
+                                ? 8
+                                : int(_config["embedx_dim"]);
+    // VLOG(0) << "feature value InitAccessorInfo embedx_dim:" << embedx_dim;
+    _accessor_info.update_dim = 5 + embedx_dim;
+    _accessor_info.update_size = _accessor_info.update_dim * sizeof(float);
+    _accessor_info.mf_size =
+        (embedx_dim + common_feature_value.embedx_sgd_dim) * sizeof(float);
+  }
+
+  __host__ __device__ std::string ParseToString(const float* v, int param_size) {
+    /*
+        uint64_t cpu_ptr; // 2float
+        float delta_score;
+        float show;
+        float click;
+        float embed_w;
+        std::vector<float> embed_g2sum;
+        float slot;
+        float mf_dim
+        float mf_size
+        std::vector<float> embedx_g2sum;
+        std::vector<float> embedx_w;
+    */
+    std::stringstream os;
+    os << "cpuptr: " << common_feature_value.CpuPtr(const_cast<float*>(v)) << " delta_score: " << v[2] 
+        << " show: " << v[3] << " click: " << v[4] 
+        << " embed_w:" << v[5] << " embed_g2sum:";
+    for (int i = common_feature_value.EmbedG2SumIndex();
+        i < common_feature_value.SlotIndex(); i++) {
+      os << " " << v[i];
+    }
+    os << " slot: " << common_feature_value.Slot(const_cast<float*>(v)) 
+      << " mf_dim: " << common_feature_value.MfDim(const_cast<float*>(v))
+      << " mf_size: " << common_feature_value.MfSize(const_cast<float*>(v))
+      << " mf: ";
+    if (param_size > common_feature_value.EmbedxG2SumIndex()) {
+      for (auto i = common_feature_value.EmbedxG2SumIndex();
+          i < int(common_feature_value.Size() / sizeof(float)); ++i) {
+        os << " " << v[i];
+      }
+    }
+    return os.str();
+  }
+
+ public:
+  CommonFeatureValue common_feature_value;
+  CommonPushValue common_push_value;
+};
+
 
 struct FeatureValue {
   float delta_score;
