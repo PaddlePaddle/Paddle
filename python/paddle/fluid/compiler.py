@@ -731,12 +731,66 @@ class IpuStrategy(object):
             self.register_patch()
 
     def register_patch(self):
+        """
+        Register patchs function to support dynamic to static on IPU. This operation would break the dy2static functionality on CPU.
+        Use `release_patch` to release the patch.
+
+        Examples:
+            .. code-block:: python
+	
+                # required: ipu
+
+                import paddle
+                import paddle.static as static
+
+                ipu_strategy = static.IpuStrategy()
+
+                ipu_strategy.register_patch()
+        """
         IpuDynamicPatcher.register_patch(self)
 
     def release_patch(self):
+        """
+        Release the registered IPU functions.
+
+        Examples:
+            .. code-block:: python
+	
+                # required: ipu
+
+                import paddle
+                import paddle.static as static
+
+                ipu_strategy = static.IpuStrategy()
+
+                ipu_strategy.release_patch()
+        """
         IpuDynamicPatcher.release_patch()
 
     def set_optimizer(self, optimizer):
+        """
+        Set optimizer to ipu_strategy in dynamic mode.
+
+          Args:
+              optimizer (Optimizer): Optimizer to be used in training.
+              
+          Returns:
+              None.
+
+          Examples:
+              .. code-block:: python
+	
+                  # required: ipu
+
+                  import paddle
+                  import paddle.static as static
+
+                  linear = paddle.nn.Linear(10, 10)
+                  optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                                   parameters=linear.parameters())
+                  ipu_strategy = static.IpuStrategy()
+                  ipu_strategy.set_optimizer(optimizer)
+        """
         from paddle import in_dynamic_mode
         if in_dynamic_mode():
             self._optimizer = optimizer
@@ -746,6 +800,29 @@ class IpuStrategy(object):
             raise RuntimeError("Only needs to set optimizer in dynamic mode.")
 
     def parse_optimizer(self, optimizer):
+        """
+        Parse optimizer attributes for IPU dynamic to static support. Currently only support parse lr.
+
+          Args:
+              optimizer (Optimizer): Optimizer to be parsed.
+              
+          Returns:
+              Dict.
+
+          Examples:
+              .. code-block:: python
+	
+                  # required: ipu
+
+                  import paddle
+                  import paddle.static as static
+
+                  linear = paddle.nn.Linear(10, 10)
+                  optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                                   parameters=linear.parameters())
+                  ipu_strategy = static.IpuStrategy()
+                  attrs = ipu_strategy.parse_optimizer(optimizer)
+        """
 
         def get_lr():
             from paddle.optimizer.lr import LRScheduler
