@@ -1279,10 +1279,8 @@ EOF
         echo "ipipe_log_param_${2}_Cards_TestCases_Count: $num" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
 }
-
 failed_test_lists=''
 tmp_dir=`mktemp -d`
-
 function collect_failed_tests() {
     for file in `ls $tmp_dir`; do
         exit_code=0
@@ -2024,6 +2022,26 @@ function get_failedUts_precise_map_file {
     fi
 }
 
+function parallel_test_base_gpups() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit GpuPS tests ...
+    ========================================
+EOF
+        ut_startTime_s=`date +%s`
+        ctest -L "RUN_TYPE=GPUPS"
+        ut_endTime_s=`date +%s`
+        echo "CINN testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi
+}
+
 function parallel_test_base_xpu() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -2722,6 +2740,8 @@ function parallel_test() {
         parallel_test_base_cinn
     elif [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu_test
+    elif [ "$WITH_GPU" == "ON" ] && [ "$WITH_HETERPS" == "ON" ];then
+        parallel_test_base_gpups
     elif [ "$WITH_XPU" == "ON" ];then
         parallel_test_base_xpu
     elif [ "$WITH_ASCEND_CL" == "ON" ];then

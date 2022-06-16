@@ -746,6 +746,11 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
                   test_fuse_gemm_epilogue_pass)
 endif()
 
+set_tests_properties(test_communicator_ps_gpu PROPERTIES LABELS
+                                                         "RUN_TYPE=GPUPS")
+set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
+set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
+
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_faster_tokenizer_op PROPERTIES LABELS
                                                          "RUN_TYPE=EXCLUSIVE")
