@@ -208,6 +208,54 @@ class LogMLUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class ExpMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    output->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlTensorDesc input_desc(*input);
+    MLUCnnlTensorDesc output_desc(*output);
+    cnnlComputationPreference_t prefer = CNNL_COMPUTATION_HIGH_PRECISION;
+
+    MLUCnnl::Exp(ctx,
+                 prefer,
+                 input_desc.get(),
+                 GetBasePtr(input),
+                 output_desc.get(),
+                 GetBasePtr(output));
+  }
+};
+
+template <typename T>
+class ExpGradMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    dx->mutable_data<T>(ctx.GetPlace());
+    MLUCnnlTensorDesc dout_desc(*dout);
+    MLUCnnlTensorDesc dx_desc(*dx);
+    MLUCnnlTensorDesc out_desc(*out);
+
+    MLUCnnlOpTensorDesc op_tensor_desc(
+        CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
+
+    MLUCnnl::OpTensor(ctx,
+                      op_tensor_desc.get(),
+                      dout_desc.get(),
+                      GetBasePtr(dout),
+                      out_desc.get(),
+                      GetBasePtr(out),
+                      dx_desc.get(),
+                      GetBasePtr(dx),
+                      ToCnnlDataType<T>());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -303,3 +351,11 @@ REGISTER_OP_MLU_KERNEL(
     log10,
     ops::LogMLUKernel<CNNL_LOG_10, float>,
     ops::LogMLUKernel<CNNL_LOG_10, paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(exp,
+                       ops::ExpMLUKernel<float>,
+                       ops::ExpMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(exp_grad,
+                       ops::ExpGradMLUKernel<float>,
+                       ops::ExpGradMLUKernel<paddle::platform::float16>);
