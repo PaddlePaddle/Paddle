@@ -51,6 +51,7 @@ from ..fluid.framework import mlu_places  # noqa: F401
 from ..fluid.framework import npu_places  # noqa: F401
 from ..fluid.framework import Variable  # noqa: F401
 from ..fluid.framework import ipu_shard_guard  # noqa: F401
+from ..fluid.framework import set_ipu_shard  # noqa: F401
 from ..fluid.layers.control_flow import Print  # noqa: F401
 from ..fluid.layers.nn import py_func  # noqa: F401
 from ..fluid.parallel_executor import ParallelExecutor  # noqa: F401
@@ -69,52 +70,17 @@ from ..fluid.layers import create_global_var  # noqa: F401
 from ..fluid.layers.metric_op import auc  # noqa: F401
 from ..fluid.layers.metric_op import accuracy  # noqa: F401
 
-__all__ = [     #noqa
-           'append_backward',
-           'gradients',
-           'Executor',
-           'global_scope',
-           'scope_guard',
-           'BuildStrategy',
-           'CompiledProgram',
-           'ipu_shard_guard',
-           'IpuCompiledProgram',
-           'IpuStrategy',
-           'Print',
-           'py_func',
-           'ExecutionStrategy',
-           'name_scope',
-           'ParallelExecutor',
-           'program_guard',
-           'WeightNormParamAttr',
-           'ExponentialMovingAverage',
-           'default_main_program',
-           'default_startup_program',
-           'Program',
-           'data',
-           'InputSpec',
-           'save',
-           'load',
-           'save_inference_model',
-           'load_inference_model',
-           'serialize_program',
-           'serialize_persistables',
-           'save_to_file',
-           'deserialize_program',
-           'deserialize_persistables',
-           'load_from_file',
-           'normalize_program',
-           'load_program_state',
-           'set_program_state',
-           'cpu_places',
-           'cuda_places',
-           'xpu_places',
-           'npu_places',
-           'mlu_places',
-           'Variable',
-           'create_global_var',
-           'accuracy',
-           'auc',
-           'device_guard',
-           'create_parameter'
+__all__ = [  #noqa
+    'append_backward', 'gradients', 'Executor', 'global_scope', 'scope_guard',
+    'BuildStrategy', 'CompiledProgram', 'ipu_shard_guard', 'IpuCompiledProgram',
+    'IpuStrategy', 'Print', 'py_func', 'ExecutionStrategy', 'name_scope',
+    'ParallelExecutor', 'program_guard', 'WeightNormParamAttr',
+    'ExponentialMovingAverage', 'default_main_program',
+    'default_startup_program', 'Program', 'data', 'InputSpec', 'save', 'load',
+    'save_inference_model', 'load_inference_model', 'serialize_program',
+    'serialize_persistables', 'save_to_file', 'deserialize_program',
+    'deserialize_persistables', 'load_from_file', 'normalize_program',
+    'load_program_state', 'set_program_state', 'cpu_places', 'cuda_places',
+    'xpu_places', 'npu_places', 'mlu_places', 'Variable', 'create_global_var',
+    'accuracy', 'auc', 'device_guard', 'create_parameter', 'set_ipu_shard'
 ]

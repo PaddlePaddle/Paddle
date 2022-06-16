@@ -172,17 +172,13 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     int seed = ctx.Attr<int>("seed");
 
     if (!is_test) {
-      int device_id = ctx.GetPlace().GetDeviceId();
-      auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
-      if (gen_cuda->GetIsInitPy() && seed == 0) {
-        // If perform `manual_seed` in python and inner seed is not specified
-        // (equals 0), use global generator generated seed.
+      if (seed == 0) {
+        // If not specify seed, use global Generator to generate seed.
+        int device_id = ctx.GetPlace().GetDeviceId();
+        auto gen_cuda = paddle::framework::DefaultCUDAGenerator(device_id);
         seed = static_cast<int>(gen_cuda->Random64());
-      } else if (seed == 0) {
-        // use random generated seed
-        std::random_device rd;
-        seed = rd();
-      }  // else use `ctx.Attr<int>("seed")` specified seed
+      }
+      // else use `ctx.Attr<int>("seed")` specified seed
     }
 
     bool has_seq_length = ctx.HasInput("SequenceLength");

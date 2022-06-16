@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <vector>
 
-#include <algorithm>
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"

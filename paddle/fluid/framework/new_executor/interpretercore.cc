@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
+
 #include <unordered_set>
+
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/event_garbage_collector.h"
@@ -61,8 +63,6 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       stream_analyzer_(place) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
   is_build_ = false;
-  async_work_queue_.reset(new interpreter::AsyncWorkQueue(
-      kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (IsInterpretercoreFastGCEnabled()) {
@@ -125,6 +125,17 @@ paddle::framework::FetchList InterpreterCore::Run(
     // add listener before run and is_build=true
     global_scope_->ResetListener();
 
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    if (async_work_queue_ == nullptr) {
+      async_work_queue_ = std::make_unique<interpreter::AsyncWorkQueue>(
+          kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
+      // prepare for the first time.
+      async_work_queue_->PrepareAtomicDeps(dependecy_count_);
+      async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+    }
+
     ExecuteInstructionList(vec_instruction_);
   }
 
@@ -171,6 +182,17 @@ paddle::framework::FetchList InterpreterCore::Run(
   } else {
     // add listener before run and is_build=true
     global_scope_->ResetListener();
+
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    if (async_work_queue_ == nullptr) {
+      async_work_queue_ = std::make_unique<interpreter::AsyncWorkQueue>(
+          kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
+      // prepare for the first time.
+      async_work_queue_->PrepareAtomicDeps(dependecy_count_);
+      async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+    }
 
     ExecuteInstructionList(vec_instruction_);
   }
@@ -277,7 +299,7 @@ void InterpreterCore::Convert(
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    // checkout ouput
+    // checkout output
     for (auto& item : vec_instruction_[i].Outputs()) {
       for (auto var_id : item.second) {
         if (input_var2op_info_.at(var_id).size() == 0) {
@@ -341,10 +363,6 @@ void InterpreterCore::Convert(
   if (FLAGS_new_executor_use_inplace && !inplaced) {
     BuildInplace();
   }
-
-  // prepare for the first time.
-  async_work_queue_->PrepareAtomicDeps(dependecy_count_);
-  async_work_queue_->PrepareAtomicVarRef(vec_meta_info);
 }
 
 bool InterpreterCore::BuildInplaceCheckVarIsOnlyInput(size_t var_index) {
@@ -585,10 +603,12 @@ void InterpreterCore::ExecuteInstructionList(
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      async_work_queue_->AddTask(vec_instr.at(i).KernelType(), [
-        this, i, atomic_deps = atomic_deps.get(),
-        atomic_var_ref = atomic_var_ref.get()
-      ] { RunInstructionAsync(i, atomic_deps, atomic_var_ref); });
+      async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
+                                 [this, i, atomic_deps = atomic_deps.get(),
+                                  atomic_var_ref = atomic_var_ref.get()] {
+                                   RunInstructionAsync(i, atomic_deps,
+                                                       atomic_var_ref);
+                                 });
     }
   }
 
@@ -692,10 +712,10 @@ void InterpreterCore::RunInstructionAsync(
     ready_ops.pop();
     auto& instr_node = vec_instruction_.at(instr_id);
     VLOG(5) << __func__ << " OP id:" << instr_node.Id()
-            << " name:" << instr_node.OpBase()->Type()
-            << " type:" << (instr_node.KernelType() == OpFuncType::kQueueSync
-                                ? "kQueueSync"
-                                : "kQueueAsync")
+            << " name:" << instr_node.OpBase()->Type() << " type:"
+            << (instr_node.KernelType() == OpFuncType::kQueueSync
+                    ? "kQueueSync"
+                    : "kQueueAsync")
             << " runs on " << platform::GetCurrentThreadName();
 
     auto* op = instr_node.OpBase();
@@ -936,6 +956,18 @@ interpreter::CostInfo InterpreterCore::DryRun(
   interpreter::CostInfo cost_info;
   {
     interpreter::ProfilerGuard(place_, &cost_info);
+
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    if (async_work_queue_ == nullptr) {
+      async_work_queue_ = std::make_unique<interpreter::AsyncWorkQueue>(
+          kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
+      // prepare for the first time.
+      async_work_queue_->PrepareAtomicDeps(dependecy_count_);
+      async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+    }
+
     ExecuteInstructionList(vec_instruction_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }

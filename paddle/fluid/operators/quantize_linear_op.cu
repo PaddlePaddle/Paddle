@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/fake_dequantize_op.cu.h"
 #include "paddle/fluid/operators/fake_quantize_op.cu.h"
@@ -46,10 +47,10 @@ struct ChannelDequantizeFunctorV2<platform::CUDADeviceContext, T> {
       quant_stride *= in_dims[i];
     }
 
-    DequantizeOneScaleQuantAxisN<
-        T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-        in_data, scale_factor, max_range, num, in_dims[quant_axis],
-        quant_stride, out_data);
+    DequantizeOneScaleQuantAxisN<T>
+        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+            in_data, scale_factor, max_range, num, in_dims[quant_axis],
+            quant_stride, out_data);
   }
 };
 

@@ -59,6 +59,12 @@ class CompatMetaTensor : public phi::MetaTensor {
 
   bool initialized() const override { return initialized_; };
 
+  operator unspecified_bool_type() const override {
+    return initialized_ ? unspecified_bool_true : 0;
+  }
+
+  bool operator!() const override { return !initialized_; }
+
  private:
   const LoD& GetRuntimeLoD() const {
     auto* var = BOOST_GET_CONST(Variable*, var_);
@@ -107,13 +113,11 @@ class CompatInferMetaContext : public phi::InferMetaContext {
           outputs);
 
   const phi::MetaTensor& InputAt(size_t idx) const override;
-  paddle::optional<const phi::MetaTensor&> OptionalInputAt(
-      size_t idx) const override;
 
   std::vector<const phi::MetaTensor*> InputsBetween(size_t start,
                                                     size_t end) const override;
-  paddle::optional<const std::vector<const phi::MetaTensor*>>
-  OptionalInputsBetween(size_t start, size_t end) const override;
+  paddle::optional<std::vector<const phi::MetaTensor*>> OptionalInputsBetween(
+      size_t start, size_t end) const override;
 
   phi::MetaTensor* MutableOutputAt(size_t idx) override;
   std::vector<phi::MetaTensor*> MutableOutputBetween(size_t start,

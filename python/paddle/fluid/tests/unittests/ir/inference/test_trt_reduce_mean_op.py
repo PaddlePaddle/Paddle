@@ -24,12 +24,15 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTReduceMeanTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, -1, -1], dtype="float32")
-            reduce_mean = fluid.layers.reduce_mean(
-                data, dim=[2, -1], keep_dim=True)
+            data = fluid.data(name="data",
+                              shape=[-1, 3, -1, -1],
+                              dtype="float32")
+            reduce_mean = fluid.layers.reduce_mean(data,
+                                                   dim=[2, -1],
+                                                   keep_dim=True)
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
@@ -39,9 +42,9 @@ class TRTReduceMeanTest(InferencePassTest):
         self.trt_parameters = TRTReduceMeanTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
-        self.dynamic_shape_params = TRTReduceMeanTest.DynamicShapeParam({
-            'data': [1, 3, 16, 16]
-        }, {'data': [3, 3, 56, 56]}, {'data': [3, 3, 56, 56]}, False)
+        self.dynamic_shape_params = TRTReduceMeanTest.DynamicShapeParam(
+            {'data': [1, 3, 16, 16]}, {'data': [3, 3, 56, 56]},
+            {'data': [3, 3, 56, 56]}, False)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -52,10 +55,12 @@ class TRTReduceMeanTest(InferencePassTest):
 
 
 class TRTReduceMeanAllNoBatchTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, -1, -1], dtype="float32")
+            data = fluid.data(name="data",
+                              shape=[-1, 3, -1, -1],
+                              dtype="float32")
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
@@ -67,9 +72,8 @@ class TRTReduceMeanAllNoBatchTest(InferencePassTest):
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
         self.dynamic_shape_params = TRTReduceMeanAllNoBatchTest.DynamicShapeParam(
-            {
-                'data': [1, 3, 16, 16]
-            }, {'data': [3, 3, 56, 56]}, {'data': [3, 3, 56, 56]}, False)
+            {'data': [1, 3, 16, 16]}, {'data': [3, 3, 56, 56]},
+            {'data': [3, 3, 56, 56]}, False)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -80,12 +84,15 @@ class TRTReduceMeanAllNoBatchTest(InferencePassTest):
 
 
 class TRTReduceMeanTestFP16(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, -1, -1], dtype="float32")
-            reduce_mean = fluid.layers.reduce_mean(
-                data, dim=[2, -1], keep_dim=True)
+            data = fluid.data(name="data",
+                              shape=[-1, 3, -1, -1],
+                              dtype="float32")
+            reduce_mean = fluid.layers.reduce_mean(data,
+                                                   dim=[2, -1],
+                                                   keep_dim=True)
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
@@ -95,9 +102,9 @@ class TRTReduceMeanTestFP16(InferencePassTest):
         self.trt_parameters = TRTReduceMeanTestFP16.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
         self.fetch_list = [out]
-        self.dynamic_shape_params = TRTReduceMeanTestFP16.DynamicShapeParam({
-            'data': [1, 3, 16, 16]
-        }, {'data': [3, 3, 56, 56]}, {'data': [3, 3, 56, 56]}, False)
+        self.dynamic_shape_params = TRTReduceMeanTestFP16.DynamicShapeParam(
+            {'data': [1, 3, 16, 16]}, {'data': [3, 3, 56, 56]},
+            {'data': [3, 3, 56, 56]}, False)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -108,10 +115,12 @@ class TRTReduceMeanTestFP16(InferencePassTest):
 
 
 class TRTReduceMeanAllTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 56, 56], dtype="float32")
+            data = fluid.data(name="data",
+                              shape=[-1, 3, 56, 56],
+                              dtype="float32")
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
@@ -122,9 +131,9 @@ class TRTReduceMeanAllTest(InferencePassTest):
         self.trt_parameters = TRTReduceMeanAllTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
-        self.dynamic_shape_params = TRTReduceMeanAllTest.DynamicShapeParam({
-            'data': [1, 3, 56, 56]
-        }, {'data': [3, 3, 56, 56]}, {'data': [3, 3, 56, 56]}, False)
+        self.dynamic_shape_params = TRTReduceMeanAllTest.DynamicShapeParam(
+            {'data': [1, 3, 56, 56]}, {'data': [3, 3, 56, 56]},
+            {'data': [3, 3, 56, 56]}, False)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -135,12 +144,15 @@ class TRTReduceMeanAllTest(InferencePassTest):
 
 
 class TRTReduceMeanTestStatic(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[3, 3, 56, 56], dtype="float32")
-            reduce_mean = fluid.layers.reduce_mean(
-                data, dim=[2, -1], keep_dim=True)
+            data = fluid.data(name="data",
+                              shape=[3, 3, 56, 56],
+                              dtype="float32")
+            reduce_mean = fluid.layers.reduce_mean(data,
+                                                   dim=[2, -1],
+                                                   keep_dim=True)
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
@@ -160,10 +172,12 @@ class TRTReduceMeanTestStatic(InferencePassTest):
 
 
 class TRTReduceMeanStaticAllTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[4, 3, 56, 56], dtype="float32")
+            data = fluid.data(name="data",
+                              shape=[4, 3, 56, 56],
+                              dtype="float32")
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
@@ -184,10 +198,12 @@ class TRTReduceMeanStaticAllTest(InferencePassTest):
 
 
 class TRTReduceMeanStaticFP16(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[4, 3, 56, 56], dtype="float32")
+            data = fluid.data(name="data",
+                              shape=[4, 3, 56, 56],
+                              dtype="float32")
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
@@ -208,10 +224,12 @@ class TRTReduceMeanStaticFP16(InferencePassTest):
 
 
 class TRTReduceMeanFP16Static(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[4, 3, 56, 56], dtype="float32")
+            data = fluid.data(name="data",
+                              shape=[4, 3, 56, 56],
+                              dtype="float32")
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 

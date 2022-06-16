@@ -14,10 +14,9 @@
 
 #include "paddle/fluid/framework/ir/ipu/avg_shard_pass.h"
 
-#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
-
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 
 namespace paddle {
 namespace framework {

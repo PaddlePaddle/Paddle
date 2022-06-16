@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/transpose_flatten_concat_fuse_pass.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -93,7 +94,7 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
 
     std::vector<Node *> nodes;
     std::vector<int> trans_axis0;
-    int flatten_axis0;
+    int flatten_axis0 = 0;
     for (int i = 0; i < times; i++) {
       PADDLE_ENFORCE_NOT_NULL(
           subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i))),

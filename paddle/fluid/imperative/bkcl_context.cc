@@ -14,13 +14,14 @@
 
 #if defined(PADDLE_WITH_XPU_BKCL)
 
+#include "paddle/fluid/imperative/bkcl_context.h"
+
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -46,10 +47,11 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
   auto bkcl_dtype =
       platform::ToBKCLDataType(framework::TransToProtoVarType(src.dtype()));
 
-  PADDLE_ENFORCE_EQ(bkcl_all_reduce(comm->comm(), src_ptr, dst_ptr, src.numel(),
-                                    bkcl_dtype, BKCL_ADD, stream),
-                    BKCL_SUCCESS, platform::errors::PreconditionNotMet(
-                                      "BKCL all reduce failed"));
+  PADDLE_ENFORCE_EQ(
+      bkcl_all_reduce(comm->comm(), src_ptr, dst_ptr, src.numel(), bkcl_dtype,
+                      BKCL_ADD, stream),
+      BKCL_SUCCESS,
+      platform::errors::PreconditionNotMet("BKCL all reduce failed"));
 }
 /*
 Baidu Kunlun Communication Library(BKCL) is designed for multi Baidu Kunlun

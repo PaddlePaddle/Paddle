@@ -25,9 +25,11 @@
 #endif
 
 #include <stddef.h>
+
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/platform/device_context.h"
 
 #ifdef __HIPCC__
@@ -93,9 +95,9 @@ struct GpuLaunchConfig {
 };
 
 /* According to NVIDIA, if number of threads per block is 64/128/256/512,
-  * cuda performs better. And number of blocks should be greater (at least
-  * 2x~4x) than number of SMs. Hence, SM count is took into account within
-  * this function to determine the right number of threads per block. */
+ * cuda performs better. And number of blocks should be greater (at least
+ * 2x~4x) than number of SMs. Hence, SM count is took into account within
+ * this function to determine the right number of threads per block. */
 inline GpuLaunchConfig GetGpuLaunchConfig1D(
     const platform::CUDADeviceContext& context, int64_t numel,
     int vec_size = 1) {
@@ -143,14 +145,16 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
 
 inline GpuLaunchConfig GetGpuLaunchConfig2D(
     const platform::CUDADeviceContext& context, int x_dim, int y_dim) {
-  PADDLE_ENFORCE_GT(x_dim, 0, platform::errors::InvalidArgument(
-                                  "x dim number should greater than 0,"
-                                  " but received value is: %d",
-                                  x_dim));
-  PADDLE_ENFORCE_GT(y_dim, 0, platform::errors::InvalidArgument(
-                                  "y dim number should greater than 0,"
-                                  " but received value is: %d",
-                                  y_dim));
+  PADDLE_ENFORCE_GT(
+      x_dim, 0,
+      platform::errors::InvalidArgument("x dim number should greater than 0,"
+                                        " but received value is: %d",
+                                        x_dim));
+  PADDLE_ENFORCE_GT(
+      y_dim, 0,
+      platform::errors::InvalidArgument("y dim number should greater than 0,"
+                                        " but received value is: %d",
+                                        y_dim));
 
   const int kThreadsPerBlock = 256;
   int block_cols = (std::min)(x_dim, kThreadsPerBlock);

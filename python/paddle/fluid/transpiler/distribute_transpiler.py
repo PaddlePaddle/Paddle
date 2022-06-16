@@ -78,6 +78,7 @@ def log(*args):
 
 
 class VarBlock:
+
     def __init__(self, varname, offset, size):
         self.varname = varname
         # NOTE: real offset is offset * size
@@ -131,8 +132,8 @@ def slice_variable(var_list, slice_count, min_block_size):
         # update split_count after aligning
         split_count = int(math.ceil(var_numel / float(block_size)))
         for block_id in range(split_count):
-            curr_block_size = min(block_size, var_numel - (
-                (block_id) * block_size))
+            curr_block_size = min(block_size,
+                                  var_numel - ((block_id) * block_size))
             block = VarBlock(var.name, block_id, curr_block_size)
             blocks.append(str(block))
     return blocks
@@ -244,6 +245,7 @@ class DistributeTranspilerConfig(object):
 
 
 class ServerRuntimeConfig(object):
+
     def __init__(self):
         self._rpc_send_thread_num = int(
             os.getenv("FLAGS_rpc_send_thread_num", "12"))
@@ -392,9 +394,12 @@ class DistributeTranspiler(object):
                 inputs={},
                 outputs={"NCCLID": nccl_id_var},
                 attrs={
-                    "trainers": trainers.split(","),
-                    "trainer_id": trainer_id,
-                    "nccl_comm_num": self.config.nccl_comm_num,
+                    "trainers":
+                    trainers.split(","),
+                    "trainer_id":
+                    trainer_id,
+                    "nccl_comm_num":
+                    self.config.nccl_comm_num,
                     "use_hierarchical_allreduce":
                     self.config.use_hierarchical_allreduce,
                     "hierarchical_allreduce_inter_nranks":
@@ -439,13 +444,12 @@ class DistributeTranspiler(object):
         else:
             raise ValueError('invalid collective_mode: %s' % collective_mode)
 
-        transpiler.transpile(
-            startup_program=startup_program,
-            main_program=main_program,
-            rank=trainer_id,
-            endpoints=endpoints,
-            current_endpoint=current_endpoint,
-            wait_port=wait_port)
+        transpiler.transpile(startup_program=startup_program,
+                             main_program=main_program,
+                             rank=trainer_id,
+                             endpoints=endpoints,
+                             current_endpoint=current_endpoint,
+                             wait_port=wait_port)
 
     def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []
@@ -517,8 +521,10 @@ class DistributeTranspiler(object):
                     program.global_block()._insert_op(
                         index=distributed_idx,
                         type="distributed_lookup_table",
-                        inputs={"Ids": inputs,
-                                'W': w},
+                        inputs={
+                            "Ids": inputs,
+                            'W': w
+                        },
                         outputs={"Outputs": outputs},
                         attrs={
                             "table_names": table_names,
@@ -624,12 +630,11 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 self.origin_program._hierarchical_allreduce_inter_nranks = \
                     int(self.config.hierarchical_allreduce_inter_nranks)
 
-            self._transpile_nccl2(
-                trainer_id,
-                trainers,
-                current_endpoint,
-                startup_program=startup_program,
-                wait_port=self.config.wait_port)
+            self._transpile_nccl2(trainer_id,
+                                  trainers,
+                                  current_endpoint,
+                                  startup_program=startup_program,
+                                  wait_port=self.config.wait_port)
             return
 
         if self.config.mode == "collective":
@@ -704,21 +709,24 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             splited_grad_varname = grad_varname
             if len(splited_vars) == 1:
                 splited_grad_varname = splited_vars[0].name
-                index = find_op_by_output_arg(
-                    program.global_block(), splited_grad_varname, reverse=True)
+                index = find_op_by_output_arg(program.global_block(),
+                                              splited_grad_varname,
+                                              reverse=True)
 
             elif len(splited_vars) > 1:
                 orig_var = program.global_block().vars[splited_grad_varname]
-                index = find_op_by_output_arg(
-                    program.global_block(), splited_grad_varname, reverse=True)
+                index = find_op_by_output_arg(program.global_block(),
+                                              splited_grad_varname,
+                                              reverse=True)
 
                 if not self.config.runtime_split_send_recv:
                     self._insert_split_op(program, orig_var, index,
                                           splited_vars)
                     index += 1
             else:
-                AssertionError("Can not insert the send op by original "
-                               "variable name :", splited_grad_varname)
+                AssertionError(
+                    "Can not insert the send op by original "
+                    "variable name :", splited_grad_varname)
 
             if splited_vars[0].type == core.VarDesc.VarType.SELECTED_ROWS:
                 sparse_param_name = self.grad_name_to_param_name[grad_varname]
@@ -759,10 +767,14 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 inputs={"X": send_input_vars},
                 outputs={"Out": dummy_output},
                 attrs={
-                    "epmap": eplist,
-                    "sections": sections,
-                    "send_varnames": send_varnames,
-                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                    "epmap":
+                    eplist,
+                    "sections":
+                    sections,
+                    "send_varnames":
+                    send_varnames,
+                    RPC_OP_ROLE_ATTR_NAME:
+                    RPC_OP_ROLE_ATTR_VALUE,
                     OP_ROLE_VAR_ATTR_NAME: [
                         self.grad_name_to_param_name[grad_varname],
                         splited_grad_varname
@@ -795,12 +807,18 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     inputs={"X": self.counter_var},
                     outputs={"Out": decay_dummy_output},
                     attrs={
-                        "epmap": pserver_endpoints,
-                        "sections": sections,
-                        "send_varnames": send_varnames,
-                        "merge_add": True,
-                        "use_send_handler": False,
-                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                        "epmap":
+                        pserver_endpoints,
+                        "sections":
+                        sections,
+                        "send_varnames":
+                        send_varnames,
+                        "merge_add":
+                        True,
+                        "use_send_handler":
+                        False,
+                        RPC_OP_ROLE_ATTR_NAME:
+                        RPC_OP_ROLE_ATTR_VALUE,
                         OP_ROLE_VAR_ATTR_NAME:
                         [self.counter_var.name, self.counter_var.name]
                     })
@@ -809,16 +827,19 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         if self.sync_mode:
             fetch_barrier_input = []
 
-            program.global_block().append_op(
-                type="send_barrier",
-                inputs={"X": list(input_deps)},
-                outputs={"Out": send_barrier_out},
-                attrs={
-                    "endpoints": pserver_endpoints,
-                    "trainer_id": self.trainer_id,
-                    "half_async": False,
-                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-                })
+            program.global_block().append_op(type="send_barrier",
+                                             inputs={"X": list(input_deps)},
+                                             outputs={"Out": send_barrier_out},
+                                             attrs={
+                                                 "endpoints":
+                                                 pserver_endpoints,
+                                                 "trainer_id":
+                                                 self.trainer_id,
+                                                 "half_async":
+                                                 False,
+                                                 RPC_OP_ROLE_ATTR_NAME:
+                                                 RPC_OP_ROLE_ATTR_VALUE
+                                             })
 
             fetch_barrier_input.append(send_barrier_out)
         else:
@@ -896,10 +917,14 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     inputs={"X": [recv_dep_in]},
                     outputs={"Out": splited_var},
                     attrs={
-                        "epmap": eps,
-                        "recv_varnames": recv_varnames,
-                        "trainer_id": self.trainer_id,
-                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                        "epmap":
+                        eps,
+                        "recv_varnames":
+                        recv_varnames,
+                        "trainer_id":
+                        self.trainer_id,
+                        RPC_OP_ROLE_ATTR_NAME:
+                        RPC_OP_ROLE_ATTR_VALUE,
                         OP_ROLE_VAR_ATTR_NAME:
                         [param_varname, recv_op_role_var_name]
                     })
@@ -908,15 +933,17 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
         if self.sync_mode:
             # form a WAW dependency
-            program.global_block().append_op(
-                type="fetch_barrier",
-                inputs={"X": fetch_barrier_input},
-                outputs={"Out": all_recv_outputs},
-                attrs={
-                    "endpoints": pserver_endpoints,
-                    "trainer_id": self.trainer_id,
-                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-                })
+            program.global_block().append_op(type="fetch_barrier",
+                                             inputs={"X": fetch_barrier_input},
+                                             outputs={"Out": all_recv_outputs},
+                                             attrs={
+                                                 "endpoints":
+                                                 pserver_endpoints,
+                                                 "trainer_id":
+                                                 self.trainer_id,
+                                                 RPC_OP_ROLE_ATTR_NAME:
+                                                 RPC_OP_ROLE_ATTR_VALUE
+                                             })
 
         for param_varname, splited_var in six.iteritems(self.param_var_mapping):
             if len(splited_var) <= 1:
@@ -969,8 +996,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     table_param_init_op.append(op)
             init_op_num = len(table_param_init_op)
             if init_op_num != 1:
-                raise ValueError("table init op num should be 1, now is " + str(
-                    init_op_num))
+                raise ValueError("table init op num should be 1, now is " +
+                                 str(init_op_num))
             table_init_op = table_param_init_op[0]
             self.startup_program.global_block().append_op(
                 type="fake_init",
@@ -1134,8 +1161,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             if varname in startup_program.global_block().vars:
                 orig_param = startup_program.global_block().vars[varname]
             else:
-                origin_param_var = self.origin_program.global_block().vars[
-                    varname]
+                origin_param_var = self.origin_program.global_block(
+                ).vars[varname]
                 orig_param = startup_program.global_block().create_var(
                     name=varname,
                     persistable=origin_param_var.persistable,
@@ -1331,8 +1358,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 # find the origin grad var before clipping/L2Decay,
                 # merged_var should be the input var name of L2Decay
                 grad_varname_for_block = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
-                if op.attr(OP_ROLE_VAR_ATTR_NAME)[
-                        0] == optimize_target_param_name:
+                if op.attr(
+                        OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name:
                     merged_var = self._append_pserver_grad_merge_ops(
                         per_opt_block, grad_varname_for_block, endpoint,
                         grad_to_block_id, self.origin_program)
@@ -1410,11 +1437,10 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 'prefetch_var_name_to_block_id'] = prefetch_var_name_to_block_id
 
         # step5 append the listen_and_serv op
-        pserver_program.global_block().append_op(
-            type="listen_and_serv",
-            inputs={'X': recv_inputs},
-            outputs={},
-            attrs=attrs)
+        pserver_program.global_block().append_op(type="listen_and_serv",
+                                                 inputs={'X': recv_inputs},
+                                                 outputs={},
+                                                 attrs=attrs)
 
         pserver_program._sync_with_cpp()
         # save pserver program to generate pserver side startup relatively.
@@ -1448,8 +1474,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
               pserver_program, pserver_startup_program = t.get_pserver_programs(current_endpoint)
         """
         pserver_prog = self.get_pserver_program(endpoint)
-        pserver_startup = self.get_startup_program(
-            endpoint, pserver_program=pserver_prog)
+        pserver_startup = self.get_startup_program(endpoint,
+                                                   pserver_program=pserver_prog)
         return pserver_prog, pserver_startup
 
     def get_startup_program(self,
@@ -1531,20 +1557,18 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                         "truncated_gaussian_random"
                 ]:
                     op._set_attr("shape", list(new_outputs["Out"].shape))
-                s_prog.global_block().append_op(
-                    type=op.type,
-                    inputs=new_inputs,
-                    outputs=new_outputs,
-                    attrs=op.all_attrs())
+                s_prog.global_block().append_op(type=op.type,
+                                                inputs=new_inputs,
+                                                outputs=new_outputs,
+                                                attrs=op.all_attrs())
         if self.config.enable_dc_asgd:
             for p, p_bak in self.param_bak_list:
                 startup_param_var = s_prog.global_block().vars[p.name]
                 startup_tmpvar = s_prog.global_block().vars[p_bak.name]
                 # copy init random value to param_bak
-                s_prog.global_block().append_op(
-                    type="assign",
-                    inputs={"X": startup_param_var},
-                    outputs={"Out": startup_tmpvar})
+                s_prog.global_block().append_op(type="assign",
+                                                inputs={"X": startup_param_var},
+                                                outputs={"Out": startup_tmpvar})
 
         return s_prog
 
@@ -1578,6 +1602,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         return is_slice, block_idx, offset
 
     def _get_distributed_optimizer_vars(self):
+
         def _get_distributed_optimizer_var(endpoint):
             opt_op_on_pserver = []
             for _, op in enumerate(self.optimize_ops):
@@ -1702,8 +1727,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         if self.config.slice_var_up:
             # when we slice var up into blocks, we will slice the var according to
             # pserver services' count. A pserver may have two or more listening ports.
-            grad_blocks = slice_variable(grad_list,
-                                         len(self.pserver_endpoints),
+            grad_blocks = slice_variable(grad_list, len(self.pserver_endpoints),
                                          self.config.min_block_size)
             param_blocks = slice_variable(param_list,
                                           len(self.pserver_endpoints),
@@ -1728,13 +1752,12 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 is_slice, block_id, offset = self._get_slice_var_info(
                     splited_var)
 
-                self.vars_overview.add_distributed_var(
-                    origin_var=orig_var,
-                    slice_var=splited_var,
-                    block_id=block_id,
-                    offset=offset,
-                    is_slice=is_slice,
-                    vtype="Param")
+                self.vars_overview.add_distributed_var(origin_var=orig_var,
+                                                       slice_var=splited_var,
+                                                       block_id=block_id,
+                                                       offset=offset,
+                                                       is_slice=is_slice,
+                                                       vtype="Param")
 
         # origin_grad_name -> [splited_grad_vars]
         self.grad_var_mapping = self._create_vars_from_blocklist(
@@ -1752,12 +1775,10 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         # create mapping of endpoint -> split var to create pserver side program
         self.param_grad_ep_mapping = collections.OrderedDict()
         [
-            self.param_grad_ep_mapping.update({
-                ep: {
-                    "params": [],
-                    "grads": []
-                }
-            }) for ep in self.pserver_endpoints
+            self.param_grad_ep_mapping.update({ep: {
+                "params": [],
+                "grads": []
+            }}) for ep in self.pserver_endpoints
         ]
 
     # transpiler function for dis lookup_table
@@ -1873,9 +1894,12 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                         if self.sync_mode else []
                     },
                     attrs={
-                        "epmap": pserver_endpoints,
-                        "trainer_id": self.trainer_id,
-                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                        "epmap":
+                        pserver_endpoints,
+                        "trainer_id":
+                        self.trainer_id,
+                        RPC_OP_ROLE_ATTR_NAME:
+                        RPC_OP_ROLE_ATTR_VALUE,
                         OP_ROLE_VAR_ATTR_NAME: [
                             self.grad_name_to_param_name[table_grad_name],
                             table_grad_name
@@ -1903,16 +1927,18 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             dtype=trainer_out.dtype)
         prefetch_block.append_op(
             type="lookup_sparse_table",
-            inputs={'Ids': pserver_ids,
-                    "W": table_var},
+            inputs={
+                'Ids': pserver_ids,
+                "W": table_var
+            },
             outputs={"Out": pserver_out},
             attrs={
                 "is_sparse": True,  # has no effect on lookup_table op
                 "is_distributed": True,
                 "padding_idx": -1
             })
-        prefetch_var_name_to_block_id.append(trainer_ids.name + ":" + str(
-            prefetch_block.idx))
+        prefetch_var_name_to_block_id.append(trainer_ids.name + ":" +
+                                             str(prefetch_block.idx))
         return prefetch_var_name_to_block_id
 
     def _create_table_optimize_block(self, pserver_index, pserver_program,
@@ -1922,17 +1948,16 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         # create table param and grad var in pserver program
         # create table optimize block in pserver program
         table_opt_op = [
-            op for op in self.optimize_ops
-            if 'Param' in op.input_names and op.input("Param")[0] ==
-            self.table_name
+            op for op in self.optimize_ops if 'Param' in op.input_names
+            and op.input("Param")[0] == self.table_name
         ][0]
 
         origin_param_var = self.origin_program.global_block().vars[
             self.table_name]
 
         zero_dim = int(
-            math.ceil(origin_param_var.shape[0] / float(
-                len(self.pserver_endpoints))))
+            math.ceil(origin_param_var.shape[0] /
+                      float(len(self.pserver_endpoints))))
         table_shape = list(origin_param_var.shape)
         table_shape[0] = zero_dim
 
@@ -2005,18 +2030,16 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         create a new block to handle save checkpoint.
         """
 
-        pserver_program.global_block().create_var(
-            name="kLookupTablePath",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
+        pserver_program.global_block().create_var(name="kLookupTablePath",
+                                                  persistable=True,
+                                                  type=core.VarDesc.VarType.RAW)
 
         checkpoint_save_block = pserver_program._create_block(pre_block_idx)
         # this 'file_path' do not be used in save lookup table variable
-        checkpoint_save_block.append_op(
-            type='save',
-            inputs={'X': [self.table_name]},
-            outputs={},
-            attrs={'file_path': "none"})
+        checkpoint_save_block.append_op(type='save',
+                                        inputs={'X': [self.table_name]},
+                                        outputs={},
+                                        attrs={'file_path': "none"})
 
         return checkpoint_save_block.idx
 
@@ -2090,13 +2113,12 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         return var_mapping
 
     def _clone_var(self, block, var, persistable=True):
-        return block.create_var(
-            name=var.name,
-            shape=var.shape,
-            dtype=var.dtype,
-            type=var.type,
-            lod_level=var.lod_level,
-            persistable=persistable)
+        return block.create_var(name=var.name,
+                                shape=var.shape,
+                                dtype=var.dtype,
+                                type=var.type,
+                                lod_level=var.lod_level,
+                                persistable=persistable)
 
     @staticmethod
     def _get_splited_var_sections(splited_vars):
@@ -2113,25 +2135,27 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             if self._is_input_of_remote_sparse_update_op(sparse_param_name):
                 self.sparse_param_to_height_sections[
                     sparse_param_name] = height_sections
-            program.global_block()._insert_op(
-                index=index + 1,
-                type="split_selected_rows",
-                inputs={"X": orig_var},
-                outputs={"Out": splited_vars},
-                attrs={
-                    "height_sections": height_sections,
-                    RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
-                })
+            program.global_block()._insert_op(index=index + 1,
+                                              type="split_selected_rows",
+                                              inputs={"X": orig_var},
+                                              outputs={"Out": splited_vars},
+                                              attrs={
+                                                  "height_sections":
+                                                  height_sections,
+                                                  RPC_OP_ROLE_ATTR_NAME:
+                                                  DIST_OP_ROLE_ATTR_VALUE
+                                              })
         elif orig_var.type == core.VarDesc.VarType.LOD_TENSOR:
-            program.global_block()._insert_op(
-                index=index + 1,
-                type="split_byref",
-                inputs={"X": orig_var},
-                outputs={"Out": splited_vars},
-                attrs={
-                    "sections": height_sections,
-                    RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
-                })
+            program.global_block()._insert_op(index=index + 1,
+                                              type="split_byref",
+                                              inputs={"X": orig_var},
+                                              outputs={"Out": splited_vars},
+                                              attrs={
+                                                  "sections":
+                                                  height_sections,
+                                                  RPC_OP_ROLE_ATTR_NAME:
+                                                  DIST_OP_ROLE_ATTR_VALUE
+                                              })
         else:
             AssertionError("Variable type should be in set "
                            "[LOD_TENSOR, SELECTED_ROWS]")
@@ -2225,11 +2249,10 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 per_trainer_name = "%s.trainer_%d" % \
                                    (merged_var_name, i)
                 vars2merge.append(pserver_block.vars[per_trainer_name])
-            optimize_block.append_op(
-                type="sum",
-                inputs={"X": vars2merge},
-                outputs={"Out": merged_var},
-                attrs={"use_mkldnn": False})
+            optimize_block.append_op(type="sum",
+                                     inputs={"X": vars2merge},
+                                     outputs={"Out": merged_var},
+                                     attrs={"use_mkldnn": False})
             optimize_block.append_op(
                 type="scale",
                 inputs={"X": merged_var},
@@ -2239,64 +2262,66 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
     def _append_dc_asgd_ops(self, block, param_var, grad_var):
         # NOTE: can not use grammar candy here, should put ops in specific block
-        local_param_bak = block.create_var(
-            name="%s.local_bak" % param_var.name,
-            shape=param_var.shape,
-            type=param_var.type,
-            dtype=param_var.dtype,
-            persistable=False)
+        local_param_bak = block.create_var(name="%s.local_bak" % param_var.name,
+                                           shape=param_var.shape,
+                                           type=param_var.type,
+                                           dtype=param_var.dtype,
+                                           persistable=False)
         # trainer_id_var is block local
-        trainer_id_var = block.create_var(
-            name="@TRAINER_ID@",
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            dtype=core.VarDesc.VarType.INT64,
-            shape=[1],
-            persistable=False)
+        trainer_id_var = block.create_var(name="@TRAINER_ID@",
+                                          type=core.VarDesc.VarType.LOD_TENSOR,
+                                          dtype=core.VarDesc.VarType.INT64,
+                                          shape=[1],
+                                          persistable=False)
 
         # ref_inputs = [x[1] for x in self.param_bak_list]
         ref_inputs = []
         for p, p_bak in self.param_bak_list:
             if p.name == param_var.name:
                 ref_inputs.append(p_bak)
-        block.append_op(
-            type="ref_by_trainer_id",
-            inputs={"X": ref_inputs,
-                    "TrainerId": trainer_id_var},
-            outputs={"Out": local_param_bak})
+        block.append_op(type="ref_by_trainer_id",
+                        inputs={
+                            "X": ref_inputs,
+                            "TrainerId": trainer_id_var
+                        },
+                        outputs={"Out": local_param_bak})
 
         def __create_temp_var__():
-            return block.create_var(
-                name=unique_name.generate("tmp_dc_output"),
-                shape=param_var.shape,
-                type=param_var.type,
-                dtype=param_var.dtype,
-                persistable=False)
+            return block.create_var(name=unique_name.generate("tmp_dc_output"),
+                                    shape=param_var.shape,
+                                    type=param_var.type,
+                                    dtype=param_var.dtype,
+                                    persistable=False)
 
         o1 = __create_temp_var__()
-        block.append_op(
-            type="elementwise_sub",
-            inputs={"X": param_var,
-                    "Y": local_param_bak},
-            outputs={"Out": o1})
+        block.append_op(type="elementwise_sub",
+                        inputs={
+                            "X": param_var,
+                            "Y": local_param_bak
+                        },
+                        outputs={"Out": o1})
         o2 = __create_temp_var__()
-        block.append_op(
-            type="elementwise_mul",
-            inputs={"X": o1,
-                    "Y": grad_var},
-            outputs={"Out": o2})
+        block.append_op(type="elementwise_mul",
+                        inputs={
+                            "X": o1,
+                            "Y": grad_var
+                        },
+                        outputs={"Out": o2})
         o3 = __create_temp_var__()
-        block.append_op(
-            type="elementwise_mul",
-            inputs={"X": o2,
-                    "Y": grad_var},
-            outputs={"Out": o3})
+        block.append_op(type="elementwise_mul",
+                        inputs={
+                            "X": o2,
+                            "Y": grad_var
+                        },
+                        outputs={"Out": o3})
         # TODO(typhoonzero): append scale
         o4 = __create_temp_var__()
-        block.append_op(
-            type="elementwise_add",
-            inputs={"X": grad_var,
-                    "Y": o3},
-            outputs={"Out": o4})
+        block.append_op(type="elementwise_add",
+                        inputs={
+                            "X": grad_var,
+                            "Y": o3
+                        },
+                        outputs={"Out": o4})
         return o4
 
     def _append_pserver_ops(self, optimize_block, opt_op, endpoint,
@@ -2338,11 +2363,10 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 param_block = _get_param_block(opt_op)
                 if not param_block:
                     return
-                tmpvar = pserver_block.create_var(
-                    name=param_block.name,
-                    persistable=True,
-                    dtype=param_block.dtype,
-                    shape=param_block.shape)
+                tmpvar = pserver_block.create_var(name=param_block.name,
+                                                  persistable=True,
+                                                  dtype=param_block.dtype,
+                                                  shape=param_block.shape)
                 new_inputs[key] = tmpvar
             elif key == "LearningRate":
                 # learning rate variable has already be created by non-optimize op,
@@ -2369,30 +2393,29 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             var = self.origin_program.global_block().vars[opt_op.input(key)[0]]
             param_var = new_inputs["Param"]
             # update accumulator variable shape
-            new_shape = self._get_optimizer_input_shape(
-                opt_op.type, key, var.shape, param_var.shape)
-            tmpvar = pserver_block.create_var(
-                name=var.name,
-                persistable=var.persistable,
-                dtype=var.dtype,
-                shape=new_shape)
+            new_shape = self._get_optimizer_input_shape(opt_op.type, key,
+                                                        var.shape,
+                                                        param_var.shape)
+            tmpvar = pserver_block.create_var(name=var.name,
+                                              persistable=var.persistable,
+                                              dtype=var.dtype,
+                                              shape=new_shape)
             new_inputs[key] = tmpvar
 
         # change output's ParamOut variable
         outputs = self._get_output_map_from_op(
             self.origin_program.global_block().vars, opt_op)
         outputs["ParamOut"] = new_inputs["Param"]
-        optimize_block.append_op(
-            type=opt_op.type,
-            inputs=new_inputs,
-            outputs=outputs,
-            attrs=opt_op.all_attrs())
+        optimize_block.append_op(type=opt_op.type,
+                                 inputs=new_inputs,
+                                 outputs=outputs,
+                                 attrs=opt_op.all_attrs())
 
         # record sparse grad to param name
         if new_inputs["Grad"].type == core.VarDesc.VarType.SELECTED_ROWS:
             sparse_grad_to_param.append(
-                str(new_inputs["Grad"].name) + ":" + str(new_inputs["Param"]
-                                                         .name))
+                str(new_inputs["Grad"].name) + ":" +
+                str(new_inputs["Param"].name))
 
     def _get_pserver_grad_param_var(self, var, var_dict):
         """
@@ -2436,8 +2459,10 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 if var not in program.global_block().vars:
                     block._clone_variable(var)
 
-        return block.append_op(
-            type=op.type, inputs=inputs, outputs=outputs, attrs=op.all_attrs())
+        return block.append_op(type=op.type,
+                               inputs=inputs,
+                               outputs=outputs,
+                               attrs=op.all_attrs())
 
     def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
         program = optimize_block.program
@@ -2452,7 +2477,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 # for ops like clipping and weight decay, get the split var (xxx.block0)
                 # for inputs/outputs
                 grad_block = self._get_pserver_grad_param_var(
-                    var, program.global_block().vars)
+                    var,
+                    program.global_block().vars)
                 if grad_block:
                     varlist[i] = grad_block
                 elif var.name not in program.global_block().vars:
@@ -2470,7 +2496,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             for i in range(len(varlist)):
                 var = varlist[i]
                 grad_block = self._get_pserver_grad_param_var(
-                    var, program.global_block().vars)
+                    var,
+                    program.global_block().vars)
                 if grad_block:
                     varlist[i] = grad_block
                 elif var.name not in program.global_block().vars:
@@ -2480,11 +2507,10 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     varlist[i] = program.global_block().vars[var.name]
             outputs[key] = varlist
 
-        return optimize_block.append_op(
-            type=opt_op.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=opt_op.all_attrs())
+        return optimize_block.append_op(type=opt_op.type,
+                                        inputs=inputs,
+                                        outputs=outputs,
+                                        attrs=opt_op.all_attrs())
 
     def _is_op_connected(self, op1, op2):
         # If one op's input is another op's output or
@@ -2575,16 +2601,15 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                             persistable=counter_var.persistable)
                         for id_ in range(self.trainer_num)
                     ]
-                    for i, op in enumerate(self.startup_program.global_block()
-                                           .ops):
+                    for i, op in enumerate(
+                            self.startup_program.global_block().ops):
                         if op.type == 'fill_constant':
                             for key in op.output_names:
-                                if len(op.output(key)) == 1 and op.output(key)[
-                                        0] == counter_var.name:
-                                    self.startup_program.global_block().ops[
-                                        i]._set_attr(
-                                            'value',
-                                            float(0.0 - self.trainer_num))
+                                if len(op.output(key)) == 1 and op.output(
+                                        key)[0] == counter_var.name:
+                                    self.startup_program.global_block(
+                                    ).ops[i]._set_attr(
+                                        'value', float(0.0 - self.trainer_num))
                     for var in all_trainer_counter_inputs:
                         if var.name == "%s.trainer_%d" % (counter_var.name,
                                                           self.trainer_id):

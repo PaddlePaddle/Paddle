@@ -16,6 +16,7 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/variable.h"

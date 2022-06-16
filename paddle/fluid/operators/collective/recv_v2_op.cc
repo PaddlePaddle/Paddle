@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/recv_v2_op.h"
+
 #include <string>
 
 namespace paddle {
@@ -44,15 +45,21 @@ class RecvOpV2 : public framework::OperatorWithKernel {
               "The size of the output shape must be greater than 0 "
               "but the value given is %d.",
               out_shape.size()));
-      for (size_t i = 0; i < out_shape.size(); ++i) {
-        PADDLE_ENFORCE_GE(out_shape[i], 1,
-                          platform::errors::InvalidArgument(
-                              "The shape attribute for recv_v2 must be set "
-                              "explicitly, but the %dth element is %d which "
-                              "is less than 1.",
-                              i, out_shape[i]));
+      bool dynamic_shape = ctx->Attrs().Get<bool>("dynamic_shape");
+      if (!dynamic_shape) {
+        // No need to check out shape if with dynamic_shape,
+        // since the shape will be recv from send_v2
+        for (size_t i = 0; i < out_shape.size(); ++i) {
+          PADDLE_ENFORCE_GE(out_shape[i], 1,
+                            platform::errors::InvalidArgument(
+                                "The shape attribute for recv_v2 must be set "
+                                "explicitly, but the %dth element is %d which "
+                                "is less than 1. Or dynamic_shape should be "
+                                "set to True for both send_v2 and recv_v2.",
+                                i, out_shape[i]));
+        }
+        ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
       }
-      ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
     }
   }
 
@@ -86,6 +93,10 @@ class RecvOpV2Maker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
+        .SetDefault(false);
+    AddAttr<bool>(
+        "dynamic_shape",
+        "(bool default false) the send/recv will be done with dynamic shape.")
         .SetDefault(false);
     AddComment(R"DOC(
 Recv Operator

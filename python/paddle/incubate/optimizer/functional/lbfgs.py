@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -50,17 +50,17 @@ def minimize_lbfgs(objective_func,
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006. pp179: Algorithm 7.5 (L-BFGS).
 
     Args:
-        objective_func: the objective function to minimize. ``objective_func`` accepts a multivariate input and returns a scalar.
-        initial_position (Tensor): the starting point of the iterates. 
+        objective_func: the objective function to minimize. ``objective_func`` accepts a 1D Tensor and returns a scalar.
+        initial_position (Tensor): the starting point of the iterates, has the same shape with the input of ``objective_func`` . 
         history_size (Scalar): the number of stored vector pairs {si,yi}. Default value: 100.
         max_iters (int, optional): the maximum number of minimization iterations. Default value: 50.
         tolerance_grad (float, optional): terminates if the gradient norm is smaller than this. Currently gradient norm uses inf norm. Default value: 1e-7.
         tolerance_change (float, optional): terminates if the change of function value/position/parameter between two iterations is smaller than this value. Default value: 1e-9.
-        initial_inverse_hessian_estimate (Tensor, optional): the initial inverse hessian approximation at initial_position. It must be symmetric and positive definite. Default value: None.
+        initial_inverse_hessian_estimate (Tensor, optional): the initial inverse hessian approximation at initial_position. It must be symmetric and positive definite. If not given, will use an identity matrix of order N, which is size of ``initial_position`` . Default value: None.
         line_search_fn (str, optional): indicate which line search method to use, only support 'strong wolfe' right now. May support 'Hager Zhang' in the futrue. Default value: 'strong wolfe'.
         max_line_search_iters (int, optional): the maximum number of line search iterations. Default value: 50.
         initial_step_length (float, optional): step length used in first iteration of line search. different initial_step_length may cause different optimal result. For methods like Newton and quasi-Newton the initial trial step length should always be 1.0. Default value: 1.0.
-        dtype ('float32' | 'float64', optional): data type used in the algorithm. Default value: 'float32'.
+        dtype ('float32' | 'float64', optional): data type used in the algorithm, the data type of the input parameter must be consistent with the dtype. Default value: 'float32'.
         name (str, optional): Name for the operation. For more information, please refer to :ref:`api_guide_Name`. Default value: None.
 
     Returns:
@@ -91,8 +91,8 @@ def minimize_lbfgs(objective_func,
     """
     if dtype not in ['float32', 'float64']:
         raise ValueError(
-            "The dtype must be 'float32' or 'float64', but the specified is {}.".
-            format(dtype))
+            "The dtype must be 'float32' or 'float64', but the specified is {}."
+            .format(dtype))
 
     op_name = 'minimize_lbfgs'
     check_input_type(initial_position, 'initial_position', op_name)
@@ -114,8 +114,9 @@ def minimize_lbfgs(objective_func,
     is_converge = paddle.full(shape=[1], fill_value=False, dtype='bool')
     num_func_calls = paddle.full(shape=[1], fill_value=1, dtype='int64')
 
-    history_size = paddle.full(
-        shape=[1], fill_value=history_size, dtype='int64')
+    history_size = paddle.full(shape=[1],
+                               fill_value=history_size,
+                               dtype='int64')
     head = paddle.full(shape=[1], fill_value=1, dtype='int64')
     tail = paddle.full(shape=[1], fill_value=0, dtype='int64')
 
@@ -140,8 +141,9 @@ def minimize_lbfgs(objective_func,
         #############    compute p_k by two-loop recursion    #############
         q = paddle.assign(g1)
         # In a array circle, the index may out of range, so must use mod.
-        i = paddle.full(
-            shape=[1], fill_value=(head - 1).mod(history_size), dtype='int64')
+        i = paddle.full(shape=[1],
+                        fill_value=(head - 1).mod(history_size),
+                        dtype='int64')
 
         def cond(i, q):
             return i != tail
@@ -181,8 +183,8 @@ def minimize_lbfgs(objective_func,
                 dtype=dtype)
         else:
             raise NotImplementedError(
-                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
-                format(line_search_fn))
+                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'"
+                .format(line_search_fn))
         paddle.assign(num_func_calls + ls_func_calls, num_func_calls)
 
         #############    update sk_vec, yk_vec, rhok_vec    #############
@@ -191,7 +193,9 @@ def minimize_lbfgs(objective_func,
 
         rhok_inv = paddle.dot(yk, sk)
         rhok = paddle.static.nn.cond(
-            rhok_inv == 0., lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype), lambda: 1. / rhok_inv)
+            rhok_inv == 0.,
+            lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype),
+            lambda: 1. / rhok_inv)
 
         sk_vec[head] = sk
         yk_vec[head] = yk
@@ -211,8 +215,9 @@ def minimize_lbfgs(objective_func,
         #############    check convergence    #############
         gnorm = paddle.linalg.norm(g1, p=np.inf)
         pk_norm = paddle.linalg.norm(pk, p=np.inf)
-        paddle.assign(done | (gnorm < tolerance_grad) |
-                      (pk_norm < tolerance_change), done)
+        paddle.assign(
+            done | (gnorm < tolerance_grad) | (pk_norm < tolerance_change),
+            done)
         paddle.assign(done, is_converge)
         # when alpha=0, there is no chance to get xk change.
         paddle.assign(done | (alpha == 0.), done)
@@ -222,11 +227,10 @@ def minimize_lbfgs(objective_func,
             rhok_vec, head, tail
         ]
 
-    paddle.static.nn.while_loop(
-        cond=cond,
-        body=body,
-        loop_vars=[
-            k, done, is_converge, num_func_calls, value, xk, g1, sk_vec, yk_vec,
-            rhok_vec, head, tail
-        ])
+    paddle.static.nn.while_loop(cond=cond,
+                                body=body,
+                                loop_vars=[
+                                    k, done, is_converge, num_func_calls, value,
+                                    xk, g1, sk_vec, yk_vec, rhok_vec, head, tail
+                                ])
     return is_converge, num_func_calls, xk, value, g1

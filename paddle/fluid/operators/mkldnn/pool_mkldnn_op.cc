@@ -20,14 +20,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
-using framework::Tensor;
 using dnnl::memory;
 using dnnl::pooling_backward;
 using dnnl::pooling_forward;
 using dnnl::primitive;
 using dnnl::reorder;
 using dnnl::stream;
+using framework::DataLayout;
+using framework::Tensor;
 using platform::to_void_cast;
 
 template <typename T>

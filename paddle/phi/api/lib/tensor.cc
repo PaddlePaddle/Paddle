@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// clang-format off
 #include "paddle/phi/api/include/tensor.h"
 
 #include <memory>
@@ -34,6 +35,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 
 #include "paddle/fluid/platform/stream/cuda_stream.h"
+// clang-format off
 
 namespace paddle {
 namespace experimental {
@@ -394,8 +396,8 @@ uint32_t Tensor::current_inplace_version() {
         static_cast<phi::DenseTensor *>(impl_.get())->InplaceVersionCounter();
     return inplace_version_counter.CurrentVersion();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "current_inplace_version is only supported on DenseTensor now."));
+    LOG_FIRST_N(WARNING, 1)
+        << "current_inplace_version is only supported on DenseTensor now.";
   }
   return 0;
 }

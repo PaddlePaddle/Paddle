@@ -16,6 +16,7 @@
 
 #ifdef PADDLE_WITH_MLU
 #include <vector>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 
@@ -107,6 +108,7 @@ void MLUOpTensorKernel(const framework::ExecutionContext& ctx,
 enum BINARY_FUNCTOR {
   DIV,
   DIVNONAN,
+  MAXIMUM,
 };
 
 template <BINARY_FUNCTOR func>
@@ -123,6 +125,16 @@ inline void MLUBinary<DIV>(const framework::ExecutionContext& ctx,
                            const cnnlTensorDescriptor_t y_desc, const void* y,
                            const cnnlTensorDescriptor_t out_desc, void* out) {
   MLUCnnl::Div(ctx, prefer, x_desc, x, y_desc, y, out_desc, out);
+}
+
+template <>
+inline void MLUBinary<MAXIMUM>(
+    const framework::ExecutionContext& ctx,
+    cnnlComputationPreference_t prefer,  // useless, only for compatible
+    const cnnlTensorDescriptor_t x_desc, const void* x,
+    const cnnlTensorDescriptor_t y_desc, const void* y,
+    const cnnlTensorDescriptor_t out_desc, void* out) {
+  MLUCnnl::Maximum(ctx, x_desc, x, y_desc, y, out_desc, out);
 }
 
 template <BINARY_FUNCTOR Functor, typename T>
@@ -165,7 +177,7 @@ template <UNARY_FUNCTOR func>
 void MLUUnary(const framework::ExecutionContext& ctx,
               cnnlComputationPreference_t prefer,
               const cnnlTensorDescriptor_t input_desc, const void* input,
-              const cnnlTensorDescriptor_t ouput_desc, void* output);
+              const cnnlTensorDescriptor_t output_desc, void* output);
 
 template <>
 inline void MLUUnary<NEG>(const framework::ExecutionContext& ctx,

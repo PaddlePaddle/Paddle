@@ -15,6 +15,7 @@
 #include "paddle/fluid/pybind/bind_cost_model.h"
 
 #include <pybind11/stl.h>
+
 #include "paddle/fluid/framework/ir/cost_model.h"
 #include "paddle/fluid/framework/program_desc.h"
 

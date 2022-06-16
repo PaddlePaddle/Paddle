@@ -1454,18 +1454,19 @@ namespace plat = paddle::platform;
   REGISTER_OPERATOR(KERNEL_TYPE##_grad, ops::ActivationOpGrad,              \
                     ops::ActivationGradOpInplaceInferer);
 
-#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name, functor,        \
-                                       grad_functor)                      \
-  REGISTER_OP_CPU_KERNEL(                                                 \
-      act_type, ops::ActivationKernel<paddle::platform::CPUDeviceContext, \
-                                      ops::functor<float>>,               \
-      ops::ActivationKernel<paddle::platform::CPUDeviceContext,           \
-                            ops::functor<double>>);                       \
-  REGISTER_OP_CPU_KERNEL(                                                 \
-      act_type##_grad,                                                    \
-      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,       \
-                                ops::grad_functor<float>>,                \
-      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,       \
+#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name, functor,  \
+                                       grad_functor)                \
+  REGISTER_OP_CPU_KERNEL(                                           \
+      act_type,                                                     \
+      ops::ActivationKernel<paddle::platform::CPUDeviceContext,     \
+                            ops::functor<float>>,                   \
+      ops::ActivationKernel<paddle::platform::CPUDeviceContext,     \
+                            ops::functor<double>>);                 \
+  REGISTER_OP_CPU_KERNEL(                                           \
+      act_type##_grad,                                              \
+      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext, \
+                                ops::grad_functor<float>>,          \
+      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext, \
                                 ops::grad_functor<double>>);
 
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
@@ -1659,15 +1660,6 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::CELUGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_ACTIVATION_CPU_KERNEL(celu, CELU, CELUFunctor, CELUGradFunctor);
-REGISTER_OP_CPU_KERNEL(
-    celu_grad_grad, ops::CELUDoubleGradKernel<plat::CPUDeviceContext,
-                                              ops::CELUGradGradFunctor<float>>,
-    ops::CELUDoubleGradKernel<plat::CPUDeviceContext,
-                              ops::CELUGradGradFunctor<double>>,
-    ops::CELUDoubleGradKernel<plat::CPUDeviceContext,
-                              ops::CELUGradGradFunctor<plat::float16>>);
-
 /* ========================================================================== */
 
 /* ===========================   sqrt register  ============================= */
@@ -1687,13 +1679,6 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::SqrtGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    sqrt_grad_grad, ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
-                                              ops::SqrtGradGradFunctor<float>>,
-    ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
-                              ops::SqrtGradGradFunctor<double>>,
-    ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
-                              ops::SqrtGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ===========================   rsqrt register  =============================
@@ -1714,14 +1699,6 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::RsqrtGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    rsqrt_grad_grad,
-    ops::RsqrtDoubleGradKernel<plat::CPUDeviceContext,
-                               ops::RsqrtGradGradFunctor<float>>,
-    ops::RsqrtDoubleGradKernel<plat::CPUDeviceContext,
-                               ops::RsqrtGradGradFunctor<double>>,
-    ops::RsqrtDoubleGradKernel<plat::CPUDeviceContext,
-                               ops::RsqrtGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ==========================   square register  ============================ */
@@ -1742,18 +1719,6 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::SquareGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    square_grad_grad,
-    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
-                                ops::SquareGradGradFunctor<float>>,
-    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
-                                ops::SquareGradGradFunctor<double>>,
-    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
-                                ops::SquareGradGradFunctor<plat::float16>>,
-    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
-                                ops::SquareGradGradFunctor<int>>,
-    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
-                                ops::SquareGradGradFunctor<int64_t>>);
 /* ========================================================================== */
 
 /* ==========================   pow register  ============================ */
@@ -1817,21 +1782,18 @@ REGISTER_OP_VERSION(hard_shrink)
                 "((x < -threshold) + (x > threshold)); after checkpoint: out = "
                 "x * (((x < -threshold) + (x > threshold)) > 0)"));
 
-REGISTER_OP_VERSION(softplus)
-    .AddCheckpoint(
-        R"ROC(add new attributes [beta] and [threshold], and the formula is changed to "
+REGISTER_OP_VERSION(softplus).AddCheckpoint(
+    R"ROC(add new attributes [beta] and [threshold], and the formula is changed to "
          " softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\ \\text{For numerical"
          " stability, the implementation reverts to the linear function when: beta * x > threshold.})ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("beta", "The beta value of the new formula", 1.0f)
-            .NewAttr("threshold", "The threshold value of the new formula",
-                     20.0f));
+    paddle::framework::compatible::OpVersionDesc()
+        .NewAttr("beta", "The beta value of the new formula", 1.0f)
+        .NewAttr("threshold", "The threshold value of the new formula", 20.0f));
 
-REGISTER_OP_VERSION(mish)
-    .AddCheckpoint(
-        R"ROC(add new attributes [use_mkldnn], and when computing softplus the formula is changed as the new veriosn of softplus)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "use_mkldnn", "(bool, default false) Only used in mkldnn kernel",
-            false));
+REGISTER_OP_VERSION(mish).AddCheckpoint(
+    R"ROC(add new attributes [use_mkldnn], and when computing softplus the formula is changed as the new veriosn of softplus)ROC",
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "use_mkldnn", "(bool, default false) Only used in mkldnn kernel",
+        false));
 
 /* ========================================================================== */

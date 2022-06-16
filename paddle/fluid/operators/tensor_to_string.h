@@ -15,6 +15,7 @@
 #pragma once
 
 #include <sstream>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -56,7 +57,7 @@ static std::vector<T> ToVector(const framework::Tensor &src) {
 }
 
 template <typename... Args>
-static std::string FlattenToString(Args &&... args) {
+static std::string FlattenToString(Args &&...args) {
   const auto &vec = ToVector(std::forward<Args>(args)...);
   return "[" + string::join_strings(vec, ',') + "]";
 }
