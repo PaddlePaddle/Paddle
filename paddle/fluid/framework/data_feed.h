@@ -897,7 +897,7 @@ class GraphDataGenerator {
   int FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk);
   int FillFeatureBuf(int64_t* d_walk, int64_t* d_feature, size_t key_num);
   int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
-          std::shared_ptr<phi::Allocation> d_feature);
+                     std::shared_ptr<phi::Allocation> d_feature);
   void FillOneStep(uint64_t* start_ids, uint64_t* walk, int len,
                    NeighborSampleResult& sample_res, int cur_degree, int step,
                    int* len_per_row);
@@ -944,6 +944,7 @@ class GraphDataGenerator {
 
   std::set<int> finish_node_type_;
   std::unordered_map<int, size_t> node_type_start_;
+  std::vector<int> infer_node_type_start_;
 
   std::shared_ptr<phi::Allocation> d_ins_buf_;
   std::shared_ptr<phi::Allocation> d_feature_buf_;
@@ -962,6 +963,7 @@ class GraphDataGenerator {
   int debug_mode_;
   std::vector<int> first_node_type_;
   std::vector<std::vector<int>> meta_path_;
+  bool gpu_graph_training_;
 };
 
 class DataFeed {
