@@ -686,7 +686,7 @@ class TensorRTEngine {
 // them, and an macro like this is more extensible when underlying TensorRT
 // library add new layer supports.
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ...) \
-  engine__->network()->add##layer__(__VA_ARGS__);
+  engine__->network()->add##layer__(__VA_ARGS__)
 
 class TRTEngineManager {
  public:
