@@ -145,7 +145,7 @@ class TestAssignOApi(unittest.TestCase):
 
     def test_assign_NumpyArray(self):
         with fluid.dygraph.guard():
-            array = np.random.random(size=(100, 10)).astype(np.bool)
+            array = np.random.random(size=(100, 10)).astype(np.bool_)
             result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             paddle.assign(array, result1)
         self.assertTrue(np.allclose(result1.numpy(), array))

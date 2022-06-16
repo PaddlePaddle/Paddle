@@ -56,15 +56,16 @@ bool IsInterpretercoreFastGCEnabled() {
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
+                                 const std::set<std::string>& skip_gc_vars,
                                  VariableScope* global_scope)
     : place_(place),
       block_(block),
+      skip_gc_vars_(skip_gc_vars),
       global_scope_(global_scope),
       stream_analyzer_(place) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
+
   is_build_ = false;
-  async_work_queue_.reset(new interpreter::AsyncWorkQueue(
-      kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (IsInterpretercoreFastGCEnabled()) {
@@ -127,6 +128,17 @@ paddle::framework::FetchList InterpreterCore::Run(
     // add listener before run and is_build=true
     global_scope_->ResetListener();
 
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    if (async_work_queue_ == nullptr) {
+      async_work_queue_ = std::make_unique<interpreter::AsyncWorkQueue>(
+          kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
+      // prepare for the first time.
+      async_work_queue_->PrepareAtomicDeps(dependecy_count_);
+      async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+    }
+
     ExecuteInstructionList(vec_instruction_);
   }
 
@@ -164,7 +176,8 @@ paddle::framework::FetchList InterpreterCore::Run(
                                                          create_local_scope_);
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::build_op_func_list(
-        place_, block_, &op_func_nodes, global_scope_, create_local_scope_);
+        place_, block_, skip_gc_vars_, &op_func_nodes, global_scope_,
+        create_local_scope_);
     is_build_ = true;
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
@@ -173,6 +186,17 @@ paddle::framework::FetchList InterpreterCore::Run(
   } else {
     // add listener before run and is_build=true
     global_scope_->ResetListener();
+
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    if (async_work_queue_ == nullptr) {
+      async_work_queue_ = std::make_unique<interpreter::AsyncWorkQueue>(
+          kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
+      // prepare for the first time.
+      async_work_queue_->PrepareAtomicDeps(dependecy_count_);
+      async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+    }
 
     ExecuteInstructionList(vec_instruction_);
   }
@@ -289,6 +313,15 @@ void InterpreterCore::Convert(
     }
   }
 
+  // clear the last_live_ops list for all vars in skip_gc_vars
+  for (const std::string& skip_gc_var : skip_gc_vars_) {
+    int var_id = global_scope_->GetIdByName(skip_gc_var);
+    if (var_id != -1) {
+      last_live_ops_[var_id].clear();
+      VLOG(8) << "Skip gc for var: " << skip_gc_var;
+    }
+  }
+
   // shrink, find the downstream op that has no other op in the
   // downstream list happens before it
   // For example,
@@ -343,10 +376,6 @@ void InterpreterCore::Convert(
   if (FLAGS_new_executor_use_inplace && !inplaced) {
     BuildInplace();
   }
-
-  // prepare for the first time.
-  async_work_queue_->PrepareAtomicDeps(dependecy_count_);
-  async_work_queue_->PrepareAtomicVarRef(vec_meta_info);
 }
 
 bool InterpreterCore::BuildInplaceCheckVarIsOnlyInput(size_t var_index) {
@@ -918,7 +947,8 @@ void InterpreterCore::Prepare(
     FeedInput();
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::build_op_func_list(
-        place_, block_, &op_func_nodes, global_scope_, create_local_scope_);
+        place_, block_, skip_gc_vars_, &op_func_nodes, global_scope_,
+        create_local_scope_);
     is_build_ = true;
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
@@ -940,6 +970,18 @@ interpreter::CostInfo InterpreterCore::DryRun(
   interpreter::CostInfo cost_info;
   {
     interpreter::ProfilerGuard(place_, &cost_info);
+
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    if (async_work_queue_ == nullptr) {
+      async_work_queue_ = std::make_unique<interpreter::AsyncWorkQueue>(
+          kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
+      // prepare for the first time.
+      async_work_queue_->PrepareAtomicDeps(dependecy_count_);
+      async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+    }
+
     ExecuteInstructionList(vec_instruction_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
@@ -956,6 +998,23 @@ void InterpreterCore::SetFeedVarsInplaceSkip(
   for (auto& feed_name : feed_names) {
     global_scope_->SetVarSikpInplace(feed_name, true);
   }
+}
+
+std::shared_ptr<InterpreterCore> CreateInterpreterCore(
+    const platform::Place& place, const ProgramDesc& prog,
+    VariableScope* global_scope, const std::vector<std::string>& fetch_names,
+    const std::set<std::string>& skip_gc_vars) {
+  std::shared_ptr<InterpreterCore> core = nullptr;
+  // NOTE(Aurelius84): `add_fetch` will modify BlockDesc, so we should copy
+  // a new program.
+  auto new_prog = std::make_shared<framework::ProgramDesc>(prog);
+  auto* block = new_prog->MutableBlock(0);
+  interpreter::add_fetch(fetch_names, block);
+
+  core = std::make_shared<InterpreterCore>(place, *block, skip_gc_vars,
+                                           global_scope);
+  core->SetCopyProgram(new_prog);
+  return core;
 }
 
 }  // namespace framework

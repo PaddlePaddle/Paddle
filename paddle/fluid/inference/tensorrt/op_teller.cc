@@ -81,6 +81,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       "thresholded_relu",
       "exp",
       "log",
+      "sqrt",
+      "abs",
+      "sin",
+      "cos",
+      "tan",
+      "sinh",
+      "cosh",
+      "asin",
+      "acos",
+      "atan",
+      "asinh",
+      "atanh",
+      "ceil",
+      "floor",
+      "erf",
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -110,6 +125,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "stack",
       "transpose2",
       "transpose",
+      "top_k",
+      "top_k_v2",
       "flatten2",
       "flatten",
       "gather",
@@ -158,6 +175,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       "thresholded_relu",
       "exp",
       "log",
+      "sqrt",
+      "abs",
+      "sin",
+      "cos",
+      "tan",
+      "sinh",
+      "cosh",
+      "asin",
+      "acos",
+      "atan",
+      "asinh",
+      "atanh",
+      "ceil",
+      "floor",
+      "erf",
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -187,6 +219,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "stack",
       "transpose2",
       "transpose",
+      "top_k",
+      "top_k_v2",
       "flatten2",
       "flatten",
       "gather",
@@ -235,11 +269,34 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     return false;
 
   for (auto& teller : tellers_) {
-    if (op_type == "relu" || op_type == "relu6" || op_type == "tanh" ||
-        op_type == "sigmoid" || op_type == "exp" || op_type == "log" ||
-        op_type == "elu" || op_type == "selu" || op_type == "softsign" ||
-        op_type == "stanh" || op_type == "thresholded_relu" ||
-        op_type == "softplus") {
+    std::unordered_set<std::string> act_op_list = {"relu",
+                                                   "relu6",
+                                                   "sigmoid",
+                                                   "elu",
+                                                   "selu",
+                                                   "softsign",
+                                                   "softplus",
+                                                   "stanh",
+                                                   "thresholded_relu",
+                                                   "exp",
+                                                   "log",
+                                                   "sqrt",
+                                                   "abs",
+                                                   "sin",
+                                                   "cos",
+                                                   "tan",
+                                                   "tanh",
+                                                   "sinh",
+                                                   "cosh",
+                                                   "asin",
+                                                   "acos",
+                                                   "atan",
+                                                   "asinh",
+                                                   "atanh",
+                                                   "ceil",
+                                                   "floor",
+                                                   "erf"};
+    if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
@@ -255,6 +312,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << " op does not support input's dim is 1 in tensorrt.";
         return false;
       }
+#if !IS_TRT_VERSION_GE(7000)
+      if (op_type == "erf") {
+        VLOG(3) << op_type << " op does not support tensorrt.";
+        return false;
+      }
+#endif
     }
 
     if (op_type == "pool2d") {
@@ -1052,15 +1115,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
               return false;
             }
           }
-        } else {
-          for (size_t i = 0; i < axes.size(); i++) {
-            if (starts[i] < 0 || ends[i] < 0) {
-              VLOG(3) << "Invalid slice attribute 'starts' or 'ends'. "
-                         "Negative starts or ends not supported in TensorRT "
-                         "when running in dynamic shape mode.";
-              return false;
-            }
-          }
         }
       }
     }
@@ -1768,6 +1822,34 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         const auto x_shape = x_var_desc->GetShape();
         if (x_shape.size() == 1) {
           VLOG(3) << "Hard sigmoid does not support 1-dimensional input in "
+                     "tensorrt";
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "top_k_v2" || op_type == "top_k") {
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << "top_k/top_k_v2 does not support 1-dimensional input in "
+                   "tensorrt";
+        return false;
+      }
+      if (desc.HasAttr("axis")) {
+        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+        if (axis == 0) {
+          VLOG(3) << "top_k_v2 does not support axis == 0 in "
+                     "tensorrt";
+          return false;
+        }
+      }
+      if (desc.HasAttr("sorted")) {
+        bool sorted = BOOST_GET_CONST(bool, desc.GetAttr("sorted"));
+        if (!sorted) {
+          VLOG(3) << "top_k_v2 does not support results not sorted in "
                      "tensorrt";
           return false;
         }

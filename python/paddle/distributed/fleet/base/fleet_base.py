@@ -1811,8 +1811,8 @@ class Fleet(object):
                     if (param._grad_ivar() is not None) and (
                         param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
                 ]
-            temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
-            temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
+            temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
+            temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
             if len(param_grads_fp16):
                 _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
                                                 param_grads_fp16,

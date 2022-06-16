@@ -27,7 +27,7 @@ class ShuffleChannelOpKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<framework::Tensor>("Out");
     int group = ctx.Attr<int>("group");
 
-    auto input_dims = input->dims();
+    const auto& input_dims = input->dims();
     auto num = input_dims[0];
     auto channel = input_dims[1];
     auto height = input_dims[2];

@@ -22,8 +22,8 @@ function(find_python_module module)
       set(PY_${module_upper}
           ${_${module}_location}
           CACHE STRING "Location of Python module ${module}")
-    endif(NOT _${module}_status)
-  endif(NOT PY_${module_upper})
+    endif()
+  endif()
   find_package_handle_standard_args(PY_${module} DEFAULT_MSG PY_${module_upper})
   if(NOT PY_${module_upper}_FOUND AND ${module}_FIND_REQUIRED)
     message(FATAL_ERROR "python module ${module} is not found")
@@ -39,7 +39,7 @@ function(find_python_module module)
     set(PY_${module_upper}_VERSION
         ${_${module}_version}
         CACHE STRING "Version of Python module ${module}")
-  endif(NOT _${module}_status)
+  endif()
 
   set(PY_${module_upper}_FOUND
       ${PY_${module_upper}_FOUND}
@@ -47,4 +47,4 @@ function(find_python_module module)
   set(PY_${module_upper}_VERSION
       ${PY_${module_upper}_VERSION}
       PARENT_SCOPE)
-endfunction(find_python_module)
+endfunction()
