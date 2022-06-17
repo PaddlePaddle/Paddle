@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
+
 #include <thread>  // NOLINT
+
 #include "butil/endpoint.h"
 #include "iomanip"
 #include "paddle/fluid/distributed/ps/table/table.h"
@@ -49,7 +51,7 @@ void GraphPyService::add_table_feat_conf(std::string table_name,
     int feat_idx = table_feat_mapping[idx][feat_name];
     VLOG(0) << "table_name " << table_name << " mapping id " << idx;
     VLOG(0) << " feat name " << feat_name << " feat id" << feat_idx;
-    if (feat_idx < table_feat_conf_feat_name[idx].size()) {
+    if (static_cast<size_t>(feat_idx) < table_feat_conf_feat_name[idx].size()) {
       // overide
       table_feat_conf_feat_name[idx][feat_idx] = feat_name;
       table_feat_conf_feat_dtype[idx][feat_idx] = feat_dtype;
@@ -501,5 +503,5 @@ void GraphPyClient::StopServer() {
   if (status.get() == 0) stoped_ = true;
 }
 void GraphPyClient::FinalizeWorker() { this->worker_ptr->FinalizeWorker(); }
-}
-}
+}  // namespace distributed
+}  // namespace paddle

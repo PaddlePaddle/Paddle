@@ -666,8 +666,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
   PADDLE_ENFORCE_EQ(places.size() > 0 && !platform::is_npu_place(places[0]),
-                    true, platform::errors::Unavailable(
-                              "NPU is not supported in ParallelExecutor."));
+                    true,
+                    platform::errors::Unavailable(
+                        "NPU is not supported in ParallelExecutor."));
   InitP2P(places);
   ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
                                  member_->places_.size());
@@ -792,8 +793,8 @@ void ParallelExecutor::BCastParamsToDevices(
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
-      ncclDataType_t data_type = platform::ToNCCLDataType(
-          framework::TransToProtoVarType(main_tensor.dtype()));
+      auto dtype = framework::TransToProtoVarType(main_tensor.dtype());
+      ncclDataType_t data_type = platform::ToNCCLDataType(dtype);
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;
@@ -814,7 +815,7 @@ void ParallelExecutor::BCastParamsToDevices(
                             "variables' buffer size to bcast is %d, which is "
                             "NOT equal to places size %d",
                             buffers.size(), member_->places_.size()));
-      {
+      if (member_->nccl_ctxs_ != nullptr) {
         auto *nccl_ctxs = member_->nccl_ctxs_->DefaultFlatCtx();
         platform::NCCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
@@ -823,6 +824,22 @@ void ParallelExecutor::BCastParamsToDevices(
                                        nccl_ctx.comm_, nccl_ctx.stream());
         }
         nccl_ctxs->WaitAll();
+      } else {
+        auto src_place = member_->places_[0];
+        auto src_dev_ctx = static_cast<platform::CUDADeviceContext *>(
+            platform::DeviceContextPool::Instance().Get(src_place));
+        auto sizeof_dtype = framework::SizeOfType(dtype) * numel;
+        for (size_t i = 1; i < member_->places_.size(); ++i) {
+          auto dst_place = member_->places_[i];
+          auto dst_dev_ctx = static_cast<platform::CUDADeviceContext *>(
+              platform::DeviceContextPool::Instance().Get(dst_place));
+          src_dev_ctx->Wait();
+          dst_dev_ctx->Wait();
+          memory::Copy(dst_place, buffers[i], src_place, buffers[0],
+                       sizeof_dtype, src_dev_ctx->stream());
+          src_dev_ctx->Wait();
+          dst_dev_ctx->Wait();
+        }
       }
 #endif
     } else if (paddle::platform::is_xpu_place(main_tensor.place())) {
@@ -1347,6 +1364,11 @@ std::vector<ir::Graph *> ParallelExecutor::CloneGraphToMultiDevices(
 }
 
 void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
+  if (member_->build_strategy_.reduce_ ==
+      BuildStrategy::ReduceStrategy::kNoReduce) {
+    return;
+  }
+
   if (member_->IsUseCUDA(member_->use_device_) && member_->nranks_ > 1) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     member_->InitOrGetNCCLCommunicator(global_scope, &member_->build_strategy_);

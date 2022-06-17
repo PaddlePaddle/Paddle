@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/shard_index_kernel.h"
-
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/shard_index_kernel.h"
 
 namespace phi {
 
@@ -85,12 +84,12 @@ void ShardIndexKernel(const Context& dev_ctx,
   auto* out_data = dev_ctx.template Alloc<T>(out);
   int64_t numel = in.numel();
   auto stream = dev_ctx.stream();
-  ShardIndexInner<
-      T><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-           PADDLE_CUDA_NUM_THREADS,
-           0,
-           stream>>>(
-      in_data, out_data, numel, index_num, nshards, shard_id, ignore_value);
+  ShardIndexInner<T>
+      <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+         PADDLE_CUDA_NUM_THREADS,
+         0,
+         stream>>>(
+          in_data, out_data, numel, index_num, nshards, shard_id, ignore_value);
 }
 
 }  // namespace phi

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/ps_local_client.h"
+
 #include "paddle/fluid/distributed/ps/table/table.h"
 
 //#define pslib_debug_dense_compress
@@ -22,7 +23,7 @@ namespace distributed {
 int32_t PsLocalClient::Initialize() {
   const auto& downpour_param = _config.server_param().downpour_server_param();
   TableManager::Instance().Initialize();
-  for (size_t i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
+  for (int i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
     auto* table = CREATE_PSCORE_CLASS(
         Table, downpour_param.downpour_table_param(i).table_class());
     table->SetShard(0, 1);
@@ -316,5 +317,5 @@ int32_t PsLocalClient::Initialize() {
   table_ptr->Push(table_context);
   return done();
 }
-}
-}
+}  // namespace distributed
+}  // namespace paddle

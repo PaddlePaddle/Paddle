@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_shift_op.h"
+
 #include <memory>
+
 #include "paddle/fluid/framework/eigen.h"
 
 namespace paddle {

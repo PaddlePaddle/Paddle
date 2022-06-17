@@ -17,10 +17,10 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+
 #include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/os_info.h"
-#include "paddle/fluid/platform/profiler/common_event.h"
 
 namespace paddle {
 namespace platform {
@@ -58,7 +58,7 @@ class EventContainer {
  public:
   // Record an event
   template <typename... Args>
-  void Record(Args &&... args) {
+  void Record(Args &&...args) {
     DoRecord(ContainsStdString<Args...>(), std::forward<Args>(args)...);
   }
 
@@ -112,7 +112,7 @@ class EventContainer {
 
   // Record an event with string arguments
   template <typename... Args>
-  void DoRecord(std::true_type, Args &&... args) {
+  void DoRecord(std::true_type, Args &&...args) {
     auto *storage = GetEventStorage();
     std::function<void *(size_t)> allocator = [this](size_t size) {
       return GetStrBufFromArena(size);
@@ -122,7 +122,7 @@ class EventContainer {
 
   // Record an event without any string argument
   template <typename... Args>
-  void DoRecord(std::false_type, Args &&... args) {
+  void DoRecord(std::false_type, Args &&...args) {
     auto *storage = GetEventStorage();
     new (storage) EventType(std::forward<Args>(args)...);
   }
@@ -181,12 +181,14 @@ char *EventContainer<EventType>::GetStringStorage(size_t sz) {
   return storage;
 }
 
+template <typename EventType>
 struct ThreadEventSection {
   std::string thread_name;
   uint64_t thread_id;
-  std::vector<CommonEvent> events;
+  std::vector<EventType> events;
 };
 
+template <typename EventType>
 class ThreadEventRecorder {
  public:
   ThreadEventRecorder() {
@@ -199,12 +201,12 @@ class ThreadEventRecorder {
  public:
   // Forward call to EventContainer::Record
   template <typename... Args>
-  void RecordEvent(Args &&... args) {
+  void RecordEvent(Args &&...args) {
     base_evt_cntr_.Record(std::forward<Args>(args)...);
   }
 
-  ThreadEventSection GatherEvents() {
-    ThreadEventSection thr_sec;
+  ThreadEventSection<EventType> GatherEvents() {
+    ThreadEventSection<EventType> thr_sec;
     thr_sec.thread_name = thread_name_;
     thr_sec.thread_id = thread_id_;
     thr_sec.events = std::move(base_evt_cntr_.Reduce());
@@ -214,15 +216,17 @@ class ThreadEventRecorder {
  private:
   uint64_t thread_id_;
   std::string thread_name_;
-  EventContainer<CommonEvent> base_evt_cntr_;
+  EventContainer<EventType> base_evt_cntr_;
 };
 
+template <typename EventType>
 struct HostEventSection {
   std::string process_name;
   uint64_t process_id;
-  std::vector<ThreadEventSection> thr_sections;
+  std::vector<ThreadEventSection<EventType>> thr_sections;
 };
 
+template <typename EventType>
 class HostEventRecorder {
  public:
   // singleton
@@ -237,16 +241,16 @@ class HostEventRecorder {
   // Do your best to avoid using 'std::string' as the argument type.
   // It will cause deep-copy to harm performance.
   template <typename... Args>
-  void RecordEvent(Args &&... args) {
+  void RecordEvent(Args &&...args) {
     GetThreadLocalRecorder()->RecordEvent(std::forward<Args>(args)...);
   }
 
   // thread-unsafe, make sure make sure there is no running tracing.
   // Poor performance, call it at the ending
-  HostEventSection GatherEvents() {
+  HostEventSection<EventType> GatherEvents() {
     auto thr_recorders =
         ThreadEventRecorderRegistry::GetInstance().GetAllThreadDataByRef();
-    HostEventSection host_sec;
+    HostEventSection<EventType> host_sec;
     host_sec.process_id = GetProcessId();
     host_sec.thr_sections.reserve(thr_recorders.size());
     for (auto &kv : thr_recorders) {
@@ -259,12 +263,12 @@ class HostEventRecorder {
 
  private:
   using ThreadEventRecorderRegistry =
-      framework::ThreadDataRegistry<ThreadEventRecorder>;
+      framework::ThreadDataRegistry<ThreadEventRecorder<EventType>>;
 
   HostEventRecorder() = default;
   DISABLE_COPY_AND_ASSIGN(HostEventRecorder);
 
-  ThreadEventRecorder *GetThreadLocalRecorder() {
+  ThreadEventRecorder<EventType> *GetThreadLocalRecorder() {
     return ThreadEventRecorderRegistry::GetInstance()
         .GetMutableCurrentThreadData();
   }

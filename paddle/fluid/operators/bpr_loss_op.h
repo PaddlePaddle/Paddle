@@ -61,8 +61,9 @@ class BprLossOpKernel : public framework::OpKernel<T> {
     const int64_t* label_data = labels->data<int64_t>();
     for (int i = 0; i < step_size; ++i) {
       int lbl_pos = label_data[i];
-      PADDLE_ENFORCE_GE(lbl_pos, 0, platform::errors::InvalidArgument(
-                                        "label data %d is illegal.", lbl_pos));
+      PADDLE_ENFORCE_GE(lbl_pos, 0,
+                        platform::errors::InvalidArgument(
+                            "label data %d is illegal.", lbl_pos));
       PADDLE_ENFORCE_LT(lbl_pos, class_num,
                         platform::errors::InvalidArgument(
                             "label data %d is illegal.", lbl_pos));

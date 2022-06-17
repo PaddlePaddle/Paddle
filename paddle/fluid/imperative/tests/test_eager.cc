@@ -88,8 +88,9 @@ TEST(test_var_helper, eager_var_helper) {
       egr_tensor, framework::OpKernelType(framework::proto::VarType::FP32,
                                           platform::CPUPlace()));
   SetCachedValue<egr::EagerVariable>(
-      egr_tensor, framework::OpKernelType(framework::proto::VarType::FP32,
-                                          platform::CPUPlace()),
+      egr_tensor,
+      framework::OpKernelType(framework::proto::VarType::FP32,
+                              platform::CPUPlace()),
       egr_tensor2);
   ASSERT_ANY_THROW(GetPlace<egr::EagerVariable>(egr_tensor2));
   ASSERT_ANY_THROW(SetType<egr::EagerVariable>(

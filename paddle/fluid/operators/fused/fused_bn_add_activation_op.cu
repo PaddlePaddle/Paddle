@@ -16,6 +16,7 @@
 #include <cfloat>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/fused/fused_bn_add_activation_op.h"
@@ -160,8 +161,9 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
                 ctx.GetPlace()),
             variance_out->template mutable_data<BatchNormParamType<T>>(
                 ctx.GetPlace()),
-            epsilon, saved_mean->template mutable_data<BatchNormParamType<T>>(
-                         ctx.GetPlace()),
+            epsilon,
+            saved_mean->template mutable_data<BatchNormParamType<T>>(
+                ctx.GetPlace()),
             saved_variance->template mutable_data<BatchNormParamType<T>>(
                 ctx.GetPlace()),
             activation_desc_, workspace_ptr, workspace_size, reserve_space_ptr,

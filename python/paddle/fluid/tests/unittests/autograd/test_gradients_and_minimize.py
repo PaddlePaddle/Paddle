@@ -23,6 +23,7 @@ paddle.enable_static()
 
 
 class TestGradients(unittest.TestCase):
+
     def test_third_order(self):
         enable_prim()
         main = paddle.static.Program()
@@ -71,7 +72,9 @@ class TestGradients(unittest.TestCase):
 
             prim2orig(main.block(0))
 
-        feed = {x.name: np.array([2.]).astype('float32'), }
+        feed = {
+            x.name: np.array([2.]).astype('float32'),
+        }
         fetch_list = [grad4.name]
         # (3*(-5*x^2-16*x-16))/(16*(x+1)^3.5)
         result = [np.array([-0.27263762711])]
@@ -87,6 +90,7 @@ class TestGradients(unittest.TestCase):
 
 
 class TestMinimize(unittest.TestCase):
+
     def model(self, x, w, bias, opt):
         paddle.seed(0)
         place = paddle.CPUPlace()
@@ -98,10 +102,12 @@ class TestMinimize(unittest.TestCase):
         with paddle.static.program_guard(main, startup):
             input_x = paddle.static.data('x', x.shape, dtype=x.dtype)
             input_x.stop_gradient = False
-            params_w = paddle.static.create_parameter(
-                shape=w.shape, dtype=w.dtype, is_bias=False)
-            params_bias = paddle.static.create_parameter(
-                shape=bias.shape, dtype=bias.dtype, is_bias=True)
+            params_w = paddle.static.create_parameter(shape=w.shape,
+                                                      dtype=w.dtype,
+                                                      is_bias=False)
+            params_bias = paddle.static.create_parameter(shape=bias.shape,
+                                                         dtype=bias.dtype,
+                                                         is_bias=True)
             y = paddle.tanh(paddle.matmul(input_x, params_w) + params_bias)
             loss = paddle.norm(y, p=2)
             opt = opt
@@ -110,9 +116,11 @@ class TestMinimize(unittest.TestCase):
                 prim2orig(main.block(0))
         exe.run(startup)
         grads = exe.run(main,
-                        feed={'x': x,
-                              'w': w,
-                              'bias': bias},
+                        feed={
+                            'x': x,
+                            'w': w,
+                            'bias': bias
+                        },
                         fetch_list=grads)
         return grads
 

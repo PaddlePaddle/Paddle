@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
+
 #include "paddle/phi/backends/dynload/lapack.h"
 #include "paddle/phi/common/complex.h"
 

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/xpu_api_wrapper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"

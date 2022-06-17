@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/platform/macros.h"  // import FLT_MAX
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"

@@ -21,6 +21,7 @@ namespace cub = hipcub;
 #endif
 
 #include <paddle/fluid/memory/allocation/allocator.h>
+
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"

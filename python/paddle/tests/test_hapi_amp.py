@@ -16,10 +16,11 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
 os.environ['FLAGS_cudnn_deterministic'] = '1'
 
 import unittest
-
+import tempfile
 import numpy as np
 
 import paddle
@@ -36,17 +37,17 @@ import paddle.vision.transforms as T
 @unittest.skipIf(not fluid.is_compiled_with_cuda(),
                  'CPU testing is not supported')
 class TestHapiWithAmp(unittest.TestCase):
+
     def get_model(self, amp_config):
         net = LeNet()
         inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
         labels = InputSpec([None, 1], "int64", "y")
         model = Model(net, inputs, labels)
-        optim = paddle.optimizer.Adam(
-            learning_rate=0.001, parameters=model.parameters())
-        model.prepare(
-            optimizer=optim,
-            loss=CrossEntropyLoss(reduction="sum"),
-            amp_configs=amp_config)
+        optim = paddle.optimizer.Adam(learning_rate=0.001,
+                                      parameters=model.parameters())
+        model.prepare(optimizer=optim,
+                      loss=CrossEntropyLoss(reduction="sum"),
+                      amp_configs=amp_config)
         return model
 
     def run_model(self, model):
@@ -82,7 +83,9 @@ class TestHapiWithAmp(unittest.TestCase):
         self.run_amp(amp_config)
 
     def test_fp32(self):
-        amp_config = {"level": "O0", }
+        amp_config = {
+            "level": "O0",
+        }
         self.run_amp(amp_config)
 
     def test_save_load(self):
@@ -98,7 +101,9 @@ class TestHapiWithAmp(unittest.TestCase):
                   batch_size=64,
                   num_iters=2,
                   log_freq=1)
-        model.save('./lenet_amp')
+        temp_dir = tempfile.TemporaryDirectory()
+        lenet_amp_path = os.path.join(temp_dir.name, './lenet_amp')
+        model.save(lenet_amp_path)
 
         with paddle.fluid.unique_name.guard():
             paddle.seed(2021)
@@ -116,15 +121,18 @@ class TestHapiWithAmp(unittest.TestCase):
                model._scaler.state_dict()['incr_count']))
 
         # equal after load
-        new_model.load('./lenet_amp')
+        new_model.load(lenet_amp_path)
+        temp_dir.cleanup()
         self.assertEqual(new_model._scaler.state_dict()['incr_count'],
                          model._scaler.state_dict()['incr_count'])
         self.assertEqual(new_model._scaler.state_dict()['decr_count'],
                          model._scaler.state_dict()['decr_count'])
         self.assertTrue(
-            np.array_equal(new_model._optimizer.state_dict(
-            )['conv2d_1.w_0_moment1_0'].numpy(
-            ), model._optimizer.state_dict()['conv2d_1.w_0_moment1_0'].numpy()))
+            np.array_equal(
+                new_model._optimizer.state_dict()
+                ['conv2d_1.w_0_moment1_0'].numpy(),
+                model._optimizer.state_dict()
+                ['conv2d_1.w_0_moment1_0'].numpy()))
 
     def test_dynamic_check_input(self):
         paddle.disable_static()
@@ -147,21 +155,21 @@ class TestHapiWithAmp(unittest.TestCase):
         paddle.set_device('gpu')
         net = LeNet()
         model = Model(net)
-        optim = paddle.optimizer.Adam(
-            learning_rate=0.001, parameters=model.parameters())
+        optim = paddle.optimizer.Adam(learning_rate=0.001,
+                                      parameters=model.parameters())
         loss = CrossEntropyLoss(reduction="sum")
         with self.assertRaises(ValueError):
             for amp_configs in amp_configs_list:
-                model.prepare(
-                    optimizer=optim, loss=loss, amp_configs=amp_configs)
+                model.prepare(optimizer=optim,
+                              loss=loss,
+                              amp_configs=amp_configs)
         model.prepare(optimizer=optim, loss=loss, amp_configs="O2")
-        model.prepare(
-            optimizer=optim,
-            loss=loss,
-            amp_configs={
-                "custom_white_list": {"matmul"},
-                "init_loss_scaling": 1.0
-            })
+        model.prepare(optimizer=optim,
+                      loss=loss,
+                      amp_configs={
+                          "custom_white_list": {"matmul"},
+                          "init_loss_scaling": 1.0
+                      })
 
     def test_static_check_input(self):
         paddle.enable_static()
@@ -175,8 +183,8 @@ class TestHapiWithAmp(unittest.TestCase):
         labels = InputSpec([None, 1], "int64", "y")
         model = Model(net, inputs, labels)
 
-        optim = paddle.optimizer.Adam(
-            learning_rate=0.001, parameters=model.parameters())
+        optim = paddle.optimizer.Adam(learning_rate=0.001,
+                                      parameters=model.parameters())
         loss = CrossEntropyLoss(reduction="sum")
         with self.assertRaises(ValueError):
             model.prepare(optimizer=optim, loss=loss, amp_configs=amp_configs)

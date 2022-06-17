@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,6 +25,7 @@ class DeviceType:
 
 
 class Device(object):
+
     def __init__(self, dtype=None, memory="", labels=""):
         self._dtype = dtype
         self._memory = memory
@@ -73,14 +74,10 @@ class Device(object):
             return 'FLAGS_selected_ipus'
         return 'FLAGS_selected_devices'
 
-    def get_selected_devices(self, devices='', device_num=None):
+    def get_selected_devices(self, devices=''):
         '''
         return the device label/id relative to the visible devices
         '''
-        if self._dtype == DeviceType.IPU:
-            if not device_num:
-                raise RuntimeError("The \'device_num\' is required by IPUs.")
-            return [str(device_num)]
         if not devices:
             return [str(x) for x in range(0, len(self._labels))]
         else:
@@ -139,6 +136,9 @@ class Device(object):
         elif fluid.core.is_compiled_with_ipu():
             dev._dtype = DeviceType.IPU
             num = fluid.core.get_ipu_device_count()
+            # For IPUs, 'labels' is a list which contains the available numbers of IPU devices.
+            dev._labels = [str(x) for x in range(0, num + 1)]
+            return dev
 
         if num == 0:
             dev._dtype = DeviceType.CPU

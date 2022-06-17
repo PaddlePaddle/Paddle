@@ -14,6 +14,7 @@
 
 #pragma once
 #include <unistd.h>
+
 #include <condition_variable>  // NOLINT
 #include <fstream>
 #include <iomanip>
@@ -23,21 +24,20 @@
 #include <thread>  // NOLINT
 #include <unordered_map>
 #include <vector>
+
 #include "google/protobuf/text_format.h"
-
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/variable.h"
-
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
 #include "paddle/fluid/distributed/ps/service/graph_brpc_server.h"
 #include "paddle/fluid/distributed/ps/service/ps_service/service.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -81,14 +81,14 @@ class GraphPyService {
 
     graph_proto->set_table_name("cpu_graph_table");
     graph_proto->set_use_cache(false);
-    for (int i = 0; i < id_to_edge.size(); i++)
+    for (size_t i = 0; i < id_to_edge.size(); i++)
       graph_proto->add_edge_types(id_to_edge[i]);
-    for (int i = 0; i < id_to_feature.size(); i++) {
+    for (size_t i = 0; i < id_to_feature.size(); i++) {
       graph_proto->add_node_types(id_to_feature[i]);
       auto feat_node = id_to_feature[i];
       ::paddle::distributed::GraphFeature* g_f =
           graph_proto->add_graph_feature();
-      for (int x = 0; x < table_feat_conf_feat_name[i].size(); x++) {
+      for (size_t x = 0; x < table_feat_conf_feat_name[i].size(); x++) {
         g_f->add_name(table_feat_conf_feat_name[i][x]);
         g_f->add_dtype(table_feat_conf_feat_dtype[i][x]);
         g_f->add_shape(table_feat_conf_feat_shape[i][x]);
@@ -198,5 +198,5 @@ class GraphPyClient : public GraphPyService {
   std::thread* client_thread;
   bool stoped_ = false;
 };
-}
-}
+}  // namespace distributed
+}  // namespace paddle

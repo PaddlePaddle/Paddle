@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <thread>
 #include <vector>
+
 #include "cub/cub.cuh"
 #include "cub/util_allocator.cuh"
 #if defined(PADDLE_WITH_CUDA)
@@ -26,6 +27,7 @@ limitations under the License. */
 #elif defined(PADDLE_WITH_XPU_KP)
 // #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 #include <xpu/runtime.h>
+
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
 

@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import sys
+
 sys.path.append("..")
 import unittest
 import math
@@ -27,6 +28,7 @@ from paddle.fluid import Program, program_guard
 
 
 class TestROIAlignOp(XPUOpTest):
+
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -73,8 +75,8 @@ class TestROIAlignOp(XPUOpTest):
         bilinear_pos = np.zeros(
             [self.channels, self.pooled_height, self.pooled_width, count, 4],
             np.float32)
-        bilinear_w = np.zeros(
-            [self.pooled_height, self.pooled_width, count, 4], np.float32)
+        bilinear_w = np.zeros([self.pooled_height, self.pooled_width, count, 4],
+                              np.float32)
         for ph in range(self.pooled_width):
             for pw in range(self.pooled_height):
                 c = 0
@@ -196,6 +198,7 @@ class TestROIAlignOp(XPUOpTest):
 
 
 class TestROIAlignInLodOp(TestROIAlignOp):
+
     def set_data(self):
         self.init_test_case()
         self.make_rois()

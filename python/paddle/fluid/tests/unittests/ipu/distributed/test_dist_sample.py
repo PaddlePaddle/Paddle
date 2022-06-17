@@ -13,49 +13,43 @@
 # limitations under the License.
 '''
 Single host:
-
 python3.7 -m paddle.distributed.launch \
---device_num=4 \
+--devices=4 \
 ipu \
 --hosts=localhost \
 --nproc_per_host=2 \
 --ipus_per_replica=1 \
 --ipu_partition=pod64 \
 --vipu_server=10.137.96.62 \
-python/paddle/fluid/tests/unittests/ipu/disabled/test_dist_sample.py
-
+python/paddle/fluid/tests/unittests/ipu/distributed/test_dist_sample.py
 Equal to:
-
 poprun \
 --host=localhost \
 --num-instances=2 \
 --num-replicas=4 \
 --ipus-per-replica=1 \
 --print-topology=yes \
-python3.7 python/paddle/fluid/tests/unittests/ipu/disabled/test_dist_sample.py
+python3.7 python/paddle/fluid/tests/unittests/ipu/distributed/test_dist_sample.py
 '''
 '''
 Multi hosts:
-
 python3.7 -m paddle.distributed.launch \
---device_num=4 \
+--devices=4 \
 ipu \
 --hosts=host1,host2 \
 --nproc_per_host=1 \
 --ipus_per_replica=1 \
 --ipu_partition=pod64 \
 --vipu_server=10.137.96.62 \
-python/paddle/fluid/tests/unittests/ipu/disabled/test_dist_sample.py
-
+python/paddle/fluid/tests/unittests/ipu/distributed/test_dist_sample.py
 Equal to:
-
 poprun \
 --host=host1,host2 \
 --num-instances=2 \
 --num-replicas=4 \
 --ipus-per-replica=1 \
 --print-topology=yes \
-python3.7 python/paddle/fluid/tests/unittests/ipu/disabled/test_dist_sample.py
+python3.7 python/paddle/fluid/tests/unittests/ipu/distributed/test_dist_sample.py
 '''
 
 import os
@@ -98,13 +92,18 @@ def Test(use_dist, file_name):
                 ipu_strategy.set_graph_config(num_ipus=2, is_training=True)
                 # Set distributed envs
                 ipu_strategy.set_options({
-                    "enable_distribution": True,
-                    "enable_replicated_graphs": True,
-                    "replicated_graph_count": 2,
-                    "enable_distributed_replicated_graphs": True,
+                    "enable_distribution":
+                    True,
+                    "enable_replicated_graphs":
+                    True,
+                    "replicated_graph_count":
+                    2,
+                    "enable_distributed_replicated_graphs":
+                    True,
                     "global_replica_offset":
                     int(os.environ.get("PADDLE_TRAINER_ID")) * 2,
-                    "global_replication_factor": 4
+                    "global_replication_factor":
+                    4
                 })
             else:
                 ipu_strategy.set_graph_config(num_ipus=4, is_training=True)
@@ -120,10 +119,10 @@ def Test(use_dist, file_name):
             if use_dist:
                 if os.environ.get("PADDLE_TRAINER_ID") == "0":
                     input_data = np.concatenate([
-                        np.array([[[1], [3]], [[2], [4]], [[4], [127]]])
-                        .astype(np.int32), np.array(
-                            [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(
-                                np.int32)
+                        np.array([[[1], [3]], [[2], [4]],
+                                  [[4], [127]]]).astype(np.int32),
+                        np.array([[[1], [3]], [[2], [4]],
+                                  [[4], [127]]]).astype(np.int32)
                     ])
                 else:
                     input_data = np.concatenate([
@@ -134,12 +133,14 @@ def Test(use_dist, file_name):
                     ])
             else:
                 input_data = np.concatenate([
-                    np.array([[[1], [3]], [[2], [4]], [[4], [127]]]).astype(
-                        np.int32), np.array([[[1], [3]], [[2], [4]],
-                                             [[4], [127]]]).astype(np.int32),
-                    np.array([[[8], [60]], [[50], [77]], [[90], [13]]]).astype(
-                        np.int32), np.array([[[8], [60]], [[50], [77]],
-                                             [[90], [13]]]).astype(np.int32)
+                    np.array([[[1], [3]], [[2], [4]],
+                              [[4], [127]]]).astype(np.int32),
+                    np.array([[[1], [3]], [[2], [4]],
+                              [[4], [127]]]).astype(np.int32),
+                    np.array([[[8], [60]], [[50], [77]],
+                              [[90], [13]]]).astype(np.int32),
+                    np.array([[[8], [60]], [[50], [77]],
+                              [[90], [13]]]).astype(np.int32)
                 ])
             feed_data = {"x": input_data}
 
@@ -147,11 +148,11 @@ def Test(use_dist, file_name):
                 res = exe.run(program, feed=feed_data, fetch_list=fetch_list)
 
             if use_dist:
+                res = mpi_comm.gather(res)
                 if os.getenv("PADDLE_TRAINER_ID") == "0":
-                    res = mpi_comm.gather(res, root=0)
-                    np.savetxt(file_name, res)
+                    np.savetxt(file_name, np.array(res).flatten())
             else:
-                np.savetxt(file_name, res)
+                np.savetxt(file_name, np.array(res).flatten())
 
 
 if __name__ == "__main__":

@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/autotune/cache.h"
+
 #include <gtest/gtest.h>
+
 #include <cmath>
 #include <functional>
+
 #include "glog/logging.h"
 
 enum ConvAlgos { GEMMKernel = 0, CuDNNKernel_1 = 1, CuDNNKernel_2 = 2 };

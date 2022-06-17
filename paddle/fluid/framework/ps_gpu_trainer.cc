@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <google/protobuf/text_format.h>
+
 #include <cstdlib>
 #include <string>
 #include <vector>

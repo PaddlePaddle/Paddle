@@ -39,8 +39,8 @@ class CastTransformer(gast.NodeTransformer):
         func_str = ast_to_source_code(node.func).strip()
         if func_str in self._castable_type and len(node.args) > 0:
             args_str = ast_to_source_code(node.args[0]).strip()
-            new_func_str = "_jst.convert_var_dtype({}, '{}')".format(args_str,
-                                                                     func_str)
+            new_func_str = "_jst.convert_var_dtype({}, '{}')".format(
+                args_str, func_str)
             new_node = gast.parse(new_func_str).body[0].value
             return new_node
 

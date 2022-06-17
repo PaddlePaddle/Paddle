@@ -44,8 +44,9 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     Tensor* loss = context.Output<Tensor>("Loss");
     const int rank = logits->dims().size();
     const int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
-    PADDLE_ENFORCE_EQ(axis, rank - 1, platform::errors::InvalidArgument(
-                                          "axis should == rank - 1"));
+    PADDLE_ENFORCE_EQ(
+        axis, rank - 1,
+        platform::errors::InvalidArgument("axis should == rank - 1"));
     softmax->mutable_data<T>(context.GetPlace());
     loss->mutable_data<T>(context.GetPlace());
     const int n = phi::funcs::SizeToAxis(axis, logits->dims());
@@ -140,8 +141,9 @@ class SoftmaxWithCrossEntropyGradXPUKernel : public framework::OpKernel<T> {
 
     const int rank = logit_grad->dims().size();
     const int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
-    PADDLE_ENFORCE_EQ(axis, rank - 1, platform::errors::InvalidArgument(
-                                          "axis should == rank - 1"));
+    PADDLE_ENFORCE_EQ(
+        axis, rank - 1,
+        platform::errors::InvalidArgument("axis should == rank - 1"));
     const int n = phi::funcs::SizeToAxis(axis, logit_grad->dims());
     const int d = phi::funcs::SizeFromAxis(axis, logit_grad->dims());
 

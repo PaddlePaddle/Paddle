@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_seqpool_cvm_op.h"
+
 #include <string>
 namespace paddle {
 namespace operators {
@@ -34,9 +35,10 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         cvm_dims.size(), 2UL,
         platform::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
-    PADDLE_ENFORCE_EQ(cvm_dims[1], 2UL, platform::errors::InvalidArgument(
-                                            "The 2nd dimension of "
-                                            "Input(CVM) should be 2."));
+    PADDLE_ENFORCE_EQ(
+        cvm_dims[1], 2UL,
+        platform::errors::InvalidArgument("The 2nd dimension of "
+                                          "Input(CVM) should be 2."));
 
     auto ins_dims = ctx->GetInputsDim("X");
     const int cvm_offset = ctx->Attrs().Get<int>("cvm_offset");

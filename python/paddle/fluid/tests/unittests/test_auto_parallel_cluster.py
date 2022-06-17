@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import tempfile
 import unittest
 import os
 import json
@@ -200,15 +201,22 @@ cluster_json = """
 
 
 class TestAutoParallelCluster(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_cluster(self):
-        cluster_json_file = ""
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster.json")
         cluster_json_object = json.loads(cluster_json)
-        with open("./auto_parallel_cluster.json", "w") as cluster_json_file:
+        with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
 
         cluster = Cluster()
-        cluster.build_from_file("./auto_parallel_cluster.json")
-        os.remove("./auto_parallel_cluster.json")
+        cluster.build_from_file(cluster_json_path)
 
         self.assertEqual(len(cluster.get_all_devices("GPU")), 4)
         self.assertEqual(len(cluster.get_all_devices("CPU")), 2)
