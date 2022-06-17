@@ -59,10 +59,14 @@ enum class TracerEventType {
 };
 
 enum class TracerMemEventType {
-  // Used to mark memory allocation
+  // Used to mark memory allocation which is managed by paddle
   Allocate = 0,
-  // Used to mark memory free
+  // Used to mark memory free which is managed by paddle
   Free = 1,
+  // Used to mark reserved memory allocation which is applied from device.
+  ReservedAllocate = 2,
+  // Used to mark reserved memory free which is released to device.
+  ReservedFree = 3,
   // A flag to denote the number of current types
   NumTypes
 };
@@ -327,7 +331,9 @@ struct MemTraceEvent {
         increase_bytes(increase_bytes),
         place(place),
         current_allocated(current_allocated),
-        current_reserved(current_reserved) {}
+        current_reserved(current_reserved),
+        peak_allocated(peak_allocated),
+        peak_reserved(peak_reserved) {}
 
   // timestamp of the record
   uint64_t timestamp_ns;
@@ -348,6 +354,10 @@ struct MemTraceEvent {
   uint64_t current_allocated;
   // current total reserved memory
   uint64_t current_reserved;
+  // current peak allocated memory
+  uint64_t peak_allocated;
+  // current peak reserved memory
+  uint64_t peak_reserved;
 };
 
 }  // namespace platform

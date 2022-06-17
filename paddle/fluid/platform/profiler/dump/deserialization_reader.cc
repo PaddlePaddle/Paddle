@@ -208,6 +208,8 @@ MemTraceEventNode* DeserializationReader::RestoreMemTraceEventNode(
   mem_event.place = mem_event_proto.place();
   mem_event.current_allocated = mem_event_proto.current_allocated();
   mem_event.current_reserved = mem_event_proto.current_reserved();
+  mem_event.peak_allocated = mem_event_proto.peak_allocated();
+  mem_event.peak_reserved = mem_event_proto.peak_reserved();
   return new MemTraceEventNode(mem_event);
 }
 

@@ -15,6 +15,7 @@ limitations under the License. */
 #include <cstdio>
 #include <ctime>
 #include <limits>
+#include <regex>
 
 #include "glog/logging.h"
 
@@ -128,27 +129,32 @@ void ChromeTracingLogger::LogMemTraceEventNode(
       std::string(
           R"JSON(
   { 
-    "name": "[memory]", "pid": %lld, "tid": "%lld",
+    "name": "[memory]", "pid": %lld, "tid": "%lld(C++)",
     "ts": %lld, 
     "ph": "i", "cat": "%s", 
     "args": {
       "place": "%s",
       "addr": "%llu",
+      "increase_bytes": %lld,
       "current_allocated": %llu,
       "current_reserved": %llu,
-      "increase_bytes": %lld
+      "peak_allocated": %llu,
+      "peak_reserved": %llu
     }
   },
   )JSON"),
       mem_node.ProcessId(),
       mem_node.ThreadId(),
-      mem_node.TimeStampNs(),
+      nsToUs(mem_node.TimeStampNs()),
       StringTracerMemEventType(mem_node.Type()),
       mem_node.Place().c_str(),
       mem_node.Addr(),
+      mem_node.IncreaseBytes(),
       mem_node.CurrentAllocated(),
       mem_node.CurrentReserved(),
-      mem_node.IncreaseBytes());
+      mem_node.PeakAllocated(),
+      mem_node.PeakReserved());
+  pid_tid_set_.insert({mem_node.ProcessId(), mem_node.ThreadId()});
 }
 
 void ChromeTracingLogger::LogHostTraceEventNode(
@@ -172,6 +178,8 @@ void ChromeTracingLogger::LogHostTraceEventNode(
     input_shapes = op_supplement_node->InputShapes();
     input_dtypes = op_supplement_node->Dtypes();
     callstack = op_supplement_node->CallStack();
+    callstack = std::regex_replace(callstack, std::regex("\""), "\'");
+    callstack = std::regex_replace(callstack, std::regex("\n"), "\\n");
   }
   switch (host_node.Type()) {
     case TracerEventType::ProfileStep:
