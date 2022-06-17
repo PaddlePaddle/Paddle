@@ -746,13 +746,6 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
                   test_fuse_gemm_epilogue_pass)
 endif()
 
-if(WITH_HETERPS)
-  set_tests_properties(test_communicator_ps_gpu PROPERTIES LABELS
-                                                           "RUN_TYPE=GPUPS")
-  set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
-  set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
-endif()
-
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_faster_tokenizer_op PROPERTIES LABELS
                                                          "RUN_TYPE=EXCLUSIVE")
@@ -1177,6 +1170,13 @@ if(WITH_XPU_BKCL)
   #py_test(test_collective_reduce_api_xpu SRCS "test_collective_reduce_api.py")
   py_test(test_collective_allreduce_api_xpu
           SRCS "test_collective_allreduce_api.py")
+endif()
+
+if(WITH_HETERPS)
+  set_tests_properties(test_communicator_ps_gpu PROPERTIES LABELS
+                                                           "RUN_TYPE=GPUPS")
+  set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
+  set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
 endif()
 
 if(WIN32)
