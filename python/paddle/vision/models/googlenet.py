@@ -100,7 +100,7 @@ class GoogLeNet(nn.Layer):
     `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_
     
     Args:
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+        num_classes (int, optional): output dim of last fc layer. If num_classes <=0, last fc layer 
                             will not be defined. Default: 1000.
         with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
 
@@ -226,7 +226,7 @@ def googlenet(pretrained=False, **kwargs):
     `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet
 
     Returns:
         GoogLeNet (Inception v1) model. An instance of :ref:`api_fluid_dygraph_Layer`.

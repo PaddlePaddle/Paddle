@@ -188,11 +188,11 @@ class DenseNet(nn.Layer):
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
 
     Args:
-        layers (int): layers of DenseNet. Default: 121.
-        bn_size (int): expansion of growth rate in the middle layer. Default: 4.
-        dropout (float): dropout rate. Default: 0..
-        num_classes (int): output dim of last fc layer. Default: 1000.
-        with_pool (bool): use pool before the last fc layer or not. Default: True.
+        layers (int, optional): layers of DenseNet. Default: 121.
+        bn_size (int, optional): expansion of growth rate in the middle layer. Default: 4.
+        dropout (float, optional): dropout rate. Default: 0..
+        num_classes (int, optional): output dim of last fc layer. Default: 1000.
+        with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
 
     Returns:
         DenseNet model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -322,7 +322,7 @@ def densenet121(pretrained=False, **kwargs):
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet
 
     Returns:
         DenseNet 121-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -353,7 +353,7 @@ def densenet161(pretrained=False, **kwargs):
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet
 
     Returns:
         DenseNet 161-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -377,7 +377,7 @@ def densenet169(pretrained=False, **kwargs):
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet
 
     Returns:
         DenseNet 169-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -408,7 +408,7 @@ def densenet201(pretrained=False, **kwargs):
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet
 
     Returns:
         DenseNet 201-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -438,7 +438,7 @@ def densenet264(pretrained=False, **kwargs):
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, opitonal): If True, returns a model pre-trained on ImageNet
 
     Returns:
         DenseNet 264-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.

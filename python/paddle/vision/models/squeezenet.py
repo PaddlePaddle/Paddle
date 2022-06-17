@@ -80,8 +80,8 @@ class SqueezeNet(nn.Layer):
 
     Args:
         version (str): version of SqueezeNet, which can be "1.0" or "1.1".
-        num_classes (int): output dim of last fc layer. Default: 1000.
-        with_pool (bool): use pool before the last fc layer or not. Default: True.
+        num_classes (int, optional): output dim of last fc layer. Default: 1000.
+        with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
 
     Returns:
         SqueezeNet model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -214,7 +214,7 @@ def squeezenet1_0(pretrained=False, **kwargs):
     <https://arxiv.org/pdf/1602.07360.pdf>`_
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Returns:
         SqueezeNet v1.0 model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -246,7 +246,7 @@ def squeezenet1_1(pretrained=False, **kwargs):
     <https://arxiv.org/pdf/1602.07360.pdf>`_
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Returns:
         SqueezeNet v1.1 model. An instance of :ref:`api_fluid_dygraph_Layer`.

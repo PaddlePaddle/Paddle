@@ -144,8 +144,8 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
     `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
-        batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
+        batch_norm (bool, optional): If True, returns a model with batch_norm layer. Default: False.
 
     Returns:
         VGG 11-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -214,8 +214,8 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
     `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
-        batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
+        batch_norm (bool, optional): If True, returns a model with batch_norm layer. Default: False.
 
     Returns:
         VGG 16-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -249,8 +249,8 @@ def vgg19(pretrained=False, batch_norm=False, **kwargs):
     `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
-        batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
+        batch_norm (bool, optional): If True, returns a model with batch_norm layer. Default: False.
     
     Returns:
         VGG 19-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.

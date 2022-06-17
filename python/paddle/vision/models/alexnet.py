@@ -77,7 +77,7 @@ class AlexNet(nn.Layer):
     <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_
 
     Args:
-        num_classes (int): Output dim of last fc layer. Default: 1000.
+        num_classes (int, optional): Output dim of last fc layer. Default: 1000.
 
     Returns:
         AlexNet model. An instance of :ref:`api_fluid_dygraph_Layer`.

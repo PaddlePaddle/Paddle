@@ -188,8 +188,8 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
     `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
-        scale: (float): scale of channels in each layer. Default: 1.0.
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
+        scale: (float, optional): scale of channels in each layer. Default: 1.0.
 
     Returns:
         MobileNetV2 model. An instance of :ref:`api_fluid_dygraph_Layer`.
