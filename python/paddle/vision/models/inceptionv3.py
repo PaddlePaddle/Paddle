@@ -413,8 +413,7 @@ class InceptionE(nn.Layer):
 
 
 class InceptionV3(nn.Layer):
-    """
-    Inception v3 model from
+    """Inception v3 model from
     `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_
 
     Args:
@@ -511,8 +510,7 @@ class InceptionV3(nn.Layer):
 
 
 def inception_v3(pretrained=False, **kwargs):
-    """
-    Inception v3 model from
+    """Inception v3 model from
     `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_
 
     Args:

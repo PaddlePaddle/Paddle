@@ -209,7 +209,9 @@ def _squeezenet(arch, version, pretrained, **kwargs):
 
 
 def squeezenet1_0(pretrained=False, **kwargs):
-    """SqueezeNet v1.0 model
+    """SqueezeNet v1.0 model from
+    `"SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size"
+    <https://arxiv.org/pdf/1602.07360.pdf>`_
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
@@ -239,7 +241,9 @@ def squeezenet1_0(pretrained=False, **kwargs):
 
 
 def squeezenet1_1(pretrained=False, **kwargs):
-    """SqueezeNet v1.1 model
+    """SqueezeNet v1.1 model from
+    `"SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size"
+    <https://arxiv.org/pdf/1602.07360.pdf>`_
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.

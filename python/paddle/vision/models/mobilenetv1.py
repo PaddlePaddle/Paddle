@@ -220,7 +220,8 @@ def _mobilenet(arch, pretrained=False, **kwargs):
 
 
 def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
-    """MobileNetV1
+    """MobileNetV1 from
+    `"MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications" <https://arxiv.org/abs/1704.04861>`_.
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.

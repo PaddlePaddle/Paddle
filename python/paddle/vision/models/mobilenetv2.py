@@ -184,7 +184,8 @@ def _mobilenet(arch, pretrained=False, **kwargs):
 
 
 def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
-    """MobileNetV2
+    """MobileNetV2 from
+    `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.

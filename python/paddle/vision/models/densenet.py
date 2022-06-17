@@ -318,7 +318,8 @@ def _densenet(arch, layers, pretrained, **kwargs):
 
 
 def densenet121(pretrained=False, **kwargs):
-    """DenseNet 121-layer model
+    """DenseNet 121-layer model from
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -348,7 +349,8 @@ def densenet121(pretrained=False, **kwargs):
 
 
 def densenet161(pretrained=False, **kwargs):
-    """DenseNet 161-layer model
+    """DenseNet 161-layer model from
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -371,7 +373,8 @@ def densenet161(pretrained=False, **kwargs):
 
 
 def densenet169(pretrained=False, **kwargs):
-    """DenseNet 169-layer model
+    """DenseNet 169-layer model from
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -401,7 +404,8 @@ def densenet169(pretrained=False, **kwargs):
 
 
 def densenet201(pretrained=False, **kwargs):
-    """DenseNet 201-layer model
+    """DenseNet 201-layer model from
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -430,7 +434,8 @@ def densenet201(pretrained=False, **kwargs):
 
 
 def densenet264(pretrained=False, **kwargs):
-    """DenseNet 264-layer model
+    """DenseNet 264-layer model from
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
