@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import numpy as np
 from ....framework import IrNode
 from ....framework import Operator
@@ -52,7 +53,6 @@ _act_supported_quantizable_op_type = [
     "leaky_relu",
     "tanh",
     "swish",
-    "scale",
     "transpose",
     "transpose2",
     "sigmoid",
@@ -162,7 +162,6 @@ _op_real_in_out_name = {
     "sigmoid": [["X"], ["Out"]],
     "elementwise_mul": [["X", "Y"], ["Out"]],
     "elementwise_pow": [["X", "Y"], ["Out"]],
-    "scale": [["X"], ["Out"]],
     "hard_swish": [["X"], ["Out"]],
     "hard_sigmoid": [["X"], ["Out"]],
     "gru": [["Input", "Weight"], ["Hidden"]],
@@ -414,3 +413,27 @@ def calculate_quant_cos_error(orig_tensor, qdq_tensor):
     cos_sim = np.inner(orig_tensor.flatten(), qdq_tensor.flatten()) \
               / (np.linalg.norm(orig_tensor.flatten()) * np.linalg.norm(qdq_tensor.flatten()))
     return cos_sim
+
+
+class tqdm(object):
+
+    def __init__(self, total, bar_format='Loading|{bar}', ncols=80):
+        self.total = total
+        self.bar_format = bar_format
+        self.ncols = ncols
+        self.n = 0
+
+    def update(self, n=1):
+        self.n += n
+        a = "=" * round((self.n / self.total) * self.ncols)
+        b = " " * (self.ncols - len(a))
+        prefix = self.bar_format.split('|')[0]
+        sys.stderr.write("\r{}|{}=>{}| {}/{}".format(prefix, a, b, self.n,
+                                                     self.total))
+        sys.stderr.flush()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stderr.write('\n')

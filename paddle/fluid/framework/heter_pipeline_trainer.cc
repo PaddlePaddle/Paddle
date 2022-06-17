@@ -333,5 +333,5 @@ Scope* HeterPipelineTrainer::GetWorkerScope(int thread_id) {
 }
 
 }  // end namespace framework
-}  // namespace paddle
+}  // end namespace paddle
 #endif
