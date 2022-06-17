@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 
 #if defined(PADDLE_WITH_XPU_KP)
 #include <xpu/runtime.h>
@@ -522,7 +523,7 @@ __global__ void merge_grad_kernel(
     int hash_key = 0;
     for (int i = 0; i < len; ) {
         int read_len = min(local_key_size, len - i);
-        GM2LM(in_keys + i, local_keys, read_len * sizeof(float));
+        GM2LM(in_keys + i, local_keys, read_len * sizeof(int));
         for (int j = 0; j < read_len; j++) {
             hash_key = local_keys[j] % nthreads;
             if (hash_key == thread_id) {
@@ -532,9 +533,10 @@ __global__ void merge_grad_kernel(
                 local_merge_value.show += local_push_value.show;
                 local_merge_value.clk += local_push_value.clk;
                 local_merge_value.lr_g += local_push_value.lr_g;
-                for (int k = 0; k < 8; k++) {
+                for (int k = 0; k < MF_DIM; k++) {
                     local_merge_value.mf_g[k] += local_push_value.mf_g[k];
                 }
+                mfence();
                 LM2GM(&local_merge_value, &(out_vals[local_keys[j]]), sizeof(FeaturePushValue));
             }
         }
