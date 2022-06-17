@@ -31,30 +31,26 @@ class FillConstantOpConverter : public OpConverter {
         BOOST_GET_CONST(std::string, op_desc.GetAttr("str_value"));
     std::vector<int64_t> shape =
         BOOST_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
-    std::unique_ptr<framework::Tensor> paddle_out_tensor(
-        new framework::Tensor());
-    paddle_out_tensor->Resize(phi::make_ddim(shape));
+    std::unique_ptr<framework::Tensor> out_tensor(new framework::Tensor());
+    out_tensor->Resize(phi::make_ddim(shape));
 
-    nvinfer1::DataType trt_dtype = nvinfer1::DataType::kINT32;
+    nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
     void* trt_data = nullptr;
     size_t trt_num;
     if (dtype == 2) {  // int
-      auto* tmp_ptr =
-          paddle_out_tensor->mutable_data<int>(platform::CPUPlace());
-      for (int64_t i = 0; i < paddle_out_tensor->numel(); i++)
+      auto* tmp_ptr = out_tensor->mutable_data<int>(platform::CPUPlace());
+      for (int64_t i = 0; i < out_tensor->numel(); i++)
         tmp_ptr[i] = std::stoi(str_value);
       trt_dtype = nvinfer1::DataType::kINT32;
       trt_data = static_cast<void*>(tmp_ptr);
     } else if (dtype == 5) {  // float
-      auto* tmp_ptr =
-          paddle_out_tensor->mutable_data<float>(platform::CPUPlace());
-      for (int64_t i = 0; i < paddle_out_tensor->numel(); i++)
+      auto* tmp_ptr = out_tensor->mutable_data<float>(platform::CPUPlace());
+      for (int64_t i = 0; i < out_tensor->numel(); i++)
         tmp_ptr[i] = std::stof(str_value);
-      trt_dtype = nvinfer1::DataType::kFLOAT;
       trt_data = static_cast<void*>(tmp_ptr);
     }
-    trt_num = static_cast<size_t>(paddle_out_tensor->numel());
-    engine_->SetWeights("fill_constant_value", std::move(paddle_out_tensor));
+    trt_num = static_cast<size_t>(out_tensor->numel());
+    engine_->SetWeights("fill_constant_value", std::move(out_tensor));
     TensorRTEngine::Weight weight{trt_dtype, trt_data, trt_num};
 
     nvinfer1::Dims trt_in_shape;
