@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/infrt/paddle/framework.pb.h"
+#include "paddle/infrt/paddle/framework_infrt.pb.h"
 #include "paddle/infrt/paddle/pb/block_desc.h"
 #include "paddle/infrt/paddle/pb/op_desc.h"
 #include "paddle/infrt/paddle/pb/program_desc.h"

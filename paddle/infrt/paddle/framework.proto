@@ -10,7 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 syntax = "proto2";
-package paddle.framework.proto;
+package paddle.framework_infrt.proto;
 
 // Any incompatible changes to ProgramDesc and its dependencies should
 // raise the version defined version.h.

@@ -69,7 +69,7 @@ copy(
 
 copy(
   infrt_lib_dist
-  SRCS ${INFRT_BINARY_DIR}/paddle/framework.pb.h
+  SRCS ${INFRT_BINARY_DIR}/paddle/framework_infrt.pb.h
   DSTS ${INFRT_INSTALL_DIR}/infrt/include/internal)
 
 # paddle fluid version

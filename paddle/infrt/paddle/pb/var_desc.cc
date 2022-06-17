@@ -17,7 +17,7 @@
 #include <google/protobuf/map.h>
 
 #include "paddle/infrt/paddle/cpp/desc_api.h"
-#include "paddle/infrt/paddle/framework.pb.h"
+#include "paddle/infrt/paddle/framework_infrt.pb.h"
 
 namespace infrt {
 namespace paddle {

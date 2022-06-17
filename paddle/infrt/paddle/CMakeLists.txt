@@ -1,4 +1,4 @@
-proto_library(paddle_framework_proto SRCS framework.proto)
+proto_library(paddle_framework_proto SRCS framework_infrt.proto)
 
 add_subdirectory(cpp)
 add_subdirectory(pb)

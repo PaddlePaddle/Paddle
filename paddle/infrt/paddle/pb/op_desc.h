@@ -16,7 +16,7 @@
 #include <glog/logging.h>
 
 #include "paddle/infrt/paddle/cpp/desc_api.h"
-#include "paddle/infrt/paddle/framework.pb.h"
+#include "paddle/infrt/paddle/framework_infrt.pb.h"
 #include "paddle/infrt/support/variant.h"
 
 namespace infrt {
