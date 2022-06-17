@@ -34,42 +34,42 @@ class CastOpConverter : public OpConverter {
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(3) << "convert a cast op to tensorrt";
     framework::OpDesc op_desc(op, nullptr);
-    
+
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto out_dtype = BOOST_GET_CONST(int, op_desc.GetAttr("out_dtype"));
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
 
     switch (out_dtype) {
-    case 0:  // BOOL = 0;
+      case 0:  // BOOL = 0;
 #if IS_TRT_VERSION_LT(7000)
-      PADDLE_THROW(platform::errors::Fatal(
-        "BOOL data type is only supported on TRT 7 or higher version."));
+        PADDLE_THROW(platform::errors::Fatal(
+            "BOOL data type is only supported on TRT 7 or higher version."));
 #endif
-      layer->setOutputType(0, nvinfer1::DataType::kBOOL);
-      break;
-    case 2:  // INT32 = 2
-      layer->setOutputType(0, nvinfer1::DataType::kINT32);
-      break;
-    case 3:  // INT64 = 3
-      layer->setOutputType(0, nvinfer1::DataType::kINT32);
-      break;
-    case 4:  // FP16 = 4
-      layer->setOutputType(0, nvinfer1::DataType::kHALF);
-      break;
-    case 5:  // FP32 = 5
-      layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
-      break;
-    case 6:  // FP64 = 6
-      layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
-      break;
-    case 20:  // UINT8 = 20
-      layer->setOutputType(0, nvinfer1::DataType::kINT8);
-      break;
-    default:
-      LOG(ERROR) << "Unable to convert a fluid data type(" << out_dtype
-                 << ") to a nvinfer DataType";
-      break;
+        layer->setOutputType(0, nvinfer1::DataType::kBOOL);
+        break;
+      case 2:  // INT32 = 2
+        layer->setOutputType(0, nvinfer1::DataType::kINT32);
+        break;
+      case 3:  // INT64 = 3
+        layer->setOutputType(0, nvinfer1::DataType::kINT32);
+        break;
+      case 4:  // FP16 = 4
+        layer->setOutputType(0, nvinfer1::DataType::kHALF);
+        break;
+      case 5:  // FP32 = 5
+        layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
+        break;
+      case 6:  // FP64 = 6
+        layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
+        break;
+      case 20:  // UINT8 = 20
+        layer->setOutputType(0, nvinfer1::DataType::kINT8);
+        break;
+      default:
+        LOG(ERROR) << "Unable to convert a fluid data type(" << out_dtype
+                   << ") to a nvinfer DataType";
+        break;
     }
 
     auto output_name = op_desc.Output("Out")[0];

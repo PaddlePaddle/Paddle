@@ -1764,11 +1764,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 #if IS_TRT_VERSION_LT(7000)
       if (out_dtype == 0) {
-        VLOG(3) << "BOOL data type is only supported on TRT 7 or higher version.";
+        VLOG(3)
+            << "BOOL data type is only supported on TRT 7 or higher version.";
         return false;
       }
 #endif
-     
+    }
+
     if (op_type == "top_k_v2" || op_type == "top_k") {
       auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
