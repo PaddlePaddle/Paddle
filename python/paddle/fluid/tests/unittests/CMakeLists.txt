@@ -747,7 +747,6 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
 endif()
 
 if(WITH_HETERPS)
-  and(WITH_GPU)
   set_tests_properties(test_communicator_ps_gpu PROPERTIES LABELS
                                                            "RUN_TYPE=GPUPS")
   set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
