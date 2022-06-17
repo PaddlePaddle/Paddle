@@ -324,6 +324,7 @@ def densenet121(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
 
     Returns:
         DenseNet 121-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -356,6 +357,7 @@ def densenet161(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
 
     Returns:
         DenseNet 161-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -381,6 +383,7 @@ def densenet169(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
 
     Returns:
         DenseNet 169-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -413,6 +416,7 @@ def densenet201(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
 
     Returns:
         DenseNet 201-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -444,6 +448,7 @@ def densenet264(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
 
     Returns:
         DenseNet 264-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.

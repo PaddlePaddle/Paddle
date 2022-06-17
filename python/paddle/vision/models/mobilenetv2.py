@@ -191,6 +191,7 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
         scale: (float, optional): scale of channels in each layer. Default: 1.0.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV2 <api_paddle_vision_models_MobileNetV2>`.
 
     Returns:
         MobileNetV2 model. An instance of :ref:`api_fluid_dygraph_Layer`.

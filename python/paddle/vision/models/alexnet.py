@@ -191,7 +191,7 @@ def alexnet(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs: Additional keyword arguments，For details, please refer to :ref:`AlexNet <api_paddle_vision_models_AlexNet>`. 
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`AlexNet <api_paddle_vision_models_AlexNet>`.
 
     Returns:
         AlexNet model. An instance of :ref:`api_fluid_dygraph_Layer`.

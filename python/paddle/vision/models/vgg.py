@@ -147,6 +147,7 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
         batch_norm (bool, optional): If True, returns a model with batch_norm layer. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_models_VGG>`.
 
     Returns:
         VGG 11-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -183,6 +184,7 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
         batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_models_VGG>`.
 
     Returns:
         VGG 13-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -219,6 +221,7 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
         batch_norm (bool, optional): If True, returns a model with batch_norm layer. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_models_VGG>`.
 
     Returns:
         VGG 16-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -255,7 +258,8 @@ def vgg19(pretrained=False, batch_norm=False, **kwargs):
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
         batch_norm (bool, optional): If True, returns a model with batch_norm layer. Default: False.
-    
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_models_VGG>`.
+
     Returns:
         VGG 19-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
 

@@ -516,6 +516,7 @@ def inception_v3(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`InceptionV3 <api_paddle_vision_models_InceptionV3>`.
 
     Returns:
         Inception v3 model. An instance of :ref:`api_fluid_dygraph_Layer`.
