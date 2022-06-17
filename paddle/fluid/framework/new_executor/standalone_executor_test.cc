@@ -145,9 +145,7 @@ TEST(StandaloneExecutor, run) {
   exec.Run({}, {}, {});
   auto start = std::chrono::steady_clock::now();
 
-  // ProfilerStart("new_executor.prof");
-
-  for (size_t i = 0; i < 2320; ++i) {
+  for (size_t i = 0; i < 10; ++i) {
     if (i % 200 == 0) {
       std::cout << i << std::endl;
     }
@@ -155,13 +153,71 @@ TEST(StandaloneExecutor, run) {
     exec.Run({}, {}, {});
   }
 
-  // ProfilerStop();
-
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;
 
   std::cout << "time cost " << diff.count() << std::endl;
-  // ASSERT_LT(diff.count(), 30);
+}
+
+TEST(StandaloneExecutor, skip_gc_vars) {
+  FLAGS_eager_delete_tensor_gb = 0;
+
+  int64_t batch_size = 20;
+
+  auto place = platform::CUDAPlace(0);
+  auto startup_prog = load_from_file("lm_startup_program");
+  auto main_prog = load_from_file("lm_main_program");
+
+  auto& global_block = main_prog.Block(0);
+
+  auto& op1 = global_block.AllOps()[1];
+  auto shape1 = BOOST_GET_CONST(std::vector<int64_t>, op1->GetAttr("shape"));
+  shape1[0] = batch_size * 20;
+  op1->SetAttr("shape", shape1);
+
+  auto& op2 = global_block.AllOps()[2];
+  auto shape2 = BOOST_GET_CONST(std::vector<int64_t>, op2->GetAttr("shape"));
+  shape2[0] = batch_size;
+  op2->SetAttr("shape", shape2);
+
+  auto& op3 = global_block.AllOps()[3];
+  auto shape3 = BOOST_GET_CONST(std::vector<int64_t>, op3->GetAttr("shape"));
+  shape3[0] = batch_size;
+  op3->SetAttr("shape", shape3);
+
+  Scope scope;
+
+  VariableScope startup_scope(&scope);
+  std::shared_ptr<InterpreterCore> startup_core =
+      CreateInterpreterCore(place, startup_prog, &startup_scope);
+  startup_core->Run({}, {});
+
+  std::set<std::string> skip_gc_vars = {"uniform_0.tmp_0", "transpose_0.tmp_0",
+                                        "embedding_0.tmp_0", "slice_0.tmp_0",
+                                        "split_1.tmp_2"};
+  std::set<std::string> gc_vars = {"uniform_1.tmp_0", "matmul_0.tmp_0",
+                                   "split_0.tmp_0", "elementwise_add_0.tmp_0",
+                                   "tmp_0"};
+  auto check_gc_result = [](VariableScope& scope, std::set<std::string>& vars,
+                            bool is_skip_gc) {
+    for (const std::string& var_name : vars) {
+      ASSERT_EQ(
+          scope.FindVar(var_name)->GetMutable<LoDTensor>()->IsInitialized(),
+          is_skip_gc);
+    }
+  };
+
+  VariableScope main_scope(&scope);
+  std::shared_ptr<InterpreterCore> main_core =
+      CreateInterpreterCore(place, main_prog, &main_scope, {}, skip_gc_vars);
+
+  main_core->Run({}, {});
+  check_gc_result(main_scope, skip_gc_vars, true);
+  check_gc_result(main_scope, gc_vars, false);
+
+  main_core->Run({}, {});
+  check_gc_result(main_scope, skip_gc_vars, true);
+  check_gc_result(main_scope, gc_vars, false);
 }
 
 }  // namespace framework
