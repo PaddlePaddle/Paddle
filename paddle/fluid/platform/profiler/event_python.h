@@ -66,6 +66,10 @@ struct MemPythonNode {
   uint64_t current_allocated;
   // current total reserved memory
   uint64_t current_reserved;
+  // peak  allocated memory
+  uint64_t peak_allocated;
+  // peak  reserved memory
+  uint64_t peak_reserved;
 };
 
 struct HostPythonNode {

@@ -713,7 +713,7 @@ int32_t BrpcPsService::CacheShuffle(Table *table,
   };
 
   std::vector<Table *> table_ptrs;
-  for (size_t i = 3; i < request.params_size(); ++i) {
+  for (int i = 3; i < request.params_size(); ++i) {
     int table_id = std::stoi(request.params(i));
     Table *table_ptr = _server->GetTable(table_id);
     table_ptrs.push_back(table_ptr);
