@@ -56,9 +56,9 @@ __global__ void SoftmaxGpuKernel(const IntT* x_crows,
     if (idx >= row_nnz) break;
 
     auto functor = phi::funcs::CudaExpFunctor<T>();
-    out_values[row_first + idx] =
-        functor(x_values[row_first + idx] - row_max_val);
-    exp_sum += functor(x_values[row_first + idx] - row_max_val);
+    T exp = functor(x_values[row_first + idx] - row_max_val);
+    exp_sum += exp;
+    out_values[row_first + idx] = exp;
   }
   T row_exp_sum = phi::funcs::warpReduceSum<T>(exp_sum, 0xFFFFFFFF);
 
