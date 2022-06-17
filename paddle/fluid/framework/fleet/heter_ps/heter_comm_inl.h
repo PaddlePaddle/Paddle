@@ -888,6 +888,18 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 }
 
 #elif defined(PADDLE_WITH_XPU_KP)
+
+static void reset_xpu_memory(DevPlace & place, void* in_ptr, int len, int8_t value) {
+  int8_t * in_int8_ptr = reinterpret_cast<int8_t*>(in_ptr);
+  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  auto xpu_context = xpu_dev_ctx.x_context();
+  int r = xpu::constant<int8_t>(xpu_context, in_int8_ptr, len, value);
+  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                    platform::errors::External(
+                        "reset_xpu_memory: XPU constant kernel return wrong value[%d %s]", r,
+                        XPUAPIErrorMsg[r]));
+}
+
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
                                                         KeyType* d_keys,
@@ -943,11 +955,13 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   VLOG(0) << "heter comm inl push sparse memory copy d_fid_seq from cpu to xpu";
 
   // merge grad
-  auto d_shard_grads = memory::Alloc(place, h_fid_seq -> size() * sizeof(GradType));
+  int d_fgrad_len = h_fid_seq->size() * sizeof(GradType);
+  auto d_shard_grads = memory::Alloc(place, d_fgrad_len);
   VLOG(0) << "heter comm inl push sparse alloc xpu memory for d_bfids " << h_fid_seq->size() * sizeof(GradType);
   GradType* d_shard_grads_ptr = reinterpret_cast<GradType*>(d_shard_grads->ptr());
 
   VLOG(0) << "heter comm inl push sparse start merge grad";
+  reset_xpu_memory(place, d_shard_grads_ptr, d_fgrad_len, 0);
   heter_comm_kernel_->merge_grad(d_bfids_ptr, d_grads, len, d_shard_grads_ptr);
   VLOG(0) << "heter comm inl push sparse finish merge grad";
 
