@@ -91,6 +91,7 @@ from .loss import square_error_cost  # noqa: F401
 from .loss import ctc_loss  # noqa: F401
 from .loss import hinge_embedding_loss  # noqa: F401
 from .loss import cosine_embedding_loss  # noqa: F401
+from .loss import multi_label_soft_margin_loss
 from .loss import triplet_margin_with_distance_loss
 from .loss import triplet_margin_loss
 from .norm import batch_norm  # noqa: F401
@@ -206,6 +207,7 @@ __all__ = [  # noqa
     'log_loss',
     'mse_loss',
     'margin_ranking_loss',
+    'multi_label_soft_margin_loss',
     'nll_loss',
     'npair_loss',
     'sigmoid_focal_loss',
