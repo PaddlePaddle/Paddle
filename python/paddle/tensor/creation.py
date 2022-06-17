@@ -703,14 +703,13 @@ def full(shape, fill_value, dtype=None, name=None):
         shape(list|tuple|Tensor): Shape of the Tensor to be created.
                 The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
                 the elements of it should be integers or Tensors with shape [1].
-                If ``shape`` is an Tensor, it should be an 1-D Tensor .
+                If ``shape`` is an Tensor, it should be an 1-D Tensor.
         fill_value(bool|float|int|Tensor): The constant value
             used to initialize the Tensor to be created. If ``fill_value`` is an Tensor, it must be an 1-D Tensor.
         dtype(np.dtype|str, optional): Data type of the output Tensor
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
-            type of created Tensor is `float32`
-        name (str, optional): Name for the operation (optional, default is None). For more information,
-            please refer to :ref:`api_guide_Name`.
+            type of created Tensor is `float32`.
+        name (str, optional): name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
     
     Returns:
         Tensor: Tensor which is created according to ``shape``, ``fill_value`` and ``dtype``.
