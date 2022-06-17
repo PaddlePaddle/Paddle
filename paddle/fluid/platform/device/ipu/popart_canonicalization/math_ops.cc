@@ -40,10 +40,10 @@ Node *pow_handler(Graph *graph, Node *node) {
   } else {
     // Op(pow) -> Op(Constant)->Var(const_out)->Op(Pow)
     auto value_ = BOOST_GET_CONST(float, op->GetAttr("factor"));
-    auto attrs =
-        MakeConstAttrMapFromValue<float>(value_, {1}, GetOutputVarDType(node));
+    auto new_node_const =
+        CreateConst(graph, node, std::vector<decltype(value_)>{value_}, {1},
+                    GetOutputVarDType(node));
 
-    auto new_node_const = CreateConst(graph, node, {}, {}, attrs);
     return CreateBaseOp(
         graph, node, "popart_pow",
         {GetInputVarNode("X", node), new_node_const->outputs[0]},
@@ -135,8 +135,9 @@ Node *matmul_handler(Graph *graph, Node *node) {
   } else {
     auto o_node =
         CreateBaseOp(graph, node, "popart_matmul", {x_node, y_node}, {});
-    auto attr = MakeConstAttrMapFromValue(alpha, {1}, GetOutputVarDType(node));
-    auto const_node = CreateConst(graph, node, {}, {}, attr);
+    auto const_node =
+        CreateConst(graph, node, std::vector<decltype(alpha)>{alpha}, {1},
+                    GetOutputVarDType(node));
     return CreateBaseOp(graph, node, "popart_mul",
                         {o_node->outputs[0], const_node->outputs[0]},
                         node->outputs);
@@ -163,8 +164,8 @@ Node *scale_handler(Graph *graph, Node *node) {
       BOOST_GET_CONST(bool, op->GetAttr("bias_after_scale"));
   auto data_type_ = GetInputVarNode("X", node)->Var()->GetDataType();
 
-  auto cast = CreateCast(graph, node, {GetInputVarNode("X", node)}, {},
-                         static_cast<int>(framework::proto::VarType::FP32));
+  auto cast =
+      CreateCast(graph, node, {GetInputVarNode("X", node)}, {}, VarType::FP32);
 
   Node *result = nullptr;
   if (!op->Input("ScaleTensor").empty()) {
@@ -232,8 +233,7 @@ Node *scale_handler(Graph *graph, Node *node) {
     }
   }
   auto result_after_cast =
-      CreateCast(graph, node, result->outputs, node->outputs,
-                 static_cast<int>(data_type_));
+      CreateCast(graph, node, result->outputs, node->outputs, data_type_);
   return result_after_cast;
 }
 
@@ -241,12 +241,11 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto ignoreIndex = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
   Node *new_cast = nullptr;
-  if (GetInputVarNode("Label", node)->Var()->GetDataType() ==
-      framework::proto::VarType::INT32) {
+  if (GetInputVarNode("Label", node)->Var()->GetDataType() == VarType::INT32) {
     new_cast = GetInputVarNode("Label", node);
   } else {
     auto new_cast = CreateCast(graph, node, {GetInputVarNode("Label", node)},
-                               {}, framework::proto::VarType::INT32);
+                               {}, VarType::INT32);
     new_cast = new_cast->outputs[0];
   }
   auto label_shape_ = GetInputVarNode("Label", node)->Var()->GetShape();
@@ -310,12 +309,11 @@ Node *softmax_with_cross_entropy_handler(Graph *graph, Node *node) {
         "soft_label is not supported yet in IPU"));
   }
   Node *new_cast = nullptr;
-  if (GetInputVarNode("Label", node)->Var()->GetDataType() ==
-      framework::proto::VarType::INT32) {
+  if (GetInputVarNode("Label", node)->Var()->GetDataType() == VarType::INT32) {
     new_cast = GetInputVarNode("Label", node);
   } else {
     auto new_cast = CreateCast(graph, node, {GetInputVarNode("Label", node)},
-                               {}, framework::proto::VarType::INT32);
+                               {}, VarType::INT32);
     new_cast = new_cast->outputs[0];
   }
   auto softmax_node = CreateSoftmaxOpset11(
@@ -432,6 +430,12 @@ Node *matmul_v2_handler(Graph *graph, Node *node) {
                       node->outputs);
 }
 
+Node *bmm_handler(Graph *graph, Node *node) {
+  return CreateBaseOp(graph, node, "popart_matmul",
+                      {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
+                      node->outputs);
+}
+
 Node *arg_max_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto axis = BOOST_GET_CONST(int64_t, op->GetAttr("axis"));
@@ -467,5 +471,6 @@ REGISTER_HANDLER(softmax_with_cross_entropy,
 REGISTER_HANDLER(cross_entropy2, cross_entropy2_handler);
 REGISTER_HANDLER(cumsum, cumsum_handler);
 REGISTER_HANDLER(matmul_v2, matmul_v2_handler);
+REGISTER_HANDLER(bmm, bmm_handler);
 REGISTER_HANDLER(arg_max, arg_max_handler);
 REGISTER_HANDLER(arg_min, arg_min_handler);

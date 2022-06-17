@@ -83,7 +83,7 @@ Node *topk_handler(Graph *graph, Node *node) {
                 {"largest", int64_t{largest}},
                 {"sorted", int64_t{sorted}}});
   return CreateCast(graph, node, {var_i}, {GetOutputVarNode("Indices", node)},
-                    static_cast<int>(framework::proto::VarType::INT32));
+                    VarType::INT32);
 }
 
 Node *argsort_handler(Graph *graph, Node *node) {
@@ -95,12 +95,8 @@ Node *argsort_handler(Graph *graph, Node *node) {
     axis_ = axis_ + x_shape.size();
   }
   auto *dim_size =
-      CreateConst(graph, node, {}, {},
-                  {
-                      {"value", std::vector<int64_t>{x_shape[axis_]}},
-                      {"dims", std::vector<int64_t>{1}},
-                      {"dtype", ONNXDataType::INT64},
-                  })
+      CreateConst(graph, node, std::vector<int64_t>{x_shape[axis_]}, {1},
+                  ONNXDataType::INT64)
           ->outputs.front();
   int64_t largest = descending_ ? 1 : 0;
   return CreateBaseOp(
