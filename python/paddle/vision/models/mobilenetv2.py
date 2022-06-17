@@ -75,10 +75,10 @@ class MobileNetV2(nn.Layer):
     `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
 
     Args:
-        scale (float, optional): scale of channels in each layer. Default: 1.0.
+        scale (float, optional): Scale of channels in each layer. Default: 1.0.
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
                             will not be defined. Default: 1000.
-        with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
+        with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
         MobileNetV2 model. An instance of :ref:`api_fluid_dygraph_Layer`.

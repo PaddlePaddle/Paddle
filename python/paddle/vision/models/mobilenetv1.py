@@ -58,10 +58,10 @@ class MobileNetV1(nn.Layer):
     `"MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications" <https://arxiv.org/abs/1704.04861>`_.
 
     Args:
-        scale (float, optional): scale of channels in each layer. Default: 1.0.
+        scale (float, optional): Scale of channels in each layer. Default: 1.0.
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
                             will not be defined. Default: 1000.
-        with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
+        with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
         MobileNetV1 model. An instance of :ref:`api_fluid_dygraph_Layer`.
