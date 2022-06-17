@@ -94,6 +94,8 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
     mem_python_node->place = (*memnode)->Place();
     mem_python_node->current_allocated = (*memnode)->CurrentAllocated();
     mem_python_node->current_reserved = (*memnode)->CurrentReserved();
+    mem_python_node->peak_allocated = (*memnode)->PeakAllocated();
+    mem_python_node->peak_reserved = (*memnode)->PeakReserved();
     host_python_node->mem_node_ptrs.push_back(mem_python_node);
   }
   // copy OperatorSupplementEventNode's information if exists

@@ -133,6 +133,8 @@ void SerializationLogger::LogMemTraceEventNode(
   mem_trace_event->set_place(mem_node.Place());
   mem_trace_event->set_current_allocated(mem_node.CurrentAllocated());
   mem_trace_event->set_current_reserved(mem_node.CurrentReserved());
+  mem_trace_event->set_peak_allocated(mem_node.PeakAllocated());
+  mem_trace_event->set_peak_reserved(mem_node.PeakReserved());
   current_mem_trace_event_node_proto_->set_allocated_mem_event(mem_trace_event);
 }
 
