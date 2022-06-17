@@ -97,11 +97,12 @@ void BindAESCipher(py::module* m) {
 void BindCipherFactory(py::module* m) {
   py::class_<CipherFactory>(*m, "CipherFactory")
       .def(py::init<>())
-      .def_static("create_cipher",
-                  [](const std::string& config_file) {
-                    return CipherFactory::CreateCipher(config_file);
-                  },
-                  py::arg("config_file") = std::string());
+      .def_static(
+          "create_cipher",
+          [](const std::string& config_file) {
+            return CipherFactory::CreateCipher(config_file);
+          },
+          py::arg("config_file") = std::string());
 }
 
 void BindCipherUtils(py::module* m) {

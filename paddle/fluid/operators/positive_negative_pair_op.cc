@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/positive_negative_pair_op.h"
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -41,11 +42,12 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
           ctx->HasInput("AccumulatePositivePair") &&
               ctx->HasInput("AccumulateNegativePair") &&
               ctx->HasInput("AccumulateNeutralPair"),
-          true, platform::errors::InvalidArgument(
-                    "All optional inputs(AccumulatePositivePair, "
-                    "AccumulateNegativePair, AccumulateNeutralPair) of "
-                    "PositiveNegativePairOp are required if one of them "
-                    "is specified."));
+          true,
+          platform::errors::InvalidArgument(
+              "All optional inputs(AccumulatePositivePair, "
+              "AccumulateNegativePair, AccumulateNeutralPair) of "
+              "PositiveNegativePairOp are required if one of them "
+              "is specified."));
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("AccumulatePositivePair"), scalar_dim,
           platform::errors::InvalidArgument(
@@ -123,7 +125,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
           column, depth,
           platform::errors::OutOfRange(
               "Attr(column) should be less than depth(the second "
-              "dimension of Input(Score)). Recieved Attr(column): %d, while "
+              "dimension of Input(Score)). Received Attr(column): %d, while "
               "depth is %d.",
               column, depth));
       PADDLE_ENFORCE_GE(
@@ -131,7 +133,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
           platform::errors::OutOfRange(
               "Attr(column) should be greater than equal to negative "
               "depth, i.e. the second dimension of Input(Score). "
-              "Recieved Attr(column): %d, while negative depth is %d.",
+              "Received Attr(column): %d, while negative depth is %d.",
               column, -depth));
     }
 

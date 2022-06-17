@@ -76,7 +76,8 @@ class VGG(nn.Layer):
                 nn.Linear(4096, 4096),
                 nn.ReLU(),
                 nn.Dropout(),
-                nn.Linear(4096, num_classes), )
+                nn.Linear(4096, num_classes),
+            )
 
     def forward(self, x):
         x = self.features(x)

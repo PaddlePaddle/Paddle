@@ -1,13 +1,13 @@
 # -*- coding: UTF-8 -*-
 
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -36,6 +36,14 @@ epoch = 2
 batch_size = 32
 linear_size = 1000
 
+strategy = fleet.DistributedStrategy()
+strategy.hybrid_configs = {
+    "dp_degree": 2,
+    "mp_degree": 1,
+    "pp_degree": 1,
+    "sharding_degree": 1
+}
+
 np.random.seed(seed)
 paddle.seed(seed)
 
@@ -47,19 +55,20 @@ def train_mlp(model, offload=False):
     scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
     scaler = ShardingScaler(scaler)
 
-    optimizer = ShardingOptimizerStage2(
-        params=model.parameters(), optim=optimizer, offload=offload)
+    optimizer = ShardingOptimizerStage2(params=model.parameters(),
+                                        optim=optimizer,
+                                        offload=offload)
     model = ShardingStage2(model, optimizer, buffer_max_size=2**21)
 
-    train_reader = paddle.batch(
-        reader_decorator(linear_size), batch_size=batch_size, drop_last=True)
+    train_reader = paddle.batch(reader_decorator(linear_size),
+                                batch_size=batch_size,
+                                drop_last=True)
 
-    train_loader = paddle.io.DataLoader.from_generator(
-        capacity=32,
-        use_double_buffer=True,
-        iterable=True,
-        return_list=True,
-        use_multiprocess=True)
+    train_loader = paddle.io.DataLoader.from_generator(capacity=32,
+                                                       use_double_buffer=True,
+                                                       iterable=True,
+                                                       return_list=True,
+                                                       use_multiprocess=True)
     train_loader.set_sample_list_generator(train_reader)
 
     for eop in range(epoch):
@@ -72,8 +81,8 @@ def train_mlp(model, offload=False):
 
             with paddle.amp.auto_cast(True, level='O2'):
                 out = model(img)
-                loss = paddle.nn.functional.cross_entropy(
-                    input=out, label=label)
+                loss = paddle.nn.functional.cross_entropy(input=out,
+                                                          label=label)
 
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
             scaler.scale(avg_loss).backward()
@@ -98,15 +107,15 @@ def test_sharding_stage2_offload():
     mlp_offload_params = train_mlp(mlp_offload, offload=True)
 
     for i in range(len(mlp_params)):
-        np.testing.assert_allclose(
-            mlp_params[i].numpy(),
-            mlp_offload_params[i].numpy(),
-            rtol=5e-3,
-            atol=5e-3)
+        np.testing.assert_allclose(mlp_params[i].numpy(),
+                                   mlp_offload_params[i].numpy(),
+                                   rtol=5e-3,
+                                   atol=5e-3)
     return
 
 
 if __name__ == '__main__':
     with _test_eager_guard():
         pass
+    fleet.init(is_collective=True, strategy=strategy)
     test_sharding_stage2_offload()

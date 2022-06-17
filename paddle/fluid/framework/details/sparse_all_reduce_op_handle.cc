@@ -41,8 +41,9 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
       is_encoded_(is_encoded),
       nranks_(nranks) {
   // TODO(gongwb) :polish them!
-  PADDLE_ENFORCE_EQ(is_encoded, true, platform::errors::InvalidArgument(
-                                          "The argument is_encoded is false."));
+  PADDLE_ENFORCE_EQ(
+      is_encoded, true,
+      platform::errors::InvalidArgument("The argument is_encoded is false."));
   VLOG(1) << "Use dgc allreduce mode"
           << ", nranks:" << nranks_;
 
@@ -75,7 +76,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
       in_var_handles.size(), places_.size(),
       platform::errors::PreconditionNotMet(
           "The number of input variables should be equal to the number of "
-          "places, but got the number of input variables is %zu and the the "
+          "places, but got the number of input variables is %zu and the "
           "number of places is %zu.",
           in_var_handles.size(), places_.size()));
   PADDLE_ENFORCE_EQ(
@@ -83,7 +84,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
       platform::errors::PreconditionNotMet(
           "The number of input variables should be equal to the number of "
           "output variables, but got the number of input variables is %zu and "
-          "the the number of output variables is %zu.",
+          "the number of output variables is %zu.",
           in_var_handles.size(), out_var_handles.size()));
 
   std::vector<const LoDTensor *> ins;
@@ -193,11 +194,12 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
 
     sparse_reduce_calls.emplace_back([=] {
       platform::CUDADeviceGuard guard(dev_id);
-      PADDLE_ENFORCE_EQ(paddle::communication::dgc::sparseReduce(
-                            gather_buff, k, out_tensor_buf,
-                            static_cast<int>(out_numel), nranks_, stream),
-                        true, platform::errors::Unavailable(
-                                  "Calling sparseReduce() failed."));
+      PADDLE_ENFORCE_EQ(
+          paddle::communication::dgc::sparseReduce(
+              gather_buff, k, out_tensor_buf, static_cast<int>(out_numel),
+              nranks_, stream),
+          true,
+          platform::errors::Unavailable("Calling sparseReduce() failed."));
     });
   }
 

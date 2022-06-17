@@ -18,6 +18,7 @@ import os
 
 
 class Command(object):
+
     def __init__(self, server, name):
         import etcd3
 
@@ -47,8 +48,9 @@ class Command(object):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Elastic Command')
-    parser.add_argument(
-        "--elastic_server", type=str, help="etcd server host:port")
+    parser.add_argument("--elastic_server",
+                        type=str,
+                        help="etcd server host:port")
     parser.add_argument("--job_id", type=str, help="job unique id")
     parser.add_argument(
         "--np",

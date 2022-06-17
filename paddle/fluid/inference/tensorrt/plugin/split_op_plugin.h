@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include <thrust/device_vector.h>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
 namespace paddle {
@@ -92,8 +92,6 @@ class SplitPlugin : public PluginTensorRTV2Ext {
   bool same_shape_;
   std::vector<int> output_length_;
   std::vector<int> segment_offsets_;
-  thrust::device_vector<int> d_segment_offsets_;
-  thrust::device_vector<float*> d_output_ptrs_;
 
  private:
   void shareData(const SplitPlugin* another);

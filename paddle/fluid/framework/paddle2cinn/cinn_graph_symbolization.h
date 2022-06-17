@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+// clang-format off
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -26,6 +27,7 @@ limitations under the License. */
 
 #include "cinn/frontend/net_builder.h"
 #include "cinn/frontend/op_mapper_registry.h"
+// clang-format on
 
 namespace paddle {
 namespace framework {

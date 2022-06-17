@@ -38,6 +38,7 @@ batch_num = 1000
 
 
 class SimpleNetUnusedParam(fluid.Layer):
+
     def __init__(self):
         super(SimpleNetUnusedParam, self).__init__()
         self.net_a = Linear(input_dim=10, output_dim=20)
@@ -55,10 +56,12 @@ class SimpleNetUnusedParam(fluid.Layer):
 
 
 class TestNoSyncUnusedParam(TestNoSync):
+
     def get_model(self):
         model = SimpleNetUnusedParam()
-        train_reader = paddle.batch(
-            fake_sample_reader(), batch_size=batch_size, drop_last=True)
+        train_reader = paddle.batch(fake_sample_reader(),
+                                    batch_size=batch_size,
+                                    drop_last=True)
         optimizer = paddle.optimizer.SGD(learning_rate=0.001,
                                          parameters=model.parameters())
         return model, train_reader, optimizer
@@ -73,6 +76,7 @@ class TestNoSyncUnusedParam(TestNoSync):
 
 
 def fake_sample_reader():
+
     def __reader__():
         for i in range(batch_num):
             x_data = np.random.random_sample((10, )).astype('float32')

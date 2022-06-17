@@ -15,6 +15,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
@@ -99,6 +100,24 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
   Update();
 }
 
+void AnalysisConfig::SetExecStream(void *stream) {
+  PADDLE_ENFORCE_NOT_NULL(stream, platform::errors::InvalidArgument(
+                                      "`stream` should not be nullptr"));
+  exec_stream_ = stream;
+  use_external_stream_ = true;
+  Update();
+}
+
+void *AnalysisConfig::GetExecStream() const {
+  PADDLE_ENFORCE_NOT_NULL(exec_stream_, platform::errors::InvalidArgument(
+                                            "`stream` should not be nullptr"));
+  return exec_stream_;
+}
+
+bool AnalysisConfig::external_stream_enabled() const {
+  return use_external_stream_;
+}
+
 void AnalysisConfig::DisableGpu() {
   use_gpu_ = false;
 
@@ -155,6 +174,19 @@ void AnalysisConfig::EnableNpu(int device_id) {
   use_npu_ = false;
 #endif
 
+  Update();
+}
+
+void AnalysisConfig::EnableCustomDevice(const std::string &device_type,
+                                        int device_id) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  use_custom_device_ = true;
+  custom_device_id_ = device_id;
+  custom_device_type_ = device_type;
+#else
+  LOG(ERROR) << "Please compile with CustomDevice to EnableCustomDevice()";
+  use_custom_device_ = false;
+#endif
   Update();
 }
 
@@ -225,6 +257,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_fc_padding_);
   // GPU related.
   CP_MEMBER(use_gpu_);
+  CP_MEMBER(use_external_stream_);
+  CP_MEMBER(exec_stream_);
   CP_MEMBER(use_cudnn_);
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
@@ -243,8 +277,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_dla_core_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
-  CP_MEMBER(trt_use_oss_);
+  CP_MEMBER(trt_use_varseqlen_);
   CP_MEMBER(trt_with_interleaved_);
+  CP_MEMBER(tensorrt_transformer_posid_);
+  CP_MEMBER(tensorrt_transformer_maskid_);
   CP_MEMBER(trt_tuned_dynamic_shape_);
   CP_MEMBER(trt_allow_build_at_runtime_);
   CP_MEMBER(collect_shape_range_info_);
@@ -323,6 +359,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // fleet exe related
   CP_MEMBER(dist_config_);
+
+  // custom device related.
+  CP_MEMBER(use_custom_device_);
+  CP_MEMBER(custom_device_type_);
+  CP_MEMBER(custom_device_id_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_, false,
@@ -528,7 +569,7 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
-void AnalysisConfig::EnableTensorRtOSS() { trt_use_oss_ = true; }
+void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
@@ -539,7 +580,8 @@ void AnalysisConfig::Update() {
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
       ((use_xpu() ^ pass_builder_->use_xpu())) ||
       ((use_npu() ^ pass_builder_->use_npu())) ||
-      ((use_ipu() ^ pass_builder_->use_ipu()))) {
+      ((use_ipu() ^ pass_builder_->use_ipu())) ||
+      ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy);
 
@@ -562,6 +604,12 @@ void AnalysisConfig::Update() {
           platform::errors::InvalidArgument(
               "Only one choice can be made between GPU and NPU."));
       pass_builder_.reset(new NpuPassStrategy);
+    } else if (use_custom_device()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(), false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and CustomDevice."));
+      pass_builder_.reset(new CustomDevicePassStrategy);
     } else {
       pass_builder_.reset(new CpuPassStrategy);
     }
@@ -588,6 +636,13 @@ void AnalysisConfig::Update() {
               "Only one choice can be made between GPU and NPU."));
       pass_builder_.reset(new NpuPassStrategy(
           *static_cast<NpuPassStrategy *>(pass_builder_.get())));
+    } else if (use_custom_device()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(), false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and CustomDevice."));
+      pass_builder_.reset(new CustomDevicePassStrategy(
+          *static_cast<CustomDevicePassStrategy *>(pass_builder_.get())));
     } else {
       pass_builder_.reset(new CpuPassStrategy(
           *static_cast<CpuPassStrategy *>(pass_builder_.get())));
@@ -733,7 +788,13 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_IPU compiled."));
 #endif
   }
-
+  if (use_custom_device_) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to enable the custom device "
+        "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
+#endif
+  }
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
   }
@@ -746,6 +807,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
+  ss << use_external_stream_;
+  ss << exec_stream_;
   ss << use_gpu_fp16_;
   for (auto &item : gpu_fp16_disabled_op_types_) ss << item;
   ss << use_fc_padding_;
@@ -945,6 +1008,8 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
     os.InsertRow(
+        {"use_external_stream", use_external_stream_ ? "true" : "false"});
+    os.InsertRow(
         {"thread_local_stream", thread_local_stream_ ? "true" : "false"});
 
     os.InsertRow({"use_tensorrt", use_tensorrt_ ? "true" : "false"});
@@ -996,9 +1061,13 @@ std::string AnalysisConfig::Summary() {
                                                         ? shape_range_info_path_
                                                         : "false"});
 
-      os.InsertRow({"tensorrt_use_oss", trt_use_oss_ ? "true" : "false"});
+      os.InsertRow(
+          {"tensorrt_use_varseqlen", trt_use_varseqlen_ ? "true" : "false"});
       os.InsertRow({"tensorrt_with_interleaved",
                     trt_with_interleaved_ ? "true" : "false"});
+      os.InsertRow({"tensorrt_transformer_posid", tensorrt_transformer_posid_});
+      os.InsertRow(
+          {"tensorrt_transformer_maskid", tensorrt_transformer_maskid_});
       os.InsertRow({"tensorrt_use_dla", trt_use_dla_ ? "true" : "false"});
       if (trt_use_dla_) {
         os.InsertRow({"tensorrt_dla_core", std::to_string(trt_dla_core_)});
@@ -1061,8 +1130,9 @@ LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheBuffers(
                     platform::errors::InvalidArgument(
                         "model_cache_buffer should not be empty."));
   PADDLE_ENFORCE_EQ(nnadapter_model_cache_buffers.count(model_cache_token),
-                    false, platform::errors::InvalidArgument(
-                               "model_cache_token has already been set."));
+                    false,
+                    platform::errors::InvalidArgument(
+                        "model_cache_token has already been set."));
 
   nnadapter_model_cache_buffers[model_cache_token] = model_cache_buffer;
   return *this;

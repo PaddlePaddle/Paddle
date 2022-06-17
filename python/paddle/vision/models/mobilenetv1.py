@@ -28,24 +28,24 @@ model_urls = {
 
 
 class DepthwiseSeparable(nn.Layer):
+
     def __init__(self, in_channels, out_channels1, out_channels2, num_groups,
                  stride, scale):
         super(DepthwiseSeparable, self).__init__()
 
-        self._depthwise_conv = ConvNormActivation(
-            in_channels,
-            int(out_channels1 * scale),
-            kernel_size=3,
-            stride=stride,
-            padding=1,
-            groups=int(num_groups * scale))
+        self._depthwise_conv = ConvNormActivation(in_channels,
+                                                  int(out_channels1 * scale),
+                                                  kernel_size=3,
+                                                  stride=stride,
+                                                  padding=1,
+                                                  groups=int(num_groups *
+                                                             scale))
 
-        self._pointwise_conv = ConvNormActivation(
-            int(out_channels1 * scale),
-            int(out_channels2 * scale),
-            kernel_size=1,
-            stride=1,
-            padding=0)
+        self._pointwise_conv = ConvNormActivation(int(out_channels1 * scale),
+                                                  int(out_channels2 * scale),
+                                                  kernel_size=1,
+                                                  stride=1,
+                                                  padding=0)
 
     def forward(self, x):
         x = self._depthwise_conv(x)
@@ -85,111 +85,101 @@ class MobileNetV1(nn.Layer):
         self.num_classes = num_classes
         self.with_pool = with_pool
 
-        self.conv1 = ConvNormActivation(
-            in_channels=3,
-            out_channels=int(32 * scale),
-            kernel_size=3,
-            stride=2,
-            padding=1)
+        self.conv1 = ConvNormActivation(in_channels=3,
+                                        out_channels=int(32 * scale),
+                                        kernel_size=3,
+                                        stride=2,
+                                        padding=1)
 
-        dws21 = self.add_sublayer(
-            sublayer=DepthwiseSeparable(
-                in_channels=int(32 * scale),
-                out_channels1=32,
-                out_channels2=64,
-                num_groups=32,
-                stride=1,
-                scale=scale),
-            name="conv2_1")
+        dws21 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            32 * scale),
+                                                              out_channels1=32,
+                                                              out_channels2=64,
+                                                              num_groups=32,
+                                                              stride=1,
+                                                              scale=scale),
+                                  name="conv2_1")
         self.dwsl.append(dws21)
 
-        dws22 = self.add_sublayer(
-            sublayer=DepthwiseSeparable(
-                in_channels=int(64 * scale),
-                out_channels1=64,
-                out_channels2=128,
-                num_groups=64,
-                stride=2,
-                scale=scale),
-            name="conv2_2")
+        dws22 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            64 * scale),
+                                                              out_channels1=64,
+                                                              out_channels2=128,
+                                                              num_groups=64,
+                                                              stride=2,
+                                                              scale=scale),
+                                  name="conv2_2")
         self.dwsl.append(dws22)
 
-        dws31 = self.add_sublayer(
-            sublayer=DepthwiseSeparable(
-                in_channels=int(128 * scale),
-                out_channels1=128,
-                out_channels2=128,
-                num_groups=128,
-                stride=1,
-                scale=scale),
-            name="conv3_1")
+        dws31 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            128 * scale),
+                                                              out_channels1=128,
+                                                              out_channels2=128,
+                                                              num_groups=128,
+                                                              stride=1,
+                                                              scale=scale),
+                                  name="conv3_1")
         self.dwsl.append(dws31)
 
-        dws32 = self.add_sublayer(
-            sublayer=DepthwiseSeparable(
-                in_channels=int(128 * scale),
-                out_channels1=128,
-                out_channels2=256,
-                num_groups=128,
-                stride=2,
-                scale=scale),
-            name="conv3_2")
+        dws32 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            128 * scale),
+                                                              out_channels1=128,
+                                                              out_channels2=256,
+                                                              num_groups=128,
+                                                              stride=2,
+                                                              scale=scale),
+                                  name="conv3_2")
         self.dwsl.append(dws32)
 
-        dws41 = self.add_sublayer(
-            sublayer=DepthwiseSeparable(
-                in_channels=int(256 * scale),
-                out_channels1=256,
-                out_channels2=256,
-                num_groups=256,
-                stride=1,
-                scale=scale),
-            name="conv4_1")
+        dws41 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            256 * scale),
+                                                              out_channels1=256,
+                                                              out_channels2=256,
+                                                              num_groups=256,
+                                                              stride=1,
+                                                              scale=scale),
+                                  name="conv4_1")
         self.dwsl.append(dws41)
 
-        dws42 = self.add_sublayer(
-            sublayer=DepthwiseSeparable(
-                in_channels=int(256 * scale),
-                out_channels1=256,
-                out_channels2=512,
-                num_groups=256,
-                stride=2,
-                scale=scale),
-            name="conv4_2")
+        dws42 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            256 * scale),
+                                                              out_channels1=256,
+                                                              out_channels2=512,
+                                                              num_groups=256,
+                                                              stride=2,
+                                                              scale=scale),
+                                  name="conv4_2")
         self.dwsl.append(dws42)
 
         for i in range(5):
-            tmp = self.add_sublayer(
-                sublayer=DepthwiseSeparable(
-                    in_channels=int(512 * scale),
-                    out_channels1=512,
-                    out_channels2=512,
-                    num_groups=512,
-                    stride=1,
-                    scale=scale),
-                name="conv5_" + str(i + 1))
-            self.dwsl.append(tmp)
-
-        dws56 = self.add_sublayer(
-            sublayer=DepthwiseSeparable(
+            tmp = self.add_sublayer(sublayer=DepthwiseSeparable(
                 in_channels=int(512 * scale),
                 out_channels1=512,
-                out_channels2=1024,
+                out_channels2=512,
                 num_groups=512,
-                stride=2,
-                scale=scale),
-            name="conv5_6")
-        self.dwsl.append(dws56)
-
-        dws6 = self.add_sublayer(
-            sublayer=DepthwiseSeparable(
-                in_channels=int(1024 * scale),
-                out_channels1=1024,
-                out_channels2=1024,
-                num_groups=1024,
                 stride=1,
                 scale=scale),
-            name="conv6")
+                                    name="conv5_" + str(i + 1))
+            self.dwsl.append(tmp)
+
+        dws56 = self.add_sublayer(sublayer=DepthwiseSeparable(
+            in_channels=int(512 * scale),
+            out_channels1=512,
+            out_channels2=1024,
+            num_groups=512,
+            stride=2,
+            scale=scale),
+                                  name="conv5_6")
+        self.dwsl.append(dws56)
+
+        dws6 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            1024 * scale),
+                                                             out_channels1=1024,
+                                                             out_channels2=1024,
+                                                             num_groups=1024,
+                                                             stride=1,
+                                                             scale=scale),
+                                 name="conv6")
         self.dwsl.append(dws6)
 
         if with_pool:
@@ -253,6 +243,8 @@ def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
 
             print(out.shape)
     """
-    model = _mobilenet(
-        'mobilenetv1_' + str(scale), pretrained, scale=scale, **kwargs)
+    model = _mobilenet('mobilenetv1_' + str(scale),
+                       pretrained,
+                       scale=scale,
+                       **kwargs)
     return model

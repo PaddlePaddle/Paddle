@@ -23,7 +23,7 @@ from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygr
 from paddle.common_ops_import import *
 from paddle import _C_ops
 
-__all__ = [ #noqa
+__all__ = [  #noqa
     'yolo_loss',
     'yolo_box',
     'deform_conv2d',
@@ -238,15 +238,14 @@ def yolo_loss(x,
         "scale_x_y": scale_x_y,
     }
 
-    helper.append_op(
-        type='yolov3_loss',
-        inputs=inputs,
-        outputs={
-            'Loss': loss,
-            'ObjectnessMask': objectness_mask,
-            'GTMatchMask': gt_match_mask
-        },
-        attrs=attrs)
+    helper.append_op(type='yolov3_loss',
+                     inputs=inputs,
+                     outputs={
+                         'Loss': loss,
+                         'ObjectnessMask': objectness_mask,
+                         'GTMatchMask': gt_match_mask
+                     },
+                     attrs=attrs)
     return loss
 
 
@@ -379,9 +378,11 @@ def yolo_box(x,
                                                    scale_x_y=1.)
     """
     if in_dygraph_mode():
-        boxes, scores = _C_ops.final_state_yolo_box(
-            x, img_size, anchors, class_num, conf_thresh, downsample_ratio,
-            clip_bbox, scale_x_y, iou_aware, iou_aware_factor)
+        boxes, scores = _C_ops.final_state_yolo_box(x, img_size, anchors,
+                                                    class_num, conf_thresh,
+                                                    downsample_ratio, clip_bbox,
+                                                    scale_x_y, iou_aware,
+                                                    iou_aware_factor)
         return boxes, scores
 
     if _non_static_mode():
@@ -413,17 +414,16 @@ def yolo_box(x,
         "iou_aware_factor": iou_aware_factor
     }
 
-    helper.append_op(
-        type='yolo_box',
-        inputs={
-            "X": x,
-            "ImgSize": img_size,
-        },
-        outputs={
-            'Boxes': boxes,
-            'Scores': scores,
-        },
-        attrs=attrs)
+    helper.append_op(type='yolo_box',
+                     inputs={
+                         "X": x,
+                         "ImgSize": img_size,
+                     },
+                     outputs={
+                         'Boxes': boxes,
+                         'Scores': scores,
+                     },
+                     attrs=attrs)
     return boxes, scores
 
 
@@ -559,9 +559,10 @@ def deform_conv2d(x,
     use_deform_conv2d_v1 = True if mask is None else False
 
     if in_dygraph_mode():
-        pre_bias = _C_ops.final_state_deformable_conv(
-            x, offset, weight, mask, stride, padding, dilation,
-            deformable_groups, groups, 1)
+        pre_bias = _C_ops.final_state_deformable_conv(x, offset, weight, mask,
+                                                      stride, padding, dilation,
+                                                      deformable_groups, groups,
+                                                      1)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=1)
         else:
@@ -622,17 +623,20 @@ def deform_conv2d(x,
             'deformable_groups': deformable_groups,
             'im2col_step': 1,
         }
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
 
         if bias is not None:
             out = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [pre_bias],
-                        'Y': [bias]},
-                outputs={'Out': [out]},
-                attrs={'axis': 1})
+            helper.append_op(type='elementwise_add',
+                             inputs={
+                                 'X': [pre_bias],
+                                 'Y': [bias]
+                             },
+                             outputs={'Out': [out]},
+                             attrs={'axis': 1})
         else:
             out = pre_bias
     return out
@@ -813,21 +817,21 @@ class DeformConv2D(Layer):
             shape=filter_shape,
             attr=self._weight_attr,
             default_initializer=_get_default_param_initializer())
-        self.bias = self.create_parameter(
-            attr=self._bias_attr, shape=[self._out_channels], is_bias=True)
+        self.bias = self.create_parameter(attr=self._bias_attr,
+                                          shape=[self._out_channels],
+                                          is_bias=True)
 
     def forward(self, x, offset, mask=None):
-        out = deform_conv2d(
-            x=x,
-            offset=offset,
-            weight=self.weight,
-            bias=self.bias,
-            stride=self._stride,
-            padding=self._padding,
-            dilation=self._dilation,
-            deformable_groups=self._deformable_groups,
-            groups=self._groups,
-            mask=mask)
+        out = deform_conv2d(x=x,
+                            offset=offset,
+                            weight=self.weight,
+                            bias=self.bias,
+                            stride=self._stride,
+                            padding=self._padding,
+                            dilation=self._dilation,
+                            deformable_groups=self._deformable_groups,
+                            groups=self._groups,
+                            mask=mask)
         return out
 
 
@@ -870,8 +874,10 @@ def read_file(filename, name=None):
 
     helper = LayerHelper("read_file", **locals())
     out = helper.create_variable_for_type_inference('uint8')
-    helper.append_op(
-        type="read_file", inputs=inputs, attrs=attrs, outputs={"Out": out})
+    helper.append_op(type="read_file",
+                     inputs=inputs,
+                     attrs=attrs,
+                     outputs={"Out": out})
 
     return out
 
@@ -895,7 +901,10 @@ def decode_jpeg(x, mode='unchanged', name=None):
 
     Examples:
         .. code-block:: python
+
+            # required: gpu
             import cv2
+            import numpy as np
             import paddle
 
             fake_img = (np.random.random(
@@ -917,8 +926,10 @@ def decode_jpeg(x, mode='unchanged', name=None):
 
     helper = LayerHelper("decode_jpeg", **locals())
     out = helper.create_variable_for_type_inference('uint8')
-    helper.append_op(
-        type="decode_jpeg", inputs=inputs, attrs=attrs, outputs={"Out": out})
+    helper.append_op(type="decode_jpeg",
+                     inputs=inputs,
+                     attrs=attrs,
+                     outputs={"Out": out})
 
     return out
 
@@ -983,17 +994,18 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     helper = LayerHelper('psroi_pool', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='psroi_pool',
-        inputs={'X': x,
-                'ROIs': boxes},
-        outputs={'Out': out},
-        attrs={
-            'output_channels': output_channels,
-            'spatial_scale': spatial_scale,
-            'pooled_height': pooled_height,
-            'pooled_width': pooled_width
-        })
+    helper.append_op(type='psroi_pool',
+                     inputs={
+                         'X': x,
+                         'ROIs': boxes
+                     },
+                     outputs={'Out': out},
+                     attrs={
+                         'output_channels': output_channels,
+                         'spatial_scale': spatial_scale,
+                         'pooled_height': pooled_height,
+                         'pooled_width': pooled_width
+                     })
     return out
 
 
@@ -1090,9 +1102,10 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
                                            pooled_width, spatial_scale)
     if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
-        pool_out, argmaxes = _C_ops.roi_pool(
-            x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
-            pooled_width, "spatial_scale", spatial_scale)
+        pool_out, argmaxes = _C_ops.roi_pool(x, boxes, boxes_num,
+                                             "pooled_height", pooled_height,
+                                             "pooled_width", pooled_width,
+                                             "spatial_scale", spatial_scale)
         return pool_out
 
     else:
@@ -1109,16 +1122,17 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         }
         if boxes_num is not None:
             inputs['RoisNum'] = boxes_num
-        helper.append_op(
-            type="roi_pool",
-            inputs=inputs,
-            outputs={"Out": pool_out,
-                     "Argmax": argmaxes},
-            attrs={
-                "pooled_height": pooled_height,
-                "pooled_width": pooled_width,
-                "spatial_scale": spatial_scale
-            })
+        helper.append_op(type="roi_pool",
+                         inputs=inputs,
+                         outputs={
+                             "Out": pool_out,
+                             "Argmax": argmaxes
+                         },
+                         attrs={
+                             "pooled_height": pooled_height,
+                             "pooled_width": pooled_width,
+                             "spatial_scale": spatial_scale
+                         })
         return pool_out
 
 
@@ -1156,12 +1170,11 @@ class RoIPool(Layer):
         self._spatial_scale = spatial_scale
 
     def forward(self, x, boxes, boxes_num):
-        return roi_pool(
-            x=x,
-            boxes=boxes,
-            boxes_num=boxes_num,
-            output_size=self._output_size,
-            spatial_scale=self._spatial_scale)
+        return roi_pool(x=x,
+                        boxes=boxes,
+                        boxes_num=boxes_num,
+                        output_size=self._output_size,
+                        spatial_scale=self._spatial_scale)
 
     def extra_repr(self):
         main_str = 'output_size={_output_size}, spatial_scale={_spatial_scale}'
@@ -1250,10 +1263,11 @@ def roi_align(x,
                                             sampling_ratio, aligned)
     if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
-        align_out = _C_ops.roi_align(
-            x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
-            pooled_width, "spatial_scale", spatial_scale, "sampling_ratio",
-            sampling_ratio, "aligned", aligned)
+        align_out = _C_ops.roi_align(x, boxes, boxes_num, "pooled_height",
+                                     pooled_height, "pooled_width",
+                                     pooled_width, "spatial_scale",
+                                     spatial_scale, "sampling_ratio",
+                                     sampling_ratio, "aligned", aligned)
         return align_out
 
     else:
@@ -1269,17 +1283,16 @@ def roi_align(x,
         }
         if boxes_num is not None:
             inputs['RoisNum'] = boxes_num
-        helper.append_op(
-            type="roi_align",
-            inputs=inputs,
-            outputs={"Out": align_out},
-            attrs={
-                "pooled_height": pooled_height,
-                "pooled_width": pooled_width,
-                "spatial_scale": spatial_scale,
-                "sampling_ratio": sampling_ratio,
-                "aligned": aligned,
-            })
+        helper.append_op(type="roi_align",
+                         inputs=inputs,
+                         outputs={"Out": align_out},
+                         attrs={
+                             "pooled_height": pooled_height,
+                             "pooled_width": pooled_width,
+                             "spatial_scale": spatial_scale,
+                             "sampling_ratio": sampling_ratio,
+                             "aligned": aligned,
+                         })
         return align_out
 
 
@@ -1321,13 +1334,12 @@ class RoIAlign(Layer):
         self._spatial_scale = spatial_scale
 
     def forward(self, x, boxes, boxes_num, aligned=True):
-        return roi_align(
-            x=x,
-            boxes=boxes,
-            boxes_num=boxes_num,
-            output_size=self._output_size,
-            spatial_scale=self._spatial_scale,
-            aligned=aligned)
+        return roi_align(x=x,
+                         boxes=boxes,
+                         boxes_num=boxes_num,
+                         output_size=self._output_size,
+                         spatial_scale=self._spatial_scale,
+                         aligned=aligned)
 
 
 class ConvNormActivation(Sequential):
@@ -1367,15 +1379,14 @@ class ConvNormActivation(Sequential):
         if bias is None:
             bias = norm_layer is None
         layers = [
-            Conv2D(
-                in_channels,
-                out_channels,
-                kernel_size,
-                stride,
-                padding,
-                dilation=dilation,
-                groups=groups,
-                bias_attr=bias)
+            Conv2D(in_channels,
+                   out_channels,
+                   kernel_size,
+                   stride,
+                   padding,
+                   dilation=dilation,
+                   groups=groups,
+                   bias_attr=bias)
         ]
         if norm_layer is not None:
             layers.append(norm_layer(out_channels))
@@ -1466,11 +1477,10 @@ def nms(boxes,
 
         helper = LayerHelper('nms', **locals())
         out = helper.create_variable_for_type_inference('int64')
-        helper.append_op(
-            type='nms',
-            inputs={'Boxes': boxes},
-            outputs={'KeepBoxesIdxs': out},
-            attrs={'iou_threshold': iou_threshold})
+        helper.append_op(type='nms',
+                         inputs={'Boxes': boxes},
+                         outputs={'KeepBoxesIdxs': out},
+                         attrs={'iou_threshold': iou_threshold})
         return out
 
     if scores is None:
@@ -1500,8 +1510,8 @@ def nms(boxes,
             continue
         cur_category_boxes = boxes[cur_category_boxes_idxs]
         cur_category_scores = scores[cur_category_boxes_idxs]
-        cur_category_sorted_indices = paddle.argsort(
-            cur_category_scores, descending=True)
+        cur_category_sorted_indices = paddle.argsort(cur_category_scores,
+                                                     descending=True)
         cur_category_sorted_boxes = cur_category_boxes[
             cur_category_sorted_indices]
 
@@ -1519,8 +1529,8 @@ def nms(boxes,
     keep_boxes_idxs = paddle.where(mask)[0]
     shape = keep_boxes_idxs.shape[0]
     keep_boxes_idxs = paddle.reshape(keep_boxes_idxs, [shape])
-    sorted_sub_indices = paddle.argsort(
-        scores[keep_boxes_idxs], descending=True)
+    sorted_sub_indices = paddle.argsort(scores[keep_boxes_idxs],
+                                        descending=True)
 
     if top_k is None:
         return keep_boxes_idxs[sorted_sub_indices]

@@ -37,6 +37,13 @@ extern PyTypeObject* p_tensor_type;
 
 PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
   EAGER_TRY
+  // NOTE(dev): [why not use egr::Controller::Instance::GernerateUniqueName()?]
+  // Beacause Controller must holder a tracer, but 'tensor.name' maybe called
+  // everywhere such as static mode in @to_static, which means tracer is None.
+  static egr::UniqueNameGenerator name_generator;
+  if (self->tensor.name().empty()) {
+    self->tensor.set_name(name_generator.Generate());
+  }
   return ToPyObject(self->tensor.name());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -51,6 +58,10 @@ PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
     return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
   } else if (self->tensor.is_selected_rows()) {
     return ToPyObject(paddle::framework::proto::VarType::SELECTED_ROWS);
+  } else if (egr::IsVariableCompatTensor(self->tensor)) {
+    return ToPyObject(static_cast<paddle::framework::proto::VarType::Type>(
+        static_cast<const egr::VariableCompatTensor*>(self->tensor.impl().get())
+            ->Type()));
   } else {
     RETURN_PY_NONE
   }
@@ -145,11 +156,27 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   if (!self->tensor.defined()) {
     return ToPyObject(value);
   }
-  auto ddim = self->tensor.shape();
-  size_t rank = static_cast<size_t>(ddim.size());
-  value.resize(rank);
-  for (size_t i = 0; i < rank; i++) {
-    value[i] = ddim[i];
+  if (egr::IsVariableCompatTensor(self->tensor)) {
+    auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
+        self->tensor.impl().get());
+    if (var_tensor->IsType<paddle::framework::Vocab>()) {
+      value.emplace_back(static_cast<int64_t>(
+          var_tensor->Get<paddle::framework::Vocab>().size()));
+    } else if (var_tensor->IsType<paddle::framework::Strings>()) {
+      value.emplace_back(static_cast<int64_t>(
+          var_tensor->Get<paddle::framework::Strings>().size()));
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Unavailable(
+          "VariableCompatTensor only support get shape from Vocab or "
+          "Strings."));
+    }
+  } else {
+    auto ddim = self->tensor.shape();
+    size_t rank = static_cast<size_t>(ddim.size());
+    value.resize(rank);
+    for (size_t i = 0; i < rank; i++) {
+      value[i] = ddim[i];
+    }
   }
 
   return ToPyObject(value);
@@ -176,8 +203,22 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
     // be same to old dygraph
     return ToPyObject(framework::proto::VarType::FP32);
   }
-  return ToPyObject(
-      paddle::framework::TransToProtoVarType(self->tensor.type()));
+  if (egr::IsVariableCompatTensor(self->tensor)) {
+    auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
+        self->tensor.impl().get());
+    if (var_tensor->IsType<paddle::framework::Vocab>()) {
+      return ToPyObject(framework::proto::VarType::RAW);
+    } else if (var_tensor->IsType<paddle::framework::Strings>()) {
+      return ToPyObject(framework::proto::VarType::STRING);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Unavailable(
+          "VariableCompatTensor only support get shape from Vocab or "
+          "Strings."));
+    }
+  } else {
+    return ToPyObject(
+        paddle::framework::TransToProtoVarType(self->tensor.type()));
+  }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

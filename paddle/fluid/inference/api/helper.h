@@ -15,6 +15,7 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include <fstream>
 #if !defined(_WIN32)
 #include <sys/time.h>
@@ -377,8 +378,9 @@ static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
                       double batch_latency, int epoch = 1,
                       const framework::proto::VarType::Type data_type =
                           framework::proto::VarType::FP32) {
-  PADDLE_ENFORCE_GT(batch_size, 0, platform::errors::InvalidArgument(
-                                       "Non-positive batch size."));
+  PADDLE_ENFORCE_GT(
+      batch_size, 0,
+      platform::errors::InvalidArgument("Non-positive batch size."));
   double sample_latency = batch_latency / batch_size;
   LOG(INFO) << "====== threads: " << num_threads << ", thread id: " << tid
             << " ======";

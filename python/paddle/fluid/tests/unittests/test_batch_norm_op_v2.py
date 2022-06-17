@@ -26,6 +26,7 @@ import paddle
 
 
 class TestBatchNorm(unittest.TestCase):
+
     def test_name(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -159,8 +160,9 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v4(x):
                 with fluid.dygraph.guard(p):
-                    bn = paddle.nn.BatchNorm2D(
-                        shape[1], weight_attr=False, bias_attr=False)
+                    bn = paddle.nn.BatchNorm2D(shape[1],
+                                               weight_attr=False,
+                                               bias_attr=False)
                     y = bn(paddle.to_tensor(x))
                 return y.numpy()
 
@@ -208,6 +210,7 @@ class TestBatchNorm(unittest.TestCase):
 
 
 class TestBatchNormChannelLast(unittest.TestCase):
+
     def setUp(self):
         self.original_dtyep = paddle.get_default_dtype()
         # MIOPEN not support data type of double
@@ -237,8 +240,7 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 if core.is_compiled_with_rocm():
                     # HIP will fail if no atol
                     self.assertEqual(
-                        np.allclose(
-                            y1.numpy(), y2.numpy(), atol=1e-07), True)
+                        np.allclose(y1.numpy(), y2.numpy(), atol=1e-07), True)
                 else:
                     self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
 
@@ -257,8 +259,7 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 if core.is_compiled_with_rocm():
                     # HIP will fail if no atol
                     self.assertEqual(
-                        np.allclose(
-                            y1.numpy(), y2.numpy(), atol=1e-07), True)
+                        np.allclose(y1.numpy(), y2.numpy(), atol=1e-07), True)
                 else:
                     self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
 
@@ -277,13 +278,13 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 if core.is_compiled_with_rocm():
                     # HIP will fail if no atol
                     self.assertEqual(
-                        np.allclose(
-                            y1.numpy(), y2.numpy(), atol=1e-07), True)
+                        np.allclose(y1.numpy(), y2.numpy(), atol=1e-07), True)
                 else:
                     self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
 
 
 class TestBatchNormUseGlobalStats(unittest.TestCase):
+
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():

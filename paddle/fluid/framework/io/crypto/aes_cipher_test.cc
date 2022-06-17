@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/io/crypto/aes_cipher.h"
+
 #include <cryptopp/cryptlib.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <fstream>
 #include <string>
+
 #include "paddle/fluid/framework/io/crypto/cipher_utils.h"
 
 namespace paddle {

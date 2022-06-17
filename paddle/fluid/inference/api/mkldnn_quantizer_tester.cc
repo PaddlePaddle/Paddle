@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
+#include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 DEFINE_string(dirname, "", "dirname to tests.");

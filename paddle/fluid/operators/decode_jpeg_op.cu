@@ -15,6 +15,7 @@
 #if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_HIP)
 
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/dynload/nvjpeg.h"
 #include "paddle/fluid/platform/enforce.h"

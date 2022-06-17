@@ -13,28 +13,51 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/grad_node_info.h"
+
+#include "glog/logging.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
-
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/sparse_coo_tensor.h"
-
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/var_type.h"
-
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-
-#include "glog/logging.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
 /**
  * Implementation of GradNodeBase, Edge and GradTensorHolder.
-**/
+ **/
 namespace egr {
+
+static void CheckTensor(const paddle::experimental::Tensor& pre,
+                        const paddle::experimental::Tensor& post) {
+  if (!pre.initialized() && post.initialized()) {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "The tensor in before and after hook are not consistent"));
+  }
+  if (pre.initialized() && post.initialized()) {
+    VLOG(4) << paddle::framework::DataType2String(pre.dtype()) << " "
+            << paddle::framework::DataType2String(post.dtype());
+    PADDLE_ENFORCE_EQ(
+        pre.dtype(), post.dtype(),
+        paddle::platform::errors::PermissionDenied(
+            "The dtype of tensor before(%s) and after(%s) hook are not "
+            "consistent",
+            paddle::framework::DataType2String(pre.dtype()),
+            paddle::framework::DataType2String(post.dtype())));
+    PADDLE_ENFORCE_EQ(
+        pre.place(), post.place(),
+        paddle::platform::errors::PermissionDenied(
+            "The place of tensor before(%s) and after(%s) "
+            "hook are not consistent",
+            pre.place().DebugString(), post.place().DebugString()));
+  }
+}
 
 GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
   VLOG(6) << "Construct GradNodeBase";
@@ -92,6 +115,10 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
     phi::SparseCooTensor* coo_tensor =
         static_cast<phi::SparseCooTensor*>(fwd_out.impl().get());
     dense_tensor = coo_tensor->mutable_non_zero_elements();
+  } else if (phi::SparseCsrTensor::classof(fwd_out.impl().get())) {
+    phi::SparseCsrTensor* csr_tensor =
+        static_cast<phi::SparseCsrTensor*>(fwd_out.impl().get());
+    dense_tensor = csr_tensor->mutable_non_zero_elements();
   } else {
     VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
@@ -193,6 +220,8 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
   // Set Stop_gradient
   if (fwd_in_meta) {
     meta.SetStopGradient(fwd_in_meta->StopGradient());
+  } else {
+    meta.SetStopGradient(true);
   }
   // Set Adj Edges
   if (fwd_in_meta && !fwd_in_meta->StopGradient()) {
@@ -201,7 +230,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
       fwd_in_meta->SetGradNode(
           std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
     }
-    VLOG(6) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+    VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
             << this->name() << " (addr: " << this << ") "
             << " to " << fwd_in_meta->GetMutableGradNode()->name()
             << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
@@ -257,7 +286,7 @@ void GradNodeBase::SetGradOutMeta(
         fwd_in_meta->SetGradNode(
             std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
       }
-      VLOG(6) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+      VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
               << this->name() << " (addr: " << this << ") "
               << " to " << fwd_in_meta->GetMutableGradNode()->name()
               << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
@@ -271,7 +300,7 @@ void GradNodeBase::SetGradOutMeta(
         // Only Copy Meta
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(fwd_in_tensor.impl().get());
-        PADDLE_ENFORCE_NE(dense_tensor->meta().dtype, phi::DataType::UNDEFINED,
+        PADDLE_ENFORCE_NE(dense_tensor->dtype(), phi::DataType::UNDEFINED,
                           paddle::platform::errors::Fatal(
                               "Attempting to copy DenseTensorMeta "
                               "with phi::DataType::UNDEFINED,"

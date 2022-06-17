@@ -42,8 +42,9 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.layers.data(
-                name='image', shape=[784], dtype='float32')
+            image = fluid.layers.data(name='image',
+                                      shape=[784],
+                                      dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             py_reader = fluid.io.DataLoader.from_generator(
                 feed_list=[image, label],
@@ -63,8 +64,7 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
                                             size=CLASS_NUM,
                                             act='softmax')
             loss = fluid.layers.mean(
-                fluid.layers.cross_entropy(
-                    input=predict_label, label=label))
+                fluid.layers.cross_entropy(input=predict_label, label=label))
 
             optimizer = fluid.optimizer.Adam()
             optimizer.minimize(loss)
@@ -72,6 +72,7 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
 
 
 class TestBase(unittest.TestCase):
+
     def run_main(self, use_legacy_py_reader, with_data_parallel, places,
                  use_double_buffer):
         scope = fluid.Scope()
@@ -91,8 +92,8 @@ class TestBase(unittest.TestCase):
 
             prog = fluid.CompiledProgram(main_prog)
             if with_data_parallel:
-                prog = prog.with_data_parallel(
-                    loss_name=loss.name, places=places)
+                prog = prog.with_data_parallel(loss_name=loss.name,
+                                               places=places)
 
             step = 0
             step_list = []
@@ -176,6 +177,7 @@ class TestBase(unittest.TestCase):
 
 
 class TestDataLoaderBaseAbstract(unittest.TestCase):
+
     def test_main(self):
         loader = DataLoaderBase()
         try:

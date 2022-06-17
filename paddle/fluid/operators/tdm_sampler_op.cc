@@ -13,7 +13,9 @@
  limitations under the License. */
 
 #include "paddle/fluid/operators/tdm_sampler_op.h"
+
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/sampler.h"
 #include "paddle/fluid/platform/enforce.h"

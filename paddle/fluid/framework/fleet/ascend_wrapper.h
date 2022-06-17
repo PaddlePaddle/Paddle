@@ -22,17 +22,16 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "ge/ge_api.h"
+#include "graph/attr_value.h"
+#include "graph/tensor.h"
+#include "graph/types.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
-
-#include "ge/ge_api.h"
-#include "graph/attr_value.h"
-#include "graph/tensor.h"
-#include "graph/types.h"
 
 namespace paddle {
 namespace framework {

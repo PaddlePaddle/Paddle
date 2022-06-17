@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/send_v2_op.h"
-
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/npu/hccl_helper.h"
 
@@ -52,8 +51,9 @@ class PartialSendOpASCENDKernel : public framework::OpKernel<T> {
     int nranks = comm->nranks();
     int rank = comm->rank();
 
-    PADDLE_ENFORCE_EQ(nranks, 2, platform::errors::InvalidArgument(
-                                     "The nranks must be 2, but (%d)", nranks));
+    PADDLE_ENFORCE_EQ(nranks, 2,
+                      platform::errors::InvalidArgument(
+                          "The nranks must be 2, but (%d)", nranks));
 
     int root = rank;
 

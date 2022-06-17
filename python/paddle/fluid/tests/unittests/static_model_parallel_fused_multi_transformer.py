@@ -51,11 +51,11 @@ def create_model(data, rank):
     np.random.seed(2021)
     ln_w = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
     ln_b = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
-    qkv_w = np.random.uniform(
-        -1, 1, size=(3, num_head, dim_head, hidden)).astype(DTYPE)
+    qkv_w = np.random.uniform(-1, 1, size=(3, num_head, dim_head,
+                                           hidden)).astype(DTYPE)
     qkv_b = np.random.uniform(-1, 1, size=(3, num_head, dim_head)).astype(DTYPE)
-    linear_w = np.random.uniform(
-        -1, 1, size=(num_head * dim_head, hidden)).astype(DTYPE)
+    linear_w = np.random.uniform(-1, 1, size=(num_head * dim_head,
+                                              hidden)).astype(DTYPE)
     linear_b = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
 
     ffn_ln_w = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
@@ -145,11 +145,13 @@ def create_model(data, rank):
 
 
 class TestModelParallel(TestDistRunnerBase):
+
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         seq_len = 2
-        data_in = fluid.data(
-            name='data_in', shape=[batch_size, seq_len, hidden], dtype=DTYPE)
+        data_in = fluid.data(name='data_in',
+                             shape=[batch_size, seq_len, hidden],
+                             dtype=DTYPE)
 
         if dist_strategy:
             data_loader = fluid.io.DataLoader.from_generator(
@@ -169,8 +171,8 @@ class TestModelParallel(TestDistRunnerBase):
         opt = fluid.optimizer.SGD(0.1)
 
         if dist_strategy:
-            dist_opt = fleet.distributed_optimizer(
-                optimizer=opt, strategy=strategy)
+            dist_opt = fleet.distributed_optimizer(optimizer=opt,
+                                                   strategy=strategy)
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)

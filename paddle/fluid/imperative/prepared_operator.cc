@@ -258,7 +258,7 @@ PreparedOp PrepareImpl(
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
         && !is_xpu_unsupport
 #endif
-        ) {
+    ) {
       VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
               << " | kernel key: " << pt_kernel_key
               << " | kernel: " << phi_kernel;
@@ -306,7 +306,7 @@ PreparedOp PrepareImpl(
 #if defined(PADDLE_WITH_XPU_KP)
       || (is_xpu_unsupport && !is_xpu_kp_support)
 #endif
-          ) {
+  ) {
     if (has_phi_kernel) {
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
@@ -317,9 +317,11 @@ PreparedOp PrepareImpl(
                 << " | kernel key: " << pt_cpu_kernel_key
                 << " | kernel: " << pt_cpu_kernel;
         auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
-        return PreparedOp(op, empty_ctx, expected_kernel_key, arg_map_fn,
-                          default_kernel_signature, std::move(kernel_signature),
-                          pt_cpu_kernel, cpu_ctx);
+        return PreparedOp(
+            op, empty_ctx,
+            framework::TransPhiKernelKeyToOpKernelType(pt_cpu_kernel_key),
+            arg_map_fn, default_kernel_signature, std::move(kernel_signature),
+            pt_cpu_kernel, cpu_ctx);
       }
     }
   }

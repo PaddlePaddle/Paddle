@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/set_value_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
@@ -178,7 +177,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
         .AddInput(std::move(index_indices))
         .AddInput(val_temp)
         .AddOutput(out_temp)
-#if (CANN_VERSION_CODE >= 504001)
+#if (CANN_VERSION_CODE >= 504000)
         .AddAttrs({{"use_locking", false}})
 #endif
         .Run(stream);

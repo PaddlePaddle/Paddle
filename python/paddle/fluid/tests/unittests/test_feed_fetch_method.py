@@ -20,6 +20,7 @@ import numpy as np
 
 
 class TestFeedFetch(unittest.TestCase):
+
     def test_feed_fetch(self):
         scope = core.Scope()
         place = core.CPUPlace()
