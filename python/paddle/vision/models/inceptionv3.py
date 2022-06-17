@@ -417,8 +417,8 @@ class InceptionV3(nn.Layer):
     `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_
 
     Args:
-        num_classes (int, optional): output dim of last fc layer. If num_classes <=0, last fc layer 
-                            will not be defined. Default: 1000. 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+                            will not be defined. Default: 1000.
         with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
 
     Returns:

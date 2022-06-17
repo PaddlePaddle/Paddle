@@ -183,7 +183,7 @@ class ResNet(nn.Layer):
         Block (BasicBlock|BottleneckBlock): block module of model.
         depth (int, optional): layers of ResNet, Default: 50.
         width (int, optional): base width per convolution group for each convolution block, Default: 64.
-        num_classes (int, optional): output dim of last fc layer. If num_classes <=0, last fc layer
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
                             will not be defined. Default: 1000.
         with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
         groups (int, optional): number of groups for each convolution block, Default: 1.

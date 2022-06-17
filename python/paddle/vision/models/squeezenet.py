@@ -80,7 +80,8 @@ class SqueezeNet(nn.Layer):
 
     Args:
         version (str): version of SqueezeNet, which can be "1.0" or "1.1".
-        num_classes (int, optional): output dim of last fc layer. Default: 1000.
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+                            will not be defined. Default: 1000.
         with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
 
     Returns:

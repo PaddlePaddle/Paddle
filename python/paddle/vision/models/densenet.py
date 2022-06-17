@@ -191,7 +191,8 @@ class DenseNet(nn.Layer):
         layers (int, optional): layers of DenseNet. Default: 121.
         bn_size (int, optional): expansion of growth rate in the middle layer. Default: 4.
         dropout (float, optional): dropout rate. Default: 0..
-        num_classes (int, optional): output dim of last fc layer. Default: 1000.
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+                            will not be defined. Default: 1000.
         with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
 
     Returns:

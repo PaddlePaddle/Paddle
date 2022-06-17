@@ -76,7 +76,7 @@ class MobileNetV2(nn.Layer):
 
     Args:
         scale (float, optional): scale of channels in each layer. Default: 1.0.
-        num_classes (int, optional): output dim of last fc layer. If num_classes <=0, last fc layer 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
                             will not be defined. Default: 1000.
         with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
 
