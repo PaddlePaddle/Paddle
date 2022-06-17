@@ -42,12 +42,13 @@ class CastOpConverter : public OpConverter {
 
     switch (out_dtype) {
       case 0:  // BOOL = 0;
-#if IS_TRT_VERSION_LT(7000)
+#if IS_TRT_VERSION_GE(7000)
+        layer->setOutputType(0, nvinfer1::DataType::kBOOL);
+        break;
+#else
         PADDLE_THROW(platform::errors::Fatal(
             "BOOL data type is only supported on TRT 7 or higher version."));
 #endif
-        layer->setOutputType(0, nvinfer1::DataType::kBOOL);
-        break;
       case 2:  // INT32 = 2
         layer->setOutputType(0, nvinfer1::DataType::kINT32);
         break;
