@@ -53,6 +53,7 @@ class NativePaddlePredictor : public PaddlePredictor {
 
   bool RunOp(void *scope, int op_index);
   bool InferOp(void *scope, int op_index);
+  void* getScope();
 
   std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
 

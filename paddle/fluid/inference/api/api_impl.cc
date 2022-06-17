@@ -40,6 +40,13 @@ std::string num2str(T a) {
 }
 }  // namespace
 
+void* NativePaddlePredictor::getScope() {
+  if(sub_scope_)
+    return (void*) sub_scope_;
+  else
+    return (void*)(scope_.get());
+}
+
 bool NativePaddlePredictor::InferOp(void *scope, int op_index) {
   //  sub_scope_ = std::shared_ptr<framework::Scope>(scope);
   //  executor_->inferShape(block_index, op_index);
