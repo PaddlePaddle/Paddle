@@ -1508,7 +1508,7 @@ class TripletMarginWithDistanceLoss(Layer):
                                                    reduction=self.reduction,
                                                    name=self.name)
 
- 
+
 class SoftMarginLoss(Layer):
     r"""
     Creates a criterion that measures a two-class
