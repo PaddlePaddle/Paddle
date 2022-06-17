@@ -206,6 +206,7 @@ __all__ = [  # noqa
     'log_loss',
     'mse_loss',
     'margin_ranking_loss',
+    'multi_label_soft_margin_loss',
     'nll_loss',
     'npair_loss',
     'sigmoid_focal_loss',
@@ -235,5 +236,4 @@ __all__ = [  # noqa
     'cosine_embedding_loss',
     'rrelu',
     'triplet_margin_with_distance_loss',
-    'multi_label_soft_margin_loss',
 ]
