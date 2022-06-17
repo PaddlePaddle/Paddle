@@ -104,6 +104,9 @@ class GoogLeNet(nn.Layer):
                             will not be defined. Default: 1000.
         with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
 
+    Returns:
+        GoogLeNet (Inception v1) model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
@@ -224,6 +227,9 @@ def googlenet(pretrained=False, **kwargs):
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
+
+    Returns:
+        GoogLeNet (Inception v1) model. An instance of :ref:`api_fluid_dygraph_Layer`.
 
     Examples:
         .. code-block:: python

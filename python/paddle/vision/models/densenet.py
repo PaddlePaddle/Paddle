@@ -194,6 +194,9 @@ class DenseNet(nn.Layer):
         num_classes (int): output dim of last fc layer. Default: 1000.
         with_pool (bool): use pool before the last fc layer or not. Default: True.
 
+    Returns:
+        DenseNet model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
@@ -320,6 +323,9 @@ def densenet121(pretrained=False, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
 
+    Returns:
+        DenseNet 121-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
@@ -347,6 +353,9 @@ def densenet161(pretrained=False, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
 
+    Returns:
+        DenseNet 161-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
@@ -366,6 +375,9 @@ def densenet169(pretrained=False, **kwargs):
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
+
+    Returns:
+        DenseNet 169-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
 
     Examples:
         .. code-block:: python
@@ -394,6 +406,9 @@ def densenet201(pretrained=False, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
 
+    Returns:
+        DenseNet 201-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
@@ -419,6 +434,9 @@ def densenet264(pretrained=False, **kwargs):
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
+
+    Returns:
+        DenseNet 264-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
 
     Examples:
         .. code-block:: python

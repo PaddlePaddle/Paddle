@@ -79,6 +79,9 @@ class AlexNet(nn.Layer):
     Args:
         num_classes (int): Output dim of last fc layer. Default: 1000.
 
+    Returns:
+        AlexNet model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
@@ -187,9 +190,9 @@ def alexnet(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
         **kwargs: Additional keyword arguments，For details, please refer to :ref:`AlexNet <api_paddle_vision_models_AlexNet>`. 
-    
+
     Returns:
-        the model of alexnet.
+        AlexNet model. An instance of :ref:`api_fluid_dygraph_Layer`.
     
     Examples:
         .. code-block:: python

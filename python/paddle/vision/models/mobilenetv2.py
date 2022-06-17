@@ -80,6 +80,9 @@ class MobileNetV2(nn.Layer):
                             will not be defined. Default: 1000.
         with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
 
+    Returns:
+        MobileNetV2 model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
@@ -186,6 +189,9 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
         scale: (float): scale of channels in each layer. Default: 1.0.
+
+    Returns:
+        MobileNetV2 model. An instance of :ref:`api_fluid_dygraph_Layer`.
 
     Examples:
         .. code-block:: python

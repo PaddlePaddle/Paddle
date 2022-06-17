@@ -37,6 +37,9 @@ class VGG(nn.Layer):
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last three fc layer or not. Default: True.
 
+    Returns:
+        VGG model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
@@ -143,6 +146,9 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
         batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
 
+    Returns:
+        VGG 11-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
@@ -173,6 +179,9 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
         batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
+
+    Returns:
+        VGG 13-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
 
     Examples:
         .. code-block:: python
@@ -205,6 +214,9 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
         batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
 
+    Returns:
+        VGG 16-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
@@ -235,6 +247,9 @@ def vgg19(pretrained=False, batch_norm=False, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
         batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
+    
+    Returns:
+        VGG 19-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
 
     Examples:
         .. code-block:: python

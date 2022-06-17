@@ -26,6 +26,9 @@ class LeNet(nn.Layer):
         num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
                             will not be defined. Default: 10.
 
+    Returns:
+        LeNet model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 

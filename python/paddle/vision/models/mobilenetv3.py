@@ -258,6 +258,9 @@ class MobileNetV3Small(MobileNetV3):
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
+    Returns:
+        MobileNetV3 Small architecture model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
@@ -305,6 +308,9 @@ class MobileNetV3Large(MobileNetV3):
         num_classes (int, optional): Output dim of last fc layer. If num_classes <=0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
+
+    Returns:
+        MobileNetV3 Large architecture model. An instance of :ref:`api_fluid_dygraph_Layer`.
 
     Examples:
         .. code-block:: python
@@ -383,6 +389,9 @@ def mobilenet_v3_small(pretrained=False, scale=1.0, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
 
+    Returns:
+        MobileNetV3 Small architecture model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
@@ -418,6 +427,9 @@ def mobilenet_v3_large(pretrained=False, scale=1.0, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
+
+    Returns:
+        MobileNetV3 Large architecture model. An instance of :ref:`api_fluid_dygraph_Layer`.
 
     Examples:
         .. code-block:: python

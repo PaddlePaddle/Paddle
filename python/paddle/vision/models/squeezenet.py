@@ -83,6 +83,9 @@ class SqueezeNet(nn.Layer):
         num_classes (int): output dim of last fc layer. Default: 1000.
         with_pool (bool): use pool before the last fc layer or not. Default: True.
 
+    Returns:
+        SqueezeNet model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
             import paddle
@@ -210,6 +213,9 @@ def squeezenet1_0(pretrained=False, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
 
+    Returns:
+        SqueezeNet v1.0 model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
@@ -236,6 +242,9 @@ def squeezenet1_1(pretrained=False, **kwargs):
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+
+    Returns:
+        SqueezeNet v1.1 model. An instance of :ref:`api_fluid_dygraph_Layer`.
 
     Examples:
         .. code-block:: python

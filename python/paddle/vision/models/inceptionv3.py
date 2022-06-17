@@ -414,11 +414,16 @@ class InceptionE(nn.Layer):
 
 class InceptionV3(nn.Layer):
     """
-    InceptionV3
+    Inception v3 model from
+    `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_
+
     Args:
         num_classes (int, optional): output dim of last fc layer. If num_classes <=0, last fc layer 
                             will not be defined. Default: 1000. 
         with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
+
+    Returns:
+        Inception v3 model. An instance of :ref:`api_fluid_dygraph_Layer`.
 
     Examples:
         .. code-block:: python
@@ -507,12 +512,15 @@ class InceptionV3(nn.Layer):
 
 def inception_v3(pretrained=False, **kwargs):
     """
-    InceptionV3 model from
+    Inception v3 model from
     `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
-    
+
+    Returns:
+        Inception v3 model. An instance of :ref:`api_fluid_dygraph_Layer`.
+
     Examples:
         .. code-block:: python
 
