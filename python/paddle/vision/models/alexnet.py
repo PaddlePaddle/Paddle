@@ -82,10 +82,16 @@ class AlexNet(nn.Layer):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import AlexNet
 
             alexnet = AlexNet()
 
+            x = paddle.rand([1, 3, 224, 224])
+            out = alexnet(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self, num_classes=1000):
