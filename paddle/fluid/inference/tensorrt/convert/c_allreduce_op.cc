@@ -30,6 +30,10 @@ class CAllReduceOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(4) << "convert fluid callreduce op to tensorrt layer";
+    if (!engine_->with_dynamic_shape()) {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Unsupported static mode. Please set dynamic shape of inputs."));
+    }
     ReduceType red_type = op_to_reduce_type[op.type()];
     std::string name = op.type();
 
@@ -57,32 +61,22 @@ class CAllReduceOpConverter : public OpConverter {
         BOOST_GET_CONST(bool, op_desc.GetAttr("use_calc_stream"));
 
     nvinfer1::ILayer* layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
-      if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
-        with_fp16 = true;
-      }
-
-      plugin::CAllReducePluginDynamic* plugin =
-          new plugin::CAllReducePluginDynamic(ring_id, use_calc_stream,
-                                              red_type, with_fp16);
-      layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
-#endif
-    } else {
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-      plugin::CAllReducePlugin* plugin = new plugin::CAllReducePlugin(
-          ring_id, use_calc_stream, red_type, with_fp16);
-      layer = engine_->AddPlugin(&input, input_num, plugin);
+    if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
+      with_fp16 = true;
     }
 
+    plugin::CAllReducePluginDynamic* plugin =
+        new plugin::CAllReducePluginDynamic(ring_id, use_calc_stream, red_type,
+                                            with_fp16);
+    layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
+#else
+    PADDLE_THROW(platform::errors::Fatal(
+        "You are running the TRT Dynamic Shape mode, need to confirm that "
+        "your TRT version is no less than 6.0"));
+#endif
     auto output_name = op_desc.Output("Out")[0];
 
     RreplenishLayerAndOutput(layer, name, {output_name}, test_mode);

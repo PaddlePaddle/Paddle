@@ -69,6 +69,56 @@ void PrelnResidualBiasPluginDynamic::terminate() TRT_NOEXCEPT {
   }
 }
 
+nvinfer1::IPluginV2DynamicExt *PrelnResidualBiasPluginDynamic::clone() const
+    TRT_NOEXCEPT {
+  PrelnResidualBiasPluginDynamic *ptr = nullptr;
+  if (with_fp16_) {
+    ptr = new PrelnResidualBiasPluginDynamic(
+        bias_.data(), scale_.data(), fp16_ele_bias_.data(), bias_size_,
+        scale_size_, ele_bias_size_, eps_, with_fp16_);
+  } else {
+    ptr = new PrelnResidualBiasPluginDynamic(
+        bias_.data(), scale_.data(), fp32_ele_bias_.data(), bias_size_,
+        scale_size_, ele_bias_size_, eps_, with_fp16_);
+  }
+
+  ptr->bias_gpu_ = bias_gpu_;
+  ptr->scale_gpu_ = scale_gpu_;
+  ptr->ele_bias_gpu_ = ele_bias_gpu_;
+  return ptr;
+}
+
+const char *PrelnResidualBiasPluginDynamic::getPluginType() const TRT_NOEXCEPT {
+  return "preln_residual_bias_plugin_dynamic";
+}
+
+int PrelnResidualBiasPluginDynamic::getNbOutputs() const TRT_NOEXCEPT {
+  return 2;
+}
+
+size_t PrelnResidualBiasPluginDynamic::getSerializationSize() const
+    TRT_NOEXCEPT {
+  size_t ser_size = SerializedSize(bias_) + SerializedSize(scale_) +
+                    SerializedSize(fp32_ele_bias_) +
+                    SerializedSize(fp16_ele_bias_) +
+                    SerializedSize(bias_size_) + SerializedSize(scale_size_) +
+                    SerializedSize(ele_bias_size_) + SerializedSize(eps_) +
+                    SerializedSize(with_fp16_);
+  return ser_size;
+}
+void PrelnResidualBiasPluginDynamic::serialize(void *buffer) const
+    TRT_NOEXCEPT {
+  SerializeValue(&buffer, bias_);
+  SerializeValue(&buffer, scale_);
+  SerializeValue(&buffer, fp32_ele_bias_);
+  SerializeValue(&buffer, fp16_ele_bias_);
+  SerializeValue(&buffer, bias_size_);
+  SerializeValue(&buffer, scale_size_);
+  SerializeValue(&buffer, ele_bias_size_);
+  SerializeValue(&buffer, eps_);
+  SerializeValue(&buffer, with_fp16_);
+}
+
 nvinfer1::DimsExprs PrelnResidualBiasPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
@@ -121,11 +171,25 @@ bool PrelnResidualBiasPluginDynamic::supportsFormatCombination(
   return in.type == prev.type && in.format == prev.format;
 }
 
+void PrelnResidualBiasPluginDynamic::configurePlugin(
+    const nvinfer1::DynamicPluginTensorDesc *in, int nb_inputs,
+    const nvinfer1::DynamicPluginTensorDesc *out, int nb_outputs) TRT_NOEXCEPT {
+}
+
+size_t PrelnResidualBiasPluginDynamic::getWorkspaceSize(
+    const nvinfer1::PluginTensorDesc *inputs, int nb_inputs,
+    const nvinfer1::PluginTensorDesc *outputs,
+    int nb_outputs) const TRT_NOEXCEPT {
+  return 0;
+}
+
 nvinfer1::DataType PrelnResidualBiasPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
   return input_types[0];
 }
+
+void PrelnResidualBiasPluginDynamic::destroy() TRT_NOEXCEPT { delete this; }
 
 int PrelnResidualBiasPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
@@ -208,6 +272,22 @@ int PrelnResidualBiasPluginDynamic::enqueue(
                                 "should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
+}
+
+const char *PrelnResidualBiasPluginDynamicCreator::getPluginName() const
+    TRT_NOEXCEPT {
+  return "preln_residual_bias_plugin_dynamic";
+}
+
+const char *PrelnResidualBiasPluginDynamicCreator::getPluginVersion() const
+    TRT_NOEXCEPT {
+  return "1";
+}
+
+nvinfer1::IPluginV2 *PrelnResidualBiasPluginDynamicCreator::deserializePlugin(
+    const char *name, const void *serial_data,
+    size_t serial_length) TRT_NOEXCEPT {
+  return new PrelnResidualBiasPluginDynamic(serial_data, serial_length);
 }
 
 #endif

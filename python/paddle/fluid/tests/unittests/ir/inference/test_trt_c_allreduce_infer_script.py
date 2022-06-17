@@ -26,7 +26,7 @@ from paddle.inference import PrecisionType
 from paddle.fluid import core
 
 
-def run(op_type):
+def run(op_type, precision):
     fleet.init(is_collective=True)
     paddle.enable_static()
     main_program = paddle.static.Program()
@@ -79,13 +79,14 @@ def run(op_type):
         config.enable_memory_optim()
         config.enable_use_gpu(1000, fleet.worker_index())
         config.set_dist_config(dist_config)
-        config.enable_tensorrt_engine(workspace_size=1 << 30,
-                                      max_batch_size=1,
-                                      min_subgraph_size=1,
-                                      precision_mode=PrecisionType.Half,
-                                      use_static=False,
-                                      use_calib_mode=False)
-
+        config.enable_tensorrt_engine(
+            workspace_size=1 << 30,
+            max_batch_size=1,
+            min_subgraph_size=1,
+            precision_mode=PrecisionType.Half
+            if precision == "fp16" else PrecisionType.Int8,
+            use_static=False,
+            use_calib_mode=False)
         config.set_trt_dynamic_shape_info({"data": [3, 4]}, {"data": [3, 4]},
                                           {"data": [3, 4]})
         predictor = create_predictor(config)
@@ -105,4 +106,5 @@ if __name__ == "__main__":
         # This script just be called by test_trt_convert_c_allreduce.py
         sys.exit(0)
     op_type = sys.argv[1]
-    run(op_type)
+    precision = sys.argv[2]
+    run(op_type, precision)

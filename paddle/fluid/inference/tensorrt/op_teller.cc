@@ -523,9 +523,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
           if (shape.size() < 3) {
-            VLOG(3) << "matmul op dims < 3 not supported in tensorrt, but "
-                       "got dims "
-                    << shape.size() << ", so jump it.";
+            VLOG(3)
+                << "matmul op dims < 3 not supported in tensorrt, but got dims "
+                << shape.size() << ", so jump it.";
             return false;
           }
         }
@@ -1097,8 +1097,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "strided_slice") {
 #if !IS_TRT_VERSION_GE(7000)
-      VLOG(3) << "strided_slice converter does not support trt versions "
-                 "below 7.0";
+      VLOG(3)
+          << "strided_slice converter does not support trt versions below 7.0";
       return false;
 #endif
       if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||

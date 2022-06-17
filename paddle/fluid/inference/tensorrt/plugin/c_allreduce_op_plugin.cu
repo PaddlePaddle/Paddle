@@ -38,101 +38,25 @@ inline ncclDataType_t NvInferDtypeToNCCLDType(nvinfer1::DataType type) {
   }
 }
 #endif
-int CAllReducePlugin::initialize() TRT_NOEXCEPT { return 0; }
 
-bool CAllReducePlugin::supportsFormat(
-    nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
-  if (with_fp16_) {
-    return ((type == nvinfer1::DataType::kFLOAT ||
-             type == nvinfer1::DataType::kHALF) &&
-            (format == nvinfer1::PluginFormat::kLINEAR));
-  } else {
-    return ((type == nvinfer1::DataType::kFLOAT) &&
-            (format == nvinfer1::PluginFormat::kLINEAR));
-  }
+CAllReducePluginDynamic::CAllReducePluginDynamic(void const* serialData,
+                                                 size_t serialLength) {
+  DeserializeValue(&serialData, &serialLength, &ring_id_);
+  DeserializeValue(&serialData, &serialLength, &use_calc_stream_);
+  DeserializeValue(&serialData, &serialLength, &red_type_);
+  DeserializeValue(&serialData, &serialLength, &with_fp16_);
+}
+nvinfer1::IPluginV2DynamicExt* CAllReducePluginDynamic::clone() const
+    TRT_NOEXCEPT {
+  return new CAllReducePluginDynamic(ring_id_, use_calc_stream_, red_type_,
+                                     with_fp16_);
 }
 
-nvinfer1::Dims CAllReducePlugin::getOutputDimensions(
-    int index, const nvinfer1::Dims* in_dims, int nb_inputs) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(
-      nb_inputs, 1,
-      platform::errors::InvalidArgument("We expect [number of inputs] == 1"
-                                        "in TRT CAllReduce op plugin, but got "
-                                        "[number of inputs] = %d.",
-                                        nb_inputs));
-  PADDLE_ENFORCE_LT(index, this->getNbOutputs(),
-                    platform::errors::InvalidArgument(
-                        "We expect [index] < [number of outputs]"
-                        "in TRT CAllReduce op plugin, but got "
-                        "[index] = %d, [number of outputs] = %d.",
-                        index, this->getNbOutputs()));
-  nvinfer1::Dims const& input_dims = in_dims[0];
-  nvinfer1::Dims output_dims = input_dims;
-  return output_dims;
+const char* CAllReducePluginDynamic::getPluginType() const TRT_NOEXCEPT {
+  return "c_allreduce_plugin_dynamic";
 }
-
-#if IS_TRT_VERSION_LT(8000)
-int CAllReducePlugin::enqueue(int batchSize, const void* const* inputs,
-                              void** outputs,
-#else
-int CAllReducePlugin::enqueue(int batchSize, const void* const* inputs,
-                              void* const* outputs,
-#endif
-                              void* workspace,
-                              cudaStream_t stream) TRT_NOEXCEPT {
-  VLOG(3) << "-----------------CAllReducePlugin--------------";
-#if defined(PADDLE_WITH_NCCL)
-  const auto& input_dims = this->getInputDims(0);
-  size_t numel = 1;
-  for (int i = 0; i < input_dims.nbDims; i++) {
-    numel *= input_dims.d[i];
-  }
-  auto input_type = getDataType();
-  void* sendbuff;
-  void* recvbuff = outputs[0];
-  if (input_type == nvinfer1::DataType::kFLOAT) {
-    VLOG(1) << "TRT Plugin DataType selected. CAllReduce-->fp32";
-    sendbuff = const_cast<void*>(inputs[0]);
-  } else if (input_type == nvinfer1::DataType::kHALF) {
-    VLOG(1) << "TRT Plugin DataType selected. CAllReduce-->fp16";
-    sendbuff = const_cast<void*>(inputs[0]);
-  }
-  ncclDataType_t dtype = NvInferDtypeToNCCLDType(input_type);
-  ncclRedOp_t nccl_red_type = ncclSum;
-  switch (red_type_) {
-    case kRedSum:
-      nccl_red_type = ncclSum;
-      break;
-
-    case kRedMax:
-      nccl_red_type = ncclMax;
-      break;
-
-    case kRedMin:
-      nccl_red_type = ncclMin;
-      break;
-
-    case kRedProd:
-      nccl_red_type = ncclProd;
-      break;
-
-    default:
-      PADDLE_THROW(platform::errors::InvalidArgument("Invalid reduce type: %d",
-                                                     red_type_));
-  }
-
-  auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
-  cudaStream_t custream = use_calc_stream_ ? stream : custream = comm->stream();
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-      sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
-
-#else
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Please install PaddlePaddle compiled with nccl if c_allreduce_op_plugin "
-      "is used in your model."));
-#endif
-  return (cudaGetLastError() != cudaSuccess);
-}
+int CAllReducePluginDynamic::getNbOutputs() const TRT_NOEXCEPT { return 1; }
+int CAllReducePluginDynamic::initialize() TRT_NOEXCEPT { return 0; };
 
 size_t CAllReducePluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   return SerializedSize(ring_id_) + SerializedSize(use_calc_stream_) +
@@ -177,6 +101,19 @@ bool CAllReducePluginDynamic::supportsFormatCombination(
     }
   }
 }
+
+void CAllReducePluginDynamic::configurePlugin(
+    const nvinfer1::DynamicPluginTensorDesc* in, int nbInputs,
+    const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) TRT_NOEXCEPT {}
+
+size_t CAllReducePluginDynamic::getWorkspaceSize(
+    const nvinfer1::PluginTensorDesc* inputs, int nbInputs,
+    const nvinfer1::PluginTensorDesc* outputs,
+    int nbOutputs) const TRT_NOEXCEPT {
+  return 0;
+}
+
+void CAllReducePluginDynamic::destroy() TRT_NOEXCEPT { delete this; }
 
 nvinfer1::DataType CAllReducePluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType* input_types,
@@ -231,6 +168,22 @@ int CAllReducePluginDynamic::enqueue(
 
 #endif
   return (cudaGetLastError() != cudaSuccess);
+}
+
+const char* CAllReducePluginDynamicCreator::getPluginName() const TRT_NOEXCEPT {
+  return "c_allreduce_plugin_dynamic";
+}
+
+const char* CAllReducePluginDynamicCreator::getPluginVersion() const
+    TRT_NOEXCEPT {
+  return "1";
+}
+
+nvinfer1::IPluginV2* CAllReducePluginDynamicCreator::deserializePlugin(
+    const char* name, const void* serial_data,
+    size_t serial_length) TRT_NOEXCEPT {
+  auto plugin = new CAllReducePluginDynamic(serial_data, serial_length);
+  return plugin;
 }
 
 }  // namespace plugin
