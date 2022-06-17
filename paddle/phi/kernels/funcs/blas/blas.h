@@ -95,6 +95,18 @@ class Blas {
             T* C) const;
 
   template <typename T>
+  void GEMM(CBLAS_TRANSPOSE transA,
+                   CBLAS_TRANSPOSE transB,
+                   int M,
+                   int N,
+                   int K,
+                   float alpha,
+                   const float* A,
+                   const float* B,
+                   float beta,
+                   float* C) const;
+
+  template <typename T>
   void GEMM(bool transA,
             bool transB,
             int M,
@@ -110,6 +122,20 @@ class Blas {
             int ldc) const;
 
   template <typename T>
+  void GEMM(bool transA,
+                   bool transB,
+                   int M,
+                   int N,
+                   int K,
+                   float alpha,
+                   const float* A,
+                   int lda,
+                   const float* B,
+                   int ldb,
+                   float beta,
+                   float* C,
+                   int ldc) const;
+  template <typename T>
   void GEMM(CBLAS_TRANSPOSE transA,
             CBLAS_TRANSPOSE transB,
             int M,
@@ -123,6 +149,20 @@ class Blas {
             T beta,
             T* C,
             int ldc) const;
+  template <typename T>
+  void GEMM(CBLAS_TRANSPOSE transA,
+                   CBLAS_TRANSPOSE transB,
+                   int M,
+                   int N,
+                   int K,
+                   float alpha,
+                   const float* A,
+                   int lda,
+                   const float* B,
+                   int ldb,
+                   float beta,
+                   float* C,
+                   int ldc) const;
 
 #ifdef PADDLE_WITH_MKLML  // @{ Group MKLML: class Blas
   template <typename T>

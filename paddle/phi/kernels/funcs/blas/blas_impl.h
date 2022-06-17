@@ -2553,5 +2553,130 @@ void Blas<phi::CPUContext>::TRSM(CBLAS_SIDE side,
       CblasRowMajor, side, uplo, transA, diag, M, N, alpha, A, lda, B, ldb);
 }
 
+#ifdef PADDLE_WITH_MKLDNN
+
+template <>
+template <typename hack>
+void Blas<paddle::platform::CPUDeviceContext>::GEMM(
+    CBLAS_TRANSPOSE transA,
+    CBLAS_TRANSPOSE transB,
+    int M,
+    int N,
+    int K,
+    float alpha,
+    const float *A,
+    const float *B,
+    float beta,
+    float *C) const {
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  char transa = (transA == CblasNoTrans) ? 'y' : 'n';
+  char transb = (transA == CblasNoTrans) ? 'y' : 'n';
+  dnnl::sgemm(transa, transb, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+
+template <>
+template <typename hack>
+void Blas<phi::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                        CBLAS_TRANSPOSE transB,
+                                        int M,
+                                        int N,
+                                        int K,
+                                        float alpha,
+                                        const float *A,
+                                        const float *B,
+                                        float beta,
+                                        float *C) const {
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  char transa = (transA == CblasNoTrans) ? 'y' : 'n';
+  char transb = (transA == CblasNoTrans) ? 'y' : 'n';
+  dnnl::sgemm(transa, transb, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+
+template <>
+template <typename hack>
+void Blas<paddle::platform::CPUDeviceContext>::GEMM(bool transA,
+                                                           bool transB,
+                                                           int M,
+                                                           int N,
+                                                           int K,
+                                                           float alpha,
+                                                           const float *A,
+                                                           int lda,
+                                                           const float *B,
+                                                           int ldb,
+                                                           float beta,
+                                                           float *C,
+                                                           int ldc) const {
+  char transa = transA ? 'y' : 'n';
+  char transb = transB ? 'y' : 'n';
+  dnnl::sgemm(transa, transb, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+
+template <>
+template <typename T>
+void Blas<phi::CPUContext>::GEMM(bool transA,
+                                        bool transB,
+                                        int M,
+                                        int N,
+                                        int K,
+                                        float alpha,
+                                        const float *A,
+                                        int lda,
+                                        const float *B,
+                                        int ldb,
+                                        float beta,
+                                        float *C,
+                                        int ldc) const {
+  char transa = transA ? 'y' : 'n';
+  char transb = transB ? 'y' : 'n';
+  dnnl::sgemm(transa, transb, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+
+template <>
+template <typename T>
+void Blas<paddle::platform::CPUDeviceContext>::GEMM(
+    CBLAS_TRANSPOSE transA,
+    CBLAS_TRANSPOSE transB,
+    int M,
+    int N,
+    int K,
+    float alpha,
+    const float *A,
+    int lda,
+    const float *B,
+    int ldb,
+    float beta,
+    float *C,
+    int ldc) const {
+  char transa = (transA == CblasNoTrans) ? 'y' : 'n';
+  char transb = (transA == CblasNoTrans) ? 'y' : 'n';
+  dnnl::sgemm(transa, transb, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+
+template <>
+template <typename T>
+void Blas<phi::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                        CBLAS_TRANSPOSE transB,
+                                        int M,
+                                        int N,
+                                        int K,
+                                        float alpha,
+                                        const float *A,
+                                        int lda,
+                                        const float *B,
+                                        int ldb,
+                                        float beta,
+                                        float *C,
+                                        int ldc) const {
+  char transa = (transA == CblasNoTrans) ? 'y' : 'n';
+  char transb = (transA == CblasNoTrans) ? 'y' : 'n';
+  dnnl::sgemm(transa, transb, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+#endif
+
 }  // namespace funcs
 }  // namespace phi
