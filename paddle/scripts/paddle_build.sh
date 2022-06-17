@@ -2738,10 +2738,10 @@ function parallel_test() {
     ut_total_startTime_s=`date +%s`
     if [ "$WITH_CINN" == "ON" ];then
         parallel_test_base_cinn
-    elif [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
-        parallel_test_base_gpu_test
     elif [ "$WITH_GPU" == "ON" ] && [ "$WITH_HETERPS" == "ON" ];then
         parallel_test_base_gpups
+    elif [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
+        parallel_test_base_gpu_test
     elif [ "$WITH_XPU" == "ON" ];then
         parallel_test_base_xpu
     elif [ "$WITH_ASCEND_CL" == "ON" ];then
