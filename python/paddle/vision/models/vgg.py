@@ -39,7 +39,6 @@ class VGG(nn.Layer):
 
     Examples:
         .. code-block:: python
-          :name: code-example
 
             import paddle
             from paddle.vision.models import VGG
@@ -56,7 +55,6 @@ class VGG(nn.Layer):
 
             print(out.shape)
             # [1, 1000]
-
     """
 
     def __init__(self, features, num_classes=1000, with_pool=True):
@@ -148,6 +146,7 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import vgg11
 
             # build model
@@ -155,6 +154,12 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
 
             # build vgg11 model with batch_norm
             model = vgg11(batch_norm=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     model_name = 'vgg11'
     if batch_norm:
@@ -172,6 +177,7 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import vgg13
 
             # build model
@@ -179,6 +185,12 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
 
             # build vgg13 model with batch_norm
             model = vgg13(batch_norm=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     model_name = 'vgg13'
     if batch_norm:
@@ -196,6 +208,7 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import vgg16
 
             # build model
@@ -203,6 +216,12 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
 
             # build vgg16 model with batch_norm
             model = vgg16(batch_norm=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     model_name = 'vgg16'
     if batch_norm:
@@ -220,6 +239,7 @@ def vgg19(pretrained=False, batch_norm=False, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import vgg19
 
             # build model
@@ -227,6 +247,12 @@ def vgg19(pretrained=False, batch_norm=False, **kwargs):
 
             # build vgg19 model with batch_norm
             model = vgg19(batch_norm=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     model_name = 'vgg19'
     if batch_norm:

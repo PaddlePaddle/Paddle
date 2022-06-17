@@ -29,9 +29,16 @@ class LeNet(nn.Layer):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import LeNet
 
             model = LeNet()
+
+            x = paddle.rand([1, 1, 28, 28])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 10]
     """
 
     def __init__(self, num_classes=10):

@@ -215,7 +215,6 @@ class ResNet(nn.Layer):
 
             print(out.shape)
             # [1, 1000]
-
     """
 
     def __init__(self,

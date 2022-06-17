@@ -432,6 +432,7 @@ class InceptionV3(nn.Layer):
             out = inception_v3(x)
 
             print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self, num_classes=1000, with_pool=True):
@@ -528,6 +529,7 @@ def inception_v3(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     model = InceptionV3(**kwargs)
     arch = "inception_v3"

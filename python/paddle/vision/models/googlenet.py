@@ -116,7 +116,8 @@ class GoogLeNet(nn.Layer):
             x = paddle.rand([1, 3, 224, 224])
             out, out1, out2 = model(x)
 
-            print(out.shape)
+            print(out.shape, out1.shape, out2.shape)
+            # [1, 1000] [1, 1000] [1, 1000]
     """
 
     def __init__(self, num_classes=1000, with_pool=True):
@@ -239,7 +240,8 @@ def googlenet(pretrained=False, **kwargs):
             x = paddle.rand([1, 3, 224, 224])
             out, out1, out2 = model(x)
 
-            print(out.shape)
+            print(out.shape, out1.shape, out2.shape)
+            # [1, 1000] [1, 1000] [1, 1000]
     """
     model = GoogLeNet(**kwargs)
     arch = "googlenet"

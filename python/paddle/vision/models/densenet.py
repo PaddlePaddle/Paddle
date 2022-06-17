@@ -207,6 +207,7 @@ class DenseNet(nn.Layer):
             out = densenet(x)
 
             print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self,
@@ -322,6 +323,7 @@ def densenet121(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import densenet121
 
             # build model
@@ -329,6 +331,12 @@ def densenet121(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = densenet121(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _densenet('densenet121', 121, pretrained, **kwargs)
 
@@ -362,6 +370,7 @@ def densenet169(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import densenet169
 
             # build model
@@ -369,6 +378,12 @@ def densenet169(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = densenet169(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _densenet('densenet169', 169, pretrained, **kwargs)
 
@@ -382,6 +397,7 @@ def densenet201(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import densenet201
 
             # build model
@@ -389,6 +405,11 @@ def densenet201(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = densenet201(pretrained=True)
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _densenet('densenet201', 201, pretrained, **kwargs)
 
@@ -402,6 +423,7 @@ def densenet264(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import densenet264
 
             # build model
@@ -409,5 +431,11 @@ def densenet264(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = densenet264(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _densenet('densenet264', 264, pretrained, **kwargs)

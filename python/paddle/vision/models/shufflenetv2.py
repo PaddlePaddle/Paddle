@@ -209,7 +209,7 @@ class ShuffleNetV2(nn.Layer):
             x = paddle.rand([1, 3, 224, 224])
             out = shufflenet_v2_swish(x)
             print(out.shape)
-
+            # [1, 1000]
     """
 
     def __init__(self, scale=1.0, act="relu", num_classes=1000, with_pool=True):
@@ -336,7 +336,7 @@ def shufflenet_v2_x0_25(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
-
+            # [1, 1000]
     """
     return _shufflenet_v2("shufflenet_v2_x0_25",
                           scale=0.25,
@@ -367,7 +367,7 @@ def shufflenet_v2_x0_33(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
-
+            # [1, 1000]
     """
     return _shufflenet_v2("shufflenet_v2_x0_33",
                           scale=0.33,
@@ -398,7 +398,7 @@ def shufflenet_v2_x0_5(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
-
+            # [1, 1000]
     """
     return _shufflenet_v2("shufflenet_v2_x0_5",
                           scale=0.5,
@@ -429,7 +429,7 @@ def shufflenet_v2_x1_0(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
-
+            # [1, 1000]
     """
     return _shufflenet_v2("shufflenet_v2_x1_0",
                           scale=1.0,
@@ -460,7 +460,7 @@ def shufflenet_v2_x1_5(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
-
+            # [1, 1000]
     """
     return _shufflenet_v2("shufflenet_v2_x1_5",
                           scale=1.5,
@@ -491,7 +491,7 @@ def shufflenet_v2_x2_0(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
-
+            # [1, 1000]
     """
     return _shufflenet_v2("shufflenet_v2_x2_0",
                           scale=2.0,
@@ -522,7 +522,7 @@ def shufflenet_v2_swish(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
-
+            # [1, 1000]
     """
     return _shufflenet_v2("shufflenet_v2_swish",
                           scale=1.0,

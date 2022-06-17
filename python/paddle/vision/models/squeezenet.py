@@ -98,7 +98,7 @@ class SqueezeNet(nn.Layer):
             out = model(x)
 
             print(out.shape)
-
+            # [1, 1000]
     """
 
     def __init__(self, version, num_classes=1000, with_pool=True):
@@ -213,6 +213,7 @@ def squeezenet1_0(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import squeezenet1_0
 
             # build model
@@ -220,6 +221,12 @@ def squeezenet1_0(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = squeezenet1_0(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _squeezenet('squeezenet1_0', '1.0', pretrained, **kwargs)
 
@@ -233,6 +240,7 @@ def squeezenet1_1(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import squeezenet1_1
 
             # build model
@@ -240,5 +248,11 @@ def squeezenet1_1(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = squeezenet1_1(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _squeezenet('squeezenet1_1', '1.1', pretrained, **kwargs)

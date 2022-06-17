@@ -82,7 +82,7 @@ class MobileNetV2(nn.Layer):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+
             import paddle
             from paddle.vision.models import MobileNetV2
 
@@ -206,6 +206,7 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     model = _mobilenet('mobilenetv2_' + str(scale),
                        pretrained,

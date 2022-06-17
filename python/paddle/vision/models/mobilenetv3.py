@@ -271,6 +271,7 @@ class MobileNetV3Small(MobileNetV3):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
@@ -401,7 +402,7 @@ def mobilenet_v3_small(pretrained=False, scale=1.0, **kwargs):
             out = model(x)
 
             print(out.shape)
-
+            # [1, 1000]
     """
     model = _mobilenet_v3("mobilenet_v3_small",
                           scale=scale,
@@ -437,7 +438,7 @@ def mobilenet_v3_large(pretrained=False, scale=1.0, **kwargs):
             out = model(x)
 
             print(out.shape)
-
+            # [1, 1000]
     """
     model = _mobilenet_v3("mobilenet_v3_large",
                           scale=scale,
