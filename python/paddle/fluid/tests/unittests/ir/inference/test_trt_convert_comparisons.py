@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,10 +22,12 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 
 class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -56,10 +58,11 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                             ops=ops,
                             weights={},
                             inputs={
-                                "input_data1": TensorConfig(
+                                "input_data1":
+                                TensorConfig(
                                     data_gen=partial(generate_input, shape)),
-                                "input_data2": TensorConfig(
-                                    data_gen=generate_input2)
+                                "input_data2":
+                                TensorConfig(data_gen=generate_input2)
                             },
                             outputs=["output_data"])
 
@@ -67,6 +70,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [4]}

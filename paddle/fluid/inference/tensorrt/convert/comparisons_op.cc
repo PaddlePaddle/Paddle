@@ -82,7 +82,7 @@ class ComparisonsOpConverter : public OpConverter {
       expand_layer->setReshapeDimensions(expand_shape);
       X = expand_layer->getOutput(0);
     }
-    
+
     layer = TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *X, *Y, op_pair->second);
     RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
   }
@@ -101,8 +101,9 @@ const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
         {"equal", nvinfer1::ElementWiseOperation::kEQUAL},
 };
 #else
-    PADDLE_THROW(platform::errors::Fatal(
-      "ElementWise Compare Operation is only supported on TRT 7 or higher version."));
+PADDLE_THROW(
+    platform::errors::Fatal("ElementWise Compare Operation is only supported "
+                            "on TRT 7 or higher version."));
 #endif
 
 class GreaterOpConverter : public ComparisonsOpConverter {
