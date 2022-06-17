@@ -671,7 +671,7 @@ __global__ void masked_multihead_attention_kernel(
   int ko = tid / THREADS_PER_KEY;
   int ki = (tid % THREADS_PER_KEY) * K_VEC_SIZE;
 
-  static_assert(Dh_MAX == THREADS_PER_KEY * K_VEC_SIZE * K_VECS_PER_THREAD);
+  static_assert(Dh_MAX == THREADS_PER_KEY * K_VEC_SIZE * K_VECS_PER_THREAD, "");
 
   K_vec q[K_VECS_PER_THREAD];
 #pragma unroll
@@ -958,9 +958,7 @@ void fmha(const platform::CUDADeviceContext &dev_ctx, const Tensor &qkv_tensor,
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "dim_head = %d is unsupport, only support "
-          "dim_head = 32, 64, 96 or 128 for now.",
-          dim_head));
+          "Dim_head = %d is unsupport!", dim_head));
   }
 }
 
