@@ -22,7 +22,8 @@ RUN apt-get update --allow-unauthenticated && \
     libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
     xz-utils tk-dev libffi-dev liblzma-dev
 
-RUN apt-get install -y --allow-downgrades --allow-change-held-packages \
+RUN apt-get update && \
+    apt-get install -y --allow-downgrades --allow-change-held-packages \
     patchelf git python-pip python-dev python-opencv openssh-server bison \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
