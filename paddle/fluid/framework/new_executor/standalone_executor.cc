@@ -55,7 +55,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     // No need to use_local_scope for startup_program, its variables are
     // persistable
     paddle::framework::interpreter::build_op_func_list(
-        place_, startup_prog.Block(0), &vec_func_list, &global_scope_, false);
+        place_, startup_prog.Block(0), {}, &vec_func_list, &global_scope_,
+        false);
   }
 }
 
@@ -126,19 +127,14 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
             << place_;
     VLOG(3) << "add fetch op: " << add_fetch_op;
     std::shared_ptr<InterpreterCore> core = nullptr;
-    if (add_fetch_op) {
-      // NOTE(Aurelius84): `add_fetch` will modify BlockDesc, so we should copy
-      // a
-      // new program.
-      auto new_prog = std::make_shared<framework::ProgramDesc>(main_prog_);
-      auto* block = new_prog->MutableBlock(0);
-      interpreter::add_fetch(fetch_names, block);
 
-      core = std::make_shared<InterpreterCore>(place_, *block, &global_scope_);
-      core->SetCopyProgram(new_prog);
+    if (add_fetch_op) {
+      core = CreateInterpreterCore(place_, main_prog_, &global_scope_,
+                                   fetch_names);
     } else {
-      core = std::make_shared<InterpreterCore>(place_, main_prog_.Block(0),
-                                               &global_scope_);
+      core = std::make_shared<InterpreterCore>(
+          place_, main_prog_.Block(0), /*skip_gc_vars=*/std::set<std::string>(),
+          &global_scope_);
     }
     interpretercores_.emplace(oss.str(), core);
     return core;
