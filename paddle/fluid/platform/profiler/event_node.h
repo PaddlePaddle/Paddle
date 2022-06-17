@@ -47,6 +47,8 @@ class MemTraceEventNode {
   std::string Place() const { return mem_event_.place; }
   uint64_t CurrentAllocated() const { return mem_event_.current_allocated; }
   uint64_t CurrentReserved() const { return mem_event_.current_reserved; }
+  uint64_t PeakAllocated() const { return mem_event_.peak_allocated; }
+  uint64_t PeakReserved() const { return mem_event_.peak_reserved; }
 
   // member function
   void LogMe(BaseLogger* logger) { logger->LogMemTraceEventNode(*this); }
