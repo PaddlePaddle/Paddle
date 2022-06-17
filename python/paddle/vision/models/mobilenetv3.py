@@ -325,6 +325,7 @@ class MobileNetV3Large(MobileNetV3):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
