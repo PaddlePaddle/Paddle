@@ -45,8 +45,7 @@ def argsort(x, axis=-1, descending=False, name=None):
         descending(bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: sorted indices(with the same shape as ``x``
@@ -134,7 +133,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         dtype(str|np.dtype, optional): Data type of the output tensor which can
                     be int32, int64. The default value is ``int64`` , and it will
                     return the int64 indices.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, return the tensor of int32 if set :attr:`dtype` is int32, otherwise return the tensor of int64.
@@ -214,10 +213,8 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         dtype(str): Data type of the output tensor which can
                     be int32, int64. The default value is 'int64', and it will
                     return the int64 indices.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
-
+        name(str, optional): name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        
     Returns:
         Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
 
@@ -293,9 +290,7 @@ def index_select(x, index, axis=0, name=None):
         x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float32, float64, int32, int64.
         index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
         axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name(str, optional): name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: A Tensor with same data type as ``x``.
@@ -439,8 +434,8 @@ def sort(x, axis=-1, descending=False, name=None):
         descending(bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        
     Returns:
         Tensor: sorted tensor(with the same shape and data type as ``x``).
     Examples:
@@ -514,7 +509,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is -1.
         keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
@@ -579,10 +574,7 @@ def where(condition, x=None, y=None, name=None):
         condition(Tensor): The condition to choose x or y. When True(nonzero), yield x, otherwise yield y.
         x(Tensor or Scalar, optional): x is a Tensor or Scalar with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
         y(Tensor or Scalar, optional): y is a Tensor or Scalar with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
-
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name(str, optional): name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: A Tensor with the same data dype as x. 
@@ -779,11 +771,10 @@ def masked_select(x, mask, name=None):
     Args:
         x (Tensor): The input Tensor, the data type can be int32, int64, float32, float64. 
         mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name(str, optional): name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
-    Returns: A 1-D Tensor which is the same data type  as ``x``.
+    Returns: 
+        A 1-D Tensor which is the same data type  as ``x``.
     
     Examples:
 
@@ -931,7 +922,7 @@ def searchsorted(sorted_sequence,
         out_int32(bool, optional): Data type of the output tensor which can be int32, int64. The default value is False, and it indicates that the output data type is int64.
         right(bool, optional): Find the upper or lower bounds of the sorted_sequence range in the innermost dimension based on the given `values`. If the value of the sorted_sequence is nan or inf, return the size of the innermost dimension.
                                The default value is False and it shows the lower bounds.  
-        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         
     Returns:
         Tensor（the same sizes of the `values`）, return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.  
@@ -1003,7 +994,7 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. The default is None. And if the axis is None, it will computed as -1 by default.
         keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
