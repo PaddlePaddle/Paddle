@@ -173,12 +173,8 @@ REGISTER_OP_XPU_KERNEL(
                                paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
     depthwise_conv2d,
-    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext,
-                           paddle::platform::float16>);
+    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>);
 REGISTER_OP_XPU_KERNEL(
     depthwise_conv2d_grad,
-    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext,
-                               paddle::platform::float16>);
+    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 #endif
