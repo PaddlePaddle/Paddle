@@ -227,7 +227,6 @@ __global__ void fill_dvals_kernel(ValType* d_shard_vals, ValType* d_vals,
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
   const int buf_size = 50;
-  __local__ ValType local_vals[buf_size];
   __local__ ValType local_shard_vals[buf_size];
   __local__ T local_idx[buf_size];
   int len_per_loop = min(buf_size, roundup_div(len, nthreads));
@@ -239,9 +238,34 @@ __global__ void fill_dvals_kernel(ValType* d_shard_vals, ValType* d_vals,
     GM2LM(d_shard_vals + i, local_shard_vals, read_len * sizeof(ValType));
     for (int k = 0; k < read_len; k++) {
       LM2GM(&local_shard_vals[k], d_vals + local_idx[k], 1 * sizeof(ValType));
-      // local_vals[local_idx[k]] = local_shard_vals[k];
     }
-    // LM2GM(local_vals, d_vals + i, read_len * sizeof(ValType));
+  }
+}
+
+template <typename ValType, typename T>
+__global__ void fill_dvals_with_bfid_kernel(ValType* d_all_vals, ValType* d_vals,
+                                  T* idx, long long len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+  const int buf_size = 50;
+  __local__ ValType local_vals[buf_size];
+  __local__ ValType local_all_vals[buf_size];
+  __local__ T local_idx[buf_size];
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    // read batch from GM will boost performance
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(idx + i, local_idx, read_len * sizeof(T));
+    for (int k = 0; k < read_len; k++) {
+      GM2LM(d_all_vals + local_idx[k], &local_all_vals[k], 1 * sizeof(ValType));
+    }
+    LM2GM(local_all_vals, d_vals + i, read_len * sizeof(ValType));
   }
 }
 
@@ -288,6 +312,13 @@ template <typename ValType, typename T, typename StreamType>
 void HeterCommKernel::fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
                                  long long len, const StreamType& stream) {
   fill_dvals_kernel<ValType, T><<<4, 64, stream>>>(d_shard_vals, d_vals, idx,
+                                                   len);
+}
+
+template <typename ValType, typename T, typename StreamType>
+void HeterCommKernel::fill_dvals_with_bfid(ValType* d_all_vals, ValType* d_vals, T* idx,
+                                 long long len, const StreamType& stream) {
+  fill_dvals_with_bfid_kernel<ValType, T><<<4, 64, stream>>>(d_all_vals, d_vals, idx,
                                                    len);
 }
 
@@ -469,6 +500,12 @@ template void HeterCommKernel::fill_shard_grads<
 template void
 HeterCommKernel::fill_dvals<paddle::framework::FeatureValue, int, XPUStream>(
     paddle::framework::FeatureValue* d_shard_vals,
+    paddle::framework::FeatureValue* d_vals, int* idx, long long len,
+    const XPUStream& stream);
+
+template void
+HeterCommKernel::fill_dvals_with_bfid<paddle::framework::FeatureValue, int, XPUStream>(
+    paddle::framework::FeatureValue* d_all_vals,
     paddle::framework::FeatureValue* d_vals, int* idx, long long len,
     const XPUStream& stream);
 

@@ -59,6 +59,11 @@ class HeterCommKernel {
   void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx, long long len,
                   const StreamType& stream);
 
+#if defined(PADDLE_WITH_XPU_KP)
+  template <typename ValType, typename T, typename StreamType>
+  void fill_dvals_with_bfid(ValType* d_all_vals, ValType* d_vals, T* idx, long long len,
+                  const StreamType& stream);
+#endif
 
 #if defined(PADDLE_WITH_CUDA)
   template <typename KeyT, typename ValueT, typename StreamType>
