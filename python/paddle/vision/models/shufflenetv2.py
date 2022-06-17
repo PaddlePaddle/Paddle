@@ -193,8 +193,8 @@ class ShuffleNetV2(nn.Layer):
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_
 
     Args:
-        scale (float, optional) - scale of output channels. Default: True.
-        act (str, optional) - activation function of neural network. Default: "relu".
+        scale (float, optional): scale of output channels. Default: True.
+        act (str, optional): activation function of neural network. Default: "relu".
         num_classes (int, optional): output dim of last fc layer. If num_classes <=0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
