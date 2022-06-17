@@ -499,7 +499,6 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('conv2d')
-print(support_types)
 for stype in ['float32']:
     create_test_class(globals(), XPUTestConv2DOp, stype)
     create_test_class(globals(), XPUTestConv2DOp_v2, stype)
