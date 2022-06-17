@@ -43,14 +43,31 @@ void Copy(const Context& dev_ctx,
   void* dst_ptr = nullptr;
   if (paddle::platform::is_cpu_place(dst_place)) {
     dst_ptr = dev_ctx.HostAlloc(dst, src.dtype());
-  } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else if (paddle::platform::is_gpu_place(dst_place) ||
+             paddle::platform::is_cuda_pinned_place(dst_place)) {
     dst_ptr = dev_ctx.Alloc(
         dst, src.dtype(), 0, paddle::platform::is_cuda_pinned_place(dst_place));
+#endif
+
+#ifdef PADDLE_WITH_XPU
+  } else if (paddle::platform::is_xpu_place(dst_place)) {
+    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+#endif
   }
 
-  if (src_ptr == dst_ptr) {
+  PADDLE_ENFORCE_EQ(
+      dst->place(),
+      dst_place,
+      phi::errors::Unavailable(
+          "The Dst Tensor's place and dst_place do not match, Tensor's place "
+          "place is %s, dst_place is %s.",
+          dst->place(),
+          dst_place));
+
+  if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
-            << src_place;
+            << dst_place;
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
