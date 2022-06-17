@@ -1604,11 +1604,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "shuffle_channel") {
+#if !IS_TRT_VERSION_GE(8000)
       if (with_dynamic_shape) {
         VLOG(3) << "You are running the TRT Dynamic Shape mode, "
-                   "the shuffle_channel op does not support dynamic shape yet";
+                   "the shuffle_channel op does not support dynamic shape "
+                   "trt versions below 8.0 yet";
         return false;
       }
+#endif
     }
 
     if (op_type == "skip_layernorm") {
