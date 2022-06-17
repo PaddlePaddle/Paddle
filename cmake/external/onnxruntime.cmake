@@ -52,8 +52,9 @@ else()
   )
 endif()
 
-include_directories(${ONNXRUNTIME_INC_DIR}
-)# For ONNXRUNTIME code to include internal headers.
+# For ONNXRUNTIME code to include internal headers.
+include_directories(${ONNXRUNTIME_INC_DIR})
+
 if(WIN32)
   set(ONNXRUNTIME_SOURCE_LIB
       "${ONNXRUNTIME_SOURCE_DIR}/lib/onnxruntime.dll"
@@ -69,7 +70,7 @@ elseif(APPLE)
       "${ONNXRUNTIME_SOURCE_DIR}/lib/libonnxruntime.1.10.0.dylib"
       CACHE FILEPATH "ONNXRUNTIME source library." FORCE)
   set(ONNXRUNTIME_LIB
-      "${ONNXRUNTIME_INSTALL_DIR}/lib/libonnxruntime.1.10.0.dylib"
+      "${ONNXRUNTIME_INSTALL_DIR}/lib/libonnxruntime.dylib"
       CACHE FILEPATH "ONNXRUNTIME static library." FORCE)
   set(ONNXRUNTIME_SHARED_LIB
       ${ONNXRUNTIME_LIB}
@@ -79,7 +80,7 @@ else()
       "${ONNXRUNTIME_SOURCE_DIR}/lib/libonnxruntime.so.1.10.0"
       CACHE FILEPATH "ONNXRUNTIME source library." FORCE)
   set(ONNXRUNTIME_LIB
-      "${ONNXRUNTIME_INSTALL_DIR}/lib/libonnxruntime.so.1.10.0"
+      "${ONNXRUNTIME_INSTALL_DIR}/lib/libonnxruntime.so"
       CACHE FILEPATH "ONNXRUNTIME static library." FORCE)
   set(ONNXRUNTIME_SHARED_LIB
       ${ONNXRUNTIME_LIB}

@@ -34,15 +34,11 @@ set(PADDLE2ONNX_INC_DIR
 set(PADDLE2ONNX_LIB_DIR
     "${PADDLE2ONNX_INSTALL_DIR}/lib"
     CACHE PATH "onnxruntime lib directory." FORCE)
-set(CMAKE_BUILD_RPATH "${CMAKE_BUILD_RPATH}"
-                      "${PADDLE2ONNX_INSTALL_DIR}/${LIBDIR}")
+set(CMAKE_BUILD_RPATH "${CMAKE_BUILD_RPATH}" "${PADDLE2ONNX_LIB_DIR}")
 
-include_directories(${PADDLE2ONNX_INC_DIR}
-)# For PADDLE2ONNX code to include internal headers.
+# For PADDLE2ONNX code to include internal headers.
+include_directories(${PADDLE2ONNX_INC_DIR})
 if(WIN32)
-  set(PADDLE2ONNX_SOURCE_LIB
-      "${PADDLE2ONNX_SOURCE_DIR}/lib/libpaddle2onnx.dylib"
-      CACHE FILEPATH "Paddle2ONNX source library." FORCE)
   set(PADDLE2ONNX_LIB
       "${PADDLE2ONNX_INSTALL_DIR}/lib/paddle2onnx.dll"
       CACHE FILEPATH "paddle2onnx library." FORCE)
@@ -50,9 +46,6 @@ if(WIN32)
       "${PADDLE2ONNX_INSTALL_DIR}/lib/paddle2onnx.lib"
       CACHE FILEPATH "paddle2onnx compile library." FORCE)
 elseif(APPLE)
-  set(PADDLE2ONNX_SOURCE_LIB
-      "${PADDLE2ONNX_SOURCE_DIR}/lib/libpaddle2onnx.dylib"
-      CACHE FILEPATH "Paddle2ONNX source library." FORCE)
   set(PADDLE2ONNX_LIB
       "${PADDLE2ONNX_INSTALL_DIR}/lib/libpaddle2onnx.dylib"
       CACHE FILEPATH "PADDLE2ONNX library." FORCE)
@@ -60,9 +53,6 @@ elseif(APPLE)
       "${PADDLE2ONNX_INSTALL_DIR}/lib/libpaddle2onnx.dylib"
       CACHE FILEPATH "paddle2onnx compile library." FORCE)
 else()
-  set(PADDLE2ONNX_SOURCE_LIB
-      "${PADDLE2ONNX_SOURCE_DIR}/lib/libpaddle2onnx.so"
-      CACHE FILEPATH "Paddle2ONNX source library." FORCE)
   set(PADDLE2ONNX_LIB
       "${PADDLE2ONNX_INSTALL_DIR}/lib/libpaddle2onnx.so"
       CACHE FILEPATH "PADDLE2ONNX library." FORCE)
