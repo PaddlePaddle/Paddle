@@ -79,7 +79,7 @@ class SqueezeNet(nn.Layer):
     <https://arxiv.org/pdf/1602.07360.pdf>`_
 
     Args:
-        version (str): version of squeezenet, which can be "1.0" or "1.1".
+        version (str): version of SqueezeNet, which can be "1.0" or "1.1".
         num_classes (int): output dim of last fc layer. Default: 1000.
         with_pool (bool): use pool before the last fc layer or not. Default: True.
 

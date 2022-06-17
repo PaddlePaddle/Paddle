@@ -188,7 +188,7 @@ class DenseNet(nn.Layer):
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
 
     Args:
-        layers (int): layers of densenet. Default: 121.
+        layers (int): layers of DenseNet. Default: 121.
         bn_size (int): expansion of growth rate in the middle layer. Default: 4.
         dropout (float): dropout rate. Default: 0..
         num_classes (int): output dim of last fc layer. Default: 1000.
