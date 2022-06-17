@@ -75,6 +75,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       "relu",
       "exp",
       "log",
+      "sqrt",
+      "abs",
+      "sin",
+      "cos",
+      "tan",
+      "sinh",
+      "cosh",
+      "asin",
+      "acos",
+      "atan",
+      "asinh",
+      "atanh",
+      "ceil",
+      "floor",
+      "erf",
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -135,11 +150,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
       "roll",
+      "cast",
       "preln_skip_layernorm",
       "transformer_input_convert",
       "recover_padding",
       "remove_padding",
-      "cast"};
+      "squeeze2",
+      "unsqueeze2"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -149,6 +166,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       "relu",
       "exp",
       "log",
+      "sqrt",
+      "abs",
+      "sin",
+      "cos",
+      "tan",
+      "sinh",
+      "cosh",
+      "asin",
+      "acos",
+      "atan",
+      "asinh",
+      "atanh",
+      "ceil",
+      "floor",
+      "erf",
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -210,11 +242,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
       "roll",
+      "cast",
       "multiclass_nms3",
       "transformer_input_convert",
       "recover_padding",
       "remove_padding",
-      "cast"};
+      "squeeze2",
+      "unsqueeze2"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -229,8 +263,31 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     return false;
 
   for (auto& teller : tellers_) {
-    if (op_type == "relu" || op_type == "relu6" || op_type == "tanh" ||
-        op_type == "sigmoid" || op_type == "exp" || op_type == "log") {
+    std::unordered_set<std::string> act_op_list = {"relu",
+                                                   "elu",
+                                                   "selu",
+                                                   "softsign",
+                                                   "softplus",
+                                                   "stanh",
+                                                   "thresholded_relu",
+                                                   "exp",
+                                                   "log",
+                                                   "sqrt",
+                                                   "abs",
+                                                   "sin",
+                                                   "cos",
+                                                   "tan",
+                                                   "sinh",
+                                                   "cosh",
+                                                   "asin",
+                                                   "acos",
+                                                   "atan",
+                                                   "asinh",
+                                                   "atanh",
+                                                   "ceil",
+                                                   "floor",
+                                                   "erf"};
+    if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
@@ -246,6 +303,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << " op does not support input's dim is 1 in tensorrt.";
         return false;
       }
+#if !IS_TRT_VERSION_GE(7000)
+      if (op_type == "erf") {
+        VLOG(3) << op_type << " op does not support tensorrt.";
+        return false;
+      }
+#endif
     }
 
     if (op_type == "pool2d") {
@@ -827,6 +890,44 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "HardSwish op has only 1 output, but got "
                 << desc.Output("Out").size();
         return false;
+      }
+    }
+
+    if (op_type == "squeeze2") {
+      std::vector<int> axes;
+      if (desc.HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+      }
+      if (axes.size() == 0) {
+        VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
+                   "missing.";
+        return false;
+      }
+      if (!with_dynamic_shape) {
+        if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+          VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                     "supported in static shape";
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "unsqueeze2") {
+      std::vector<int> axes;
+      if (desc.HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+      }
+      if (axes.size() == 0) {
+        VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
+                   "missing.";
+        return false;
+      }
+      if (!with_dynamic_shape) {
+        if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+          VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                     "supported in static shape";
+          return false;
+        }
       }
     }
 
