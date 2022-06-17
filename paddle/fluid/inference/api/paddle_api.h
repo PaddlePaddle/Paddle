@@ -220,6 +220,8 @@ class PD_INFER_DECL PaddlePredictor {
                    std::vector<PaddleTensor>* output_data,
                    int batch_size = -1) = 0;
 
+  void* getScope();
+
   /// \brief  Used to get the name of the network input.
   /// Be inherited by AnalysisPredictor, Only used in ZeroCopy scenarios.
   /// \return Input tensor names.

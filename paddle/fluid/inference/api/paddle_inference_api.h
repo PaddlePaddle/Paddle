@@ -112,8 +112,8 @@ class PD_INFER_DECL Predictor {
   /// \return Whether the function executed successfully
   ///
   bool Run();
-  void * getScope() {return predictor_->getScope();};
-  virtual bool RunOp(void* scope, int op_index) = 0;
+  void* getScope() { return predictor_->getScope(); }
+  bool RunOp(void* scope, int op_index);
   //  bool InferOp(void* scope, int block_index, int op_index);
 
   ///
