@@ -23,13 +23,13 @@ Layer::Layer(
     const std::vector<std::string>& func_names,
     const std::vector<framework::ProgramDesc>& program_descs,
     const std::vector<std::vector<std::string>>& param_names_for_each_program,
-    const VariableNameMap& params_dict) {
+    const VariableNameMap& params_dict, const phi::Place place) {
   VLOG(3) << "program size: " << program_descs.size();
   // Layer manage the life time of all parameter.
   for (size_t i = 0; i < func_names.size(); ++i) {
     // TODO(dev): choose exector or pe by flag
     function_dict[func_names[i]] = std::make_shared<ExectorFunction>(
-        program_descs[i], param_names_for_each_program[i], params_dict);
+        program_descs[i], param_names_for_each_program[i], params_dict, place);
   }
 }
 

@@ -28,8 +28,9 @@ class PEFunction : public BaseFunction {
  public:
   PEFunction(const framework::ProgramDesc &program_desc,
              const std::vector<std::string> param_names_for_program,
-             const VariableNameMap &params_dict)
-      : BaseFunction(program_desc, param_names_for_program, params_dict) {}
+             const VariableNameMap &params_dict, const phi::Place place)
+      : BaseFunction(program_desc, param_names_for_program, params_dict,
+                     place) {}
 
   ~PEFunction() {}
 
@@ -50,7 +51,7 @@ class PEFunction : public BaseFunction {
     if (end_op_index > start_op_index) {
       // TODO(dev): support other devices
       auto cache_info = framework::GetExecutorInfoFromCache(
-          program_desc_, phi::CPUPlace(), start_op_index, end_op_index,
+          program_desc_, place_, start_op_index, end_op_index,
           /*is_grad=*/false, program_id, &scope_);
       auto &parallel_executor = cache_info.first;
       auto &skip_eager_delete_vars =

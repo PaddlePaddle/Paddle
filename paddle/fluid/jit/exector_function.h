@@ -23,9 +23,9 @@ class ExectorFunction : public BaseFunction {
  public:
   ExectorFunction(const framework::ProgramDesc &program_desc,
                   const std::vector<std::string> param_names_for_program,
-                  const VariableNameMap &params_dict)
-      : BaseFunction(program_desc, param_names_for_program, params_dict),
-        inner_exe_(phi::CPUPlace()) {}
+                  const VariableNameMap &params_dict, const phi::Place place)
+      : BaseFunction(program_desc, param_names_for_program, params_dict, place),
+        inner_exe_(place_) {}
 
   ~ExectorFunction() {}
 

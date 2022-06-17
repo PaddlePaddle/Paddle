@@ -41,7 +41,7 @@ class Layer {
       const std::vector<std::string>& func_names,
       const std::vector<framework::ProgramDesc>& program_descs,
       const std::vector<std::vector<std::string>>& param_names_for_each_program,
-      const VariableNameMap& params_dict);
+      const VariableNameMap& params_dict, const phi::Place place);
 
   // TODO(dev): make it as const function
   std::shared_ptr<BaseFunction> GetFunction(const std::string& name);

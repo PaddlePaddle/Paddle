@@ -45,14 +45,15 @@ Layer Deserializer::operator()(const std::string& dir_path) {
                            persistable_var_names.end());
   }
 
+  auto default_place = imperative::GetCurrentTracer()->ExpectedPlace();
   // Read from one pdiparams file, refine here
-  auto params_for_all_program =
-      ReadTensorData(dir_path + "export.forward.pdiparams", param_names_set);
+  auto params_for_all_program = ReadTensorData(
+      dir_path + "export.forward.pdiparams", param_names_set, default_place);
   params_dict.insert(params_for_all_program.begin(),
                      params_for_all_program.end());
 
   return Layer(func_names, program_descs, param_names_for_each_program,
-               params_dict);
+               params_dict, default_place);
 }
 
 bool Deserializer::IsPersistable(framework::VarDesc* desc_ptr) {
@@ -93,12 +94,13 @@ Deserializer::GetPdmodelFileNamePrefix(const std::string& path) {
 }
 
 VariableNameMap Deserializer::ReadTensorData(
-    const std::string& file_name, const std::set<std::string>& var_name) const {
+    const std::string& file_name, const std::set<std::string>& var_name,
+    const phi::Place place) const {
   VLOG(3) << "ReadTensorData from: " << file_name;
   std::ifstream fin(file_name, std::ios::binary);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   // TODO(dev): Support other devices
-  auto& dev_ctx = *pool.Get(phi::CPUPlace());
+  auto& dev_ctx = *pool.Get(place);
   VariableNameMap res;
   for (auto it = var_name.begin(); it != var_name.end(); it++) {
     VLOG(3) << "load Tensor: " << *it;

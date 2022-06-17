@@ -49,8 +49,8 @@ void FunctionSchema::AddOutputArg(std::string name) {
 BaseFunction::BaseFunction(
     const framework::ProgramDesc &program_desc,
     const std::vector<std::string> param_names_for_program,
-    const VariableNameMap &params_dict)
-    : program_desc_(program_desc) {
+    const VariableNameMap &params_dict, const phi::Place place)
+    : program_desc_(program_desc), place_(place) {
   // Parse FunctionSchema
   for (auto &in_name : program_desc_.GetFeedTargetNames()) {
     schema_.AddInputArg(in_name);
@@ -69,7 +69,9 @@ void BaseFunction::FetchOutput(std::vector<Variable> *outs) {
   for (auto &out_name : schema_.GetOutputArgNames()) {
     VLOG(3) << "fetch out: " << out_name;
     auto *var = scope_.FindVar(out_name);
+    VLOG(3) << "after scope_.FindVar(out_name);";
     auto &src_tensor = var->Get<phi::DenseTensor>();
+    VLOG(3) << "var->Get<phi::DenseTensor>();";
     Variable v;
     auto *p = v.GetMutable<DenseTensor>();
     *p = src_tensor;

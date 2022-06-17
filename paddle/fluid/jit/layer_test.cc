@@ -23,11 +23,13 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/jit/serializer.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 USE_OP_ITSELF(elementwise_add);
@@ -44,27 +46,41 @@ PD_DECLARE_KERNEL(relu, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(mean, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 
+#if defined(PADDLE_WITH_CUDA)
+PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(relu, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(mean, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
+#endif
+
 namespace paddle {
 namespace jit {
 
 std::vector<Variable> PrepareInputs() {
-  auto temp = DenseTensor();
-  temp.Resize(phi::make_ddim({2, 4}));
-  phi::CPUContext cpu_ctx;
-  cpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(paddle::platform::CPUPlace())
-                           .get());
-  cpu_ctx.Init();
-  cpu_ctx.Alloc<float>(&temp);
-  phi::funcs::set_constant(cpu_ctx, &temp, 2.);
+  auto default_place = imperative::GetCurrentTracer()->ExpectedPlace();
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& dev_ctx = *pool.Get(default_place);
+
   Variable v;
-  auto *p = v.GetMutable<DenseTensor>();
-  *p = temp;
-  // TODO(dev): associate the input name
+  auto* dense_tensor = v.GetMutable<DenseTensor>();
+  dense_tensor->Resize(phi::make_ddim({2, 4}));
+  dense_tensor->mutable_data<float>(default_place);
+  phi::funcs::set_constant(dev_ctx, dense_tensor, 2.);
+
   return {v};
 }
 
-TEST(layer, Construct) {
+TEST(CpuLayerTest, Construct) {
+  auto tracer = std::make_shared<paddle::imperative::Tracer>();
+  paddle::imperative::SetCurrentTracer(tracer);
+  imperative::GetCurrentTracer()->SetExpectedPlace(phi::CPUPlace());
+
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& dev_ctx = *pool.Get(imperative::GetCurrentTracer()->ExpectedPlace());
+  const auto* dev_ctx_gpu = static_cast<const phi::GPUContext*>(&dev_ctx);
+  DenseTensor cpu_dense_tensor;
+
   std::string path = "./Testing/";
   auto layer = jit::Load(path);
   auto inputs = PrepareInputs();
@@ -72,16 +88,54 @@ TEST(layer, Construct) {
   auto outs = layer.forward(inputs);
   auto out_vars = outs[0];
   auto out_dense_tensor = out_vars.Get<DenseTensor>();
-  auto out_data = out_dense_tensor.data<float>();
+  phi::Copy(*dev_ctx_gpu, out_dense_tensor, phi::CPUPlace(), true,
+            &cpu_dense_tensor);
+  auto out_data = cpu_dense_tensor.data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
   auto func = layer.GetFunction("infer");
   outs = (*func)(inputs);
   out_vars = outs[0];
   out_dense_tensor = out_vars.Get<DenseTensor>();
-  out_data = out_dense_tensor.data<float>();
+  phi::Copy(*dev_ctx_gpu, out_dense_tensor, phi::CPUPlace(), true,
+            &cpu_dense_tensor);
+  out_data = cpu_dense_tensor.data<float>();
   EXPECT_NEAR(out_data[0], 1.41562390, 1e-6);
 }
+
+#if defined(PADDLE_WITH_CUDA)
+TEST(GpuLayerTest, Construct) {
+  auto tracer = std::make_shared<paddle::imperative::Tracer>();
+  paddle::imperative::SetCurrentTracer(tracer);
+  imperative::GetCurrentTracer()->SetExpectedPlace(phi::GPUPlace(0));
+
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& dev_ctx = *pool.Get(imperative::GetCurrentTracer()->ExpectedPlace());
+  const auto* dev_ctx_gpu = static_cast<const phi::GPUContext*>(&dev_ctx);
+  DenseTensor cpu_dense_tensor;
+
+  std::string path = "./Testing/";
+  auto layer = jit::Load(path);
+  auto inputs = PrepareInputs();
+
+  auto outs = layer.forward(inputs);
+  auto out_vars = outs[0];
+  auto out_dense_tensor = out_vars.Get<DenseTensor>();
+  phi::Copy(*dev_ctx_gpu, out_dense_tensor, phi::CPUPlace(), true,
+            &cpu_dense_tensor);
+  auto out_data = cpu_dense_tensor.data<float>();
+  EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
+
+  auto func = layer.GetFunction("infer");
+  outs = (*func)(inputs);
+  out_vars = outs[0];
+  out_dense_tensor = out_vars.Get<DenseTensor>();
+  phi::Copy(*dev_ctx_gpu, out_dense_tensor, phi::CPUPlace(), true,
+            &cpu_dense_tensor);
+  out_data = cpu_dense_tensor.data<float>();
+  EXPECT_NEAR(out_data[0], 1.41562390, 1e-6);
+}
+#endif
 
 }  // namespace jit
 }  // namespace paddle

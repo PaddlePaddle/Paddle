@@ -66,7 +66,7 @@ class BaseFunction {
  public:
   BaseFunction(const framework::ProgramDesc &program_desc,
                const std::vector<std::string> param_names_for_program,
-               const VariableNameMap &params_dict);
+               const VariableNameMap &params_dict, const phi::Place place);
 
   virtual ~BaseFunction() {}
 
@@ -93,6 +93,7 @@ class BaseFunction {
   // global_scope place params
   framework::Scope scope_;
   //   framework::Executor inner_exe_;
+  phi::Place place_;
 };
 
 }  // namespace jit
