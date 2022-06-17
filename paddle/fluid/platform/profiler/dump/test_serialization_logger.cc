@@ -53,9 +53,9 @@ TEST(SerializationLoggerTest, dump_case0) {
       std::string("op3"), TracerEventType::Operator, 31000, 40000, 10, 11));
   mem_events.push_back(MemTraceEvent(11500, 0x1000,
                                      TracerMemEventType::Allocate, 10, 10, 50,
-                                     "GPU:0", 50, 50));
+                                     "GPU:0", 50, 50, 100, 100));
   mem_events.push_back(MemTraceEvent(11900, 0x1000, TracerMemEventType::Free,
-                                     10, 10, -50, "GPU:0", 0, 50));
+                                     10, 10, -50, "GPU:0", 0, 50, 100, 100));
   std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
   std::map<std::string, std::vector<std::string>> dtypes;
   input_shapes[std::string("X")].push_back(std::vector<int64_t>{1, 2, 3});
