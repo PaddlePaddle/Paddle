@@ -45,7 +45,8 @@ class Conll05st(Dataset):
     Implementation of `Conll05st <https://www.cs.upc.edu/~srlconll/soft.html>`_
     test dataset.
 
-    Note: only support download test dataset automatically for that
+    Note: 
+        only support download test dataset automatically for that
           only test dataset of Conll05st is public.
 
     Args:
