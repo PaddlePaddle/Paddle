@@ -188,7 +188,8 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
     `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
     
     Args:
-        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
         scale: (float, optional): scale of channels in each layer. Default: 1.0.
 
     Returns:

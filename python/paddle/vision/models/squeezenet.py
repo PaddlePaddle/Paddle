@@ -214,7 +214,8 @@ def squeezenet1_0(pretrained=False, **kwargs):
     <https://arxiv.org/pdf/1602.07360.pdf>`_
 
     Args:
-        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
 
     Returns:
         SqueezeNet v1.0 model. An instance of :ref:`api_fluid_dygraph_Layer`.
@@ -246,7 +247,8 @@ def squeezenet1_1(pretrained=False, **kwargs):
     <https://arxiv.org/pdf/1602.07360.pdf>`_
 
     Args:
-        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
 
     Returns:
         SqueezeNet v1.1 model. An instance of :ref:`api_fluid_dygraph_Layer`.

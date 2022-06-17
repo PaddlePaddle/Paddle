@@ -514,7 +514,8 @@ def inception_v3(pretrained=False, **kwargs):
     `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_
 
     Args:
-        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
 
     Returns:
         Inception v3 model. An instance of :ref:`api_fluid_dygraph_Layer`.

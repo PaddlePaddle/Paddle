@@ -226,7 +226,8 @@ def googlenet(pretrained=False, **kwargs):
     `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_
     
     Args:
-        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
 
     Returns:
         GoogLeNet (Inception v1) model. An instance of :ref:`api_fluid_dygraph_Layer`.

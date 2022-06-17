@@ -189,7 +189,8 @@ def alexnet(pretrained=False, **kwargs):
     <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_
 
     Args:
-        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
         **kwargs: Additional keyword arguments，For details, please refer to :ref:`AlexNet <api_paddle_vision_models_AlexNet>`. 
 
     Returns:

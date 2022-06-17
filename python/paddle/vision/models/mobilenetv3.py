@@ -386,7 +386,8 @@ def mobilenet_v3_small(pretrained=False, scale=1.0, **kwargs):
     `"Searching for MobileNetV3" <https://arxiv.org/abs/1905.02244>`_.
 
     Args:
-        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
 
     Returns:
@@ -425,7 +426,8 @@ def mobilenet_v3_large(pretrained=False, scale=1.0, **kwargs):
     `"Searching for MobileNetV3" <https://arxiv.org/abs/1905.02244>`_.
 
     Args:
-        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
 
     Returns:
