@@ -1268,6 +1268,21 @@ class MLUCnnl {
                          const cnnlTensorDescriptor_t output_desc,
                          void* output);
 
+  static void BceLoss(
+      const ExecutionContext& ctx, const cnnlBceLossReduction_t reduction,
+      const cnnlTensorDescriptor_t input_desc, const void* input,
+      const cnnlTensorDescriptor_t target_desc, const void* target,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t output_desc, void* output);
+
+  static void BceLossBackward(
+      const ExecutionContext& ctx, const cnnlBceLossReduction_t reduction,
+      const cnnlTensorDescriptor_t grad_desc, const void* grad,
+      const cnnlTensorDescriptor_t input_desc, const void* input,
+      const cnnlTensorDescriptor_t target_desc, const void* target,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t output_desc, void* output);
+
   static void EmbeddingForward(
       const ExecutionContext& ctx, const int padding_idx,
       const cnnlTensorDescriptor_t weight_desc, const void* weight,
@@ -1279,6 +1294,23 @@ class MLUCnnl {
       const cnnlTensorDescriptor_t indices_desc, const void* indices,
       const cnnlTensorDescriptor_t diff_desc, const void* diff,
       const cnnlTensorDescriptor_t output_desc, void* output);
+
+  static void BceWithLogits(
+      const ExecutionContext& ctx, cnnlBceWithLogitsReduction_t reduction,
+      const cnnlTensorDescriptor_t input_desc, const void* input,
+      const cnnlTensorDescriptor_t target_desc, const void* target,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t pos_weight_desc, const void* pos_weight,
+      const cnnlTensorDescriptor_t output_desc, void* output);
+
+  static void BceWithLogitsBackward(
+      const ExecutionContext& ctx, cnnlBceWithLogitsReduction_t reduction,
+      const cnnlTensorDescriptor_t grad_desc, const void* grad,
+      const cnnlTensorDescriptor_t input_desc, const void* input,
+      const cnnlTensorDescriptor_t target_desc, const void* target,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t pos_weight_desc, const void* pos_weight,
+      const cnnlTensorDescriptor_t diff_input_desc, void* diff_input);
 };
 
 template <typename T>
