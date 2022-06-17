@@ -43,30 +43,23 @@ extern void *cusparse_dso_handle;
 #if defined(PADDLE_WITH_CUDA)
 // APIs available after CUDA 11.0
 #if CUDA_VERSION >= 11000
-#define CUSPARSE_ROUTINE_EACH(__macro)       \
-  __macro(cusparseCreate);                   \
-  __macro(cusparseSetStream);                \
-  __macro(cusparseCreateMatDescr);           \
-  __macro(cusparseDestroy);                  \
-  __macro(cusparseSnnz);                     \
-  __macro(cusparseDnnz);                     \
-  __macro(cusparseSetMatType);               \
-  __macro(cusparseSetMatIndexBase);          \
-  __macro(cusparseCreateCsr);                \
-  __macro(cusparseCreateCoo);                \
-  __macro(cusparseCreateDnMat);              \
-  __macro(cusparseSpMM_bufferSize);          \
-  __macro(cusparseSpMM);                     \
-  __macro(cusparseDestroySpMat);             \
-  __macro(cusparseDestroyDnMat);             \
-  __macro(cusparseCooSetPointers);           \
-  __macro(cusparseCsrSetPointers);           \
-  __macro(cusparseDenseToSparse_bufferSize); \
-  __macro(cusparseDenseToSparse_analysis);   \
-  __macro(cusparseDenseToSparse_convert);    \
-  __macro(cusparseSparseToDense_bufferSize); \
-  __macro(cusparseSparseToDense);            \
-  __macro(cusparseDnMatSetStridedBatch);     \
+#define CUSPARSE_ROUTINE_EACH(__macro)   \
+  __macro(cusparseCreate);               \
+  __macro(cusparseSetStream);            \
+  __macro(cusparseCreateMatDescr);       \
+  __macro(cusparseDestroy);              \
+  __macro(cusparseSnnz);                 \
+  __macro(cusparseDnnz);                 \
+  __macro(cusparseSetMatType);           \
+  __macro(cusparseSetMatIndexBase);      \
+  __macro(cusparseCreateCsr);            \
+  __macro(cusparseCreateCoo);            \
+  __macro(cusparseCreateDnMat);          \
+  __macro(cusparseSpMM_bufferSize);      \
+  __macro(cusparseSpMM);                 \
+  __macro(cusparseDestroySpMat);         \
+  __macro(cusparseDestroyDnMat);         \
+  __macro(cusparseDnMatSetStridedBatch); \
   __macro(cusparseCsrSetStridedBatch);
 
 CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
