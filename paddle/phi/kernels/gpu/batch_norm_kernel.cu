@@ -229,7 +229,6 @@ static __global__ void BNForwardTraining2DChannelLastCompStat(
 
         // vertical block sum
         int tid = threadIdx.x + threadIdx.y * blockDim.x;
-#pragma unroll
         for (int offset = blockDim.y / 2; offset > 0; offset >>= 1) {
           if (threadIdx.y < offset * 2) {
             smem_sum[tid] = x_sum;
@@ -365,7 +364,6 @@ static __global__ void BNForwardTraining2DCompStat(
 
     // horizonal block sum
     int tid = threadIdx.x + threadIdx.y * blockDim.x;
-#pragma unroll
     for (int offset = blockDim.x / 2; offset > 0; offset >>= 1) {
       if (threadIdx.x < offset * 2) {
         smem_sum[tid] = x_sum;
@@ -413,7 +411,6 @@ static __global__ void BNForwardTraining2DCompStat(
 
         // vertical block sum
         int tid = threadIdx.x + threadIdx.y * blockDim.x;
-#pragma unroll
         for (int offset = blockDim.x / 2; offset > 0; offset >>= 1) {
           if (threadIdx.x < offset * 2) {
             smem_sum[tid] = x_sum;
