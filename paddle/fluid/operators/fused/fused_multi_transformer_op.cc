@@ -221,7 +221,7 @@ class FusedMultiTransformerOpOpMaker
                                 "'dropout_rate' must be between 0.0 and 1.0."));
         });
 
-    AddAttr<bool>("dropout_is_test",
+    AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
