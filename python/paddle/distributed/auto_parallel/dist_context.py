@@ -118,6 +118,9 @@ class DistributedContext:
         self._backup_serial_main_program_stack = []
         self._backup_serial_startup_program_stack = []
 
+        # flag whether scale gradient with dp size
+        self._gradient_scale = True
+
     @property
     def serial_main_program(self):
         return self._serial_main_program
@@ -186,6 +189,14 @@ class DistributedContext:
     def has_annotation(self):
         return len(self._dist_tensors_for_program) or len(
             self._dist_ops_for_program)
+
+    @property
+    def gradient_scale(self):
+        return self._gradient_scale
+
+    @gradient_scale.setter
+    def gradient_scale(self, gs):
+        self._gradient_scale = gs
 
     def _backup_serial_info(self, mode):
         self._backup_serial_main_program_stack.append(
@@ -332,7 +343,11 @@ class DistributedContext:
             if not self._serial_startup_program:
                 self._serial_startup_program = self._original_serial_startup_program
             if not self._serial_loss:
-                self._serial_loss = self._original_serial_loss
+                if isinstance(self._original_serial_loss, list):
+                    assert len(self._original_serial_loss) == 1
+                    self._serial_loss = self._original_serial_loss[0]
+                else:
+                    self._serial_loss = self._original_serial_loss
             if not self._serial_optimizer:
                 self._serial_optimizer = self._original_serial_optimizer
             if not self._serial_feed_vars:
@@ -969,4 +984,5 @@ class BlockState(object):
             self.backward_to_forward_index_map[idx] = block.forward_block_idx
             self.nblock += 1
 
+        print("dist_context.py", self.nblock, len(program.blocks))
         assert self.nblock == len(program.blocks)

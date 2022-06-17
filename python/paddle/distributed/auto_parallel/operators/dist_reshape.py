@@ -411,7 +411,8 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
 
         if x_shape_dims_mapping[1:] != x_dims_mapping[:]:
             return False
-
+        # if len(x_dims_mapping) == 3:
+        #     print("dist_reshape.py True******", x_dims_mapping, out_dims_mapping)
         return True
 
     def update_dims_mapping(self, dist_op):

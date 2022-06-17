@@ -18,7 +18,7 @@ from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl, is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
-from ..utils import is_valid_list_index
+from ..utils import is_valid_list_index, is_prim_op
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
@@ -36,6 +36,55 @@ from ..cost import build_comp_desc_from_dist_op, build_dp_costs
 from ..cost import build_comp_costs_from_desc_mapping
 
 __op_not_need_param_init__ = ["while", "cond"]
+
+
+def prim_operator_data_parallel_functor(ctx, src_op):
+    dist_op_context = ctx.dist_op_context
+    main_block = dist_op_context.work_block
+    startup_block = dist_op_context.startup_block
+
+    var_name = src_op.output_arg_names[0]
+    if var_name in ctx.grads_params:
+        assert var_name not in ctx.synced_gradient, "in primtive mode, grad is already {} synced".format(
+            var_name)
+        ctx.synced_gradient.add(var_name)
+        sync_group = new_process_group(ctx.data_parallel_group)
+
+        allreduce_op = main_block.append_op(
+            type='c_allreduce_sum',
+            inputs={'X': [var_name]},
+            outputs={'Out': [var_name]},
+            attrs={
+                'ring_id': sync_group.id,
+                'use_calc_stream': True,
+                OP_ROLE_KEY: OpRole.Backward
+            })
+
+        param = ctx.grads_params[var_name]
+        startup_block = dist_op_context.startup_block
+        new_op = startup_block.append_op(
+            type='c_broadcast',
+            inputs={'X': [param]},
+            outputs={'Out': [param]},
+            attrs={
+                'ring_id': sync_group.id,
+                'root': 0,
+                'use_calc_stream': True,
+                OP_ROLE_KEY: OpRole.Forward
+            })
+
+        grad_var = main_block.var(var_name)
+        dims_mapping = ctx.get_tensor_dist_attr_for_program(
+            grad_var).dims_mapping
+        dist_attr = ctx.get_op_dist_attr_for_program(src_op)
+        process_mesh = dist_attr.process_mesh
+        op_attr = OperatorDistributedAttribute()
+        op_attr.process_mesh = process_mesh
+        op_attr.set_output_dims_mapping(grad_var.name, dims_mapping)
+        op_attr.set_input_dims_mapping(grad_var.name, dims_mapping)
+        ctx.set_op_dist_attr_for_program(allreduce_op, op_attr)
+
+    return
 
 
 class DistributedDefault(DistributedOperatorImplContainer):
@@ -363,7 +412,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
     @staticmethod
     def forward(ctx, *args, **kwargs):
-
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.work_block
         startup_block = dist_op_context.startup_block
@@ -386,7 +434,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 output_name)
 
         # replicate op in dist program
-        dist_op_desc = main_block.desc.append_op()
+        dist_op_desc = main_block.append_op(type='nop').desc
         dist_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
         for input_name in src_op.desc.input_names():
@@ -394,7 +442,12 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         for output_name in src_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
-        main_block._sync_with_cpp()
+        # data parallel synchronization for primtive operators
+        from paddle.incubate.autograd import prim_enabled
+        if prim_enabled():
+            assert is_prim_op(src_op)
+            prim_operator_data_parallel_functor(ctx, src_op)
+            return
 
         # param initialization sync
         if src_op.type in __op_not_need_param_init__:
@@ -443,8 +496,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                                                         dims_mapping)
                         op_attr.set_input_dims_mapping(param.name, dims_mapping)
                         ctx.set_op_dist_attr_for_program(new_op, op_attr)
-
-                startup_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -528,6 +579,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             if len(allreduce_vars) > 0:
 
                 for varname in allreduce_vars:
+                    added_ops = []
 
                     grad_var = main_block.var(varname)
                     allreduce_op = main_block.append_op(
@@ -539,20 +591,23 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                             'use_calc_stream': True,
                             OP_ROLE_KEY: OpRole.Backward
                         })
+                    added_ops.append(allreduce_op)
 
-                    scale_op = main_block.append_op(
-                        type='scale',
-                        inputs={'X': grad_var},
-                        outputs={'Out': grad_var},
-                        attrs={
-                            'scale': 1.0 / dp_degree,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
+                    if ctx.gradient_scale:
+                        scale_op = main_block.append_op(
+                            type='scale',
+                            inputs={'X': grad_var},
+                            outputs={'Out': grad_var},
+                            attrs={
+                                'scale': 1.0 / dp_degree,
+                                OP_ROLE_KEY: OpRole.Backward
+                            })
+                        added_ops.append(scale_op)
 
                     dims_mapping = ctx.get_tensor_dist_attr_for_program(
                         grad_var).dims_mapping
                     process_mesh = dist_attr.process_mesh
-                    for op in [allreduce_op, scale_op]:
+                    for op in added_ops:
                         op_attr = OperatorDistributedAttribute()
                         op_attr.process_mesh = process_mesh
                         op_attr.set_output_dims_mapping(grad_var.name,

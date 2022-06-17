@@ -19,6 +19,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 from .base_cost import Cost, CompOpCost, CommContext
 from ..operators.common import get_distributed_operator_impl_container
+from ..utils import print_program_with_dist_attr
 
 
 class CostEstimator:
@@ -245,5 +246,8 @@ class CostEstimator:
         block = self.program.global_block()
         # print("estimate_cost", self.program)
         self._estimate_core(dist_context, resharder, block)
+        # print("estimate_cost.py  detailed_cost", self.detailed_cost)
+        # print("estimate_cost.py program with dist_attr********")
+        # print_program_with_dist_attr(self.program, dist_context)
 
         return self.global_cost

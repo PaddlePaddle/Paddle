@@ -2523,6 +2523,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         assert out_var_dist_attr is not None
         ref_shape = infer_shape(main_block, Out_var, out_tensor_dist_attr,
                                 out_var_dist_attr)
+        print("dist_matmul.py out_var ref_shape", Out_var, ref_shape)
 
         intermediate_var_0 = main_block.create_var(
             name=unique_name.generate_with_ignorable_key(".".join(
@@ -2537,14 +2538,35 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         # set intermediate_var_0's dist_attr with Out_var's dist_attr
         ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
                                              out_var_dist_attr)
+        print("dist_matmul.py ", inputs, intermediate_var_0, op_dist_attr)
+
+        inputs_ref_shape = {}
+        inputs_original_shape = {}
+        for var_name in inputs:
+            var = inputs[var_name]
+            inputs_original_shape[var_name] = var.shape
+            input_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(var)
+            input_var_dist_attr = op_dist_attr.get_input_dist_attr(var.name)
+            print("input_tensor_dist_attr ", input_tensor_dist_attr, "input_var_dist_attr ", input_var_dist_attr)
+            input_ref_shape = infer_shape(main_block, var, input_tensor_dist_attr,
+                                input_var_dist_attr)
+            print("original shape", var.shape, "ref_shape", input_ref_shape)
+            inputs_ref_shape[var_name] = input_ref_shape
+            var.desc.set_shape(input_ref_shape)
 
         mul_op = main_block.append_op(
             type='mul',
             inputs=inputs,
             outputs={'Out': intermediate_var_0},
             attrs=attrs)
+
         if intermediate_var_0.shape != ref_shape:
             intermediate_var_0.desc.set_shape(ref_shape)
+
+        for var_name in inputs:
+            var = inputs[var_name]
+            original_shape = inputs_original_shape[var_name]
+            var.desc.set_shape(original_shape)
 
         c_allreduce_sum_op = main_block.append_op(
             type='c_allreduce_sum',
@@ -2555,6 +2577,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
                 'use_calc_stream': True,
                 'use_model_parallel': True
             })
+        
         if Out_var.shape != ref_shape:
             Out_var.desc.set_shape(ref_shape)
 

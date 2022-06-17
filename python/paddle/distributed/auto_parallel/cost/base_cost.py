@@ -412,6 +412,7 @@ class CommContext:
             return
         self.beta = {}
         self.hops = {}
+        assert cluster is not None
         self.cluster = cluster
         # if cluster has no info about those vars, it will be set by default
         self.base_ring = None
@@ -725,8 +726,7 @@ class CommOpCost(OpCost):
             elif dtype == paddle.float16:
                 factor = 2
             else:
-                raise TypeError("This dtype {} is not supported now".format(
-                    dtype))
+                raise ValueError("Unsupported comm dtype {}".format(dtype))
             comm_count = reduce(lambda x, y: x * y, shape) * factor
             self._comm_count = comm_count
 

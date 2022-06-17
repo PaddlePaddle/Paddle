@@ -40,6 +40,33 @@ class Parallelizer:
         self._strategy = self._dist_context.strategy
 
     def parallel_all(self):
+        # def is_union_process_mesh(process_mesh, dist_context):
+        #     sub_set_count = 0
+        #     for item in dist_context.process_meshes:
+        #         for process in item.processes:
+        #             if process in process_mesh.processes:
+        #                 sub_set_count += 1
+        #                 break
+        #     if sub_set_count > 1:
+        #         return True
+        #     return False
+
+        # # This is a trick to avoid output process mesh different from tensor process mesh (non-union process mesh)
+        # for dist_op in self._dist_context._dist_ops_for_program.values():
+        #     serial_op = dist_op.serial_op
+        #     if serial_op.type == "while":
+        #         continue
+        #     else:
+        #         for var_name in serial_op.output_arg_names:
+        #             var = serial_op.block._var_recursive(var_name)
+        #             dist_tensor = self._dist_context.get_dist_tensor_for_program(var)
+        #             if dist_tensor.dist_attr.process_mesh != dist_op.dist_attr.process_mesh:
+        #                 print("parallel_tuner.py process_mesh", dist_tensor.dist_attr.process_mesh, dist_op.dist_attr.process_mesh, is_union_process_mesh(dist_tensor.dist_attr.process_mesh, self._dist_context), is_union_process_mesh(dist_op.dist_attr.process_mesh, self._dist_context))
+
+        #                 if not is_union_process_mesh(dist_tensor.dist_attr.process_mesh, self._dist_context) and not is_union_process_mesh(dist_op.dist_attr.process_mesh, self._dist_context):
+        #                     dist_tensor.dist_attr.process_mesh = dist_op.dist_attr.process_mesh
+        #                     print("parallel_tuner.py after change process_mesh", dist_tensor, dist_op)
+
         world_process_group = get_world_process_group()
         all_ranks = world_process_group.ranks
         print("begin parallel all", flush=True)
@@ -55,7 +82,7 @@ class Parallelizer:
         serial_optimizer = self._dist_context.serial_optimizer
         if self._mode == "train" and serial_optimizer:
             # Generate backward
-            serial_loss = self._dist_context.serial_fetch_vars["loss"][0]
+            serial_loss = self._dist_context.serial_loss
             params_grads = self._generate_backward(
                 serial_main_program, serial_startup_program, serial_loss)
             # Apply pre optimization passes
@@ -72,11 +99,10 @@ class Parallelizer:
                                      serial_optimizer, dist_params_grads)
             # Do reshard process
             set_grad_var_shape(dist_main_prog, self._dist_context)
-            make_data_unshard(dist_main_prog, dist_startup_prog,
-                              self._dist_context)
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, dist_params_grads)
             resharder.reshard()
+
             # Apply post optimization passes
             self._apply_post_optimization(dist_main_prog, dist_startup_prog,
                                           rank, dist_params_grads)
@@ -89,13 +115,44 @@ class Parallelizer:
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
                 serial_main_program, serial_startup_program, [])
             # Do reshard process
-            make_data_unshard(dist_main_prog, dist_startup_prog,
-                              self._dist_context)
-            # print_program_with_dist_attr(dist_main_prog, self._dist_context)
-            # Apply pre optimization passes
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, [], 1)
             resharder.reshard()
+
+            # # insert print op to debug lod_set op error
+            # for i in range(len(dist_main_prog.blocks)):
+            #     block = dist_main_prog.blocks[i]
+            #     index = 0
+            #     while index < len(block.ops):
+            #         op = block.ops[index]
+            #         # print("parallelizer_v2 op_type****", op.type)
+            #         if op.type == "lod_reset":
+            #             print("parallelizer_v2 Enter lod_reset****")
+            #             if "lod_reset_0.tmp_0" in op.output_arg_names:
+            #                 for var_name in op.input_arg_names:
+            #                     input_var = block._var_recursive(var_name)
+            #                     print("parallelizer_v2.py input", input_var)
+            #                     out = block.create_var(name=input_var.name+"@PRINT", dtype=input_var.dtype, type=input_var.type)
+            #                     block._insert_op(
+            #                         index,
+            #                         type='print',
+            #                         inputs={'In': input_var},
+            #                         outputs={'Out': out},
+            #                         attrs={
+            #                             'first_n': -1,
+            #                             'summarize': 20,
+            #                             'message': "",
+            #                             'print_tensor_name': True,
+            #                             'print_tensor_type': True,
+            #                             'print_tensor_shape': True,
+            #                             'print_tensor_layout': True,
+            #                             'print_tensor_lod': True,
+            #                             'print_phase': 'both'.upper()
+            #                         })
+            #                     index += 1
+            #                 break
+            #         else:
+            #             index += 1
         # Clone program for test
         if self._mode != 'train':
             dist_main_prog = dist_main_prog.clone(for_test=True)

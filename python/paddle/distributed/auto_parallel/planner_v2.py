@@ -46,6 +46,7 @@ class Planner:
             self._parallel_tuner.tune()
         else:
             self._completer.complete_forward_annotation()
+
         # parse forward sub block
         self._dist_context.block_state.parse_forward_blocks(
             self._dist_context.serial_main_program)
