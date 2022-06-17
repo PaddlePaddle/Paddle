@@ -46,6 +46,7 @@ def fused_feedforward(x,
                       training=True,
                       mode='upscale_in_train',
                       ring_id=-1,
+                      add_residual=True,
                       name=None):
     r"""
     This is a fusion operator to compute feed forward layer in transformer model architecture.
@@ -90,6 +91,7 @@ def fused_feedforward(x,
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
         ring_id (int, optional): For distributed forward in tensor model parallel, only support NCCL. Default is -1, means not using tensor parallel.
+        add_residual (bool, optional): Whether add residual at the end. Default is True.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -130,10 +132,11 @@ def fused_feedforward(x,
             'ln2_epsilon', ln2_epsilon, 'act_method', activation,
             'dropout1_rate', dropout1_rate, 'dropout2_rate', dropout2_rate,
             "is_test", not training, "dropout1_fix_seed", seed is not None,
-            "dropout2_fix_seed", seed is not None, "dropout1_seed", seed
-            if seed is not None else 0, "dropout2_seed", seed
-            if seed is not None else 0, 'dropout1_implementation', mode,
-            'dropout2_implementation', mode, 'ring_id', ring_id)
+            "dropout2_fix_seed", seed is not None, "dropout1_seed",
+            seed if seed is not None else 0, "dropout2_seed",
+            seed if seed is not None else 0, 'dropout1_implementation', mode,
+            'dropout2_implementation', mode, 'add_residual', add_residual,
+            'ring_id', ring_id)
         return out
 
     helper = LayerHelper("fused_feedforward")
@@ -168,39 +171,167 @@ def fused_feedforward(x,
     if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
         seed = helper.main_program.random_seed
 
-    helper.append_op(
-        type='fused_feedforward',
-        inputs={
-            'X': x,
-            'Linear1Weight': linear1_weight,
-            'Linear1Bias': linear1_bias,
-            'Linear2Weight': linear2_weight,
-            'Linear2Bias': linear2_bias,
-            'Ln1Scale': ln1_scale,
-            'Ln1Bias': ln1_bias,
-            'Ln2Scale': ln2_scale,
-            'Ln2Bias': ln2_bias,
-        },
-        outputs={
-            'Out': out,
-            'Dropout1Mask': dropout1_mask,
-            'Dropout2Mask': dropout2_mask,
-            'Ln1Mean': ln1_mean,
-            'Ln1Variance': ln1_variance,
-            'Ln2Mean': ln2_mean,
-            'Ln2Variance': ln2_variance,
-            'Linear1Out': linear1_out,
-            'Ln1Out': ln1_out,
-            'Dropout1Out': dropout1_out,
-            'Dropout2Out': dropout2_out,
-        },
-        attrs={
-            'dropout1_rate': dropout1_rate,
-            'dropout2_rate': dropout2_rate,
-            'act_method': activation,
-            'pre_layer_norm': pre_layer_norm,
-            'ln1_epsilon': ln1_epsilon,
-            'ln2_epsilon': ln2_epsilon,
+    helper.append_op(type='fused_feedforward',
+                     inputs={
+                         'X': x,
+                         'Linear1Weight': linear1_weight,
+                         'Linear1Bias': linear1_bias,
+                         'Linear2Weight': linear2_weight,
+                         'Linear2Bias': linear2_bias,
+                         'Ln1Scale': ln1_scale,
+                         'Ln1Bias': ln1_bias,
+                         'Ln2Scale': ln2_scale,
+                         'Ln2Bias': ln2_bias,
+                     },
+                     outputs={
+                         'Out': out,
+                         'Dropout1Mask': dropout1_mask,
+                         'Dropout2Mask': dropout2_mask,
+                         'Ln1Mean': ln1_mean,
+                         'Ln1Variance': ln1_variance,
+                         'Ln2Mean': ln2_mean,
+                         'Ln2Variance': ln2_variance,
+                         'Linear1Out': linear1_out,
+                         'Ln1Out': ln1_out,
+                         'Dropout1Out': dropout1_out,
+                         'Dropout2Out': dropout2_out,
+                     },
+                     attrs={
+                         'dropout1_rate': dropout1_rate,
+                         'dropout2_rate': dropout2_rate,
+                         'act_method': activation,
+                         'pre_layer_norm': pre_layer_norm,
+                         'ln1_epsilon': ln1_epsilon,
+                         'ln2_epsilon': ln2_epsilon,
+                         'is_test': not training,
+                         'dropout1_fix_seed': seed is not None,
+                         'dropout2_fix_seed': seed is not None,
+                         'dropout1_seed': seed if seed is not None else 0,
+                         'dropout2_seed': seed if seed is not None else 0,
+                         'dropout1_implementation': mode,
+                         'dropout2_implementation': mode,
+                         'add_residual': add_residual,
+                         'ring_id': ring_id,
+                     })
+    return out
+
+
+def fused_bias_dropout_residual_layer_norm(x,
+                                           residual,
+                                           bias=None,
+                                           ln_scale=None,
+                                           ln_bias=None,
+                                           dropout_rate=0.5,
+                                           ln_epsilon=1e-5,
+                                           training=True,
+                                           mode='upscale_in_train',
+                                           name=None):
+    r"""
+    The fused_bias_dropout_residual_layer_norm operator. The pseudo code is as follows:
+
+    .. code-block:: python
+        y = layer_norm(residual + dropout(bias + x))
+
+    Parameters:
+        x (Tensor): The input tensor. The shape is `[*, embed\_dim]`.
+        residual (Tensor): The residual tensor. The shape is same as x.
+        bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
+        ln_scale (Tensor, optional): The weight tensor of layernorm. The shape is `[embed_dim]`. Default None.
+        ln_bias (Tensor, optional): The bias tensor of layernorm. The shape is `[embed_dim]`. Default None.
+        dropout_rate (float, optional): The dropout probability used on attention
+            weights to drop some attention targets for the dropout after attention.
+            0 for no dropout. Default 0.5.
+        ln_epsilon (float, optional): Small float value added to denominator of layer_norm
+            to avoid dividing by zero. Default is 1e-5.
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default True.
+        mode (str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
+
+                               1. upscale_in_train(default), upscale the output at training time
+
+                                  - train: out = input * mask / ( 1.0 - p )
+                                  - inference: out = input
+
+                               2. downscale_in_infer, downscale the output at inference
+
+                                  - train: out = input * mask
+                                  - inference: out = input * (1.0 - p)
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output Tensor, the data type and shape is same as `x`.
+
+    Examples:
+
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+            import paddle.incubate.nn.functional as F
+
+            # input: [batch_size, seq_len, embed_dim]
+            x = paddle.rand(shape=(2, 4, 128), dtype="float32")
+            # residual: [batch_size, seq_len, embed_dim]
+            residual = paddle.rand(shape=(2, 4, 128), dtype="float32")
+            # linear bias: [embed_dim]
+            bias = paddle.rand(shape=[128], dtype="float32")
+            # output: [batch_size, seq_len, embed_dim]
+            output = F.fused_bias_dropout_residual_layer_norm(
+                x, residual, bias)
+            # [2, 4, 128]
+            print(output.shape)
+    """
+    seed = None
+    if mode not in ('downscale_in_infer', 'upscale_in_train'):
+        raise ValueError(
+            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'"
+        )
+    mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
+
+    if ln_scale is not None:
+        assert len(ln_scale.shape
+                   ) == 1, "The dims of the shape of ln_scale should be 1."
+        assert x.shape[len(x.shape) - 1] == ln_scale.shape[
+            0], "The dim of ln_scale must equal to the last dim of x."
+    if ln_bias is not None:
+        assert len(
+            ln_bias.shape) == 1, "The dims of the shape of ln_bias should be 1."
+        assert x.shape[len(x.shape) - 1] == ln_bias.shape[
+            0], "The dim of ln_bias must equal to the last dim of x."
+
+    if _non_static_mode():
+        if default_main_program().random_seed != 0:
+            seed = default_main_program().random_seed
+        _, _, _, _, final_out = _C_ops.fused_bias_dropout_residual_layer_norm(
+            x, residual, bias, ln_scale, ln_bias, 'dropout_rate', dropout_rate,
+            'ln_epsilon', ln_epsilon, 'is_test', not training,
+            'dropout_fix_seed', seed is not None, 'dropout_seed',
+            seed if seed is not None else 0, 'dropout_implementation', mode)
+        return final_out
+    else:
+        helper = LayerHelper('fused_bias_dropout_residual_layer_norm',
+                             **locals())
+        dtype = x.dtype
+        # check dtypes
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 'fused_bias_dropout_residual_layer_norm')
+        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
+                    'fused_bias_dropout_residual_layer_norm')
+        # set inputs
+        inputs = dict()
+        inputs['X'] = [x]
+        inputs['Residual'] = [residual]
+        if bias is not None:
+            inputs['Bias'] = [bias]
+        if ln_scale:
+            inputs['LnScale'] = [ln_scale]
+        if ln_bias:
+            inputs['LnBias'] = [ln_bias]
+        if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
+            seed = helper.main_program.random_seed
+        # set attrs
+        attrs = {
+            'ln_epsilon': ln_epsilon,
+            'dropout_rate': dropout_rate,
             'is_test': not training,
             'dropout1_fix_seed': seed is not None,
             'dropout2_fix_seed': seed is not None,
@@ -232,6 +363,7 @@ def fused_multi_head_attention(x,
                                training=True,
                                mode='upscale_in_train',
                                ring_id=-1,
+                               add_residual=True,
                                name=None):
     r"""
     Attention mapps queries and a set of key-value pairs to outputs, and
@@ -308,6 +440,7 @@ def fused_multi_head_attention(x,
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
         ring_id (int, optional): For distributed forward in mp, only support NCCL and forward. Default is -1, means not using mp
+        add_residual (bool, optional): Whether add residual at the end. Default is True.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -371,10 +504,11 @@ def fused_multi_head_attention(x,
             'dropout_rate', dropout_rate, 'attn_dropout_rate',
             attn_dropout_rate, 'ln_epsilon', ln_epsilon, 'is_test',
             not training, 'attn_dropout_fix_seed', seed is not None,
-            'dropout_fix_seed', seed is not None, 'attn_dropout_seed', seed
-            if seed is not None else 0, 'dropout_seed', seed
-            if seed is not None else 0, 'attn_dropout_implementation', mode,
-            'dropout_implementation', mode, 'ring_id', ring_id)
+            'dropout_fix_seed', seed is not None, 'attn_dropout_seed',
+            seed if seed is not None else 0, 'dropout_seed',
+            seed if seed is not None else 0, 'attn_dropout_implementation',
+            mode, 'dropout_implementation', mode, 'add_residual', add_residual,
+            'ring_id', ring_id)
         if cache_kv is not None:
             return final_out, cache_kv_out
         return final_out
@@ -424,6 +558,7 @@ def fused_multi_head_attention(x,
             'dropout_seed': seed if seed is not None else 0,
             'attn_dropout_implementation': mode,
             'dropout_implementation': mode,
+            'add_residual': add_residual,
             'ring_id': ring_id
         }
 
