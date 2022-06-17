@@ -84,7 +84,7 @@ class TestNpuDensityPriorBoxOp(OpTest):
         self.batch_size = 10
 
         self.variances = [0.1, 0.1, 0.2, 0.2]
-        self.variances = np.array(self.variances, dtype=np.float).flatten()
+        self.variances = np.array(self.variances, dtype=np.float64).flatten()
 
         self.clip = True
         self.num_priors = 0

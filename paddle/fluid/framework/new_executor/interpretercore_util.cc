@@ -27,9 +27,18 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+// The difference between "sequential_run" and "serial_run":
+// "sequential_run" dispatches OPs one by one according to the sequence in the
+// Program, while "serial_run" ensures that all Ops are scheduled in a singal
+// thread. In standalone executor, "sequential_run" is also "serial_run", while
+// "serial_run" is not necessarily "sequential_run".
+PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run, false,
+                            "Enable sequential execution for standalone "
+                            "executor, only applied to GPU OPs.");
+
 PADDLE_DEFINE_EXPORTED_bool(
-    new_executor_sequential_run, false,
-    "Enable sequential execution for standalone executor, used for debug");
+    new_executor_serial_run, false,
+    "Enable serial execution for standalone executor, used for debug.");
 
 DECLARE_bool(use_mkldnn);
 
@@ -42,10 +51,8 @@ constexpr size_t kPrepareWorkQueueIdx = 2;
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
   VLOG(4) << "Add task: " << static_cast<size_t>(op_func_type) << " ";
-  // NOTE(zhiqiu): use thhe second queue of size of, so only one thread is used.
-  if (FLAGS_new_executor_sequential_run) {
-    VLOG(4) << "FLAGS_new_executor_sequential_run:"
-            << FLAGS_new_executor_sequential_run;
+  // NOTE(zhiqiu): use the second queue of size of, so only one thread is used.
+  if (FLAGS_new_executor_serial_run) {
     queue_group_->AddTask(static_cast<size_t>(OpFuncType::kQueueAsync),
                           std::move(fn));
   } else {
@@ -316,6 +323,7 @@ void deal_operator_base(const platform::Place& place,
 
 void build_op_func_list(const platform::Place& place,
                         const framework::BlockDesc& block,
+                        const std::set<std::string>& skip_gc_vars,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope, bool use_local_scope) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
@@ -555,7 +563,7 @@ void build_op_func_list(const platform::Place& place,
 
     for (auto& var_name : delete_vars) {
       auto* var = var_scope->FindVar(var_name);
-      if (var == nullptr) {
+      if (var == nullptr || skip_gc_vars.find(var_name) != skip_gc_vars.end()) {
         continue;
       }
 
@@ -789,12 +797,14 @@ std::map<int, std::list<int>> build_op_downstream_map(
   std::set<int>
       remove_duplicate;  // remove the duplicate between inputs and outputs
 
+  size_t op_num = vec_instruction.size();
+
   // reserve
-  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+  for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
     op2dependences[op_idx] = std::set<int>();
   }
 
-  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+  for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
     remove_duplicate.clear();
     // step1: update the op2dependences structure
     for (auto& item :
@@ -859,8 +869,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
   std::map<int, std::list<int>> op_downstream_map =
       GetDownstreamMap(op2dependences);
 
-  ShrinkDownstreamMap(&op_downstream_map, op_happens_before,
-                      vec_instruction.size());
+  ShrinkDownstreamMap(&op_downstream_map, op_happens_before, op_num);
 
   // add dependences for random op, make sure that the random op is scheduled
   // sequentially
@@ -880,7 +889,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
   };
 
   int dependence_op_idx = -1;
-  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+  for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
     if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
       if (dependence_op_idx != -1) {
         AddDownstreamOp(dependence_op_idx, op_idx, &op_downstream_map,
@@ -907,7 +916,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
   };
 
   dependence_op_idx = -1;
-  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+  for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
     if (is_comm_op(vec_instruction[op_idx].OpBase()->Type())) {
       if (dependence_op_idx != -1) {
         AddDownstreamOp(dependence_op_idx, op_idx, &op_downstream_map,
@@ -931,7 +940,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
   // c_sync_comm_stream(a)
   const std::string kSyncComm = "c_sync_comm_stream";
   dependence_op_idx = -1;
-  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+  for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
     if (vec_instruction[op_idx].OpBase()->Type() == kSyncComm) {
       dependence_op_idx = op_idx;
     } else {
@@ -947,7 +956,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
 
   // add dependency for coalesce_tensor
   const std::string kCoalesceTensor = "coalesce_tensor";
-  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+  for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
     if (vec_instruction[op_idx].OpBase()->Type() == kCoalesceTensor) {
       VLOG(4) << "Add depend for " << kCoalesceTensor << " " << op_idx;
       auto fused_out = vec_instruction[op_idx].Outputs().at("FusedOutput")[0];
@@ -977,7 +986,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
 
       // find first op that reads fused_out
       auto first_read_fused_out_op = -1;
-      for (auto j = op_idx + 1; j < vec_instruction.size(); ++j) {
+      for (auto j = op_idx + 1; j < op_num; ++j) {
         if (is_read(vec_instruction[j], fused_out)) {
           first_read_fused_out_op = j;
           break;
@@ -1017,8 +1026,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
       // we should take the last one to add depned instead of
       // 'first_read_fused_out_op'
       size_t target = first_read_fused_out_op;
-      for (size_t j = first_read_fused_out_op + 1; j < vec_instruction.size();
-           ++j) {
+      for (size_t j = first_read_fused_out_op + 1; j < op_num; ++j) {
         if (j == target + 1 &&
             is_comm_op(vec_instruction[target].OpBase()->Type()) &&
             is_comm_op(vec_instruction[j].OpBase()->Type())) {
@@ -1032,13 +1040,30 @@ std::map<int, std::list<int>> build_op_downstream_map(
         for (auto var_id : outputs) {
           if (is_read(vec_instruction[j], var_id)) {
             AddDownstreamOp(target, j, &op_downstream_map, *op_happens_before);
-            op2dependences[j].insert(target);
             VLOG(4) << target << " -> " << j;
             VLOG(4) << "Add depend from "
                     << vec_instruction[target].OpBase()->Type() << " to "
                     << vec_instruction[j].OpBase()->Type();
           }
         }
+      }
+    }
+  }
+
+  if (FLAGS_new_executor_sequential_run) {
+    dependence_op_idx = -1;
+    for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
+      if (!IsCpuOp(vec_instruction[op_idx])) {
+        if (dependence_op_idx != -1) {
+          AddDownstreamOp(dependence_op_idx, op_idx, &op_downstream_map,
+                          *op_happens_before);
+          VLOG(4) << "Add depend from "
+                  << vec_instruction[dependence_op_idx].OpBase()->Type() << "("
+                  << dependence_op_idx << ") to "
+                  << vec_instruction[op_idx].OpBase()->Type() << "(" << op_idx
+                  << ")";
+        }
+        dependence_op_idx = op_idx;
       }
     }
   }
