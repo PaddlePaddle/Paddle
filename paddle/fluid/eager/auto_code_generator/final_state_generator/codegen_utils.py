@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -147,7 +147,18 @@ def RemoveConstAndReference(string):
 
 
 def GetGradNodeName(string):
-    return f"GradNode{string}Final"
+
+    def str2Hump(text):
+        arr = filter(None, text.split('_'))
+        res = ''
+        for i in arr:
+            res = res + i[0].upper() + i[1:]
+        return res
+
+    string = str2Hump(string)
+    if string.rfind("Grad") == (len(string) - 4):
+        string = string[:-4]
+    return f"{string}GradNodeFinal"
 
 
 def GetDygraphForwardFunctionName(string):
@@ -335,6 +346,7 @@ def ParseYamlInplaceInfo(string):
 ###  Generator Base  ###
 ########################
 class FunctionGeneratorBase:
+
     def __init__(self, forward_api_contents, namespace):
         self.forward_api_contents = forward_api_contents
         self.namespace = namespace
@@ -357,7 +369,7 @@ class FunctionGeneratorBase:
         # Special Op Attributes
         self.optional_inputs = []  #[name, ...]
         self.no_need_buffers = []  #[name, ...]
-        self.intermediate_outputs = []  #[name, ...]    
+        self.intermediate_outputs = []  #[name, ...]
         self.forward_inplace_map = {}  #{name : name, ...}
 
     def ParseForwardInplaceInfo(self):
@@ -423,8 +435,9 @@ class FunctionGeneratorBase:
             input_type = forward_input[1]
             input_pos = forward_input[2]
 
-            self.forward_inputs_position_map[
-                input_name] = [input_type, input_pos]
+            self.forward_inputs_position_map[input_name] = [
+                input_type, input_pos
+            ]
 
         for i in range(len(forward_returns_list)):
             forward_return = forward_returns_list[i]
@@ -432,11 +445,13 @@ class FunctionGeneratorBase:
             return_type = forward_return[1]
             return_pos = forward_return[2]
 
-            self.forward_outputs_position_map[
-                return_name] = [return_type, return_pos]
+            self.forward_outputs_position_map[return_name] = [
+                return_type, return_pos
+            ]
 
 
 class GeneratorBase:
+
     def __init__(self, api_yaml_path):
         self.namespace = ""
         self.api_yaml_path = api_yaml_path

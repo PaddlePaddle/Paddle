@@ -261,4 +261,4 @@ if(NOT WIN32)
       SRCS cuda_ipc_allocator.cc
       DEPS allocator)
   endif()
-endif(NOT WIN32)
+endif()
