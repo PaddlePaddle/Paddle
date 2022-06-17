@@ -1838,46 +1838,6 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-void SoftMarginLossInferMeta(const MetaTensor& input,
-                             const MetaTensor& label,
-                             MetaTensor* out,
-                             MetaConfig config) {
-  auto input_dims = input.dims();
-  auto label_dims = label.dims();
-
-  int rank = input_dims.size();
-  PADDLE_ENFORCE_EQ(rank,
-                    label_dims.size(),
-                    phi::errors::InvalidArgument(
-                        "Input(X) and Input(Label) shall have the same rank."
-                        "But received: the rank of Input(X) is [%d], "
-                        "the rank of Input(Label) is [%d].",
-                        rank,
-                        label_dims.size()));
-
-  bool check = true;
-
-  if ((!config.is_runtime) &&
-      (phi::product(input_dims) <= 0 || phi::product(label_dims) <= 0)) {
-    check = false;
-  }
-
-  if (check) {
-    PADDLE_ENFORCE_EQ(input_dims,
-                      label_dims,
-                      phi::errors::InvalidArgument(
-                          "Input(X) and Input(Label) shall have the same "
-                          "shape. But received: the shape of Input(X) is "
-                          "[%s], the shape of Input(Label) is [%s].",
-                          input_dims,
-                          label_dims));
-  }
-
-  out->set_dims(input_dims);
-  out->set_dtype(input.dtype());
-  out->share_lod(input);
-}
-
 void TakeAlongAxisInferMeta(const MetaTensor& x,
                             const MetaTensor& index,
                             int axis,

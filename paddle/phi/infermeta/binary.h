@@ -270,11 +270,6 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
                                             MetaTensor* out,
                                             MetaConfig config = MetaConfig());
 
-void SoftMarginLossInferMeta(const MetaTensor& input,
-                             const MetaTensor& label,
-                             MetaTensor* out,
-                             MetaConfig config = MetaConfig());
-
 void TakeAlongAxisInferMeta(const MetaTensor& x,
                             const MetaTensor& index,
                             int axis,

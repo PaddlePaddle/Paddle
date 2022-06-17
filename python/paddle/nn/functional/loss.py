@@ -3177,35 +3177,22 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
             "The value of 'reduction' in soft_margin_loss should be 'sum', "
             "'mean' or 'none', but received %s, which is not allowed." %
             reduction)
-    if _non_static_mode():
-        label = _C_ops.cast(label, 'in_dtype', label.dtype, 'out_dtype',
-                            input.dtype)
-        out = _C_ops.soft_margin_loss(input, label)
-        if reduction == 'sum':
-            return _C_ops.reduce_sum(out, "reduce_all", True)
-        elif reduction == 'mean':
-            return _C_ops.mean(out)
-        else:
-            return out
 
-    fluid.data_feeder.check_variable_and_dtype(input, 'input',
-                                               ['float32', 'float64'],
-                                               'soft_margin_loss')
-    fluid.data_feeder.check_variable_and_dtype(
-        label, 'label', ['int32', 'int64', 'float32', 'float64'],
-        'soft_margin_loss')
+    if not _non_static_mode():
+        fluid.data_feeder.check_variable_and_dtype(input, 'input',
+                                                   ['float32', 'float64'],
+                                                   'soft_margin_loss')
+        fluid.data_feeder.check_variable_and_dtype(
+            label, 'label', ['int32', 'int64', 'float32', 'float64'],
+            'soft_margin_loss')
 
-    label = fluid.layers.cast(label, input.dtype)
+        label = fluid.layers.cast(label, input.dtype)
 
-    sub_name = name
-    helper = LayerHelper("soft_margin_loss", name=sub_name)
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(type='soft_margin_loss',
-                     inputs={
-                         'X': [input],
-                         'Label': [label],
-                     },
-                     outputs={'Out': [out]})
+    if not (input.shape == label.shape):
+        raise ValueError("input's shape must equal to "
+                         "label's shape")
+
+    out = paddle.log(1 + paddle.exp(-label * input))
 
     if reduction == 'sum':
         return paddle.sum(out, name=name)
