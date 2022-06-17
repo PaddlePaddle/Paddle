@@ -666,7 +666,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   }
 
   // fill to d_val
-  heter_comm_kernel_->fill_dvals(d_all_vals_ptr, d_vals, d_bfids_ptr, len, stream);
+  heter_comm_kernel_->fill_dvals_with_bfid(d_all_vals_ptr, d_vals, d_bfids_ptr, len, stream);
   VLOG(0) << "heter comm inl pull sparse fill d_all_vals to d_vals";
 #else
   int total_device = resource_->total_device();
