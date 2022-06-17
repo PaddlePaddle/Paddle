@@ -18,11 +18,9 @@
 #include <Eigen/SVD>
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/funcs/compare_functors.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/impl/matrix_rank_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -130,13 +128,9 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   DenseTensor tol_tensor;
   tol_tensor.Resize(dim_out);
   dev_ctx.template Alloc<T>(&tol_tensor);
-  funcs::ElementwiseCompute<GreaterElementFunctor<T>, T, T>(
-      dev_ctx,
-      atol_tensor,
-      rtol_tensor,
-      -1,
-      GreaterElementFunctor<T>(),
-      &tol_tensor);
+
+  phi::MaximumRawKernel<T, Context>(
+      dev_ctx, atol_tensor, rtol_tensor, -1, &tol_tensor);
 
   tol_tensor.Resize(detail::NewAxisDim(tol_tensor.dims(), 1));
 
@@ -145,21 +139,11 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<int64_t>(&compare_result);
   int axis = -1;
   if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
-    funcs::ElementwiseCompute<funcs::GreaterThanFunctor<T, int64_t>, T, int>(
-        dev_ctx,
-        eigenvalue_tensor,
-        tol_tensor,
-        axis,
-        funcs::GreaterThanFunctor<T, int64_t>(),
-        &compare_result);
+    phi::MaximumRawKernel<T, Context>(
+        dev_ctx, eigenvalue_tensor, tol_tensor, axis, &compare_result);
   } else {
-    funcs::ElementwiseCompute<funcs::LessThanFunctor<T, int64_t>, T, int>(
-        dev_ctx,
-        eigenvalue_tensor,
-        tol_tensor,
-        axis,
-        funcs::LessThanFunctor<T, int64_t>(),
-        &compare_result);
+    phi::MinimumRawKernel<T, Context>(
+        dev_ctx, eigenvalue_tensor, tol_tensor, axis, &compare_result);
   }
 
   phi::SumKernel<int64_t>(dev_ctx,
