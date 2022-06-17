@@ -178,10 +178,10 @@ def alexnet(pretrained=False, **kwargs):
 
     Args:
         pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
-        **kwargs: unpacked dict arguments
+        **kwargs: Additional keyword arguments，For details, please refer to :ref:`AlexNet <api_paddle_vision_models_AlexNet>`. 
     
     Returns:
-        the model of alexnet
+        the model of alexnet.
     
     Examples:
         .. code-block:: python
