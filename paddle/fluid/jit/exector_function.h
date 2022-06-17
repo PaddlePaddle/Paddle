@@ -29,9 +29,9 @@ class ExectorFunction : public BaseFunction {
 
   ~ExectorFunction() {}
 
-  std::vector<Variable> operator()(const VariableNameMap &inputs) {
+  std::vector<Variable> operator()(const std::vector<Variable> &inputs) {
     // share input into scope
-    ShareIntoScope(inputs);
+    ShareInputsIntoScope(inputs);
     // run program
     inner_exe_.Run(program_desc_, &scope_, /*blockID=*/0, false, true,
                    schema_.GetOutputArgNames());

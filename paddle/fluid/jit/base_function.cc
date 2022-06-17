@@ -38,12 +38,12 @@ std::vector<std::string> FunctionSchema::GetOutputArgNames() {
   return output_arg_names;
 }
 
-void FunctionSchema::AddInputArg(std::string name, bool is_output) {
-  input_args.emplace_back(name, is_output);
+void FunctionSchema::AddInputArg(std::string name) {
+  input_args.emplace_back(name, false);
 }
 
-void FunctionSchema::AddOutputArg(std::string name, bool is_output) {
-  output_args.emplace_back(name, is_output);
+void FunctionSchema::AddOutputArg(std::string name) {
+  output_args.emplace_back(name, true);
 }
 
 BaseFunction::BaseFunction(
@@ -52,15 +52,14 @@ BaseFunction::BaseFunction(
     const VariableNameMap &params_dict)
     : program_desc_(program_desc) {
   // Parse FunctionSchema
-  // skip_var_name_ = program_desc_.GetFetchTargetNames();
   for (auto &in_name : program_desc_.GetFeedTargetNames()) {
-    schema_.AddInputArg(in_name, false);
+    schema_.AddInputArg(in_name);
   }
   for (auto &out_name : program_desc_.GetFetchTargetNames()) {
-    schema_.AddOutputArg(out_name, true);
+    schema_.AddOutputArg(out_name);
   }
   // share params into scope
-  SharePartialIntoScope(param_names_for_program, params_dict);
+  ShareParamsIntoScope(param_names_for_program, params_dict);
   VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
   // remove feed fetch op
   RemoveFeedFetch();
@@ -78,21 +77,27 @@ void BaseFunction::FetchOutput(std::vector<Variable> *outs) {
   }
 }
 
-void BaseFunction::ShareIntoScope(const VariableNameMap &ivals) {
-  VLOG(3) << "ivals size: " << ivals.size();
-  for (auto it = ivals.begin(); it != ivals.end(); ++it) {
-    VLOG(3) << "share into scope: " << it->first;
-    DenseTensor dense_tensor = it->second.Get<DenseTensor>();
-    auto *var = scope_.Var(it->first);
+void BaseFunction::ShareInputsIntoScope(const std::vector<Variable> &vars) {
+  VLOG(3) << "vars size: " << vars.size();
+  std::vector<std::string> ordered_input_names = schema_.GetInputArgNames();
+  PADDLE_ENFORCE_EQ(
+      vars.size(), ordered_input_names.size(),
+      platform::errors::InvalidArgument(
+          "vars.size() should be equal to ordered_input_names.size()."));
+
+  for (size_t i = 0; i < vars.size(); i++) {
+    VLOG(3) << "share into scope: " << ordered_input_names[i];
+    DenseTensor dense_tensor = vars[i].Get<DenseTensor>();
+    auto *var = scope_.Var(ordered_input_names[i]);
     auto *dst_tensor = var->GetMutable<DenseTensor>();
     *dst_tensor = dense_tensor;
   }
 }
 
-void BaseFunction::SharePartialIntoScope(
+void BaseFunction::ShareParamsIntoScope(
     const std::vector<std::string> param_names_for_program,
     const VariableNameMap &params_dict) {
-  VLOG(3) << "ivals size: " << param_names_for_program.size();
+  VLOG(3) << "param_names_for_program size: " << param_names_for_program.size();
   for (size_t i = 0; i < param_names_for_program.size(); ++i) {
     std::string name = param_names_for_program[i];
     Variable val = params_dict.find(name)->second;
@@ -112,8 +117,15 @@ void BaseFunction::RemoveFeedFetch() {
     VLOG(3) << "op_size: " << op_size;
     for (int i = op_size - 1; i >= 0; i--) {
       auto op = all_ops[i];
-      if (op->Type() == "feed" || op->Type() == "fetch") {
-        VLOG(3) << "remove op type: " << op->Type() << ", index: " << i;
+      if (op->Type() == "feed") {
+        VLOG(3) << "remove op type: " << op->Type() << ", index: " << i
+                << ", var name: " << op->Input("X")[0];
+        block->RemoveVar(op->Input("X")[0]);
+        block->RemoveOp(i, i + 1);
+      } else if (op->Type() == "fetch") {
+        VLOG(3) << "remove op type: " << op->Type() << ", index: " << i
+                << ", var name: " << op->Output("Out")[0];
+        block->RemoveVar(op->Output("Out")[0]);
         block->RemoveOp(i, i + 1);
       }
     }

@@ -33,7 +33,7 @@ class PEFunction : public BaseFunction {
 
   ~PEFunction() {}
 
-  std::vector<Variable> operator()(const VariableNameMap &inputs) {
+  std::vector<Variable> operator()(const std::vector<Variable> &inputs) {
     // bool is_test = true;
     std::string prog_string;
     std::hash<std::string> string_hash;
@@ -43,7 +43,7 @@ class PEFunction : public BaseFunction {
     int64_t start_op_index = 0;
     int64_t end_op_index = static_cast<int64_t>(global_block.OpSize());
 
-    ShareIntoScope(inputs);
+    ShareInputsIntoScope(inputs);
     std::vector<std::string> input_var_names = schema_.GetInputArgNames();
     std::vector<std::string> output_var_names = schema_.GetOutputArgNames();
     std::vector<std::string> dout_var_names;

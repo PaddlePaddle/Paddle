@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"
 
@@ -50,11 +51,12 @@ class FunctionSchema {
 
   std::vector<std::string> GetOutputArgNames();
 
-  void AddInputArg(std::string name, bool is_output);
+  void AddInputArg(std::string name);
 
-  void AddOutputArg(std::string name, bool is_output);
+  void AddOutputArg(std::string name);
 
  private:
+  // input_args and output_args are ordered
   std::vector<Argument> input_args;
   std::vector<Argument> output_args;
 };
@@ -68,14 +70,15 @@ class BaseFunction {
 
   virtual ~BaseFunction() {}
 
-  virtual std::vector<Variable> operator()(const VariableNameMap &inputs) = 0;
+  virtual std::vector<Variable> operator()(
+      const std::vector<Variable> &inputs) = 0;
 
  protected:
   void FetchOutput(std::vector<Variable> *outs);
 
-  void ShareIntoScope(const VariableNameMap &ivals);
+  void ShareInputsIntoScope(const std::vector<Variable> &vars);
 
-  void SharePartialIntoScope(
+  void ShareParamsIntoScope(
       const std::vector<std::string> param_names_for_program,
       const VariableNameMap &params_dict);
 

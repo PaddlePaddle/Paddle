@@ -36,6 +36,7 @@ class Layer {
   // TODO(dev): Make vector<string>, num_slot as in argument
   // Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
   // {}
+  // TODO(dev): consider make `func_name, program_desc, param_nams` as a class
   Layer(
       const std::vector<std::string>& func_names,
       const std::vector<framework::ProgramDesc>& program_descs,
@@ -45,7 +46,7 @@ class Layer {
   // TODO(dev): make it as const function
   std::shared_ptr<BaseFunction> GetFunction(const std::string& name);
 
-  std::vector<Variable> forward(const VariableNameMap& inputs);
+  std::vector<Variable> forward(const std::vector<Variable>& inputs);
 
  private:
   // internal::Object obj_;

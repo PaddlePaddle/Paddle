@@ -39,7 +39,7 @@ std::shared_ptr<BaseFunction> Layer::GetFunction(const std::string& name) {
   return function_dict[name];
 }
 
-std::vector<Variable> Layer::forward(const VariableNameMap& inputs) {
+std::vector<Variable> Layer::forward(const std::vector<Variable>& inputs) {
   auto func = GetFunction("forward");
   return (*func)(inputs);
 }

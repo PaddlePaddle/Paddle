@@ -47,7 +47,7 @@ PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 namespace paddle {
 namespace jit {
 
-VariableNameMap PrepareInputs() {
+std::vector<Variable> PrepareInputs() {
   auto temp = DenseTensor();
   temp.Resize(phi::make_ddim({2, 4}));
   phi::CPUContext cpu_ctx;
@@ -61,7 +61,7 @@ VariableNameMap PrepareInputs() {
   auto *p = v.GetMutable<DenseTensor>();
   *p = temp;
   // TODO(dev): associate the input name
-  return {{"x", v}};
+  return {v};
 }
 
 TEST(layer, Construct) {
