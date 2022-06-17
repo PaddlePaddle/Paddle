@@ -479,7 +479,6 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 def ones(shape, dtype=None, name=None):
     """
-
     Create a Tensor of specified :attr:`shape` and :attr:`dtype` and fill it with 1.
 
     Args:
