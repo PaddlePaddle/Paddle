@@ -47,10 +47,10 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
     int seq_len_m = input_q_dims[1];
     int seq_len_r = input_q_dims[2];
 
-    int num_head, m_size, key_dim;
+    int num_head, m_size, head_dim;
     if (ctx->Attrs().Get<bool>("merge_qkv")) {
       // QKV's input: [batch_size, seq_len_m, seq_len_r, qkv_dim]
-      // QKV's weight: [3, num_head, key_dim, qkv_dim]
+      // QKV's weight: [3, num_head, head_dim, qkv_dim]
       OP_INOUT_CHECK(ctx->HasInput("QKVWeight"), "Input", "QKVWeight",
                      "fused_gate_attention");
       OP_INOUT_CHECK(ctx->HasOutput("QKVTransposeOut"), "Output",
@@ -59,11 +59,11 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
       auto qkv_w_dims = ctx->GetInputDim("QKVWeight");
 
       num_head = qkv_w_dims[1];
-      key_dim = qkv_w_dims[2];
+      head_dim = qkv_w_dims[2];
       m_size = seq_len_r;
 
       ctx->SetOutputDim("QKVTransposeOut", {3, batch_size, seq_len_m, num_head,
-                                            seq_len_r, key_dim});
+                                            seq_len_r, head_dim});
     } else {
       OP_INOUT_CHECK(ctx->HasInput("QueryWeight"), "Input", "QueryWeight",
                      "fused_gate_attention");
@@ -76,21 +76,21 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
       auto q_w_dims = ctx->GetInputDim("QueryWeight");
 
       num_head = q_w_dims[1];
-      key_dim = q_w_dims[2];
+      head_dim = q_w_dims[2];
       m_size = input_k_dims[2];
 
       ctx->SetOutputDim("QueryTransposeOut",
-                        {batch_size, seq_len_m, num_head, seq_len_r, key_dim});
+                        {batch_size, seq_len_m, num_head, seq_len_r, head_dim});
       ctx->SetOutputDim("KeyTransposeOut",
-                        {batch_size, seq_len_m, num_head, m_size, key_dim});
+                        {batch_size, seq_len_m, num_head, m_size, head_dim});
       ctx->SetOutputDim("ValueTransposeOut",
-                        {batch_size, seq_len_m, num_head, m_size, key_dim});
+                        {batch_size, seq_len_m, num_head, m_size, head_dim});
     }
 
     ctx->SetOutputDim("SoftmaxOut",
                       {batch_size, seq_len_m, num_head, seq_len_r, m_size});
     ctx->SetOutputDim("FMHAOut",
-                      {batch_size, seq_len_m, seq_len_r, num_head, key_dim});
+                      {batch_size, seq_len_m, seq_len_r, num_head, head_dim});
 
     if (ctx->Attrs().Get<bool>("has_gating")) {
       OP_INOUT_CHECK(ctx->HasInput("GateWeight"), "Input", "GateWeight",
@@ -98,7 +98,7 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
       OP_INOUT_CHECK(ctx->HasInput("GateBias"), "Input", "GateBias",
                      "fused_gate_attention");
       ctx->SetOutputDim("GateOut",
-                        {batch_size, seq_len_m, seq_len_r, num_head, key_dim});
+                        {batch_size, seq_len_m, seq_len_r, num_head, head_dim});
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("Query"));

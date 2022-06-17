@@ -49,11 +49,11 @@ class ActivationOpConverter : public OpConverter {
         << "convert a fluid Activation op to tensorrt activation layer whose "
            "type is "
         << op_type_;
-    const nvinfer1::ITensor* input_tensor =
-        engine_->GetITensor(op_desc.Input("X")[0]);
+    auto* input_tensor = engine_->GetITensor(op_desc.Input("X")[0]);
 
     auto op_pair = ops.find(op_type_);
     nvinfer1::IActivationLayer* layer = nullptr;
+<<<<<<< HEAD
 
     if (op_type_ == "softplus") {
      const float beta =
@@ -78,6 +78,27 @@ class ActivationOpConverter : public OpConverter {
      layer = TRT_ENGINE_ADD_LAYER(
         engine_, Activation, *const_cast<nvinfer1::ITensor*>(input_tensor),
         op_pair->second);
+=======
+    if (op_type_ == "softplus") {
+      const float beta = op_desc.HasAttr("beta")
+                             ? BOOST_GET_CONST(float, op_desc.GetAttr("beta"))
+                             : 1.0f;
+      const float threshold =
+          op_desc.HasAttr("threshold")
+              ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
+              : 20.0f;
+      auto* layer_clip = TRT_ENGINE_ADD_LAYER(
+          engine_, Activation, *input_tensor, nvinfer1::ActivationType::kCLIP);
+      layer_clip->setAlpha(-3.40282e+038);
+      layer_clip->setBeta(threshold / beta);
+      layer = TRT_ENGINE_ADD_LAYER(engine_, Activation,
+                                   *layer_clip->getOutput(0), op_pair->second);
+      layer->setAlpha(1.0f / beta);
+      layer->setBeta(beta);
+    } else {
+      layer = TRT_ENGINE_ADD_LAYER(engine_, Activation, *input_tensor,
+                                   op_pair->second);
+>>>>>>> develop
     }
 
 #if IS_TRT_VERSION_GE(5130)
@@ -95,10 +116,17 @@ class ActivationOpConverter : public OpConverter {
     if (op_type_ == "selu") {
       const float alpha = op_desc.HasAttr("alpha")
                               ? BOOST_GET_CONST(float, op_desc.GetAttr("alpha"))
+<<<<<<< HEAD
                               : 1.0f;
       const float scale = op_desc.HasAttr("scale")
                               ? BOOST_GET_CONST(float, op_desc.GetAttr("scale"))
                               : 1.0f;
+=======
+                              : 1.0507009873554804934193349852946;
+      const float scale = op_desc.HasAttr("scale")
+                              ? BOOST_GET_CONST(float, op_desc.GetAttr("scale"))
+                              : 1.6732632423543772848170429916717;
+>>>>>>> develop
       layer->setAlpha(alpha);
       layer->setBeta(scale);
     }
@@ -140,13 +168,22 @@ const std::unordered_map<std::string, nvinfer1::ActivationType>
         {"tanh", nvinfer1::ActivationType::kTANH},
 #if IS_TRT_VERSION_GE(5130)
         {"relu6", nvinfer1::ActivationType::kCLIP},
-#endif
         {"elu", nvinfer1::ActivationType::kELU},
         {"selu", nvinfer1::ActivationType::kSELU},
         {"softsign", nvinfer1::ActivationType::kSOFTSIGN},
         {"softplus", nvinfer1::ActivationType::kSOFTPLUS},
         {"stanh", nvinfer1::ActivationType::kSCALED_TANH},
         {"thresholded_relu", nvinfer1::ActivationType::kTHRESHOLDED_RELU}};
+#endif
+<<<<<<< HEAD
+        {"elu", nvinfer1::ActivationType::kELU},
+        {"selu", nvinfer1::ActivationType::kSELU},
+        {"softsign", nvinfer1::ActivationType::kSOFTSIGN},
+        {"softplus", nvinfer1::ActivationType::kSOFTPLUS},
+        {"stanh", nvinfer1::ActivationType::kSCALED_TANH},
+        {"thresholded_relu", nvinfer1::ActivationType::kTHRESHOLDED_RELU}};
+=======
+>>>>>>> develop
 
 class ReluOpConverter : public ActivationOpConverter {
  public:
@@ -163,6 +200,7 @@ class TanhOpConverter : public ActivationOpConverter {
   TanhOpConverter() { op_type_ = "tanh"; }
 };
 
+#if IS_TRT_VERSION_GE(5130)
 class Relu6OpConverter : public ActivationOpConverter {
  public:
   Relu6OpConverter() { op_type_ = "relu6"; }
@@ -197,6 +235,10 @@ class ThreasholdedReluOpConverter : public ActivationOpConverter {
  public:
   ThreasholdedReluOpConverter() { op_type_ = "thresholded_relu"; }
 };
+<<<<<<< HEAD
+=======
+#endif
+>>>>>>> develop
 
 }  // namespace tensorrt
 }  // namespace inference
@@ -205,6 +247,7 @@ class ThreasholdedReluOpConverter : public ActivationOpConverter {
 REGISTER_TRT_OP_CONVERTER(relu, ReluOpConverter);
 REGISTER_TRT_OP_CONVERTER(sigmoid, SigmoidOpConverter);
 REGISTER_TRT_OP_CONVERTER(tanh, TanhOpConverter);
+#if IS_TRT_VERSION_GE(5130)
 REGISTER_TRT_OP_CONVERTER(relu6, Relu6OpConverter);
 REGISTER_TRT_OP_CONVERTER(elu, EluOpConverter);
 REGISTER_TRT_OP_CONVERTER(selu, SeluOpConverter);
@@ -212,3 +255,7 @@ REGISTER_TRT_OP_CONVERTER(softsign, SoftsignOpConverter);
 REGISTER_TRT_OP_CONVERTER(softplus, SoftplusOpConverter);
 REGISTER_TRT_OP_CONVERTER(stanh, STanhOpConverter);
 REGISTER_TRT_OP_CONVERTER(thresholded_relu, ThreasholdedReluOpConverter);
+<<<<<<< HEAD
+=======
+#endif
+>>>>>>> develop
