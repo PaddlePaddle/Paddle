@@ -41,6 +41,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
 DECLARE_bool(use_pinned_memory);
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -95,6 +96,12 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
   }
 
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
+  platform::RecordMemEvent(p, CPUPlace(), size,
+                           HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, 0),
+                           HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, 0),
+                           HOST_MEMORY_STAT_PEAK_VALUE(Allocated, 0),
+                           HOST_MEMORY_STAT_PEAK_VALUE(Reserved, 0),
+                           platform::TracerMemEventType::Allocate);
 
   return p;
 }
@@ -114,6 +121,12 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
 #endif
 
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
+  platform::RecordMemEvent(p, CPUPlace(), size,
+                           HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, 0),
+                           HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, 0),
+                           HOST_MEMORY_STAT_PEAK_VALUE(Allocated, 0),
+                           HOST_MEMORY_STAT_PEAK_VALUE(Reserved, 0),
+                           platform::TracerMemEventType::Free);
 }
 
 bool CPUAllocator::UseGpu() const { return false; }
@@ -213,6 +226,12 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
     *index = 1;  // PINNED memory
     cuda_pinnd_alloc_size_ += size;
     HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
+    platform::RecordMemEvent(p, CPUPlace(), size,
+                             HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, 0),
+                             HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, 0),
+                             HOST_MEMORY_STAT_PEAK_VALUE(Allocated, 0),
+                             HOST_MEMORY_STAT_PEAK_VALUE(Reserved, 0),
+                             platform::TracerMemEventType::Allocate);
     return p;
   } else {
     LOG(WARNING) << "cudaHostAlloc failed.";
@@ -259,6 +278,12 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   }
 #endif
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
+  platform::RecordMemEvent(p, CPUPlace(), size,
+                           HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, 0),
+                           HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, 0),
+                           HOST_MEMORY_STAT_PEAK_VALUE(Allocated, 0),
+                           HOST_MEMORY_STAT_PEAK_VALUE(Reserved, 0),
+                           platform::TracerMemEventType::Free);
 }
 
 bool CUDAPinnedAllocator::UseGpu() const { return false; }
