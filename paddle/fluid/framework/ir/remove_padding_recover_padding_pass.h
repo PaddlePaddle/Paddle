@@ -41,6 +41,15 @@ struct EmbEltwiseLayernorm : public PatternBase {
   PATTERN_DECL_NODE(emb_elt_layernorm_out);
 };
 
+struct PrelnEmbEltwiseLayernorm : public PatternBase {
+  PrelnEmbEltwiseLayernorm(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "preln_emb_elt_layernorm") {}
+
+  void operator()();
+  PATTERN_DECL_NODE(preln_emb_elt_layernorm_op);
+  PATTERN_DECL_NODE(preln_emb_elt_layernorm_out);
+};
+
 struct SkipLayernorm : public PatternBase {
   SkipLayernorm(PDPattern *pattern, const std::string &name_scope)
       : PatternBase(pattern, name_scope, "skip_layernorm") {}
@@ -51,6 +60,18 @@ struct SkipLayernorm : public PatternBase {
   PATTERN_DECL_NODE(skip_layernorm_y);
   PATTERN_DECL_NODE(skip_layernorm_op);
   PATTERN_DECL_NODE(skip_layernorm_out);
+};
+
+struct PrelnSkipLayernorm : public PatternBase {
+  PrelnSkipLayernorm(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "preln_skip_layernorm") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(preln_skip_layernorm_x);
+  PATTERN_DECL_NODE(preln_skip_layernorm_y);
+  PATTERN_DECL_NODE(preln_skip_layernorm_op);
+  PATTERN_DECL_NODE(preln_skip_layernorm_out);
 };
 
 struct MultiheadMatmul : public PatternBase {

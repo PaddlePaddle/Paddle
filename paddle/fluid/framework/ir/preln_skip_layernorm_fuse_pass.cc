@@ -112,14 +112,8 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   bool use_varseqlen = Get<bool>("use_varseqlen");
   bool with_interleaved = Get<bool>("with_interleaved");
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
-  if (!(enable_int8 && use_varseqlen && with_interleaved &&
-        with_dynamic_shape)) {
-    VLOG(4) << "preln_skip_layernorm_fuse_pass need: use_trt, enable_int8, "
-               "use_varseqlen, "
-               "with_interleaved, with_dynamic_shape. Stop this pass, please "
-               "reconfig. ";
-    return;
-  }
+  std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+  std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
   int found_subgraph_count = 0;
 
@@ -209,8 +203,23 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     found_subgraph_count++;
   };
-
   gpd(graph, handler);
+
+  if (found_subgraph_count > 0) {
+    if (!(enable_int8 && use_varseqlen && with_interleaved &&
+          graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass) &&
+          graph->Has(framework::ir::kMultiheadMatmulPass) && pos_id != "" &&
+          mask_id != "" && with_dynamic_shape)) {
+      PADDLE_THROW(platform::errors::Fatal(
+          "preln_skip_layernorm_fuse_pass need: use_trt, enable_int8, "
+          "with_interleaved"
+          "use_varseqlen, preln_embedding_eltwise_layernorm_fuse_pass, "
+          "trt_multihead_matmul_fuse_pass"
+          "set pos_id, set mask_id, with_dynamic_shape. Stop this pass, please "
+          "reconfig."));
+    }
+  }
+
   AddStatis(found_subgraph_count);
 }
 

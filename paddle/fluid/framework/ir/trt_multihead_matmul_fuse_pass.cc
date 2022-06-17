@@ -1083,19 +1083,28 @@ void TrtMultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
   int fusion_count = BuildFusionV2(graph, name_scope_, scope);
   if (fusion_count > 0) {
     bool use_varseqlen = Get<bool>("use_varseqlen");
+    bool with_interleaved = Get<bool>("with_interleaved");
     std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
     std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
     if (use_varseqlen && pos_id != "" && mask_id != "") {
-      if (graph->Has(framework::ir::kEmbEltwiseLayernormPass)) {
-        VLOG(3) << "start varseqlen trt_multihead_matmul_fuse_pass_v2";
+      if (graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
+          graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) {
+        if (with_interleaved) {
+          VLOG(3) << "start interleaved_format "
+                     "varseqlen_trt_multihead_matmul_fuse_pass_v2";
+        } else {
+          VLOG(3) << "start varseqlen_trt_multihead_matmul_fuse_pass_v2";
+        }
       } else {
-        PADDLE_THROW(platform::errors::Fatal(
-            "Use transformer'varseqlen need "
-            "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+        PADDLE_THROW(
+            platform::errors::Fatal("Use transformer'varseqlen need "
+                                    "embedding_eltwise_layernorm_fuse_pass or "
+                                    "preln_embedding_eltwise_layernorm_fuse_"
+                                    "pass. please use no_varseqlen"));
       }
     } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
-      VLOG(3) << "start no_varseqlen trt_multihead_matmul_fuse_pass_v2";
+      VLOG(3) << "start no_varseqlen_trt_multihead_matmul_fuse_pass";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Use transformer'varseqlen need config: "
@@ -1510,19 +1519,28 @@ void TrtMultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
   int fusion_count = BuildFusionV3(graph, name_scope_, scope);
   if (fusion_count > 0) {
     bool use_varseqlen = Get<bool>("use_varseqlen");
+    bool with_interleaved = Get<bool>("with_interleaved");
     std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
     std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
     if (use_varseqlen && pos_id != "" && mask_id != "") {
-      if (graph->Has(framework::ir::kEmbEltwiseLayernormPass)) {
-        VLOG(3) << "start varseqlen trt_multihead_matmul_fuse_pass_v3";
+      if (graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
+          graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) {
+        if (with_interleaved) {
+          VLOG(3) << "start interleaved_format "
+                     "varseqlen_trt_multihead_matmul_fuse_pass_v3";
+        } else {
+          VLOG(3) << "start varseqlen_trt_multihead_matmul_fuse_pass_v3";
+        }
       } else {
-        PADDLE_THROW(platform::errors::Fatal(
-            "Use transformer'varseqlen need "
-            "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+        PADDLE_THROW(
+            platform::errors::Fatal("Use transformer'varseqlen need "
+                                    "embedding_eltwise_layernorm_fuse_pass or "
+                                    "preln_embedding_eltwise_layernorm_fuse_"
+                                    "pass. please use no_varseqlen"));
       }
     } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
-      VLOG(3) << "start no_varseqlen trt_multihead_matmul_fuse_pass_v3";
+      VLOG(3) << "start no_varseqlen_trt_multihead_matmul_fuse_pass";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Use transformer'varseqlen need config: "
