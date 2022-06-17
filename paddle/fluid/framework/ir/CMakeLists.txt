@@ -84,7 +84,7 @@ cc_library(
 set(GRAPH_PATTERN_DETECTOR_DEPS graph graph_helper graph_traits)
 if(WITH_TESTING)
   set(GRAPH_PATTERN_DETECTOR_DEPS ${GRAPH_PATTERN_DETECTOR_DEPS} gtest)
-endif(WITH_TESTING)
+endif()
 cc_library(
   graph_pattern_detector
   SRCS graph_pattern_detector.cc

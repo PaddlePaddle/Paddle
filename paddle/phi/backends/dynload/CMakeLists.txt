@@ -1,6 +1,6 @@
 cc_library(
   phi_dynamic_loader
-  SRCS dynamic_loader.cc
+  SRCS dynamic_loader.cc port.cc
   DEPS enforce glog gflags)
 
 list(
@@ -49,7 +49,7 @@ endif()
 configure_file(cupti_lib_path.h.in ${CMAKE_CURRENT_BINARY_DIR}/cupti_lib_path.h)
 if(CUPTI_FOUND)
   list(APPEND CUDA_SRCS cupti.cc)
-endif(CUPTI_FOUND)
+endif()
 if(WITH_ROCM)
   hip_library(
     phi_dynload_cuda

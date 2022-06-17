@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 
 namespace paddle {
@@ -122,6 +123,8 @@ class LayerNormMLUKernel : public framework::OpKernel<T> {
 
 template <typename T>
 class LayerNormGradMLUKernel : public framework::OpKernel<T> {
+  using MPDType = typename details::MPTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
@@ -207,14 +210,14 @@ class LayerNormGradMLUKernel : public framework::OpKernel<T> {
 
     if (dscale && (tmp_dscale.dtype() == DataType::FLOAT16 &&
                    dscale->dtype() == DataType::FLOAT32)) {
-      dscale->mutable_data<T>(place);
+      dscale->mutable_data<MPDType>(place);
       MLUCnnl::Cast(ctx, cast_fp16_to_fp32, float16_desc.get(),
                     GetBasePtr(&tmp_dscale), float32_desc.get(),
                     GetBasePtr(dscale));
     }
     if (dbias && (tmp_dbias.dtype() == DataType::FLOAT16 &&
                   dbias->dtype() == DataType::FLOAT32)) {
-      dbias->mutable_data<T>(place);
+      dbias->mutable_data<MPDType>(place);
       MLUCnnl::Cast(ctx, cast_fp16_to_fp32, float16_desc.get(),
                     GetBasePtr(&tmp_dbias), float32_desc.get(),
                     GetBasePtr(dbias));

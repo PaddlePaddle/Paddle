@@ -17,6 +17,9 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import six
+import cv2
+import os
+import tempfile
 from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_parameters, optimizer_setting
 import paddle.nn as nn
 from paddle.static import InputSpec
@@ -704,7 +707,44 @@ class TestAmpDecorator(unittest.TestCase):
             self.assertEqual((param.dtype == paddle.float32), True)
 
 
+class TestStateDictHookForAMP(unittest.TestCase):
+
+    def test_state_dict_hook(self):
+
+        def func_isinstance():
+            paddle.seed(100)
+            model = paddle.nn.Linear(2, 4)
+            model = paddle.amp.decorate(models=model,
+                                        level='O2',
+                                        save_dtype='float32')
+            param_value_ori = {}
+            for param in model.parameters():
+                param_value_ori[param.name] = param.numpy()
+
+            state_dict = model.state_dict()
+            for key, value in state_dict.items():
+                state_dict[key] = value.cast("float16")
+            model.set_state_dict(state_dict)
+
+            param_value_now = {}
+            for param in model.parameters():
+                param_value_now[param.name] = param.numpy()
+
+            for key in param_value_ori.keys():
+                print(np.equal(param_value_ori[key], param_value_now[key]))
+
+        with _test_eager_guard():
+            func_isinstance()
+        func_isinstance()
+
+
 class TestPureFp16SaveLoad(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_save_dtype_exception(self):
 
@@ -817,7 +857,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                     'opt': optimizer.state_dict(),
                     'scaler': scaler.state_dict()
                 }
-                path = 'model.pdparams'
+                path = os.path.join(self.temp_dir.name, 'model.pdparams')
                 paddle.save(obj, path)
                 # paddle.load
                 obj_load = paddle.load(path)
@@ -856,6 +896,12 @@ class TestPureFp16SaveLoad(unittest.TestCase):
 
 
 class TestPureFp16InferenceSaveLoad(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def inference_save_load(self):
         BATCH_SIZE = 16
@@ -920,7 +966,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
         train(layer, loader, loss_fn, adam)
 
         # save
-        path = "example_model/linear"
+        path = os.path.join(self.temp_dir.name, 'example_model/linear')
         paddle.jit.save(layer,
                         path,
                         input_spec=[InputSpec(shape=[IMAGE_SIZE], name='x')])

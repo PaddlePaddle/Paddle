@@ -41,6 +41,20 @@ const std::map<std::string, cnnlReduceOp_t> MLUReduceOpMap = {
     {"reduce_prod", CNNL_REDUCE_MUL},
 };
 
+const std::map<std::string, cnnlInterpMode_t> MLUInterpModeMap = {
+    {"bilinear", CNNL_INTERP_BILINEAR},
+    {"nearest", CNNL_INTERP_NEAREST},
+    {"linear", CNNL_INTERP_LINEAR},
+    {"trilinear", CNNL_INTERP_TRILINEAR},
+    {"bicubic", CNNL_INTERP_BICUBIC}};
+
+const std::map<std::string, cnnlInterpBackwardMode_t> MLUInterpBackwardModeMap =
+    {{"bilinear", CNNL_INTERP_BACKWARD_BILINEAR},
+     {"nearest", CNNL_INTERP_BACKWARD_NEAREST},
+     {"linear", CNNL_INTERP_BACKWARD_LINEAR},
+     {"trilinear", CNNL_INTERP_BACKWARD_TRILINEAR},
+     {"bicubic", CNNL_INTERP_BACKWARD_BICUBIC}};
+
 inline cnnlReduceOp_t GetMLUCnnlReduceOp(const std::string reduce_name) {
   auto iter = MLUReduceOpMap.find(reduce_name);
   if (iter != MLUReduceOpMap.end()) {
@@ -48,6 +62,25 @@ inline cnnlReduceOp_t GetMLUCnnlReduceOp(const std::string reduce_name) {
   }
   PADDLE_THROW(platform::errors::InvalidArgument(
       "Not support reduce op type of MLU Device: %s", reduce_name));
+}
+
+inline cnnlInterpMode_t GetMLUCnnlInterpMode(const std::string interp_mode) {
+  auto iter = MLUInterpModeMap.find(interp_mode);
+  if (iter != MLUInterpModeMap.end()) {
+    return iter->second;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Not support interp mode of MLU Device: %s", interp_mode));
+}
+
+inline cnnlInterpBackwardMode_t GetMLUCnnlInterpBackwardMode(
+    const std::string interp_mode) {
+  auto iter = MLUInterpBackwardModeMap.find(interp_mode);
+  if (iter != MLUInterpBackwardModeMap.end()) {
+    return iter->second;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Not support interp mode of MLU Device: %s", interp_mode));
 }
 
 inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
@@ -439,6 +472,16 @@ class MLUCnnl {
                    const cnnlTensorDescriptor_t input_desc, const void* input,
                    const cnnlTensorDescriptor_t output_desc, void* output);
 
+  static void Clip(const ExecutionContext& ctx,
+                   const cnnlTensorDescriptor_t input_desc, const void* input,
+                   const void* min, const void* max, void* y);
+
+  static void HardtanhBackward(
+      const ExecutionContext& ctx, const cnnlTensorDescriptor_t x_desc,
+      const void* x, const cnnlTensorDescriptor_t diff_y_desc,
+      const void* diff_y, const float max_val, const float min_val,
+      const cnnlTensorDescriptor_t diff_x_desc, void* diff_x);
+
   static void Div(const ExecutionContext& ctx,
                   cnnlComputationPreference_t prefer,
                   const cnnlTensorDescriptor_t in0_desc, const void* in0,
@@ -623,7 +666,7 @@ class MLUCnnl {
                    const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void Log(const ExecutionContext& ctx,
-                  cnnlComputationPreference_t prefer,
+                  cnnlComputationPreference_t prefer, cnnlLogBase_t log_base,
                   const cnnlTensorDescriptor_t input_desc, const void* input,
                   const cnnlTensorDescriptor_t output_desc, void* output);
 
@@ -1225,11 +1268,49 @@ class MLUCnnl {
                          const cnnlTensorDescriptor_t output_desc,
                          void* output);
 
+  static void BceLoss(
+      const ExecutionContext& ctx, const cnnlBceLossReduction_t reduction,
+      const cnnlTensorDescriptor_t input_desc, const void* input,
+      const cnnlTensorDescriptor_t target_desc, const void* target,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t output_desc, void* output);
+
+  static void BceLossBackward(
+      const ExecutionContext& ctx, const cnnlBceLossReduction_t reduction,
+      const cnnlTensorDescriptor_t grad_desc, const void* grad,
+      const cnnlTensorDescriptor_t input_desc, const void* input,
+      const cnnlTensorDescriptor_t target_desc, const void* target,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t output_desc, void* output);
+
+  static void EmbeddingForward(
+      const ExecutionContext& ctx, const int padding_idx,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t indices_desc, const int* indices,
+      const cnnlTensorDescriptor_t output_desc, void* output);
+
   static void EmbeddingBackward(
       const ExecutionContext& ctx, int padding_idx, bool scale_grad_by_freq,
       const cnnlTensorDescriptor_t indices_desc, const void* indices,
       const cnnlTensorDescriptor_t diff_desc, const void* diff,
       const cnnlTensorDescriptor_t output_desc, void* output);
+
+  static void BceWithLogits(
+      const ExecutionContext& ctx, cnnlBceWithLogitsReduction_t reduction,
+      const cnnlTensorDescriptor_t input_desc, const void* input,
+      const cnnlTensorDescriptor_t target_desc, const void* target,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t pos_weight_desc, const void* pos_weight,
+      const cnnlTensorDescriptor_t output_desc, void* output);
+
+  static void BceWithLogitsBackward(
+      const ExecutionContext& ctx, cnnlBceWithLogitsReduction_t reduction,
+      const cnnlTensorDescriptor_t grad_desc, const void* grad,
+      const cnnlTensorDescriptor_t input_desc, const void* input,
+      const cnnlTensorDescriptor_t target_desc, const void* target,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t pos_weight_desc, const void* pos_weight,
+      const cnnlTensorDescriptor_t diff_input_desc, void* diff_input);
 };
 
 template <typename T>

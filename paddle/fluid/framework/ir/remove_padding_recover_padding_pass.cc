@@ -130,6 +130,12 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     // output
     remove_padding.SetOutput("Out", {remove_padding_out_name});
 
+    // set out_threshold for int8
+    if (op_node->Op()->HasAttr("out_threshold")) {
+      remove_padding.SetAttr("out_threshold",
+                             op_node->Op()->GetAttr("out_threshold"));
+    }
+
     auto remove_padding_op_node = graph->CreateOpNode(&remove_padding);
     auto remove_padding_out_node = graph->CreateVarNode(remove_padding_out);
 
@@ -183,6 +189,12 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
 
     // output
     recover_padding.SetOutput("Out", {out_node->Name()});
+
+    // set out_threshold for int8
+    if (op_node->Op()->HasAttr("out_threshold")) {
+      recover_padding.SetAttr("out_threshold",
+                              op_node->Op()->GetAttr("out_threshold"));
+    }
 
     auto recover_padding_op_node = graph->CreateOpNode(&recover_padding);
     auto recover_padding_input_node =
