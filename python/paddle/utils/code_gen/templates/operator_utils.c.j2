@@ -304,7 +304,7 @@ Input("{{name_in_forward_orig | to_pascal_case}}")
     {% set name_in_forward_orig = output_orig_names[output_names.index(name)]%}
 Output("{{name | to_pascal_case}}")
   {%- elif name.endswith("_grad") %}{# output grad#}
-    {% set name_in_forward = name.removesuffix("_grad") %}
+    {% set name_in_forward = name[:-5] %}
     {% if name_in_forward in output_names %}
       {% set name_in_forward_orig = output_orig_names[output_names.index(name_in_forward)] %}
 OutputGrad("{{name_in_forward_orig | to_pascal_case}}")
@@ -314,10 +314,10 @@ OutputGrad("{{name_in_forward_orig | to_pascal_case}}")
 
 {% macro extract_output_from_forward(name, input_names, output_names,
   input_orig_names, output_orig_names) %}{# inline #}
-  {% if name.removesuffix("_grad") in input_names %}
-    {% set name_in_forward = name.removesuffix("_grad") %}
+  {% if name[:-5] in input_names %}
+    {% set name_in_forward = name[:-5] %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
-InputGrad("{{name.removesuffix("_grad") | to_pascal_case}}")
+InputGrad("{{name[:-5] | to_pascal_case}}")
   {%- elif (name | to_input_name) in input_names %}
     {% set name_in_forward = name | to_input_name %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
