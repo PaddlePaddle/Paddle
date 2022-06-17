@@ -147,6 +147,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/capi/capi.h"
+#endif
+
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 
 #ifdef PADDLE_WITH_IPU

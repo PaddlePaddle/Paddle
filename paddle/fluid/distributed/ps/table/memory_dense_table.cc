@@ -81,8 +81,8 @@ int32_t MemoryDenseTable::InitializeValue() {
 
   fixed_len_params_dim_ = 0;
   for (int x = 0; x < size; ++x) {
-    int dim = common.dims()[x];
-    if (dim != param_dim_) {
+    auto& dim = common.dims()[x];
+    if (static_cast<int>(dim) != param_dim_) {
       fixed_len_params_dim_ += dim;
     } else {
       param_col_ids_.push_back(x);
