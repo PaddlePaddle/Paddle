@@ -1289,6 +1289,12 @@ class MLUCnnl {
       const cnnlTensorDescriptor_t indices_desc, const int* indices,
       const cnnlTensorDescriptor_t output_desc, void* output);
 
+  static void Transform(const ExecutionContext& ctx, const void* alpha,
+                        const void* beta,
+                        const cnnlTensorDescriptor_t input_desc,
+                        const void* input,
+                        const cnnlTensorDescriptor_t output_desc, void* output);
+
   static void EmbeddingBackward(
       const ExecutionContext& ctx, int padding_idx, bool scale_grad_by_freq,
       const cnnlTensorDescriptor_t indices_desc, const void* indices,
