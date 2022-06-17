@@ -51,6 +51,9 @@ class NativePaddlePredictor : public PaddlePredictor {
            std::vector<PaddleTensor> *output_data,
            int batch_size = -1) override;
 
+  bool RunOp(void *scope, int op_index);
+  bool InferOp(void *scope, int op_index);
+
   std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
 
   ~NativePaddlePredictor() override;

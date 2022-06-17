@@ -112,6 +112,8 @@ class PD_INFER_DECL Predictor {
   /// \return Whether the function executed successfully
   ///
   bool Run();
+  virtual bool RunOp(void* scope, int op_index) = 0;
+  //  bool InferOp(void* scope, int block_index, int op_index);
 
   ///
   /// \brief Get the output names

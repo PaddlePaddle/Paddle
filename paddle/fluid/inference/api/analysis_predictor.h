@@ -179,7 +179,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return Whether the function executed successfully
   ///
   bool ZeroCopyRun() override;
-
+  bool RunOp(void *scope, int op_index) override;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Note: Can only be used under thread_local semantics.
   bool ExpRunWithExternalStream(const gpuStream_t stream);

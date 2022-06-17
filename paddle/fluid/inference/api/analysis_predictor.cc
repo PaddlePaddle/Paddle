@@ -1450,6 +1450,10 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   return res;
 }
 
+bool AnalysisPredictor::RunOp(void *scope, int op_index) {
+  predictor_->RunOp(scope, op_index);
+}
+
 bool AnalysisPredictor::ZeroCopyRun() {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {

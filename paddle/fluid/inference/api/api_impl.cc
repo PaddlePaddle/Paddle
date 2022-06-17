@@ -40,6 +40,22 @@ std::string num2str(T a) {
 }
 }  // namespace
 
+bool NativePaddlePredictor::InferOp(void *scope, int op_index) {
+  //  sub_scope_ = std::shared_ptr<framework::Scope>(scope);
+  //  executor_->inferShape(block_index, op_index);
+  //  executor_->RunPreparedContext(ctx_.get(), scope,
+  //                                block_index,
+  //                                op_index);
+  return true;
+}
+
+bool NativePaddlePredictor::RunOp(void *scope, int op_index) {
+  //  sub_scope_ = std::shared_ptr<framework::Scope>(scope);
+  RunPartialPreparedContext(ctx, std::shared_ptr<framework::Scope>(scope),
+                            op_index, op_index, false, false, false);
+  return true;
+}
+
 void NativePaddlePredictor::PrepareFeedFetch() {
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
