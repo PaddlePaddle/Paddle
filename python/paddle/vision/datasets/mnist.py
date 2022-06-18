@@ -51,14 +51,44 @@ class MNIST(Dataset):
         
         .. code-block:: python
 
+            import itertools
+            import paddle.vision.transforms as T
             from paddle.vision.datasets import MNIST
 
-            mnist = MNIST(mode='test')
 
-            for i in range(len(mnist)):
-                sample = mnist[i]
-                print(sample[0].size, sample[1])
+            mnist = MNIST()
+            print(len(mnist))
+            # 60000
 
+            for i in range(5):  # only show first 5 images
+                img, label = mnist[i]
+                # do something with img and label
+                print(type(img), img.size, label)
+                # <class 'PIL.Image.Image'> (28, 28) [5]
+
+
+            transform = T.Compose(
+                [
+                    T.ToTensor(),
+                    T.Normalize(
+                        mean=[127.5],
+                        std=[127.5],
+                    ),
+                ]
+            )
+
+            mnist_test = MNIST(
+                mode="test",
+                transform=transform,  # apply transform to every image
+                backend="cv2",  # use OpenCV as image transform backend
+            )
+            print(len(mnist_test))
+            # 10000
+
+            for img, label in itertools.islice(iter(mnist_test), 5):  # only show first 5 images
+                # do something with img and label
+                print(type(img), img.shape, label)
+                # <class 'paddle.Tensor'> [1, 28, 28] [7]
     """
     NAME = 'mnist'
     URL_PREFIX = 'https://dataset.bj.bcebos.com/mnist/'
@@ -202,13 +232,44 @@ class FashionMNIST(MNIST):
         
         .. code-block:: python
 
+            import itertools
+            import paddle.vision.transforms as T
             from paddle.vision.datasets import FashionMNIST
 
-            mnist = FashionMNIST(mode='test')
 
-            for i in range(len(mnist)):
-                sample = mnist[i]
-                print(sample[0].size, sample[1])
+            fashion_mnist = FashionMNIST()
+            print(len(fashion_mnist))
+            # 60000
+
+            for i in range(5):  # only show first 5 images
+                img, label = fashion_mnist[i]
+                # do something with img and label
+                print(type(img), img.size, label)
+                # <class 'PIL.Image.Image'> (28, 28) [9]
+
+
+            transform = T.Compose(
+                [
+                    T.ToTensor(),
+                    T.Normalize(
+                        mean=[127.5],
+                        std=[127.5],
+                    ),
+                ]
+            )
+
+            fashion_mnist_test = FashionMNIST(
+                mode="test",
+                transform=transform,  # apply transform to every image
+                backend="cv2",  # use OpenCV as image transform backend
+            )
+            print(len(fashion_mnist_test))
+            # 10000
+
+            for img, label in itertools.islice(iter(fashion_mnist_test), 5):  # only show first 5 images
+                # do something with img and label
+                print(type(img), img.shape, label)
+                # <class 'paddle.Tensor'> [1, 28, 28] [9]
     """
 
     NAME = 'fashion-mnist'

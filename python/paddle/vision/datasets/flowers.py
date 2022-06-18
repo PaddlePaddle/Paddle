@@ -64,14 +64,46 @@ class Flowers(Dataset):
         
         .. code-block:: python
 
+            import itertools
+            import paddle.vision.transforms as T
             from paddle.vision.datasets import Flowers
 
-            flowers = Flowers(mode='test')
 
-            for i in range(len(flowers)):
-                sample = flowers[i]
-                print(sample[0].size, sample[1])
+            flowers = Flowers()
+            print(len(flowers))
+            # 6149
 
+            for i in range(5):  # only show first 5 images
+                img, label = flowers[i]
+                # do something with img and label
+                print(type(img), img.size, label)
+                # <class 'PIL.JpegImagePlugin.JpegImageFile'> (523, 500) [1]
+
+
+            transform = T.Compose(
+                [
+                    T.Resize(64),
+                    T.ToTensor(),
+                    T.Normalize(
+                        mean=[0.5, 0.5, 0.5],
+                        std=[0.5, 0.5, 0.5],
+                        to_rgb=True,
+                    ),
+                ]
+            )
+
+            flowers_test = Flowers(
+                mode="test",
+                transform=transform,  # apply transform to every image
+                backend="cv2",  # use OpenCV as image transform backend
+            )
+            print(len(flowers_test))
+            # 1020
+
+            for img, label in itertools.islice(iter(flowers_test), 5):  # only show first 5 images
+                # do something with img and label
+                print(type(img), img.shape, label)
+                # <class 'paddle.Tensor'> [3, 64, 96] [1]
     """
 
     def __init__(self,
