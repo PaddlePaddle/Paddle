@@ -125,7 +125,7 @@ RUN pip3.6 --no-cache-dir install pytest astroid isort && \
     pip2.7 --no-cache-dir install pytest astroid isort
 
 #For pre-commit
-RUN pip3.6 --no-cache-dir install --upgrade pip && \
+RUN pip3.6 --no-cache-dir install --upgrade pip==20.3.3 && \
     pip3.7 --no-cache-dir install --upgrade pip && \
     pip3.8 --no-cache-dir install --upgrade pip && \
     pip3.9 --no-cache-dir install --upgrade pip
