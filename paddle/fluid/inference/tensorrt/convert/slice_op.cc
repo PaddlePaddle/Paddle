@@ -75,9 +75,6 @@ class SliceOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
       auto nchw_input_dims = input->getDimensions();
-      std::cout << nchw_input_dims.d[0] << std::endl;
-      std::cout << nchw_input_dims.d[1] << std::endl;
-      std::cout << nchw_input_dims.d[2] << std::endl;
       nvinfer1::Dims trt_start_dims;
       trt_start_dims.nbDims = nchw_input_dims.nbDims;
       memset(trt_start_dims.d, 0, sizeof(int32_t) * nchw_input_dims.nbDims);
@@ -105,14 +102,13 @@ class SliceOpConverter : public OpConverter {
       auto* shape_tensor = Shape(input);
       auto* start_tensor = Add1DConstantLayer(trt_start_dims);
       auto* end_tensor = Add1DConstantLayer(trt_end_dims);
-      if (has_neg_indices)
-      {
+      if (has_neg_indices) {
         start_tensor = FixNegIndices(shape_tensor, start_tensor);
         end_tensor = FixNegIndices(shape_tensor, end_tensor);
       }
 
-      end_tensor = Min (shape_tensor, end_tensor);
-      auto* size_tensor = Sub(end_tensor,start_tensor);
+      end_tensor = Min(shape_tensor, end_tensor);
+      auto* size_tensor = Sub(end_tensor, start_tensor);
 
       layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                    trt_size_dims, trt_step_dims);
@@ -121,10 +117,13 @@ class SliceOpConverter : public OpConverter {
       if (decrease_axises.size() > 0) {
         std::vector<int32_t> gather_indices;
         for (int i = 0; i < trt_size_dims.nbDims; i++) {
-          if (decrease_axises.end() != std::find(decrease_axises.begin(), decrease_axises.end(), i) ) continue;
+          if (decrease_axises.end() !=
+              std::find(decrease_axises.begin(), decrease_axises.end(), i))
+            continue;
           gather_indices.push_back(i);
         }
-        if (gather_indices.empty()) gather_indices.push_back(decrease_axises[0]);
+        if (gather_indices.empty())
+          gather_indices.push_back(decrease_axises[0]);
         auto real_size_tensor = Gather(size_tensor, gather_indices);
         layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
         layer->setInput(1, *real_size_tensor);
