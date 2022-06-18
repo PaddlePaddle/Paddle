@@ -74,21 +74,23 @@ class DatasetFolder(Dataset):
         root/class_b/789.ext
 
     Args:
-        root (string): Root directory path.
-        loader (callable|optional): A function to load a sample given its path.
-        extensions (list[str]|tuple[str]|optional): A list of allowed extensions.
-            both extensions and is_valid_file should not be passed.
-        transform (callable|optional): A function/transform that takes in
-            a sample and returns a transformed version.
-        is_valid_file (callable|optional): A function that takes path of a file
-            and check if the file is a valid file (used to check of corrupt files)
-            both extensions and is_valid_file should not be passed.
+        root (str): Root directory path.
+        loader (Callable, optional): A function to load a sample given its path. Default: None.
+        extensions (list[str]|tuple[str], optional): A list of allowed extensions.
+            Both :attr:`extensions` and :attr:`is_valid_file` should not be passed.
+            If this value is not set, the default is to use ('.jpg', '.jpeg', '.png',
+            '.ppm', '.bmp', '.pgm', '.tif', '.tiff', '.webp'). Default: None.
+        transform (Callable, optional): A function/transform that takes in
+            a sample and returns a transformed version. Default: None.
+        is_valid_file (Callable, optional): A function that takes path of a file
+            and check if the file is a valid file. Both :attr:`extensions` and
+            :attr:`is_valid_file` should not be passed. Default: None.
 
-     Attributes:
-        classes (list): List of the class names.
-        class_to_idx (dict): Dict with items (class_name, class_index).
-        samples (list): List of (sample path, class_index) tuples
-        targets (list): The class_index value for each image in the dataset
+    Attributes:
+        classes (list[str]): List of the class names.
+        class_to_idx (dict[str, int]): Dict with items (class_name, class_index).
+        samples (list[tuple[str, int]]): List of (sample_path, class_index) tuples.
+        targets (list[int]): The class_index value for each image in the dataset.
 
     Example:
 
@@ -295,18 +297,20 @@ class ImageFolder(Dataset):
         root/sub_dir/3.ext
 
     Args:
-        root (string): Root directory path.
-        loader (callable, optional): A function to load a sample given its path.
+        root (str): Root directory path.
+        loader (Callable, optional): A function to load a sample given its path. Default: None.
         extensions (list[str]|tuple[str], optional): A list of allowed extensions.
-            both extensions and is_valid_file should not be passed.
-        transform (callable, optional): A function/transform that takes in
-            a sample and returns a transformed version.
-        is_valid_file (callable, optional): A function that takes path of a file
-            and check if the file is a valid file (used to check of corrupt files)
-            both extensions and is_valid_file should not be passed.
+            Both :attr:`extensions` and :attr:`is_valid_file` should not be passed.
+            If this value is not set, the default is to use ('.jpg', '.jpeg', '.png',
+            '.ppm', '.bmp', '.pgm', '.tif', '.tiff', '.webp'). Default: None.
+        transform (Callable, optional): A function/transform that takes in
+            a sample and returns a transformed version. Default: None.
+        is_valid_file (Callable, optional): A function that takes path of a file
+            and check if the file is a valid file. Both :attr:`extensions` and
+            :attr:`is_valid_file` should not be passed. Default: None.
 
-     Attributes:
-        samples (list): List of sample path
+    Attributes:
+        samples (list[str]): List of sample path.
 
     Example:
 
@@ -363,7 +367,7 @@ class ImageFolder(Dataset):
 
             for i in range(len(image_folder_1)):
                 (img,) = image_folder_1[i]
-                # do something with img and label
+                # do something with img
                 print(type(img), img.size)
                 # <class 'PIL.Image.Image'> (32, 32)
 
@@ -393,7 +397,7 @@ class ImageFolder(Dataset):
             # 2
 
             for (img,) in iter(image_folder_2):
-                # do something with img and label
+                # do something with img
                 print(type(img), img.shape)
                 # <class 'paddle.Tensor'> [3, 64, 64]
 

@@ -46,18 +46,18 @@ class Flowers(Dataset):
     dataset
 
     Args:
-        data_file(str): path to data file, can be set None if
-            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/flowers/
-        label_file(str): path to label file, can be set None if
-            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/flowers/
-        setid_file(str): path to subset index file, can be set
-            None if :attr:`download` is True. Default None
-        mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
-        transform(callable): transform to perform on image, None for no transform.
-        download(bool): download dataset automatically if :attr:`data_file` is None. Default True
-        backend(str, optional): Specifies which type of image to be returned: 
-            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
-            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+        data_file (str, optional): path to data file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/flowers/
+        label_file (str, optional): path to label file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/flowers/
+        setid_file (str, optional): path to subset index file, can be set
+            None if :attr:`download` is True. Default: None.
+        mode (str, optional): 'train', 'valid' or 'test' mode. Default: 'train'.
+        transform (Callable, optional): transform to perform on image, None for no transform. Default: None.
+        download (bool, optional): download dataset automatically if :attr:`data_file` is None. Default: True.
+        backend (str, optional): Specifies which type of image to be returned:
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
+            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
             default backend is 'pil'. Default: None.
 
     Examples:

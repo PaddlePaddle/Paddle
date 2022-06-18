@@ -32,16 +32,17 @@ class MNIST(Dataset):
     Implementation of `MNIST <http://yann.lecun.com/exdb/mnist/>`_ dataset
 
     Args:
-        image_path(str): path to image file, can be set None if
-            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/mnist
-        label_path(str): path to label file, can be set None if
-            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/mnist
-        mode(str): 'train' or 'test' mode. Default 'train'.
-        download(bool): download dataset automatically if
-            :attr:`image_path` :attr:`label_path` is not set. Default True
-        backend(str, optional): Specifies which type of image to be returned: 
-            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
-            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+        image_path (str, optional): path to image file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/mnist.
+        label_path (str, optional): path to label file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/mnist.
+        mode (str, optional): 'train' or 'test' mode. Default: 'train'.
+        transform (Callable, optional): transform to perform on image, None for no transform. Default: None.
+        download (bool, optional): download dataset automatically if
+            :attr:`image_path` :attr:`label_path` is not set. Default: True.
+        backend (str, optional): Specifies which type of image to be returned:
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
+            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
             default backend is 'pil'. Default: None.
             
     Returns:
@@ -213,16 +214,17 @@ class FashionMNIST(MNIST):
     Implementation `Fashion-MNIST <https://github.com/zalandoresearch/fashion-mnist>`_ dataset.
 
     Args:
-        image_path(str): path to image file, can be set None if
-            :attr:`download` is True. Default None
-        label_path(str): path to label file, can be set None if
-            :attr:`download` is True. Default None
-        mode(str): 'train' or 'test' mode. Default 'train'.
-        download(bool): whether to download dataset automatically if
-            :attr:`image_path` :attr:`label_path` is not set. Default True
-        backend(str, optional): Specifies which type of image to be returned: 
-            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
-            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+        image_path (str, optional): path to image file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/fashion-mnist.
+        label_path (str, optional): path to label file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/fashion-mnist.
+        mode (str, optional): 'train' or 'test' mode. Default: 'train'.
+        transform (Callable, optional): transform to perform on image, None for no transform. Default: None.
+        download (bool, optional): whether to download dataset automatically if
+            :attr:`image_path` :attr:`label_path` is not set. Default: True.
+        backend (str, optional): Specifies which type of image to be returned:
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
+            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
             default backend is 'pil'. Default: None.
             
     Returns:
