@@ -44,7 +44,6 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/sparse_api_custom_impl.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"
@@ -133,26 +132,22 @@ def generate_intermediate_api(api_yaml_path, sparse_api_yaml_path,
 def main():
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle C++ Sparse API files')
-    parser.add_argument(
-        '--api_yaml_path',
-        nargs='+',
-        help='path to api yaml file',
-        default='python/paddle/utils/code_gen/api.yaml')
+    parser.add_argument('--api_yaml_path',
+                        nargs='+',
+                        help='path to api yaml file',
+                        default='python/paddle/utils/code_gen/api.yaml')
 
-    parser.add_argument(
-        '--sparse_api_yaml_path',
-        help='path to sparse api yaml file',
-        default='python/paddle/utils/code_gen/sparse_api.yaml')
+    parser.add_argument('--sparse_api_yaml_path',
+                        help='path to sparse api yaml file',
+                        default='python/paddle/utils/code_gen/sparse_api.yaml')
 
-    parser.add_argument(
-        '--dygraph_api_header_path',
-        help='output of generated dygraph api header code file',
-        default='paddle/phi/api/lib/dygraph_api.h')
+    parser.add_argument('--dygraph_api_header_path',
+                        help='output of generated dygraph api header code file',
+                        default='paddle/phi/api/lib/dygraph_api.h')
 
-    parser.add_argument(
-        '--dygraph_api_source_path',
-        help='output of generated dygraph api source code file',
-        default='paddle/phi/api/lib/dygraph_api.cc')
+    parser.add_argument('--dygraph_api_source_path',
+                        help='output of generated dygraph api source code file',
+                        default='paddle/phi/api/lib/dygraph_api.cc')
 
     options = parser.parse_args()
 

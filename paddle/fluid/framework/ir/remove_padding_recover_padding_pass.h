@@ -32,6 +32,14 @@ namespace paddle {
 namespace framework {
 namespace ir {
 namespace patterns {
+struct EmbEltwiseLayernorm : public PatternBase {
+  EmbEltwiseLayernorm(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "emb_elt_layernorm") {}
+
+  void operator()();
+  PATTERN_DECL_NODE(emb_elt_layernorm_op);
+  PATTERN_DECL_NODE(emb_elt_layernorm_out);
+};
 
 struct SkipLayernorm : public PatternBase {
   SkipLayernorm(PDPattern *pattern, const std::string &name_scope)

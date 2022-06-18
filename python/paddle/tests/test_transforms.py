@@ -28,6 +28,7 @@ import paddle.vision.transforms.functional as F
 
 
 class TestTransformsCV2(unittest.TestCase):
+
     def setUp(self):
         self.backend = self.get_backend()
         set_image_backend(self.backend)
@@ -52,8 +53,8 @@ class TestTransformsCV2(unittest.TestCase):
         if self.backend == 'cv2':
             return (np.random.rand(*shape) * 255).astype('uint8')
         elif self.backend == 'pil':
-            return Image.fromarray((np.random.rand(*shape) * 255).astype(
-                'uint8'))
+            return Image.fromarray(
+                (np.random.rand(*shape) * 255).astype('uint8'))
 
     def get_shape(self, img):
         if isinstance(img, paddle.Tensor):
@@ -76,11 +77,14 @@ class TestTransformsCV2(unittest.TestCase):
     def test_trans_all(self):
         normalize = transforms.Normalize(
             mean=[123.675, 116.28, 103.53],
-            std=[58.395, 57.120, 57.375], )
+            std=[58.395, 57.120, 57.375],
+        )
         trans = transforms.Compose([
             transforms.RandomResizedCrop(224),
-            transforms.ColorJitter(
-                brightness=0.4, contrast=0.4, saturation=0.4, hue=0.4),
+            transforms.ColorJitter(brightness=0.4,
+                                   contrast=0.4,
+                                   saturation=0.4,
+                                   hue=0.4),
             transforms.RandomHorizontalFlip(),
             transforms.Transpose(),
             normalize,
@@ -126,38 +130,34 @@ class TestTransformsCV2(unittest.TestCase):
     def test_affine(self):
         trans = transforms.Compose([
             transforms.RandomAffine(90),
-            transforms.RandomAffine(
-                [-10, 10], translate=[0.1, 0.3]),
-            transforms.RandomAffine(
-                45, translate=[0.2, 0.2], scale=[0.2, 0.5]),
-            transforms.RandomAffine(
-                10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10]),
-            transforms.RandomAffine(
-                10,
-                translate=[0.5, 0.3],
-                scale=[0.7, 1.3],
-                shear=[-10, 10, 20, 40]),
-            transforms.RandomAffine(
-                10,
-                translate=[0.5, 0.3],
-                scale=[0.7, 1.3],
-                shear=[-10, 10, 20, 40],
-                interpolation='bilinear'),
-            transforms.RandomAffine(
-                10,
-                translate=[0.5, 0.3],
-                scale=[0.7, 1.3],
-                shear=[-10, 10, 20, 40],
-                interpolation='bilinear',
-                fill=114),
-            transforms.RandomAffine(
-                10,
-                translate=[0.5, 0.3],
-                scale=[0.7, 1.3],
-                shear=[-10, 10, 20, 40],
-                interpolation='bilinear',
-                fill=114,
-                center=(60, 80)),
+            transforms.RandomAffine([-10, 10], translate=[0.1, 0.3]),
+            transforms.RandomAffine(45, translate=[0.2, 0.2], scale=[0.2, 0.5]),
+            transforms.RandomAffine(10,
+                                    translate=[0.2, 0.2],
+                                    scale=[0.5, 0.5],
+                                    shear=[-10, 10]),
+            transforms.RandomAffine(10,
+                                    translate=[0.5, 0.3],
+                                    scale=[0.7, 1.3],
+                                    shear=[-10, 10, 20, 40]),
+            transforms.RandomAffine(10,
+                                    translate=[0.5, 0.3],
+                                    scale=[0.7, 1.3],
+                                    shear=[-10, 10, 20, 40],
+                                    interpolation='bilinear'),
+            transforms.RandomAffine(10,
+                                    translate=[0.5, 0.3],
+                                    scale=[0.7, 1.3],
+                                    shear=[-10, 10, 20, 40],
+                                    interpolation='bilinear',
+                                    fill=114),
+            transforms.RandomAffine(10,
+                                    translate=[0.5, 0.3],
+                                    scale=[0.7, 1.3],
+                                    shear=[-10, 10, 20, 40],
+                                    interpolation='bilinear',
+                                    fill=114,
+                                    center=(60, 80)),
         ])
         self.do_transform(trans)
 
@@ -165,18 +165,15 @@ class TestTransformsCV2(unittest.TestCase):
         trans = transforms.Compose([
             transforms.RandomRotation(90),
             transforms.RandomRotation([-10, 10]),
-            transforms.RandomRotation(
-                45, expand=True),
-            transforms.RandomRotation(
-                10, expand=True, center=(60, 80)),
+            transforms.RandomRotation(45, expand=True),
+            transforms.RandomRotation(10, expand=True, center=(60, 80)),
         ])
         self.do_transform(trans)
 
     def test_perspective(self):
         trans = transforms.Compose([
             transforms.RandomPerspective(prob=1.0),
-            transforms.RandomPerspective(
-                prob=1.0, distortion_scale=0.9),
+            transforms.RandomPerspective(prob=1.0, distortion_scale=0.9),
         ])
         self.do_transform(trans)
 
@@ -214,8 +211,8 @@ class TestTransformsCV2(unittest.TestCase):
         trans_random_crop_same = transforms.RandomCrop((140, 160))
         img = trans_random_crop_same(fake_img_crop2)
 
-        trans_random_crop_bigger = transforms.RandomCrop(
-            (180, 200), pad_if_needed=True)
+        trans_random_crop_bigger = transforms.RandomCrop((180, 200),
+                                                         pad_if_needed=True)
         img = trans_random_crop_bigger(img)
 
         trans_random_crop_pad = transforms.RandomCrop((224, 256), 2, True)
@@ -223,7 +220,8 @@ class TestTransformsCV2(unittest.TestCase):
 
     def test_erase(self):
         trans = transforms.Compose([
-            transforms.RandomErasing(), transforms.RandomErasing(value="random")
+            transforms.RandomErasing(),
+            transforms.RandomErasing(value="random")
         ])
         self.do_transform(trans)
 
@@ -334,24 +332,24 @@ class TestTransformsCV2(unittest.TestCase):
             transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3]),
 
         with self.assertRaises(ValueError):
-            transforms.RandomAffine(
-                10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[1, 2, 3]),
+            transforms.RandomAffine(10,
+                                    translate=[0.2, 0.2],
+                                    scale=[0.5, 0.5],
+                                    shear=[1, 2, 3]),
 
         with self.assertRaises(ValueError):
-            transforms.RandomAffine(
-                10,
-                translate=[0.5, 0.3],
-                scale=[0.7, 1.3],
-                shear=[-10, 10, 0, 20, 40])
+            transforms.RandomAffine(10,
+                                    translate=[0.5, 0.3],
+                                    scale=[0.7, 1.3],
+                                    shear=[-10, 10, 0, 20, 40])
 
         with self.assertRaises(ValueError):
-            transforms.RandomAffine(
-                10,
-                translate=[0.5, 0.3],
-                scale=[0.7, 1.3],
-                shear=[-10, 10, 20, 40],
-                fill=114,
-                center=(1, 2, 3))
+            transforms.RandomAffine(10,
+                                    translate=[0.5, 0.3],
+                                    scale=[0.7, 1.3],
+                                    shear=[-10, 10, 20, 40],
+                                    fill=114,
+                                    center=(1, 2, 3))
 
         with self.assertRaises(ValueError):
             transforms.RandomRotation(-2)
@@ -404,11 +402,13 @@ class TestTransformsCV2(unittest.TestCase):
 
 
 class TestTransformsPIL(TestTransformsCV2):
+
     def get_backend(self):
         return 'pil'
 
 
 class TestTransformsTensor(TestTransformsCV2):
+
     def get_backend(self):
         return 'tensor'
 
@@ -426,7 +426,8 @@ class TestTransformsTensor(TestTransformsCV2):
     def test_trans_all(self):
         normalize = transforms.Normalize(
             mean=[123.675, 116.28, 103.53],
-            std=[58.395, 57.120, 57.375], )
+            std=[58.395, 57.120, 57.375],
+        )
         trans = transforms.Compose([
             transforms.RandomResizedCrop(224),
             transforms.RandomHorizontalFlip(),
@@ -508,8 +509,8 @@ class TestTransformsTensor(TestTransformsCV2):
         trans_random_crop_same = transforms.RandomCrop((140, 160))
         img = trans_random_crop_same(fake_img_crop2)
 
-        trans_random_crop_bigger = transforms.RandomCrop(
-            (180, 200), pad_if_needed=True)
+        trans_random_crop_bigger = transforms.RandomCrop((180, 200),
+                                                         pad_if_needed=True)
         img = trans_random_crop_bigger(img)
 
         trans_random_crop_pad = transforms.RandomCrop((224, 256), 2, True)
@@ -585,15 +586,16 @@ class TestTransformsTensor(TestTransformsCV2):
             transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3]),
 
         with self.assertRaises(ValueError):
-            transforms.RandomAffine(
-                10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[1, 2, 3]),
+            transforms.RandomAffine(10,
+                                    translate=[0.2, 0.2],
+                                    scale=[0.5, 0.5],
+                                    shear=[1, 2, 3]),
 
         with self.assertRaises(ValueError):
-            transforms.RandomAffine(
-                10,
-                translate=[0.5, 0.3],
-                scale=[0.7, 1.3],
-                shear=[-10, 10, 0, 20, 40])
+            transforms.RandomAffine(10,
+                                    translate=[0.5, 0.3],
+                                    scale=[0.7, 1.3],
+                                    shear=[-10, 10, 0, 20, 40])
 
         with self.assertRaises(ValueError):
             transforms.RandomRotation(-2)
@@ -614,13 +616,14 @@ class TestTransformsTensor(TestTransformsCV2):
 
 
 class TestFunctional(unittest.TestCase):
+
     def test_errors(self):
         with self.assertRaises(TypeError):
             F.to_tensor(1)
 
         with self.assertRaises(ValueError):
-            fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
-                'uint8'))
+            fake_img = Image.fromarray(
+                (np.random.rand(28, 28, 3) * 255).astype('uint8'))
             F.to_tensor(fake_img, data_format=1)
 
         with self.assertRaises(ValueError):
@@ -632,8 +635,8 @@ class TestFunctional(unittest.TestCase):
             F.resize(fake_img, {1: 1})
 
         with self.assertRaises(TypeError):
-            fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
-                'uint8'))
+            fake_img = Image.fromarray(
+                (np.random.rand(28, 28, 3) * 255).astype('uint8'))
             F.resize(fake_img, '1')
 
         with self.assertRaises(TypeError):
@@ -682,16 +685,18 @@ class TestFunctional(unittest.TestCase):
             F.affine(45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 0, 10])
 
         with self.assertRaises(TypeError):
-            F.affine(
-                45,
-                translate=[0.2, 0.2],
-                scale=0.5,
-                shear=[-10, 10],
-                interpolation=2)
+            F.affine(45,
+                     translate=[0.2, 0.2],
+                     scale=0.5,
+                     shear=[-10, 10],
+                     interpolation=2)
 
         with self.assertRaises(TypeError):
-            F.affine(
-                45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10], center=0)
+            F.affine(45,
+                     translate=[0.2, 0.2],
+                     scale=0.5,
+                     shear=[-10, 10],
+                     center=0)
 
         with self.assertRaises(TypeError):
             F.rotate(1, 0.1)
@@ -715,17 +720,23 @@ class TestFunctional(unittest.TestCase):
         std = [0.5, 0.5, 0.5]
 
         normalized_img = F.normalize(tensor_img, mean, std)
-        normalized_img_tensor = F.normalize(
-            tensor_img_hwc, mean, std, data_format='HWC')
+        normalized_img_tensor = F.normalize(tensor_img_hwc,
+                                            mean,
+                                            std,
+                                            data_format='HWC')
 
         normalized_img_pil = F.normalize(pil_img, mean, std, data_format='HWC')
-        normalized_img_np = F.normalize(
-            np_img, mean, std, data_format='HWC', to_rgb=False)
+        normalized_img_np = F.normalize(np_img,
+                                        mean,
+                                        std,
+                                        data_format='HWC',
+                                        to_rgb=False)
 
-        np.testing.assert_almost_equal(
-            np.array(normalized_img_pil), normalized_img_np)
-        np.testing.assert_almost_equal(
-            normalized_img_tensor.numpy(), normalized_img_np, decimal=4)
+        np.testing.assert_almost_equal(np.array(normalized_img_pil),
+                                       normalized_img_np)
+        np.testing.assert_almost_equal(normalized_img_tensor.numpy(),
+                                       normalized_img_np,
+                                       decimal=4)
 
     def test_center_crop(self):
         np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')
@@ -738,10 +749,10 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_almost_equal(np_cropped_img,
                                        np.array(pil_cropped_img))
-        np.testing.assert_almost_equal(
-            np_cropped_img,
-            tensor_cropped_img.numpy().transpose((1, 2, 0)),
-            decimal=4)
+        np.testing.assert_almost_equal(np_cropped_img,
+                                       tensor_cropped_img.numpy().transpose(
+                                           (1, 2, 0)),
+                                       decimal=4)
 
     def test_color_jitter_sub_function(self):
         np.random.seed(555)
@@ -806,10 +817,10 @@ class TestFunctional(unittest.TestCase):
         tensor_padded_img = F.pad(tensor_img, [1, 2], padding_mode='reflect')
 
         np.testing.assert_almost_equal(np_padded_img, np.array(pil_padded_img))
-        np.testing.assert_almost_equal(
-            np_padded_img,
-            tensor_padded_img.numpy().transpose((1, 2, 0)),
-            decimal=3)
+        np.testing.assert_almost_equal(np_padded_img,
+                                       tensor_padded_img.numpy().transpose(
+                                           (1, 2, 0)),
+                                       decimal=3)
 
         tensor_padded_img = F.pad(tensor_img, 1, padding_mode='reflect')
         tensor_padded_img = F.pad(tensor_img, [1, 2, 1, 2],
@@ -831,14 +842,14 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_almost_equal(np_reseized_img,
                                        np.array(pil_reseized_img))
-        np.testing.assert_almost_equal(
-            np_reseized_img,
-            tensor_reseized_img.numpy().transpose((1, 2, 0)),
-            decimal=3)
-        np.testing.assert_almost_equal(
-            np_reseized_img,
-            tensor_reseized_img2.numpy().transpose((1, 2, 0)),
-            decimal=3)
+        np.testing.assert_almost_equal(np_reseized_img,
+                                       tensor_reseized_img.numpy().transpose(
+                                           (1, 2, 0)),
+                                       decimal=3)
+        np.testing.assert_almost_equal(np_reseized_img,
+                                       tensor_reseized_img2.numpy().transpose(
+                                           (1, 2, 0)),
+                                       decimal=3)
 
         gray_img = (np.zeros([28, 32])).astype('uint8')
         gray_resize_img = F.resize(gray_img, 40)
@@ -852,7 +863,7 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_allclose(np_tensor.numpy(), pil_tensor.numpy())
 
-        # test float dtype 
+        # test float dtype
         float_img = np.random.rand(28, 28)
         float_tensor = F.to_tensor(float_img)
 
@@ -902,9 +913,8 @@ class TestFunctional(unittest.TestCase):
     def test_erase_backward(self):
         img = paddle.randn((3, 14, 14), dtype=np.float32)
         img.stop_gradient = False
-        erased = F.erase(
-            img, 3, 3, 5, 5, paddle.ones(
-                (1, 1, 1), dtype='float32'))
+        erased = F.erase(img, 3, 3, 5, 5, paddle.ones((1, 1, 1),
+                                                      dtype='float32'))
         loss = erased.sum()
         loss.backward()
 
@@ -913,10 +923,11 @@ class TestFunctional(unittest.TestCase):
         np.testing.assert_equal(img.grad.numpy(), expected_grad)
 
     def test_image_load(self):
-        fake_img = Image.fromarray((np.random.random((32, 32, 3)) * 255).astype(
-            'uint8'))
+        fake_img = Image.fromarray((np.random.random(
+            (32, 32, 3)) * 255).astype('uint8'))
 
-        path = 'temp.jpg'
+        temp_dir = tempfile.TemporaryDirectory()
+        path = os.path.join(temp_dir.name, 'temp.jpg')
         fake_img.save(path)
 
         set_image_backend('pil')
@@ -929,32 +940,42 @@ class TestFunctional(unittest.TestCase):
 
         np_img = image_load(path)
 
-        os.remove(path)
+        temp_dir.cleanup()
 
     def test_affine(self):
         np_img = (np.random.rand(32, 26, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img).convert('RGB')
         tensor_img = F.to_tensor(pil_img, data_format='CHW') * 255
 
-        np.testing.assert_almost_equal(
-            np_img, tensor_img.transpose((1, 2, 0)), decimal=4)
+        np.testing.assert_almost_equal(np_img,
+                                       tensor_img.transpose((1, 2, 0)),
+                                       decimal=4)
 
-        np_affined_img = F.affine(
-            np_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
-        pil_affined_img = F.affine(
-            pil_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
-        tensor_affined_img = F.affine(
-            tensor_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
+        np_affined_img = F.affine(np_img,
+                                  45,
+                                  translate=[0.2, 0.2],
+                                  scale=0.5,
+                                  shear=[-10, 10])
+        pil_affined_img = F.affine(pil_img,
+                                   45,
+                                   translate=[0.2, 0.2],
+                                   scale=0.5,
+                                   shear=[-10, 10])
+        tensor_affined_img = F.affine(tensor_img,
+                                      45,
+                                      translate=[0.2, 0.2],
+                                      scale=0.5,
+                                      shear=[-10, 10])
 
         np.testing.assert_equal(np_affined_img.shape,
                                 np.array(pil_affined_img).shape)
         np.testing.assert_equal(np_affined_img.shape,
                                 tensor_affined_img.transpose((1, 2, 0)).shape)
 
-        np.testing.assert_almost_equal(
-            np.array(pil_affined_img),
-            tensor_affined_img.numpy().transpose((1, 2, 0)),
-            decimal=4)
+        np.testing.assert_almost_equal(np.array(pil_affined_img),
+                                       tensor_affined_img.numpy().transpose(
+                                           (1, 2, 0)),
+                                       decimal=4)
 
     def test_rotate(self):
         np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
@@ -966,12 +987,11 @@ class TestFunctional(unittest.TestCase):
 
         rotated_tensor_img1 = F.rotate(tensor_img, 80, expand=True)
 
-        rotated_tensor_img2 = F.rotate(
-            tensor_img,
-            80,
-            interpolation='bilinear',
-            center=(10, 10),
-            expand=False)
+        rotated_tensor_img2 = F.rotate(tensor_img,
+                                       80,
+                                       interpolation='bilinear',
+                                       center=(10, 10),
+                                       expand=False)
 
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
@@ -982,10 +1002,16 @@ class TestFunctional(unittest.TestCase):
         np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img).convert('RGB')
 
-        rotated_np_img = F.rotate(
-            np_img, 80, expand=True, center=[0, 0], fill=[0, 0, 0])
-        rotated_pil_img = F.rotate(
-            pil_img, 80, expand=True, center=[0, 0], fill=[0, 0, 0])
+        rotated_np_img = F.rotate(np_img,
+                                  80,
+                                  expand=True,
+                                  center=[0, 0],
+                                  fill=[0, 0, 0])
+        rotated_pil_img = F.rotate(pil_img,
+                                   80,
+                                   expand=True,
+                                   center=[0, 0],
+                                   fill=[0, 0, 0])
 
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
@@ -995,8 +1021,9 @@ class TestFunctional(unittest.TestCase):
         pil_img = Image.fromarray(np_img).convert('RGB')
         tensor_img = F.to_tensor(pil_img, data_format='CHW') * 255
 
-        np.testing.assert_almost_equal(
-            np_img, tensor_img.transpose((1, 2, 0)), decimal=4)
+        np.testing.assert_almost_equal(np_img,
+                                       tensor_img.transpose((1, 2, 0)),
+                                       decimal=4)
 
         startpoints = [[0, 0], [13, 0], [13, 15], [0, 15]]
         endpoints = [[3, 2], [12, 3], [10, 14], [2, 15]]
@@ -1008,9 +1035,9 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_equal(np_perspectived_img.shape,
                                 np.array(pil_perspectived_img).shape)
-        np.testing.assert_equal(np_perspectived_img.shape,
-                                tensor_perspectived_img.transpose(
-                                    (1, 2, 0)).shape)
+        np.testing.assert_equal(
+            np_perspectived_img.shape,
+            tensor_perspectived_img.transpose((1, 2, 0)).shape)
 
         result_pil = np.array(pil_perspectived_img)
         result_tensor = tensor_perspectived_img.numpy().transpose(
@@ -1041,24 +1068,22 @@ class TestFunctional(unittest.TestCase):
         def test_affine(batch_tensor):
             input1, input2 = paddle.unbind(batch_tensor, axis=0)
             target_result = paddle.stack([
-                F.affine(
-                    input1,
-                    45,
-                    translate=[0.2, 0.2],
-                    scale=0.5,
-                    shear=[-10, 10]), F.affine(
-                        input2,
-                        45,
-                        translate=[0.2, 0.2],
-                        scale=0.5,
-                        shear=[-10, 10])
+                F.affine(input1,
+                         45,
+                         translate=[0.2, 0.2],
+                         scale=0.5,
+                         shear=[-10, 10]),
+                F.affine(input2,
+                         45,
+                         translate=[0.2, 0.2],
+                         scale=0.5,
+                         shear=[-10, 10])
             ])
-            batch_result = F.affine(
-                batch_tensor,
-                45,
-                translate=[0.2, 0.2],
-                scale=0.5,
-                shear=[-10, 10])
+            batch_result = F.affine(batch_tensor,
+                                    45,
+                                    translate=[0.2, 0.2],
+                                    scale=0.5,
+                                    shear=[-10, 10])
 
             return paddle.allclose(batch_result, target_result)
 
@@ -1095,7 +1120,8 @@ class TestFunctional(unittest.TestCase):
         def test_adjust_contrast(batch_tensor):
             input1, input2 = paddle.unbind(batch_tensor, axis=0)
             target_result = paddle.stack([
-                F.adjust_contrast(input1, 0.3), F.adjust_contrast(input2, 0.3)
+                F.adjust_contrast(input1, 0.3),
+                F.adjust_contrast(input2, 0.3)
             ])
 
             batch_result = F.adjust_contrast(batch_tensor, 0.3)
@@ -1120,7 +1146,8 @@ class TestFunctional(unittest.TestCase):
         def test_adjust_hue(batch_tensor):
             input1, input2 = paddle.unbind(batch_tensor, axis=0)
             target_result = paddle.stack(
-                [F.adjust_hue(input1, -0.2), F.adjust_hue(input2, -0.2)])
+                [F.adjust_hue(input1, -0.2),
+                 F.adjust_hue(input2, -0.2)])
 
             batch_result = F.adjust_hue(batch_tensor, -0.2)
 

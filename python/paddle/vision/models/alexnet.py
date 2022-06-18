@@ -1,4 +1,4 @@
-# copyright (c) 2021 PaddlePaddle Authors. All Rights Reserve.
+# copyright (c) 2022 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,13 +30,15 @@ from paddle.utils.download import get_weights_path_from_url
 model_urls = {
     "alexnet": (
         "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/AlexNet_pretrained.pdparams",
-        "7f0f9f737132e02732d75a1459d98a43", )
+        "7f0f9f737132e02732d75a1459d98a43",
+    )
 }
 
 __all__ = []
 
 
 class ConvPoolLayer(nn.Layer):
+
     def __init__(self,
                  input_channels,
                  output_channels,
@@ -173,14 +175,20 @@ def _alexnet(arch, pretrained, **kwargs):
 
 
 def alexnet(pretrained=False, **kwargs):
-    """AlexNet model
+    """
+    AlexNet model
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
-
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
+        **kwargs: Additional keyword arguments，For details, please refer to :ref:`AlexNet <api_paddle_vision_models_AlexNet>`. 
+    
+    Returns:
+        the model of alexnet.
+    
     Examples:
         .. code-block:: python
-
+          :name: code-example
+            import paddle
             from paddle.vision.models import alexnet
 
             # build model
@@ -188,5 +196,11 @@ def alexnet(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = alexnet(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _alexnet('alexnet', pretrained, **kwargs)

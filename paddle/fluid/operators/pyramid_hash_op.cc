@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <xxhash.h>
+
 #include <algorithm>
 #include <cmath>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/search_compute.h"
@@ -216,9 +218,8 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
   bool should_use_term(math::bloomfilter* _filter,
                        math::bloomfilter* _black_filter, const float* word_repr,
                        int len) const {
-    return (!_filter ||
-            1 == math::bloomfilter_get(_filter, word_repr,
-                                       len * sizeof(float))) &&
+    return (!_filter || 1 == math::bloomfilter_get(_filter, word_repr,
+                                                   len * sizeof(float))) &&
            (!_black_filter ||
             0 == math::bloomfilter_get(_black_filter, word_repr,
                                        len * sizeof(float)));

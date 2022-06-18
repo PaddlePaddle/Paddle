@@ -30,6 +30,7 @@ dtype_to_size = {
 
 
 class VarBlock:
+
     def __init__(self, varname, offset, size):
         self.varname = varname
         # NOTE: real offset is offset * size

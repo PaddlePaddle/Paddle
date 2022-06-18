@@ -96,10 +96,11 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
         *scope.FindVar(Output("OutIndex"))->GetMutable<framework::LoDTensor>();
 
     const size_t n = inx.size();
-    PADDLE_ENFORCE_GT(n, 0, platform::errors::InvalidArgument(
-                                "Input tensorarray size should > 0,"
-                                "but the received is %d",
-                                n));
+    PADDLE_ENFORCE_GT(
+        n, 0,
+        platform::errors::InvalidArgument("Input tensorarray size should > 0,"
+                                          "but the received is %d",
+                                          n));
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
@@ -235,10 +236,11 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 
     auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     const size_t n = inx.size();
-    PADDLE_ENFORCE_GT(n, 0, platform::errors::InvalidArgument(
-                                "Input tensorarray size should > 0, "
-                                "but the received is: %d. ",
-                                n));
+    PADDLE_ENFORCE_GT(
+        n, 0,
+        platform::errors::InvalidArgument("Input tensorarray size should > 0, "
+                                          "but the received is: %d. ",
+                                          n));
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;

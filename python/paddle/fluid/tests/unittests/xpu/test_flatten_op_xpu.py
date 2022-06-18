@@ -16,16 +16,19 @@ from __future__ import print_function
 
 import unittest
 import sys
+
 sys.path.append("..")
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
+
 paddle.enable_static()
 
 
 class TestFlattenOp(XPUOpTest):
+
     def setUp(self):
         self.op_type = "flatten"
         self.use_xpu = True
@@ -51,6 +54,7 @@ class TestFlattenOp(XPUOpTest):
 
 
 class TestFlattenOp1(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 2, 10)
         self.axis = 0
@@ -58,6 +62,7 @@ class TestFlattenOp1(TestFlattenOp):
 
 
 class TestFlattenOpWithDefaultAxis(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (10, 2, 2, 3)
         self.new_shape = (10, 12)
@@ -67,6 +72,7 @@ class TestFlattenOpWithDefaultAxis(TestFlattenOp):
 
 
 class TestFlattenOpSixDims(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
         self.axis = 4

@@ -31,6 +31,8 @@ using TupleOfFourTensors = std::tuple<Tensor, Tensor, Tensor, Tensor>;
 using TupleOfFiveTensors = std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor>;
 using TupleOfSixTensors =
     std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor>;
+using TupleOfTensorAndVector =
+    std::tuple<Tensor, std::vector<Tensor>, std::vector<Tensor>>;
 
 void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor);
 
@@ -51,6 +53,9 @@ void CheckTensorHasNanOrInf(const std::string& api_name,
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
                             const std::vector<Tensor>& tensors);
+
+void CheckTensorHasNanOrInf(const std::string& api_name,
+                            const TupleOfTensorAndVector& tensors);
 
 void CheckTensorHasNanOrInf(
     const std::string& api_name,

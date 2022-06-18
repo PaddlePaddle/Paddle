@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// clang-format off
 #include "paddle/phi/kernels/gelu_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -20,6 +21,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
+// clang-format on
 
 DECLARE_bool(use_fast_math);
 
@@ -81,11 +83,13 @@ void GeluGradKernel(const Context& dev_ctx,
       }
     }
 #endif
-    phi::funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, 0, GeluWithApproximateGradFunctor<T>());
+    using Functor = GeluWithApproximateGradFunctor<T>;
+    phi::funcs::ElementwiseKernel<T, Functor, 1>(
+        dev_ctx, ins, &outs, Functor());
   } else {
-    phi::funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, 0, GeluWithoutApproximateGradFunctor<T>());
+    using Functor = GeluWithoutApproximateGradFunctor<T>;
+    phi::funcs::ElementwiseKernel<T, Functor, 1>(
+        dev_ctx, ins, &outs, Functor());
   }
 }
 

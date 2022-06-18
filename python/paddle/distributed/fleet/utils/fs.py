@@ -55,6 +55,7 @@ class FSShellCmdAborted(ExecuteError):
 
 
 class FS(object):
+
     @abc.abstractmethod
     def ls_dir(self, fs_path):
         raise NotImplementedError
@@ -386,7 +387,9 @@ class LocalFS(FS):
 
 
 def _handle_errors(max_time_out=None):
+
     def decorator(f):
+
         @functools.wraps(f)
         def handler(*args, **kwargs):
             o = args[0]
@@ -406,13 +409,15 @@ def _handle_errors(max_time_out=None):
                 except ExecuteError as e:
                     if time.time() - start >= time_out:
                         raise FSTimeOut("args:{} timeout:{}".format(
-                            args, time.time() - start))
+                            args,
+                            time.time() - start))
 
                     time.sleep(inter)
 
                 if time.time() - last_print_time > 30:
                     print("hadoop operator timeout:args:{} timeout:{}".format(
-                        args, time.time() - start))
+                        args,
+                        time.time() - start))
                     last_print_time = time.time()
 
         return handler
@@ -778,8 +783,8 @@ class HDFSClient(FS):
         procs = []
         for i in range(multi_processes):
             process_datas = self._split_files(all_files, i, multi_processes)
-            p = multiprocessing.Process(
-                target=__subprocess_upload, args=(fs_path, process_datas))
+            p = multiprocessing.Process(target=__subprocess_upload,
+                                        args=(fs_path, process_datas))
             procs.append(p)
             p.start()
 
@@ -848,8 +853,8 @@ class HDFSClient(FS):
         procs = []
         for i in range(multi_processes):
             process_datas = self._split_files(all_files, i, multi_processes)
-            p = multiprocessing.Process(
-                target=__subprocess_download, args=(local_path, process_datas))
+            p = multiprocessing.Process(target=__subprocess_download,
+                                        args=(local_path, process_datas))
             procs.append(p)
             p.start()
 
@@ -944,8 +949,8 @@ class HDFSClient(FS):
 
         if test_exists:
             if not self.is_exist(fs_src_path):
-                raise FSFileNotExistsError("{} is not exists".format(
-                    fs_src_path))
+                raise FSFileNotExistsError(
+                    "{} is not exists".format(fs_src_path))
 
             if self.is_exist(fs_dst_path):
                 raise FSFileExistsError("{} exists already".format(fs_dst_path))
@@ -1399,8 +1404,8 @@ class AFSClient(FS):
         procs = []
         for i in range(multi_processes):
             process_datas = self._split_files(all_files, i, multi_processes)
-            p = multiprocessing.Process(
-                target=__subprocess_download, args=(local_path, process_datas))
+            p = multiprocessing.Process(target=__subprocess_download,
+                                        args=(local_path, process_datas))
             procs.append(p)
             p.start()
 
@@ -1454,8 +1459,8 @@ class AFSClient(FS):
 
         if test_exists:
             if not self.is_exist(fs_src_path):
-                raise FSFileNotExistsError("{} is not exists".format(
-                    fs_src_path))
+                raise FSFileNotExistsError(
+                    "{} is not exists".format(fs_src_path))
 
             if self.is_exist(fs_dst_path):
                 raise FSFileExistsError("{} exists already".format(fs_dst_path))

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 limitations under the License. */
 
 #include <glog/logging.h>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/nms_util.h"
 
@@ -51,16 +52,17 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 16 ||
               box_dims[2] == 24 || box_dims[2] == 32,
-          true, platform::errors::InvalidArgument(
-                    "The last dimension of Input(BBoxes) must be 4 or 8, "
-                    "represents the layout of coordinate "
-                    "[xmin, ymin, xmax, ymax] or "
-                    "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
-                    "8 points: [xi, yi] i= 1,2,...,8 or "
-                    "12 points: [xi, yi] i= 1,2,...,12 or "
-                    "16 points: [xi, yi] i= 1,2,...,16. "
-                    "But received %d.",
-                    box_dims[2]));
+          true,
+          platform::errors::InvalidArgument(
+              "The last dimension of Input(BBoxes) must be 4 or 8, "
+              "represents the layout of coordinate "
+              "[xmin, ymin, xmax, ymax] or "
+              "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
+              "8 points: [xi, yi] i= 1,2,...,8 or "
+              "12 points: [xi, yi] i= 1,2,...,12 or "
+              "16 points: [xi, yi] i= 1,2,...,16. "
+              "But received %d.",
+              box_dims[2]));
       PADDLE_ENFORCE_EQ(
           box_dims[1], score_dims[2],
           platform::errors::InvalidArgument(
@@ -314,7 +316,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     auto* boxes_input = ctx.Input<LoDTensor>("BBoxes");
     auto* scores_input = ctx.Input<LoDTensor>("Scores");
     auto* outs = ctx.Output<LoDTensor>("Out");
-    auto score_dims = scores_input->dims();
+    auto& score_dims = scores_input->dims();
     auto score_size = score_dims.size();
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
 

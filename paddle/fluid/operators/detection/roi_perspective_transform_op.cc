@@ -15,6 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -40,8 +41,8 @@ bool GT(T a, T b) {
 }
 
 /*
-*check if (x, y) is in the boundary of roi
-*/
+ *check if (x, y) is in the boundary of roi
+ */
 template <typename T>
 bool in_quad(T x, T y, T roi_x[], T roi_y[]) {
   for (int i = 0; i < 4; i++) {
@@ -431,10 +432,9 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
               T matrix[9];
               get_transform_matrix<T>(transformed_width, transformed_height,
                                       roi_x, roi_y, matrix);
-              const T* out_grad_ptr = out_grad_data +
-                                      (roi_idx * channels + c) *
-                                          transformed_height *
-                                          transformed_width;
+              const T* out_grad_ptr = out_grad_data + (roi_idx * channels + c) *
+                                                          transformed_height *
+                                                          transformed_width;
               for (int out_h = 0; out_h < transformed_height; ++out_h) {
                 for (int out_w = 0; out_w < transformed_width; ++out_w) {
                   T src_w;

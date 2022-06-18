@@ -34,8 +34,9 @@ def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
     pb_y = pb_y.reshape(shape)
 
     if pb_v.ndim == 2:
-        var_shape = (1, pb_v.shape[0], pb_v.shape[1]) if axis == 0 else (
-            pb_v.shape[0], 1, pb_v.shape[1])
+        var_shape = (1, pb_v.shape[0],
+                     pb_v.shape[1]) if axis == 0 else (pb_v.shape[0], 1,
+                                                       pb_v.shape[1])
         pb_v = pb_v.reshape(var_shape)
     if pb_v.ndim == 1:
         tb_x = pb_v[0] * t_box[:, :, 0] * pb_w + pb_x
@@ -102,6 +103,7 @@ def batch_box_coder(p_box, pb_v, t_box, lod, code_type, norm, axis=0):
 
 
 class TestBoxCoderOp(OpTest):
+
     def test_check_output(self):
         self.check_output()
 
@@ -128,6 +130,7 @@ class TestBoxCoderOp(OpTest):
 
 
 class TestBoxCoderOpWithoutBoxVar(OpTest):
+
     def test_check_output(self):
         self.check_output()
 
@@ -154,6 +157,7 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
 
 
 class TestBoxCoderOpWithLoD(OpTest):
+
     def test_check_output(self):
         self.check_output()
 
@@ -178,6 +182,7 @@ class TestBoxCoderOpWithLoD(OpTest):
 
 
 class TestBoxCoderOpWithAxis(OpTest):
+
     def test_check_output(self):
         self.check_output()
 
@@ -207,6 +212,7 @@ class TestBoxCoderOpWithAxis(OpTest):
 
 
 class TestBoxCoderOpWithVariance(OpTest):
+
     def test_check_output(self):
         self.check_output()
 
@@ -229,7 +235,7 @@ class TestBoxCoderOpWithVariance(OpTest):
         self.attrs = {
             'code_type': 'decode_center_size',
             'box_normalized': False,
-            'variance': prior_box_var.astype(np.float).flatten(),
+            'variance': prior_box_var.astype(np.float64).flatten(),
             'axis': axis
         }
         self.outputs = {'OutputBox': output_box}

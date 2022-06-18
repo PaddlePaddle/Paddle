@@ -18,5 +18,5 @@ namespace paddle {
 namespace platform {
 namespace errors = ::phi::errors;
 using error = ::phi::ErrorCode;
-}
-}
+}  // namespace platform
+}  // namespace paddle

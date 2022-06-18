@@ -13,27 +13,25 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/grad_node_info.h"
+
+#include "glog/logging.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
-
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/sparse_coo_tensor.h"
-
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/var_type.h"
-
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-
-#include "glog/logging.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
 /**
  * Implementation of GradNodeBase, Edge and GradTensorHolder.
-**/
+ **/
 namespace egr {
 
 static void CheckTensor(const paddle::experimental::Tensor& pre,
@@ -117,6 +115,10 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
     phi::SparseCooTensor* coo_tensor =
         static_cast<phi::SparseCooTensor*>(fwd_out.impl().get());
     dense_tensor = coo_tensor->mutable_non_zero_elements();
+  } else if (phi::SparseCsrTensor::classof(fwd_out.impl().get())) {
+    phi::SparseCsrTensor* csr_tensor =
+        static_cast<phi::SparseCsrTensor*>(fwd_out.impl().get());
+    dense_tensor = csr_tensor->mutable_non_zero_elements();
   } else {
     VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
@@ -228,7 +230,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
       fwd_in_meta->SetGradNode(
           std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
     }
-    VLOG(6) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+    VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
             << this->name() << " (addr: " << this << ") "
             << " to " << fwd_in_meta->GetMutableGradNode()->name()
             << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
@@ -284,7 +286,7 @@ void GradNodeBase::SetGradOutMeta(
         fwd_in_meta->SetGradNode(
             std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
       }
-      VLOG(6) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+      VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
               << this->name() << " (addr: " << this << ") "
               << " to " << fwd_in_meta->GetMutableGradNode()->name()
               << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";

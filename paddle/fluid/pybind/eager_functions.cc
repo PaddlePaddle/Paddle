@@ -20,9 +20,6 @@ typedef SSIZE_T ssize_t;
 #include <string>
 #include <vector>
 
-#include "pybind11/numpy.h"
-#include "pybind11/pybind11.h"
-
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -45,13 +42,14 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "pybind11/numpy.h"
+#include "pybind11/pybind11.h"
 
 namespace paddle {
 namespace pybind {
@@ -386,7 +384,7 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
         require_any_grad || egr::EagerUtils::ComputeRequireGrad(
                                 trace_backward, &(ins_auto_grad_metas[i]));
   }
-  if (require_any_grad) {
+  if (require_any_grad && (vec_map.size() > 1)) {
     VLOG(6) << " Construct Grad for Custom Op: " << op_type;
     ConstructFwdAndBwdMap(vec_map, op_type);
     for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
