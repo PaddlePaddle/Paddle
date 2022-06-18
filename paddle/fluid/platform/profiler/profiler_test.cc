@@ -119,18 +119,18 @@ TEST(ProfilerTest, TestHostTracerForMem) {
   {
     RecordEvent event1("TestTracerForMem_phase1", TracerEventType::UserDefined,
                        1);
-    RecordMemEvent(reinterpret_cast<void*>(0), CPUPlace(), 1024, 11024, 11024,
-                   11024, 11024, TracerMemEventType::Allocate);
-    RecordMemEvent(reinterpret_cast<void*>(0), CPUPlace(), 1024, 10000, 11024,
-                   11024, 11024, TracerMemEventType::Free);
+    RecordMemEvent(reinterpret_cast<void*>(0), CPUPlace(), 1024,
+                   TracerMemEventType::Allocate);
+    RecordMemEvent(reinterpret_cast<void*>(0), CPUPlace(), 1024,
+                   TracerMemEventType::Free);
   }
   {
     RecordEvent event2("TestTracerForMem_phase2", TracerEventType::UserDefined,
                        1);
-    RecordMemEvent(reinterpret_cast<void*>(1024), CPUPlace(), 1024, 11024,
-                   11024, 11024, 11024, TracerMemEventType::Allocate);
-    RecordMemEvent(reinterpret_cast<void*>(1024), CPUPlace(), 1024, 10000,
-                   11024, 11024, 11024, TracerMemEventType::Free);
+    RecordMemEvent(reinterpret_cast<void*>(1024), CPUPlace(), 1024,
+                   TracerMemEventType::Allocate);
+    RecordMemEvent(reinterpret_cast<void*>(1024), CPUPlace(), 1024,
+                   TracerMemEventType::Free);
   }
   auto profiler_result = profiler->Stop();
   auto nodetree = profiler_result->GetNodeTrees();

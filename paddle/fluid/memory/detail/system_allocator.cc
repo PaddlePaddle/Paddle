@@ -97,10 +97,6 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
 
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
   platform::RecordMemEvent(p, CPUPlace(), size,
-                           HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, 0),
-                           HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, 0),
-                           HOST_MEMORY_STAT_PEAK_VALUE(Allocated, 0),
-                           HOST_MEMORY_STAT_PEAK_VALUE(Reserved, 0),
                            platform::TracerMemEventType::ReservedAllocate);
 
   return p;
@@ -122,10 +118,6 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
 
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
   platform::RecordMemEvent(p, CPUPlace(), size,
-                           HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, 0),
-                           HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, 0),
-                           HOST_MEMORY_STAT_PEAK_VALUE(Allocated, 0),
-                           HOST_MEMORY_STAT_PEAK_VALUE(Reserved, 0),
                            platform::TracerMemEventType::ReservedFree);
 }
 
@@ -227,10 +219,6 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
     cuda_pinnd_alloc_size_ += size;
     HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
     platform::RecordMemEvent(p, CPUPlace(), size,
-                             HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, 0),
-                             HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, 0),
-                             HOST_MEMORY_STAT_PEAK_VALUE(Allocated, 0),
-                             HOST_MEMORY_STAT_PEAK_VALUE(Reserved, 0),
                              platform::TracerMemEventType::ReservedAllocate);
     return p;
   } else {
@@ -279,10 +267,6 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
 #endif
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
   platform::RecordMemEvent(p, CPUPlace(), size,
-                           HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, 0),
-                           HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, 0),
-                           HOST_MEMORY_STAT_PEAK_VALUE(Allocated, 0),
-                           HOST_MEMORY_STAT_PEAK_VALUE(Reserved, 0),
                            platform::TracerMemEventType::ReservedFree);
 }
 

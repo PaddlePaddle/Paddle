@@ -237,13 +237,8 @@ class RecordedGpuMallocHelper {
       cur_size_.fetch_add(size);
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
-      platform::RecordMemEvent(
-          ptr, GPUPlace(dev_id_), size,
-          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, dev_id_),
-          DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, dev_id_),
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_),
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_),
-          platform::TracerMemEventType::ReservedAllocate);
+      platform::RecordMemEvent(ptr, GPUPlace(dev_id_), size,
+                               platform::TracerMemEventType::ReservedAllocate);
 
 #ifdef PADDLE_WITH_TESTING
       gpu_ptrs.insert(*ptr);
@@ -283,13 +278,8 @@ class RecordedGpuMallocHelper {
       cur_size_.fetch_sub(size);
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
-      platform::RecordMemEvent(
-          ptr, GPUPlace(dev_id_), size,
-          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, dev_id_),
-          DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, dev_id_),
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_),
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_),
-          platform::TracerMemEventType::ReservedFree);
+      platform::RecordMemEvent(ptr, GPUPlace(dev_id_), size,
+                               platform::TracerMemEventType::ReservedFree);
     } else {
       platform::GpuGetLastError();  // clear the error flag when
                                     // cudaErrorCudartUnloading /

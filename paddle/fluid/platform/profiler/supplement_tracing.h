@@ -32,20 +32,10 @@ class RecordMemEvent {
    * @param ptr:  Pointer address allocated or free.
    * @param place: Device for this memory event.
    * @param size: Memory size allocated or free.
-   * @param current_allocated: Current total allocated memory size, which is a
-   * statistic metric.
-   * @param current_reserved: Current total reserved memory size, which is a
-   * statistic metric.
-   * @param peak_allocated: Current peak allocated memory size, which is a
-   * statistic metric.
-   * @param peak_reserved: Current peak reserved memory size, which is a
-   * statistic metric.
    * @param type: Denote manipulation type for this memory event.
    */
   explicit RecordMemEvent(
       const void* ptr, const Place& place, size_t size,
-      uint64_t current_allocated, uint64_t current_reserved,
-      uint64_t peak_allocated, uint64_t peak_reserved,
       const TracerMemEventType type = TracerMemEventType::Allocate);
 };
 

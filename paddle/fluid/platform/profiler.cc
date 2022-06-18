@@ -264,18 +264,90 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
 }
 
 RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
-                               size_t size, uint64_t current_allocated,
-                               uint64_t current_reserved,
-                               uint64_t peak_allocated, uint64_t peak_reserved,
-                               const TracerMemEventType type) {
+                               size_t size, const TracerMemEventType type) {
+  if (g_state == ProfilerState::kDisabled &&
+      FLAGS_enable_host_event_recorder_hook == false)
+    return;
   if (type == TracerMemEventType::Allocate) {
+    uint64_t current_allocated;
+    uint64_t peak_allocated;
+    uint64_t current_reserved = 0;  // 0 means keep the same as before
+    uint64_t peak_reserved = 0;     // 0 means keep the same as before
+    if (platform::is_cpu_place(place)) {
+      current_allocated =
+          HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
+      peak_allocated =
+          HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+    } else {
+      current_allocated =
+          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
+      peak_allocated =
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+    }
+
     platform::MemEvenRecorder::Instance().PushMemRecord(
-        ptr, place, size, current_allocated, current_reserved, peak_allocated,
-        peak_reserved);
+        ptr, place, size, type, current_allocated, current_reserved,
+        peak_allocated, peak_reserved);
+  } else if (type == TracerMemEventType::ReservedAllocate) {
+    uint64_t current_reserved;
+    uint64_t peak_reserved;
+    uint64_t current_allocated = 0;  // 0 means keep the same as before
+    uint64_t peak_allocated = 0;     // 0 means keep the same as before
+    if (platform::is_cpu_place(place)) {
+      current_reserved =
+          HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
+      peak_reserved =
+          HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+    } else {
+      current_reserved =
+          DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
+      peak_reserved =
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+    }
+
+    platform::MemEvenRecorder::Instance().PushMemRecord(
+        ptr, place, size, type, current_allocated, current_reserved,
+        peak_allocated, peak_reserved);
   } else if (type == TracerMemEventType::Free) {
+    uint64_t current_allocated;
+    uint64_t peak_allocated;
+    uint64_t current_reserved = 0;  // 0 means keep the same as before
+    uint64_t peak_reserved = 0;     // 0 means keep the same as before
+    if (platform::is_cpu_place(place)) {
+      current_allocated =
+          HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
+      peak_allocated =
+          HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+    } else {
+      current_allocated =
+          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
+      peak_allocated =
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+    }
+
+    platform::MemEvenRecorder::Instance().PushMemRecord(
+        ptr, place, size, type, current_allocated, current_reserved,
+        peak_allocated, peak_reserved);
+  } else if (type == TracerMemEventType::ReservedFree) {
+    uint64_t current_reserved;
+    uint64_t peak_reserved;
+    uint64_t current_allocated = 0;  // 0 means keep the same as before
+    uint64_t peak_allocated = 0;     // 0 means keep the same as before
+    if (platform::is_cpu_place(place)) {
+      current_reserved =
+          HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
+      peak_reserved =
+          HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+    } else {
+      current_reserved =
+          DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
+      peak_reserved =
+          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+    }
+
     platform::MemEvenRecorder::Instance().PopMemRecord(
-        ptr, place, size, current_allocated, current_reserved, peak_allocated,
-        peak_reserved);
+        ptr, place, size, type, current_allocated, current_reserved,
+        peak_allocated, peak_reserved);
   }
 }
 
@@ -292,19 +364,20 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
 }
 
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
-                                    size_t size, uint64_t current_allocated,
+                                    size_t size, TracerMemEventType type,
+                                    uint64_t current_allocated,
                                     uint64_t current_reserved,
                                     uint64_t peak_allocated,
                                     uint64_t peak_reserved) {
-  if (g_state == ProfilerState::kDisabled &&
-      FLAGS_enable_host_event_recorder_hook == false)
-    return;
   std::lock_guard<std::mutex> guard(mtx_);
   if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
     HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
-        PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
-        TracerMemEventType::Allocate, size, place, current_allocated,
-        current_reserved, peak_allocated, peak_reserved);
+        PosixInNsec(), reinterpret_cast<uint64_t>(ptr), type, size, place,
+        current_allocated, current_reserved, peak_allocated, peak_reserved);
+    return;
+  }
+  if (type == TracerMemEventType::ReservedAllocate) {
+    // old profiler only analyse memory managed by paddle.
     return;
   }
   auto &events = address_memevent_[place];
@@ -327,19 +400,20 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
 }
 
 void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place,
-                                   size_t size, uint64_t current_allocated,
+                                   size_t size, TracerMemEventType type,
+                                   uint64_t current_allocated,
                                    uint64_t current_reserved,
                                    uint64_t peak_allocated,
                                    uint64_t peak_reserved) {
-  if (g_state == ProfilerState::kDisabled &&
-      FLAGS_enable_host_event_recorder_hook == false)
-    return;
   std::lock_guard<std::mutex> guard(mtx_);
   if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
     HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
-        PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
-        TracerMemEventType::Free, -size, place, current_allocated,
-        current_reserved, peak_allocated, peak_reserved);
+        PosixInNsec(), reinterpret_cast<uint64_t>(ptr), type, -size, place,
+        current_allocated, current_reserved, peak_allocated, peak_reserved);
+    return;
+  }
+  if (type == TracerMemEventType::ReservedFree) {
+    // old profiler only analyse memory managed by paddle.
     return;
   }
   auto &events = address_memevent_[place];
