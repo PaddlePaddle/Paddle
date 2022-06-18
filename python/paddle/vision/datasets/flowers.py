@@ -42,8 +42,8 @@ MODE_FLAG_MAP = {'train': 'tstid', 'test': 'trnid', 'valid': 'valid'}
 
 class Flowers(Dataset):
     """
-    Implementation of `Flowers <https://www.robots.ox.ac.uk/~vgg/data/flowers/>`_
-    dataset
+    Implementation of `Flowers102 <https://www.robots.ox.ac.uk/~vgg/data/flowers/>`_
+    dataset.
 
     Args:
         data_file (str, optional): Path to data file, can be set None if

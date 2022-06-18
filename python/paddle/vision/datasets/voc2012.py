@@ -39,10 +39,7 @@ MODE_FLAG_MAP = {'train': 'trainval', 'test': 'train', 'valid': "val"}
 
 class VOC2012(Dataset):
     """
-    Implementation of `VOC2012 <http://host.robots.ox.ac.uk/pascal/VOC/voc2012/>`_ dataset
-
-    To speed up the download, we put the data on https://dataset.bj.bcebos.com/voc/VOCtrainval_11-May-2012.tar. 
-    Original data can get from http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar.
+    Implementation of `VOC2012 <http://host.robots.ox.ac.uk/pascal/VOC/voc2012/>`_ dataset.
 
     Args:
         data_file (str, optional): Path to data file, can be set None if

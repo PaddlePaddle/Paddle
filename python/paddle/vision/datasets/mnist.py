@@ -29,7 +29,7 @@ __all__ = []
 
 class MNIST(Dataset):
     """
-    Implementation of `MNIST <http://yann.lecun.com/exdb/mnist/>`_ dataset
+    Implementation of `MNIST <http://yann.lecun.com/exdb/mnist/>`_ dataset.
 
     Args:
         image_path (str, optional): Path to image file, can be set None if
@@ -211,7 +211,7 @@ class MNIST(Dataset):
 
 class FashionMNIST(MNIST):
     """
-    Implementation `Fashion-MNIST <https://github.com/zalandoresearch/fashion-mnist>`_ dataset.
+    Implementation of `Fashion-MNIST <https://github.com/zalandoresearch/fashion-mnist>`_ dataset.
 
     Args:
         image_path (str, optional): Path to image file, can be set None if
