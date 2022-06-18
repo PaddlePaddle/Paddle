@@ -73,7 +73,7 @@ class SliceOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(7000)
+#if IS_TRT_VERSION_GE(6000)
       auto nchw_input_dims = input->getDimensions();
       std::cout << nchw_input_dims.d[0] << std::endl;
       std::cout << nchw_input_dims.d[1] << std::endl;
@@ -138,7 +138,7 @@ class SliceOpConverter : public OpConverter {
       layer = engine_->AddDynamicPlugin(&input, 1, plugin);
 #endif
     } else {
-#if IS_TRT_VERSION_GE(7000)
+#if IS_TRT_VERSION_GE(6000)
       auto chw_input_dims = input->getDimensions();
       nvinfer1::Dims trt_start_dims;
       trt_start_dims.nbDims = chw_input_dims.nbDims;
