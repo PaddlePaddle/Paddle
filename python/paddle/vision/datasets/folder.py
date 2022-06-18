@@ -65,6 +65,7 @@ def make_dataset(dir, class_to_idx, extensions, is_valid_file=None):
 class DatasetFolder(Dataset):
     """A generic data loader where the samples are arranged in this way:
 
+    .. code-block:: text
         root/class_a/1.ext
         root/class_a/2.ext
         root/class_a/3.ext
@@ -292,6 +293,7 @@ def default_loader(path):
 class ImageFolder(Dataset):
     """A generic data loader where the samples are arranged in this way:
 
+    .. code-block:: text
         root/1.ext
         root/2.ext
         root/sub_dir/3.ext
