@@ -45,11 +45,11 @@ class VOC2012(Dataset):
     Original data can get from http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar.
 
     Args:
-        data_file (str, optional): path to data file, can be set None if
+        data_file (str, optional): Path to data file, can be set None if
             :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/voc2012.
-        mode (str, optional): 'train', 'valid' or 'test' mode. Default: 'train'.
-        transform (Callable, optional): transform to perform on image, None for no transform. Default: None.
-        download (bool, optional): download dataset automatically if :attr:`data_file` is None. Default: True.
+        mode (str, optional): Either train or test mode. Default 'train'.
+        transform (Callable, optional): Transform to perform on image, None for no transform. Default: None.
+        download (bool, optional): Download dataset automatically if :attr:`data_file` is None. Default: True.
         backend (str, optional): Specifies which type of image to be returned:
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
             If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,

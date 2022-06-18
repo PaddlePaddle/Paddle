@@ -46,13 +46,13 @@ class Flowers(Dataset):
     dataset
 
     Args:
-        data_file (str, optional): path to data file, can be set None if
-            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/flowers/
-        label_file (str, optional): path to label file, can be set None if
-            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/flowers/
-        setid_file (str, optional): path to subset index file, can be set
-            None if :attr:`download` is True. Default: None.
-        mode (str, optional): 'train', 'valid' or 'test' mode. Default: 'train'.
+        data_file (str, optional): Path to data file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/flowers/.
+        label_file (str, optional): Path to label file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/flowers/.
+        setid_file (str, optional): Path to subset index file, can be set
+            None if :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/flowers/.
+        mode (str, optional): Either train or test mode. Default 'train'.
         transform (Callable, optional): transform to perform on image, None for no transform. Default: None.
         download (bool, optional): download dataset automatically if :attr:`data_file` is None. Default: True.
         backend (str, optional): Specifies which type of image to be returned:

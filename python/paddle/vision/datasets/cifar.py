@@ -46,9 +46,9 @@ class Cifar10(Dataset):
     dataset, which has 10 categories.
 
     Args:
-        data_file (str, optional): path to data file, can be set None if
+        data_file (str, optional): Path to data file, can be set None if
             :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/cifar
-        mode (str, optional): 'train', 'test' mode. Default 'train'.
+        mode (str, optional): Either train or test mode. Default 'train'.
         transform (Callable, optional): transform to perform on image, None for no transform. Default: None.
         download (bool, optional): download dataset automatically if :attr:`data_file` is None. Default True.
         backend (str, optional): Specifies which type of image to be returned:
@@ -190,7 +190,7 @@ class Cifar100(Cifar10):
     Args:
         data_file (str, optional): path to data file, can be set None if
             :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/cifar
-        mode (str, optional): 'train', 'test' mode. Default: 'train'.
+        mode (str, optional): Either train or test mode. Default 'train'.
         transform (Callable, optional): transform to perform on image, None for no transform. Default: None.
         download (bool, optional): download dataset automatically if :attr:`data_file` is None. Default True.
         backend (str, optional): Specifies which type of image to be returned:
