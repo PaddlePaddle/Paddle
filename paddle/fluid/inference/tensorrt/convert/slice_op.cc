@@ -73,18 +73,96 @@ class SliceOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(7000)
+      auto nchw_input_dims = input->getDimensions();
+      std::cout << nchw_input_dims.d[0] << std::endl;
+      std::cout << nchw_input_dims.d[1] << std::endl;
+      std::cout << nchw_input_dims.d[2] << std::endl;
+      nvinfer1::Dims trt_start_dims;
+      trt_start_dims.nbDims = nchw_input_dims.nbDims;
+      memset(trt_start_dims.d, 0, sizeof(int32_t) * nchw_input_dims.nbDims);
+
+      nvinfer1::Dims trt_size_dims;
+      trt_size_dims.nbDims = nchw_input_dims.nbDims;
+
+      nvinfer1::Dims trt_end_dims;
+      trt_end_dims.nbDims = nchw_input_dims.nbDims;
+      for (int i = 0; i < trt_end_dims.nbDims; i++)
+        trt_end_dims.d[i] = 10000000;
+
+      nvinfer1::Dims trt_step_dims;
+      trt_step_dims.nbDims = nchw_input_dims.nbDims;
+      for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
+
+      // input : [N,C,H,W]
+      bool has_neg_indices = false;
+      for (size_t i = 0; i < axes.size(); i++) {
+        int trt_axis = axes[i];
+        trt_start_dims.d[trt_axis] = starts[i];
+        trt_end_dims.d[trt_axis] = ends[i];
+        if (starts[i] < 0 || ends[i] < 0) has_neg_indices = true;
+      }
+      auto* shape_tensor = Shape(input);
+      auto* start_tensor = Add1DConstantLayer(trt_start_dims);
+      auto* end_tensor = Add1DConstantLayer(trt_end_dims);
+      if (has_neg_indices)
+      {
+        start_tensor = FixNegIndices(shape_tensor, start_tensor);
+        end_tensor = FixNegIndices(shape_tensor, end_tensor);
+      }
+
+      end_tensor = Min (shape_tensor, end_tensor);
+      auto* size_tensor = Sub(end_tensor,start_tensor);
+
+      layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
+                                   trt_size_dims, trt_step_dims);
+      layer->setInput(1, *start_tensor);
+      layer->setInput(2, *size_tensor);
+      if (decrease_axises.size() > 0) {
+        std::vector<int32_t> gather_indices;
+        for (int i = 0; i < trt_size_dims.nbDims; i++) {
+          if (decrease_axises.end() != std::find(decrease_axises.begin(), decrease_axises.end(), i) ) continue;
+          gather_indices.push_back(i);
+        }
+        if (gather_indices.empty()) gather_indices.push_back(decrease_axises[0]);
+        auto real_size_tensor = Gather(size_tensor, gather_indices);
+        layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
+        layer->setInput(1, *real_size_tensor);
+      }
+#else
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       int decrease_axis = decrease_axises.size() == 0 ? -1 : decrease_axises[0];
       plugin::SlicePluginDynamic* plugin = new plugin::SlicePluginDynamic(
           starts, ends, axes, decrease_axis, with_fp16);
       layer = engine_->AddDynamicPlugin(&input, 1, plugin);
+#endif
     } else {
+#if IS_TRT_VERSION_GE(7000)
+      auto chw_input_dims = input->getDimensions();
+      nvinfer1::Dims trt_start_dims;
+      trt_start_dims.nbDims = chw_input_dims.nbDims;
+      memset(trt_start_dims.d, 0, sizeof(int32_t) * chw_input_dims.nbDims);
+      nvinfer1::Dims trt_size_dims = chw_input_dims;
+      nvinfer1::Dims trt_step_dims;
+      trt_step_dims.nbDims = chw_input_dims.nbDims;
+      for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
+
+      // input : [C,H,W]
+      for (size_t i = 0; i < axes.size(); i++) {
+        int trt_axis = axes[i] - 1;
+        trt_start_dims.d[trt_axis] = starts[i];
+        trt_size_dims.d[trt_axis] = ends[i] - starts[i];
+      }
+      layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
+                                   trt_size_dims, trt_step_dims);
+#else
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SlicePlugin* plugin =
           new plugin::SlicePlugin(starts, ends, axes, with_fp16);
       layer = engine_->AddPlugin(&input, 1, plugin);
+#endif
     }
     RreplenishLayerAndOutput(layer, "slice", {output_name}, test_mode);
   }
