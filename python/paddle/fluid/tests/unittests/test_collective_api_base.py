@@ -228,6 +228,9 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
             required_envs["GLOO_LOG_LEVEL"] = "TRACE"
+        
+        if os.getenv('NVIDIA_TF32_OVERRIDE', '') is not None:
+            required_envs['NVIDIA_TF32_OVERRIDE'] = os.getenv('NVIDIA_TF32_OVERRIDE', '')
 
         if eager_mode:
             required_envs["FLAGS_enable_eager_mode"] = "%d" % 1
