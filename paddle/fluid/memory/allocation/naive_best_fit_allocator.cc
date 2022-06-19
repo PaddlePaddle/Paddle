@@ -922,8 +922,6 @@ namespace allocation {
 phi::Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
   void *ptr = paddle::platform::VisitPlace(place_, legacy::AllocVisitor(size));
   auto *tmp_alloc = new Allocation(ptr, size, place_);
-  platform::MemEvenRecorder::Instance().PushMemRecord(
-      static_cast<void *>(tmp_alloc), place_, size);
   return tmp_alloc;
 }
 
@@ -931,8 +929,6 @@ void NaiveBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
   paddle::platform::VisitPlace(
       allocation->place(),
       legacy::FreeVisitor(allocation->ptr(), allocation->size()));
-  platform::MemEvenRecorder::Instance().PopMemRecord(
-      static_cast<void *>(allocation), place_);
   delete allocation;
 }
 

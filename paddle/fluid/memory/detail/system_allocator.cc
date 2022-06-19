@@ -98,7 +98,6 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
   platform::RecordMemEvent(p, CPUPlace(), size,
                            platform::TracerMemEventType::ReservedAllocate);
-
   return p;
 }
 

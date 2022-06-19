@@ -325,7 +325,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
           DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
     }
 
-    platform::MemEvenRecorder::Instance().PushMemRecord(
+    platform::MemEvenRecorder::Instance().PopMemRecord(
         ptr, place, size, type, current_allocated, current_reserved,
         peak_allocated, peak_reserved);
   } else if (type == TracerMemEventType::ReservedFree) {
@@ -380,6 +380,7 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
     // old profiler only analyse memory managed by paddle.
     return;
   }
+  if (g_state == ProfilerState::kDisabled) return;
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE_EQ(events.count(ptr), 0,
                     platform::errors::InvalidArgument(
@@ -416,6 +417,7 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place,
     // old profiler only analyse memory managed by paddle.
     return;
   }
+  if (g_state == ProfilerState::kDisabled) return;
   auto &events = address_memevent_[place];
   auto iter = events.find(ptr);
   // The ptr maybe not in address_memevent
