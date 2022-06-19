@@ -2654,7 +2654,7 @@ class QuantWeightPass(object):
                 param_v = self._load_var(x_node.name())
                 quant_axis = _op.op().attr("quant_axis")
                 bits_length = _op.op().attr("bit_length")
-                round_type = _op.op().attr("round_type") if _op.op.has_attr(
+                round_type = _op.op().attr("round_type") if _op.op().has_attr(
                     "round_type") else 0
                 quantized_param_v = utils.quant_tensor(param_v.copy(), scale_v,
                                                        quant_axis, bits_length,
