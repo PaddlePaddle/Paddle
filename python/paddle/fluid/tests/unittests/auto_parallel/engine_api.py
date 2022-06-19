@@ -97,10 +97,11 @@ class MLPLayer(nn.Layer):
                                                      PP_MESH_1})(out)[0]
         # out = self.dropout(out)
         out = self.linear2(out)
+        self.out = out
         return out
 
 
-def train_semi_auto():
+def train_semi_auto(fetch):
     mlp = MLPLayer(hidden_size=hidden_size,
                    intermediate_size=4 * hidden_size,
                    dropout_ratio=0.1,
@@ -119,7 +120,6 @@ def train_semi_auto():
     dist_strategy.amp = False
     dist_strategy.pipeline = False
     dist_strategy.recompute = False
-    # init parallel optimizer
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
 
@@ -130,20 +130,26 @@ def train_semi_auto():
                     strategy=dist_strategy)
     engine.prepare(optimizer, loss, metrics=paddle.metric.Accuracy())
 
+    # fetch
+    if fetch:
+        fetches = {'out': mlp.out}
+    else:
+        fetches = None
+
     # train
     train_dataset = MyDataset(batch_num * batch_size)
     engine.fit(train_dataset,
                batch_size=batch_size,
                steps_per_epoch=batch_num * batch_size,
-               fetch_list=['label'])
+               fetches=fetches)
 
     # eval
     eval_dataset = MyDataset(batch_size)
-    engine.evaluate(eval_dataset, batch_size, fetch_list=['label'])
+    engine.evaluate(eval_dataset, batch_size, fetches=fetches)
 
     # predict
     test_dataset = MyDataset(batch_size)
-    engine.predict(test_dataset, batch_size, fetch_list=['label'])
+    engine.predict(test_dataset, batch_size, fetches=fetches)
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
@@ -152,7 +158,7 @@ def train_semi_auto():
     temp_dir.cleanup()
 
 
-def train_full_auto():
+def train_full_auto(fetch):
     mlp = MLPLayer(hidden_size=hidden_size,
                    intermediate_size=4 * hidden_size,
                    dropout_ratio=0.1,
@@ -196,5 +202,7 @@ def train_full_auto():
 
 
 if __name__ == "__main__":
-    # train_semi_auto()
-    train_full_auto()
+    # train_full_auto(fetch=True)
+    # train_full_auto(fetch=False)
+    train_semi_auto(fetch=True)
+    train_semi_auto(fetch=False)

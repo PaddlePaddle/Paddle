@@ -140,9 +140,12 @@ void LaunchResidualDropoutBias(const uint32_t rows, const uint32_t cols,
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     if (residual == dst) return;
-    auto cuda_place = ctx.GetPlace();
-    memory::Copy(cuda_place, dst, cuda_place, residual, rows * cols * sizeof(T),
-                 ctx.stream());
+    if (residual) {
+      memory::Copy(ctx.GetPlace(), dst, ctx.GetPlace(), residual,
+                   rows * cols * sizeof(T), ctx.stream());
+    } else {
+      SetZero<T>(ctx, dst, rows * cols);
+    }
     if (!is_test) {
       SetZero<MaskType>(ctx, mask_data, rows * cols);
     }

@@ -1015,14 +1015,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         is_test = bool(int(os.getenv("TEST_MODE", "0")))
 
-        # for GEO
-        if self.role_maker._is_first_worker() and self.is_heter_ps_mode:
-            # for ps-heter mode load all parameters on first_worker
-            init_params = get_the_one_recv_context(self.context,
-                                                   split_dense_table=True,
-                                                   use_origin_program=True)
-        else:
-            init_params = dense_map
+        # for GEO & heter_ps
+        init_params = dense_map
 
         # if not is_test:
         #     self._communicator.init_params(init_params)
@@ -1053,11 +1047,7 @@ class TheOnePSRuntime(RuntimeBase):
             fleet.util.barrier()  # 保证 0 号 worker 参数 push_dense_param over
 
         if not self.context['use_ps_gpu']:
-            if self.is_heter_ps_mode == True and not self.role_maker._is_first_worker(
-            ):
-                self._communicator.pull_dense(init_params)
-            else:
-                self._pull_all_dense(scopes, send_ctx, dense_map)
+            self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
         if self.context[
