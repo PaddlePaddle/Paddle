@@ -82,9 +82,7 @@ class SliceOpConverter : public OpConverter {
 
       nvinfer1::Dims trt_size_dims = trt_start_dims;
       nvinfer1::Dims trt_end_dims = trt_start_dims;
-
-      nvinfer1::Dims trt_step_dims;
-      trt_step_dims.nbDims = nchw_input_dims.nbDims;
+      nvinfer1::Dims trt_step_dims = trt_start_dims;
       for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
 
       // input : [N,C,H,W]
@@ -105,7 +103,7 @@ class SliceOpConverter : public OpConverter {
 
       std::vector<nvinfer1::ITensor*> end_vec_tensor;
 
-      for (int i = 0; i < 3; i++) {
+      for (int i = 0; i < trt_end_dims.nbDims; i++) {
         end_vec_tensor.push_back(GetEleTensorOfShape(shape_tensor, i));
       }
 
