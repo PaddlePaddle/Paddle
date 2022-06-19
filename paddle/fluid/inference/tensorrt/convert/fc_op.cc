@@ -41,7 +41,7 @@ class FcOpConverter : public OpConverter {
     reshape_before_fc_dim.nbDims = x_num_col_dims + 3;
     // padding shape "* x q x 1 x 1"
 
-    nvinfer1::ITensor* filal_reshape_before_fc_shape_tensor;
+    nvinfer1::ITensor* filal_reshape_before_fc_shape_tensor = nullptr;
 
     if (!engine_->with_dynamic_shape()) {
       for (int i = 0; i < reshape_before_fc_dim.nbDims; i++) {
@@ -100,7 +100,7 @@ class FcOpConverter : public OpConverter {
     nvinfer1::Dims reshape_after_fc_dim;
     reshape_after_fc_dim.nbDims = x_num_col_dims + 1;
 
-    nvinfer1::ITensor* filal_reshape_after_fc_shape_tensor;
+    nvinfer1::ITensor* filal_reshape_after_fc_shape_tensor = nullptr;
 
     if (!engine_->with_dynamic_shape()) {
       for (int i = 0; i < reshape_after_fc_dim.nbDims; i++) {
