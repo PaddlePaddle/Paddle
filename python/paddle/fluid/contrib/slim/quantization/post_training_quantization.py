@@ -121,7 +121,8 @@ class PostTrainingQuantization(object):
                  algo="KL",
                  hist_percent=0.99999,
                  quantizable_op_type=["conv2d", "depthwise_conv2d", "mul"],
-                 round_type='round',
+                 weight_round_algo='round',
+                 round_type='TiesToEven',
                  learning_rate=0.001,
                  is_full_quantize=False,
                  bias_correction=False,
@@ -180,9 +181,14 @@ class PostTrainingQuantization(object):
             quantizable_op_type(list[str], optional): List the type of ops 
                 that will be quantized. Default is ["conv2d", "depthwise_conv2d", 
                 "mul"].
-            round_type(str, optional): The method of converting the quantized weights
+            weight_round_algo(str, optional): The method of converting the quantized weights
                 value float->int. Currently supports ['round', 'adaround'] methods.
-                Default is `round`, which is rounding nearest to the nearest whole number.
+                Default is `round`, which is rounding nearest to the integer.
+                'adaround' is refer to https://arxiv.org/abs/2004.10568.
+            round_type(str, optional): The method of converting the tensor value float->int.
+                Currently supports ['TiesToEven', 'TiesAwayFromZero'] methods.
+                Default is `TiesToEven`, which is rounding to nearest ties to even. 
+                'TiesAwayFromZero' is rounding to nearest ties away from zero.
             learning_rate(float, optional): The learning rate of adaround method.
             is_full_quantized(bool, optional): If set is_full_quantized as True, 
                 apply quantization to all supported quantizable op type. If set
@@ -263,8 +269,10 @@ class PostTrainingQuantization(object):
         self._support_algo_type = [
             'KL', 'hist', 'avg', 'mse', 'emd', 'abs_max', 'min_max'
         ]
-        assert round_type in ['adaround', 'round']
+        assert round_type in ['TiesToEven', 'TiesAwayFromZero']
         self._round_type = round_type
+        assert weight_round_algo in ['adaround', 'round']
+        self._weight_round_algo = weight_round_algo
         self._learning_rate = learning_rate
         self._dynamic_quantize_op_type = ['lstm']
         self._support_quantize_op_type = \
@@ -406,7 +414,7 @@ class PostTrainingQuantization(object):
         if self._algo in ["KL", "hist"]:
             self._calculate_kl_hist_threshold()
 
-        if self._round_type == 'adaround':
+        if self._weight_round_algo == 'adaround':
             self._adaround_apply()
 
         self._reset_activation_persistable()
@@ -908,7 +916,8 @@ class PostTrainingQuantization(object):
                 activation_bits=self._activation_bits,
                 activation_quantize_type=self._activation_quantize_type,
                 weight_quantize_type=self._weight_quantize_type,
-                quantizable_op_type=major_quantizable_op_types)
+                quantizable_op_type=major_quantizable_op_types,
+                round_type=self._round_type)
         else:
             transform_pass = QuantizationTransformPassV2(
                 scope=self._scope,
@@ -917,7 +926,8 @@ class PostTrainingQuantization(object):
                 activation_bits=self._activation_bits,
                 activation_quantize_type=self._activation_quantize_type,
                 weight_quantize_type=self._weight_quantize_type,
-                quantizable_op_type=major_quantizable_op_types)
+                quantizable_op_type=major_quantizable_op_types,
+                round_type=self._round_type)
 
         for sub_graph in graph.all_sub_graphs():
             # Insert fake_quant/fake_dequantize op must in test graph, so
@@ -934,13 +944,15 @@ class PostTrainingQuantization(object):
             add_quant_dequant_pass = AddQuantDequantPass(
                 scope=self._scope,
                 place=self._place,
-                quantizable_op_type=minor_quantizable_op_types)
+                quantizable_op_type=minor_quantizable_op_types,
+                round_type=self._round_type)
         else:
             add_quant_dequant_pass = AddQuantDequantPassV2(
                 scope=self._scope,
                 place=self._place,
                 quantizable_op_type=minor_quantizable_op_types,
-                is_full_quantized=self._is_full_quantize)
+                is_full_quantized=self._is_full_quantize,
+                round_type=self._round_type)
 
         for sub_graph in graph.all_sub_graphs():
             sub_graph._for_test = True
@@ -965,6 +977,7 @@ class PostTrainingQuantization(object):
                 place=self._place,
                 bias_correction=self._bias_correction,
                 weight_bits=self._weight_bits,
+                weight_round_algo=self._weight_round_algo,
                 round_type=self._round_type,
                 activation_bits=self._activation_bits,
                 weight_quantize_type=self._weight_quantize_type,

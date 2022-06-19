@@ -108,7 +108,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def generate_quantized_model(self,
                                  model_path,
                                  algo="KL",
-                                 round_type="round",
+                                 weight_round_algo="round",
                                  quantizable_op_type=["conv2d"],
                                  is_full_quantize=False,
                                  is_use_cache_file=False,
@@ -130,7 +130,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                        batch_nums=batch_nums,
                                        algo=algo,
                                        quantizable_op_type=quantizable_op_type,
-                                       round_type=round_type,
+                                       weight_round_algo=weight_round_algo,
                                        is_full_quantize=is_full_quantize,
                                        optimize_model=is_optimize_model,
                                        bias_correction=bias_correction,
@@ -145,7 +145,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                  data_url,
                  data_md5,
                  algo,
-                 round_type,
+                 weight_round_algo,
                  quantizable_op_type,
                  is_full_quantize,
                  is_use_cache_file,
@@ -169,10 +169,11 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model_name, quant_iterations * batch_size))
-        self.generate_quantized_model(origin_model_path, algo, round_type,
-                                      quantizable_op_type, is_full_quantize,
-                                      is_use_cache_file, is_optimize_model,
-                                      batch_size, quant_iterations, onnx_format,
+        self.generate_quantized_model(origin_model_path, algo,
+                                      weight_round_algo, quantizable_op_type,
+                                      is_full_quantize, is_use_cache_file,
+                                      is_optimize_model, batch_size,
+                                      quant_iterations, onnx_format,
                                       skip_tensor_list, bias_correction)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
@@ -203,7 +204,7 @@ class TestPostTrainingKLForMnist(TestPostTrainingQuantization):
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model.tar.gz"
         data_md5 = "be71d3997ec35ac2a65ae8a145e2887c"
         algo = "KL"
-        round_type = "round"
+        weight_round_algo = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -212,7 +213,7 @@ class TestPostTrainingKLForMnist(TestPostTrainingQuantization):
         batch_size = 10
         infer_iterations = 50
         quant_iterations = 5
-        self.run_test(model_name, data_url, data_md5, algo, round_type,
+        self.run_test(model_name, data_url, data_md5, algo, weight_round_algo,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold, batch_size,
                       infer_iterations, quant_iterations)
@@ -225,7 +226,7 @@ class TestPostTraininghistForMnist(TestPostTrainingQuantization):
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model.tar.gz"
         data_md5 = "be71d3997ec35ac2a65ae8a145e2887c"
         algo = "hist"
-        round_type = "round"
+        weight_round_algo = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -234,7 +235,7 @@ class TestPostTraininghistForMnist(TestPostTrainingQuantization):
         batch_size = 10
         infer_iterations = 50
         quant_iterations = 5
-        self.run_test(model_name, data_url, data_md5, algo, round_type,
+        self.run_test(model_name, data_url, data_md5, algo, weight_round_algo,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold, batch_size,
                       infer_iterations, quant_iterations)
@@ -247,7 +248,7 @@ class TestPostTrainingmseForMnist(TestPostTrainingQuantization):
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model.tar.gz"
         data_md5 = "be71d3997ec35ac2a65ae8a145e2887c"
         algo = "mse"
-        round_type = "round"
+        weight_round_algo = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -256,7 +257,7 @@ class TestPostTrainingmseForMnist(TestPostTrainingQuantization):
         batch_size = 10
         infer_iterations = 50
         quant_iterations = 5
-        self.run_test(model_name, data_url, data_md5, algo, round_type,
+        self.run_test(model_name, data_url, data_md5, algo, weight_round_algo,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold, batch_size,
                       infer_iterations, quant_iterations)
@@ -269,7 +270,7 @@ class TestPostTrainingemdForMnist(TestPostTrainingQuantization):
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model.tar.gz"
         data_md5 = "be71d3997ec35ac2a65ae8a145e2887c"
         algo = "emd"
-        round_type = "round"
+        weight_round_algo = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -278,7 +279,7 @@ class TestPostTrainingemdForMnist(TestPostTrainingQuantization):
         batch_size = 10
         infer_iterations = 50
         quant_iterations = 5
-        self.run_test(model_name, data_url, data_md5, algo, round_type,
+        self.run_test(model_name, data_url, data_md5, algo, weight_round_algo,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold, batch_size,
                       infer_iterations, quant_iterations)
@@ -291,7 +292,7 @@ class TestPostTrainingavgForMnist(TestPostTrainingQuantization):
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model.tar.gz"
         data_md5 = "be71d3997ec35ac2a65ae8a145e2887c"
         algo = "avg"
-        round_type = "round"
+        weight_round_algo = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -300,7 +301,7 @@ class TestPostTrainingavgForMnist(TestPostTrainingQuantization):
         batch_size = 10
         infer_iterations = 50
         quant_iterations = 5
-        self.run_test(model_name, data_url, data_md5, algo, round_type,
+        self.run_test(model_name, data_url, data_md5, algo, weight_round_algo,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold, batch_size,
                       infer_iterations, quant_iterations)
@@ -313,7 +314,7 @@ class TestPostTrainingAbsMaxForMnist(TestPostTrainingQuantization):
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model.tar.gz"
         data_md5 = "be71d3997ec35ac2a65ae8a145e2887c"
         algo = "abs_max"
-        round_type = "round"
+        weight_round_algo = "round"
         quantizable_op_type = ["conv2d", "mul"]
         is_full_quantize = True
         is_use_cache_file = False
@@ -322,7 +323,7 @@ class TestPostTrainingAbsMaxForMnist(TestPostTrainingQuantization):
         batch_size = 10
         infer_iterations = 50
         quant_iterations = 10
-        self.run_test(model_name, data_url, data_md5, algo, round_type,
+        self.run_test(model_name, data_url, data_md5, algo, weight_round_algo,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold, batch_size,
                       infer_iterations, quant_iterations)
@@ -335,7 +336,7 @@ class TestPostTrainingmseAdaroundForMnist(TestPostTrainingQuantization):
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model.tar.gz"
         data_md5 = "be71d3997ec35ac2a65ae8a145e2887c"
         algo = "mse"
-        round_type = "adaround"
+        weight_round_algo = "adaround"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -349,7 +350,7 @@ class TestPostTrainingmseAdaroundForMnist(TestPostTrainingQuantization):
                       data_url,
                       data_md5,
                       algo,
-                      round_type,
+                      weight_round_algo,
                       quantizable_op_type,
                       is_full_quantize,
                       is_use_cache_file,
@@ -368,7 +369,7 @@ class TestPostTrainingKLAdaroundForMnist(TestPostTrainingQuantization):
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model.tar.gz"
         data_md5 = "be71d3997ec35ac2a65ae8a145e2887c"
         algo = "KL"
-        round_type = "adaround"
+        weight_round_algo = "adaround"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -377,7 +378,7 @@ class TestPostTrainingKLAdaroundForMnist(TestPostTrainingQuantization):
         batch_size = 10
         infer_iterations = 50
         quant_iterations = 5
-        self.run_test(model_name, data_url, data_md5, algo, round_type,
+        self.run_test(model_name, data_url, data_md5, algo, weight_round_algo,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold, batch_size,
                       infer_iterations, quant_iterations)
@@ -390,7 +391,7 @@ class TestPostTrainingmseForMnistONNXFormat(TestPostTrainingQuantization):
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model.tar.gz"
         data_md5 = "be71d3997ec35ac2a65ae8a145e2887c"
         algo = "mse"
-        round_type = "round"
+        weight_round_algo = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -404,7 +405,7 @@ class TestPostTrainingmseForMnistONNXFormat(TestPostTrainingQuantization):
                       data_url,
                       data_md5,
                       algo,
-                      round_type,
+                      weight_round_algo,
                       quantizable_op_type,
                       is_full_quantize,
                       is_use_cache_file,
@@ -424,7 +425,7 @@ class TestPostTrainingmseForMnistONNXFormatFullQuant(
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model.tar.gz"
         data_md5 = "be71d3997ec35ac2a65ae8a145e2887c"
         algo = "mse"
-        round_type = "round"
+        weight_round_algo = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = True
         is_use_cache_file = False
@@ -438,7 +439,7 @@ class TestPostTrainingmseForMnistONNXFormatFullQuant(
                       data_url,
                       data_md5,
                       algo,
-                      round_type,
+                      weight_round_algo,
                       quantizable_op_type,
                       is_full_quantize,
                       is_use_cache_file,
@@ -457,7 +458,7 @@ class TestPostTrainingavgForMnistSkipOP(TestPostTrainingQuantization):
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model.tar.gz"
         data_md5 = "be71d3997ec35ac2a65ae8a145e2887c"
         algo = "avg"
-        round_type = "round"
+        weight_round_algo = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -471,7 +472,7 @@ class TestPostTrainingavgForMnistSkipOP(TestPostTrainingQuantization):
                       data_url,
                       data_md5,
                       algo,
-                      round_type,
+                      weight_round_algo,
                       quantizable_op_type,
                       is_full_quantize,
                       is_use_cache_file,
