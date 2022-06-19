@@ -78,10 +78,8 @@ class SliceOpConverter : public OpConverter {
       nvinfer1::Dims trt_start_dims;
       trt_start_dims.nbDims = nchw_input_dims.nbDims;
       memset(trt_start_dims.d, 0, sizeof(int32_t) * nchw_input_dims.nbDims);
-
       nvinfer1::Dims trt_size_dims = trt_start_dims;
       nvinfer1::Dims trt_end_dims = trt_start_dims;
-
       nvinfer1::Dims trt_step_dims = trt_start_dims;
       for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
 
@@ -115,7 +113,13 @@ class SliceOpConverter : public OpConverter {
         }
       }
 
+// CI failed in trt 6015, may be a trt bug
+#if IS_TRT_VERSION_GE(7134)
+      auto* size_tensor =
+          Sub(Min(Concat(end_vec_tensor), shape_tensor), start_tensor);
+#else
       auto* size_tensor = Sub(Concat(end_vec_tensor), start_tensor);
+#endif
 
       layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                    trt_size_dims, trt_step_dims);
