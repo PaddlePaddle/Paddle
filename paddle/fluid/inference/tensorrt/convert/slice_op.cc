@@ -74,7 +74,6 @@ class SliceOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
-#if IS_TRT_VERSION_GE(6000)
       auto nchw_input_dims = input->getDimensions();
       nvinfer1::Dims trt_start_dims;
       trt_start_dims.nbDims = nchw_input_dims.nbDims;
@@ -113,7 +112,6 @@ class SliceOpConverter : public OpConverter {
       }
 
       end_tensor = Min(shape_tensor, end_tensor);
-      // auto* size_tensor = Sub(end_tensor, start_tensor);
       auto* size_tensor = Sub(Concat(end_vec_tensor), start_tensor);
 
       layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
