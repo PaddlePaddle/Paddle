@@ -74,18 +74,14 @@ class SliceOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
+#if IS_TRT_VERSION_GE(6000)
       auto nchw_input_dims = input->getDimensions();
       nvinfer1::Dims trt_start_dims;
       trt_start_dims.nbDims = nchw_input_dims.nbDims;
       memset(trt_start_dims.d, 0, sizeof(int32_t) * nchw_input_dims.nbDims);
 
-      nvinfer1::Dims trt_size_dims;
-      trt_size_dims.nbDims = nchw_input_dims.nbDims;
-
-      nvinfer1::Dims trt_end_dims;
-      trt_end_dims.nbDims = nchw_input_dims.nbDims;
-      for (int i = 0; i < trt_end_dims.nbDims; i++)
-        trt_end_dims.d[i] = 10000000;
+      nvinfer1::Dims trt_size_dims = trt_start_dims;
+      nvinfer1::Dims trt_end_dims = trt_start_dims;
 
       nvinfer1::Dims trt_step_dims;
       trt_step_dims.nbDims = nchw_input_dims.nbDims;
@@ -107,13 +103,26 @@ class SliceOpConverter : public OpConverter {
         end_tensor = FixNegIndices(shape_tensor, end_tensor);
       }
 
+      std::vector<nvinfer1::ITensor*> end_vec_tensor;
+
+      for (int i = 0; i < 3; i++) {
+        end_vec_tensor.push_back(GetEleTensorOfShape(shape_tensor, i));
+      }
+
+      for (size_t i = 0; i < axes.size(); i++) {
+        int trt_axis = axes[i];
+        end_vec_tensor[trt_axis] = Add1DConstantLayer(ends[i]);
+      }
+
       end_tensor = Min(shape_tensor, end_tensor);
-      auto* size_tensor = Sub(end_tensor, start_tensor);
+      // auto* size_tensor = Sub(end_tensor, start_tensor);
+      auto* size_tensor = Sub(Concat(end_vec_tensor), start_tensor);
 
       layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                    trt_size_dims, trt_step_dims);
       layer->setInput(1, *start_tensor);
       layer->setInput(2, *size_tensor);
+
       if (decrease_axises.size() > 0) {
         std::vector<int32_t> gather_indices;
         for (int i = 0; i < trt_size_dims.nbDims; i++) {
