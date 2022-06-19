@@ -74,17 +74,13 @@ class SliceOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
-#if IS_TRT_VERSION_GE(6000)
       auto nchw_input_dims = input->getDimensions();
       nvinfer1::Dims trt_start_dims;
       trt_start_dims.nbDims = nchw_input_dims.nbDims;
       memset(trt_start_dims.d, 0, sizeof(int32_t) * nchw_input_dims.nbDims);
-
       nvinfer1::Dims trt_size_dims = trt_start_dims;
       nvinfer1::Dims trt_end_dims = trt_start_dims;
-
-      nvinfer1::Dims trt_step_dims;
-      trt_step_dims.nbDims = nchw_input_dims.nbDims;
+      nvinfer1::Dims trt_step_dims = trt_start_dims;
       for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
 
       // input : [N,C,H,W]
@@ -97,26 +93,33 @@ class SliceOpConverter : public OpConverter {
       }
       auto* shape_tensor = Shape(input);
       auto* start_tensor = Add1DConstantLayer(trt_start_dims);
-      auto* end_tensor = Add1DConstantLayer(trt_end_dims);
       if (has_neg_indices) {
         start_tensor = FixNegIndices(shape_tensor, start_tensor);
-        end_tensor = FixNegIndices(shape_tensor, end_tensor);
       }
 
       std::vector<nvinfer1::ITensor*> end_vec_tensor;
 
-      for (int i = 0; i < 3; i++) {
+      for (int i = 0; i < trt_end_dims.nbDims; i++) {
         end_vec_tensor.push_back(GetEleTensorOfShape(shape_tensor, i));
       }
 
       for (size_t i = 0; i < axes.size(); i++) {
         int trt_axis = axes[i];
-        end_vec_tensor[trt_axis] = Add1DConstantLayer(ends[i]);
+        if (ends[i] >= 0) {
+          end_vec_tensor[trt_axis] = Add1DConstantLayer(ends[i]);
+        } else {
+          end_vec_tensor[trt_axis] =
+              Sum(end_vec_tensor[trt_axis], Add1DConstantLayer(ends[i]));
+        }
       }
 
-      end_tensor = Min(shape_tensor, end_tensor);
-      // auto* size_tensor = Sub(end_tensor, start_tensor);
+// CI failed in trt 6015, may be a trt bug
+#if IS_TRT_VERSION_GE(7134)
+      auto* size_tensor =
+          Sub(Min(Concat(end_vec_tensor), shape_tensor), start_tensor);
+#else
       auto* size_tensor = Sub(Concat(end_vec_tensor), start_tensor);
+#endif
 
       layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                    trt_size_dims, trt_step_dims);
