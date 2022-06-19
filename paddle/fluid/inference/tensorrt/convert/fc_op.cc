@@ -99,12 +99,28 @@ class FcOpConverter : public OpConverter {
     // add shuffle after fc
     nvinfer1::Dims reshape_after_fc_dim;
     reshape_after_fc_dim.nbDims = x_num_col_dims + 1;
-    for (int i = 0; i < reshape_after_fc_dim.nbDims; i++) {
-      reshape_after_fc_dim.d[i] = 0;
+
+    nvinfer1::ITensor* filal_reshape_after_fc_shape_tensor;
+
+    if (!engine_->with_dynamic_shape()) {
+      for (int i = 0; i < reshape_after_fc_dim.nbDims; i++) {
+        reshape_after_fc_dim.d[i] = 0;
+      }
+    } else {
+      std::vector<int> gather_indices(x_num_col_dims + 1);
+      std::iota(gather_indices.begin(), gather_indices.end(), 0);
+      filal_reshape_after_fc_shape_tensor =
+          Gather(Shape(after_fc), gather_indices);
     }
+
     auto* reshape_after_fc_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *after_fc);
-    reshape_after_fc_layer->setReshapeDimensions(reshape_after_fc_dim);
+    if (!engine_->with_dynamic_shape()) {
+      reshape_after_fc_layer->setReshapeDimensions(reshape_after_fc_dim);
+    } else {
+      reshape_after_fc_layer->setInput(1, *filal_reshape_after_fc_shape_tensor);
+    }
+
     return reshape_after_fc_layer;
   }
 
