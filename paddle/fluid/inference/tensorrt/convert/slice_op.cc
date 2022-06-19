@@ -81,6 +81,7 @@ class SliceOpConverter : public OpConverter {
 
       nvinfer1::Dims trt_size_dims = trt_start_dims;
       nvinfer1::Dims trt_end_dims = trt_start_dims;
+
       nvinfer1::Dims trt_step_dims = trt_start_dims;
       for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
 
@@ -94,10 +95,8 @@ class SliceOpConverter : public OpConverter {
       }
       auto* shape_tensor = Shape(input);
       auto* start_tensor = Add1DConstantLayer(trt_start_dims);
-      auto* end_tensor = Add1DConstantLayer(trt_end_dims);
       if (has_neg_indices) {
         start_tensor = FixNegIndices(shape_tensor, start_tensor);
-        end_tensor = FixNegIndices(shape_tensor, end_tensor);
       }
 
       std::vector<nvinfer1::ITensor*> end_vec_tensor;
@@ -108,10 +107,14 @@ class SliceOpConverter : public OpConverter {
 
       for (size_t i = 0; i < axes.size(); i++) {
         int trt_axis = axes[i];
-        end_vec_tensor[trt_axis] = Add1DConstantLayer(ends[i]);
+        if (ends[i] >= 0) {
+          end_vec_tensor[trt_axis] = Add1DConstantLayer(ends[i]);
+        } else {
+          end_vec_tensor[trt_axis] =
+              Sum(end_vec_tensor[trt_axis], Add1DConstantLayer(ends[i]));
+        }
       }
 
-      end_tensor = Min(shape_tensor, end_tensor);
       auto* size_tensor = Sub(Concat(end_vec_tensor), start_tensor);
 
       layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
