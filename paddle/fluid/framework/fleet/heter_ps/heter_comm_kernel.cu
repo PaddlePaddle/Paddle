@@ -200,6 +200,8 @@ __global__ void dy_mf_fill_dvals_kernel(float* d_shard_vals,
     uint64_t new_offset = uint64_t(idx[i]) * val_size;
     float* cur = (float*)((char*)d_vals + new_offset);
     float* shard_val = (float*)((char*)d_shard_vals + uint64_t(i) * val_size);
+    int mf_dim = int(shard_val[feature_value_accessor.common_feature_value.MfDimIndex()]);
+    feature_value_accessor.DynamicChangeDim(mf_dim);
     cur[feature_value_accessor.common_feature_value.SlotIndex()] =
       shard_val[feature_value_accessor.common_feature_value.SlotIndex()];
     cur[feature_value_accessor.common_feature_value.ShowIndex()] =

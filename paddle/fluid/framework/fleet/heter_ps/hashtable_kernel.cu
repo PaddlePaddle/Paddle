@@ -99,7 +99,8 @@ __global__ void dy_mf_search_kernel(Table* table,
       uint64_t offset = i * pull_feature_value_size;
       float* cur = (float*)(vals + offset);
       float* input = it->second;
-      
+      int mf_dim = int(input[feature_value_accessor.common_feature_value.MfDimIndex()]);
+      feature_value_accessor.DynamicChangeDim(mf_dim);
       cur[feature_value_accessor.common_feature_value.SlotIndex()] =
         input[feature_value_accessor.common_feature_value.SlotIndex()];
       cur[feature_value_accessor.common_feature_value.ShowIndex()] =
@@ -123,13 +124,17 @@ __global__ void dy_mf_search_kernel(Table* table,
           input[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + i];
       }
 
-      for (int x = 0; x < feature_value_accessor.common_feature_value.EmbedXDim(); x++) {
-        cur[feature_value_accessor.common_feature_value.EmbedxG2SumIndex() + x]  = 
-          input[feature_value_accessor.common_feature_value.EmbedxG2SumIndex() + x];
-      }
-      for (int x = 0; x < feature_value_accessor.common_feature_value.EmbedWDim(); x++) {
-        cur[feature_value_accessor.common_feature_value.EmbedxWIndex() + x] = 
-          input[feature_value_accessor.common_feature_value.EmbedxWIndex() + x];
+      if (int(input[feature_value_accessor.common_feature_value.MfSizeIndex()]) > 0) {
+        for (int i =0; i < int(input[feature_value_accessor.common_feature_value.MfSizeIndex()]); i++){
+          cur[feature_value_accessor.common_feature_value.EmbedxG2SumIndex() + i] = 
+            input[feature_value_accessor.common_feature_value.EmbedxG2SumIndex() + i];
+        }
+        // input[feature_value_accessor.common_feature_value.EmbedxWOffsetIndex(input) + j];
+      } else {
+        for (int i =0; i < int(feature_value_accessor.GetAccessorInfo().mf_size / sizeof(float)); i++){
+          cur[feature_value_accessor.common_feature_value.EmbedxG2SumIndex() + i] = 
+            input[feature_value_accessor.common_feature_value.EmbedxG2SumIndex() + i];
+        }
       }
     } else {
       if (keys[i] != 0) {
@@ -361,6 +366,15 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+
+  char* tmp_config = (char*)malloc(sizeof(OptimizerConfig));
+  cudaMemcpy(tmp_config, device_optimizer_config_,
+             sizeof(OptimizerConfig), cudaMemcpyDeviceToHost);
+  VLOG(0) << "tmp_config: learning_rate:" << tmp_config->learning_rate
+          << " initial_range:" << tmp_config->initial_range
+          << " mf_learning_rate:" << tmp_config->mf_learning_rate
+          << " mf_initial_range:" << tmp_config->mf_initial_range
+          << " mf_initial_g2sum:" << tmp_config->mf_initial_g2sum;
   dy_mf_update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_,
       *device_optimizer_config_,

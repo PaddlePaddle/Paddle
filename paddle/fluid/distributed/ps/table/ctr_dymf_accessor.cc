@@ -31,6 +31,7 @@ int CtrDymfAccessor::Initialize() {
   _embedx_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
   _embedx_sgd_rule->LoadConfig(_config.embedx_sgd_param(),
                                _config.embedx_dim());
+  common_feature_value.optimizer_name = name;
 
   common_feature_value.embed_sgd_dim = _embed_sgd_rule->Dim();
   common_feature_value.embedx_dim = _config.embedx_dim();
@@ -62,6 +63,20 @@ void CtrDymfAccessor::InitAccessorInfo() {
   _accessor_info.mf_size =
       (embedx_dim + common_feature_value.embedx_sgd_dim) * sizeof(float);
 }
+
+void CtrDymfAccessor::DynamicChangeDim(int mf_dim) {
+    // 假设一个任务中sparse优化器是不变的，改变的只是不同slot的embedding维度，比如组网中既包括8维又有32维
+    if (common_feature_value.optimizer_name == "SparseAdamSGDRule") {//adam
+      common_feature_value.embedx_sgd_dim = mf_dim * 2 + 2;
+    } else if (common_feature_value.optimizer_name == "SparseSharedAdamSGDRule") { //shared_adam
+      common_feature_value.embedx_sgd_dim = 4;
+    } else {
+      common_feature_value.embedx_sgd_dim = 1;
+    }
+    common_feature_value.embedx_dim = mf_dim;
+
+    // InitAccessorInfo();
+  }
 
 bool CtrDymfAccessor::Shrink(float* value) {
   auto delete_after_unseen_days =
@@ -182,7 +197,8 @@ int32_t CtrDymfAccessor::Create(float** values, size_t num) {
     value[common_feature_value.SlotIndex()] = -1;
     value[common_feature_value.MfDimIndex()] = -1;
     _embed_sgd_rule->InitValue(value + common_feature_value.EmbedWIndex(),
-                               value + common_feature_value.EmbedG2SumIndex());
+                               value + common_feature_value.EmbedG2SumIndex(),
+                               false); // adam embed init not zero, adagrad embed init zero
     _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
                                 value + common_feature_value.EmbedxG2SumIndex(),
                                 false);
@@ -295,13 +311,14 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
        i++) {
     os << " " << v[i];
   }
-  // os << " " << common_feature_value.Slot(const_cast<float*>(v)) << " "
-  //    << common_feature_value.MfDim(const_cast<float*>(v));
   auto show = common_feature_value.Show(const_cast<float*>(v));
   auto click = common_feature_value.Click(const_cast<float*>(v));
   auto score = ShowClickScore(show, click);
+  auto mf_dim = common_feature_value.MfDim(const_cast<float*>(v));
   if (score >= _config.embedx_threshold() &&
       param > common_feature_value.EmbedxG2SumIndex()) {
+    
+    DynamicChangeDim(int(mf_dim));
     for (auto i = common_feature_value.EmbedxG2SumIndex();
          i < common_feature_value.EmbedxWIndex() +
                  common_feature_value.MfDim(const_cast<float*>(v));

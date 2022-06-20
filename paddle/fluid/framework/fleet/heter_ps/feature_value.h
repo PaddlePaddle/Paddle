@@ -36,7 +36,7 @@ struct GpuAccessorInfo {
   size_t update_dim;
   // push value各个维度的size
   size_t update_size;
-  // value中mf动态长度部分总size大小, sparse下生效
+  // value中mf动态长度部分总size大小, 包含mf_g2sum和 mf_dim, sparse下生效
   size_t mf_size;
 };
 
@@ -96,6 +96,28 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
     __host__ __device__ int MfSizeIndex() { return MfDimIndex() + 1; } // actual mf size (ex. 0)
     __host__ __device__ int EmbedxG2SumIndex() { return MfSizeIndex() + 1; }
     __host__ __device__ int EmbedxWIndex() { return EmbedxG2SumIndex() + embedx_sgd_dim; }
+    
+    __host__ __device__ int EmbedxG2SumOffsetIndex() { return 0; }
+    __host__ __device__ int EmbedxWOffsetIndex(float* val) {
+      // has mf 
+      if (int(MfSize(val)) > 0) {
+        if (optimizer_type_ == 3) {//adam
+          embedx_sgd_dim = int(MfDim(val)) * 2 + 2;
+        } else if (optimizer_type_ == 4) { //shared_adam
+          embedx_sgd_dim = 4;
+        } else {
+          embedx_sgd_dim = 1;
+        }
+        // PADDLE_ENFORCE(embedx_sgd_dim + int(MfDim(val)) == int(MfSize(val)), 
+        //               "The number of embedx_sgd_dim size must be equal to mf_size."
+        //               "But got embedx_sgd_dim = %d, mf_size = %s", embedx_sgd_dim, int(MfSize(val)));
+        return EmbedxG2SumIndex() + embedx_sgd_dim; 
+      } else {
+        // no mf
+        return 0;
+      }
+    }
+
 
     __host__ __device__ uint64_t CpuPtr(float* val) {return *(reinterpret_cast<uint64_t*>(val)); }
     __host__ __device__ float& DeltaScore(float* val) { return val[DeltaScoreIndex()]; }
@@ -112,6 +134,7 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
     int embed_sgd_dim;
     int embedx_dim;
     int embedx_sgd_dim;
+    int optimizer_type_;
   };
 
   struct CommonPushValue {
@@ -175,27 +198,36 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
       common_feature_value.embed_sgd_dim = 1;
       common_feature_value.embedx_sgd_dim = 1;
     }
-    
+    common_feature_value.optimizer_type_ = optimizer_type;
     common_feature_value.embedx_dim = sparse_embedx_dim;
-
+  
     // VLOG(0) << " INTO FeatureValueAccessor::Initialize()";
     InitAccessorInfo();
     return 0;
+  }
+
+  __host__ __device__ virtual void DynamicChangeDim(int mf_dim) {
+    // 假设一个任务中sparse优化器是不变的，改变的只是不同slot的embedding维度，比如组网中既包括8维又有32维
+    if (common_feature_value.optimizer_type_  == 3) { //adam
+      common_feature_value.embedx_sgd_dim = mf_dim * 2 + 2;
+    } else if (common_feature_value.optimizer_type_  == 4) { //shared_adam
+      common_feature_value.embedx_sgd_dim = 4;
+    } else {
+      common_feature_value.embedx_sgd_dim = 1;
+    }
+    common_feature_value.embedx_dim = mf_dim;
+
+    InitAccessorInfo();
   }
 
   // 初始化AccessorInfo
   __host__ __device__ virtual void InitAccessorInfo() {
     _accessor_info.dim = common_feature_value.Dim();
     _accessor_info.size = common_feature_value.Size();
-
-    int embedx_dim = (_config.find("embedx_dim") == _config.end())
-                                ? 8
-                                : int(_config["embedx_dim"]);
-    // VLOG(0) << "feature value InitAccessorInfo embedx_dim:" << embedx_dim;
-    _accessor_info.update_dim = 5 + embedx_dim;
+    _accessor_info.update_dim = 5 + common_feature_value.EmbedWDim();
     _accessor_info.update_size = _accessor_info.update_dim * sizeof(float);
     _accessor_info.mf_size =
-        (embedx_dim + common_feature_value.embedx_sgd_dim) * sizeof(float);
+        (common_feature_value.EmbedWDim() + common_feature_value.EmbedXDim()) * sizeof(float);
   }
 
   __host__ __device__ std::string ParseToString(const float* v, int param_size) {

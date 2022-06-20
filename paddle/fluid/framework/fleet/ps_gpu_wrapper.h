@@ -558,9 +558,7 @@ class PSGPUWrapper {
       slot_index_vec_[i] = dim_index_map[slot_mf_dim_vector_[i]];
     }
     //TODO(FENGDANLEI): max_mf 
-    VLOG(0) << "InitSlotInfo embed_sgd_dim_:" << embed_sgd_dim_ << " embedx_sgd_dim_:"
-            << embedx_sgd_dim_ << "  embedx_dim_:" << embedx_dim_
-            << " optimizer_type_:" << optimizer_type_;
+    feature_value_accessor_.DynamicChangeDim(max_mf_dim_);
     VLOG(0) << "InitSlotInfo:" << feature_value_accessor_.GetAccessorInfo().size;
     val_type_size_ =TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().size);
     grad_type_size_ = TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().update_size);

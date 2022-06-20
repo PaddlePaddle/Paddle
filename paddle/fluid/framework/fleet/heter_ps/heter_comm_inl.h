@@ -72,7 +72,8 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
     } else {
       max_mf_dim_ = resource_->max_mf_dim();
       feature_value_accessor_ = feature_value_accessor;
-      VLOG(3) << " HeterComm init, feature_value_size:" << feature_value_accessor_.GetAccessorInfo().size 
+      feature_value_accessor_.DynamicChangeDim(max_mf_dim_);
+      VLOG(0) << " HeterComm init, max feature_value_size:" << feature_value_accessor_.GetAccessorInfo().size 
             << ", feature_value_push_size:" << feature_value_accessor_.GetAccessorInfo().update_size;
       size_t val_type_size = TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().size);
       size_t grad_type_size = TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().update_size);

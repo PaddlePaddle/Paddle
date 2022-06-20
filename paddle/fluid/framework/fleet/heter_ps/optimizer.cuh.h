@@ -111,13 +111,15 @@ class SparseAdagradOptimizer : public Optimizer {
               g_show);
 
     int mf_dim = int(ptr[feature_value_accessor_.common_feature_value.MfDimIndex()]);
+    feature_value_accessor_.DynamicChangeDim(mf_dim);
     if (ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] == 0) {
       if (optimizer_config.mf_create_thresholds <=
           optimizer_config.nonclk_coeff * 
             (ptr[feature_value_accessor_.common_feature_value.ShowIndex()] - 
                 ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) +
               optimizer_config.clk_coeff * ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) {
-        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] = mf_dim;
+        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 
+                feature_value_accessor_.GetAccessorInfo().mf_size / sizeof(float);
 
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;
@@ -246,14 +248,15 @@ class SparseAdamOptimizer : public Optimizer {
               grad + feature_value_accessor_.common_push_value.EmbedGIndex(),
               g_show);
     int mf_dim = int(ptr[feature_value_accessor_.common_feature_value.MfDimIndex()]);
-    // printf("mf_dim: %f, lr_gsum: %f, ", mf_dim, ptr[feature_value_accessor_.common_feature_value.EmbedG2SumIndex()]);
+    feature_value_accessor_.DynamicChangeDim(mf_dim);
     if (ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] == 0) {
       if (optimizer_config.mf_create_thresholds <=
           optimizer_config.nonclk_coeff * 
             (ptr[feature_value_accessor_.common_feature_value.ShowIndex()] - 
                 ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) +
               optimizer_config.clk_coeff * ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) {
-        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] = mf_dim;
+        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 
+                feature_value_accessor_.GetAccessorInfo().mf_size / sizeof(float);
 
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;
@@ -373,13 +376,15 @@ class SparseAdamSharedOptimizer : public Optimizer {
               grad + feature_value_accessor_.common_push_value.EmbedGIndex(),
               g_show);
     int mf_dim = int(ptr[feature_value_accessor_.common_feature_value.MfDimIndex()]);
+    feature_value_accessor_.DynamicChangeDim(mf_dim);
     if (ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] == 0) {
       if (optimizer_config.mf_create_thresholds <=
           optimizer_config.nonclk_coeff * 
             (ptr[feature_value_accessor_.common_feature_value.ShowIndex()] - 
                 ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) +
               optimizer_config.clk_coeff * ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) {
-        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] = mf_dim;
+        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 
+                feature_value_accessor_.GetAccessorInfo().mf_size / sizeof(float);
 
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;

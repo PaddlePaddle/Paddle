@@ -58,6 +58,16 @@ class CtrDymfAccessor : public ValueAccessor {
     int MfDimIndex() { return SlotIndex() + 1; }
     int EmbedxG2SumIndex() { return MfDimIndex() + 1; }
     int EmbedxWIndex() { return EmbedxG2SumIndex() + embedx_sgd_dim; }
+    // int EmbedxWOffsetIndex(float* val) {
+    //   if (optimizer_name == "SparseAdamSGDRule") {//adam
+    //     embedx_sgd_dim = int(MfDim(val)) * 2 + 2;
+    //   } else if (optimizer_name == "SparseSharedAdamSGDRule") { //shared_adam
+    //     embedx_sgd_dim = 4;
+    //   } else {
+    //     embedx_sgd_dim = 1;
+    //   }
+    //   return EmbedxG2SumIndex() + embedx_sgd_dim; 
+    // }
 
     float& UnseenDays(float* val) { return val[UnseenDaysIndex()]; }
     float& DeltaScore(float* val) { return val[DeltaScoreIndex()]; }
@@ -73,6 +83,7 @@ class CtrDymfAccessor : public ValueAccessor {
     int embed_sgd_dim;
     int embedx_dim;
     int embedx_sgd_dim;
+    std::string optimizer_name;
   };
 
   struct CtrDymfPushValue {
@@ -151,6 +162,8 @@ class CtrDymfAccessor : public ValueAccessor {
   CtrDymfAccessor() {}
   virtual ~CtrDymfAccessor() {}
   virtual int Initialize();
+  // 多种维度时更新目前的长度
+  virtual void DynamicChangeDim(int mf_dim);
   // 初始化AccessorInfo
   virtual void InitAccessorInfo();
   // 判断该value是否进行shrink
