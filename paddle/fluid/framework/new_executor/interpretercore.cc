@@ -99,9 +99,8 @@ InterpreterCore::~InterpreterCore() {
   // cancle gc's thread
   gc_.reset(nullptr);
 
-  async_work_queue_.reset(nullptr);
-  VLOG(4) << "~InterpreterCore(): " << this;
-  VLOG(4) << " on" << place_;
+  async_work_queue_.reset();
+  VLOG(4) << "~InterpreterCore(): " << this << " on " << place_;
 
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
@@ -110,8 +109,29 @@ InterpreterCore::~InterpreterCore() {
 #endif
 }
 
-void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
-  copy_program_ = prog;
+interpreter::CostInfo InterpreterCore::DryRun(
+    const std::vector<std::string>& feed_names,
+    const std::vector<framework::LoDTensor>& feed_tensors) {
+  global_scope_->SetLocalScope(local_scope_);
+  Prepare(feed_names, feed_tensors, true);
+  interpreter::CostInfo cost_info;
+  {
+    interpreter::ProfilerGuard(place_, &cost_info);
+
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    async_work_queue_ = GetWorkQueue();
+
+    ExecuteInstructionList(vec_instruction_);
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+
+  if (create_local_scope_) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+
+  return cost_info;
 }
 
 paddle::framework::FetchList InterpreterCore::Run(
@@ -131,14 +151,7 @@ paddle::framework::FetchList InterpreterCore::Run(
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
-    if (async_work_queue_ == nullptr) {
-      async_work_queue_ = std::make_unique<interpreter::AsyncWorkQueue>(
-          kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
-      // prepare for the first time.
-      async_work_queue_->PrepareAtomicDeps(dependecy_count_);
-      async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
-    }
-
+    async_work_queue_ = GetWorkQueue();
     ExecuteInstructionList(vec_instruction_);
   }
 
@@ -190,13 +203,7 @@ paddle::framework::FetchList InterpreterCore::Run(
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
-    if (async_work_queue_ == nullptr) {
-      async_work_queue_ = std::make_unique<interpreter::AsyncWorkQueue>(
-          kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
-      // prepare for the first time.
-      async_work_queue_->PrepareAtomicDeps(dependecy_count_);
-      async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
-    }
+    async_work_queue_ = GetWorkQueue();
 
     ExecuteInstructionList(vec_instruction_);
   }
@@ -213,15 +220,122 @@ paddle::framework::FetchList InterpreterCore::Run(
   return std::move(*fetch_var->GetMutable<framework::FetchList>());
 }
 
-// At the end of each step, the holder of Tensor in LoDTensorArray is null.
-// Clear these Tensors and leave LoDTensorArray empty, otherwise an exception
-// will occur in the next step
-void InterpreterCore::ClearLoDTensorArrayInLocalScope() {
-  auto vars = local_scope_->LocalVars();
-  for (auto var : vars) {
-    if (var->IsType<LoDTensorArray>()) {
-      auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
-      lod_tensor_arr->clear();
+void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
+  copy_program_ = prog;
+}
+
+void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
+  async_work_queue_ = src->GetWorkQueue();
+  is_workqueue_sharing_ = src->is_workqueue_sharing_ = true;
+  VLOG(8) << "Share AsyncWorkQueue from InterpreterCore(" << &src
+          << ") to InterpreterCore(" << this << ")";
+}
+
+bool InterpreterCore::BuildInplaceCheckVarIsOnlyInput(size_t var_index) {
+  if (!global_scope_->VarDesc(var_index)) {
+    return input_var2op_info_.at(var_index).size() == 1;
+  } else {
+    int is_input_cnt = 0;
+    for (auto inst_id : input_var2op_info_.at(var_index)) {
+      OpInOutInfo info;
+      info.Build(vec_instruction_.at(inst_id).OpBase());
+      if (info.IsInArgBufferNeeded(global_scope_->VarDesc(var_index)->Name())) {
+        is_input_cnt++;
+      }
+    }
+    return is_input_cnt == 1;
+  }
+}
+
+std::shared_ptr<interpreter::AsyncWorkQueue> InterpreterCore::GetWorkQueue() {
+  if (async_work_queue_ == nullptr) {
+    async_work_queue_ = std::make_shared<interpreter::AsyncWorkQueue>(
+        kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
+  }
+
+  if (is_workqueue_sharing_) {
+    async_work_queue_->ResetWorkQueueOptions(kHostNumThreads, kDeviceNumThreads,
+                                             &main_thread_blocker_);
+  }
+
+  return async_work_queue_;
+}
+
+void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
+  VariableValueMap ins_map;
+  for (auto& var_name_item : instr_node->Inputs()) {
+    std::vector<Variable*> input_vars;
+
+    input_vars.reserve(var_name_item.second.size());
+    for (auto& id : var_name_item.second) {
+      input_vars.emplace_back(global_scope_->Var(id));
+    }
+    ins_map.emplace(var_name_item.first, std::move(input_vars));
+  }
+
+  VariableValueMap outs_map;
+  for (auto& var_name_item : instr_node->Outputs()) {
+    std::vector<Variable*> out_vars;
+
+    out_vars.reserve(var_name_item.second.size());
+    for (auto& id : var_name_item.second) {
+      out_vars.emplace_back(global_scope_->Var(id));
+    }
+    outs_map.emplace(var_name_item.first, std::move(out_vars));
+  }
+
+  // set runtime_ctx and infershape_ctx_
+  if (instr_node->OpBase()->Type() == "cinn_launch") {  // OP use scope in
+                                                        // kernel
+    Scope* local_scope = create_local_scope_
+                             ? global_scope_->GetMutableLocalScope()
+                             : global_scope_->GetMutableScope();
+    instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
+  } else {
+    instr_node->ResetContext(ins_map, outs_map);
+  }
+}
+
+void InterpreterCore::BuildInplace() {
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    auto& instr = vec_instruction_[i];
+    auto* op_base = instr.OpBase();
+    if (!op_base->Info().infer_inplace_) {
+      continue;
+    }
+
+    auto in_to_outs = op_base->Info().infer_inplace_(
+        platform::is_gpu_place(instr.DeviceContext().GetPlace()));
+
+    auto& inputs = instr.Inputs();
+    auto& outputs = instr.Outputs();
+    for (auto& pair : in_to_outs) {
+      auto iter = inputs.find(pair.first);
+      if (iter != inputs.end() && !iter->second.empty()) {
+        auto in_var_desc = global_scope_->VarDesc(iter->second[0]);
+        if (in_var_desc && in_var_desc->Persistable()) {
+          continue;
+        }
+        if (global_scope_->GetVarSikpInplace(iter->second[0])) {
+          continue;
+        }
+        if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
+          auto iterout = outputs.find(pair.second);
+          if (iterout != outputs.end() && !iterout->second.empty()) {
+            auto invar = global_scope_->Var(iter->second[0]);
+            auto outvar = global_scope_->Var(iterout->second[0]);
+            if (invar && outvar && invar->IsType<LoDTensor>() &&
+                outvar->IsType<LoDTensor>()) {
+              instr.AddInplace(invar, outvar);
+              VLOG(3) << "inplace " << vec_instruction_[i].OpBase()->Type()
+                      << " " << global_scope_->GetNameById(iter->second[0])
+                      << " -> "
+                      << global_scope_->GetNameById(iterout->second[0])
+                      << std::endl;
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -240,6 +354,19 @@ void InterpreterCore::BuildOperatorDependences() {
 
     for (auto inst_id : op_list) {
       dependecy_count_[inst_id]++;
+    }
+  }
+}
+
+// At the end of each step, the holder of Tensor in LoDTensorArray is null.
+// Clear these Tensors and leave LoDTensorArray empty, otherwise an exception
+// will occur in the next step
+void InterpreterCore::ClearLoDTensorArrayInLocalScope() {
+  auto vars = local_scope_->LocalVars();
+  for (auto var : vars) {
+    if (var->IsType<LoDTensorArray>()) {
+      auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+      lod_tensor_arr->clear();
     }
   }
 }
@@ -376,101 +503,18 @@ void InterpreterCore::Convert(
   if (FLAGS_new_executor_use_inplace && !inplaced) {
     BuildInplace();
   }
-}
 
-bool InterpreterCore::BuildInplaceCheckVarIsOnlyInput(size_t var_index) {
-  if (!global_scope_->VarDesc(var_index)) {
-    return input_var2op_info_.at(var_index).size() == 1;
-  } else {
-    int is_input_cnt = 0;
-    for (auto inst_id : input_var2op_info_.at(var_index)) {
-      OpInOutInfo info;
-      info.Build(vec_instruction_.at(inst_id).OpBase());
-      if (info.IsInArgBufferNeeded(global_scope_->VarDesc(var_index)->Name())) {
-        is_input_cnt++;
-      }
-    }
-    return is_input_cnt == 1;
-  }
-}
+  // prepare for the first time.
+  std::promise<std::unique_ptr<AtomicVectorSizeT>> deps_promise =
+      std::promise<std::unique_ptr<AtomicVectorSizeT>>();
+  atomic_deps_ = deps_promise.get_future();
+  deps_promise.set_value(interpreter::PrepareAtomicDeps(dependecy_count_));
 
-void InterpreterCore::BuildInplace() {
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    auto& instr = vec_instruction_[i];
-    auto* op_base = instr.OpBase();
-    if (!op_base->Info().infer_inplace_) {
-      continue;
-    }
-
-    auto in_to_outs = op_base->Info().infer_inplace_(
-        platform::is_gpu_place(instr.DeviceContext().GetPlace()));
-
-    auto& inputs = instr.Inputs();
-    auto& outputs = instr.Outputs();
-    for (auto& pair : in_to_outs) {
-      auto iter = inputs.find(pair.first);
-      if (iter != inputs.end() && !iter->second.empty()) {
-        auto in_var_desc = global_scope_->VarDesc(iter->second[0]);
-        if (in_var_desc && in_var_desc->Persistable()) {
-          continue;
-        }
-        if (global_scope_->GetVarSikpInplace(iter->second[0])) {
-          continue;
-        }
-        if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
-          auto iterout = outputs.find(pair.second);
-          if (iterout != outputs.end() && !iterout->second.empty()) {
-            auto invar = global_scope_->Var(iter->second[0]);
-            auto outvar = global_scope_->Var(iterout->second[0]);
-            if (invar && outvar && invar->IsType<LoDTensor>() &&
-                outvar->IsType<LoDTensor>()) {
-              instr.AddInplace(invar, outvar);
-              VLOG(3) << "inplace " << vec_instruction_[i].OpBase()->Type()
-                      << " " << global_scope_->GetNameById(iter->second[0])
-                      << " -> "
-                      << global_scope_->GetNameById(iterout->second[0])
-                      << std::endl;
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
-  VariableValueMap ins_map;
-  for (auto& var_name_item : instr_node->Inputs()) {
-    std::vector<Variable*> input_vars;
-
-    input_vars.reserve(var_name_item.second.size());
-    for (auto& id : var_name_item.second) {
-      input_vars.emplace_back(global_scope_->Var(id));
-    }
-    ins_map.emplace(var_name_item.first, std::move(input_vars));
-  }
-
-  VariableValueMap outs_map;
-  for (auto& var_name_item : instr_node->Outputs()) {
-    std::vector<Variable*> out_vars;
-
-    out_vars.reserve(var_name_item.second.size());
-    for (auto& id : var_name_item.second) {
-      out_vars.emplace_back(global_scope_->Var(id));
-    }
-    outs_map.emplace(var_name_item.first, std::move(out_vars));
-  }
-
-  // set runtime_ctx and infershape_ctx_
-  if (instr_node->OpBase()->Type() == "cinn_launch") {  // OP use scope in
-                                                        // kernel
-    Scope* local_scope = create_local_scope_
-                             ? global_scope_->GetMutableLocalScope()
-                             : global_scope_->GetMutableScope();
-    instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
-  } else {
-    instr_node->ResetContext(ins_map, outs_map);
-  }
+  std::promise<std::unique_ptr<AtomicVectorSizeT>> var_ref_promise =
+      std::promise<std::unique_ptr<AtomicVectorSizeT>>();
+  atomic_var_ref_ = var_ref_promise.get_future();
+  var_ref_promise.set_value(
+      interpreter::PrepareAtomicVarRef(global_scope_->VecMetaInfo()));
 }
 
 void InterpreterCore::BuildSkipShareLoDInfo() {
@@ -605,11 +649,12 @@ void InterpreterCore::ExecuteInstructionList(
       "PrepareAtomic", platform::TracerEventType::UserDefined, 1);
   // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
   // those for the next step
-  auto atomic_deps = async_work_queue_->AtomicDeps();
-  auto atomic_var_ref = async_work_queue_->AtomicVarRef();
+  auto atomic_deps = atomic_deps_.get();
+  auto atomic_var_ref = atomic_var_ref_.get();
 
-  async_work_queue_->PrepareAtomicDeps(dependecy_count_);
-  async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+  atomic_deps_ = async_work_queue_->PrepareAtomicDeps(dependecy_count_);
+  atomic_var_ref_ =
+      async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
   record_prepare.End();
 
   exception_holder_.Clear();
@@ -626,7 +671,8 @@ void InterpreterCore::ExecuteInstructionList(
   }
 
   auto event_name = main_thread_blocker_.WaitEvent();
-  VLOG(1) << "event_name: " << event_name;
+  VLOG(1) << "main_thread_blocker_(" << &main_thread_blocker_
+          << ") got event_name: " << event_name;
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(1) << "Exception caught " << exception_holder_.Type();
@@ -960,37 +1006,6 @@ void InterpreterCore::Prepare(
   if (prepare_feed) {
     FeedInput();
   }
-}
-
-interpreter::CostInfo InterpreterCore::DryRun(
-    const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors) {
-  global_scope_->SetLocalScope(local_scope_);
-  Prepare(feed_names, feed_tensors, true);
-  interpreter::CostInfo cost_info;
-  {
-    interpreter::ProfilerGuard(place_, &cost_info);
-
-    // For the program that only run once, it is no need to
-    // create work_queue, so the async_work_queue_ is created
-    // until the second step run.
-    if (async_work_queue_ == nullptr) {
-      async_work_queue_ = std::make_unique<interpreter::AsyncWorkQueue>(
-          kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
-      // prepare for the first time.
-      async_work_queue_->PrepareAtomicDeps(dependecy_count_);
-      async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
-    }
-
-    ExecuteInstructionList(vec_instruction_);
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  }
-
-  if (create_local_scope_) {
-    ClearLoDTensorArrayInLocalScope();
-  }
-
-  return cost_info;
 }
 
 void InterpreterCore::SetFeedVarsInplaceSkip(

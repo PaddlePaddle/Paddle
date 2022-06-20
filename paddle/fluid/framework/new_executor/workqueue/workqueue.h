@@ -174,6 +174,9 @@ class WorkQueueGroup {
 
   virtual void Cancel() = 0;
 
+  virtual void ResetWorkQueueOptions(
+      const std::vector<WorkQueueOptions>& queues_options) = 0;
+
  protected:
   std::vector<WorkQueueOptions> queues_options_;
 };

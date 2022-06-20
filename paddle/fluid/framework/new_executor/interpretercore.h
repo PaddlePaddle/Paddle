@@ -34,7 +34,6 @@
 
 namespace paddle {
 namespace framework {
-using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
 
 class InterpreterCore {
  public:
@@ -44,26 +43,34 @@ class InterpreterCore {
 
   ~InterpreterCore();
 
+  interpreter::CostInfo DryRun(
+      const std::vector<std::string>& feed_names,
+      const std::vector<framework::LoDTensor>& feed_tensors);
+
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       const std::vector<framework::LoDTensor>& feed_tensors);
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
 
-  interpreter::CostInfo DryRun(
-      const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors);
+  void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
 
  private:
-  void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
+  bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
+
+  std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
 
   void BuildAndCacheInstructionCtx(Instruction* instr_node);
 
   void BuildInplace();
 
-  bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
+  void BuildOperatorDependences();
+
+  void ClearLoDTensorArrayInLocalScope();
+
+  void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
 
   void RunInstruction(const Instruction& instr_node);
 
@@ -90,13 +97,10 @@ class InterpreterCore {
 
   void BuildSkipShareLoDInfo();
 
-  void BuildOperatorDependences();
-
   void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
 
-  void ClearLoDTensorArrayInLocalScope();
-
   bool is_build_;
+  bool is_workqueue_sharing_{false};
 
   const platform::Place& place_;
   const BlockDesc& block_;  // not owned
@@ -123,7 +127,7 @@ class InterpreterCore {
 
   StreamAnalyzer stream_analyzer_;
   EventsWaiter main_thread_blocker_;
-  std::unique_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
+  std::shared_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
   details::ExceptionHolder exception_holder_;
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
   std::shared_ptr<EventsWaiter::EventNotifier> completion_notifier_{nullptr};
@@ -132,6 +136,9 @@ class InterpreterCore {
   std::vector<paddle::platform::DeviceEvent> gc_event_;
   bool create_local_scope_{true};
   Scope* local_scope_{nullptr};  // not owned
+
+  std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_deps_;
+  std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_var_ref_;
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(

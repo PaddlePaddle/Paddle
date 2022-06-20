@@ -44,49 +44,22 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 
+using AtomicVectorSizeT = std::vector<std::atomic<size_t>>;
+
 namespace paddle {
 namespace framework {
 
 namespace interpreter {
 
-using AtomicVectorSizeT =
-    std::future<std::unique_ptr<std::vector<std::atomic<size_t>>>>;
-
 class AsyncWorkQueue {
  public:
   AsyncWorkQueue(size_t host_num_threads, size_t deivce_num_threads,
-                 EventsWaiter* waiter)
-      : host_num_thread_(host_num_threads) {
-    std::vector<WorkQueueOptions> group_options;
-    // for execute host Kernel
-    group_options.emplace_back(/*name*/ "HostTasks",
-                               /*num_threads*/ host_num_threads,
-                               /*allow_spinning*/ true,
-                               /*always_spinning*/ false,
-                               /*track_task*/ false,
-                               /*detached*/ true,
-                               /*events_waiter*/ waiter);
-    // for launch device Kernel
-    group_options.emplace_back(/*name*/ "DeviceKernelLaunch",
-                               /*num_threads*/ deivce_num_threads,
-                               /*allow_spinning*/ true,
-                               /*always_spinning*/ true,
-                               /*track_task*/ false,
-                               /*detached*/ true,
-                               /*events_waiter*/ waiter);
-    // for prepare deps and others
-    group_options.emplace_back(/*name*/ "Prepare",
-                               /*num_threads*/ 1,
-                               /*allow_spinning*/ true,
-                               /*always_spinning*/ false,
-                               /*track_task*/ false,
-                               /*detached*/ true,
-                               /*events_waiter*/ waiter);
-    queue_group_ = CreateWorkQueueGroup(group_options);
-  }
+                 EventsWaiter* waiter);
 
-  void PrepareAtomicDeps(const std::vector<size_t>& dependecy_count);
-  void PrepareAtomicVarRef(const std::vector<VariableMetaInfo>& vec_meta_info);
+  std::future<std::unique_ptr<AtomicVectorSizeT>> PrepareAtomicDeps(
+      const std::vector<size_t>& dependecy_count);
+  std::future<std::unique_ptr<AtomicVectorSizeT>> PrepareAtomicVarRef(
+      const std::vector<VariableMetaInfo>& vec_meta_info);
 
   // void WaitEmpty() { queue_group_->WaitQueueGroupEmpty(); }
 
@@ -94,19 +67,18 @@ class AsyncWorkQueue {
 
   void Cancel() { queue_group_->Cancel(); }
 
-  std::unique_ptr<std::vector<std::atomic<size_t>>> AtomicDeps() {
-    return atomic_deps_.get();
-  }
-  std::unique_ptr<std::vector<std::atomic<size_t>>> AtomicVarRef() {
-    return atomic_var_ref_.get();
-  }
+  void ResetWorkQueueOptions(size_t host_num_threads, size_t deivce_num_threads,
+                             EventsWaiter* waiter);
 
  private:
   size_t host_num_thread_;
   std::unique_ptr<WorkQueueGroup> queue_group_;
-  AtomicVectorSizeT atomic_deps_;
-  AtomicVectorSizeT atomic_var_ref_;
 };
+
+std::unique_ptr<AtomicVectorSizeT> PrepareAtomicDeps(
+    const std::vector<size_t>& dependecy_count);
+std::unique_ptr<AtomicVectorSizeT> PrepareAtomicVarRef(
+    const std::vector<VariableMetaInfo>& vec_meta_info);
 
 void build_variable_scope(const framework::BlockDesc& block,
                           VariableScope* var_scope,

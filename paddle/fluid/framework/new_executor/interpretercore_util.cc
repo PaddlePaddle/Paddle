@@ -46,7 +46,45 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
+using VariableIdMap = std::map<std::string, std::vector<int>>;
 constexpr size_t kPrepareWorkQueueIdx = 2;
+
+const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
+    size_t host_num_threads, size_t device_num_threads, EventsWaiter* waiter) {
+  std::vector<WorkQueueOptions> group_options;
+  // for execute host Kernel
+  group_options.emplace_back(/*name*/ "HostTasks",
+                             /*num_threads*/ host_num_threads,
+                             /*allow_spinning*/ true,
+                             /*always_spinning*/ false,
+                             /*track_task*/ false,
+                             /*detached*/ true,
+                             /*events_waiter*/ waiter);
+  // for launch device Kernel
+  group_options.emplace_back(/*name*/ "DeviceKernelLaunch",
+                             /*num_threads*/ device_num_threads,
+                             /*allow_spinning*/ true,
+                             /*always_spinning*/ true,
+                             /*track_task*/ false,
+                             /*detached*/ true,
+                             /*events_waiter*/ waiter);
+  // for prepare deps and others
+  group_options.emplace_back(/*name*/ "Prepare",
+                             /*num_threads*/ 1,
+                             /*allow_spinning*/ true,
+                             /*always_spinning*/ false,
+                             /*track_task*/ false,
+                             /*detached*/ true,
+                             /*events_waiter*/ waiter);
+  return group_options;
+}
+
+AsyncWorkQueue::AsyncWorkQueue(size_t host_num_threads,
+                               size_t device_num_threads, EventsWaiter* waiter)
+    : host_num_thread_(host_num_threads) {
+  queue_group_ = CreateWorkQueueGroup(
+      ConstructWorkQueueOptions(host_num_threads, device_num_threads, waiter));
+}
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
@@ -60,36 +98,49 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
   }
 }
 
-using VariableIdMap = std::map<std::string, std::vector<int>>;
-
-void AsyncWorkQueue::PrepareAtomicDeps(
-    const std::vector<size_t>& dependecy_count) {
+std::future<std::unique_ptr<AtomicVectorSizeT>>
+AsyncWorkQueue::PrepareAtomicDeps(const std::vector<size_t>& dependecy_count) {
   VLOG(4) << "PrepareAtomicDeps";
-  atomic_deps_ =
-      queue_group_->AddAwaitableTask(kPrepareWorkQueueIdx, [&dependecy_count] {
-        auto op_deps = std::make_unique<std::vector<std::atomic<size_t>>>(
-            dependecy_count.size());
-        for (size_t i = 0; i < dependecy_count.size(); ++i) {
-          (*op_deps)[i] = dependecy_count[i];
-        }
-        VLOG(4) << "AtomicDeps:" << op_deps.get() << " " << op_deps->size();
-        return op_deps;
-      });
+  return queue_group_->AddAwaitableTask(
+      kPrepareWorkQueueIdx, interpreter::PrepareAtomicDeps, dependecy_count);
 }
 
-void AsyncWorkQueue::PrepareAtomicVarRef(
+std::future<std::unique_ptr<AtomicVectorSizeT>>
+AsyncWorkQueue::PrepareAtomicVarRef(
     const std::vector<VariableMetaInfo>& vec_meta_info) {
   VLOG(4) << "PrepareAtomicVarRef";
-  atomic_var_ref_ =
-      queue_group_->AddAwaitableTask(kPrepareWorkQueueIdx, [&vec_meta_info] {
-        auto var_ref = std::make_unique<std::vector<std::atomic<size_t>>>(
-            vec_meta_info.size());
-        for (size_t i = 0; i < vec_meta_info.size(); ++i) {
-          (*var_ref)[i] = vec_meta_info[i].var_ref_count_;
-        }
-        VLOG(4) << "AtomicVarRef:" << var_ref.get() << " " << var_ref->size();
-        return var_ref;
-      });
+  return queue_group_->AddAwaitableTask(
+      kPrepareWorkQueueIdx, interpreter::PrepareAtomicVarRef, vec_meta_info);
+}
+
+void AsyncWorkQueue::ResetWorkQueueOptions(size_t host_num_threads,
+                                           size_t device_num_threads,
+                                           EventsWaiter* waiter) {
+  queue_group_->ResetWorkQueueOptions(
+      ConstructWorkQueueOptions(host_num_threads, device_num_threads, waiter));
+}
+
+std::unique_ptr<AtomicVectorSizeT> PrepareAtomicDeps(
+    const std::vector<size_t>& dependecy_count) {
+  VLOG(4) << "PrepareAtomicDeps";
+
+  auto op_deps = std::make_unique<AtomicVectorSizeT>(dependecy_count.size());
+  for (size_t i = 0; i < dependecy_count.size(); ++i) {
+    (*op_deps)[i] = dependecy_count[i];
+  }
+  VLOG(4) << "AtomicDeps:" << op_deps.get() << " " << op_deps->size();
+  return op_deps;
+}
+
+std::unique_ptr<AtomicVectorSizeT> PrepareAtomicVarRef(
+    const std::vector<VariableMetaInfo>& vec_meta_info) {
+  VLOG(4) << "PrepareAtomicVarRef";
+  auto var_ref = std::make_unique<AtomicVectorSizeT>(vec_meta_info.size());
+  for (size_t i = 0; i < vec_meta_info.size(); ++i) {
+    (*var_ref)[i] = vec_meta_info[i].var_ref_count_;
+  }
+  VLOG(4) << "AtomicVarRef:" << var_ref.get() << " " << var_ref->size();
+  return var_ref;
 }
 
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
