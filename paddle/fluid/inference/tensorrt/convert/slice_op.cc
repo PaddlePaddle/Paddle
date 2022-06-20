@@ -122,9 +122,10 @@ class SliceOpConverter : public OpConverter {
               final_size_dims.d[final_size_dims.nbDims] = 1;
               final_size_dims.nbDims++;
             }
-            layer =
+            auto* shuffle_layer =
                 TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
-            layer->setReshapeDimensions(final_size_dims);
+            shuffle_layer->setReshapeDimensions(final_size_dims);
+            layer = static_cast<nvinfer1::ILayer*>(shuffle_layer);
           }
         }
       } else {
