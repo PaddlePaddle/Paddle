@@ -29,5 +29,6 @@ from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_var_sha
 from ...fluid.dygraph.dygraph_to_static.convert_operators import eval_if_exist_else_none  # noqa: F401
 from ...fluid.dygraph.dygraph_to_static.convert_operators import choose_shape_attr_or_api  # noqa: F401
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_while_loop  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import unpack_by_structure, indexable  # noqa: F401
 
 __all__ = []
