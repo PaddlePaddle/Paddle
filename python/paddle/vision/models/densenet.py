@@ -196,7 +196,7 @@ class DenseNet(nn.Layer):
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
-        DenseNet model. An instance of :ref:`api_fluid_dygraph_Layer`.
+        DenseNet model. An instance of :ref:`api_paddle_nn_Layer`.
 
     Examples:
         .. code-block:: python
@@ -325,10 +325,10 @@ def densenet121(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
 
     Returns:
-        DenseNet 121-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
+        DenseNet 121-layer model. An instance of :ref:`api_paddle_nn_Layer`.
 
     Examples:
         .. code-block:: python
@@ -358,10 +358,10 @@ def densenet161(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
 
     Returns:
-        DenseNet 161-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
+        DenseNet 161-layer model. An instance of :ref:`api_paddle_nn_Layer`.
 
     Examples:
         .. code-block:: python
@@ -384,10 +384,10 @@ def densenet169(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
 
     Returns:
-        DenseNet 169-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
+        DenseNet 169-layer model. An instance of :ref:`api_paddle_nn_Layer`.
 
     Examples:
         .. code-block:: python
@@ -417,10 +417,10 @@ def densenet201(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
 
     Returns:
-        DenseNet 201-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
+        DenseNet 201-layer model. An instance of :ref:`api_paddle_nn_Layer`.
 
     Examples:
         .. code-block:: python
@@ -449,10 +449,10 @@ def densenet264(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_models_DenseNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
 
     Returns:
-        DenseNet 264-layer model. An instance of :ref:`api_fluid_dygraph_Layer`.
+        DenseNet 264-layer model. An instance of :ref:`api_paddle_nn_Layer`.
 
     Examples:
         .. code-block:: python

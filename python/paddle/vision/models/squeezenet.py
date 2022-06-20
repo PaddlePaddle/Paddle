@@ -85,7 +85,7 @@ class SqueezeNet(nn.Layer):
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
-        SqueezeNet model. An instance of :ref:`api_fluid_dygraph_Layer`.
+        SqueezeNet model. An instance of :ref:`api_paddle_nn_Layer`.
 
     Examples:
         .. code-block:: python
@@ -217,10 +217,10 @@ def squeezenet1_0(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_models_SqueezeNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_SqueezeNet>`.
 
     Returns:
-        SqueezeNet v1.0 model. An instance of :ref:`api_fluid_dygraph_Layer`.
+        SqueezeNet v1.0 model. An instance of :ref:`api_paddle_nn_Layer`.
 
     Examples:
         .. code-block:: python
@@ -251,10 +251,10 @@ def squeezenet1_1(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_models_SqueezeNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_SqueezeNet>`.
 
     Returns:
-        SqueezeNet v1.1 model. An instance of :ref:`api_fluid_dygraph_Layer`.
+        SqueezeNet v1.1 model. An instance of :ref:`api_paddle_nn_Layer`.
 
     Examples:
         .. code-block:: python
