@@ -38,7 +38,7 @@ static DDim CheckAndGetOutputDim(const DDim& dim_x) {
 }
 }  // namespace detail
 
-class MatrixRankeOp : public framework::OperatorWithKernel {
+class MatrixRankOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -91,7 +91,7 @@ class MatrixRankeOp : public framework::OperatorWithKernel {
   }
 };
 
-class MatrixRankeOpMaker : public framework::OpProtoAndCheckerMaker {
+class MatrixRankOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of matrix_rank op.");
@@ -120,4 +120,4 @@ class MatrixRankeOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(matrix_rank, ops::MatrixRankeOp, ops::MatrixRankeOpMaker);
+REGISTER_OPERATOR(matrix_rank, ops::MatrixRankOp, ops::MatrixRankOpMaker);

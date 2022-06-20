@@ -1205,7 +1205,7 @@ uint32_t GraphTable::get_thread_pool_index_by_shard_index(int64_t shard_index) {
 
 int32_t GraphTable::clear_nodes(int type_id, int idx) {
   auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
-  for (int i = 0; i < search_shards.size(); i++) {
+  for (size_t i = 0; i < search_shards.size(); i++) {
     search_shards[i]->clear();
   }
   return 0;
@@ -1478,7 +1478,7 @@ std::vector<std::vector<int64_t>> GraphTable::get_all_id(int type_id, int idx,
   std::vector<std::vector<int64_t>> res(slice_num);
   auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
   std::vector<std::future<std::vector<int64_t>>> tasks;
-  for (int i = 0; i < search_shards.size(); i++) {
+  for (size_t i = 0; i < search_shards.size(); i++) {
     tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
         [&search_shards, i]() -> std::vector<int64_t> {
           return search_shards[i]->get_all_id();

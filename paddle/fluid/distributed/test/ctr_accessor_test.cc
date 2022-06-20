@@ -222,15 +222,15 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     v.embed_w = value[i][5];
 
     int idx = 6;
-    for (auto j = 0u; j < acc->common_feature_value.embed_sgd_dim; ++j) {
+    for (int j = 0; j < acc->common_feature_value.embed_sgd_dim; ++j) {
       v.embed_g2sum.push_back(value[i][idx + j]);
     }
     idx += acc->common_feature_value.embed_sgd_dim;
-    for (auto j = 0u; j < acc->common_feature_value.embedx_dim; ++j) {
+    for (int j = 0; j < acc->common_feature_value.embedx_dim; ++j) {
       v.embedx_w.push_back(value[i][idx + j]);
     }
     idx += acc->common_feature_value.embedx_dim;
-    for (auto j = 0u; j < acc->common_feature_value.embedx_sgd_dim; ++j) {
+    for (int j = 0; j < acc->common_feature_value.embedx_sgd_dim; ++j) {
       v.embedx_g2sum.push_back(value[i][idx + j]);
     }
 
@@ -239,7 +239,7 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     push_v.show = grad[i][1];
     push_v.click = grad[i][2];
     push_v.embed_g = grad[i][3];
-    for (auto j = 0; j < parameter.embedx_dim(); ++j) {
+    for (int j = 0; j < parameter.embedx_dim(); ++j) {
       push_v.embedx_g.push_back(grad[i][4 + j]);
     }
 
