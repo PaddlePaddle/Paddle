@@ -87,6 +87,23 @@ FullArgSpec = collections.namedtuple('FullArgSpec', [
 ])
 
 
+class UndefinedVar:
+
+    def __init__(self, name):
+        self.name = name
+
+    def check(self):
+        raise UnboundLocalError(
+            "local variable '{}' should be created before using it.")
+
+
+def saw(x):
+    if isinstance(x, UndefinedVar):
+        return x.check()
+    else:
+        return x
+
+
 def getfullargspec(target):
     if hasattr(inspect, "getfullargspec"):
         return inspect.getfullargspec(target)

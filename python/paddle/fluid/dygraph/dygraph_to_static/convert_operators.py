@@ -188,7 +188,7 @@ def _run_py_logical_not(x):
     return not x
 
 
-def convert_ifelse(pred, true_fn, false_fn, true_args, false_args):
+def convert_ifelse(pred, true_fn, false_fn, get_args, set_args):
     """
     A function representation of a Python ``if/else`` statement.
 
@@ -196,17 +196,17 @@ def convert_ifelse(pred, true_fn, false_fn, true_args, false_args):
         pred(bool|Tensor): A boolean Tensor which determines whether to return the result of ``true_fn`` or ``false_fn`` .
         true_fn(callable): A callable to be performed if ``pred`` is true.
         false_fn(callable): A callable to be performed if ``pred`` is false.
-        true_args(tuple): Parameters of ``true_fn``.
-        false_args(tuple): Parameters of ``false_fn``.
+        get_args(callable): Get all arguments that needed in true_fn and false_fn.
+        set_args(callable): Update arguments that modified in trure_fn and false_fn.
 
     Returns:
-        ``true_fn(true_args)`` if the predicate ``pred`` is true else ``false_fn(false_args)`` .
+        ``true_fn()`` if the predicate ``pred`` is true else ``false_fn()`` .
 
     """
     if isinstance(pred, Variable):
-        out = _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args)
+        out = _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args)
     else:
-        out = _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args)
+        out = _run_py_ifelse(pred, true_fn, false_fn)
 
     return _remove_no_value_return_var(out)
 
@@ -244,14 +244,41 @@ def _remove_no_value_return_var(out):
         return out
 
 
-def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args):
+def _run_paddle_cond(pred,
+                     true_fn,
+                     false_fn,
+                     get_args,
+                     set_args,
+                     return_name_ids=None):
+    """
+    Paddle cond API will evaluate both ture_fn and false_fn codes.
+    """
     pred = cast_bool_if_necessary(pred)
-    return control_flow.cond(pred, lambda: true_fn(*true_args),
-                             lambda: false_fn(*false_args))
+
+    init_args = get_args()
+
+    def new_true_fn():
+        set_args(init_args)
+        true_fn()
+        true_outs = get_args()
+        #TODO: filter ouputs by return name_ids
+
+        return true_outs
+
+    def new_false_fn():
+        set_args(init_args)
+        false_fn()
+        false_outs = get_args()
+        return false_outs
+
+    outs = control_flow.cond(pred, new_true_fn, new_false_fn)
+    set_args(outs)
+
+    return get_args()
 
 
-def _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args):
-    return true_fn(*true_args) if pred else false_fn(*false_args)
+def _run_py_ifelse(pred, true_fn, false_fn):
+    return true_fn() if pred else false_fn()
 
 
 def convert_len(var):
