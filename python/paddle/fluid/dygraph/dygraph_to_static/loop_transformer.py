@@ -542,8 +542,7 @@ class LoopTransformer(BaseTransformer):
         # we need append new loop var & remove useless loop var
         #   1. for x in var -> x is no need
         #   2. for i, x in enumerate(var) -> x is no need
-        if current_for_node_parser.is_for_iter(
-        ) or current_for_node_parser.is_for_enumerate_iter():
+        if current_for_node_parser.is_for_iter():
             iter_var_name = current_for_node_parser.iter_var_name
             iter_idx_name = current_for_node_parser.iter_idx_name
             loop_var_names.add(iter_idx_name)
