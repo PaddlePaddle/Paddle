@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
@@ -46,18 +47,23 @@ using Dims4D = phi::funcs::sparse::Dims4D;
  * index_size: the size of indices
  * slice_size: slice size corresponding to each index, here is the channel size
  **/
-template <typename T, typename IndexT = int>
+template <typename T, typename IndexT = int, int VecSize>
 __global__ void GatherKernel(const T* params,
                              const IndexT* indices,
                              T* output,
                              size_t index_size,
                              size_t slice_size) {
-  CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
-    int64_t indices_i = i / slice_size;
-    int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
+  CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size / VecSize, int64_t) {
+    const int vec_slice_size = slice_size / VecSize;
+    int indices_i = i / vec_slice_size;
+    int slice_i = i - indices_i * vec_slice_size;  // offset inside the slice
     IndexT gather_i = indices[indices_i];
-    int64_t params_i = gather_i * slice_size + slice_i;
-    *(output + i) = *(params + params_i);
+    int64_t params_i = gather_i * slice_size + slice_i * VecSize;
+    using LoadT = phi::AlignedVector<T, VecSize>;
+    using StoreT = phi::AlignedVector<T, VecSize>;
+    LoadT params_vec;
+    phi::Load<T, VecSize>(params + params_i, &params_vec);
+    phi::Store<T, VecSize>(params_vec, output + i * VecSize);
   }
 }
 

@@ -110,16 +110,32 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   phi::funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
 
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n * in_channels, 1);
-  GatherKernel<T, IntT><<<config.block_per_grid.x,
-                          config.thread_per_block.x,
-                          0,
-                          dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                                              rulebook_ptr + n,
-                                              in_features_ptr,
-                                              n,
-                                              in_channels);
+  const int VecSize = VecBytes / sizeof(T);
+  if (in_channels % VecSize == 0) {
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, n * in_channels / VecSize, 1);
+    GatherKernel<T, IntT, VecSize>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
+                               rulebook_ptr + n,
+                               in_features_ptr,
+                               n,
+                               in_channels);
+  } else {
+    auto config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n * in_channels, 1);
+    GatherKernel<T, IntT, 1>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
+                               rulebook_ptr + n,
+                               in_features_ptr,
+                               n,
+                               in_channels);
+  }
 
   // 3. call gemm for every werght
   auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
@@ -155,7 +171,7 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   // 4. scatter
   if (subm) {
     set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
-    config =
+    auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n * out_channels, 1);
     phi::funcs::ScatterCUDAKernel<T, IntT>
         <<<config.block_per_grid,
@@ -168,19 +184,35 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
                                out_channels,
                                false);
   } else {
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, out->nnz() * out_channels, 1);
-    phi::funcs::sparse::ScatterKernel<T>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(out_features_ptr,
-                               unique_value.data<int>(),
-                               out_index.data<int>(),
-                               out->nnz(),
-                               n,
-                               out_channels,
-                               out_values_ptr);
+    if (out_channels % VecSize == 0) {
+      auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+          dev_ctx, out->nnz() * out_channels / VecSize, 1);
+      phi::funcs::sparse::ScatterKernel<T, VecSize>
+          <<<config.block_per_grid.x,
+             config.thread_per_block.x,
+             0,
+             dev_ctx.stream()>>>(out_features_ptr,
+                                 unique_value.data<int>(),
+                                 out_index.data<int>(),
+                                 out->nnz(),
+                                 n,
+                                 out_channels,
+                                 out_values_ptr);
+    } else {
+      auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+          dev_ctx, out->nnz() * out_channels, 1);
+      phi::funcs::sparse::ScatterKernel<T, 1>
+          <<<config.block_per_grid.x,
+             config.thread_per_block.x,
+             0,
+             dev_ctx.stream()>>>(out_features_ptr,
+                                 unique_value.data<int>(),
+                                 out_index.data<int>(),
+                                 out->nnz(),
+                                 n,
+                                 out_channels,
+                                 out_values_ptr);
+    }
   }
 }
 /**
