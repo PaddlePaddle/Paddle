@@ -444,10 +444,35 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
     return return_ids, modified_vars_from_parent, new_vars_to_create
 
 
+def _valid_nonlocal_names(return_name_ids, nonlocal_names):
+    """
+    All var in return_name_ids should be in nonlocal_names.
+    Moreover, we will always put return_name_ids in front of nonlocal_names.
+    
+    For Example:
+
+        return_name_ids: [x, y]
+        nonlocal_names : [a, y, b, x]
+
+    Return:
+        nonlocal_names : [x, y, a, b]
+    """
+    assert isinstance(return_name_ids, list)
+    for name in return_name_ids:
+        if name not in nonlocal_names:
+            raise ValueError(
+                "Required returned var '{}' must be in 'nonlocal' statement '', but not found."
+                .format(name, ','.join(nonlocal_names)))
+        nonlocal_names.remove(name)
+
+    return return_name_ids + nonlocal_names
+
+
 def transform_if_else(node, root):
     """
     Transform ast.If into control flow statement of Paddle static graph.
     """
+
     # TODO(liym27): Consider variable like `self.a` modified in if/else node.
     parent_name_ids = get_name_ids([root], end_node=node)
     body_name_ids = get_name_ids(node.body)
@@ -457,7 +482,6 @@ def transform_if_else(node, root):
 
     return_name_ids, modified_name_ids_from_parent, new_vars_to_create = parse_cond_return(
         parent_name_ids, body_name_ids, orelse_name_ids, after_ifelse_name_ids)
-    # import pdb;pdb.set_trace()
 
     # NOTE: Python can create variable only in if body or only in else body, and use it out of if/else.
     # E.g.
@@ -478,7 +502,9 @@ def transform_if_else(node, root):
     false_args = parse_cond_args(parent_name_ids, orelse_name_ids,
                                  modified_name_ids_from_parent)
     nonlocal_names = list(trun_args | false_args | new_vars_to_create)
-    nonlocal_names.sort()
+    # NOTE: All var in return_name_ids should be in nonlocal_names.
+    nonlocal_names = _valid_nonlocal_names(return_name_ids, nonlocal_names)
+
     # TODO: fix it
     if 'args' in nonlocal_names:
         nonlocal_names.remove('args')
@@ -556,22 +582,19 @@ def create_convert_ifelse_node(return_name_ids,
                                is_if_expr=False):
     """
     Create `paddle.jit.dy2static.convert_ifelse(
-            pred, true_fn, false_fn, get_args, set_args)`
+            pred, true_fn, false_fn, get_args, set_args, return_name_ids)`
     to replace original `python if/else` statement.
     """
 
-    def create_name_nodes(name_ids):
+    def create_name_str(name_ids):
+        """
+        Return "('x', 'y')" for [x, y]
+        """
         if not name_ids:
-            return gast.Tuple(elts=[], ctx=gast.Load())
+            return 'None'
 
-        gast_names = [
-            gast.Name(id=name_id,
-                      ctx=gast.Load(),
-                      annotation=None,
-                      type_comment=None) for name_id in name_ids
-        ]
-        name_node = gast.Tuple(elts=gast_names, ctx=gast.Load())
-        return name_node
+        names_str = ["'%s'" % name for name in name_ids]
+        return "(%s, )" % ','.join(names_str)
 
     if is_if_expr:
         true_func_source = "lambda : {}".format(ast_to_source_code(true_func))
@@ -582,13 +605,15 @@ def create_convert_ifelse_node(return_name_ids,
 
     convert_ifelse_layer = gast.parse(
         '_jst.convert_ifelse('
-        '{pred}, {true_fn}, {false_fn}, {get_args}, {set_args})'.format(
+        '{pred}, {true_fn}, {false_fn}, {get_args}, {set_args}, {return_name_ids})'
+        .format(
             pred=ast_to_source_code(pred),
             true_fn=true_func_source,
             false_fn=false_func_source,
             get_args=get_args_func.name if not is_if_expr else
             'lambda: None',  #TODO: better way to deal with this
             set_args=set_args_func.name
-            if not is_if_expr else 'lambda args: None')).body[0]
+            if not is_if_expr else 'lambda args: None',
+            return_name_ids=create_name_str(return_name_ids))).body[0]
 
     return convert_ifelse_layer
