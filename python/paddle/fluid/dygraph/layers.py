@@ -1327,7 +1327,8 @@ class Layer(object):
                          destination=None,
                          include_sublayers=True,
                          structured_name_prefix="",
-                         include_non_persistable_buffer=False):
+                         include_non_persistable_buffer=False,
+                         use_hook=True):
         """
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
@@ -1335,6 +1336,7 @@ class Layer(object):
             destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
             include_non_persistable_buffer(bool, optional): If true, include non persistable buffers of current layer and its sub-layers, it is used in pure fp16 and jit.save. Default: False
+            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
         """
 
         if destination is None:
@@ -1358,25 +1360,28 @@ class Layer(object):
                         layer_item._state_dict_impl(
                             destination_temp, include_sublayers,
                             structured_name_prefix + layer_name + ".",
-                            include_non_persistable_buffer))
+                            include_non_persistable_buffer, use_hook))
                     destination = destination_temp
-        for state_dict_hook in self._state_dict_hooks.values():
-            hook_result = state_dict_hook(destination)
-            if hook_result is not None:
-                destination = hook_result
+        if use_hook:
+            for state_dict_hook in self._state_dict_hooks.values():
+                hook_result = state_dict_hook(destination)
+                if hook_result is not None:
+                    destination = hook_result
 
         return destination
 
     def to_static_state_dict(self,
                              destination=None,
                              include_sublayers=True,
-                             structured_name_prefix=""):
+                             structured_name_prefix="",
+                             use_hook=True):
         '''
         Get all parameters and buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
             destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
+            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
 
         Retruns:
             dict: a dict contains all the parameters and persistable buffers.
@@ -1396,18 +1401,21 @@ class Layer(object):
             destination=destination,
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix,
-            include_non_persistable_buffer=True)
+            include_non_persistable_buffer=True,
+            use_hook=use_hook)
 
     def state_dict(self,
                    destination=None,
                    include_sublayers=True,
-                   structured_name_prefix=""):
+                   structured_name_prefix="",
+                   use_hook=True):
         '''
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
             destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
+            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
 
         Retruns:
             dict: a dict contains all the parameters and persistable buffers.
@@ -1427,7 +1435,8 @@ class Layer(object):
             destination=destination,
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix,
-            include_non_persistable_buffer=False)
+            include_non_persistable_buffer=False,
+            use_hook=use_hook)
 
     @framework.deprecate_stat_dict
     def set_state_dict(self, state_dict, use_structured_name=True):
@@ -1478,7 +1487,7 @@ class Layer(object):
                 return param, state
 
         matched_param_state = []
-        for key, param in self.state_dict().items():
+        for key, param in self.state_dict(use_hook=False).items():
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)
