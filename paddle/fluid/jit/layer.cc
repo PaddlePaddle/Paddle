@@ -33,10 +33,10 @@ Layer::Layer(
   }
 }
 
-// TODO(dev): make it as const function
-std::shared_ptr<BaseFunction> Layer::GetFunction(const std::string& name) {
+std::shared_ptr<BaseFunction> Layer::GetFunction(
+    const std::string& name) const {
   VLOG(3) << "funcs_ size: " << function_dict.size();
-  return function_dict[name];
+  return function_dict.at(name);
 }
 
 std::vector<Variable> Layer::forward(const std::vector<Variable>& inputs) {

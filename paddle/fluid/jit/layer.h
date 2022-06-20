@@ -43,8 +43,7 @@ class Layer {
       const std::vector<std::vector<std::string>>& param_names_for_each_program,
       const VariableNameMap& params_dict, const phi::Place place);
 
-  // TODO(dev): make it as const function
-  std::shared_ptr<BaseFunction> GetFunction(const std::string& name);
+  std::shared_ptr<BaseFunction> GetFunction(const std::string& name) const;
 
   std::vector<Variable> forward(const std::vector<Variable>& inputs);
 
