@@ -171,7 +171,7 @@ class TestMultiheadMatmulFusePass(PassAutoScanTest):
             shape=(0, 0, 768))
         ops = [
             mul_0, mul_1, mul_2, ele_0, ele_1, ele_2, reshape_0, reshape_1,
-            reshape_2, transpose_0, transpose_1, transpose_2, scale_op,
+            reshape_2, transpose_0, transpose_1, transpose_2,
             matmul_0, ele_3, softmax_op, matmul_1, transpose_3, reshape_3
         ]
         program_config = ProgramConfig(
