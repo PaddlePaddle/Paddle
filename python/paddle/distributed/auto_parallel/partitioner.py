@@ -303,7 +303,7 @@ class Partitioner(object):
 
 
 def _get_dist_shape(var, dist_attr):
-    print("partitioner.py dist_shape: ", var, dist_attr)
+    # print("partitioner.py var: ", var, " dist_attr: ", dist_attr)
     var_shape = var.shape
     mapping = dist_attr.dims_mapping
     mesh = dist_attr.process_mesh.topology

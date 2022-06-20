@@ -15,6 +15,7 @@
 import copy
 import logging
 from collections import defaultdict
+import time
 
 import paddle
 import paddle.distributed.auto_parallel as auto
@@ -171,10 +172,14 @@ class Engine:
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
+            print("engine.py process group")
+            for process_group in all_process_groups:
+                print(process_group.ranks)
             for process_group in all_process_groups:
                 if self._cur_rank not in process_group.ranks:
                     continue
                 process_group.instantiate()
+            
 
         # initialize
         self._place = _get_device()
@@ -249,10 +254,16 @@ class Engine:
             "predict model is not ready, please call `engine.prepare(mode='predict')` first."
         test_dataloader = self._create_dataloader(test_data, batch_size)
 
+        dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
+        print("engine.py predict step****")
+        print_program_with_dist_attr(dist_main_prog, self.dist_context)
         outputs = []
         for step, data in enumerate(test_dataloader):
+            start_time = time.time()
             logs, outs = self._predict_step(data, use_program_cache,
                                             return_numpy)
+            end_time = time.time()
+            print("step {} cost {}s".format(step, end_time-start_time))
             outputs.append(outs)
             predict_logs = {
                 "predict_" + name: val
@@ -298,8 +309,8 @@ class Engine:
     def _predict_step(self, data, use_program_cache=False, return_numpy=True):
         logs = {}
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
-        print("engine.py predict step****")
-        print_program_with_dist_attr(dist_main_prog, self.dist_context)
+        # print("engine.py predict step****")
+        # print_program_with_dist_attr(dist_main_prog, self.dist_context)
 
         fetch_var = []
         for var in self._fetch_vars[self.mode]["outputs"]:
@@ -334,8 +345,11 @@ class Engine:
         labels_var = self._feed_vars[self.mode]["labels"]
         feed_list = []
         for var in inputs_var + labels_var:
+            print("engine.py var: ", var)
             if var.name in dist_main_block.vars:
                 feed_list.append(dist_main_block.vars[var.name])
+        # print("engine.py feed_list: ", feed_list)
+        # print("engine.py dist_main_block: ", dist_main_block)
         dp_world_size, dp_rank = self._get_data_parallel_info(feed_list[0],
                                                               dist_context)
 

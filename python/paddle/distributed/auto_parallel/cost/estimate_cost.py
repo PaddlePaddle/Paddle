@@ -82,7 +82,7 @@ class CostEstimator:
             if cost.time > max_time:
                 max_time = cost.time
             memory += cost.memory
-            flops += cost.memory
+            flops += cost.flops
         self._global_cost.time = max_time
         self._global_cost.memory = memory
         self._global_cost.flops = flops

@@ -97,7 +97,7 @@ class SendOpDesc:
         self._partition_index = partition_index
         self._desc = "send"
         self._shape = []
-        self._is_bool = False
+        self._is_bool = is_bool
 
     @property
     def is_bool(self):
@@ -266,7 +266,8 @@ class Inserter:
                 'ring_id': 0,
                 'peer': dst,
                 'use_calc_stream': True,
-                'op_role': op_role
+                'op_role': op_role,
+                'dynamic_shape': True
             })
     
     @staticmethod
@@ -274,7 +275,7 @@ class Inserter:
         """Insert recv op into block at the given index."""
         op_type = 'recv_v2'
         # print("reshard.py insert recv_op", tensor.name, tensor.lod_level)
-        print("reshard.py recv tensor", tensor)
+        # print("reshard.py recv tensor", tensor)
         block._insert_op(
             idx,
             type=op_type,
@@ -286,7 +287,8 @@ class Inserter:
                 'out_shape': tensor.shape,
                 'dtype': tensor.dtype,
                 'use_calc_stream': True,
-                'op_role': op_role
+                'op_role': op_role,
+                'dynamic_shape': True
             })
         # print("reshard.py recv tensor dtype****", tensor, tensor.dtype)
 
@@ -689,6 +691,8 @@ class Remover:
                     idx += 1
 
             for var in remove_vars:
+                if block.vars[var].is_data:
+                    continue
                 block._remove_var(var)
 
     @staticmethod
@@ -1067,14 +1071,13 @@ class Resharder:
     def need_reshard(self,
                      dist_tensor,
                      dist_attr,
-                     op_input=True,
-                     input_process_mesh=None):
+                     op_input=True):
         """Judge the tensor whether needs to be resharded."""
         is_reshard = False
 
         tensor_dist_attr = dist_tensor.dist_attr
         tensor_dims_mapping = tensor_dist_attr.dims_mapping
-        tensor_process_mesh = tensor_dist_attr.process_mesh if input_process_mesh is None else input_process_mesh
+        tensor_process_mesh = tensor_dist_attr.process_mesh
 
         op_process_mesh = dist_attr[0]
 
@@ -1100,12 +1103,16 @@ class Resharder:
                 # if dist_tensor.serial_tensor.name == "fill_constant_batch_size_like_25.tmp_0":
                 #     print("reshard.py tensor_process_mesh, op_process_mesh", tensor_process_mesh, op_process_mesh)
                 if tensor_process_mesh != op_process_mesh:
-                    if tensor_process_mesh not in self.dist_context.process_meshes:
-                        if not is_reshard:
-                            return is_reshard
-                        else:
-                            raise ValueError(
-                                "it is not supported that tensor processes is a union and need reshard")
+                    # if dist_tensor.serial_tensor.name == "fill_constant_batch_size_like_25.tmp_0":
+                    #     for process_mesh in self.dist_context.process_meshes:
+                    #         print("reshard.py process_mesh, ", process_mesh.processes)
+                    # 现在支持union tensor发送了
+                    # if tensor_process_mesh not in self.dist_context.process_meshes:
+                    #     if tensor_dims_mapping:
+                    #         return is_reshard
+                    #     else:
+                    #         raise ValueError(
+                    #             "it is not supported that tensor processes is a union and need reshard")
                     is_reshard = True
         else:
             op_output_dims_mapping = dist_attr[1]
@@ -1115,6 +1122,7 @@ class Resharder:
                         op_output_dims_mapping, op_process_mesh
                     ])):
                 if tensor_dims_mapping != op_output_dims_mapping:
+                    print("reshard.py dist_tensor", dist_tensor)
                     raise ValueError(
                         "It is not supported that tensor dims mapping is different from op output dims mapping."
                     )
@@ -1191,8 +1199,7 @@ class Resharder:
     def find_op_desc_seq(self,
                          dist_tensor,
                          dist_attr,
-                         serial=False,
-                         input_process_mesh=None):
+                         serial=False):
         """
         Find the op description sequence to reshard the source tensor for matching the op requirement.
         Args:
@@ -1208,7 +1215,7 @@ class Resharder:
         tensor_name = source_tensor.name
 
         source_dims_mapping = tensor_dist_attr.dims_mapping
-        source_process_mesh = tensor_dist_attr.process_mesh if input_process_mesh is None else input_process_mesh
+        source_process_mesh = tensor_dist_attr.process_mesh
         source_process_group = source_process_mesh.processes
         source_process_shape = source_process_mesh.topology
 
@@ -1420,7 +1427,7 @@ class Resharder:
                         var_name] or op_desc.group not in list(
                             map(lambda x: x[0], self.has_allgather[var_name])):
                     if op_desc.is_bool:
-                        print("reshard.py allgather bool")
+                        # print("reshard.py allgather bool")
                         out_cast = Inserter.insert_cast_op(block, idx, source_tensor, reshard_op.attr('op_role'), paddle.int64)
                         tensor_list, idx_offset = Inserter.insert_allgather_op(
                             block, idx+1, out_cast, op_desc.group,
@@ -1454,11 +1461,13 @@ class Resharder:
                 assert tensor_list, "The result of parsing allgather op should not be None."
 
             elif isinstance(op_desc, SendOpDesc):
+                # if var_name == "tmp_31":
+                #     print("reshard.py input tmp_31")
                 if var_name not in self.has_sent.keys():
                     self.has_sent[var_name] = []
                 if op_desc.dst not in self.has_sent[var_name]:
                     if op_desc.is_bool:
-                        print("reshard.py send bool")
+                        # print("reshard.py send bool")
                         out_cast = Inserter.insert_cast_op(block, idx, source_tensor, reshard_op.attr('op_role'), paddle.int64)
                         Inserter.insert_send_op(block, idx+1, out_cast,
                                                 op_desc.dst,
@@ -1480,7 +1489,7 @@ class Resharder:
                     for index in partition_index:
                         shape.append(index[1] - index[0])
                     if op_desc.is_bool:
-                        print("reshard.py recv bool")
+                        # print("reshard.py recv bool")
                         recv_tensor = block.create_var(
                             name=unique_name.generate(var_name + "@recv"),
                             shape=shape,
@@ -1512,13 +1521,13 @@ class Resharder:
                                                 op_desc.src,
                                                 reshard_op.attr('op_role'))
                         if recv_tensor.lod_level != 0:
-                            print("reshard.py enter set lod")
+                            # print("reshard.py enter set lod")
                             set_lod = False
                             for tmp_block in self.auto_parallel_main_prog.blocks:
                                 for tmp_var_name in tmp_block.vars:
                                     tmp_var = tmp_block.vars[tmp_var_name]
                                     if tmp_var.is_data and tmp_var.lod_level == recv_tensor.lod_level:
-                                        print("reshard.py insert reset_lod op****", tmp_var.lod_level)
+                                        # print("reshard.py insert reset_lod op****", tmp_var.lod_level)
                                         reset_lod_out = block.create_var(name=unique_name.generate(var_name + "@RESETLOD"), shape=recv_tensor.shape, type=recv_tensor.type, dtype=recv_tensor.dtype, lod_level=recv_tensor.lod_level)
                                         block._insert_op(idx+1, type="lod_reset", inputs={'X': recv_tensor, 'Y': tmp_var}, outputs={'Out': reset_lod_out})
                                         tensor_list.append(reset_lod_out)
@@ -1832,6 +1841,8 @@ class Resharder:
                     continue
 
                 dist_op = self.dist_context.get_dist_op_for_program(op)
+                # if op.type == "elementwise_mul" and "fill_constant_batch_size_like_25.tmp_0" in op.input_arg_names:
+                #     print("reshard.py fill_constant_batch_size_like_25.tmp_0 dist_op", dist_op)
                 if dist_op is not None:
                     op_input_dist_attrs = [] # [(op_process_mesh, op_input_dims_mapping), (op_process_mesh, op_input_dims_mapping)]
 
@@ -1866,20 +1877,30 @@ class Resharder:
                         # 少考虑了union process mesh的Tensor reshard
                         is_union_process_mesh_tensor = False
                         if dist_tensor.dist_attr.process_mesh not in self.dist_context.process_meshes:
-                            print("reshard.py union tensor", dist_tensor)
+                            # print("reshard.py union tensor", dist_tensor)
                             is_union_process_mesh_tensor = True
                             assert dist_tensor.dist_attr.dims_mapping.count(-1) == len(dist_tensor.dist_attr.dims_mapping)
                         op_input_attrs = self.get_op_input_attrs(op, var_name)
+
+                        # if op.type == "elementwise_mul" and "fill_constant_batch_size_like_25.tmp_0" in var_name:
+                        #     print("reshard.py fill_constant_batch_size_like_25.tmp_0 op_input_attrs", op_input_attrs, dist_tensor)
+
                         for input_attr in op_input_attrs:
                             input_process_mesh = None
                             if is_union_process_mesh_tensor:
-                                if not(set(input_attr[0].processes) <= set(dist_tensor.dist_attr.process_mesh.processes)):
+                                if set(input_attr[0].processes) <= set(dist_tensor.dist_attr.process_mesh.processes):
+                                    # if dist_tensor.serial_tensor.name == "fill_constant_batch_size_like_25.tmp_0":
+                                    #     print("reshard.py fill_constant_batch_size_like_25.tmp_0****", dist_tensor, input_attr)
                                     continue
-                                input_process_mesh = input_attr[0]
+                                # input_process_mesh = input_attr[0]
+                            # if dist_tensor.serial_tensor.name == "fill_constant_batch_size_like_25.tmp_0":
+                            #     print("reshard.py fill_constant_batch_size_like_25.tmp_0", dist_tensor, input_attr[0].processes)
                             if dist_tensor is not None and self.need_reshard(
-                                    dist_tensor, input_attr, input_process_mesh=input_process_mesh):
+                                    dist_tensor, input_attr):
+                                # if dist_tensor.serial_tensor.name == "fill_constant_batch_size_like_25.tmp_0":
+                                #     print("reshard.py fill_constant_batch_size_like_25.tmp_0++++", dist_tensor, input_attr[0].processes)
                                 reshard_op_desc = self.find_op_desc_seq(
-                                    dist_tensor, input_attr, input_process_mesh=input_process_mesh)
+                                    dist_tensor, input_attr)
                                 self.parse_op_desc(block, reshard_op_desc,
                                                    var_name, op, input_attr)
                                 cur_op_count = len(block.ops)
@@ -1899,7 +1920,7 @@ class Resharder:
             global _g_special_ops
             skip_ops += _g_special_ops
             while idx < len(block.ops):
-                print("reshard.py idx ", idx)
+                # print("reshard.py idx ", idx)
                 pre_op_count = len(block.ops)
                 op = block.ops[idx]
                 dist_op = self.dist_context.get_dist_op_for_program(op)
@@ -1912,6 +1933,8 @@ class Resharder:
                             var_name, block, self.auto_parallel_main_prog)
                         dist_tensor = self.dist_context.get_dist_tensor_for_program(
                             var)
+                        # if var_name == "tmp_31":
+                        #     print("reshard.py tmp_31", dist_op, dist_tensor)
                         op_output_attrs = self.get_op_output_attrs(op, var_name)
 
                         for output_attr in op_output_attrs:
