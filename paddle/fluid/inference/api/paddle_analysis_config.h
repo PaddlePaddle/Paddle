@@ -776,12 +776,6 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableMkldnnBfloat16();
 
   ///
-  /// \brief Turn on MKLDNN fc passes.
-  ///
-  ///
-  void EnableMkldnnFcPasses();
-
-  ///
   /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
   ///
   /// \return bool Whether to use the MKLDNN Bfloat16.
@@ -795,6 +789,19 @@ struct PD_INFER_DECL AnalysisConfig {
   void SetBfloat16Op(std::unordered_set<std::string> op_list) {
     bfloat16_enabled_op_types_ = op_list;
   }
+
+  ///
+  /// \brief Turn on MKLDNN fc passes.
+  ///
+  ///
+  void EnableMkldnnFcPasses();
+
+  ///
+  /// \brief A boolean state telling whether to use the MKLDNN Fc passes.
+  ///
+  /// \return bool Whether to use the MKLDNN Fc passes.
+  ///
+  bool mkldnn_fc_passes_enabled() const { return enable_mkldnn_fc_passes_; }
 
   ///
   /// \brief A boolean state telling whether the thread local CUDA stream is
@@ -937,18 +944,11 @@ struct PD_INFER_DECL AnalysisConfig {
   bool thread_local_stream_{false};
   bool use_gpu_fp16_{false};
   std::unordered_set<std::string> gpu_fp16_disabled_op_types_{
-      "conv2d_fusion",
-      "conv2d",
-      "roll",
-      "strided_slice",
-      "depthwise_conv2d",
-      "unfold",
-      "generate_proposals_v2",
-      "nearest_interp_v2",
+      "conv2d_fusion", "conv2d", "roll", "strided_slice", "depthwise_conv2d",
+      "unfold", "generate_proposals_v2", "nearest_interp_v2",
       "bilinear_interp_v2"
       "yolo_box",
-      "multiclass_nms3",
-      "matrix_nms"};
+      "multiclass_nms3", "matrix_nms"};
 
   bool use_cudnn_{false};
   bool use_external_stream_{false};

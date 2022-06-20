@@ -342,6 +342,27 @@ TEST(AnalysisPredictor, bf16_pass_strategy) {
   passStrategy.EnableMkldnnBfloat16();
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+TEST(AnalysisPredictor, mkldnn_fc_passes_gpu_pass_strategy) {
+  AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchIrOptim(true);
+  config.EnableUseGpu(100, 0);
+  config.EnableMkldnnFcPasses();
+#ifdef PADDLE_WITH_MKLDNN
+  ASSERT_EQ(config.mkldnn_fc_passes_enabled(), true);
+#else
+  ASSERT_EQ(config.mkldnn_fc_passes_enabled(), false);
+#endif
+}
+#endif
+
+TEST(AnalysisPredictor, mkldnn_fc_pass_strategy) {
+  std::vector<std::string> passes;
+  PassStrategy passStrategy(passes);
+  passStrategy.EnableMkldnnFcPasses();
+}
+
 #ifdef PADDLE_WITH_XPU
 TEST(AnalysisPredictor, set_xpu_device_id) {
   AnalysisConfig config;
