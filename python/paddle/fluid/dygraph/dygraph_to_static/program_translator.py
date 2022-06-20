@@ -271,6 +271,13 @@ class StaticFunction(object):
         self._training = True
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
+        
+        self._property = kwargs.get("property", False)
+        
+    @property
+    def is_property(self):
+        # whether is class proproty to be exported.
+        return self._property
 
     def train(self):
         if isinstance(self._class_instance,
@@ -338,6 +345,8 @@ class StaticFunction(object):
         Return:
             Outputs of decorated function.
         """
+        if self._property:
+            return self._dygraph_function()
 
         # 1. call dygraph function directly if not enable `declarative`
         if not self._program_trans.enable_to_static:
