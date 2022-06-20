@@ -193,10 +193,9 @@ class TestMultiheadMatmulFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
-            quant=False,
-            max_examples=100,
-            passes=["multihead_matmul_fuse_pass_v3"])
+        self.run_and_statis(quant=False,
+                            max_examples=100,
+                            passes=["multihead_matmul_fuse_pass_v3"])
 
 
 if __name__ == "__main__":
