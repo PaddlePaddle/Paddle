@@ -286,7 +286,11 @@ void CpuPassStrategy::EnableMKLDNN() {
 #ifdef PADDLE_WITH_MKLDNN
   if (!use_mkldnn_) {
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
-
+    int id = GetPassIndex("gpu_cpu_reshape2_matmul_fuse_pass");
+    // this pass slows down FC mkldnn int8 operator
+    if (id != -1) {
+      passes_.erase(passes_.begin() + id);
+    }
     for (auto &pass : std::vector<std::string>({
              "depthwise_conv_mkldnn_pass",    //
              "conv_bn_fuse_pass",             // Execute BN passes again to
@@ -381,7 +385,8 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("multi_gru_seq_fuse_pass");
     passes_.push_back("seq_concat_fc_fuse_pass");
     passes_.push_back("gpu_cpu_squeeze2_matmul_fuse_pass");
-    passes_.push_back("gpu_cpu_reshape2_matmul_fuse_pass");
+    // this pass slows down FC mkldnn int8 operator
+    // passes_.push_back("gpu_cpu_reshape2_matmul_fuse_pass");
     passes_.push_back("gpu_cpu_flatten2_matmul_fuse_pass");
     passes_.push_back("matmul_v2_scale_fuse_pass");
     passes_.push_back("squared_mat_sub_fuse_pass");
