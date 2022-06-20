@@ -13,6 +13,9 @@
 # limitations under the License.
 
 import unittest
+import os
+import json
+import tempfile
 
 import paddle
 import paddle.distributed.auto_parallel.cost as cost_model
@@ -30,6 +33,12 @@ def check_cost(cost):
 
 
 class TestCost(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_base_cost(self):
         cost = cost_model.Cost(memory=100, flops=200, time=0.5)
         self.assertTrue(check_cost(cost))
