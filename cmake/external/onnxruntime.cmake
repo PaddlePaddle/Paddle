@@ -70,7 +70,7 @@ elseif(APPLE)
       "${ONNXRUNTIME_SOURCE_DIR}/lib/libonnxruntime.1.10.0.dylib"
       CACHE FILEPATH "ONNXRUNTIME source library." FORCE)
   set(ONNXRUNTIME_LIB
-      "${ONNXRUNTIME_INSTALL_DIR}/lib/libonnxruntime.dylib"
+      "${ONNXRUNTIME_INSTALL_DIR}/lib/libonnxruntime.1.10.0.dylib"
       CACHE FILEPATH "ONNXRUNTIME static library." FORCE)
   set(ONNXRUNTIME_SHARED_LIB
       ${ONNXRUNTIME_LIB}
@@ -80,7 +80,7 @@ else()
       "${ONNXRUNTIME_SOURCE_DIR}/lib/libonnxruntime.so.1.10.0"
       CACHE FILEPATH "ONNXRUNTIME source library." FORCE)
   set(ONNXRUNTIME_LIB
-      "${ONNXRUNTIME_INSTALL_DIR}/lib/libonnxruntime.so"
+      "${ONNXRUNTIME_INSTALL_DIR}/lib/libonnxruntime.so.1.10.0"
       CACHE FILEPATH "ONNXRUNTIME static library." FORCE)
   set(ONNXRUNTIME_SHARED_LIB
       ${ONNXRUNTIME_LIB}
