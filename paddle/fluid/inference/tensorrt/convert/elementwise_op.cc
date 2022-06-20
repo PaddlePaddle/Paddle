@@ -49,6 +49,11 @@ class ElementwiseTensorOpConverter : public OpConverter {
       Y = engine_->GetITensor(op_desc.Input("Y").front());
     }
 
+    if (X->getDimensions().nbDims < Y->getDimensions().nbDims) {
+      auto* tmp = X;
+      X = Y;
+      Y = tmp;
+    }
     nvinfer1::Dims dims_x = X->getDimensions();
     nvinfer1::Dims dims_y = Y->getDimensions();
     auto output_name = op_desc.Output("Out")[0];
