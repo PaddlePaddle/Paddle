@@ -39,7 +39,7 @@ struct DimensionsTransform {
  private:
   // To compensate the lackage of input_tensors` dimension with input
   // variable 'axis'.
-  void ExpandInputDimensions(int N, int axis) {
+  void InputDimensionsExtend(int N, int axis) {
     for (auto &in_dim : in_dims) {
       int64_t in_idx = 0;
       if (in_dim.size() < dim_size) {
@@ -157,9 +157,9 @@ struct DimensionsTransform {
   }
 
  public:
-  DimensionsTransform(const std::vector<const DenseTensor *> &ins,
-                      const phi::DDim &dims,
-                      int axis) {
+  explicit DimensionsTransform(const std::vector<const DenseTensor *> &ins,
+                               const phi::DDim &dims,
+                               int axis) {
     N = std::max(static_cast<int>(ins.size()), 2);
     dim_size = dims.size();
     out_dims = phi::vectorize<int64_t>(dims);
@@ -174,7 +174,7 @@ struct DimensionsTransform {
         in_dims[j] = phi::vectorize<int64_t>(ins[j]->dims());
       }
     }
-    ExpandInputDimensions(N, axis);
+    InputDimensionsExtend(N, axis);
 
     // To Merge the dimensions of input_tensors while the consequtive
     // equal-dimensions appears. Example below :
@@ -224,7 +224,7 @@ struct DimensionsTransform {
 };
 
 template <typename InT, typename OutT, int NumOuts = 1>
-int GetVecSize(const std::vector<const DenseTensor *> &ins,
+int GetVecsize(const std::vector<const DenseTensor *> &ins,
                std::vector<DenseTensor *> *outs) {
   int in_vec_size = 4;
   int out_vec_size = 4;
@@ -257,11 +257,11 @@ template <typename T, int VecSize, bool IsBoundary = false>
 __device__ __forceinline__ void LoadData(
     T *dst,
     const _ptr_ T *src,
-    int64_t block_offset,
+    uint32_t block_offset,
     const kps::details::BroadcastConfig &config,
-    int64_t numel,
+    int numel,
     int num,
-    bool need_broadcast,
+    int need_broadcast,
     int read_lens) {
   // numel : whole num of output
   // num: how many data will be deal with in this time
@@ -284,11 +284,11 @@ template <typename InT,
 __device__ void VectorizedBroadcastKernelImpl(
     const phi::Array<const _ptr_ InT *__restrict__, Arity> &ins,
     phi::Array<_ptr_ OutT *, NumOuts> outs,
-    const phi::Array<bool, Arity> &use_broadcast,
+    const phi::Array<int, Arity> &use_broadcast,
+    uint32_t numel,
     const phi::Array<kps::details::BroadcastConfig, Arity> &configs,
-    int64_t numel,
     int num,
-    int64_t block_offset,
+    int block_offset,
     int read_lens,
     Functor func) {
   __simd__ InT args[Arity][VecSize];
@@ -329,15 +329,15 @@ template <typename InT,
 __global__ void VectorizedBroadcastKernel(
     phi::Array<const _ptr_ InT *__restrict__, Arity> ins,
     phi::Array<_ptr_ OutT *, NumOuts> outs,
-    phi::Array<bool, Arity> use_broadcast,
+    phi::Array<int, Arity> use_broadcast,
+    uint32_t numel,
     phi::Array<kps::details::BroadcastConfig, Arity> configs,
-    int64_t numel,
-    int64_t main_offset,
-    int64_t tail_tid,
+    int main_offset,
+    int tail_tid,
     int read_lens,
     Functor func) {
-  int64_t block_offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
-  int64_t stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
+  int block_offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
+  int stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
 
 #ifdef PADDLE_WITH_XPU_KP
   for (; block_offset < main_offset; block_offset += stride) {
@@ -350,8 +350,8 @@ __global__ void VectorizedBroadcastKernel(
                                   false>(ins,
                                          outs,
                                          use_broadcast,
-                                         configs,
                                          numel,
+                                         configs,
                                          BLOCK_NUM_X * read_lens,
                                          block_offset,
                                          read_lens,
@@ -368,8 +368,8 @@ __global__ void VectorizedBroadcastKernel(
                                   true>(ins,
                                         outs,
                                         use_broadcast,
-                                        configs,
                                         numel,
+                                        configs,
                                         num,
                                         block_offset,
                                         read_lens,
@@ -386,8 +386,8 @@ __global__ void VectorizedBroadcastKernel(
                                   false>(ins,
                                          outs,
                                          use_broadcast,
-                                         configs,
                                          numel,
+                                         configs,
                                          BLOCK_NUM_X * VecSize,
                                          block_offset,
                                          read_lens,
@@ -402,8 +402,8 @@ __global__ void VectorizedBroadcastKernel(
                                   true>(ins,
                                         outs,
                                         use_broadcast,
-                                        configs,
                                         numel,
+                                        configs,
                                         tail_tid,
                                         block_offset,
                                         read_lens,
@@ -424,8 +424,8 @@ void LaunchBroadcastKernel(
     std::vector<DenseTensor *> *outs,
     Functor func,
     const phi::Array<kps::details::BroadcastConfig, Arity> &configs) {
-  int64_t numel = (*outs)[0]->numel();
-  phi::Array<bool, Arity> use_broadcast;
+  int numel = (*outs)[0]->numel();
+  phi::Array<int, Arity> use_broadcast;
   phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
   phi::Array<_ptr_ OutT *, NumOuts> outs_data;
 
@@ -443,8 +443,8 @@ void LaunchBroadcastKernel(
   const int blocks = 8;
   int read_lens = configs[0].buf_len;
   auto stream = ctx.x_context()->xpu_stream;
-  int64_t main_offset = (numel / (read_lens * threads)) * read_lens * threads;
-  int64_t tail_tid = numel % (read_lens * threads);
+  int main_offset = (numel / (read_lens * threads)) * read_lens * threads;
+  int tail_tid = numel % (read_lens * threads);
 #else
   auto gpu_config =
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
@@ -452,11 +452,10 @@ void LaunchBroadcastKernel(
   auto stream = ctx.stream();
   auto threads = gpu_config.thread_per_block;
   auto blocks = gpu_config.block_per_grid;
-  int64_t main_offset = (numel / (read_lens * gpu_config.GetBlockSize())) *
-                        read_lens * gpu_config.GetBlockSize();
-  int64_t tail_tid = numel % (read_lens * gpu_config.GetBlockSize());
+  int main_offset = (numel / (read_lens * gpu_config.GetBlockSize())) *
+                    read_lens * gpu_config.GetBlockSize();
+  int tail_tid = numel % (read_lens * gpu_config.GetBlockSize());
 #endif
-
   VectorizedBroadcastKernel<InT, OutT, Functor, Arity, NumOuts, VecSize>
       <<<blocks, threads, 0, stream>>>(ins_data,
                                        outs_data,
@@ -542,7 +541,7 @@ void BroadcastKernelForDifferentVecSize(
           merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
     }
   }
-  int vec_size = GetVecSize<InT, OutT, NumOuts>(ins, outs);
+  int vec_size = GetVecsize<InT, OutT, NumOuts>(ins, outs);
 #endif
 
   switch (vec_size) {
