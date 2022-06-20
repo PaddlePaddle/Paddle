@@ -227,6 +227,9 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
   {% set backward_name = api["backward"] %}
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::framework::OpDesc>,
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::imperative::OpBase>,
+{% else %}
+                  ops::EmptyGradOpMaker<paddle::framework::OpDesc>,
+                  ops::EmptyGradOpMaker<paddle::imperative::OpBase>,
 {% endif %}
 {% if api is supports_inplace %}{# inplace#}
                   ops::{{name | to_pascal_case}}InplaceInferer,
