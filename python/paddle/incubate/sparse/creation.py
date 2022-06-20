@@ -249,6 +249,7 @@ def sparse_csr_tensor(crows,
         raise ValueError(
             "SparseCsrTensor only support 2-D or 3-D matrix. but get shape {}".
             format(shape))
+    rows = shape[len(shape) - 2]
 
     if not crows.place._equals(place):
         crows = crows._copy_to(place, False)
@@ -268,10 +269,10 @@ def sparse_csr_tensor(crows,
         raise ValueError("the length of cols must be same as length of values")
 
     if len(shape) == 2:
-        if crows.shape[0] != shape[0] + 1:
+        if crows.shape[0] != rows + 1:
             raise ValueError(
                 "The length({}) of crows must be equal to the rows({})+1 of matrix."
-                .format(crows.shape[0], shape[0]))
+                .format(crows.shape[0], rows))
         if crows[0] != 0:
             raise ValueError("the 0th value of crows must be 0")
 
@@ -279,10 +280,10 @@ def sparse_csr_tensor(crows,
             raise ValueError(
                 "the last value of crows must be equal the number of non-zero")
     else:
-        if crows.shape[0] % (shape[0] + 1) != 0:
+        if crows.shape[0] % (rows + 1) != 0:
             raise ValueError(
                 "The length({}) of crows must be divisible the rows({})+1 of matrix."
-                .format(crows.shape[0], shape[0]))
+                .format(crows.shape[0], rows))
     # TODO(zkh2016): check whether the value in crows and cols is legal
 
     return core.eager.sparse_csr_tensor(crows, cols, values, shape,

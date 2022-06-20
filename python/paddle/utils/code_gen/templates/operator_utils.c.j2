@@ -228,8 +228,8 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::framework::OpDesc>,
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::imperative::OpBase>,
 {% else %}
-                  ops::EmptyGradOpMaker<paddle::framework::OpDesc>,
-                  ops::EmptyGradOpMaker<paddle::imperative::OpBase>,
+                  paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+                  paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
 {% endif %}
 {% if api is supports_inplace %}{# inplace#}
                   ops::{{name | to_pascal_case}}InplaceInferer,

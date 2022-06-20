@@ -20,7 +20,6 @@ import unittest
 import numpy as np
 from op_test_xpu import XPUOpTest
 import paddle
-from paddle import enable_static
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
@@ -28,52 +27,70 @@ from paddle.fluid.tests.unittests.op_test import (OpTest,
                                                   convert_float_to_uint16,
                                                   convert_uint16_to_float)
 from paddle import _C_ops
+import op_test
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 
 
-class TestSumOp(XPUOpTest):
+class XPUTestSumOp(XPUOpTestWrapper):
 
-    def setUp(self):
-        self.op_type = "sum"
-        self.init_kernel_type()
-        self.init_kernel_type()
-        x0 = np.random.random((3, 40)).astype(self.dtype)
-        x1 = np.random.random((3, 40)).astype(self.dtype)
-        x2 = np.random.random((3, 40)).astype(self.dtype)
-        self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
-        y = x0 + x1 + x2
-        self.outputs = {'Out': y}
+    def __init__(self):
+        self.op_name = 'sum'
+        self.use_dynamic_create_class = False
 
-    def init_kernel_type(self):
-        self.dtype = np.float32
+    class TestSumOp(XPUOpTest):
 
-    def test_check_output(self):
-        self.check_output()
+        def setUp(self):
+            self.init_dtype()
+            self.set_xpu()
+            self.op_type = "sum"
+            self.place = paddle.XPUPlace(0)
+            self.set_shape()
+            x0 = np.random.random(self.shape).astype(self.dtype)
+            x1 = np.random.random(self.shape).astype(self.dtype)
+            x2 = np.random.random(self.shape).astype(self.dtype)
+            self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
+            y = x0 + x1 + x2
+            self.outputs = {'Out': y}
 
-    def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
+        def init_dtype(self):
+            self.dtype = self.in_type
 
+        def set_xpu(self):
+            self.__class__.use_xpu = True
+            self.__class__.no_need_check_grad = True
+            self.__class__.op_type = self.dtype
 
-#----------- test fp16 -----------
-class TestFP16SumOp(TestSumOp):
+        def set_shape(self):
+            self.shape = (3, 10)
 
-    def init_kernel_type(self):
-        self.dtype = np.float16
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
 
-    def test_check_output(self):
-        place = core.XPUPlace(0)
-        # if core.is_float16_supported(place):
-        self.check_output_with_place(place, atol=2e-2)
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['x0'], 'Out')
 
-    # FIXME: Because of the precision fp16, max_relative_error
-    # should be 0.15 here.
-    def test_check_grad(self):
-        place = core.XPUPlace(0)
-        # if core.is_float16_supported(place):
-        self.check_grad_with_place(place, ['x0'],
-                                   'Out',
-                                   max_relative_error=0.15)
+    class TestSumOp1(TestSumOp):
+
+        def set_shape(self):
+            self.shape = (5)
+
+    class TestSumOp2(TestSumOp):
+
+        def set_shape(self):
+            self.shape = (1, 1, 1, 1, 1)
+
+    class TestSumOp3(TestSumOp):
+
+        def set_shape(self):
+            self.shape = (10, 5, 7)
+
+    class TestSumOp4(TestSumOp):
+
+        def set_shape(self):
+            self.shape = (2, 2, 3, 3)
 
 
 def create_test_sum_fp16_class(parent):
@@ -198,6 +215,9 @@ class TestSumOpError(unittest.TestCase):
         self.assertRaises(Exception, test_list_of_none_input)
 
 
+support_types = get_xpu_op_support_types('sum')
+for stype in support_types:
+    create_test_class(globals(), XPUTestSumOp, stype)
+
 if __name__ == "__main__":
-    enable_static()
     unittest.main()
