@@ -105,11 +105,6 @@ class SliceOpConverter : public OpConverter {
                 trt_end_dims.d[trt_axis] - trt_start_dims.d[trt_axis];
           }
 
-          std::vector<nvinfer1::ITensor*> end_vec_tensor;
-          for (int i = 0; i < trt_end_dims.nbDims; i++) {
-            end_vec_tensor.push_back(GetEleTensorOfShape(shape_tensor, i));
-          }
-
           layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                        trt_size_dims, trt_step_dims);
 
@@ -120,11 +115,11 @@ class SliceOpConverter : public OpConverter {
               if (decrease_axises.end() !=
                   std::find(decrease_axises.begin(), decrease_axises.end(), i))
                 continue;
-              final_size_dims[final_size_dims.nbDims] = trt_size_dims.d[i];
+              final_size_dims.d[final_size_dims.nbDims] = trt_size_dims.d[i];
               final_size_dims.nbDims++;
             }
             if (gather_indices.empty()) {
-              final_size_dims[final_size_dims.nbDims] = 1;
+              final_size_dims.d[final_size_dims.nbDims] = 1;
               final_size_dims.nbDims++;
             }
             layer =
