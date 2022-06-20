@@ -781,11 +781,17 @@ if(WITH_DISTRIBUTE)
 
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
+  if(NOT WITH_HETERPS)
+    list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps11")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps12")
+  endif()
+
   py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
   py_test_modules(test_communicator_async MODULES test_communicator_async ENVS
                   ${dist_ENVS})
-  py_test_modules(test_communicator_ps_gpu MODULES test_communicator_ps_gpu
-                  ENVS ${dist_ENVS})
+  # py_test_modules(test_communicator_ps_gpu MODULES test_communicator_ps_gpu
+  #                 ENVS ${dist_ENVS})
   py_test_modules(test_communicator_geo MODULES test_communicator_geo ENVS
                   ${dist_ENVS})
   py_test_modules(
