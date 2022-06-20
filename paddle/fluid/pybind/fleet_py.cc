@@ -221,8 +221,8 @@ void BindGraphPyClient(py::module* m) {
              auto feats =
                  self.get_node_feat(node_type, node_ids, feature_names);
              std::vector<std::vector<py::bytes>> bytes_feats(feats.size());
-             for (int i = 0; i < feats.size(); ++i) {
-               for (int j = 0; j < feats[i].size(); ++j) {
+             for (size_t i = 0; i < feats.size(); ++i) {
+               for (size_t j = 0; j < feats[i].size(); ++j) {
                  bytes_feats[i].push_back(py::bytes(feats[i][j]));
                }
              }
@@ -234,8 +234,8 @@ void BindGraphPyClient(py::module* m) {
               std::vector<std::string> feature_names,
               std::vector<std::vector<py::bytes>> bytes_feats) {
              std::vector<std::vector<std::string>> feats(bytes_feats.size());
-             for (int i = 0; i < bytes_feats.size(); ++i) {
-               for (int j = 0; j < bytes_feats[i].size(); ++j) {
+             for (size_t i = 0; i < bytes_feats.size(); ++i) {
+               for (size_t j = 0; j < bytes_feats[i].size(); ++j) {
                  feats[i].push_back(std::string(bytes_feats[i][j]));
                }
              }

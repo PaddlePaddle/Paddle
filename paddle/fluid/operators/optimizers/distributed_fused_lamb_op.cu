@@ -1403,7 +1403,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
 
     // Step 6: allreduce + global norm gradient clip
     int64_t global_rank = 0, local_rank = 0;
-    ncclComm_t global_comm = nullptr, local_comm = 0;
+    ncclComm_t global_comm = nullptr, local_comm = nullptr;
     if (nranks > 1) {
       auto *nccl_comm_handle =
           platform::NCCLCommContext::Instance().Get(ring_ids[0], place);
