@@ -80,6 +80,7 @@ class SliceOpConverter : public OpConverter {
             return false;
           }
         }
+        return true;
       };
 
       if (can_infer_at_buildtime()) {
