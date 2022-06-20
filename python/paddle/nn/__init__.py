@@ -104,6 +104,7 @@ from .layer.loss import NLLLoss  # noqa: F401
 from .layer.loss import BCELoss  # noqa: F401
 from .layer.loss import KLDivLoss  # noqa: F401
 from .layer.loss import MarginRankingLoss  # noqa: F401
+from .layer.loss import MultiLabelSoftMarginLoss
 from .layer.loss import CTCLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
 from .layer.loss import HingeEmbeddingLoss  # noqa: F401
@@ -313,6 +314,7 @@ __all__ = [  # noqa
     'MaxUnPool1D',
     'MaxUnPool2D',
     'MaxUnPool3D',
+    'MultiLabelSoftMarginLoss',
     'HingeEmbeddingLoss',
     'Identity',
     'CosineEmbeddingLoss',

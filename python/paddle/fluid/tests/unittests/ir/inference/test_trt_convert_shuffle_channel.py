@@ -77,7 +77,9 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if dynamic_shape == True:
+            ver = paddle_infer.get_trt_compile_version()
+            if ver[0] * 1000 + ver[1] * 100 + ver[
+                    2] * 10 < 8000 and dynamic_shape == True:
                 return 0, 3
             else:
                 return 1, 2

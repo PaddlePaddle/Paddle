@@ -1217,6 +1217,84 @@ class SmoothL1Loss(Layer):
                                 name=self.name)
 
 
+class MultiLabelSoftMarginLoss(Layer):
+    r"""Creates a criterion that optimizes a multi-class multi-classification
+        hinge loss (margin-based loss) between input :math:`x` (a 2D mini-batch `Tensor`)
+        and output :math:`y` (which is a 2D `Tensor` of target class indices).
+        For each sample in the mini-batch:
+
+        .. math::
+            \text{loss}(x, y) = \sum_{ij}\frac{\max(0, 1 - (x[y[j]] - x[i]))}{\text{x.size}(0)}
+
+        where :math:`x \in \left\{0, \; \cdots , \; \text{x.size}(0) - 1\right\}`, \
+        :math:`y \in \left\{0, \; \cdots , \; \text{y.size}(0) - 1\right\}`, \
+        :math:`0 \leq y[j] \leq \text{x.size}(0)-1`, \
+        and :math:`i \neq y[j]` for all :math:`i` and :math:`j`.
+        :math:`y` and :math:`x` must have the same size.
+
+        Parameters:
+	        weight (Tensor,optional): a manual rescaling weight given to each class.
+                    If given, has to be a Tensor of size C and the data type is float32, float64.
+                    Default is ``'None'`` .
+            reduction (str, optional): Indicate how to average the loss by batch_size,
+                    the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                    If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+                    If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+                    If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+                    Default: ``'mean'``
+            name (str, optional): Name for the operation (optional, default is None).
+                For more information, please refer to :ref:`api_guide_Name`.
+
+        Call parameters:
+            input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
+            label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64. The shape of label is the same as the shape of input.
+
+        Shape:
+            input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
+            label: N-D Tensor, same shape as the input.
+            output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
+
+        Returns:
+            A callable object of MultiLabelSoftMarginLoss.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import paddle.nn as nn
+
+                input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
+                label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
+
+                multi_label_soft_margin_loss = nn.MultiLabelSoftMarginLoss(reduction='none')
+                loss = multi_label_soft_margin_loss(input, label)
+                print(loss)
+                # Tensor([3.49625897, 0.71111226, 0.43989015])
+
+                multi_label_soft_margin_loss = nn.MultiLabelSoftMarginLoss(reduction='mean')
+                loss = multi_label_soft_margin_loss(input, label)
+                print(loss)
+                # Tensor([1.54908717])
+        """
+
+    def __init__(self, weight=None, reduction="mean", name=None):
+        super(MultiLabelSoftMarginLoss, self).__init__()
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "'reduction' in 'MultiLabelSoftMarginloss' should be 'sum', 'mean' or 'none', "
+                "but received {}.".format(reduction))
+        self.weight = weight
+        self.reduction = reduction
+        self.name = name
+
+    def forward(self, input, label):
+        return F.multi_label_soft_margin_loss(input,
+                                              label,
+                                              weight=self.weight,
+                                              reduction=self.reduction,
+                                              name=self.name)
+
+
 class HingeEmbeddingLoss(Layer):
     r"""
     This operator calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).

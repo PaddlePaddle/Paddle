@@ -53,6 +53,13 @@
   kernel :
     func : sparse_coo_sin_grad {sparse_coo, sparse_coo -> sparse_coo}
 
+- backward_api : softmax_grad
+  forward : softmax(Tensor x, int axis=-1) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, int axis)
+  output : Tensor(x_grad)
+  kernel :
+    func : softmax_csr_grad{sparse_csr, sparse_csr -> sparse_csr}
+
 - backward_api : sparse_maxpool_grad
   forward : sparse_maxpool(Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides) -> Tensor(out), Tensor(rulebook)
   args : (Tensor x, Tensor rulebook, Tensor out, Tensor out_grad, int[] kernel_sizes)
