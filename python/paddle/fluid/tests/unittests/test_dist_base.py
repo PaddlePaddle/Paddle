@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-import time
+import tempfile
 
 import ast
 import unittest
@@ -867,6 +867,11 @@ class TestDistBase(unittest.TestCase):
 
         self._after_setup_config()
 
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def _find_free_port(self):
         def __free_port():
             with closing(socket.socket(socket.AF_INET,
@@ -909,8 +914,10 @@ class TestDistBase(unittest.TestCase):
 
         print(ps0_cmd)
         print(ps1_cmd)
-        ps0_pipe = open(log_name + "_ps0_err.log", "wb")
-        ps1_pipe = open(log_name + "_ps1_err.log", "wb")
+        path0 = os.path.join(self.temp_dir.name, log_name + "_ps0_err.log")
+        path1 = os.path.join(self.temp_dir.name, log_name + "_ps1_err.log")
+        ps0_pipe = open(path0, "wb")
+        ps1_pipe = open(path1, "wb")
 
         print_to_err(type(self).__name__, "going to start pserver process 0")
         ps0_proc = subprocess.Popen(
@@ -990,7 +997,8 @@ class TestDistBase(unittest.TestCase):
         print("local_cmd: {}, env: {}".format(cmd, env_local))
 
         if check_error_log:
-            err_log = open(log_name + "_local.log", "wb")
+            path = os.path.join(self.temp_dir.name, log_name + "_local.log")
+            err_log = open(path, "wb")
             local_proc = subprocess.Popen(
                 cmd.split(" "),
                 stdout=subprocess.PIPE,
@@ -1076,8 +1084,11 @@ class TestDistBase(unittest.TestCase):
 
         print("tr0_cmd: {}, env: {}".format(tr0_cmd, env0))
         print("tr1_cmd: {}, env: {}".format(tr1_cmd, env1))
-        tr0_pipe = open(log_name + "_tr0_err.log", "wb")
-        tr1_pipe = open(log_name + "_tr1_err.log", "wb")
+
+        path0 = os.path.join(self.temp_dir.name, log_name + "_tr0_err.log")
+        path1 = os.path.join(self.temp_dir.name, log_name + "_tr1_err.log")
+        tr0_pipe = open(path0, "wb")
+        tr1_pipe = open(path1, "wb")
 
         print_to_err(type(self).__name__, "going to start trainer process 0")
         tr0_proc = subprocess.Popen(
@@ -1293,7 +1304,9 @@ class TestDistBase(unittest.TestCase):
             print("use_hallreduce:{} tr_cmd:{}, env: {}".format(
                 self._use_hallreduce, tr_cmd, tr_env))
 
-            tr_pipe = open(log_name + "_tr{}_err.log".format(i), "wb")
+            path = os.path.join(self.temp_dir.name,
+                                log_name + "_tr{}_err.log".format(i))
+            tr_pipe = open(path, "wb")
 
             print_to_err(
                 type(self).__name__,
@@ -1355,7 +1368,9 @@ class TestDistBase(unittest.TestCase):
             print("use_hallreduce:{} tr_cmd:{}, env: {}".format(
                 self._use_hallreduce, tr_cmd, tr_env))
 
-            tr_pipe = open(log_name + "_tr{}_err.log".format(i), "wb")
+            path = os.path.join(self.temp_dir.name,
+                                log_name + "_tr{}_err.log".format(i))
+            tr_pipe = open(path, "wb")
 
             print_to_err(
                 type(self).__name__,
@@ -1401,7 +1416,8 @@ class TestDistBase(unittest.TestCase):
             tr_env['FLAGS_cudnn_deterministic'] = '0'
             print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
 
-            tr_pipe = open("/tmp/" + "tr{}_err.log".format(i), "wb")
+            path = os.path.join(self.temp_dir.name + "tr{}_err.log".format(i))
+            tr_pipe = open(path, "wb")
 
             print_to_err(
                 type(self).__name__,
