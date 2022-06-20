@@ -588,13 +588,13 @@ def dist(x, y, p=2, name=None):
 
         ||z||_{0}=\lim_{p \\rightarrow 0}\sum_{i=1}^{m}|z_i|^{p}
 
-    When p = inf, the inf-norm of z is the maximum element of z.
+    When p = inf, the inf-norm of z is the maximum element of the absolute value of z.
 
     .. math::
 
         ||z||_\infty=\max_i |z_i|
 
-    When p = -inf, the negative-inf-norm of z is the minimum element of z.
+    When p = -inf, the negative-inf-norm of z is the minimum element of the absolute value of z.
 
     .. math::
 
