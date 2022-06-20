@@ -118,7 +118,7 @@ class SliceOpConverter : public OpConverter {
               final_size_dims.d[final_size_dims.nbDims] = trt_size_dims.d[i];
               final_size_dims.nbDims++;
             }
-            if (gather_indices.empty()) {
+            if (final_size_dims.nbDims == 0) {
               final_size_dims.d[final_size_dims.nbDims] = 1;
               final_size_dims.nbDims++;
             }
