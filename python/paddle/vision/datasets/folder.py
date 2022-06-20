@@ -87,6 +87,9 @@ class DatasetFolder(Dataset):
             and check if the file is a valid file. Both :attr:`extensions` and
             :attr:`is_valid_file` should not be passed. Default: None.
 
+    Returns:
+        An instance of DatasetFolder.
+
     Attributes:
         classes (list[str]): List of the class names.
         class_to_idx (dict[str, int]): Dict with items (class_name, class_index).
@@ -310,6 +313,9 @@ class ImageFolder(Dataset):
         is_valid_file (Callable, optional): A function that takes path of a file
             and check if the file is a valid file. Both :attr:`extensions` and
             :attr:`is_valid_file` should not be passed. Default: None.
+
+    Returns:
+        An instance of ImageFolder.
 
     Attributes:
         samples (list[str]): List of sample path.

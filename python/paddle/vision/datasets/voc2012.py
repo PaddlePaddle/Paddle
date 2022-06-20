@@ -52,6 +52,9 @@ class VOC2012(Dataset):
             If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
             default backend is 'pil'. Default: None.
 
+    Returns:
+        An instance of VOC2012 dataset.
+
     Examples:
 
         .. code-block:: python

@@ -46,7 +46,7 @@ class MNIST(Dataset):
             default backend is 'pil'. Default: None.
             
     Returns:
-        Dataset: MNIST Dataset.
+        An instance of MNIST dataset.
 
     Examples:
         
@@ -228,7 +228,7 @@ class FashionMNIST(MNIST):
             default backend is 'pil'. Default: None.
             
     Returns:
-        Dataset: Fashion-MNIST Dataset.
+        An instance of FashionMNIST dataset.
 
     Examples:
         
