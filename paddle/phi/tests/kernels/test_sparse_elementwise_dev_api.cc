@@ -30,8 +30,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_grad_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
-#include "paddle/phi/kernels/sparse/sparse_elementwise_grad_kernel.h"
-#include "paddle/phi/kernels/sparse/sparse_elementwise_kernel.h"
+#include "paddle/phi/kernels/sparse/elementwise_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/elementwise_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 namespace phi {

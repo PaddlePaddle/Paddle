@@ -2,8 +2,8 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   kernel :
-    func : sparse_coo_add{sparse_coo -> sparse_coo},
-           sparse_csr_add{sparse_csr -> sparse_csr}
+    func : add_coo{sparse_coo -> sparse_coo},
+           add_csr{sparse_csr -> sparse_csr}
     layout : x
   backward : add_grad
 
@@ -41,8 +41,8 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   kernel :
-    func : sparse_coo_divide{sparse_coo -> sparse_coo},
-           sparse_csr_divide{sparse_csr -> sparse_csr}
+    func : divide_coo{sparse_coo -> sparse_coo},
+           divide_csr{sparse_csr -> sparse_csr}
     layout : x
   backward : divide_grad
 
@@ -50,8 +50,8 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   kernel :
-    func : sparse_coo_multiply{sparse_coo -> sparse_coo},
-           sparse_csr_multiply{sparse_csr -> sparse_csr}
+    func : multiply_coo{sparse_coo -> sparse_coo},
+           multiply_csr{sparse_csr -> sparse_csr}
     layout : x
   backward : multiply_grad
 
@@ -86,8 +86,8 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   kernel :
-    func : sparse_coo_subtract{sparse_coo -> sparse_coo},
-           sparse_csr_subtract{sparse_csr -> sparse_csr}
+    func : subtract_coo{sparse_coo -> sparse_coo},
+           subtract_csr{sparse_csr -> sparse_csr}
     layout : x
   backward : subtract_grad
 

@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/sparse/copy_kernel.h"
-#include "paddle/phi/kernels/sparse/sparse_elementwise_kernel.h"
+#include "paddle/phi/kernels/sparse/elementwise_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -298,7 +298,7 @@ DEFINE_ELEMENTWISE_GRAD_KERNEL(Multiply)
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sparse_csr_add_grad,
+PD_REGISTER_KERNEL(add_grad_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseAddCsrGradKernel,
@@ -312,7 +312,7 @@ PD_REGISTER_KERNEL(sparse_csr_add_grad,
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(sparse_csr_subtract_grad,
+PD_REGISTER_KERNEL(subtract_grad_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseSubtractCsrGradKernel,
@@ -326,7 +326,7 @@ PD_REGISTER_KERNEL(sparse_csr_subtract_grad,
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(sparse_csr_multiply_grad,
+PD_REGISTER_KERNEL(multiply_grad_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseMultiplyCsrGradKernel,
@@ -340,7 +340,7 @@ PD_REGISTER_KERNEL(sparse_csr_multiply_grad,
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(sparse_csr_divide_grad,
+PD_REGISTER_KERNEL(divide_grad_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseDivideCsrGradKernel,
@@ -355,7 +355,7 @@ PD_REGISTER_KERNEL(sparse_csr_divide_grad,
   kernel->InputAt(3).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(sparse_coo_add_grad,
+PD_REGISTER_KERNEL(add_grad_coo,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseAddCooGradKernel,
@@ -369,7 +369,7 @@ PD_REGISTER_KERNEL(sparse_coo_add_grad,
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(sparse_coo_subtract_grad,
+PD_REGISTER_KERNEL(subtract_grad_coo,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseSubtractCooGradKernel,
@@ -383,7 +383,7 @@ PD_REGISTER_KERNEL(sparse_coo_subtract_grad,
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(sparse_coo_multiply_grad,
+PD_REGISTER_KERNEL(multiply_grad_coo,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseMultiplyCooGradKernel,
@@ -397,7 +397,7 @@ PD_REGISTER_KERNEL(sparse_coo_multiply_grad,
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(sparse_coo_divide_grad,
+PD_REGISTER_KERNEL(divide_grad_coo,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::ElementWiseDivideCooGradKernel,
