@@ -53,7 +53,7 @@ class VOC2012(Dataset):
             default backend is 'pil'. Default: None.
 
     Returns:
-        An instance of VOC2012 dataset.
+        :ref:`api_paddle_io_Dataset`. An instance of VOC2012 dataset.
 
     Examples:
 

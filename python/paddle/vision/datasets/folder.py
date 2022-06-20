@@ -88,7 +88,7 @@ class DatasetFolder(Dataset):
             :attr:`is_valid_file` should not be passed. Default: None.
 
     Returns:
-        An instance of DatasetFolder.
+        :ref:`api_paddle_io_Dataset`. An instance of DatasetFolder.
 
     Attributes:
         classes (list[str]): List of the class names.
@@ -315,7 +315,7 @@ class ImageFolder(Dataset):
             :attr:`is_valid_file` should not be passed. Default: None.
 
     Returns:
-        An instance of ImageFolder.
+        :ref:`api_paddle_io_Dataset`. An instance of ImageFolder.
 
     Attributes:
         samples (list[str]): List of sample path.

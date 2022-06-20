@@ -46,7 +46,7 @@ class MNIST(Dataset):
             default backend is 'pil'. Default: None.
             
     Returns:
-        An instance of MNIST dataset.
+        :ref:`api_paddle_io_Dataset`. An instance of MNIST dataset.
 
     Examples:
         
@@ -228,7 +228,7 @@ class FashionMNIST(MNIST):
             default backend is 'pil'. Default: None.
             
     Returns:
-        An instance of FashionMNIST dataset.
+        :ref:`api_paddle_io_Dataset`. An instance of FashionMNIST dataset.
 
     Examples:
         

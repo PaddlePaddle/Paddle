@@ -61,7 +61,7 @@ class Flowers(Dataset):
             default backend is 'pil'. Default: None.
 
     Returns:
-        An instance of Flowers dataset.
+        :ref:`api_paddle_io_Dataset`. An instance of Flowers dataset.
 
     Examples:
         

@@ -57,7 +57,7 @@ class Cifar10(Dataset):
             default backend is 'pil'. Default: None.
 
     Returns:
-        An instance of Cifar10 dataset.
+        :ref:`api_paddle_io_Dataset`. An instance of Cifar10 dataset.
 
     Examples:
 
@@ -199,7 +199,7 @@ class Cifar100(Cifar10):
             default backend is 'pil'. Default: None.
 
     Returns:
-        An instance of Cifar100 dataset.
+        :ref:`api_paddle_io_Dataset`. An instance of Cifar100 dataset.
 
     Examples:
 
