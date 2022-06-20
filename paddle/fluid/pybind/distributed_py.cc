@@ -245,7 +245,7 @@ void BindDistributed(py::module *m) {
               py::arg("in"), py::arg("out"), py::arg("src"),
               py::call_guard<py::gil_scoped_release>());
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) && defined(PADDLE_WITH_RCCL)
   py::class_<distributed::ProcessGroupNCCL,
              std::shared_ptr<distributed::ProcessGroupNCCL>>(
       *m, "ProcessGroupNCCL", ProcessGroup)
