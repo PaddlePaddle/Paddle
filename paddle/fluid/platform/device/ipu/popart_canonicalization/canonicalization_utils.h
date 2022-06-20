@@ -78,6 +78,7 @@ Node *GetOutputVarNodeByVarName(const std::string &var_name,
                                 const Node *op_node);
 
 const bool is_float_equal(float a, float b, float eps = 1e-8);
+const ONNXDataType GetVarDType(const Node *node);
 const ONNXDataType GetOutputVarDType(const Node *node,
                                      const std::string &output_name = "Out");
 

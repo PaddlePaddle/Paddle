@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,8 +34,8 @@ class TestBase(IPUOpTest):
 
     def set_data_feed(self):
         data = np.random.uniform(size=[1, 3, 10, 10])
-        self.feed_fp32 = {'in_0': data.astype(np.float32)}
-        self.feed_fp16 = {'in_0': data.astype(np.float16)}
+        self.feed_fp32 = {'x': data.astype(np.float32)}
+        self.feed_fp16 = {'x': data.astype(np.float16)}
         self.feed_list = list(self.feed_fp32.keys())
 
     def set_feed_attr(self):
@@ -44,18 +44,25 @@ class TestBase(IPUOpTest):
         self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
-        self.attrs = {"axis": -1}
+        self.attrs = {}
 
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
-        out = F.log_softmax(x, **self.attrs)
+
+        array = np.random.uniform(size=[1]).astype(np.float32)
+        result1 = paddle.zeros(shape=[1], dtype='float32')
+        weight = paddle.assign(array, result1)
+        out = F.prelu(x, weight=weight, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
-        self.run_op_test(exec_mode)
+        ipu_strategy = paddle.static.IpuStrategy()
+        ipu_strategy.set_graph_config(is_training=self.is_training)
+        ipu_strategy.set_options({'onnx_dump_path': 'onnx_dump_path.onnx'})
+        self.run_op_test(exec_mode, ipu_strategy=ipu_strategy)
 
     def test(self):
         for m in IPUOpTest.ExecutionMode:
@@ -67,8 +74,16 @@ class TestBase(IPUOpTest):
 
 class TestCase1(TestBase):
 
-    def set_attrs(self):
-        self.attrs = {"axis": 1}
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        array = np.random.uniform(size=[3]).astype(np.float32)
+        result1 = paddle.zeros(shape=[3], dtype='float32')
+        weight = paddle.assign(array, result1)
+        out = F.prelu(x, weight=weight, **self.attrs)
+        self.fetch_list = [out.name]
 
 
 if __name__ == "__main__":
