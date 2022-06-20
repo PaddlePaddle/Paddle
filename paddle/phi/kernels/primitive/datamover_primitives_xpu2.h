@@ -26,8 +26,7 @@ static inline int RoundUpDiv(int n, int k) { return (n + k - 1) / k; }
 static inline int GetXpuReadLens(int numel, int block_num, int grid_num) {
   const int buf_size = 256;
   int nthreads = block_num * grid_num;
-  int read_lens =
-      std::min(buf_size, RoundUpDiv(numel, 32 * nthreads) * 32);
+  int read_lens = std::min(buf_size, RoundUpDiv(numel, 32 * nthreads) * 32);
   return read_lens;
 }
 
