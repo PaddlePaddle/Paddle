@@ -166,7 +166,7 @@ class TestLogSigmoidCase0(TestBase):
         self.op_attrs = {}
 
 
-class TestLogSigmoidCase0(TestBase):
+class TestLogSoftmaxCase0(TestBase):
 
     def set_test_op(self):
         self.op = F.log_softmax
