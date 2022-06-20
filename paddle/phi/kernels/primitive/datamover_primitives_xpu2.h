@@ -21,13 +21,12 @@ namespace phi {
 namespace kps {
 namespace details {
 
-int RoundUpDiv(int n, int k) { return (n + k - 1) / k; }
+static inline int RoundUpDiv(int n, int k) { return (n + k - 1) / k; }
 
-int GetXpuReadLens(int numel) {
+static inline int GetXpuReadLens(int numel, int block_num, int grid_num) {
   const int buf_size = 256;
-  int nthreads = BLOCK_NUM_X * GRID_NUM_X;
-  int read_lens =
-      std::min(buf_size, RoundUpDiv(numel, 32 * nthreads) * 32);
+  int nthreads = block_num * grid_num;
+  int read_lens = std::min(buf_size, RoundUpDiv(numel, 32 * nthreads) * 32);
   return read_lens;
 }
 
@@ -90,6 +89,30 @@ struct BroadcastConfig {
   int buf_len = 0;
   int kDims;
   HOSTDEVICE BroadcastConfig() {}
+
+  HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
+                             const std::vector<int64_t>& in_dims,
+                             int dim_size) {
+    std::vector<int> strides_in_tmp;
+    std::vector<int> strides_out_tmp;
+    std::vector<int> dim_tmp;
+    strides_in_tmp.resize(dim_size, 1);
+    strides_out_tmp.resize(dim_size, 1);
+    dim_tmp.resize(dim_size, 1);
+    for (int i = 1; i < dim_size; i++) {
+      strides_in_tmp[i] = strides_in_tmp[i - 1] * in_dims[i - 1];
+      strides_out_tmp[i] = strides_out_tmp[i - 1] * out_dims[i - 1];
+    }
+
+    for (int i = 0; i < dim_size; i++) {
+      dim_tmp[i] = in_dims[i];
+    }
+    kDims = dim_size;
+    memcpy(strides_in, strides_in_tmp.data(), kDims * sizeof(int));
+    memcpy(strides_out, strides_out_tmp.data(), kDims * sizeof(int));
+    memcpy(in_dim, dim_tmp.data(), kDims * sizeof(int));
+    buf_len = 256;
+  }
 
   HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
                              const std::vector<int64_t>& in_dims,

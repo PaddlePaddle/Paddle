@@ -134,9 +134,9 @@ if(WITH_XPU_BKCL)
   set(XPU_BKCL_INC_DIR "${THIRD_PARTY_PATH}/install/xpu/include")
   include_directories(${XPU_BKCL_INC_DIR})
   target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_BKCL_LIB})
-else(WITH_XPU_BKCL)
+else()
   target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB})
-endif(WITH_XPU_BKCL)
+endif()
 
 add_dependencies(xpulib ${XPU_PROJECT})
 

@@ -13,7 +13,7 @@ if(WITH_PYTHON)
       POST_BUILD
       COMMAND mv the_one_ps_pb2.py
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/)
-  else(NOT WIN32)
+  else()
     string(
       REPLACE "/" "\\" fleet_proto_dstpath
               "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
@@ -24,7 +24,7 @@ if(WITH_PYTHON)
       COMMENT
         "Copy generated python the_one_ps_pb2 into directory ${fleet_proto_dstpath}."
     )
-  endif(NOT WIN32)
+  endif()
 endif()
 
 if(NOT WITH_PSCORE)

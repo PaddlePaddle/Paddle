@@ -530,14 +530,12 @@ void BroadcastKernelForDifferentVecSize(
                                                merge_dims.in_dims[0],
                                                merge_dims.dim_size);
   } else if (ins.size() == 1) {
-    const int buf_size = VecSizeM;
     int numel = (*outs)[0]->numel();
     int block_size = 64;
     int grid_size = 8;
-    int nthreads = block_size * grid_size;
-    configs[0].buf_len =
-        std::min(buf_size, kps::details::RoundUpDiv(numel, 32 * nthreads) * 32);
-    int vec_size = buf_size;
+    configs[0] = kps::details::BroadcastConfig(
+        merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
+    configs[0].buf_len = GetXpuReadLens(numel, block_size, grid_size);
   }
   auto type = kps::details::OptType::CanNotOptimize;
   bool is_optimize = configs[0].cmp_type != type;
