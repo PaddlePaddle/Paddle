@@ -54,7 +54,8 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::unordered_map<OpHandleBase *, int> op_deps_;
   std::vector<OpHandleBase *> bootstrap_ops_;
 
-  platform::DeviceContextPool fetch_ctxs_;
+  std::map<Place, std::shared_future<std::unique_ptr<platform::DeviceContext>>>
+      fetch_ctxs_;
   std::atomic<int> remaining_;
 
   std::future<

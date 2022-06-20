@@ -152,22 +152,12 @@ TEST(LiteEngineOp, TensorCopyAsync) {
   auto* ctx_cpu =
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
   test_tensor_copy(*ctx_cpu);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto* ctx_gpu =
-      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0));
-  test_tensor_copy(*ctx_gpu);
-#endif
 }
 
 TEST(LiteEngineOp, TensorShare) {
   auto* ctx_cpu =
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
   test_tensor_share(*ctx_cpu);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto* ctx_gpu =
-      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0));
-  test_tensor_share(*ctx_gpu);
-#endif
 }
 
 }  // namespace utils

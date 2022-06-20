@@ -138,7 +138,7 @@ class Accessor:
         if not accessor_proto.HasField("accessor_class"):
             # DownpourSparseValueAccessor
             if context['use_ps_gpu']:
-                accessor_proto.accessor_class = "CtrCommonAccessor"
+                accessor_proto.accessor_class = "CtrDymfAccessor"
             else:
                 accessor_proto.accessor_class = "SparseAccessor"
         if not accessor_proto.HasField("fea_dim"):
@@ -601,10 +601,16 @@ class SparseTable(Table):
         if usr_table_proto.HasField("shard_num"):
             table_proto.shard_num = usr_table_proto.shard_num
         else:
-            table_proto.shard_num = 1000
-            warnings.warn(
-                "The shard_num of sparse table is not set, use default value 1000."
-            )
+            if self.context['use_ps_gpu']:
+                table_proto.shard_num = 37
+                warnings.warn(
+                    "The shard_num of sparse table is not set, use default value 37 in gpups."
+                )
+            else:
+                table_proto.shard_num = 1000
+                warnings.warn(
+                    "The shard_num of sparse table is not set, use default value 1000 in cpups."
+                )
 
         if usr_table_proto.accessor.ByteSize() == 0:
             warnings.warn(
@@ -1009,14 +1015,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         is_test = bool(int(os.getenv("TEST_MODE", "0")))
 
-        # for GEO
-        if self.role_maker._is_first_worker() and self.is_heter_ps_mode:
-            # for ps-heter mode load all parameters on first_worker
-            init_params = get_the_one_recv_context(self.context,
-                                                   split_dense_table=True,
-                                                   use_origin_program=True)
-        else:
-            init_params = dense_map
+        # for GEO & heter_ps
+        init_params = dense_map
 
         # if not is_test:
         #     self._communicator.init_params(init_params)
@@ -1047,11 +1047,7 @@ class TheOnePSRuntime(RuntimeBase):
             fleet.util.barrier()  # 保证 0 号 worker 参数 push_dense_param over
 
         if not self.context['use_ps_gpu']:
-            if self.is_heter_ps_mode == True and not self.role_maker._is_first_worker(
-            ):
-                self._communicator.pull_dense(init_params)
-            else:
-                self._pull_all_dense(scopes, send_ctx, dense_map)
+            self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
         if self.context[
