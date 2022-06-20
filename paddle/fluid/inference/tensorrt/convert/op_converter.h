@@ -471,6 +471,7 @@ class OpConverter {
     input_shape.d[0] = data_size;
     auto const_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Constant, input_shape, weight.get());
+    const_layer->setPrecision(nvinfer1::DataType::kINT32);
     return const_layer->getOutput(0);
   }
 
