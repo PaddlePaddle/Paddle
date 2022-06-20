@@ -27,7 +27,7 @@ class LeNet(nn.Layer):
                             will not be defined. Default: 10.
 
     Returns:
-        LeNet model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of LeNet model.
 
     Examples:
         .. code-block:: python

@@ -422,7 +422,7 @@ class InceptionV3(nn.Layer):
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
-        Inception v3 model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of Inception v3 model.
 
     Examples:
         .. code-block:: python
@@ -519,7 +519,7 @@ def inception_v3(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`InceptionV3 <api_paddle_vision_InceptionV3>`.
 
     Returns:
-        Inception v3 model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of Inception v3 model.
 
     Examples:
         .. code-block:: python

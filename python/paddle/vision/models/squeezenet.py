@@ -85,7 +85,7 @@ class SqueezeNet(nn.Layer):
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
-        SqueezeNet model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet model.
 
     Examples:
         .. code-block:: python
@@ -220,7 +220,7 @@ def squeezenet1_0(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_SqueezeNet>`.
 
     Returns:
-        SqueezeNet v1.0 model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet v1.0 model.
 
     Examples:
         .. code-block:: python
@@ -254,7 +254,7 @@ def squeezenet1_1(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_SqueezeNet>`.
 
     Returns:
-        SqueezeNet v1.1 model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet v1.1 model.
 
     Examples:
         .. code-block:: python

@@ -38,7 +38,7 @@ class VGG(nn.Layer):
         with_pool (bool, optional): Use pool before the last three fc layer or not. Default: True.
 
     Returns:
-        VGG model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of VGG model.
 
     Examples:
         .. code-block:: python
@@ -150,7 +150,7 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_VGG>`.
 
     Returns:
-        VGG 11-layer model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of VGG 11-layer model.
 
     Examples:
         .. code-block:: python
@@ -187,7 +187,7 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_VGG>`.
 
     Returns:
-        VGG 13-layer model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of VGG 13-layer model.
 
     Examples:
         .. code-block:: python
@@ -224,7 +224,7 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_VGG>`.
 
     Returns:
-        VGG 16-layer model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of VGG 16-layer model.
 
     Examples:
         .. code-block:: python
@@ -261,7 +261,7 @@ def vgg19(pretrained=False, batch_norm=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_VGG>`.
 
     Returns:
-        VGG 19-layer model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of VGG 19-layer model.
 
     Examples:
         .. code-block:: python

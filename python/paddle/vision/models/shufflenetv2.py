@@ -200,7 +200,7 @@ class ShuffleNetV2(nn.Layer):
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
-        ShuffleNetV2 model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 model.
 
     Examples:
         .. code-block:: python
@@ -326,7 +326,7 @@ def shufflenet_v2_x0_25(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
 
     Returns:
-        ShuffleNetV2 with 0.25x output channels. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 0.25x output channels.
 
     Examples:
         .. code-block:: python
@@ -362,7 +362,7 @@ def shufflenet_v2_x0_33(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
 
     Returns:
-        ShuffleNetV2 with 0.33x output channels. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 0.33x output channels.
 
     Examples:
         .. code-block:: python
@@ -398,7 +398,7 @@ def shufflenet_v2_x0_5(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
 
     Returns:
-        ShuffleNetV2 with 0.5x output channels. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 0.5x output channels.
 
     Examples:
         .. code-block:: python
@@ -434,7 +434,7 @@ def shufflenet_v2_x1_0(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
 
     Returns:
-        ShuffleNetV2 with 1.0x output channels. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 1.0x output channels.
 
     Examples:
         .. code-block:: python
@@ -470,7 +470,7 @@ def shufflenet_v2_x1_5(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
 
     Returns:
-        ShuffleNetV2 with 1.5x output channels. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 1.5x output channels.
 
     Examples:
         .. code-block:: python
@@ -506,7 +506,7 @@ def shufflenet_v2_x2_0(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
 
     Returns:
-        ShuffleNetV2 with 2.0x output channels. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with 2.0x output channels.
 
     Examples:
         .. code-block:: python
@@ -542,7 +542,7 @@ def shufflenet_v2_swish(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ShuffleNetV2 <api_paddle_vision_ShuffleNetV2>`.
 
     Returns:
-        ShuffleNetV2 with swish activation function. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ShuffleNetV2 with swish activation function.
 
     Examples:
         .. code-block:: python

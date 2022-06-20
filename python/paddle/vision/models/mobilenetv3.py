@@ -259,7 +259,7 @@ class MobileNetV3Small(MobileNetV3):
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
-        MobileNetV3 Small architecture model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Small architecture model.
 
     Examples:
         .. code-block:: python
@@ -310,7 +310,7 @@ class MobileNetV3Large(MobileNetV3):
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
-        MobileNetV3 Large architecture model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Large architecture model.
 
     Examples:
         .. code-block:: python
@@ -393,7 +393,7 @@ def mobilenet_v3_small(pretrained=False, scale=1.0, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV3Small <api_paddle_vision_MobileNetV3Small>`.
 
     Returns:
-        MobileNetV3 Small architecture model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Small architecture model.
 
     Examples:
         .. code-block:: python
@@ -434,7 +434,7 @@ def mobilenet_v3_large(pretrained=False, scale=1.0, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV3Large <api_paddle_vision_MobileNetV3Large>`.
 
     Returns:
-        MobileNetV3 Large architecture model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Large architecture model.
 
     Examples:
         .. code-block:: python

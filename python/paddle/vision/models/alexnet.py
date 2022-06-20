@@ -81,7 +81,7 @@ class AlexNet(nn.Layer):
                             will not be defined. Default: 1000.
 
     Returns:
-        AlexNet model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of AlexNet model.
 
     Examples:
         .. code-block:: python
@@ -195,7 +195,7 @@ def alexnet(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`AlexNet <api_paddle_vision_AlexNet>`.
 
     Returns:
-        AlexNet model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of AlexNet model.
     
     Examples:
         .. code-block:: python

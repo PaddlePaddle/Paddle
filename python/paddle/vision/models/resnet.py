@@ -189,7 +189,7 @@ class ResNet(nn.Layer):
         groups (int, optional): Number of groups for each convolution block, Default: 1.
 
     Returns:
-        ResNet model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ResNet model.
 
     Examples:
         .. code-block:: python
@@ -337,7 +337,7 @@ def resnet18(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
 
     Returns:
-        ResNet 18-layer model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ResNet 18-layer model.
 
     Examples:
         .. code-block:: python
@@ -370,7 +370,7 @@ def resnet34(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
 
     Returns:
-        ResNet 34-layer model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ResNet 34-layer model.
 
     Examples:
         .. code-block:: python
@@ -403,7 +403,7 @@ def resnet50(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
 
     Returns:
-        ResNet 50-layer model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ResNet 50-layer model.
 
     Examples:
         .. code-block:: python
@@ -436,7 +436,7 @@ def resnet101(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
 
     Returns:
-        ResNet 101-layer. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ResNet 101-layer.
 
     Examples:
         .. code-block:: python
@@ -469,7 +469,7 @@ def resnet152(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
 
     Returns:
-        ResNet 152-layer model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ResNet 152-layer model.
 
     Examples:
         .. code-block:: python
@@ -502,7 +502,7 @@ def resnext50_32x4d(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
 
     Returns:
-        ResNeXt-50 32x4d model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-50 32x4d model.
 
     Examples:
         .. code-block:: python
@@ -537,7 +537,7 @@ def resnext50_64x4d(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
 
     Returns:
-        ResNeXt-50 64x4d model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-50 64x4d model.
 
     Examples:
         .. code-block:: python
@@ -572,7 +572,7 @@ def resnext101_32x4d(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
 
     Returns:
-        ResNeXt-101 32x4d model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-101 32x4d model.
 
     Examples:
         .. code-block:: python
@@ -608,7 +608,7 @@ def resnext101_64x4d(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
 
     Returns:
-        ResNeXt-101 64x4d model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-101 64x4d model.
 
     Examples:
         .. code-block:: python
@@ -644,7 +644,7 @@ def resnext152_32x4d(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
 
     Returns:
-        ResNeXt-152 32x4d model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-152 32x4d model.
 
     Examples:
         .. code-block:: python
@@ -680,7 +680,7 @@ def resnext152_64x4d(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
 
     Returns:
-        ResNeXt-152 64x4d model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-152 64x4d model.
 
     Examples:
         .. code-block:: python
@@ -716,7 +716,7 @@ def wide_resnet50_2(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
 
     Returns:
-        Wide ResNet-50-2 model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of Wide ResNet-50-2 model.
 
     Examples:
         .. code-block:: python
@@ -750,7 +750,7 @@ def wide_resnet101_2(pretrained=False, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
 
     Returns:
-        Wide ResNet-101-2 model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of Wide ResNet-101-2 model.
 
     Examples:
         .. code-block:: python

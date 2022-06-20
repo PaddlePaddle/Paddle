@@ -64,7 +64,7 @@ class MobileNetV1(nn.Layer):
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
-        MobileNetV1 model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV1 model.
 
     Examples:
         .. code-block:: python
@@ -230,7 +230,7 @@ def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV1 <api_paddle_vision_MobileNetV1>`.
 
     Returns:
-        MobileNetV1 model. An instance of :ref:`api_paddle_nn_Layer`.
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV1 model.
 
     Examples:
         .. code-block:: python
