@@ -120,6 +120,47 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out,
 }
 
 /**
+ * @brief Perform unary calculation according to OpFunc. Shape of input and
+ * output are the same.
+ *
+ * @template paraments
+ * InT: The data type of in.
+ * OutT: The data type of out.
+ * NX: The number of data columns loaded by each thread.
+ * NY: The number of data rows loaded by each thread.
+ * BlockSize: Identifies the current device thread index method. For xpu,
+ * core_id() is used as the index.
+ * OpFunc: Compute functor which has an operator() as following:
+ *     template <typename InT, typename OutT>
+ *     struct XxxFunctor {
+ *       HOSTDEVICE OutT operator()(const InT& a) const {
+ *         return ...;
+ *       }
+ *     };
+ *
+ * @param：
+ * out: The register pointer of out, the size is NX * NY.
+ * in: The register pointer of in, the size is NX * NY.
+ * compute: Compute function which was declared like OpFunc<InT, OutT>().
+ * read_lens: The number of data continuously loaded by each thread.
+ */
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
+          class OpFunc>
+__device__ __forceinline__ void ElementwiseUnary(OutT* out,
+                                                 const InT* in,
+                                                 OpFunc compute,
+                                                 int read_lens) {
+#pragma unroll
+  for (int idx = 0; idx < read_lens; idx++) {
+    out[idx] = static_cast<OutT>(compute(in[idx]));
+  }
+}
+
+/**
  * @brief Binary calculation according to OpFunc. Shape of The input and output
  * are the same.
  *
@@ -357,6 +398,60 @@ __device__ __forceinline__ void Reduce(T* out,
       for (int j = 0; j < NX; ++j) {
         out[i] = reducer(out[i], in[i * NX + j]);
       }
+    }
+  }
+}
+
+/**
+ * @brief The Reduce provides collective methods for computing a parallel
+ * reduction of items partitioned across a CUDA block and intra thread. When
+ * ReduceMode == kLocalMode, thread reduce along nx. When ReduceMode ==
+ * kGlobalMode, use shared memory to reduce between threads.
+ *
+ * @template paraments
+ * T: The type of data.
+ * NX: The number of data continuously loaded by each thread.
+ * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
+ * BlockSize: Identifies the current device thread index method. For xpu,
+ * core_id() is used as the index.
+ * ReduceFunctor: Compute functor which has an operator() as following
+ *     template <typename InT>
+ *     struct ReduceFunctor {
+ *       HOSTDEVICE InT operator()(const InT& a, const InT& b) const {
+ *         return ...;
+ *       }
+ *     };
+ * ReduceMode: Reduce mode, can be kLocalMode, kGlobalMode.
+ *
+ * @param
+ * out: The register pointer of out, the size is NX * NY.
+ * in: The register pointer of in, the size is NX * NY.
+ * reducer: Compute function which was declared like ReduceFunctor<InT>().
+ * read_lens: The number of data continuously loaded by each thread.
+ * reduce_last_dim: if the last dim gets involved in reduction.
+ */
+template <typename T,
+          int NX,
+          int NY,
+          int BlockSize,
+          class ReduceFunctor,
+          details::ReduceMode Mode>
+__device__ __forceinline__ void Reduce(T* out,
+                                       const T* in,
+                                       ReduceFunctor reducer,
+                                       int read_lens,
+                                       bool reduce_last_dim) {
+  if (Mode == details::kGlobalMode) {
+    if (reduce_last_dim) {
+#pragma unroll
+      for (int i = 0; i < NY * NX; i++) {  // reduce along blockDim.x
+        details::BlockXReduce<T, ReduceFunctor, 1>(&out[i], &in[i], reducer);
+      }
+    }
+  } else {  // else  kLocalMode
+#pragma unroll
+    for (int i = 0; i < read_lens; ++i) {
+      out[i] = reducer(out[i], in[i]);
     }
   }
 }
