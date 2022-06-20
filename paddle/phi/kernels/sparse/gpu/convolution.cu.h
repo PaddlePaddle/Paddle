@@ -59,7 +59,6 @@ __global__ void GatherKernel(const T* params,
     int slice_i = i - indices_i * vec_slice_size;  // offset inside the slice
     IndexT gather_i = indices[indices_i];
     int64_t params_i = gather_i * slice_size + slice_i*VecSize;
-    //*(output + i) = *(params + params_i);
     using  LoadT = phi::AlignedVector<T, VecSize>;
     using  StoreT = phi::AlignedVector<T, VecSize>;
     LoadT params_vec;
