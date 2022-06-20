@@ -69,7 +69,7 @@ class SliceOpConverter : public OpConverter {
                 "slice op. But received ends = %d, starts = %d.",
                 ends[i], starts[i]));
       }
-    }
+    
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
@@ -207,7 +207,7 @@ class SliceOpConverter : public OpConverter {
       layer = engine_->AddDynamicPlugin(&input, 1, plugin);
 #endif
   }
-  else {
+ else {
 #if IS_TRT_VERSION_GE(6000)
     auto chw_input_dims = input->getDimensions();
     nvinfer1::Dims trt_start_dims;
