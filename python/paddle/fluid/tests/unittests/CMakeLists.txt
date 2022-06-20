@@ -1173,8 +1173,6 @@ if(WITH_XPU_BKCL)
 endif()
 
 if(WITH_HETERPS)
-  set_tests_properties(test_communicator_ps_gpu PROPERTIES LABELS
-                                                           "RUN_TYPE=GPUPS")
   set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
   set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
 endif()

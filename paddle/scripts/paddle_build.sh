@@ -1279,8 +1279,10 @@ EOF
         echo "ipipe_log_param_${2}_Cards_TestCases_Count: $num" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
 }
+
 failed_test_lists=''
 tmp_dir=`mktemp -d`
+
 function collect_failed_tests() {
     for file in `ls $tmp_dir`; do
         exit_code=0
