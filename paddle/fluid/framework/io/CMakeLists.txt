@@ -13,4 +13,4 @@ cc_test(
   DEPS fs shell)
 if(WITH_CRYPTO)
   add_subdirectory(crypto)
-endif(WITH_CRYPTO)
+endif()

@@ -108,6 +108,63 @@ class ActivationGradMLUKernelV3 : public framework::OpKernel<T> {
   }
 };
 
+// For sqrt
+template <typename T>
+class SqrtMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+    auto place = ctx.GetPlace();
+
+    out->mutable_data<T>(place);
+
+    MLUCnnlTensorDesc input_desc(*x);
+    MLUCnnlTensorDesc output_desc(*out);
+
+    cnnlComputationPreference_t prefer = CNNL_COMPUTATION_FAST;
+    MLUCnnl::Sqrt(ctx, prefer, input_desc.get(), GetBasePtr(x),
+                  output_desc.get(), GetBasePtr(out));
+  }
+};
+
+template <typename T>
+class SqrtGradMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto place = ctx.GetPlace();
+
+    dx->mutable_data<T>(place);
+
+    MLUCnnlTensorDesc data_desc(*out);
+    MLUCnnl::SqrtGrad(ctx, data_desc.get(), GetBasePtr(out), GetBasePtr(dout),
+                      GetBasePtr(dx));
+  }
+};
+
+// CNNL_LOG_E = 0,
+// CNNL_LOG_2 = 1,
+// CNNL_LOG_10 = 2,
+template <cnnlLogBase_t Log_base, typename T>
+class LogMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    output->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlTensorDesc input_desc(*input);
+    MLUCnnlTensorDesc output_desc(*output);
+    cnnlComputationPreference_t prefer = CNNL_COMPUTATION_HIGH_PRECISION;
+
+    MLUCnnl::Log(ctx, prefer, Log_base, input_desc.get(), GetBasePtr(input),
+                 output_desc.get(), GetBasePtr(output));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -170,3 +227,22 @@ REGISTER_OP_MLU_KERNEL(
     ops::ActivationGradMLUKernelV1<CNNL_ACTIVATION_LEAKYRELU, float>,
     ops::ActivationGradMLUKernelV1<CNNL_ACTIVATION_LEAKYRELU,
                                    paddle::platform::float16>);
+
+// sqrt
+REGISTER_OP_MLU_KERNEL(sqrt, ops::SqrtMLUKernel<float>,
+                       ops::SqrtMLUKernel<paddle::platform::float16>);
+REGISTER_OP_MLU_KERNEL(sqrt_grad, ops::SqrtGradMLUKernel<float>,
+                       ops::SqrtGradMLUKernel<paddle::platform::float16>);
+
+// log log2 log10
+REGISTER_OP_MLU_KERNEL(
+    log, ops::LogMLUKernel<CNNL_LOG_E, float>,
+    ops::LogMLUKernel<CNNL_LOG_E, paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(
+    log2, ops::LogMLUKernel<CNNL_LOG_2, float>,
+    ops::LogMLUKernel<CNNL_LOG_2, paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(
+    log10, ops::LogMLUKernel<CNNL_LOG_10, float>,
+    ops::LogMLUKernel<CNNL_LOG_10, paddle::platform::float16>);

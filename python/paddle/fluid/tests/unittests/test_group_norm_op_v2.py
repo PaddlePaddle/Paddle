@@ -22,6 +22,7 @@ from op_test import OpTest, _set_use_system_allocator
 from paddle.fluid.framework import grad_var_name
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 import paddle
 
 
@@ -124,6 +125,10 @@ class TestDygraphGroupNormv2(unittest.TestCase):
                 y2 = compute_v2(x)
                 self.assertTrue(np.allclose(y1, y2, atol=1e-5))
 
+    def test_eager_api(self):
+        with _test_eager_guard():
+            self.test_dygraph()
+
 
 class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
 
@@ -153,6 +158,10 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
                 result2 = gn2(data_pd).numpy()
                 self.assertTrue(np.allclose(result1, expect_res1, atol=1e-5))
                 self.assertTrue(np.allclose(result2, expect_res2, atol=1e-5))
+
+    def test_eager_api(self):
+        with _test_eager_guard():
+            self.test_numerical_accuracy()
 
 
 class TestGroupNormDimException(unittest.TestCase):

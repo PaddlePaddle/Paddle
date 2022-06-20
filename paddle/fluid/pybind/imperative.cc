@@ -1540,40 +1540,40 @@ void BindImperative(py::module *m_ptr) {
                 "Cannot copy this Tensor to GPU in CPU version Paddle, "
                 "Please recompile or reinstall Paddle with CUDA support."));
 #else
-             int device_count = platform::GetGPUDeviceCount();
-             int device_id = 0;
-             if (handle == py::none()) {
-               if (platform::is_gpu_place(self->Place())) {
-                 return self;
-               }
-             } else {
-               PyObject *py_obj = handle.ptr();
-               PADDLE_ENFORCE_EQ(
-                   PyCheckInteger(py_obj), true,
-                   platform::errors::InvalidArgument(
-                       " 'device_id' must be a positive integer"));
-               device_id = py::cast<int>(handle);
-             }
-             PADDLE_ENFORCE_GE(
-                 device_id, 0,
-                 platform::errors::InvalidArgument(
-                     "Can not copy Tensor to Invalid CUDAPlace(%d), device id "
-                     "must inside [0, %d)",
-                     device_id, device_count));
-             PADDLE_ENFORCE_LT(
-                 device_id, device_count,
-                 platform::errors::InvalidArgument(
-                     "Can not copy Tensor to Invalid CUDAPlace(%d), device id "
-                     "must inside [0, %d)",
-                     device_id, device_count));
-             platform::CUDAPlace place = platform::CUDAPlace(device_id);
-             if (platform::is_same_place(self->Place(), place)) {
-               return self;
-             } else {
-               auto new_var = self->NewVarBase(place, blocking);
-               new_var->SetOverridedStopGradient(self->OverridedStopGradient());
-               return new_var;
-             }
+            int device_count = platform::GetGPUDeviceCount();
+            int device_id = 0;
+            if (handle == py::none()) {
+              auto default_place =
+                  imperative::GetCurrentTracer()->ExpectedPlace();
+              device_id = default_place.GetDeviceId();
+            } else {
+              PyObject *py_obj = handle.ptr();
+              PADDLE_ENFORCE_EQ(
+                  PyCheckInteger(py_obj), true,
+                  platform::errors::InvalidArgument(
+                      " 'device_id' must be a positive integer"));
+              device_id = py::cast<int>(handle);
+            }
+            PADDLE_ENFORCE_GE(
+                device_id, 0,
+                platform::errors::InvalidArgument(
+                    "Can not copy Tensor to Invalid CUDAPlace(%d), device id "
+                    "must inside [0, %d)",
+                    device_id, device_count));
+            PADDLE_ENFORCE_LT(
+                device_id, device_count,
+                platform::errors::InvalidArgument(
+                    "Can not copy Tensor to Invalid CUDAPlace(%d), device id "
+                    "must inside [0, %d)",
+                    device_id, device_count));
+            platform::CUDAPlace place = platform::CUDAPlace(device_id);
+            if (platform::is_same_place(self->Place(), place)) {
+              return self;
+            } else {
+              auto new_var = self->NewVarBase(place, blocking);
+              new_var->SetOverridedStopGradient(self->OverridedStopGradient());
+              return new_var;
+            }
 #endif
           },
           py::arg("device_id") = py::none(), py::arg("blocking") = true, R"DOC(
@@ -1593,16 +1593,17 @@ void BindImperative(py::module *m_ptr) {
               # required: gpu
               import paddle
               x = paddle.to_tensor(1.0, place=paddle.CPUPlace())
-              print(x.place)        # CPUPlace
+              print(x.place)        # Place(cpu)
 
               y = x.cuda()
-              print(y.place)        # CUDAPlace(0)
+              print(y.place)        # Place(gpu:0)
             
               y = x.cuda(None)
-              print(y.place)        # CUDAPlace(0)
+              print(y.place)        # Place(gpu:0)
 
-              y = x.cuda(1)
-              print(y.place)        # CUDAPlace(1)
+              paddle.device.set_device("gpu:1")
+              y = x.cuda(None)
+              print(y.place)        # Place(gpu:1)
        )DOC")
       .def(
           "_share_memory",
@@ -1743,6 +1744,17 @@ void BindImperative(py::module *m_ptr) {
           "_copy_to",
           [](const std::shared_ptr<imperative::VarBase> &self,
              const platform::MLUPlace &place, bool blocking) {
+            auto new_var = self->NewVarBase(place, blocking);
+            if (!blocking) {
+              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+            }
+            return new_var;
+          },
+          py::return_value_policy::copy)
+      .def(
+          "_copy_to",
+          [](const std::shared_ptr<imperative::VarBase> &self,
+             const platform::CustomPlace &place, bool blocking) {
             auto new_var = self->NewVarBase(place, blocking);
             if (!blocking) {
               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
