@@ -56,7 +56,15 @@ struct FeaturePushValue {
   int slot;
   float lr_g;
   float mf_g[MF_DIM];
-
+  
+  friend std::ostream& operator<<(std::ostream& out, FeaturePushValue& val) {
+    out << "show: " << val.show << " clk: " << val.clk << " slot: " << val.slot
+        << " lr_g: " << val.lr_g;
+    for (int i = 0; i < MF_DIM; ++i) {
+      out << " " << val.mf_g[i];
+    }
+    return out;
+  }
   // __device__ __forceinline__ FeaturePushValue
   // operator+(const FeaturePushValue& a) const {
   //  FeaturePushValue out;
