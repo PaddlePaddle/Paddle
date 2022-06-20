@@ -34,10 +34,6 @@ void Copy(const Context& dev_ctx,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
-  auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
-  if (UNLIKELY(size) == 0) {
-    return;
-  }
 
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
@@ -58,6 +54,11 @@ void Copy(const Context& dev_ctx,
   } else if (paddle::platform::is_xpu_place(dst_place)) {
     dst_ptr = dev_ctx.Alloc(dst, src.dtype());
 #endif
+  }
+
+  auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
+  if (UNLIKELY(size) == 0) {
+    return;
   }
 
   PADDLE_ENFORCE_EQ(
