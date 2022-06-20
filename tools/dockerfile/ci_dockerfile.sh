@@ -66,7 +66,7 @@ function make_cinn_dockerfile(){
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
   sed -i "8i RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone" ${dockerfile_name}
-  sed -i "9i RUN apt-get update && apt-get install -y liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev" ${dockerfile_name}
+  sed -i "9i RUN apt-get install -y liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev" ${dockerfile_name}
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
