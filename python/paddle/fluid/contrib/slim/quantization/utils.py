@@ -338,7 +338,7 @@ def quant_tensor(x,
                  weight_bits=8,
                  round_type='TiesToEven'):
     assert quant_axis in [0, 1], 'quant_axis should be 0 or 1 for now.'
-    distribution = np.round if round_type == 'TiesToEven' else roundc
+    distribution = np.round if round_type == 'TiesToEven' else round_c
     bnt = (1 << (weight_bits - 1)) - 1
     if isinstance(scale, list):
         for i, s in enumerate(scale):

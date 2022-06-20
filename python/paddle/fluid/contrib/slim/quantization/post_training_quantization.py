@@ -651,6 +651,7 @@ class PostTrainingQuantization(object):
                                 float(np.max(np.abs(var_tensor[i]))))
                 self._quantized_threshold[var_name] = abs_max_value
         _logger.info("MSE searching stage ...")
+        distribution = np.round if self._round_type == 'TiesToEven' else utils.round_c
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
             var_tensor = var_tensor.flatten()
@@ -663,7 +664,7 @@ class PostTrainingQuantization(object):
                 scale = s * abs_max_value
                 s += 0.02
                 bins = 2**(self._activation_bits - 1) - 1
-                quant_var = np.clip(np.round(var_tensor / scale * bins),
+                quant_var = np.clip(distribution(var_tensor / scale * bins),
                                     -bins - 1, bins)
                 quant_dequant_var = quant_var / bins * scale
                 mse_loss = ((var_tensor - quant_dequant_var)**2).mean()
@@ -690,6 +691,7 @@ class PostTrainingQuantization(object):
                                 float(np.max(np.abs(var_tensor[i]))))
                 self._quantized_threshold[var_name] = abs_max_value
         _logger.info("EMD searching stage ...")
+        distribution = np.round if self._round_type == 'TiesToEven' else utils.round_c
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
             var_tensor = var_tensor.flatten()
@@ -702,7 +704,7 @@ class PostTrainingQuantization(object):
                 scale = s * abs_max_value
                 s += 0.02
                 bins = 2**(self._activation_bits - 1) - 1
-                quant_var = np.clip(np.round(var_tensor / scale * bins),
+                quant_var = np.clip(distribution(var_tensor / scale * bins),
                                     -bins - 1, bins)
                 quant_dequant_var = quant_var / bins * scale
                 emd_loss = np.abs(
