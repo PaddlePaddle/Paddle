@@ -3186,12 +3186,11 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
             label, 'label', ['int32', 'int64', 'float32', 'float64'],
             'soft_margin_loss')
 
-        label = fluid.layers.cast(label, input.dtype)
-
     if not (input.shape == label.shape):
         raise ValueError("input's shape must equal to "
                          "label's shape")
 
+    label = fluid.layers.cast(label, input.dtype)
     out = paddle.log(1 + paddle.exp(-label * input))
 
     if reduction == 'sum':

@@ -15,7 +15,6 @@
 import paddle
 import numpy as np
 import unittest
-from op_test import OpTest
 
 
 def test_static_layer(
@@ -172,45 +171,6 @@ class TestSoftMarginLoss(unittest.TestCase):
                           label=label,
                           reduction="unsupport reduction")
         paddle.enable_static()
-
-
-def soft_margin_loss(input, label):
-    return np.log(1 + np.exp(-label * input))
-
-
-class TestSoftMarginLossOp(OpTest):
-
-    def setUp(self):
-        self.init_test_case()
-        self.op_type = "soft_margin_loss"
-        input_np = np.random.uniform(0.1, 0.8, self.shape).astype("float64")
-        label_np = np.random.randint(0, 2, self.shape).astype("float64")
-        label_np[label_np == 0] = -1
-        output_np = soft_margin_loss(input_np, label_np)
-
-        self.inputs = {'X': input_np, 'Label': label_np}
-        self.outputs = {'Out': output_np}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-
-    def init_test_case(self):
-        self.shape = [10, 10]
-
-
-class TestSoftMarginLossOpCase1(OpTest):
-
-    def init_test_cast(self):
-        self.shape = [2, 3, 4, 5]
-
-
-class TestSoftMarginLossOpCase2(OpTest):
-
-    def init_test_cast(self):
-        self.shape = [2, 3, 20]
 
 
 if __name__ == "__main__":
