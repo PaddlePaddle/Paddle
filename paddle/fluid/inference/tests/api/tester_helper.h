@@ -797,6 +797,9 @@ void CompareQuantizedAndAnalysis(
     const AnalysisConfig *config, const AnalysisConfig *qconfig,
     const std::vector<std::vector<PaddleTensor>> &inputs,
     const int compared_idx = 1) {
+  PADDLE_ENFORCE_GT(
+      inputs.size(), 0,
+      platform::errors::PreconditionNotMet("There is no input data provided."));
   PADDLE_ENFORCE_EQ(
       inputs[0][0].shape[0], FLAGS_batch_size,
       platform::errors::InvalidArgument(
