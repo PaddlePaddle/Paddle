@@ -40,50 +40,23 @@ class FcOpConverter : public OpConverter {
     nvinfer1::Dims reshape_before_fc_dim;
     reshape_before_fc_dim.nbDims = x_num_col_dims + 3;
     // padding shape "* x q x 1 x 1"
-
-    nvinfer1::ITensor* filal_reshape_before_fc_shape_tensor = nullptr;
-
-    if (!engine_->with_dynamic_shape()) {
-      for (int i = 0; i < reshape_before_fc_dim.nbDims; i++) {
-        reshape_before_fc_dim.d[i] = 1;
-      }
-      for (int i = 0; i < x_dim.nbDims; i++) {
-        if (i < x_num_col_dims) {
-          reshape_before_fc_dim.d[i] = 0;
-        } else {
-          reshape_before_fc_dim.d[x_num_col_dims] *= x_dim.d[i];
-        }
-      }
-    } else {
-      std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
-      nvinfer1::ITensor* input_shape_tensor = Shape(before_fc);
-
-      for (int i = 0; i < reshape_before_fc_dim.nbDims; i++) {
-        reshape_before_fc_shape_tensor.push_back(Add1DConstantLayer(1));
-      }
-      for (int i = 0; i < x_dim.nbDims; i++) {
-        if (i < x_num_col_dims) {
-          reshape_before_fc_shape_tensor[i] =
-              GetEleTensorOfShape(input_shape_tensor, i);
-        } else {
-          reshape_before_fc_shape_tensor[x_num_col_dims] =
-              Prod(GetEleTensorOfShape(input_shape_tensor, i),
-                   reshape_before_fc_shape_tensor[x_num_col_dims]);
-        }
-      }
-      filal_reshape_before_fc_shape_tensor =
-          Concat(reshape_before_fc_shape_tensor);
+    for (int i = 0; i < reshape_before_fc_dim.nbDims; i++) {
+      reshape_before_fc_dim.d[i] = 1;
     }
-
+    for (int i = 0; i < x_dim.nbDims; i++) {
+      if (i < x_num_col_dims) {
+        reshape_before_fc_dim.d[i] = 0;
+      } else {
+        if (x_dim.d[i] < 0) {
+          reshape_before_fc_dim.d[x_num_col_dims] = -1;
+          break;
+        }
+        reshape_before_fc_dim.d[x_num_col_dims] *= x_dim.d[i];
+      }
+    }
     auto* reshape_before_fc_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *before_fc);
-    if (!engine_->with_dynamic_shape()) {
-      reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
-    } else {
-      reshape_before_fc_layer->setInput(1,
-                                        *filal_reshape_before_fc_shape_tensor);
-    }
-
+    reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
     reshape_before_fc_layer->setName(
         ("fc_op_reshape_before_fc: Shuffle (Output: " + output_name + ")")
             .c_str());
@@ -95,28 +68,12 @@ class FcOpConverter : public OpConverter {
     // add shuffle after fc
     nvinfer1::Dims reshape_after_fc_dim;
     reshape_after_fc_dim.nbDims = x_num_col_dims + 1;
-
-    nvinfer1::ITensor* filal_reshape_after_fc_shape_tensor = nullptr;
-
-    if (!engine_->with_dynamic_shape()) {
-      for (int i = 0; i < reshape_after_fc_dim.nbDims; i++) {
-        reshape_after_fc_dim.d[i] = 0;
-      }
-    } else {
-      std::vector<int> gather_indices(x_num_col_dims + 1);
-      std::iota(gather_indices.begin(), gather_indices.end(), 0);
-      filal_reshape_after_fc_shape_tensor =
-          Gather(Shape(after_fc), gather_indices);
+    for (int i = 0; i < reshape_after_fc_dim.nbDims; i++) {
+      reshape_after_fc_dim.d[i] = 0;
     }
-
     auto* reshape_after_fc_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *after_fc);
-    if (!engine_->with_dynamic_shape()) {
-      reshape_after_fc_layer->setReshapeDimensions(reshape_after_fc_dim);
-    } else {
-      reshape_after_fc_layer->setInput(1, *filal_reshape_after_fc_shape_tensor);
-    }
-
+    reshape_after_fc_layer->setReshapeDimensions(reshape_after_fc_dim);
     return reshape_after_fc_layer;
   }
 

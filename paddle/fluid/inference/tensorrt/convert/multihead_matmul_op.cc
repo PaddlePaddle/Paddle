@@ -312,24 +312,20 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                     static_cast<size_t>(bias_t->numel())};
 
         // add shuffle before fc
-        std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
-        nvinfer1::ITensor* input_shape_tensor = Shape(input);
-
-        for (int i = 0; i < 5; i++) {
-          reshape_before_fc_shape_tensor.push_back(Add1DConstantLayer(1));
-        }
-        for (int i = 0; i < 3; i++) {
-          reshape_before_fc_shape_tensor[i] =
-              GetEleTensorOfShape(input_shape_tensor, i);
-        }
+        nvinfer1::Dims reshape_before_fc_dim;
+        reshape_before_fc_dim.nbDims = 5;
+        reshape_before_fc_dim.d[0] = 0;
+        reshape_before_fc_dim.d[1] = 0;
+        reshape_before_fc_dim.d[2] = 0;
+        reshape_before_fc_dim.d[3] = 1;
+        reshape_before_fc_dim.d[4] = 1;
         auto* reshape_before_fc_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
         if (op_desc.HasAttr("Input_scale")) {
           engine_->SetTensorDynamicRange(reshape_before_fc_layer->getOutput(0),
                                          in_scale);
         }
-        reshape_before_fc_layer->setInput(
-            1, *Concat(reshape_before_fc_shape_tensor));
+        reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
         reshape_before_fc_layer->setName(
             ("shuffle_before_multihead_mamul(Output: " + output_name + ")")
                 .c_str());
