@@ -818,7 +818,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
     for (int loop_idx = 0; loop_idx < loop_size; ++loop_idx) {
       kps::ReadData<Tx, Tx, 1, 1, 1, VecSize, false>(
           reduce_input,
-          nput + loop_idx * left_num + idx,
+          input + loop_idx * left_num + idx,
           block.BlockDimX(),
           1,
           1,

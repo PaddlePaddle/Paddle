@@ -166,15 +166,13 @@ template <typename Tx,
           int NX,
           int NY,
           int BlockSize,
-          int VecSize,
           bool IsBoundary = false>
 __device__ __forceinline__ void ReadData(Ty* dst,
                                          const Tx* __restrict__ src,
                                          int size_nx,
                                          int size_ny,
                                          int stride_nx,
-                                         int stride_ny,
-                                         int read_lens) {
+                                         int stride_ny) {
   int thread_offset = threadIdx.x;
   int left_size_nx = size_nx - thread_offset;
 
