@@ -30,10 +30,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
     def test_dim2(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        expected_np = np.array(
-            [[1, 2, 2], [2, 1, 2], [2, 2, 1], [2, 2, 2]]).astype('float32')
-        expected_grad = np.array(
-            [[0, 1, 1], [1, 0, 1], [1, 1, 0], [1, 1, 1]]).astype('float32')
+        expected_np = np.array([[1, 2, 2], [2, 1, 2], [2, 2, 1],
+                                [2, 2, 2]]).astype('float32')
+        expected_grad = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0],
+                                  [1, 1, 1]]).astype('float32')
 
         for idx, p in enumerate(self.places):
             if idx == 0:
@@ -59,10 +59,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
     def test_dim2_offset_1(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        expected_np = np.array(
-            [[2, 2, 2], [1, 2, 2], [2, 1, 2], [2, 2, 1]]).astype('float32')
-        expected_grad = np.array(
-            [[1, 1, 1], [0, 1, 1], [1, 0, 1], [1, 1, 0]]).astype('float32')
+        expected_np = np.array([[2, 2, 2], [1, 2, 2], [2, 1, 2],
+                                [2, 2, 1]]).astype('float32')
+        expected_grad = np.array([[1, 1, 1], [0, 1, 1], [1, 0, 1],
+                                  [1, 1, 0]]).astype('float32')
 
         for idx, p in enumerate(self.places):
             if idx == 0:
@@ -88,10 +88,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
     def test_dim2_offset1(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        expected_np = np.array(
-            [[2, 1, 2], [2, 2, 1], [2, 2, 2], [2, 2, 2]]).astype('float32')
-        expected_grad = np.array(
-            [[1, 0, 1], [1, 1, 0], [1, 1, 1], [1, 1, 1]]).astype('float32')
+        expected_np = np.array([[2, 1, 2], [2, 2, 1], [2, 2, 2],
+                                [2, 2, 2]]).astype('float32')
+        expected_grad = np.array([[1, 0, 1], [1, 1, 0], [1, 1, 1],
+                                  [1, 1, 1]]).astype('float32')
 
         for idx, p in enumerate(self.places):
             if idx == 0:
@@ -117,18 +117,22 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
     def test_dim4(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        expected_np = np.array(
-            [[[[0, 3], [2, 2], [2, 2]], [[2, 2], [1, 4], [2, 2]],
-              [[2, 2], [2, 2], [2, 5]], [[2, 2], [2, 2], [2, 2]]],
-             [[[6, 9], [2, 2], [2, 2]], [[2, 2], [7, 10], [2, 2]],
-              [[2, 2], [2, 2], [8, 11]],
-              [[2, 2], [2, 2], [2, 2]]]]).astype('float32')
-        expected_grad = np.array(
-            [[[[0, 0], [1, 1], [1, 1]], [[1, 1], [0, 0], [1, 1]],
-              [[1, 1], [1, 1], [0, 0]], [[1, 1], [1, 1], [1, 1]]],
-             [[[0, 0], [1, 1], [1, 1]], [[1, 1], [0, 0], [1, 1]],
-              [[1, 1], [1, 1], [0, 0]],
-              [[1, 1], [1, 1], [1, 1]]]]).astype('float32')
+        expected_np = np.array([[[[0, 3], [2, 2], [2, 2]],
+                                 [[2, 2], [1, 4], [2, 2]],
+                                 [[2, 2], [2, 2], [2, 5]],
+                                 [[2, 2], [2, 2], [2, 2]]],
+                                [[[6, 9], [2, 2], [2, 2]],
+                                 [[2, 2], [7, 10], [2, 2]],
+                                 [[2, 2], [2, 2], [8, 11]],
+                                 [[2, 2], [2, 2], [2, 2]]]]).astype('float32')
+        expected_grad = np.array([[[[0, 0], [1, 1], [1, 1]],
+                                   [[1, 1], [0, 0], [1, 1]],
+                                   [[1, 1], [1, 1], [0, 0]],
+                                   [[1, 1], [1, 1], [1, 1]]],
+                                  [[[0, 0], [1, 1], [1, 1]],
+                                   [[1, 1], [0, 0], [1, 1]],
+                                   [[1, 1], [1, 1], [0, 0]],
+                                   [[1, 1], [1, 1], [1, 1]]]]).astype('float32')
 
         for idx, p in enumerate(self.places):
             if idx == 0:
@@ -154,6 +158,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_largedim(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         if len(self.places) > 1:
             bsdim = 1024
             fsdim = 128
@@ -175,6 +180,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
                 self.assertEqual((ny == expected_pred).all(), True)
                 self.assertEqual((y.grad == expected_grad).all(), True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 if __name__ == '__main__':

@@ -17,12 +17,15 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.nn import *
 import numpy as np
+import os
+import tempfile
 
 
 class TestDygraphLoadStatic(unittest.TestCase):
 
     def testLoadStaticModel(self):
         # static mode
+        temp_dir = tempfile.TemporaryDirectory()
         a = fluid.data(name="a", shape=[10, 10])
         conv_in = fluid.data(name="conv_in", shape=[None, 10, 10, 10])
 
@@ -144,9 +147,11 @@ class TestDygraphLoadStatic(unittest.TestCase):
         ) if not fluid.is_compiled_with_cuda() else fluid.CUDAPlace(0))
         out = exe.run(framework.default_startup_program())
 
-        fluid.save(framework.default_main_program(), "./test_1")
+        fluid.save(framework.default_main_program(),
+                   os.path.join(temp_dir.name, "test_1"))
 
-        para_dict = fluid.load_program_state("./test_1")
+        para_dict = fluid.load_program_state(
+            os.path.join(temp_dir.name, "test_1"))
 
         new_dict = {}
         for k, v in para_dict.items():
@@ -214,6 +219,7 @@ class TestDygraphLoadStatic(unittest.TestCase):
             my_test.set_dict(new_dict, use_structured_name=False)
             for k, v in my_test.state_dict().items():
                 self.assertTrue(np.array_equal(v.numpy(), new_dict[v.name]))
+        temp_dir.cleanup()
 
 
 if __name__ == '__main__':

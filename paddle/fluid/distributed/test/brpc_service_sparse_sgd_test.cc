@@ -295,7 +295,7 @@ void RunBrpcPushSparse() {
       fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_update_status.wait();
 
-  for (size_t idx = 0; idx < tensor->numel(); ++idx) {
+  for (int64_t idx = 0; idx < tensor->numel(); ++idx) {
     EXPECT_FLOAT_EQ(fea_temp_values[idx], fea_values[idx] - 1.0);
   }
 

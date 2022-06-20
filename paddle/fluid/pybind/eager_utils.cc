@@ -734,12 +734,15 @@ PyObject* ToPyObject(
         PADDLE_THROW(
             platform::errors::Fatal("Unable to append string to py_list"));
       }
+      Py_DECREF(val_string);
     }
 
     if (PyDict_SetItem(dict, key_string, py_list) != 0) {
       PADDLE_THROW(
           platform::errors::Fatal("Unable to set key:value for py_dict"));
     }
+    Py_DECREF(py_list);
+    Py_DECREF(key_string);
   }
 
   return dict;

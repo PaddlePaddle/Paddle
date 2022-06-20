@@ -48,6 +48,7 @@ __all__ = [
     'program_guard',
     'name_scope',
     'ipu_shard_guard',
+    'set_ipu_shard',
     'cuda_places',
     'cpu_places',
     'xpu_places',
@@ -81,6 +82,7 @@ global_prog_seed = 0
 _current_pipeline_stage = None
 _already_patch_eager_tensor = False
 _already_patch_varbase = False
+_current_cuda_graph_mode = None
 _global_flags_ = core.globals()
 
 # Some explanation of our execution system 2022.03
@@ -177,8 +179,7 @@ def _fallback_legacy_dygraph():
     need_fallback = False
     # Only enable eager on CPU/GPU
     is_not_support = core.is_compiled_with_xpu() or core.is_compiled_with_npu(
-    ) or core.is_compiled_with_ipu() or core.is_compiled_with_mlu(
-    ) or core.is_compiled_with_rocm()
+    ) or core.is_compiled_with_ipu() or core.is_compiled_with_mlu()
 
     if _in_eager_mode_ and is_not_support:
         # switch into legacy dygraph mode
@@ -252,28 +253,28 @@ def _test_eager_guard(place=None):
             _enable_legacy_dygraph()
 
 
-global_ipu_index = None
-global_ipu_stage = None
+global_ipu_index = -1
+global_ipu_stage = -1
 ipu_index_attr_name = 'ipu_index'
 ipu_stage_attr_name = 'ipu_stage'
 
 
 @signature_safe_contextmanager
-def ipu_shard_guard(index=None, stage=None):
+def ipu_shard_guard(index=-1, stage=-1):
     """
     Used to shard the graph on IPUs. Set each Op run on which IPU in the sharding and which stage in the pipelining.
 
     Args:
-        index(int, optional): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
-            The default value is None, which means the Op only run on IPU 0.
-        stage(int, optional): Specify the computation order of the sharded model(such as ‘0, 1, 2, 3’).
-            The sharded model will be computed from small to large. The default value is None, 
+        index(int, optional): Specify which ipu the Tensor is computed on, (such as '0, 1, 2, 3').
+            The default value is -1, which means the Op only run on IPU 0.
+        stage(int, optional): Specify the computation order of the sharded model(such as '0, 1, 2, 3').
+            The sharded model will be computed from small to large. The default value is -1, 
             which means no pipelining computation order and run Ops in terms of graph.
     
     **Note**:
-    Only if the enable_manual_shard=True, the ‘index’ is able to be set not None. Please refer 
+    Only if the enable_manual_shard=True, the 'index' is able to be set not -1. Please refer 
     to :code:`paddle.static.IpuStrategy` . 
-    Only if the enable_pipelining=True, the ‘stage’ is able to be set not None. Please refer 
+    Only if the enable_pipelining=True, the 'stage' is able to be set not -1. Please refer 
     to :code:`paddle.static.IpuStrategy` .
     A index is allowed to match none stage or a stage. A stage is only allowed to match a new or 
     duplicated index.
@@ -309,6 +310,63 @@ def ipu_shard_guard(index=None, stage=None):
     finally:
         global_ipu_index = prev_ipu_index
         global_ipu_stage = prev_ipu_stage
+
+
+def set_ipu_shard(call_func, index=-1, stage=-1):
+    """
+    Shard the ipu with the given call function. Set every ops in call function to the given ipu sharding.
+
+    Args:
+        call_func(Layer|function): Specify the call function to be wrapped.
+        index(int, optional): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
+            The default value is -1, which means the Op only run on IPU 0.
+        stage(int, optional): Specify the computation order of the sharded model(such as ‘0, 1, 2, 3’).
+            The sharded model will be computed from small to large. The default value is -1, 
+            which means no pipelining computation order and run Ops in terms of graph.
+
+    Returns:
+        The wrapped call function.
+
+
+    Examples:
+        .. code-block:: python
+
+            # required: ipu
+
+            import paddle
+            paddle.enable_static()
+            a = paddle.static.data(name='data', shape=[None, 1], dtype='float32')
+            relu = paddle.nn.ReLU()
+            relu = paddle.static.set_ipu_shard(relu, index=1, stage=1)
+            relu(a)
+    """
+
+    def decorate(func):
+
+        def wrapper(*args, **kwargs):
+            with ipu_shard_guard(index=index, stage=stage):
+                return func(*args, **kwargs)
+
+        return wrapper
+
+    from .dygraph.layers import Layer
+    if not isinstance(call_func, Layer):
+        if callable(call_func):
+            return decorate(call_func)
+        else:
+            raise TypeError(
+                "Unsupported type. Only accept paddle.nn.Layer or function.")
+
+    # patch paddle.nn.Layer
+    class BlockFn(type(call_func)):
+
+        def __call__(self, *args, **kwargs):
+            with ipu_shard_guard(index=index, stage=stage):
+                return super().__call__(*args, **kwargs)
+
+    BlockFn.__name__ = type(call_func).__name__
+    call_func.__class__ = BlockFn
+    return call_func
 
 
 def require_version(min_version, max_version=None):
@@ -1109,7 +1167,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT16
     elif dtype == np.int64:
         return core.VarDesc.VarType.INT64
-    elif dtype == np.bool:
+    elif dtype == np.bool_:
         return core.VarDesc.VarType.BOOL
     elif dtype == np.uint16:
         # since there is still no support for bfloat16 in NumPy,
@@ -2622,6 +2680,9 @@ class Operator(object):
                 op_attrs = dict()
             del attrs
 
+            # attr for static mode cuda graph
+            self._cuda_graph_attr = _current_cuda_graph_mode
+
             op_maker = core.op_proto_and_checker_maker
 
             if op_maker.kOpRoleAttrName() not in op_attrs:
@@ -2769,10 +2830,10 @@ class Operator(object):
 
             # proto.attrs doesn't include ipu_index
             if core.is_compiled_with_ipu():
-                if global_ipu_index is not None:
+                if global_ipu_index >= 0:
                     self._update_desc_attr(ipu_index_attr_name,
                                            global_ipu_index)
-                if global_ipu_stage is not None:
+                if global_ipu_stage >= 0:
                     self._update_desc_attr(ipu_stage_attr_name,
                                            global_ipu_stage)
 
@@ -7015,6 +7076,37 @@ def device_guard(device=None):
         yield
     finally:
         switch_device(pre_device)
+
+
+def _switch_cuda_graph_mode(cuda_graph_attr):
+    global _current_cuda_graph_mode
+    pre_mode = _current_cuda_graph_mode
+    _current_cuda_graph_mode = cuda_graph_attr
+    return pre_mode
+
+
+@signature_safe_contextmanager
+def _cuda_graph_guard(cuda_graph_attr=None):
+    """
+
+    Note:
+        The API only supports static mode.
+
+    A context manager that specifies the cuda_graph_mode which indicating the cuda graph capture under static mode.
+
+    Args:
+        cuda_graph_attr(str|None): The cuda graph attr with the format of:
+                                   cuda_graph_capture_mode;memory_pool_id;cuda_graph_id
+    """
+    assert not _non_static_mode(
+    ), "cuda_graph_guard only works under static mode"
+    assert core.is_compiled_with_cuda(
+    ), "cuda_graph_guard context can be only used when Paddle is compiled with cuda"
+    pre_mode = _switch_cuda_graph_mode(cuda_graph_attr)
+    try:
+        yield
+    finally:
+        _switch_cuda_graph_mode(pre_mode)
 
 
 def set_flags(flags):

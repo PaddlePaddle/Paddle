@@ -106,7 +106,7 @@ class TestReduceMinOpWithOutDtype_bool(TestNPUReduceMinOp):
         }
         self.outputs = {
             'Out':
-            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(np.bool)
+            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(np.bool_)
         }
 
 

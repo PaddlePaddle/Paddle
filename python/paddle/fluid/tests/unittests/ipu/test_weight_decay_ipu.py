@@ -14,7 +14,9 @@
 
 import unittest
 
+import os
 import numpy as np
+import tempfile
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -30,6 +32,11 @@ class TestBase(IPUOpTest):
         self.set_data_feed()
         self.set_feed_attr()
         self.set_attrs()
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_path = os.path.join(self.temp_dir.name, "weight_decay")
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def set_atol(self):
         self.atol = 1e-6
@@ -88,7 +95,7 @@ class TestBase(IPUOpTest):
                 place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
-            paddle.static.save(main_prog, "weight_decay")
+            paddle.static.save(main_prog, self.model_path)
 
             if run_ipu:
                 feed_list = [image.name]
