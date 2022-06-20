@@ -799,17 +799,25 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   // convert feasign to fid in device_keys_
   for (int i = 0; i < device_num; i++) {
     auto& feasigns = gpu_task->device_keys_[i];
+    auto& fids = gpu_task->device_fid_keys_[i];
+    fids.resize(feasigns.size(), 0);
     for (unsigned int j = 0; j < feasigns.size(); j++) {
-      feasigns[j] = cache_manager->query_sign2fid(feasigns[j]);
+      fids[j] = cache_manager->query_sign2fid(feasigns[j]);
     }
   }
   VLOG(0) << "BuildGPUTask: exit PADDLE_WITH_XPU_KP";
 #endif //PADDLE_WITH_XPU_KP
   auto build_func = [this, &gpu_task, &feature_keys_count](int i) {
     VLOG(3) << "building table: " << i;
+#ifdef PADDLE_WITH_XPU_KP
+    this->HeterPs_->build_ps(i, gpu_task->device_fid_keys_[i].data(),
+                             gpu_task->device_values_[i].data(),
+                             feature_keys_count[i], 500000, 2);
+#else
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], 500000, 2);
+#endif
     // if (feature_keys_count[i] > 0) {
     //   HeterPs_->show_one_table(i);
     // }
@@ -1009,8 +1017,8 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
     LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
-    uint64_t* total_keys = reinterpret_cast<uint64_t*>(
-        total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
+    uint32_t* total_keys = reinterpret_cast<uint32_t*>(
+        total_keys_tensor.mutable_data<int32_t>({total_length, 1}, place));
 
     // construct slot_level lod info
     auto slot_lengths_lod = slot_lengths;
@@ -1099,8 +1107,8 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
     LoDTensor& cached_total_keys_tensor = keys_tensor[devid_2_index];
-    uint64_t* total_keys =
-        reinterpret_cast<uint64_t*>(cached_total_keys_tensor.data<int64_t>());
+    uint32_t* total_keys =
+        reinterpret_cast<uint32_t*>(cached_total_keys_tensor.data<int32_t>());
     VLOG(3) << "Begin copy grad tensor to xpups struct";
     this->CopyForPush(place, grad_values, total_grad_values_gpu, slot_lengths,
                       hidden_size, total_length, batch_size);

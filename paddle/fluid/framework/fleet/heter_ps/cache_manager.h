@@ -47,18 +47,18 @@ class CacheManager {
 
   void clear_sign2fids();
   void build_sign2fids(const FeatureKey* d_keys, size_t len);
-  uint64_t query_sign2fid(const FeatureKey & key);
+  uint32_t query_sign2fid(const FeatureKey & key);
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   void build_batch_fid_seq(std::vector<std::deque<Record> *> & all_chan_recs);
   void prepare_current_batch_fid_seq();
-  std::shared_ptr<std::vector<uint64_t>>  get_current_batch_fid_seq();
-  void convert_fid2bfid(const uint64_t * fids, int * out_bfids, int size);
+  std::shared_ptr<std::vector<uint32_t>>  get_current_batch_fid_seq();
+  void convert_fid2bfid(const uint32_t * fids, int * out_bfids, int size);
 #endif
 
  private:
   std::atomic<int> feasign_cnt_;
-  std::unordered_map<FeatureKey, uint64_t> sign2fid_;
+  std::unordered_map<FeatureKey, uint32_t> sign2fid_;
   std::vector<CacheMeta> fid2meta_;
 
   int thread_num_;
@@ -68,9 +68,9 @@ class CacheManager {
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   // for batch fid sequence
   std::shared_ptr<paddle::framework::ChannelObject<
-      std::shared_ptr<std::vector<uint64_t>>>> fid_seq_channel_ = nullptr;
-  std::shared_ptr<std::vector<uint64_t>> current_batch_fid_seq_ = nullptr;
-  std::unordered_map<uint64_t, int> current_batch_fid2bfid_;
+      std::shared_ptr<std::vector<uint32_t>>>> fid_seq_channel_ = nullptr;
+  std::shared_ptr<std::vector<uint32_t>> current_batch_fid_seq_ = nullptr;
+  std::unordered_map<uint32_t, int> current_batch_fid2bfid_;
   int current_batch_fid_seq_ref_ = 0;
   std::shared_ptr<std::mutex> current_batch_fid_seq_lock;
 #endif

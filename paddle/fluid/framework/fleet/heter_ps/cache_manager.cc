@@ -70,7 +70,7 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
   VLOG(0) << "build_sign2fids: exit";
 }
 
-uint64_t CacheManager::query_sign2fid(const FeatureKey & key) {
+uint32_t CacheManager::query_sign2fid(const FeatureKey & key) {
   //VLOG(0) << "query_sign2fid:" << key << "->" << sign2fid_[key];
   return sign2fid_[key];
 }
@@ -89,7 +89,7 @@ void CacheManager::build_batch_fid_seq(std::vector<std::deque<Record> *> & all_c
   int size = expected_chan_size;
   int batch_sz = batch_sz_;
   int groups = size % batch_sz == 0 ? (size / batch_sz) : (size / batch_sz) + 1;
-  std::vector<std::shared_ptr<std::vector<uint64_t>>> n_batch_bfidseq(groups, nullptr);
+  std::vector<std::shared_ptr<std::vector<uint32_t>>> n_batch_bfidseq(groups, nullptr);
   VLOG(0) << "build_batch_fid_seq: in size:" << size 
           << ", batch_size: " << batch_sz
           << ", groups: " << groups
@@ -104,14 +104,14 @@ void CacheManager::build_batch_fid_seq(std::vector<std::deque<Record> *> & all_c
         int current_batch_sz = std::min(batch_sz, size - batch_first);
 
         // process batch data for every chan_recs
-        std::shared_ptr<std::vector<uint64_t>> current_bfid_seq = std::make_shared<std::vector<uint64_t>>();
-        std::set<uint64_t> current_bfid_set;
+        std::shared_ptr<std::vector<uint32_t>> current_bfid_seq = std::make_shared<std::vector<uint32_t>>();
+        std::set<uint32_t> current_bfid_set;
         for (auto & recs : all_chan_recs) {
           auto it = recs->begin() + batch_first;
           for (int j = 0; j < current_batch_sz; ++j) {
             const Record & cur_rec = *(it + j);
             for (auto & fea : cur_rec.uint64_feasigns_) {
-              current_bfid_set.insert(fea.sign().uint64_feasign_); // feasign already converted to fid
+              current_bfid_set.insert((uint32_t)fea.sign().uint64_feasign_); // feasign already converted to fid(uint32_t)
             }
           }
         } // process finished
@@ -131,7 +131,7 @@ void CacheManager::build_batch_fid_seq(std::vector<std::deque<Record> *> & all_c
     VLOG(0) << "group size: " << group_bfid_ptr->size();
   }
   // write n_batch_bfidseq to channel
-  fid_seq_channel_ = paddle::framework::MakeChannel<std::shared_ptr<std::vector<uint64_t>>>();
+  fid_seq_channel_ = paddle::framework::MakeChannel<std::shared_ptr<std::vector<uint32_t>>>();
   fid_seq_channel_->Write(groups, &n_batch_bfidseq[0]);
   fid_seq_channel_->Close();
 }
@@ -143,7 +143,7 @@ void CacheManager::prepare_current_batch_fid_seq() {
     if (!fid_seq_channel_->Get(current_batch_fid_seq_)) {
       current_batch_fid_seq_ = nullptr;
     } else {
-      for (uint64_t i = 0; i < current_batch_fid_seq_->size(); ++i) {
+      for (size_t i = 0; i < current_batch_fid_seq_->size(); ++i) {
           current_batch_fid2bfid_[(*current_batch_fid_seq_)[i]] = i;
       }
     }
@@ -152,12 +152,12 @@ void CacheManager::prepare_current_batch_fid_seq() {
   }
 }
 
-std::shared_ptr<std::vector<uint64_t>>  CacheManager::get_current_batch_fid_seq() {
+std::shared_ptr<std::vector<uint32_t>>  CacheManager::get_current_batch_fid_seq() {
   CHECK(current_batch_fid_seq_ != nullptr) << "current_batch_fid_seq_ is nullptr";
   return current_batch_fid_seq_; 
 }
 
-void CacheManager::convert_fid2bfid(const uint64_t * fids, int * out_bfids, int size) {
+void CacheManager::convert_fid2bfid(const uint32_t * fids, int * out_bfids, int size) {
   std::lock_guard<std::mutex> lock(*current_batch_fid_seq_lock);
   for (int i = 0; i < size; ++i) {
     out_bfids[i] = current_batch_fid2bfid_[fids[i]];

@@ -327,8 +327,8 @@ template<>
 void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
                                  void* d_temp_storage,
                                  size_t& temp_storage_bytes,  // NOLINT
-                                 const unsigned long* d_keys_in,       // NOLINT
-                                 unsigned long* d_keys_out,
+                                 const uint32_t* d_keys_in,       // NOLINT
+                                 uint32_t* d_keys_out,
                                  const FeaturePushValue* d_values_in,
                                  FeaturePushValue* d_values_out,
                                  int num_items,
@@ -350,21 +350,21 @@ void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
     auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
 
     // TODO: remove cast.
-    xpu::ctx_guard RAII_GUARD(ctx_xpu);
-    uint32_t* d_keys_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
-    PADDLE_ENFORCE_NOT_NULL(
-        d_keys_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
-    uint32_t* d_keys_out_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
-    PADDLE_ENFORCE_NOT_NULL(
-        d_keys_out_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
+    //xpu::ctx_guard RAII_GUARD(ctx_xpu);
+    //uint32_t* d_keys_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
+    //PADDLE_ENFORCE_NOT_NULL(
+    //    d_keys_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
+    //uint32_t* d_keys_out_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
+    //PADDLE_ENFORCE_NOT_NULL(
+    //    d_keys_out_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
 
-    xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys_in),
-        reinterpret_cast<int32_t*>(d_keys_in_cast), num_items);
+    //xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys_in),
+    //    reinterpret_cast<int32_t*>(d_keys_in_cast), num_items);
 
-    int r = xpu::sort_pairs<unsigned int, xpu::FeaturePushValue>(
+    int r = xpu::sort_pairs<uint32_t, xpu::FeaturePushValue>(
         ctx_xpu,
-        reinterpret_cast<const unsigned int*>(d_keys_in_cast),
-        reinterpret_cast<unsigned int*>(d_keys_out_cast),
+        d_keys_in,
+        d_keys_out,
         reinterpret_cast<const xpu::FeaturePushValue*>(d_values_in),
         reinterpret_cast<xpu::FeaturePushValue*>(d_values_out),
         num_items,
@@ -374,8 +374,8 @@ void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
         platform::errors::External("XPU sum kernel return wrong value[%d %s]",
                                    r, XPUAPIErrorMsg[r]));
 
-    xpu::cast_v2<int32_t, int64_t>(ctx_xpu, reinterpret_cast<int32_t*>(d_keys_out_cast),
-        reinterpret_cast<int64_t*>(d_keys_out), num_items);
+    //xpu::cast_v2<int32_t, int64_t>(ctx_xpu, reinterpret_cast<int32_t*>(d_keys_out_cast),
+    //    reinterpret_cast<int64_t*>(d_keys_out), num_items);
 }
 
 template <typename KeyT, typename ValueT, typename StreamType>
@@ -443,24 +443,24 @@ void HeterCommKernel::reduce_by_key(const paddle::platform::Place& place,
     auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
 
     // TODO: remove cast.
-    xpu::ctx_guard RAII_GUARD(ctx_xpu);
-    uint32_t* d_keys_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
-    PADDLE_ENFORCE_NOT_NULL(
-        d_keys_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
-    uint32_t* d_keys_out_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
-    PADDLE_ENFORCE_NOT_NULL(
-        d_keys_out_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
+    //xpu::ctx_guard RAII_GUARD(ctx_xpu);
+    //uint32_t* d_keys_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
+    //PADDLE_ENFORCE_NOT_NULL(
+    //    d_keys_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
+    //uint32_t* d_keys_out_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
+    //PADDLE_ENFORCE_NOT_NULL(
+    //    d_keys_out_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
 
-    xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys_in),
-        reinterpret_cast<int32_t*>(d_keys_in_cast), num_items);
+    //xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys_in),
+    //    reinterpret_cast<int32_t*>(d_keys_in_cast), num_items);
 
     std::cout << "reduce_by_key, before reduce_by_key" << std::endl;
     int r = xpu::reduce_by_key<uint32_t, xpu::FeaturePushValue>(
         ctx_xpu,
-        reinterpret_cast<const unsigned int*>(d_keys_in_cast),
+        d_keys_in,
         reinterpret_cast<const xpu::FeaturePushValue*>(d_values_in),
         num_items,
-        d_keys_out_cast,
+        d_unique_out,
         reinterpret_cast<xpu::FeaturePushValue*>(d_aggregates_out),
         d_num_runs_out);
     PADDLE_ENFORCE_EQ(
@@ -468,13 +468,13 @@ void HeterCommKernel::reduce_by_key(const paddle::platform::Place& place,
         platform::errors::External("XPU sum kernel return wrong value[%d %s]",
                                    r, XPUAPIErrorMsg[r]));
 
-    int* d_num_runs_out_cpu = (int*)malloc(sizeof(int));
-    xpu_memcpy(d_num_runs_out_cpu, d_num_runs_out, sizeof(int), XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+    //int* d_num_runs_out_cpu = (int*)malloc(sizeof(int));
+    //xpu_memcpy(d_num_runs_out_cpu, d_num_runs_out, sizeof(int), XPUMemcpyKind::XPU_DEVICE_TO_HOST);
 
-    xpu::cast_v2<int32_t, int64_t>(ctx_xpu, reinterpret_cast<int32_t*>(d_keys_out_cast),
-        reinterpret_cast<int64_t*>(d_unique_out), *d_num_runs_out_cpu);
+    //xpu::cast_v2<int32_t, int64_t>(ctx_xpu, reinterpret_cast<int32_t*>(d_keys_out_cast),
+    //    reinterpret_cast<int64_t*>(d_unique_out), *d_num_runs_out_cpu);
 
-    free(d_num_runs_out_cpu);
+    //free(d_num_runs_out_cpu);
 }
 
 template void HeterCommKernel::fill_idx<int, XPUStream>(
@@ -483,17 +483,17 @@ template void HeterCommKernel::fill_idx<int, XPUStream>(
 template void HeterCommKernel::calc_shard_offset<int, XPUStream>(
     int* idx, int* left, int* right, long long len, int total_devs,
     const XPUStream& stream);
-template void HeterCommKernel::calc_shard_index<unsigned long, int, XPUStream>(
-    unsigned long* d_keys, long long len, int* shard_index, int total_devs,
+template void HeterCommKernel::calc_shard_index<uint32_t, int, XPUStream>(
+    uint32_t* d_keys, long long len, int* shard_index, int total_devs,
     const XPUStream& stream);
 
-template void HeterCommKernel::fill_shard_key<unsigned long, int, XPUStream>(
-    unsigned long* d_shard_keys, unsigned long* d_keys, int* idx, long long len,
+template void HeterCommKernel::fill_shard_key<uint32_t, int, XPUStream>(
+    uint32_t* d_shard_keys, uint32_t* d_keys, int* idx, long long len,
     const XPUStream& stream);
 
 template void HeterCommKernel::fill_shard_grads<
-    unsigned long, paddle::framework::FeaturePushValue, int, XPUStream>(
-    unsigned long* d_shard_keys, unsigned long* d_keys,
+    uint32_t, paddle::framework::FeaturePushValue, int, XPUStream>(
+    uint32_t* d_shard_keys, uint32_t* d_keys,
     paddle::framework::FeaturePushValue* d_shard_grads,
     paddle::framework::FeaturePushValue* d_grads, int* idx, long long len,
     const XPUStream& stream);
@@ -511,12 +511,12 @@ HeterCommKernel::fill_dvals_with_bfid<paddle::framework::FeatureValue, int, XPUS
     const XPUStream& stream);
 
 template void HeterCommKernel::sort_pairs<
-    unsigned long, paddle::framework::FeaturePushValue, XPUStream>(
+    uint32_t, paddle::framework::FeaturePushValue, XPUStream>(
     const paddle::platform::Place& place,
     void* d_temp_storage,
     size_t& temp_storage_bytes,      // NOLINT
-    const unsigned long* d_keys_in,  // NOLINT
-    unsigned long* d_keys_out,
+    const uint32_t* d_keys_in,  // NOLINT
+    uint32_t* d_keys_out,
     const paddle::framework::FeaturePushValue* d_values_in,
     paddle::framework::FeaturePushValue* d_values_out, int num_items,
     int begin_bit, int end_bit, XPUStream stream, bool debug_synchronous);
@@ -530,12 +530,12 @@ template void HeterCommKernel::sort_pairs<int, int, XPUStream>(
     int begin_bit, int end_bit, XPUStream stream, bool debug_synchronous);
 
 template void HeterCommKernel::reduce_by_key<
-    unsigned long*, unsigned long*, paddle::framework::FeaturePushValue*,
+    uint32_t*, uint32_t*, paddle::framework::FeaturePushValue*,
     paddle::framework::FeaturePushValue*, int*, XPUStream>(
     const paddle::platform::Place& place,
     void* d_temp_storage,
     size_t& temp_storage_bytes,  // NOLINT
-    unsigned long* d_keys_in, unsigned long* d_unique_out,
+    uint32_t* d_keys_in, uint32_t* d_unique_out,
     paddle::framework::FeaturePushValue* d_values_in,
     paddle::framework::FeaturePushValue* d_aggregates_out, int* d_num_runs_out,
     int num_items, XPUStream stream, bool debug_synchronous);

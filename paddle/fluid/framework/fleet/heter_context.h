@@ -79,6 +79,9 @@ class HeterContext {
 #endif
   std::vector<std::vector<FeatureValue>> device_values_;
   std::vector<std::vector<FeatureKey>> device_keys_;
+#ifdef PADDLE_WITH_XPU_KP
+  std::vector<std::vector<uint32_t>> device_fid_keys_;
+#endif
   std::vector<std::vector<std::vector<FeatureKey>>> device_dim_keys_;
   std::vector<std::vector<std::vector<FeatureValue>>> device_dim_values_;
   std::vector<std::mutex*> mutex_;
@@ -107,7 +110,11 @@ class HeterContext {
     }
 
     device_values_.resize(device_num);
+
     device_keys_.resize(device_num);
+#ifdef PADDLE_WITH_XPU_KP
+    device_fid_keys_.resize(device_num);
+#endif
     mutex_.resize(device_num);
     for (size_t i = 0; i < mutex_.size(); ++i) {
       mutex_[i] = new std::mutex();
@@ -138,6 +145,9 @@ class HeterContext {
     device_values_.resize(device_num);
     device_dim_values_.resize(device_num);
     device_keys_.resize(device_num);
+#ifdef PADDLE_WITH_XPU_KP
+    device_fid_keys_.resize(device_num);
+#endif
 
     device_dim_keys_.resize(device_num);
     device_dim_ptr_.resize(device_num);
@@ -169,6 +179,11 @@ class HeterContext {
       for (size_t i = 0; i < device_keys_.size(); ++i) {
         device_keys_[i].clear();
       }
+#ifdef PADDLE_WITH_XPU_KP
+      for (size_t i = 0; i < device_fid_keys_.size(); ++i) {
+          device_fid_keys_[i].clear();
+      }
+#endif
       for (size_t i = 0; i < device_task_ptr_.size(); ++i) {
         for (size_t j = 0; j < device_task_ptr_[i].size(); ++j) {
           device_task_ptr_[i][j].clear();

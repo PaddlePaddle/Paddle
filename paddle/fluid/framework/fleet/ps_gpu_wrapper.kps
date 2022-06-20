@@ -97,7 +97,7 @@ __global__ void PullCopy(float* dest, const FeatureValue* src,
 }
 
 __global__ void CopyKeysKernel(unsigned long long* src_keys,
-                               unsigned long long* dest_total_keys,
+                               uint32_t* dest_total_keys,
                                const long long* len, int slot_num,
                                int total_len) {
   int cid = core_id();
@@ -121,13 +121,18 @@ __global__ void CopyKeysKernel(unsigned long long* src_keys,
     int read_len = 100;
     int dest_len = i ? local_len[i - 1] : 0;
     __local__ unsigned long long local_slot_keys[read_len];
+    __local__ uint32_t local_slot_keys_uint32[read_len];
 
     for (int k = 0; k < slot_len; k += read_len) {
       int real_read_len = min(read_len, slot_len - k);
       GM2LM(local_keys[i] + k, local_slot_keys,
             real_read_len * sizeof(unsigned long long));
-      LM2GM(local_slot_keys, dest_total_keys + dest_len + k,
-            real_read_len * sizeof(unsigned long long));
+      for (int m = 0; m < real_read_len; m++) {
+          local_slot_keys_uint32[m] = (uint32_t)local_slot_keys[m];
+      }
+      mfence();
+      LM2GM(local_slot_keys_uint32, dest_total_keys + dest_len + k,
+            real_read_len * sizeof(uint32_t));
     }
   }
 }
@@ -219,7 +224,7 @@ void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
 }
 
 void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
-                            uint64_t** origin_keys, uint64_t* total_keys,
+                            uint64_t** origin_keys, uint32_t* total_keys,
                             const int64_t* gpu_len, int slot_num,
                             int total_len) {
   XPUStream stream = nullptr;
@@ -229,9 +234,8 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
                ->xpu_stream;
   unsigned long long* o_keys =
       reinterpret_cast<unsigned long long*>(origin_keys);
-  unsigned long long* t_keys = (unsigned long long*)total_keys;
   const long long* c_len = (const long long*)gpu_len;
-  CopyKeysKernel<<<2, 64, stream>>>(o_keys, t_keys, c_len, slot_num, total_len);
+  CopyKeysKernel<<<2, 64, stream>>>(o_keys, total_keys, c_len, slot_num, total_len);
   xpu_wait(stream);
 }
 

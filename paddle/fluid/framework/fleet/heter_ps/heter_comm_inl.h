@@ -596,7 +596,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
 
   typedef int BfidType;
-  typedef uint64_t FidType;
+  typedef uint32_t FidType;
   auto cpu_place = platform::CPUPlace();
 
   cache_mgr_ -> prepare_current_batch_fid_seq();
@@ -625,7 +625,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   VLOG(0) << "heter comm inl pull sparse memory copy d_bfids from cpu to xpu";
 
   // cachemanager get fid_seq
-  std::shared_ptr<std::vector<uint64_t>> h_fid_seq = cache_mgr_ -> get_current_batch_fid_seq();
+  std::shared_ptr<std::vector<uint32_t>> h_fid_seq = cache_mgr_ -> get_current_batch_fid_seq();
   VLOG(0) << "heter comm inl pull sparse batch fid seq " << h_fid_seq->size();
 
   // h_fid_seq memcpy to d_fid_seq
@@ -918,7 +918,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
 
   typedef int BfidType;
-  typedef uint64_t FidType;
+  typedef uint32_t FidType;
   auto cpu_place = platform::CPUPlace();
 
   // d_keys memcpy to cpu h_keys
@@ -943,7 +943,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   VLOG(0) << "heter comm inl push sparse memory copy d_bfids from cpu to xpu";
 
   // cachemanager get fid_seq
-  std::shared_ptr<std::vector<uint64_t>> h_fid_seq = cache_mgr_ -> get_current_batch_fid_seq();
+  std::shared_ptr<std::vector<uint32_t>> h_fid_seq = cache_mgr_ -> get_current_batch_fid_seq();
   VLOG(0) << "heter comm inl push sparse batch fid seq " << h_fid_seq->size();
 
   // h_fid_seq memcpy to d_fid_seq

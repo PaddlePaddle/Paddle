@@ -24,6 +24,11 @@ namespace framework {
 
 typedef uint64_t FeatureKey;
 
+#ifdef PADDLE_WITH_XPU_KP
+typedef uint32_t FidKey;
+#endif
+
+
 struct FeatureValue {
   float delta_score;
   float show;
