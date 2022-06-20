@@ -43,7 +43,6 @@ class ExectorFunction : public BaseFunction {
   }
 
  private:
-  // TODO(dev): support other devices exe
   framework::Executor inner_exe_;
 };
 

@@ -21,8 +21,6 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/utils/none.h"
-#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace jit {
@@ -86,13 +84,9 @@ class BaseFunction {
 
  protected:
   framework::ProgramDesc program_desc_;
-  // TODO(dev): need a better way to share params
-  // std::vector<Variable> &param_for_program_;
-  // std::vector<std::string> skip_var_name_;
   FunctionSchema schema_;
   // global_scope place params
   framework::Scope scope_;
-  //   framework::Executor inner_exe_;
   phi::Place place_;
 };
 

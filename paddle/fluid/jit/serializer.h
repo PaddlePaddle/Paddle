@@ -59,9 +59,10 @@ class Deserializer {
   const std::vector<std::pair<std::string, std::string>>
   GetPdmodelFileNamePrefix(const std::string& path);
 
-  VariableNameMap ReadTensorData(const std::string& file_name,
-                                 const std::set<std::string>& var_name,
-                                 const phi::Place place) const;
+  void ReadTensorData(const std::string& file_name,
+                      const std::set<std::string>& var_name,
+                      VariableNameMap* params_dict,
+                      const phi::Place place) const;
 
   // void ReadExtraInfo(const std::string& file_name) const;
   // void ReadByteCode(const std::string& file_name) const;
