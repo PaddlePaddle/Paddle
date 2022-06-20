@@ -98,7 +98,6 @@ class SliceOpConverter : public OpConverter {
       }
 
       std::vector<nvinfer1::ITensor*> end_vec_tensor;
-
       for (int i = 0; i < trt_end_dims.nbDims; i++) {
         end_vec_tensor.push_back(GetEleTensorOfShape(shape_tensor, i));
       }
