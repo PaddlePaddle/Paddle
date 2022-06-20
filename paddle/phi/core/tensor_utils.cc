@@ -34,6 +34,10 @@ void Copy(const Context& dev_ctx,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
+  auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
+  if (UNLIKELY(size) == 0) {
+    return;
+  }
 
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
@@ -72,8 +76,6 @@ void Copy(const Context& dev_ctx,
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
   CHECK(dst->layout() == src.layout());
-
-  auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
 
   if (paddle::platform::is_cpu_place(src_place) &&
       paddle::platform::is_cpu_place(dst_place)) {
