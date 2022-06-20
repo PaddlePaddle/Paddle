@@ -73,6 +73,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv2d_fusion",
       "pool2d",
       "relu",
+      "elu",
+      "selu",
+      "softsign",
+      "softplus",
+      "stanh",
+      "thresholded_relu",
       "exp",
       "log",
       "sqrt",
@@ -138,6 +144,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv3d_transpose",
       "mish",
       "nearest_interp_v2",
+      "bilinear_interp_v2",
       "pool3d",
       "deformable_conv",
       "relu6",
@@ -153,7 +160,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "preln_skip_layernorm",
       "transformer_input_convert",
       "recover_padding",
-      "remove_padding"};
+      "remove_padding",
+      "squeeze2",
+      "unsqueeze2"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -161,6 +170,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv2d_fusion",
       "pool2d",
       "relu",
+      "elu",
+      "selu",
+      "softsign",
+      "softplus",
+      "stanh",
+      "thresholded_relu",
       "exp",
       "log",
       "sqrt",
@@ -225,6 +240,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv3d",
       "conv3d_transpose",
       "mish",
+      "bilinear_interp_v2",
       "nearest_interp_v2",
       "pool3d",
       "deformable_conv",
@@ -242,7 +258,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "multiclass_nms3",
       "transformer_input_convert",
       "recover_padding",
-      "remove_padding"};
+      "remove_padding",
+      "squeeze2",
+      "unsqueeze2"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -257,30 +275,16 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     return false;
 
   for (auto& teller : tellers_) {
-    std::unordered_set<std::string> act_op_list = {"relu",
-                                                   "elu",
-                                                   "selu",
-                                                   "softsign",
-                                                   "softplus",
-                                                   "stanh",
-                                                   "thresholded_relu",
-                                                   "exp",
-                                                   "log",
-                                                   "sqrt",
-                                                   "abs",
-                                                   "sin",
-                                                   "cos",
-                                                   "tan",
-                                                   "sinh",
-                                                   "cosh",
-                                                   "asin",
-                                                   "acos",
-                                                   "atan",
-                                                   "asinh",
-                                                   "atanh",
-                                                   "ceil",
-                                                   "floor",
-                                                   "erf"};
+    std::unordered_set<std::string> act_op_list = {
+        "relu",     "relu6", "sigmoid",
+        "elu",      "selu",  "softsign",
+        "softplus", "stanh", "thresholded_relu",
+        "exp",      "log",   "sqrt",
+        "abs",      "sin",   "cos",
+        "tan",      "tanh",  "sinh",
+        "cosh",     "asin",  "acos",
+        "atan",     "asinh", "atanh",
+        "ceil",     "floor", "erf"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -873,6 +877,99 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "bilinear_interp_v2") {
+      std::vector<std::string> attrs{"data_layout",   "interp_method",
+                                     "align_corners", "scale",
+                                     "out_h",         "out_w"};
+      for (auto const attr : attrs) {
+        if (!desc.HasAttr(attr)) {
+          VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
+                  << attr << " and return false";
+          return false;
+        }
+      }
+
+      auto resize_inputs = desc.Inputs();
+      if (resize_inputs.find("SizeTensor") != resize_inputs.end()) {
+        if (desc.Input("SizeTensor").size() >= 1) {
+          VLOG(3)
+              << "The Paddle-TRT doesn't support the SizeTensor for op_type "
+              << op_type;
+          return false;
+        }
+      }
+
+      if (resize_inputs.find("OutSize") != resize_inputs.end()) {
+        if (desc.Input("OutSize").size() >= 1) {
+          VLOG(3) << "The Paddle-TRT doesn't support the OutSize for op_type "
+                  << op_type;
+          return false;
+        }
+      }
+
+      auto data_layout = framework::StringToDataLayout(
+          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != framework::DataLayout::kNCHW &&
+          data_layout != framework::DataLayout::kNHWC) {
+        VLOG(3) << "The op_type " << op_type
+                << " is not NCHW or NHWC return false";
+        return false;
+      }
+      auto interp_method =
+          BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
+      if (interp_method != "bilinear") {
+        VLOG(3) << "The interp_method of op_type " << op_type
+                << " is not bilinear";
+        return false;
+      }
+
+      auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      if (align_corners != false) {
+        VLOG(3)
+            << "The bilinear_interp_v2 only supports align_corners with false.";
+        return false;
+      }
+
+      bool has_scale_input_size =
+          (resize_inputs.find("Scale") != resize_inputs.end());
+
+      if (has_scale_input_size && desc.Input("Scale").size() != 1) {
+        const std::vector<float> scale =
+            BOOST_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
+        if (scale.size() <= 1) {
+          if (!desc.HasAttr("out_h") || !desc.HasAttr("out_w")) {
+            VLOG(3) << "The op_type " << op_type
+                    << " doesn't have Scale and the scale size <=1 and without "
+                       "out_h / out_w, it will return false";
+            return false;
+          }
+          auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
+          auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+          if (!(out_h <= 0 && out_w <= 0)) {
+            if (out_h <= 0) {
+              VLOG(3) << "The op_type " << op_type
+                      << "'s out_h must be greater than 0 if scale is not set.";
+              return false;
+            }
+            if (out_w <= 0) {
+              VLOG(3) << "The op_type " << op_type
+                      << "'s out_w must be greater than 0 if scale is not set.";
+              return false;
+            }
+          }
+        } else {
+          for (size_t i = 0; i < scale.size(); i++) {
+            if (scale[i] <= 0 && with_dynamic_shape) {
+              VLOG(3) << "dynamic shape not support Attr(scale[" << i << "]) "
+                      << scale[i]
+                      << " less than 1 and Input(Scale) vector not set.";
+              return false;
+            }
+          }
+        }
+      }
+    }
+
     if (op_type == "hard_swish") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "HardSwish op has only 1 input, but got "
@@ -884,6 +981,44 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "HardSwish op has only 1 output, but got "
                 << desc.Output("Out").size();
         return false;
+      }
+    }
+
+    if (op_type == "squeeze2") {
+      std::vector<int> axes;
+      if (desc.HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+      }
+      if (axes.size() == 0) {
+        VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
+                   "missing.";
+        return false;
+      }
+      if (!with_dynamic_shape) {
+        if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+          VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                     "supported in static shape";
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "unsqueeze2") {
+      std::vector<int> axes;
+      if (desc.HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+      }
+      if (axes.size() == 0) {
+        VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
+                   "missing.";
+        return false;
+      }
+      if (!with_dynamic_shape) {
+        if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+          VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                     "supported in static shape";
+          return false;
+        }
       }
     }
 
@@ -1469,11 +1604,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "shuffle_channel") {
+#if !IS_TRT_VERSION_GE(8000)
       if (with_dynamic_shape) {
         VLOG(3) << "You are running the TRT Dynamic Shape mode, "
-                   "the shuffle_channel op does not support dynamic shape yet";
+                   "the shuffle_channel op does not support dynamic shape "
+                   "trt versions below 8.0 yet";
         return false;
       }
+#endif
     }
 
     if (op_type == "skip_layernorm") {

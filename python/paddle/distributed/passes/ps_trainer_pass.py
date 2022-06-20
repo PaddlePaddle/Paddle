@@ -434,8 +434,8 @@ class DistributedOpsPass(PassBase):
             if op.type in SPARSE_OP_TYPE_DICT.keys() \
                     and op.attr('remote_prefetch') is True:
                 param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
-                if attrs['is_heter_ps_mode']:
-                    # trick for matchnet, need to modify
+                if attrs['is_heter_ps_mode'] and not attrs['is_fl_ps_mode']:
+                    # TODO: trick for matchnet, need to modify for heter_ps
                     param_name += op.input("Ids")[0][0]
                 ops = pull_sparse_ops.get(param_name, [])
                 ops.append(op)

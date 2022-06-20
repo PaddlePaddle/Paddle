@@ -1943,6 +1943,7 @@ USE_TRT_CONVERTER(multiclass_nms);
 USE_TRT_CONVERTER(multiclass_nms3);
 USE_TRT_CONVERTER(nearest_interp);
 USE_TRT_CONVERTER(nearest_interp_v2);
+USE_TRT_CONVERTER(bilinear_interp_v2);
 USE_TRT_CONVERTER(reshape);
 USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(gather_nd);
@@ -1962,6 +1963,8 @@ USE_TRT_CONVERTER(recover_padding)
 USE_TRT_CONVERTER(remove_padding)
 USE_TRT_CONVERTER(top_k)
 USE_TRT_CONVERTER(top_k_v2)
+USE_TRT_CONVERTER(squeeze2)
+USE_TRT_CONVERTER(unsqueeze2)
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)

@@ -46,6 +46,7 @@ def fused_feedforward(x,
                       training=True,
                       mode='upscale_in_train',
                       ring_id=-1,
+                      add_residual=True,
                       name=None):
     r"""
     This is a fusion operator to compute feed forward layer in transformer model architecture.
@@ -90,6 +91,7 @@ def fused_feedforward(x,
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
         ring_id (int, optional): For distributed forward in tensor model parallel, only support NCCL. Default is -1, means not using tensor parallel.
+        add_residual (bool, optional): Whether add residual at the end. Default is True.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -134,7 +136,8 @@ def fused_feedforward(x,
             "dropout2_fix_seed", seed is not None, "dropout1_seed",
             seed if seed is not None else 0, "dropout2_seed",
             seed if seed is not None else 0, 'dropout1_implementation', mode,
-            'dropout2_implementation', mode, 'ring_id', ring_id)
+            'dropout2_implementation', mode, 'add_residual', add_residual,
+            'ring_id', ring_id)
         return out
 
     helper = LayerHelper("fused_feedforward")
@@ -208,6 +211,7 @@ def fused_feedforward(x,
                          'dropout2_seed': seed if seed is not None else 0,
                          'dropout1_implementation': mode,
                          'dropout2_implementation': mode,
+                         'add_residual': add_residual,
                          'ring_id': ring_id,
                      })
     return out
@@ -378,6 +382,7 @@ def fused_multi_head_attention(x,
                                training=True,
                                mode='upscale_in_train',
                                ring_id=-1,
+                               add_residual=True,
                                name=None):
     r"""
     Attention mapps queries and a set of key-value pairs to outputs, and
@@ -454,6 +459,7 @@ def fused_multi_head_attention(x,
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
         ring_id (int, optional): For distributed forward in mp, only support NCCL and forward. Default is -1, means not using mp
+        add_residual (bool, optional): Whether add residual at the end. Default is True.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -521,7 +527,8 @@ def fused_multi_head_attention(x,
             'dropout_fix_seed', seed is not None, 'attn_dropout_seed',
             seed if seed is not None else 0, 'dropout_seed',
             seed if seed is not None else 0, 'attn_dropout_implementation',
-            mode, 'dropout_implementation', mode, 'ring_id', ring_id)
+            mode, 'dropout_implementation', mode, 'add_residual', add_residual,
+            'ring_id', ring_id)
         if cache_kv is not None:
             return final_out, cache_kv_out
         return final_out
@@ -571,6 +578,7 @@ def fused_multi_head_attention(x,
             'dropout_seed': seed if seed is not None else 0,
             'attn_dropout_implementation': mode,
             'dropout_implementation': mode,
+            'add_residual': add_residual,
             'ring_id': ring_id
         }
 
