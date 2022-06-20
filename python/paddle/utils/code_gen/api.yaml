@@ -545,6 +545,16 @@
     func : eigh
   backward : eigh_grad
 
+- api : einsum
+  args : (Tensor[] x, str equation)
+  output : Tensor, Tensor[]{x.size()}
+  infer_meta :
+    func : EinsumInferMeta
+    param : [x, equation]
+  kernel :
+    func : einsum
+  backward : einsum_grad
+
 - api : elementwise_pow
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -1787,6 +1797,8 @@
     func : ShapeInferMeta
   kernel :
     func : shape, shape_sr
+  data_transform:
+    skip_transform : input
 
 # shard_index
 - api : shard_index
@@ -1863,6 +1875,8 @@
     func : SizeInferMeta
   kernel :
     func : size
+  data_transform:
+    skip_transform : x
 
 - api : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
@@ -2146,7 +2160,7 @@
     data_type : x
 
 - api : unsqueeze
-  args : (Tensor x, IntArray axes)
+  args : (Tensor x, IntArray axis)
   output : Tensor(xshape), Tensor(out)
   infer_meta :
     func : UnsqueezeInferMeta

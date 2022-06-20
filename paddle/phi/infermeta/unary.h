@@ -58,11 +58,6 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
 
-void CopyToInferMeta(const MetaTensor& x,
-                     Backend backend,
-                     bool blocking,
-                     MetaTensor* out);
-
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
 void CumsumInferMeta(const MetaTensor& x,
@@ -84,6 +79,11 @@ void EighInferMeta(const MetaTensor& x,
                    const std::string& uplo,
                    MetaTensor* out_w,
                    MetaTensor* out_v);
+
+void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
+                     const std::string& equation,
+                     MetaTensor* out,
+                     std::vector<MetaTensor*> inner_cache);
 
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
@@ -431,7 +431,7 @@ void UnStackInferMeta(const MetaTensor& x,
                       std::vector<MetaTensor*> outs);
 
 void OneHotRawInferMeta(const MetaTensor& x,
-                        int32_t depth,
+                        const Scalar& depth,
                         DataType dtype,
                         bool allow_out_of_range,
                         MetaTensor* out);

@@ -1,0 +1,12 @@
+diff --git a/paddle/fluid/inference/api/paddle_api.h b/paddle/fluid/inference/api/paddle_api.h
+index 0f8f9e0a97..a7efd9975a 100644
+--- a/paddle/fluid/inference/api/paddle_api.h
++++ b/paddle/fluid/inference/api/paddle_api.h
+@@ -193,6 +193,7 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
+ 
+  private:
+   friend class AnalysisPredictor;
++  friend class TensorRTPredictor;
+   friend class ONNXRuntimePredictor;
+   explicit ZeroCopyTensor(void* scope) : paddle_infer::Tensor{scope} {}
+ };

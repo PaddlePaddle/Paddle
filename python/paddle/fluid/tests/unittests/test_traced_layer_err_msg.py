@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
+import unittest
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import unittest
 import paddle.nn as nn
-import os
 
 
 class SimpleFCLayer(nn.Layer):
@@ -189,10 +191,14 @@ class TestTracedLayerSaveInferenceModel(unittest.TestCase):
     """test save_inference_model will automaticlly create non-exist dir"""
 
     def setUp(self):
-        self.save_path = "./nonexist_dir/fc"
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.save_path = os.path.join(self.temp_dir.name, "./nonexist_dir/fc")
         import shutil
         if os.path.exists(os.path.dirname(self.save_path)):
             shutil.rmtree(os.path.dirname(self.save_path))
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_mkdir_when_input_path_non_exist(self):
         if fluid.framework.in_dygraph_mode():

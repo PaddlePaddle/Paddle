@@ -50,9 +50,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 if (WITH_ONNXRUNTIME)
-    cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
+    cc_library(analysis_predictor SRCS analysis_predictor.cc onnxruntime_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
               zero_copy_tensor ir_pass_manager op_compatible_info infer_io_utils onnxruntime paddle2onnx)
-    cc_library(onnxruntime_predictor SRCS onnxruntime_predictor.cc DEPS analysis_predictor)
 else (WITH_ONNXRUNTIME)
     cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
               zero_copy_tensor ir_pass_manager op_compatible_info infer_io_utils)
@@ -80,16 +79,6 @@ if (NOT APPLE AND NOT WIN32)
 elseif (WIN32)
   cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
           ARGS --dirname=${WORD2VEC_MODEL_DIR})
-endif()
-
-if (WITH_ONNXRUNTIME)
-  if (NOT APPLE AND NOT WIN32)
-    cc_test(test_onnxruntime_predictor SRCS onnxruntime_predictor_tester.cc DEPS paddle_inference_shared
-            ARGS --dirname=${MOBILENETV2_MODEL_DIR})
-  elseif (WIN32)
-    cc_test(test_onnxruntime_predictor SRCS onnxruntime_predictor_tester.cc DEPS onnxruntime_predictor benchmark ${inference_deps}
-            ARGS --dirname=${MOBILENETV2_MODEL_DIR})
-  endif()
 endif()
 
 if(WITH_TESTING AND WITH_MKLDNN)

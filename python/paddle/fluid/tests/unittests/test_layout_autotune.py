@@ -12,10 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
+import os
+import json
 import numpy
+import unittest
+import tempfile
+import warnings
+
+import paddle
 import paddle.nn.functional as F
+from paddle.fluid.framework import _enable_legacy_dygraph
+
+_enable_legacy_dygraph()
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -41,10 +49,18 @@ class SimpleNet(paddle.nn.Layer):
 class LayoutAutoTune(unittest.TestCase):
     def use_autoune(self):
         if paddle.is_compiled_with_cuda():
-            paddle.fluid.core.enable_layout_autotune()
+            paddle.incubate.autotune.set_config(
+                config={"layout": {
+                    "enable": True
+                }})
             return paddle.fluid.core.use_layout_autotune()
         else:
-            paddle.fluid.core.disable_layout_autotune()
+            config = {"layout": {"enable": False}}
+            tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
+            json.dump(config, tfile)
+            tfile.close()
+            paddle.incubate.autotune.set_config(tfile.name)
+            os.remove(tfile.name)
             return paddle.fluid.core.use_layout_autotune()
 
     def train(self, data_format):
@@ -103,7 +119,6 @@ class LayoutAutoTune(unittest.TestCase):
     def test_flatten_op_transposer(self):
         if not self.use_autoune():
             return
-        paddle.fluid.core.enable_layout_autotune()
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
         data = paddle.rand([1, 3, 16, 14])
@@ -117,6 +132,21 @@ class LayoutAutoTune(unittest.TestCase):
 
         self.assertEqual(conv_out.shape, [1, 14, 12, 8])
         self.assertEqual(out.shape, [1, 112, 12])
+
+
+class TestAutoTuneAPI(unittest.TestCase):
+    def test_set_config_warnings(self):
+        with warnings.catch_warnings(record=True) as w:
+            config = {"layout": {"enable": 1}}
+            # On linux, we can open the file again to read the content
+            # without closing the file, but on windows system, there is
+            # no permission to open it again without closing it.
+            tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
+            json.dump(config, tfile)
+            tfile.close()
+            paddle.incubate.autotune.set_config(tfile.name)
+            os.remove(tfile.name)
+            self.assertTrue(len(w) == 1)
 
 
 if __name__ == '__main__':

@@ -7,6 +7,9 @@ set(PYBIND_DEPS init pybind python proto_desc memory executor fleet_wrapper box_
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
   set(PYBIND_DEPS ${PYBIND_DEPS} graph_py_service)
+  if (WITH_HETERPS)
+    set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
+  endif()
 endif()
 if (WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -82,10 +85,6 @@ set(PYBIND_SRCS
   generator_py.cc
   communication.cc
   cuda_streams_py.cc)
-
-if (WITH_ONNXRUNTIME)
-  set(PYBIND_DEPS ${PYBIND_DEPS} onnxruntime_predictor)
-endif()
 
 if(NOT ON_INFER)
   set (PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
@@ -164,10 +163,6 @@ if(WITH_PYTHON)
   if(WITH_ASCEND_CL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
   endif(WITH_ASCEND_CL)
-
-  if (WITH_ONNXRUNTIME)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS onnxruntime_predictor)
-  endif()
 
   if(WITH_CNCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
@@ -261,7 +256,7 @@ if(WITH_PYTHON)
     endif()
     if(WITH_ONNXRUNTIME)
       ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll
-        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_LIB} ${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS paddle2onnx)
       list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll)
       list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll)

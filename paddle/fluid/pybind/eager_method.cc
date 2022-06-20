@@ -9,6 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
+
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 #include <Python.h>
 
 #include <string>
@@ -356,12 +362,33 @@ static PyObject* tensor_method__is_dense_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static void IncreaseTensorReferenceCountUntilCopyComplete(
+    const paddle::experimental::Tensor& tensor, const platform::Place& place) {
+  auto place_ = platform::is_gpu_place(place) ? place : tensor.place();
+
+  auto tracer = egr::Controller::Instance().GetCurrentTracer();
+  auto gc = tracer->MutableGarbageCollectorIfNotExists(place_);
+
+  // Note(dev): This is an empty callback, the only way is to "reference"
+  // inner memory Holder, so it will not be destructed until the kernels
+  // launched at current stream of given place is finished, such as
+  // CUDAPinned Mem -> CUDA by cudamemcpyAsync.
+  auto callback = [tensor, place_]() {
+    VLOG(3) << "Run callback of Tensor:" << tensor.name() << " at place "
+            << place_;
+  };
+  gc->DirectClearCallback(callback);
+}
+
 static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
                                         PyObject* kwargs) {
   EAGER_TRY
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   auto cp_tensor = self->tensor.copy_to(place, blocking);
+  if (!blocking) {
+    IncreaseTensorReferenceCountUntilCopyComplete(self->tensor, place);
+  }
   egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
   egr::EagerUtils::autograd_meta(&cp_tensor)
       ->SetPersistable(
@@ -550,7 +577,7 @@ static PyObject* tensor__share_buffer_to(TensorObject* self, PyObject* args,
   }
   auto dst_tensor =
       static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
-  dst_tensor->ShareDataWith(*src_tensor);
+  dst_tensor->ShareBufferWith(*src_tensor);
   dst_tensor->ShareDataTypeWith(*src_tensor);
   Py_INCREF(Py_None);
   return Py_None;
@@ -1487,6 +1514,46 @@ static PyObject* tensor__offset(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__grad_name(TensorObject* self, PyObject* args,
+                                   PyObject* kwargs) {
+  EAGER_TRY
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE_EQ(grad != nullptr, true,
+                    platform::errors::InvalidArgument(
+                        "Detected NULL grad. Please check if you have manually "
+                        "cleared the grad inside autograd_meta"));
+  return ToPyObject(grad->name());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__grad_value(TensorObject* self, PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE_EQ(grad != nullptr, true,
+                    platform::errors::InvalidArgument(
+                        "Detected NULL grad. Please check if you have manually "
+                        "cleared the grad inside autograd_meta"));
+
+  if (!grad->defined()) {
+    Py_IncRef(Py_None);
+    return Py_None;
+  }
+  if (grad->is_dense_tensor()) {
+    auto* grad_tensor =
+        static_cast<paddle::framework::LoDTensor*>(grad->impl().get());
+    return ToPyObject(grad_tensor);
+  } else {
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "this method is only supported for DenseTensor"));
+    Py_IncRef(Py_None);
+    return Py_None;
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                                     PyObject* kwargs) {
@@ -1627,6 +1694,10 @@ PyMethodDef variable_methods[] = {
     {"_share_memory", (PyCFunction)(void (*)(void))tensor_method__share_memory,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_offset", (PyCFunction)(void (*)(void))tensor__offset,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_grad_name", (PyCFunction)(void (*)(void))tensor__grad_name,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_grad_value", (PyCFunction)(void (*)(void))tensor__grad_value,
      METH_VARARGS | METH_KEYWORDS, NULL},
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva", (PyCFunction)(void (*)(void))tensor_method__uva,

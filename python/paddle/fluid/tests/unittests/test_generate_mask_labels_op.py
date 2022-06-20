@@ -79,8 +79,8 @@ def poly2mask(xy, k, h, w):
             u.extend([int(xs + s * t + .5) for t in ts])
 
     k = len(u)
-    x = np.zeros((k), np.int)
-    y = np.zeros((k), np.int)
+    x = np.zeros((k), np.int_)
+    y = np.zeros((k), np.int_)
     m = 0
     for j in six.moves.xrange(1, k):
         if u[j] != u[j - 1]:
@@ -116,7 +116,7 @@ def poly2mask(xy, k, h, w):
                 b[m - 1] += a[j]
                 j += 1
     mask = decode(b, m)
-    mask = np.array(mask, dtype=np.int).reshape((w, h))
+    mask = np.array(mask, dtype=np.int_).reshape((w, h))
     mask = mask.transpose((1, 0))
     return mask
 

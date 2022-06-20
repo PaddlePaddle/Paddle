@@ -153,7 +153,7 @@ void CastPyArg2AttrInt(PyObject* obj,
 int64_t CastPyArg2Long(PyObject* obj, const std::string& op_type,
                        ssize_t arg_pos) {
   if (PyObject_CheckLongOrToLong(&obj)) {
-    return (int64_t)PyLong_AsLong(obj);  // NOLINT
+    return (int64_t)PyLong_AsLongLong(obj);  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "

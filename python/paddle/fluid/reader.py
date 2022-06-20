@@ -19,6 +19,7 @@ import numpy as np
 import threading
 import paddle
 import time
+import copy
 
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, _non_static_mode, cpu_places, _current_expected_place, _in_eager_without_dygraph_check
 from .executor import global_scope
@@ -143,7 +144,7 @@ class DataLoaderBase(object):
     @classmethod
     def _check_input_array(cls, item):
         arr = np.asarray(item)
-        if arr.dtype == np.object:
+        if arr.dtype == np.object_:
             raise TypeError(
                 "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
                 "this means the input data contains nested lists with different lengths. "
@@ -214,7 +215,7 @@ class AuToTune(object):
         return sub_dataset
 
     def get_autotune_loader(self):
-        loader = self.loader
+        loader = copy.copy(self.loader)
         batch_size = self.loader.batch_sampler.batch_size
         if isinstance(self.loader.batch_sampler,
                       paddle.io.DistributedBatchSampler):

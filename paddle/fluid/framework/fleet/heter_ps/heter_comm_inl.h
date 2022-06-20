@@ -193,6 +193,8 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
     memory_copy(dst_place, node.key_storage, src_place,
                 reinterpret_cast<char*>(src_key + h_left[i]),
                 node.key_bytes_len, node.in_stream);
+    cudaMemsetAsync(node.val_storage, -1, node.val_bytes_len, node.in_stream);
+
     if (need_copy_val) {
       memory_copy(dst_place, node.val_storage, src_place,
                   reinterpret_cast<char*>(src_val + h_left[i]),
@@ -337,6 +339,24 @@ template <typename KeyType, typename ValType, typename GradType>
 int HeterComm<KeyType, ValType, GradType>::get_index_by_devid(int devid) {
   return resource_->get_index_by_devid(devid);
 }
+
+#if defined(PADDLE_WITH_XPU_KP)
+template <typename KeyType, typename ValType, typename GradType>
+void HeterComm<KeyType, ValType, GradType>::set_sparse_sgd(
+    const OptimizerConfig& optimizer_config) {
+  for (auto& table : tables_) {
+    table->set_sparse_sgd(optimizer_config);
+  }
+}
+
+template <typename KeyType, typename ValType, typename GradType>
+void HeterComm<KeyType, ValType, GradType>::set_embedx_sgd(
+    const OptimizerConfig& optimizer_config) {
+  for (auto& table : tables_) {
+    table->set_embedx_sgd(optimizer_config);
+  }
+}
+#endif
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::build_ps(

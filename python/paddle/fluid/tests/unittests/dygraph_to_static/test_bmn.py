@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import math
 import numpy as np
 import unittest
 import paddle
+import tempfile
 from paddle.jit import to_static
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
@@ -422,11 +424,6 @@ class Args(object):
     prop_boundary_ratio = 0.5
     num_sample = 2
     num_sample_perbin = 2
-    model_save_dir = "./inference"
-    model_save_prefix = "./inference/bmn"
-    model_filename = "bmn" + INFER_MODEL_SUFFIX
-    params_filename = "bmn" + INFER_PARAMS_SUFFIX
-    dy_param_path = './bmn_dy_param'
 
 
 def optimizer(cfg, parameter_list):
@@ -559,78 +556,6 @@ def fake_data_reader(args, mode='train'):
     return reader
 
 
-def train_bmn(args, place, to_static):
-    program_translator.enable(to_static)
-    loss_data = []
-
-    with fluid.dygraph.guard(place):
-        paddle.seed(SEED)
-        paddle.framework.random._manual_program_seed(SEED)
-        global local_random
-        local_random = np.random.RandomState(SEED)
-
-        bmn = BMN(args)
-        adam = optimizer(args, parameter_list=bmn.parameters())
-
-        train_reader = fake_data_reader(args, 'train')
-
-        for epoch in range(args.epoch):
-            for batch_id, data in enumerate(train_reader()):
-                video_feat = np.array(
-                    [item[0] for item in data]).astype(DATATYPE)
-                gt_iou_map = np.array(
-                    [item[1] for item in data]).astype(DATATYPE)
-                gt_start = np.array([item[2] for item in data]).astype(DATATYPE)
-                gt_end = np.array([item[3] for item in data]).astype(DATATYPE)
-
-                x_data = to_variable(video_feat)
-                gt_iou_map = to_variable(gt_iou_map)
-                gt_start = to_variable(gt_start)
-                gt_end = to_variable(gt_end)
-                gt_iou_map.stop_gradient = True
-                gt_start.stop_gradient = True
-                gt_end.stop_gradient = True
-
-                pred_bm, pred_start, pred_end = bmn(x_data)
-
-                loss, tem_loss, pem_reg_loss, pem_cls_loss = bmn_loss_func(
-                    pred_bm, pred_start, pred_end, gt_iou_map, gt_start, gt_end,
-                    args)
-                avg_loss = fluid.layers.mean(loss)
-
-                avg_loss.backward()
-                adam.minimize(avg_loss)
-                bmn.clear_gradients()
-                # log loss data to verify correctness
-                loss_data += [
-                    avg_loss.numpy()[0], tem_loss.numpy()[0],
-                    pem_reg_loss.numpy()[0], pem_cls_loss.numpy()[0]
-                ]
-
-                if args.log_interval > 0 and (
-                        batch_id % args.log_interval == 0):
-                    print('[TRAIN] Epoch {}, iter {} '.format(epoch, batch_id)
-                                + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
-                        '%f' % avg_loss.numpy()[0], '%f' % tem_loss.numpy()[0], \
-                        '%f' % pem_reg_loss.numpy()[0], '%f' % pem_cls_loss.numpy()[0]))
-
-                # validation
-                if batch_id % args.valid_interval == 0 and batch_id > 0:
-                    bmn.eval()
-                    val_loss_data = val_bmn(bmn, args)
-                    bmn.train()
-                    loss_data += val_loss_data
-
-                if batch_id == args.train_batch_num:
-                    if to_static:
-                        fluid.dygraph.jit.save(bmn, args.model_save_prefix)
-                    else:
-                        fluid.dygraph.save_dygraph(bmn.state_dict(),
-                                                   args.dy_param_path)
-                    break
-        return np.array(loss_data)
-
-
 # Validation
 def val_bmn(model, args):
     val_reader = fake_data_reader(args, 'valid')
@@ -677,10 +602,93 @@ class TestTrain(unittest.TestCase):
         self.place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda() \
             else fluid.CUDAPlace(0)
 
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_save_dir = os.path.join(self.temp_dir.name, 'inference')
+        self.model_save_prefix = os.path.join(self.model_save_dir, 'bmn')
+        self.model_filename = "bmn" + INFER_MODEL_SUFFIX
+        self.params_filename = "bmn" + INFER_PARAMS_SUFFIX
+        self.dy_param_path = os.path.join(self.temp_dir.name, 'bmn_dy_param')
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def train_bmn(self, args, place, to_static):
+        program_translator.enable(to_static)
+        loss_data = []
+
+        with fluid.dygraph.guard(place):
+            paddle.seed(SEED)
+            paddle.framework.random._manual_program_seed(SEED)
+            global local_random
+            local_random = np.random.RandomState(SEED)
+
+            bmn = BMN(args)
+            adam = optimizer(args, parameter_list=bmn.parameters())
+
+            train_reader = fake_data_reader(args, 'train')
+
+            for epoch in range(args.epoch):
+                for batch_id, data in enumerate(train_reader()):
+                    video_feat = np.array(
+                        [item[0] for item in data]).astype(DATATYPE)
+                    gt_iou_map = np.array(
+                        [item[1] for item in data]).astype(DATATYPE)
+                    gt_start = np.array(
+                        [item[2] for item in data]).astype(DATATYPE)
+                    gt_end = np.array(
+                        [item[3] for item in data]).astype(DATATYPE)
+
+                    x_data = to_variable(video_feat)
+                    gt_iou_map = to_variable(gt_iou_map)
+                    gt_start = to_variable(gt_start)
+                    gt_end = to_variable(gt_end)
+                    gt_iou_map.stop_gradient = True
+                    gt_start.stop_gradient = True
+                    gt_end.stop_gradient = True
+
+                    pred_bm, pred_start, pred_end = bmn(x_data)
+
+                    loss, tem_loss, pem_reg_loss, pem_cls_loss = bmn_loss_func(
+                        pred_bm, pred_start, pred_end, gt_iou_map, gt_start,
+                        gt_end, args)
+                    avg_loss = fluid.layers.mean(loss)
+
+                    avg_loss.backward()
+                    adam.minimize(avg_loss)
+                    bmn.clear_gradients()
+                    # log loss data to verify correctness
+                    loss_data += [
+                        avg_loss.numpy()[0], tem_loss.numpy()[0],
+                        pem_reg_loss.numpy()[0], pem_cls_loss.numpy()[0]
+                    ]
+
+                    if args.log_interval > 0 and (
+                            batch_id % args.log_interval == 0):
+                        print('[TRAIN] Epoch {}, iter {} '.format(epoch, batch_id)
+                                    + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
+                            '%f' % avg_loss.numpy()[0], '%f' % tem_loss.numpy()[0], \
+                            '%f' % pem_reg_loss.numpy()[0], '%f' % pem_cls_loss.numpy()[0]))
+
+                    # validation
+                    if batch_id % args.valid_interval == 0 and batch_id > 0:
+                        bmn.eval()
+                        val_loss_data = val_bmn(bmn, args)
+                        bmn.train()
+                        loss_data += val_loss_data
+
+                    if batch_id == args.train_batch_num:
+                        if to_static:
+                            fluid.dygraph.jit.save(bmn, self.model_save_prefix)
+                        else:
+                            fluid.dygraph.save_dygraph(bmn.state_dict(),
+                                                       self.dy_param_path)
+                        break
+            return np.array(loss_data)
+
     def test_train(self):
 
-        static_res = train_bmn(self.args, self.place, to_static=True)
-        dygraph_res = train_bmn(self.args, self.place, to_static=False)
+        static_res = self.train_bmn(self.args, self.place, to_static=True)
+        dygraph_res = self.train_bmn(self.args, self.place, to_static=False)
         self.assertTrue(
             np.allclose(dygraph_res, static_res),
             "dygraph_res: {},\n static_res: {}".format(
@@ -726,8 +734,7 @@ class TestTrain(unittest.TestCase):
         with fluid.dygraph.guard(self.place):
             bmn = BMN(self.args)
             # load dygraph trained parameters
-            model_dict, _ = fluid.load_dygraph(self.args.dy_param_path +
-                                               ".pdparams")
+            model_dict, _ = fluid.load_dygraph(self.dy_param_path + ".pdparams")
             bmn.set_dict(model_dict)
             bmn.eval()
 
@@ -743,10 +750,10 @@ class TestTrain(unittest.TestCase):
         # load inference model
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(
-             self.args.model_save_dir,
+             self.model_save_dir,
              executor=exe,
-             model_filename=self.args.model_filename,
-             params_filename=self.args.params_filename)
+             model_filename=self.model_filename,
+             params_filename=self.params_filename)
         pred_res = exe.run(inference_program,
                            feed={feed_target_names[0]: data},
                            fetch_list=fetch_targets)
@@ -755,7 +762,7 @@ class TestTrain(unittest.TestCase):
 
     def predict_dygraph_jit(self, data):
         with fluid.dygraph.guard(self.place):
-            bmn = fluid.dygraph.jit.load(self.args.model_save_prefix)
+            bmn = fluid.dygraph.jit.load(self.model_save_prefix)
             bmn.eval()
 
             x = to_variable(data)
@@ -765,9 +772,8 @@ class TestTrain(unittest.TestCase):
             return pred_res
 
     def predict_analysis_inference(self, data):
-        output = PredictorTools(self.args.model_save_dir,
-                                self.args.model_filename,
-                                self.args.params_filename, [data])
+        output = PredictorTools(self.model_save_dir, self.model_filename,
+                                self.params_filename, [data])
         out = output()
         return out
 

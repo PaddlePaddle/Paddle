@@ -1101,7 +1101,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT16
     elif dtype == np.int64:
         return core.VarDesc.VarType.INT64
-    elif dtype == np.bool:
+    elif dtype == np.bool_:
         return core.VarDesc.VarType.BOOL
     elif dtype == np.uint16:
         # since there is still no support for bfloat16 in NumPy,
@@ -6085,8 +6085,8 @@ class Program(object):
                 for var in prog.list_vars():
                     print(var)
 
-                # var img : paddle.VarType.LOD_TENSOR.shape(-1, 1, 28, 28).astype(VarType.FP32)
-                # var label : paddle.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)
+                # var img : LOD_TENSOR.shape(-1, 1, 28, 28).dtype(float32).stop_gradient(True)
+                # var label : LOD_TENSOR.shape(-1, 1).dtype(int64).stop_gradient(True)
         """
         for each_block in self.blocks:
             for each_var in list(each_block.vars.values()):
@@ -6119,8 +6119,8 @@ class Program(object):
                 # Here will print all parameters in current program, in this example,
                 # the result is like:
                 #
-                # persist trainable param fc_0.w_0 : paddle.VarType.LOD_TENSOR.shape(13, 10).astype(VarType.FP32)
-                # persist trainable param fc_0.b_0 : paddle.VarType.LOD_TENSOR.shape(10,).astype(VarType.FP32)
+                # persist trainable param fc_0.w_0 : LOD_TENSOR.shape(13, 10).dtype(float32).stop_gradient(False)
+                # persist trainable param fc_0.b_0 : LOD_TENSOR.shape(10,).dtype(float32).stop_gradient(False)
                 #
                 # Here print(param) will print out all the properties of a parameter,
                 # including name, type and persistable, you can access to specific

@@ -60,9 +60,9 @@ class ElementwiseDivOp(OpTest):
         pass
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
-    "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
+@unittest.skipIf(not core.is_compiled_with_cuda() or
+                 not core.is_bfloat16_supported(core.CUDAPlace(0)),
+                 "core is not compiled with CUDA and not support the bfloat16")
 class TestElementwiseDivOpBF16(OpTest):
     def setUp(self):
         self.op_type = "elementwise_div"

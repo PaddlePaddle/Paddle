@@ -378,6 +378,7 @@ def new_group(ranks=None, backend=None):
         _group_map_by_name[group_name] = group
         _group_map[gid] = group
 
+        paddle.distributed.barrier(group=group)
         return group
 
     if not backend:
@@ -860,9 +861,12 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
-        tensor_shape = list(tensor.shape)
-        tensor_shape[0] *= group.nranks
-        out = paddle.empty(tensor_shape, tensor.dtype)
+        if len(tensor_list) == 0:
+            tensor_shape = list(tensor.shape)
+            tensor_shape[0] *= group.nranks
+            out = paddle.empty(tensor_shape, tensor.dtype)
+        else:
+            out = paddle.concat(tensor_list, axis=0)
         task = group.process_group.all_gather(tensor, out)
         task.wait()
         tensor_list.clear()
@@ -1783,7 +1787,12 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     temp = paddle.concat(in_tensor_list, axis=0)
     nranks = len(in_tensor_list)
     if in_dygraph_mode():
-        out = paddle.concat(out_tensor_list, axis=0)
+        if len(out_tensor_list) == 0:
+            tensor_shape = list(in_tensor_list[0].shape)
+            tensor_shape[0] *= nranks
+            out = paddle.empty(tensor_shape, in_tensor_list[0].dtype)
+        else:
+            out = paddle.concat(out_tensor_list, axis=0)
         task = group.process_group.alltoall(temp, out)
         task.wait()
         out_tensor_list.clear()

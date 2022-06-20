@@ -17,6 +17,9 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import six
+import cv2
+import os
+import tempfile
 from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_parameters, optimizer_setting
 import paddle.nn as nn
 from paddle.static import InputSpec
@@ -694,6 +697,12 @@ class TestAmpDecorator(unittest.TestCase):
 
 
 class TestPureFp16SaveLoad(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_save_dtype_exception(self):
         def func():
             paddle.disable_static()
@@ -803,7 +812,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                     'opt': optimizer.state_dict(),
                     'scaler': scaler.state_dict()
                 }
-                path = 'model.pdparams'
+                path = os.path.join(self.temp_dir.name, 'model.pdparams')
                 paddle.save(obj, path)
                 # paddle.load
                 obj_load = paddle.load(path)
@@ -840,6 +849,12 @@ class TestPureFp16SaveLoad(unittest.TestCase):
 
 
 class TestPureFp16InferenceSaveLoad(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def inference_save_load(self):
         BATCH_SIZE = 16
         BATCH_NUM = 4
@@ -903,7 +918,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
         train(layer, loader, loss_fn, adam)
 
         # save 
-        path = "example_model/linear"
+        path = os.path.join(self.temp_dir.name, 'example_model/linear')
         paddle.jit.save(
             layer, path, input_spec=[InputSpec(
                 shape=[IMAGE_SIZE], name='x')])
@@ -919,7 +934,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
 
         # load_inference_model
         paddle.enable_static()
-        exe = paddle.static.Executor(paddle.CPUPlace())
+        exe = paddle.static.Executor()
         [inference_program, feed_target_names, fetch_targets] = (
             paddle.static.load_inference_model(path, exe))
         tensor_img = x
@@ -927,8 +942,8 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
         print("pred.numpy()", pred.numpy())
-        print("results", results)
-        self.assertTrue(np.allclose(pred.numpy(), results, atol=1.e-5))
+        print("result", results[0])
+        self.assertTrue(np.array_equal(pred.numpy(), results[0]))
         paddle.disable_static()
 
     def test_inference_save_load(self):
@@ -1254,18 +1269,17 @@ class TestBf16(unittest.TestCase):
 
     def test_bf16(self):
         def func_isinstance():
-            if fluid.core.is_compiled_with_cuda():
-                cudnn_version = paddle.device.get_cudnn_version()
-                if cudnn_version is not None and cudnn_version >= 8100:
-                    out_fp32 = self.train(enable_amp=False)
-                    out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
-                    out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
-                    self.assertTrue(
-                        np.allclose(
-                            out_fp32, out_bf16_O1, rtol=1.e-3, atol=1.e-1))
-                    self.assertTrue(
-                        np.allclose(
-                            out_fp32, out_bf16_O2, rtol=1.e-3, atol=1.e-1))
+            if fluid.core.is_compiled_with_cuda(
+            ) and fluid.core.is_bfloat16_supported(paddle.CUDAPlace(0)):
+                out_fp32 = self.train(enable_amp=False)
+                out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
+                out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
+                self.assertTrue(
+                    np.allclose(
+                        out_fp32, out_bf16_O1, rtol=1.e-3, atol=1.e-1))
+                self.assertTrue(
+                    np.allclose(
+                        out_fp32, out_bf16_O2, rtol=1.e-3, atol=1.e-1))
 
         with _test_eager_guard():
             func_isinstance()

@@ -348,7 +348,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         reduce_all = True if axis == None or axis == [] or asvector == True else False
         axis = axis if axis != None and axis != [] else [0]
 
-        reduce_type = 'reduce_max' if porder == np.float(
+        reduce_type = 'reduce_max' if porder == np.float64(
             'inf') else 'reduce_min'
         helper.append_op(
             type=reduce_type,
@@ -1063,40 +1063,37 @@ def t(input, name=None):
     the paddle.transpose function which perm dimensions set 0 and 1.
 
     Args:
-        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
+        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
         Tensor: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
 
-    For Example:
-
-        .. code-block:: text
-
-             # Example 1 (0-D tensor)
-             x = tensor([0.79])
-             paddle.t(x) = tensor([0.79])
-
-             # Example 2 (1-D tensor)
-             x = tensor([0.79, 0.84, 0.32])
-             paddle.t(x) = tensor([0.79, 0.84, 0.32])
-
-             # Example 3 (2-D tensor)
-             x = tensor([0.79, 0.84, 0.32],
-                        [0.64, 0.14, 0.57])
-             paddle.t(x) = tensor([0.79, 0.64],
-                                  [0.84, 0.14],
-                                  [0.32, 0.57])
-
-     Examples:
+    Examples:
 
         .. code-block:: python
+           :name: code-example
+             import paddle
+             
+             # Example 1 (0-D tensor)
+             x = paddle.to_tensor([0.79])
+             paddle.t(x) # [0.79]
+             
+             # Example 2 (1-D tensor)
+             x = paddle.to_tensor([0.79, 0.84, 0.32])
+             paddle.t(x) # [0.79000002, 0.83999997, 0.31999999]
+             paddle.t(x).shape # [3]
 
-            import paddle
-            x = paddle.ones(shape=[2, 3], dtype='int32')
-            x_transposed = paddle.t(x)
-            print(x_transposed.shape)
-            # [3, 2]
+             # Example 3 (2-D tensor)
+             x = paddle.to_tensor([[0.79, 0.84, 0.32],
+                                  [0.64, 0.14, 0.57]])
+             x.shape # [2, 3]
+             paddle.t(x)
+             # [[0.79000002, 0.63999999],
+             #  [0.83999997, 0.14000000],
+             #  [0.31999999, 0.56999999]]
+             paddle.t(x).shape # [3, 2]
+
     """
     if len(input.shape) > 2:
         raise ValueError(
@@ -1341,7 +1338,6 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
     if tol is None:
         attrs['use_default_tol'] = True
     elif isinstance(tol, Variable):
-        check_variable_and_dtype(tol, 'tol', ['float32'], 'matrix_rank')
         attrs['use_default_tol'] = False
         if tol.dtype != x.dtype:
             inputs['TolTensor'] = cast(tol, x.dtype)

@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
+import os
+import json
 import numpy as np
+import unittest
+import tempfile
+import warnings
+
+import paddle
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -73,10 +78,13 @@ class TestAutoTune(unittest.TestCase):
         return expected_res
 
     def test_autotune(self):
-        paddle.fluid.core.disable_autotune()
+        paddle.incubate.autotune.set_config(
+            config={"kernel": {
+                "enable": False
+            }})
         self.assertEqual(self.get_flags("FLAGS_use_autotune"), False)
 
-        paddle.fluid.core.enable_autotune()
+        paddle.incubate.autotune.set_config(config={"kernel": {"enable": True}})
         self.assertEqual(self.get_flags("FLAGS_use_autotune"), True)
 
     def check_status(self, expected_res):
@@ -93,10 +101,16 @@ class TestDygraphAutoTuneStatus(TestAutoTune):
     def run_program(self, enable_autotune):
         self.set_flags(enable_autotune)
         if enable_autotune:
-            paddle.fluid.core.enable_autotune()
+            paddle.incubate.autotune.set_config(
+                config={"kernel": {
+                    "enable": True,
+                    "tuning_range": [1, 2]
+                }})
         else:
-            paddle.fluid.core.disable_autotune()
-        paddle.fluid.core.set_autotune_range(1, 2)
+            paddle.incubate.autotune.set_config(
+                config={"kernel": {
+                    "enable": False
+                }})
         x_var = paddle.uniform((1, 1, 8, 8), dtype='float32', min=-1., max=1.)
         net = SimpleNet()
         for i in range(3):
@@ -141,10 +155,18 @@ class TestStaticAutoTuneStatus(TestAutoTune):
 
         self.set_flags(enable_autotune)
         if enable_autotune:
-            paddle.fluid.core.enable_autotune()
+            config = {"kernel": {"enable": True, "tuning_range": [1, 2]}}
+            tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
+            json.dump(config, tfile)
+            tfile.close()
+            paddle.incubate.autotune.set_config(tfile.name)
+            os.remove(tfile.name)
         else:
-            paddle.fluid.core.disable_autotune()
-        paddle.fluid.core.set_autotune_range(1, 2)
+            paddle.incubate.autotune.set_config(
+                config={"kernel": {
+                    "enable": False,
+                    "tuning_range": [1, 2]
+                }})
 
         for i in range(3):
             exe.run(program=main_program, feed={'X': x}, fetch_list=[loss])
@@ -164,6 +186,23 @@ class TestStaticAutoTuneStatus(TestAutoTune):
 
     def test_disable_autotune(self):
         self.func_disable_autotune()
+
+
+class TestAutoTuneAPI(unittest.TestCase):
+    def test_set_config_warnings(self):
+        with warnings.catch_warnings(record=True) as w:
+            config = {"kernel": {"enable": 1, "tuning_range": 1}}
+            tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
+            json.dump(config, tfile)
+            tfile.close()
+            paddle.incubate.autotune.set_config(tfile.name)
+            os.remove(tfile.name)
+            self.assertTrue(len(w) == 2)
+
+    def test_set_config_attr(self):
+        paddle.incubate.autotune.set_config(config=None)
+        self.assertEqual(
+            paddle.get_flags("FLAGS_use_autotune")["FLAGS_use_autotune"], True)
 
 
 if __name__ == '__main__':

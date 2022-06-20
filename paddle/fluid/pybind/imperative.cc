@@ -2050,9 +2050,9 @@ void BindImperative(py::module *m_ptr) {
               };
               auto ret = self.GetExpectedKernelSignature(type, ins_map,
                                                          outs_map, attrs);
-              auto kernelsig_ins = input_to_vector(std::get<0>(ret.args));
-              auto kernelsig_attrs = attr_to_vector(std::get<1>(ret.args));
-              auto kernelsig_outs = output_to_vector(std::get<2>(ret.args));
+              auto kernelsig_ins = input_to_vector(ret.input_names);
+              auto kernelsig_attrs = attr_to_vector(ret.attr_names);
+              auto kernelsig_outs = output_to_vector(ret.output_names);
               return std::make_tuple(kernelsig_ins, kernelsig_attrs,
                                      kernelsig_outs);
             }

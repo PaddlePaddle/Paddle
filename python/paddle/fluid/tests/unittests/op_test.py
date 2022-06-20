@@ -439,7 +439,7 @@ class OpTest(unittest.TestCase):
             np.dtype(np.float64), np.dtype(np.float32), np.dtype(np.float16),
             np.dtype(np.int64), np.dtype(np.int32), np.dtype(np.uint16),
             np.dtype(np.int16), np.dtype(np.int8), np.dtype(np.uint8),
-            np.dtype(np.bool)
+            np.dtype(np.bool_)
         ]
         # check the dtype in dtype_list in order, select the first dtype that in dtype_set
         for dtype in dtype_list:
@@ -1506,6 +1506,12 @@ class OpTest(unittest.TestCase):
                     return imperative_actual, imperative_actual_t
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
+                if actual_np.dtype == np.uint16 and expect_np.dtype in [
+                        np.float32, np.float64
+                ]:
+                    self.rtol = 1.e-2
+                else:
+                    self.rtol = 1.e-5
                 if self.op_test.is_bfloat16_op():
                     if actual_np.dtype == np.uint16:
                         actual_np = convert_uint16_to_float(actual_np)

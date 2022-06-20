@@ -17,6 +17,10 @@ import re
 import logging
 import numpy as np
 import shutil
+try:
+    from tqdm import tqdm
+except:
+    from .utils import tqdm
 from inspect import isgeneratorfunction
 from .... import io
 from .... import core
@@ -126,6 +130,7 @@ class PostTrainingQuantization(object):
                  onnx_format=False,
                  optimize_model=False,
                  is_use_cache_file=False,
+                 skip_tensor_list=None,
                  cache_dir=None):
         '''
         Constructor.
@@ -198,6 +203,7 @@ class PostTrainingQuantization(object):
                 the model accuracy is usually higher when it is 'channel_wise_abs_max'.
             onnx_format(bool): Whether to export the quantized model with format of ONNX.
                 Default is False.
+            skip_tensor_list(list): List of skip quant tensor name.
             optimize_model(bool, optional): If set optimize_model as True, it applies
                 some passes to the model before quantization, and it supports
                 `conv2d/depthwise_conv2d + bn` pass so far. Some targets require the
@@ -301,6 +307,7 @@ class PostTrainingQuantization(object):
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
         self._onnx_format = onnx_format
+        self._skip_tensor_list = skip_tensor_list
         self._is_full_quantize = is_full_quantize
         if is_full_quantize:
             self._quantizable_op_type = self._support_quantize_op_type
@@ -354,38 +361,40 @@ class PostTrainingQuantization(object):
         self._set_activation_persistable()
 
         if self._algo in ["KL", "hist"]:
-            _logger.info("Preparation stage ...")
             batch_id = 0
+            with tqdm(
+                    total=self._batch_nums,
+                    bar_format='Preparation stage, Run batch:|{bar}| {n_fmt}/{total_fmt}',
+                    ncols=80) as t:
+                for data in self._data_loader():
+                    self._executor.run(program=self._program,
+                                       feed=data,
+                                       fetch_list=self._fetch_list,
+                                       return_numpy=False,
+                                       scope=self._scope)
+                    self._collect_activation_abs_min_max()
+                    batch_id += 1
+                    t.update()
+                    if self._batch_nums and batch_id >= self._batch_nums:
+                        break
+            self._init_sampling_act_histogram()
+
+        batch_id = 0
+        with tqdm(
+                total=self._batch_nums,
+                bar_format='Sampling stage, Run batch:|{bar}| {n_fmt}/{total_fmt}',
+                ncols=80) as t:
             for data in self._data_loader():
                 self._executor.run(program=self._program,
                                    feed=data,
                                    fetch_list=self._fetch_list,
                                    return_numpy=False,
                                    scope=self._scope)
-                self._collect_activation_abs_min_max()
-                if batch_id % 5 == 0:
-                    _logger.info("Run batch: " + str(batch_id))
+                self._sampling()
                 batch_id += 1
+                t.update()
                 if self._batch_nums and batch_id >= self._batch_nums:
                     break
-            _logger.info("Finish preparation stage, all batch:" + str(batch_id))
-            self._init_sampling_act_histogram()
-
-        _logger.info("Sampling stage ...")
-        batch_id = 0
-        for data in self._data_loader():
-            self._executor.run(program=self._program,
-                               feed=data,
-                               fetch_list=self._fetch_list,
-                               return_numpy=False,
-                               scope=self._scope)
-            self._sampling()
-            if batch_id % 5 == 0:
-                _logger.info("Run batch: " + str(batch_id))
-            batch_id += 1
-            if self._batch_nums and batch_id >= self._batch_nums:
-                break
-        _logger.info("Finish sampling stage, all batch: " + str(batch_id))
 
         if self._algo == 'avg':
             for var_name in self._quantized_act_var_name:
@@ -547,6 +556,12 @@ class PostTrainingQuantization(object):
         persistable_var_names = _all_persistable_var_names(self._program)
         for block_id in range(len(self._program.blocks)):
             for op in self._program.blocks[block_id].ops:
+                # skip quant form self._skip_tensor_list
+                if self._skip_tensor_list is not None:
+                    for inp_name in utils._get_op_input_var_names(op):
+                        if inp_name in self._skip_tensor_list:
+                            op._set_attr("op_namescope", "skip_quant")
+
                 op_type = op.type
                 if self._is_full_quantize and \
                     op_type not in self._quantizable_op_type:
@@ -814,8 +829,9 @@ class PostTrainingQuantization(object):
             min_value = float(np.min(var_tensor))
             max_value = float(np.max(var_tensor))
             if var_name not in self._sampling_act_abs_min_max:
-                self._sampling_act_abs_min_max[
-                    var_name] = [min_value, max_value]
+                self._sampling_act_abs_min_max[var_name] = [
+                    min_value, max_value
+                ]
             else:
                 if min_value < self._sampling_act_abs_min_max[var_name][0]:
                     self._sampling_act_abs_min_max[var_name][0] = min_value

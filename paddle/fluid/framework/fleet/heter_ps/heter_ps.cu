@@ -50,6 +50,16 @@ int HeterPs::get_index_by_devid(int devid) {
   return comm_->get_index_by_devid(devid);
 }
 
+#if defined(PADDLE_WITH_XPU_KP)
+void HeterPs::set_sparse_sgd(const OptimizerConfig& optimizer_config) {
+  comm_->set_sparse_sgd(optimizer_config);
+}
+
+void HeterPs::set_embedx_sgd(const OptimizerConfig& optimizer_config) {
+  comm_->set_embedx_sgd(optimizer_config);
+}
+#endif
+
 void HeterPs::end_pass() { comm_->end_pass(); }
 
 void HeterPs::show_one_table(int gpu_num) { comm_->show_one_table(gpu_num); }

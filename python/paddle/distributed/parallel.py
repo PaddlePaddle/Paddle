@@ -20,6 +20,7 @@ from multiprocessing import Manager  # noqa: F401
 import time
 import sys
 
+import paddle
 from paddle import compat as cpt
 
 # deprecated module import
@@ -30,6 +31,7 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
+from paddle.distributed import collective
 from paddle.distributed.collective import _set_group_map
 from paddle.distributed.collective import _set_group_map_by_name
 from paddle.distributed.collective import _get_group_map_by_name
@@ -252,6 +254,7 @@ def init_parallel_env():
         _set_group_map_by_name(_default_group_name, group)
         _set_group_map(0, group)
         parallel_helper._set_parallel_ctx(True)
+        paddle.distributed.barrier(group=group)
         return group
 
     node_num = set([i.split(":")[0] for i in parallel_env.trainer_endpoints])

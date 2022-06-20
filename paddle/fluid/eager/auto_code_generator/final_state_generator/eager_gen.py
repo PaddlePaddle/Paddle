@@ -119,7 +119,7 @@ class {} : public egr::GradNodeBase {{
   ~{}() override = default;
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false, bool is_new_grad = false) override;
   std::string name() override {{ return \"{}\"; }}
   
   void ClearTensorWrappers() override {{
@@ -149,7 +149,7 @@ class {} : public egr::GradNodeBase {{
 
 GRAD_FUNCTION_TEMPLATE = \
 """
-std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {{
+std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph, bool is_new_grad) {{
     // Fill Zero For GradIn Tensors
 {}
 
@@ -906,7 +906,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"if ({name}.get_ptr() != nullptr) amp_tensors_vector.push_back({{ *({name}.get_ptr()) }});\n"
                     )
                     amp_autocast_optional_list.append(
-                        f"auto NEW_{name} = ({name}.get_ptr() != nullptr) ? paddle::make_optional<const paddle::experimental::Tensor&>(egr::EagerAmpAutoCast(\"{name}\", *({name}.get_ptr()), amp_dst_dtype, op_name)) : {name};\n"
+                        f"auto NEW_{name}_temp_tensor = ({name}.get_ptr() != nullptr) ? egr::EagerAmpAutoCast(\"{name}\", *({name}.get_ptr()), amp_dst_dtype, op_name) : paddle::experimental::Tensor();\n"
+                    )
+                    amp_autocast_optional_list.append(
+                        f"auto NEW_{name} = ({name}.get_ptr() != nullptr) ? paddle::make_optional<const paddle::experimental::Tensor&>(NEW_{name}_temp_tensor) : {name};\n"
                     )
                 else:
                     if is_inplaced and inplace_map and name in inplace_map.keys(

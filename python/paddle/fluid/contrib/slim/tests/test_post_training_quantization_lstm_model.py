@@ -20,6 +20,7 @@ import math
 import functools
 import contextlib
 import struct
+import tempfile
 import numpy as np
 import paddle
 import paddle.fluid as fluid
@@ -37,9 +38,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.download_path = 'int8/download'
         self.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
                                                self.download_path)
-        self.timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-        self.int8_model_path = os.path.join(os.getcwd(),
-                                            "post_training_" + self.timestamp)
+        self.root_path = tempfile.TemporaryDirectory()
+        self.int8_model_path = os.path.join(self.root_path.name,
+                                            "post_training_quantization")
         try:
             os.system("mkdir -p " + self.int8_model_path)
         except Exception as e:
@@ -48,11 +49,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             sys.exit(-1)
 
     def tearDown(self):
-        try:
-            os.system("rm -rf {}".format(self.int8_model_path))
-        except Exception as e:
-            print("Failed to delete {} due to {}".format(self.int8_model_path,
-                                                         str(e)))
+        self.root_path.cleanup()
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
@@ -247,21 +244,21 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.assertLess(delta_value, diff_threshold)
 
 
-class TestPostTrainingKLForMnist(TestPostTrainingQuantization):
-    def test_post_training_kl(self):
+class TestPostTrainingAvgForLSTM(TestPostTrainingQuantization):
+    def test_post_training_avg(self):
         model_name = "nlp_lstm_fp32_model"
         model_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/nlp_lstm_fp32_model.tar.gz"
         model_md5 = "519b8eeac756e7b4b7bcb2868e880452"
         data_name = "quant_lstm_input_data"
         data_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/quant_lstm_input_data.tar.gz"
         data_md5 = "add84c754e9b792fea1fbd728d134ab7"
-        algo = "KL"
+        algo = "avg"
         round_type = "round"
         quantizable_op_type = ["mul", "lstm"]
         is_full_quantize = False
         is_use_cache_file = False
         is_optimize_model = False
-        diff_threshold = 0.01
+        diff_threshold = 0.02
         infer_iterations = 100
         quant_iterations = 10
         self.run_test(model_name, model_url, model_md5, data_name, data_url,
@@ -270,44 +267,21 @@ class TestPostTrainingKLForMnist(TestPostTrainingQuantization):
                       diff_threshold, infer_iterations, quant_iterations)
 
 
-class TestPostTrainingKLForMnistAdaround(TestPostTrainingQuantization):
-    def test_post_training_kl(self):
+class TestPostTrainingAvgForLSTMONNXFormat(TestPostTrainingQuantization):
+    def test_post_training_avg_onnx_format(self):
         model_name = "nlp_lstm_fp32_model"
         model_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/nlp_lstm_fp32_model.tar.gz"
         model_md5 = "519b8eeac756e7b4b7bcb2868e880452"
         data_name = "quant_lstm_input_data"
         data_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/quant_lstm_input_data.tar.gz"
         data_md5 = "add84c754e9b792fea1fbd728d134ab7"
-        algo = "KL"
-        round_type = "adaround"
-        quantizable_op_type = ["mul", "lstm"]
-        is_full_quantize = False
-        is_use_cache_file = False
-        is_optimize_model = False
-        diff_threshold = 0.01
-        infer_iterations = 100
-        quant_iterations = 10
-        self.run_test(model_name, model_url, model_md5, data_name, data_url,
-                      data_md5, algo, round_type, quantizable_op_type,
-                      is_full_quantize, is_use_cache_file, is_optimize_model,
-                      diff_threshold, infer_iterations, quant_iterations)
-
-
-class TestPostTrainingKLForMnistONNXFormat(TestPostTrainingQuantization):
-    def test_post_training_kl_onnx_format(self):
-        model_name = "nlp_lstm_fp32_model"
-        model_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/nlp_lstm_fp32_model.tar.gz"
-        model_md5 = "519b8eeac756e7b4b7bcb2868e880452"
-        data_name = "quant_lstm_input_data"
-        data_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/quant_lstm_input_data.tar.gz"
-        data_md5 = "add84c754e9b792fea1fbd728d134ab7"
-        algo = "KL"
+        algo = "avg"
         round_type = "round"
         quantizable_op_type = ["mul", "lstm"]
         is_full_quantize = False
         is_use_cache_file = False
         is_optimize_model = False
-        diff_threshold = 0.01
+        diff_threshold = 0.02
         infer_iterations = 100
         quant_iterations = 10
         onnx_format = True

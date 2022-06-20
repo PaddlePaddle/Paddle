@@ -6754,7 +6754,10 @@ def lod_append(x, level):
             x = fluid.layers.data(name='x', shape=[6, 10], lod_level=1)
             out = fluid.layers.lod_append(x, [1,1,1,1,1,1])
     """
-    from collections import Iterable
+    try:
+        from collections.abc import Iterable
+    except:
+        from collections import Iterable
     if x is None:
         raise ValueError("Input(x) can't be None.")
     if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
@@ -12676,8 +12679,8 @@ def logical_or(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            x_data = np.array([True, False], dtype=np.bool).reshape(2, 1)
-            y_data = np.array([True, False, True, False], dtype=np.bool).reshape(2, 2)
+            x_data = np.array([True, False], dtype=np.bool_).reshape(2, 1)
+            y_data = np.array([True, False, True, False], dtype=np.bool_).reshape(2, 2)
             x = paddle.to_tensor(x_data)
             y = paddle.to_tensor(y_data)
             res = paddle.logical_or(x, y)
@@ -12717,8 +12720,8 @@ def logical_xor(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            x_data = np.array([True, False], dtype=np.bool).reshape([2, 1])
-            y_data = np.array([True, False, True, False], dtype=np.bool).reshape([2, 2])
+            x_data = np.array([True, False], dtype=np.bool_).reshape([2, 1])
+            y_data = np.array([True, False, True, False], dtype=np.bool_).reshape([2, 2])
             x = paddle.to_tensor(x_data)
             y = paddle.to_tensor(y_data)
             res = paddle.logical_xor(x, y)

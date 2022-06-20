@@ -39,6 +39,7 @@ limitations under the License. */
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {

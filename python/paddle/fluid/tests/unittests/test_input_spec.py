@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 from paddle.static import InputSpec
@@ -157,6 +160,10 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         self.out_num = 16
         self.x_spec = paddle.static.InputSpec([-1, 16], name='x')
         self.x = paddle.randn([4, 16])
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     @classmethod
     def setUpClass(cls):
@@ -179,7 +186,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         self.check_result(specs, 'list')
 
     def check_result(self, specs, path):
-        path = './net_non_tensor_' + path
+        path = os.path.join(self.temp_dir.name, './net_non_tensor_', path)
 
         net = NetWithNonTensorSpec(self.in_num, self.out_num)
         net.eval()
@@ -215,7 +222,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         net = paddle.jit.to_static(net, input_spec=specs)
         net.eval()
 
-        path = './net_twice'
+        path = os.path.join(self.temp_dir.name, './net_twice')
 
         # NOTE: check input_specs_compatible
         new_specs = [self.x_spec, True, "bn", 10]
@@ -259,6 +266,10 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
         self.y_spec = paddle.static.InputSpec([16], name='y')
         self.x = paddle.randn([4, 16])
         self.y = paddle.randn([16])
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     @classmethod
     def setUpClass(cls):
@@ -266,7 +277,7 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
 
     def test_non_tensor_with_prune(self):
         specs = [self.x_spec, self.y_spec, True]
-        path = './net_non_tensor_prune_'
+        path = os.path.join(self.temp_dir.name, './net_non_tensor_prune_')
 
         net = NetWithNonTensorSpecPrune(self.in_num, self.out_num)
         net.eval()

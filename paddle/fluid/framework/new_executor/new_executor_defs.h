@@ -100,6 +100,8 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   std::vector<DDim> GetInputsDim(const std::string& name) const override;
 
+  proto::VarType::Type GetInputVarType(const std::string& name) const override;
+
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string& name) const override;
 
@@ -110,6 +112,10 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   void SetOutputsDim(const std::string& name,
                      const std::vector<DDim>& dims) override;
+
+  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override;
+
+  const phi::KernelSignature* GetPhiDefaultKernelSignature() const override;
 
   void SetSkipLoD(bool skip);
 
@@ -346,6 +352,10 @@ class Instruction {
 
   void ResetContext(const VariableValueMap& in_vars,
                     const VariableValueMap& out_vars);
+
+  void ResetContextWithScope(const VariableValueMap& in_vars,
+                             const VariableValueMap& out_vars,
+                             const framework::Scope& scope);
 
   std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
 

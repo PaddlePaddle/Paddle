@@ -546,7 +546,13 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   for (size_t i = 0; i < tensors.size(); i++) {
     const paddle::experimental::Tensor& tensor = tensors[i];
 
-    AutogradMeta* auto_grad_meta = EagerUtils::unsafe_autograd_meta(tensor);
+    AutogradMeta* auto_grad_meta = EagerUtils::nullable_autograd_meta(tensor);
+    if (auto_grad_meta == nullptr) {
+      VLOG(3) << "Skip auto grad since there is no grad op for var or loss is "
+                 "stop_gradient=True: "
+              << tensor.name();
+      continue;
+    }
     // Get grad input info from target tensors
     auto input_info = auto_grad_meta->OutRankInfo();
 
@@ -690,7 +696,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     VLOG(6) << "Run Backward Kernel with GradTensorHolder.";
     // Run Pre Backward Node and get outputs
     std::vector<std::vector<paddle::experimental::Tensor>> grad_output_tensors =
-        (*node)(node_input_buffer->Buffers(), create_graph);
+        (*node)(node_input_buffer->Buffers(), create_graph, is_general_grad);
 
     // retain_grad or not
     if (!retain_graph) {

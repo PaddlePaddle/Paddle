@@ -2972,6 +2972,10 @@ All parameter, weight, gradient are variables in Paddle.
     // Only GPUs with Compute Capability >= 53 support float16
     return platform::GetGPUComputeCapability(place.device) >= 53;
   });
+  m.def("is_bfloat16_supported", [](const platform::CUDAPlace &place) -> bool {
+    // Only GPUs with Compute Capability >= 80 support bfloat16
+    return platform::GetGPUComputeCapability(place.device) >= 80;
+  });
 #endif
 
   m.def("set_feed_variable",
@@ -3338,6 +3342,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("create", &paddle::platform::Profiler::Create,
            py::return_value_policy::take_ownership)
       .def("is_cupti_supported", &paddle::platform::Profiler::IsCuptiSupported)
+      .def("is_cnpapi_supported",
+           &paddle::platform::Profiler::IsCnpapiSupported)
       .def("prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();
@@ -4298,7 +4304,10 @@ All parameter, weight, gradient are variables in Paddle.
              for (auto element : opt) {
                auto option_name = element.first.cast<std::string>();
                VLOG(10) << "Set option: " << option_name;
-               if (py::isinstance<py::bool_>(element.second)) {
+               if (option_name == "compilation_progress_logger") {
+                 self.SetCompilationProgressLogger(
+                     element.second.cast<py::function>());
+               } else if (py::isinstance<py::bool_>(element.second)) {
                  self.AddBoolOption(option_name, element.second.cast<bool>());
                } else if (py::isinstance<py::float_>(element.second)) {
                  self.AddDoubleOption(option_name,
@@ -4520,6 +4529,12 @@ All parameter, weight, gradient are variables in Paddle.
   BindTreeIndex(&m);
   BindIndexWrapper(&m);
   BindIndexSampler(&m);
+#ifdef PADDLE_WITH_HETERPS
+  BindNodeQueryResult(&m);
+  BindNeighborSampleQuery(&m);
+  BindNeighborSampleResult(&m);
+  BindGraphGpuWrapper(&m);
+#endif
 #endif
 }
 }  // namespace pybind

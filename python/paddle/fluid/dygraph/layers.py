@@ -26,6 +26,7 @@ import inspect
 
 import paddle
 import paddle.profiler as profiler
+from paddle.profiler.utils import in_profiler_mode
 
 from . import parallel_helper
 from .. import unique_name
@@ -906,8 +907,11 @@ class Layer(object):
 
             self._built = True
 
-        with profiler.RecordEvent(self.full_name(),
-                                  profiler.TracerEventType.Forward):
+        if in_profiler_mode():
+            with profiler.RecordEvent(self.full_name(),
+                                      profiler.TracerEventType.Forward):
+                outputs = self.forward(*inputs, **kwargs)
+        else:
             outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
@@ -919,7 +923,7 @@ class Layer(object):
 
     def __call__(self, *inputs, **kwargs):
         if (not in_declarative_mode()) and (not self._forward_pre_hooks) \
-            and (not self._forward_post_hooks) and (not self._built) and in_dygraph_mode():
+            and (not self._forward_post_hooks) and (not self._built) and in_dygraph_mode() and (not in_profiler_mode()):
             self._build_once(*inputs, **kwargs)
             return self.forward(*inputs, **kwargs)
         else:

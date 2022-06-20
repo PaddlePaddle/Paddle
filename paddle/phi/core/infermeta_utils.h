@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -41,7 +42,7 @@ class InferMetaContext {
 
   void EmplaceBackInput(MetaTensor input);
   void EmplaceBackOutput(MetaTensor output);
-  void EmplaceBackAttr(paddle::any attr);
+  void EmplaceBackAttr(Attribute attr);
 
   void EmplaceBackInputs(
       paddle::SmallVector<MetaTensor, phi::kInputSmallVectorSize> inputs);
@@ -61,17 +62,7 @@ class InferMetaContext {
                                                         size_t end);
 
   template <typename AttrType>
-  AttrType AttrAt(size_t idx) {
-    try {
-      return paddle::any_cast<AttrType>(attrs_.at(idx));
-    } catch (paddle::bad_any_cast& e) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Attribute cast error in InferMeta Context, the expected attribute "
-          "type is `%s`, but actual attribute type is `%s`.",
-          std::type_index(typeid(AttrType)).name(),
-          std::type_index(attrs_.at(idx).type()).name()));
-    }
-  }
+  const AttrType& AttrAt(size_t idx) const;
 
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
   const std::pair<int, int>& OutputRangeAt(size_t idx) const;
@@ -81,7 +72,7 @@ class InferMetaContext {
  protected:
   MetaConfig config_;
 
-  paddle::SmallVector<paddle::any, kAttrSmallVectorSize> attrs_;
+  paddle::SmallVector<Attribute, kAttrSmallVectorSize> attrs_;
 
   paddle::SmallVector<std::pair<int, int>, phi::kInputSmallVectorSize>
       input_range_;
@@ -104,6 +95,21 @@ class InferMetaContext {
       static_assert(out_idx == 0,                                              \
                     "InferMeta's Attributes should appear before Outputs.");   \
       attr_type arg = ctx->AttrAt<attr_type>(attr_idx);                        \
+      InferMetaFnCallHelper<                                                   \
+          Tail...>::template Call<in_idx, attr_idx + 1, out_idx>(ctx,          \
+                                                                 pargs...,     \
+                                                                 arg);         \
+    }                                                                          \
+  }
+
+#define PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(attr_type) \
+  template <typename... Tail>                                                  \
+  struct InferMetaFnCallHelper<const attr_type&, Tail...> {                    \
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs> \
+    static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {          \
+      static_assert(out_idx == 0,                                              \
+                    "InferMeta's Attributes should appear before Outputs.");   \
+      const attr_type& arg = ctx->AttrAt<attr_type>(attr_idx);                 \
       InferMetaFnCallHelper<                                                   \
           Tail...>::template Call<in_idx, attr_idx + 1, out_idx>(ctx,          \
                                                                  pargs...,     \
@@ -201,27 +207,27 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
     }
   };
 
-  // TODO(chenweihang): support other attr type later
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(bool);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int64_t);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(float);
-  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::string&);
-  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<bool>&);
-  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
-  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(
-      const std::vector<int64_t>&);
-  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<float>&);
-  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<double>&);
-  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(
-      const std::vector<std::string>&);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataType);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(Backend);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataLayout);
-  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const Scalar&);
-  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const IntArray&);
-
-  // TODO(chenweihang): support vector<MetaTensor> input later
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(std::string);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(Scalar);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(IntArray);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<bool>);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<int>);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<int64_t>);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<float>);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<double>);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<std::string>);
 
   template <typename... Tail>
   struct InferMetaFnCallHelper<MetaTensor*, Tail...> {
