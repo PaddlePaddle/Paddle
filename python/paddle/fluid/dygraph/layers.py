@@ -1573,7 +1573,8 @@ class Layer(object):
                                             blocking)
 
         for key, buf in self._buffers.items():
-            self._buffers[key] = func(buf, device, dtype, blocking)
+            if buf is not None:
+                self._buffers[key] = func(buf, device, dtype, blocking)
 
         self._dtype = dtype
 
