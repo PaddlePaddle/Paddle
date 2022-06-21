@@ -190,11 +190,19 @@ endif()
 
 if(WITH_ONNXRUNTIME)
   if(WIN32)
-    set(DEPS ${DEPS} onnxruntime.lib paddle2onnx)
+    set(DEPS
+        ${DEPS} ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/onnxruntime.lib
+        paddle2onnx)
   elseif(APPLE)
-    set(DEPS ${DEPS} libonnxruntime.1.10.0.dylib paddle2onnx)
+    set(DEPS
+        ${DEPS}
+        ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/libonnxruntime.1.10.0.dylib
+        paddle2onnx)
   else()
-    set(DEPS ${DEPS} libonnxruntime.so.1.10.0 paddle2onnx)
+    set(DEPS
+        ${DEPS}
+        ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/libonnxruntime.so.1.10.0
+        paddle2onnx)
   endif()
 endif()
 
