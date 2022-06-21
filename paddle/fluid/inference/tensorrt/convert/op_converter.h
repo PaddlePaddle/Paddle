@@ -320,9 +320,7 @@ class OpConverter {
   }
 
   nvinfer1::ITensor* Shape(nvinfer1::ITensor* input) {
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input);
-    layer->setPrecision(nvinfer1::DataType::kINT32);
-    return layer->getOutput(0);
+    return TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
   }
 
   // Concat not make rank changed
