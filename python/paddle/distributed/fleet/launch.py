@@ -109,7 +109,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--backend",
         type=str,
         default=os.environ.get('PADDLE_DISTRI_BACKEND', 'auto'),
-        help="Specifize the backend, can be gloo|nccl|bkcl|auto|hccl|heter. "
+        help="Specifize the backend, can be gloo|nccl|bkcl|auto|hccl|heter|xccl. "
         "Default value is auto which perfers nccl or bkcl.")
     base_group.add_argument(
         "--nproc_per_node",
@@ -165,6 +165,20 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
             "--mlus=\"0,1,2,3\" will launch four training processes each bound to one mlu."
         )
         base_group.add_argument("--selected_mlus", dest="mlus")
+
+    base_group.add_argument(
+        "--custom_devices",
+        type=str,
+        default=None,
+        help="It's for custom device training. For example: "
+        "--custom_devices=\"0,1,2,3\" will launch four training processes each bound to one custom device."
+    )
+    base_group.add_argument(
+        "--custom_device_type",
+        type=str,
+        default=None,
+        help="It's for custom device training. For example: "
+        "--custom_device_type=\"custom_cpu\" will launch on custom_cpu.")
 
     base_group.add_argument("training_script",
                             type=str,
@@ -384,6 +398,7 @@ def get_global_envs(args, tmp_dir):
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
     global_envs["PADDLE_GLOO_FS_PATH"] = tmp_dir
     global_envs["PADDLE_DISTRI_BACKEND"] = args.backend
+    global_envs["PADDLE_DISTRI_CUSTOM_DEVICE_TYPE"] = args.custom_device_type
     return global_envs
 
 

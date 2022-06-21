@@ -59,6 +59,7 @@ class DeviceMode():
     ASCEND_NPU = 3
     UNKNOWN = 3
     MLU = 4
+    CUSTOM_DEVICE = 5
 
 
 class Cluster(object):
@@ -293,7 +294,7 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
         ), "current trainer_endpoints size should be greater equal than acclerators size."
         for i in range(len(devices_per_proc)):
             trainer = Trainer()
-            if device_mode == DeviceMode.GPU or device_mode == DeviceMode.ASCEND_NPU or device_mode == DeviceMode.MLU:
+            if device_mode == DeviceMode.GPU or device_mode == DeviceMode.ASCEND_NPU or device_mode == DeviceMode.MLU or device_mode == DeviceMode.CUSTOM_DEVICE:
                 if isinstance(devices_per_proc[i], (list, tuple)):
                     trainer.accelerators.extend(devices_per_proc[i])
                     pod.accelerators.extend(devices_per_proc[i])
@@ -546,6 +547,10 @@ def start_local_trainers(cluster,
         elif len(t.accelerators) > 0 and pod.device_mode == DeviceMode.MLU:
             proc_env["FLAGS_selected_mlus"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators])
+        elif len(t.accelerators
+                 ) > 0 and pod.device_mode == DeviceMode.CUSTOM_DEVICE:
+            proc_env["FLAGS_selected_custom_devices"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
 
         if len(t.accelerators) > 0:
             proc_env["FLAGS_selected_accelerators"] = "%s" % ",".join(
@@ -783,6 +788,42 @@ def get_mlus(mlus):
     return res_mlus
 
 
+def get_custom_devices(devices, device_type):
+
+    def get_custom_devices_count(device_type):
+        all_custom_devices = paddle.device.get_available_custom_device()
+        all_custom_devices = [
+            device.split(':')[0] for device in all_custom_devices
+        ]
+        custom_devices_count = all_custom_devices.count(device_type)
+        return custom_devices_count
+
+    if devices is None:
+        device_num = get_custom_devices_count(device_type)
+        res_devices = [str(x) for x in range(0, device_num)]
+    else:
+        custom_visible_devices = os.getenv("CUSTOM_VISIBLE_DEVICES")
+        if custom_visible_devices is None or custom_visible_devices == "":
+            res_devices = [x.strip() for x in devices.split(',')]
+        else:
+            custom_visible_devices_list = custom_visible_devices.split(',')
+            for x in devices.split(','):
+                assert x in custom_visible_devices_list, "Can't find "\
+                    "your devices %s in CUSTOM_VISIBLE_DEVICES[%s]."\
+                    % (x, custom_visible_devices)
+            res_devices = [
+                custom_visible_devices_list.index(x.strip())
+                for x in devices.split(',')
+            ]
+            logger.info(
+                "Change selected_custom_devices into reletive values. --ips:{} "
+                "will change into relative_ips:{} according to your "
+                "CUSTOM_VISIBLE_DEVICES:{}".format(devices, res_devices,
+                                                   custom_visible_devices_list))
+
+    return res_devices
+
+
 def get_device_mode(backend):
     if backend == 'heter':
         if fluid.core.is_compiled_with_cuda() and \
@@ -818,6 +859,10 @@ def get_device_mode(backend):
     if backend == 'gloo':
         print("launch train in CPU mode")
         return DeviceMode.CPU
+
+    if backend == 'xccl':
+        print("launch train in CUSTOM_DEVICE mode")
+        return DeviceMode.CUSTOM_DEVICE
 
     raise RuntimeError("Don't supported devices")
 
@@ -876,6 +921,20 @@ def get_device_proc_info(args):
             ]
         else:
             devices_per_proc = mlus
+    elif device_mode == DeviceMode.CUSTOM_DEVICE:
+        custom_devices = get_custom_devices(args.custom_devices,
+                                            args.custom_device_type)
+        if args.nproc_per_node is not None:
+            assert (len(custom_devices) % int(args.nproc_per_node)) ==0, \
+                "custom_devices' number:{} mod args.nproc_per_node:{} must == 0".format(len(custom_devices), args.nproc_per_node)
+
+            n = int(len(custom_devices) / int(args.nproc_per_node))
+            devices_per_proc = [
+                custom_devices[i:i + n]
+                for i in six.moves.range(0, len(custom_devices), n)
+            ]
+        else:
+            devices_per_proc = custom_devices
     elif device_mode == DeviceMode.CPU:
         if hasattr(args, "paddle_cpuonly") and args.nproc_per_node is None:
             #NOTE (xiongkun03) set it to cpu core number
@@ -1826,11 +1885,14 @@ class ParameterServerLauncher(object):
 
 
 def check_backend(backend):
-    if backend not in ['nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter']:
-        raise ValueError("paddle.distributed initialize error, "
-                         "backend argument can only be one of "
-                         "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter' "
-                         "but got %s" % backend)
+    if backend not in [
+            'nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter', 'xccl'
+    ]:
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "backend argument can only be one of "
+            "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter', 'xccl' "
+            "but got %s" % backend)
 
     if backend == 'nccl' and not fluid.core.is_compiled_with_cuda():
         raise ValueError(

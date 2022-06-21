@@ -27,16 +27,17 @@ phi::ccl::CCLReduceOp ToCustomCCLRedType(ReduceOp reduction) {
   };
   auto it = red_type.find(reduction);
   PADDLE_ENFORCE_EQ(
-      it != red_type.end(), true,
+      it != red_type.end(),
+      true,
       platform::errors::InvalidArgument("Invalid hccl reduction. "
                                         "Must be Min | Max | Prod | Sum"));
   return it->second;
 }
 
 std::string SerializeCustomCCLUniqueId(const phi::ccl::CCLRootId& ccl_id) {
-  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&ccl_id);
+  const uint8_t* bytes = ccl_id.data();
   std::ostringstream oss;
-  for (size_t i = 0; i < sizeof(ccl_id); ++i) {
+  for (size_t i = 0; i < ccl_id.size(); ++i) {
     oss << std::hex << static_cast<int>(bytes[i]);
   }
   return oss.str();

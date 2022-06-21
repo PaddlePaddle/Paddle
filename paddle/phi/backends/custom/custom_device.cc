@@ -27,6 +27,14 @@ static bool operator==(const C_Device_st& d1, const C_Device_st& d2) {
 
 namespace phi {
 
+#define INTERFACE_UNIMPLEMENT              \
+  PADDLE_THROW(phi::errors::Unimplemented( \
+      "%s is not implemented on %s device.", __func__, Type()));
+#define CHECK_PTR(x)       \
+  if (x == nullptr) {      \
+    INTERFACE_UNIMPLEMENT; \
+  }
+
 class CustomDevice : public DeviceInterface {
  public:
   CustomDevice(const std::string& type,
@@ -561,19 +569,22 @@ class CustomDevice : public DeviceInterface {
     return version;
   }
 
-  C_CCLDataType ToXCCLDataType(ccl::CCLDataType data_type) {
+  C_DataType ToXCCLDataType(ccl::CCLDataType data_type) {
 #define return_result(in, ret) \
   case ccl::CCLDataType::in:   \
-    return C_CCLDataType::ret
+    return C_DataType::ret
     switch (data_type) {
-      return_result(CCL_DATA_TYPE_FP32, FP32);
-      return_result(CCL_DATA_TYPE_FP16, FP16);
+      return_result(CCL_DATA_TYPE_FP64, FLOAT64);
+      return_result(CCL_DATA_TYPE_FP32, FLOAT32);
+      return_result(CCL_DATA_TYPE_FP16, FLOAT16);
       return_result(CCL_DATA_TYPE_INT64, INT64);
       return_result(CCL_DATA_TYPE_INT32, INT32);
+      return_result(CCL_DATA_TYPE_INT16, INT16);
       return_result(CCL_DATA_TYPE_INT8, INT8);
       default: {
         PADDLE_THROW(phi::errors::Unavailable(
             "DataType is not supported on %s.", Type()));
+        return C_DataType::UNDEFINED;
       }
     }
 #undef return_result
@@ -597,19 +608,37 @@ class CustomDevice : public DeviceInterface {
 #undef return_result
   }
 
-  void CCLGetUniqueId(size_t* unique_id) override {
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_get_unique_id(unique_id));
+  void CCLGetUniqueId(ccl::CCLRootId* unique_id) override {
+    CHECK_PTR(pimpl_->xccl_get_unique_id_size);
+    CHECK_PTR(pimpl_->xccl_get_unique_id);
+
+    C_CCLRootId root_id;
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        pimpl_->xccl_get_unique_id_size(&(root_id.sz)));
+    root_id.data = new uint8_t[root_id.sz];
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_get_unique_id(&root_id));
+
+    uint8_t* ptr = reinterpret_cast<uint8_t*>(root_id.data);
+    *unique_id = std::vector<uint8_t>(ptr, ptr + root_id.sz);
+    delete[] ptr;
   }
 
-  void CCLCommInitRank(size_t ranks,
-                       size_t* unique_id,
+  void CCLCommInitRank(size_t nranks,
+                       ccl::CCLRootId* unique_id,
                        size_t rank,
                        ccl::CCLComm* comm) override {
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_comm_inti_rank(
-        ranks, unique_id, rank, reinterpret_cast<C_CCLComm*>(comm)));
+    CHECK_PTR(pimpl_->xccl_comm_init_rank);
+
+    C_CCLRootId root_id;
+    root_id.sz = unique_id->size();
+    root_id.data = unique_id->data();
+
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_comm_init_rank(
+        nranks, &root_id, rank, reinterpret_cast<C_CCLComm*>(comm)));
   }
 
-  void CCLDestroyComm(ccl::CCLComm& comm) override {
+  void CCLDestroyComm(ccl::CCLComm comm) override {
+    CHECK_PTR(pimpl_->xccl_destroy_comm);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_destroy_comm(reinterpret_cast<C_CCLComm>(comm)));
   }
@@ -619,8 +648,9 @@ class CustomDevice : public DeviceInterface {
                     size_t count,
                     ccl::CCLDataType data_type,
                     ccl::CCLReduceOp op,
-                    ccl::CCLComm& comm,
+                    const ccl::CCLComm& comm,
                     const stream::Stream& stream) override {
+    CHECK_PTR(pimpl_->xccl_all_reduce);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_all_reduce(
         send_buf,
         recv_buf,
@@ -635,8 +665,9 @@ class CustomDevice : public DeviceInterface {
                     size_t count,
                     ccl::CCLDataType data_type,
                     size_t root,
-                    ccl::CCLComm& comm,
+                    const ccl::CCLComm& comm,
                     const stream::Stream& stream) override {
+    CHECK_PTR(pimpl_->xccl_broadcast);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_broadcast(
         buf,
         count,
@@ -651,8 +682,9 @@ class CustomDevice : public DeviceInterface {
                  size_t num,
                  ccl::CCLDataType data_type,
                  ccl::CCLReduceOp reduce_op,
-                 ccl::CCLComm& comm,
+                 const ccl::CCLComm& comm,
                  const stream::Stream& stream) override {
+    CHECK_PTR(pimpl_->xccl_reduce);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_reduce(in_data,
                             out_data,
@@ -667,8 +699,9 @@ class CustomDevice : public DeviceInterface {
                     void* recv_buf,
                     size_t count,
                     ccl::CCLDataType data_type,
-                    ccl::CCLComm& comm,
+                    const ccl::CCLComm& comm,
                     const stream::Stream& stream) override {
+    CHECK_PTR(pimpl_->xccl_all_gather);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_all_gather(
         send_buf,
         recv_buf,
@@ -683,8 +716,9 @@ class CustomDevice : public DeviceInterface {
                         size_t count,
                         ccl::CCLDataType data_type,
                         ccl::CCLReduceOp reduce_op,
-                        ccl::CCLComm& comm,
+                        const ccl::CCLComm& comm,
                         const stream::Stream& stream) override {
+    CHECK_PTR(pimpl_->xccl_reduce_scatter);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_reduce_scatter(
         send_buf,
         recv_buf,
@@ -696,10 +730,12 @@ class CustomDevice : public DeviceInterface {
   }
 
   void CCLGroupStart() override {
+    CHECK_PTR(pimpl_->xccl_group_start);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_start());
   }
 
   void CCLGroupEnd() override {
+    CHECK_PTR(pimpl_->xccl_group_end);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_end());
   }
 
@@ -707,8 +743,9 @@ class CustomDevice : public DeviceInterface {
                size_t count,
                ccl::CCLDataType data_type,
                size_t dest_rank,
-               ccl::CCLComm& comm,
+               const ccl::CCLComm& comm,
                const stream::Stream& stream) override {
+    CHECK_PTR(pimpl_->xccl_send);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_send(send_buf,
                           count,
@@ -722,8 +759,9 @@ class CustomDevice : public DeviceInterface {
                size_t count,
                ccl::CCLDataType data_type,
                size_t src_rank,
-               ccl::CCLComm& comm,
+               const ccl::CCLComm& comm,
                const stream::Stream& stream) override {
+    CHECK_PTR(pimpl_->xccl_recv);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_recv(recv_buf,
                           count,
@@ -756,7 +794,7 @@ class CustomDevice : public DeviceInterface {
 };
 
 bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
-#define CHECK_PTR(ptr, required)                                   \
+#define CHECK_INTERFACE(ptr, required)                             \
   if (params->interface->ptr == nullptr && required) {             \
     LOG(WARNING) << "CustomRuntime [type: " << params->device_type \
                  << "] pointer: " << #ptr << " is not set.";       \
@@ -776,70 +814,71 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
     return false;
   }
 
-  CHECK_PTR(initialize, false);
-  CHECK_PTR(finalize, false)
+  CHECK_INTERFACE(initialize, false);
+  CHECK_INTERFACE(finalize, false)
 
-  CHECK_PTR(init_device, false);
-  CHECK_PTR(set_device, true);
-  CHECK_PTR(get_device, true);
-  CHECK_PTR(deinit_device, false);
+  CHECK_INTERFACE(init_device, false);
+  CHECK_INTERFACE(set_device, true);
+  CHECK_INTERFACE(get_device, true);
+  CHECK_INTERFACE(deinit_device, false);
 
-  CHECK_PTR(create_stream, true);
-  CHECK_PTR(destroy_stream, true);
-  CHECK_PTR(query_stream, false);
-  CHECK_PTR(stream_add_callback, false);
+  CHECK_INTERFACE(create_stream, true);
+  CHECK_INTERFACE(destroy_stream, true);
+  CHECK_INTERFACE(query_stream, false);
+  CHECK_INTERFACE(stream_add_callback, false);
 
-  CHECK_PTR(create_event, true);
-  CHECK_PTR(record_event, true);
-  CHECK_PTR(destroy_event, true);
-  CHECK_PTR(query_event, false);
+  CHECK_INTERFACE(create_event, true);
+  CHECK_INTERFACE(record_event, true);
+  CHECK_INTERFACE(destroy_event, true);
+  CHECK_INTERFACE(query_event, false);
 
-  CHECK_PTR(synchronize_device, false);
-  CHECK_PTR(synchronize_stream, true);
-  CHECK_PTR(synchronize_event, true);
-  CHECK_PTR(stream_wait_event, true);
+  CHECK_INTERFACE(synchronize_device, false);
+  CHECK_INTERFACE(synchronize_stream, true);
+  CHECK_INTERFACE(synchronize_event, true);
+  CHECK_INTERFACE(stream_wait_event, true);
 
-  CHECK_PTR(device_memory_allocate, true);
-  CHECK_PTR(device_memory_deallocate, true);
-  CHECK_PTR(host_memory_allocate, false);
-  CHECK_PTR(host_memory_deallocate, false);
-  CHECK_PTR(unified_memory_allocate, false);
-  CHECK_PTR(unified_memory_deallocate, false);
-  CHECK_PTR(memory_copy_h2d, true);
-  CHECK_PTR(memory_copy_d2h, true);
-  CHECK_PTR(memory_copy_d2d, true);
-  CHECK_PTR(memory_copy_p2p, false);
-  CHECK_PTR(async_memory_copy_h2d, false);
-  CHECK_PTR(async_memory_copy_d2h, false);
-  CHECK_PTR(async_memory_copy_d2d, false);
-  CHECK_PTR(async_memory_copy_p2p, false);
+  CHECK_INTERFACE(device_memory_allocate, true);
+  CHECK_INTERFACE(device_memory_deallocate, true);
+  CHECK_INTERFACE(host_memory_allocate, false);
+  CHECK_INTERFACE(host_memory_deallocate, false);
+  CHECK_INTERFACE(unified_memory_allocate, false);
+  CHECK_INTERFACE(unified_memory_deallocate, false);
+  CHECK_INTERFACE(memory_copy_h2d, true);
+  CHECK_INTERFACE(memory_copy_d2h, true);
+  CHECK_INTERFACE(memory_copy_d2d, true);
+  CHECK_INTERFACE(memory_copy_p2p, false);
+  CHECK_INTERFACE(async_memory_copy_h2d, false);
+  CHECK_INTERFACE(async_memory_copy_d2h, false);
+  CHECK_INTERFACE(async_memory_copy_d2d, false);
+  CHECK_INTERFACE(async_memory_copy_p2p, false);
 
-  CHECK_PTR(get_device_count, true);
-  CHECK_PTR(get_device_list, true);
-  CHECK_PTR(device_memory_stats, true);
+  CHECK_INTERFACE(get_device_count, true);
+  CHECK_INTERFACE(get_device_list, true);
+  CHECK_INTERFACE(device_memory_stats, true);
 
-  CHECK_PTR(device_min_chunk_size, true);
-  CHECK_PTR(device_max_chunk_size, false);
-  CHECK_PTR(device_max_alloc_size, false);
-  CHECK_PTR(device_extra_padding_size, false);
-  CHECK_PTR(get_compute_capability, false);
-  CHECK_PTR(get_runtime_version, false);
-  CHECK_PTR(get_driver_version, false);
+  CHECK_INTERFACE(device_min_chunk_size, true);
+  CHECK_INTERFACE(device_max_chunk_size, false);
+  CHECK_INTERFACE(device_max_alloc_size, false);
+  CHECK_INTERFACE(device_extra_padding_size, false);
+  CHECK_INTERFACE(get_compute_capability, false);
+  CHECK_INTERFACE(get_runtime_version, false);
+  CHECK_INTERFACE(get_driver_version, false);
 
-  CHECK_PTR(xccl_get_unique_id, false);
-  CHECK_PTR(xccl_comm_inti_rank, false);
-  CHECK_PTR(xccl_destroy_comm, false);
-  CHECK_PTR(xccl_all_reduce, false);
-  CHECK_PTR(xccl_broadcast, false);
-  CHECK_PTR(xccl_reduce, false);
-  CHECK_PTR(xccl_all_gather, false);
-  CHECK_PTR(xccl_reduce_scatter, false);
-  CHECK_PTR(xccl_group_start, false);
-  CHECK_PTR(xccl_group_end, false);
-  CHECK_PTR(xccl_send, false);
-  CHECK_PTR(xccl_recv, false);
+  CHECK_INTERFACE(xccl_get_unique_id, false);
+  CHECK_INTERFACE(xccl_get_unique_id_size, false);
+  CHECK_INTERFACE(xccl_comm_init_rank, false);
+  CHECK_INTERFACE(xccl_destroy_comm, false);
+  CHECK_INTERFACE(xccl_all_reduce, false);
+  CHECK_INTERFACE(xccl_broadcast, false);
+  CHECK_INTERFACE(xccl_reduce, false);
+  CHECK_INTERFACE(xccl_all_gather, false);
+  CHECK_INTERFACE(xccl_reduce_scatter, false);
+  CHECK_INTERFACE(xccl_group_start, false);
+  CHECK_INTERFACE(xccl_group_end, false);
+  CHECK_INTERFACE(xccl_send, false);
+  CHECK_INTERFACE(xccl_recv, false);
   return true;
-#undef CHECK_PTR
+#undef CHECK_INTERFACE
 }
 
 typedef bool (*RegisterDevicePluginFn)(CustomRuntimeParams* runtime_params);
@@ -895,5 +934,7 @@ void LoadCustomRuntimeLib(const std::string& dso_lib_path, void* dso_handle) {
       runtime_params, std::move(device_interface), dso_lib_path, dso_handle);
   LOG(INFO) << "Successed in loading custom runtime in lib: " << dso_lib_path;
 }
+
+#undef INTERFACE_UNIMPLEMENT
 
 }  // namespace phi

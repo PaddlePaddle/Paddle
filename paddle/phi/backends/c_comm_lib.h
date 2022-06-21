@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <vector>
+
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
@@ -22,19 +24,23 @@
 namespace phi {
 namespace ccl {
 using CCLComm = void*;
-using CCLRootId = size_t;
+using CCLRootId = std::vector<uint8_t>;
 
 enum CCLReduceOp { SUM = 0, AVG, MAX, MIN, PRODUCT };
 enum CCLDataType {
-  CCL_DATA_TYPE_FP32 = 0,
+  CCL_DATA_TYPE_FP64 = 0,
+  CCL_DATA_TYPE_FP32,
   CCL_DATA_TYPE_FP16,
   CCL_DATA_TYPE_INT64,
   CCL_DATA_TYPE_INT32,
+  CCL_DATA_TYPE_INT16,
   CCL_DATA_TYPE_INT8
 };
 
 inline CCLDataType ToCCLDataType(paddle::experimental::DataType type) {
-  if (type == paddle::experimental::DataType::FLOAT32) {
+  if (type == paddle::experimental::DataType::FLOAT64) {
+    return CCL_DATA_TYPE_FP64;
+  } else if (type == paddle::experimental::DataType::FLOAT32) {
     return CCL_DATA_TYPE_FP32;
   } else if (type == paddle::experimental::DataType::FLOAT16) {
     return CCL_DATA_TYPE_FP16;

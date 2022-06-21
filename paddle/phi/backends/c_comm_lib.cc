@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/backends/ccl.h"
+#include "paddle/phi/backends/c_comm_lib.h"
 
 namespace phi {
 // Even this source file does not contains any code, it is better to keep this

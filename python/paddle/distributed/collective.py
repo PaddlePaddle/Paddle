@@ -144,7 +144,7 @@ _group_map_backend = {}
 # Name of the default group for init_parallel_env
 _default_group_name = "_default_pg"
 
-_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter']
+_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter', 'xccl']
 _default_store = None  # the default tcp store
 _default_backend = None
 
@@ -269,6 +269,9 @@ def _new_process_group_impl(backend,
     elif backend == "hccl":
         place = core.NPUPlace(genv.device_id)
         pg = core.ProcessGroupHCCL(store, rank, world_size, place, group_id)
+    elif backend == "xccl":
+        place = core.CustomPlace(genv.device_type, genv.device_id)
+        pg = core.ProcessGroupCustom(store, rank, world_size, place, group_id)
     elif backend == "heter":
         place = None
         if core.is_compiled_with_cuda():

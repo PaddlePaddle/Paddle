@@ -71,16 +71,20 @@ class CustomEventManager {
     if (!is_created_) {
       CreateEvent(place);
     }
-    PADDLE_ENFORCE_EQ(device_index, device_index_,
+    PADDLE_ENFORCE_EQ(device_index,
+                      device_index_,
                       platform::errors::PreconditionNotMet(
                           "CustomDeviceContext's device %d does not match"
                           "Event's device %d",
-                          device_index, device_index_));
-    PADDLE_ENFORCE_EQ(device_type, device_type_,
+                          device_index,
+                          device_index_));
+    PADDLE_ENFORCE_EQ(device_type,
+                      device_type_,
                       platform::errors::PreconditionNotMet(
                           "CustomDeviceContext's device %d does not match"
                           "Event's device type %d",
-                          device_type, device_type_));
+                          device_type,
+                          device_type_));
 
     phi::DeviceGuard guard(place);
     phi::stream::Stream stream(place, ctx.stream());
@@ -94,16 +98,20 @@ class CustomEventManager {
       auto place = ctx.GetPlace();
       auto device_type = place.GetDeviceType();
       auto device_index = place.GetDeviceId();
-      PADDLE_ENFORCE_EQ(device_index, device_index_,
+      PADDLE_ENFORCE_EQ(device_index,
+                        device_index_,
                         platform::errors::PreconditionNotMet(
                             "CustomDeviceContext's device %d does not match"
                             "Event's device %d",
-                            device_index, device_index_));
-      PADDLE_ENFORCE_EQ(device_type, device_type_,
+                            device_index,
+                            device_index_));
+      PADDLE_ENFORCE_EQ(device_type,
+                        device_type_,
                         platform::errors::PreconditionNotMet(
                             "CustomDeviceContext's device %d does not match"
                             "Event's device type %d",
-                            device_type, device_type_));
+                            device_type,
+                            device_type_));
       phi::DeviceGuard guard(place);
       phi::stream::Stream stream(place, ctx.stream());
       stream.WaitEvent(event_.get());
@@ -142,15 +150,18 @@ class CustomCCLCommManager {
   }
 
   static std::shared_ptr<CustomCCLCommManager> Create(
-      const std::string& device_type, int num_ranks, int rank,
-      phi::ccl::CCLRootId* comm_id, phi::ccl::CCLComm ccl_comm) {
+      const std::string& device_type,
+      int num_ranks,
+      int rank,
+      phi::ccl::CCLRootId* comm_id,
+      phi::ccl::CCLComm* ccl_comm) {
     auto custom_ccl_manager = std::make_shared<CustomCCLCommManager>();
-    phi::DeviceManager::CCLCommInitRank(device_type, num_ranks, comm_id, rank,
-                                        &ccl_comm);
+    phi::DeviceManager::CCLCommInitRank(
+        device_type, num_ranks, comm_id, rank, ccl_comm);
     custom_ccl_manager->device_type_ = device_type;
     custom_ccl_manager->ccl_id_ = comm_id;
     custom_ccl_manager->rank_ = rank;
-    custom_ccl_manager->ccl_comm_ = ccl_comm;
+    custom_ccl_manager->ccl_comm_ = *ccl_comm;
     return custom_ccl_manager;
   }
 

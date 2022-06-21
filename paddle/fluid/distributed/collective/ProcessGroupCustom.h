@@ -42,7 +42,9 @@ class ProcessGroupCustom : public ProcessGroup {
   class CustomTask : public ProcessGroup::Task,
                      public std::enable_shared_from_this<CustomTask> {
    public:
-    CustomTask(const std::vector<Place>& places, int rank, CommType CommType,
+    CustomTask(const std::vector<Place>& places,
+               int rank,
+               CommType CommType,
                const std::vector<phi::DenseTensor>& inputs);
 
     bool IsCompleted();
@@ -58,6 +60,7 @@ class ProcessGroupCustom : public ProcessGroup {
     virtual ~CustomTask();
 
     std::vector<CustomEventManager> control_events_;
+    std::vector<phi::DenseTensor> barrierTensors_;
 
    protected:
     std::vector<Place> places_;
@@ -68,11 +71,14 @@ class ProcessGroupCustom : public ProcessGroup {
     const std::string device_type_;
   };
 
-  ProcessGroupCustom(const std::shared_ptr<Store>& store, int rank, int size,
-                     const platform::Place& place, int gid);
+  ProcessGroupCustom(const std::shared_ptr<Store>& store,
+                     int rank,
+                     int size,
+                     const platform::Place& place,
+                     int gid);
 
   const std::string GetBackendName() const override {
-    return device_type_ + "_ccl";
+    return "XCCL_" + device_type_;
   }
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
@@ -85,9 +91,14 @@ class ProcessGroupCustom : public ProcessGroup {
       std::vector<phi::DenseTensor>& out_tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
 
+  std::shared_ptr<ProcessGroup::Task> Barrier(
+      const BarrierOptions& = BarrierOptions()) override;
+
  protected:
   virtual std::shared_ptr<ProcessGroupCustom::CustomTask> CreateTask(
-      std::vector<Place> places, int rank, CommType opType,
+      std::vector<Place> places,
+      int rank,
+      CommType opType,
       const std::vector<phi::DenseTensor>& inputs);
 
   std::shared_ptr<Store> store_;
@@ -118,7 +129,8 @@ class ProcessGroupCustom : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Collective(
       std::vector<phi::DenseTensor>& inputs,   // NOLINT
       std::vector<phi::DenseTensor>& outputs,  // NOLINT
-      Fn fn, CommType op_type);
+      Fn fn,
+      CommType op_type);
 
   void CreateCustomManagerCache(const std::string& places_key,
                                 const std::vector<Place>& places);

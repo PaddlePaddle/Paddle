@@ -65,5 +65,14 @@ if(WITH_ASCEND_CL)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
-  cc_library(processgroup_custom SRCS ProcessGroupCustom.cc CustomCCLTools.cc Common.cc DEPS device_manager place enforce collective_helper device_context phi_api eager_api)
+  cc_library(
+    processgroup_custom
+    SRCS ProcessGroupCustom.cc CustomCCLTools.cc Common.cc
+    DEPS device_manager
+         place
+         enforce
+         collective_helper
+         device_context
+         phi_api
+         eager_api)
 endif()

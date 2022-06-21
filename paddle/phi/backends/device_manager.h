@@ -17,7 +17,7 @@
 
 #include <unordered_map>
 
-#include "paddle/phi/backends/ccl.h"
+#include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/dynload/port.h"
@@ -162,7 +162,7 @@ class DeviceManager {
 
   // CCL
   static void CCLDestroyComm(const std::string& device_type,
-                             ccl::CCLComm& ccl_comm);
+                             ccl::CCLComm ccl_comm);
   static void CCLCommInitRank(const std::string& device_type,
                               size_t num_ranks,
                               ccl::CCLRootId* root_id,
@@ -174,8 +174,8 @@ class DeviceManager {
                            void* data,
                            size_t num,
                            ccl::CCLDataType data_type,
-                           ccl::CCLRootId root_id,
-                           ccl::CCLComm& ccl_comm,
+                           size_t root,
+                           const ccl::CCLComm& ccl_comm,
                            const stream::Stream& stream);
   static void CCLAllReduce(const std::string& device_type,
                            void* in_data,
@@ -183,7 +183,7 @@ class DeviceManager {
                            size_t num,
                            ccl::CCLDataType data_type,
                            ccl::CCLReduceOp reduce_op,
-                           ccl::CCLComm& ccl_comm,
+                           const ccl::CCLComm& ccl_comm,
                            const stream::Stream& stream);
   static void CCLReduce(const std::string& device_type,
                         void* in_data,
@@ -191,14 +191,14 @@ class DeviceManager {
                         size_t num,
                         ccl::CCLDataType data_type,
                         ccl::CCLReduceOp reduce_op,
-                        ccl::CCLComm& ccl_comm,
+                        const ccl::CCLComm& ccl_comm,
                         const stream::Stream& stream);
   static void CCLAllGather(const std::string& device_type,
                            void* in_data,
                            void* out_data,
                            size_t num,
                            ccl::CCLDataType data_type,
-                           ccl::CCLComm& ccl_comm,
+                           const ccl::CCLComm& ccl_comm,
                            const stream::Stream& stream);
   static void CCLReduceScatter(const std::string& device_type,
                                void* in_data,
@@ -206,7 +206,7 @@ class DeviceManager {
                                size_t num,
                                ccl::CCLDataType data_type,
                                ccl::CCLReduceOp op,
-                               ccl::CCLComm& ccl_comm,
+                               const ccl::CCLComm& ccl_comm,
                                const stream::Stream& stream);
   static void CCLGroupStart(const std::string& device_type);
   static void CCLGroupEnd(const std::string& device_type);
@@ -215,14 +215,14 @@ class DeviceManager {
                       size_t num,
                       ccl::CCLDataType data_type,
                       size_t dst_rank,
-                      ccl::CCLComm& ccl_comm,
+                      const ccl::CCLComm& ccl_comm,
                       const stream::Stream& stream);
   static void CCLRecv(const std::string& device_type,
                       void* recvbuf,
                       size_t num,
                       ccl::CCLDataType data_type,
                       size_t src_rank,
-                      ccl::CCLComm& ccl_comm,
+                      const ccl::CCLComm& ccl_comm,
                       const stream::Stream& stream);
 
   static void Clear();
