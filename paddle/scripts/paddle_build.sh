@@ -2034,9 +2034,9 @@ function parallel_test_base_gpups() {
     ========================================
 EOF
         ut_startTime_s=`date +%s`
-        ctest -L "RUN_TYPE=GPUPS"
+        ctest -L "RUN_TYPE=GPUPS" --timeout 150
         ut_endTime_s=`date +%s`
-        echo "CINN testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        echo "GPUPS testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
 
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
