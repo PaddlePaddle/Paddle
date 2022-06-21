@@ -47,12 +47,8 @@ class SoftmaxMKLDNNHandler
         platform::errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
-    auto softmax_tz = phi::vectorize(input->dims());
-    auto md = memory::desc(softmax_tz, platform::MKLDNNGetDataType<T>(),
-                           input->format());
-
-    this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring, md,
-                                            axis);
+    this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring,
+                                            input->mem_desc(), axis);
   }
 
   SoftmaxMKLDNNHandler(const framework::ExecutionContext& ctx,

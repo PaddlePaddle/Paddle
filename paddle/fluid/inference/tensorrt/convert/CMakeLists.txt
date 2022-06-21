@@ -62,6 +62,8 @@ list(
   transformer_input_convert_op.cc
   remove_padding_op.cc
   recover_padding_op.cc
+  preln_residual_bias.cc
+  c_allreduce_op.cc
   top_k_op.cc
   squeeze2_op.cc
   unsqueeze2_op.cc)
