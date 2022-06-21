@@ -626,11 +626,20 @@ class MLUCnnl {
       const cnnlTensorDescriptor_t indices_desc, const void* indices,
       const cnnlTensorDescriptor_t output_desc, void* output);
 
-  static void ScatterFunctor(
+  static void ScatterRefFunctor(
       const ExecutionContext& ctx, const cnnlTensorDescriptor_t params_desc,
       const void* params, const cnnlTensorDescriptor_t updates_desc,
       const void* updates, const cnnlTensorDescriptor_t indices_desc,
       const void* indices, const cnnlScatterRefMode_t mode);
+
+  static void ScatterFunctor(const ExecutionContext& ctx,
+                             const cnnlTensorDescriptor_t params_desc,
+                             const void* params,
+                             const cnnlTensorDescriptor_t updates_desc,
+                             const void* updates,
+                             const cnnlTensorDescriptor_t indices_desc,
+                             const void* indices, const int dim,
+                             const cnnlScatterMode_t mode = CNNL_SCATTER);
 
   static void Range(const ExecutionContext& ctx, const void* start,
                     const void* end, const void* step,
