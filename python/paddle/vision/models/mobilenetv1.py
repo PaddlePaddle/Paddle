@@ -226,7 +226,7 @@ def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        scale: (float, optional): scale of channels in each layer. Default: 1.0.
+        scale (float, optional): Scale of channels in each layer. Default: 1.0.
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV1 <api_paddle_vision_MobileNetV1>`.
 
     Returns:
