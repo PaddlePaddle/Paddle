@@ -134,7 +134,9 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
         &out_desc, mat_type, N, M, N));
 
     cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
-    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024 * 1024;
+    // NOTE(zengjinle): I do not know why and whether 4MB workspace size is
+    // "enough" here. I just follow the code settings from NVIDIA MLPerf BERT.
+    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
     cudaStream_t stream = dev_ctx.stream();
     memory::allocation::AllocationPtr workspace =
         memory::Alloc(dev_ctx, workspace_size);
@@ -320,7 +322,9 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     }
 
     cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
-    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024 * 1024;
+    // NOTE(zengjinle): I do not know why and whether 4MB workspace size is
+    // "enough" here. I just follow the code settings from NVIDIA MLPerf BERT.
+    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
     const cublasLtMatmulAlgo_t* algo = nullptr;
     cudaStream_t stream = dev_ctx.stream();
 
