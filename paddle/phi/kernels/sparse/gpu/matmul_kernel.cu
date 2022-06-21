@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/sparse/matmul_kernel.h"
+
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -24,7 +26,6 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
-#include "paddle/phi/kernels/sparse/matmul_kernel.h"
 
 namespace phi {
 namespace sparse {

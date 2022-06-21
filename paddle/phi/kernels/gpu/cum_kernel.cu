@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/cum_kernel.h"
+
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
-
-#include "paddle/phi/kernels/cum_kernel.h"
 #ifdef __NVCC__
 #include <cub/cub.cuh>
 #endif
@@ -271,7 +271,6 @@ void ScanKernel(const Context& dev_ctx,
     return;
   }
 
-
   size_t height = 1;
   size_t width = 1;
   for (size_t i = 0; i <= axis; i++) {
@@ -391,9 +390,5 @@ PD_REGISTER_KERNEL(cumsum,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(logcumsumexp,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::LogcumsumexpKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    logcumsumexp, GPU, ALL_LAYOUT, phi::LogcumsumexpKernel, float, double) {}
