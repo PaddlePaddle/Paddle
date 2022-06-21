@@ -41,31 +41,14 @@ class CastOpConverter : public OpConverter {
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
 
     switch (out_dtype) {
-      case 0:  // BOOL = 0;
-#if IS_TRT_VERSION_GE(7000)
-        layer->setOutputType(0, nvinfer1::DataType::kBOOL);
-        break;
-#else
-        PADDLE_THROW(platform::errors::Fatal(
-            "BOOL data type is only supported on TRT 7 or higher version."));
-#endif
       case 2:  // INT32 = 2
-        layer->setOutputType(0, nvinfer1::DataType::kINT32);
-        break;
-      case 3:  // INT64 = 3
-        layer->setOutputType(0, nvinfer1::DataType::kINT32);
+        layer->getOutput(0)->setType(nvinfer1::DataType::kINT32);
         break;
       case 4:  // FP16 = 4
-        layer->setOutputType(0, nvinfer1::DataType::kHALF);
+        layer->getOutput(0)->setType(nvinfer1::DataType::kHALF);
         break;
       case 5:  // FP32 = 5
-        layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
-        break;
-      case 6:  // FP64 = 6
-        layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
-        break;
-      case 20:  // UINT8 = 20
-        layer->setOutputType(0, nvinfer1::DataType::kINT8);
+        layer->getOutput(0)->setType(nvinfer1::DataType::kFLOAT);
         break;
       default:
         LOG(ERROR) << "Unable to convert a fluid data type(" << out_dtype

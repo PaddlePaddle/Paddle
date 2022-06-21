@@ -29,15 +29,17 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
 
         def generate_input(type):
-            if type == 3:
+            if type == 0:
+                return np.ones([1, 3, 64, 64]).astype(np.bool)
+            if type == 2:
                 return np.ones([1, 3, 64, 64]).astype(np.int32)
             if type == 4:
                 return np.ones([1, 3, 64, 64]).astype(np.float16)
             if type == 5:
                 return np.ones([1, 3, 64, 64]).astype(np.float32)
 
-        for in_dtype in [5]:
-            for out_dtype in [5]:
+        for in_dtype in [0, 2, 4, 5]:
+            for out_dtype in [2, 5]:
                 dics = [{"in_dtype": in_dtype, "out_dtype": out_dtype}]
 
                 ops_config = [{

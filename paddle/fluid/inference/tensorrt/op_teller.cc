@@ -1858,18 +1858,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "cast") {
+      int in_dtype = BOOST_GET_CONST(int, desc.GetAttr("in_dtype"));
       int out_dtype = BOOST_GET_CONST(int, desc.GetAttr("out_dtype"));
-      if (out_dtype < 0) {
-        VLOG(3) << "unsupport out dtype";
+      if (in_dtype < 0 || out_dtype < 0) {
+        VLOG(3) << "unknown data type;" 
         return false;
       }
-#if IS_TRT_VERSION_LT(7000)
-      if (out_dtype == 0) {
+      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2 ||
+             in_dtype == 0) &&
+            (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
         VLOG(3)
-            << "BOOL data type is only supported on TRT 7 or higher version.";
+            << "only valid conversions are: "
+               "(kFLOAT | kHALF | kINT32 | kBOOL) -> (kFLOAT | kHALF | kINT32)";
         return false;
       }
-#endif
     }
 
     if (op_type == "top_k_v2" || op_type == "top_k") {
