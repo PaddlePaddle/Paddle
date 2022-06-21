@@ -91,9 +91,9 @@ class GatherGradOpMLUKernel : public framework::OpKernel<T> {
                                  ToCnnlDataType(index->dtype()));
     MLUCnnlTensorDesc dout_desc(*dout);
     const cnnlScatterRefMode_t mode = CNNL_SCATTERREF_UPDATE;
-    MLUCnnl::ScatterFunctor(ctx, dx_desc.get(), GetBasePtr(dx), dout_desc.get(),
-                            GetBasePtr(dout), index_desc.get(),
-                            GetBasePtr(index), mode);
+    MLUCnnl::ScatterRefFunctor(ctx, dx_desc.get(), GetBasePtr(dx),
+                               dout_desc.get(), GetBasePtr(dout),
+                               index_desc.get(), GetBasePtr(index), mode);
   }
 };
 

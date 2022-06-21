@@ -47,7 +47,7 @@ class KaimingNormal(MSRAInitializer):
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
             import paddle.nn as nn
 
@@ -95,7 +95,7 @@ class KaimingUniform(MSRAInitializer):
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
             import paddle.nn as nn
 

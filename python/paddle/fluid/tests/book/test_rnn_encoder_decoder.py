@@ -23,7 +23,9 @@ import paddle.fluid.layers as layers
 import contextlib
 import math
 import sys
+import os
 import unittest
+import tempfile
 from paddle.fluid.executor import Executor
 import paddle
 
@@ -266,10 +268,13 @@ def main(use_cuda):
         return
 
     # Directory for saving the trained model
-    save_dirname = "rnn_encoder_decoder.inference.model"
+    temp_dir = tempfile.TemporaryDirectory()
+    save_dirname = os.path.join(temp_dir.name,
+                                "rnn_encoder_decoder.inference.model")
 
     train(use_cuda, save_dirname)
     infer(use_cuda, save_dirname)
+    temp_dir.cleanup()
 
 
 class TestRnnEncoderDecoder(unittest.TestCase):
