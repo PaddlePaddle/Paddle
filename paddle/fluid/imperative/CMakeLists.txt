@@ -22,8 +22,7 @@ if(WITH_XPU)
          nan_inf_utils
          phi_api
          phi_utils
-         var_helper
-         profiler)
+         var_helper)
 else()
   cc_library(
     prepared_operator
@@ -39,8 +38,7 @@ else()
          nan_inf_utils
          phi_api
          phi_utils
-         var_helper
-         profiler)
+         var_helper)
 endif()
 cc_library(
   layer
