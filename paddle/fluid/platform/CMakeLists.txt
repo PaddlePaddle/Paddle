@@ -355,7 +355,6 @@ if(WITH_GPU)
          dynload_cuda
          new_profiler
          stats
-         operator
          op_proto_maker
          shape_inference)
   nv_library(
@@ -372,7 +371,6 @@ elseif(WITH_ROCM)
          enforce
          new_profiler
          stats
-         operator
          op_proto_maker
          shape_inference)
   hip_library(
@@ -388,7 +386,6 @@ else()
          enforce
          new_profiler
          stats
-         operator
          op_proto_maker
          shape_inference)
   cc_library(
