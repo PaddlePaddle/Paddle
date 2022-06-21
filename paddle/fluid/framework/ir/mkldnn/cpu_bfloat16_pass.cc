@@ -74,7 +74,7 @@ class Quanter {
 
   int counter = 0;
 
-  Quanter(const Graph& graph, ir::Node* const op,
+  Quanter(Graph& const graph, ir::Node* const op,
           const VariableNameMap& op_xputs)
       : graph(graph), op(op), op_xputs(op_xputs) {}
 
