@@ -902,9 +902,9 @@ def save(layer, path, input_spec=None, **configs):
         else:
             # When layer is a function
             if isinstance(attr_func, StaticFunction):
-                if static_func.is_property:
+                if attr_func.is_property:
                     # property method to be exported
-                    immediate_val = static_func()
+                    immediate_val = attr_func()
                     property_vals.append((immediate_val, attr_func))
                     continue
                 
