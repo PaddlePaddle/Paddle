@@ -20,7 +20,7 @@ __all__ = []
 
 class LeNet(nn.Layer):
     """LeNet model from
-    `"Gradient-based learning applied to document recognition" <https://ieeexplore.ieee.org/document/726791>`_
+    `"Gradient-based learning applied to document recognition" <https://ieeexplore.ieee.org/document/726791>`_.
 
     Args:
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 

@@ -414,7 +414,7 @@ class InceptionE(nn.Layer):
 
 class InceptionV3(nn.Layer):
     """Inception v3 model from
-    `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_
+    `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_.
 
     Args:
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
@@ -511,7 +511,7 @@ class InceptionV3(nn.Layer):
 
 def inception_v3(pretrained=False, **kwargs):
     """Inception v3 model from
-    `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_
+    `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained

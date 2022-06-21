@@ -76,7 +76,7 @@ class MakeFire(nn.Layer):
 class SqueezeNet(nn.Layer):
     """SqueezeNet model from
     `"SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size"
-    <https://arxiv.org/pdf/1602.07360.pdf>`_
+    <https://arxiv.org/pdf/1602.07360.pdf>`_.
 
     Args:
         version (str): Version of SqueezeNet, which can be "1.0" or "1.1".
@@ -212,7 +212,7 @@ def _squeezenet(arch, version, pretrained, **kwargs):
 def squeezenet1_0(pretrained=False, **kwargs):
     """SqueezeNet v1.0 model from
     `"SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size"
-    <https://arxiv.org/pdf/1602.07360.pdf>`_
+    <https://arxiv.org/pdf/1602.07360.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -246,7 +246,7 @@ def squeezenet1_0(pretrained=False, **kwargs):
 def squeezenet1_1(pretrained=False, **kwargs):
     """SqueezeNet v1.1 model from
     `"SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size"
-    <https://arxiv.org/pdf/1602.07360.pdf>`_
+    <https://arxiv.org/pdf/1602.07360.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained

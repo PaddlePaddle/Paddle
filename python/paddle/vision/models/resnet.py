@@ -177,7 +177,7 @@ class BottleneckBlock(nn.Layer):
 
 class ResNet(nn.Layer):
     """ResNet model from
-    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 
     Args:
         Block (BasicBlock|BottleneckBlock): Block module of model.
@@ -329,7 +329,7 @@ def _resnet(arch, Block, depth, pretrained, **kwargs):
 
 def resnet18(pretrained=False, **kwargs):
     """ResNet 18-layer model from
-    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -362,7 +362,7 @@ def resnet18(pretrained=False, **kwargs):
 
 def resnet34(pretrained=False, **kwargs):
     """ResNet 34-layer model from
-    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -395,7 +395,7 @@ def resnet34(pretrained=False, **kwargs):
 
 def resnet50(pretrained=False, **kwargs):
     """ResNet 50-layer model from
-    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -428,7 +428,7 @@ def resnet50(pretrained=False, **kwargs):
 
 def resnet101(pretrained=False, **kwargs):
     """ResNet 101-layer model from
-    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -461,7 +461,7 @@ def resnet101(pretrained=False, **kwargs):
 
 def resnet152(pretrained=False, **kwargs):
     """ResNet 152-layer model from
-    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -494,7 +494,7 @@ def resnet152(pretrained=False, **kwargs):
 
 def resnext50_32x4d(pretrained=False, **kwargs):
     """ResNeXt-50 32x4d model from
-    `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
+    `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
     
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -529,7 +529,7 @@ def resnext50_32x4d(pretrained=False, **kwargs):
 
 def resnext50_64x4d(pretrained=False, **kwargs):
     """ResNeXt-50 64x4d model from
-    `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
+    `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
     
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -564,7 +564,7 @@ def resnext50_64x4d(pretrained=False, **kwargs):
 
 def resnext101_32x4d(pretrained=False, **kwargs):
     """ResNeXt-101 32x4d model from
-    `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
+    `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
     
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -600,7 +600,7 @@ def resnext101_32x4d(pretrained=False, **kwargs):
 
 def resnext101_64x4d(pretrained=False, **kwargs):
     """ResNeXt-101 64x4d model from
-    `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
+    `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
     
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -636,7 +636,7 @@ def resnext101_64x4d(pretrained=False, **kwargs):
 
 def resnext152_32x4d(pretrained=False, **kwargs):
     """ResNeXt-152 32x4d model from
-    `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
+    `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
     
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -672,7 +672,7 @@ def resnext152_32x4d(pretrained=False, **kwargs):
 
 def resnext152_64x4d(pretrained=False, **kwargs):
     """ResNeXt-152 64x4d model from
-    `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
+    `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
     
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained

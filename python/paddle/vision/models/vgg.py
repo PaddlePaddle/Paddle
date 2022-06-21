@@ -29,7 +29,7 @@ model_urls = {
 
 class VGG(nn.Layer):
     """VGG model from
-    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
+    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_.
 
     Args:
         features (nn.Layer): Vgg features create by function make_layers.
@@ -141,7 +141,7 @@ def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
 
 def vgg11(pretrained=False, batch_norm=False, **kwargs):
     """VGG 11-layer model from
-    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
+    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_.
     
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -178,7 +178,7 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
 
 def vgg13(pretrained=False, batch_norm=False, **kwargs):
     """VGG 13-layer model from
-    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
+    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_.
     
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -215,7 +215,7 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
 
 def vgg16(pretrained=False, batch_norm=False, **kwargs):
     """VGG 16-layer model from
-    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
+    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_.
     
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -252,7 +252,7 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
 
 def vgg19(pretrained=False, batch_norm=False, **kwargs):
     """VGG 19-layer model from
-    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
+    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_.
     
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained

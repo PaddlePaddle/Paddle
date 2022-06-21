@@ -74,7 +74,7 @@ class ConvPoolLayer(nn.Layer):
 class AlexNet(nn.Layer):
     """AlexNet model from
     `"ImageNet Classification with Deep Convolutional Neural Networks"
-    <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_
+    <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_.
 
     Args:
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
@@ -187,7 +187,7 @@ def _alexnet(arch, pretrained, **kwargs):
 def alexnet(pretrained=False, **kwargs):
     """AlexNet model from
     `"ImageNet Classification with Deep Convolutional Neural Networks"
-    <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_
+    <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained

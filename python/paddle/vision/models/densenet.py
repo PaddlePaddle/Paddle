@@ -185,7 +185,7 @@ class ConvBNLayer(nn.Layer):
 
 class DenseNet(nn.Layer):
     """DenseNet model from
-    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
 
     Args:
         layers (int, optional): Layers of DenseNet. Default: 121.
@@ -320,7 +320,7 @@ def _densenet(arch, layers, pretrained, **kwargs):
 
 def densenet121(pretrained=False, **kwargs):
     """DenseNet 121-layer model from
-    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -353,7 +353,7 @@ def densenet121(pretrained=False, **kwargs):
 
 def densenet161(pretrained=False, **kwargs):
     """DenseNet 161-layer model from
-    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -379,7 +379,7 @@ def densenet161(pretrained=False, **kwargs):
 
 def densenet169(pretrained=False, **kwargs):
     """DenseNet 169-layer model from
-    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -412,7 +412,7 @@ def densenet169(pretrained=False, **kwargs):
 
 def densenet201(pretrained=False, **kwargs):
     """DenseNet 201-layer model from
-    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -444,7 +444,7 @@ def densenet201(pretrained=False, **kwargs):
 
 def densenet264(pretrained=False, **kwargs):
     """DenseNet 264-layer model from
-    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
