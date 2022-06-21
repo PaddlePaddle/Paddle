@@ -186,10 +186,10 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
 
     auto u_out = ctx.Output<framework::Tensor>("U_out");
     u_out->mutable_data<T>(u->dims(), ctx.GetPlace());
-    u_out->ShareDataWith(*u);
+    // u_out->ShareDataWith(*u);
     auto v_out = ctx.Output<framework::Tensor>("V_out");
     v_out->mutable_data<T>(v->dims(), ctx.GetPlace());
-    v_out->ShareDataWith(*v);
+    // v_out->ShareDataWith(*v);
 
     // FIXME(gongwb): use cublas.
     auto u_out_e = framework::EigenVector<T>::Flatten(*u_out);
@@ -281,7 +281,7 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(
         paddle::communication::dgc::sparseReduce(
-            reinterpret_cast<void*> gather_buff.data<T>(), k, out->data<T>(),
+            reinterpret_cast<void*>(gather_buff.data<T>()), k, out->data<T>(),
             out->numel(), nranks, stream),
         true, platform::errors::Unavailable("Calling sparseReduce() failed."));
 
