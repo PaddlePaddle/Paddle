@@ -129,7 +129,7 @@ endif()
 
 if(NOT ON_INFER)
   set(PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
-  if(WITH_NCCL)
+  if(WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
     if(WITH_PSCORE)
       set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
