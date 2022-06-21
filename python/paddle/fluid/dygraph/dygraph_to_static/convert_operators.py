@@ -438,10 +438,10 @@ class VariableTuple:
         VariableTuple can only deal with variables which is fixed.
     """
 
-    def __init__(self, var):
+    def __init__(self, var, start=0):
         self.var = var
         self.len = convert_len(var)
-        self.rag = paddle_range(0, self.len, 1, paddle.int64)
+        self.rag = paddle_range(start, start + self.len, 1, paddle.int64)
 
     def __getitem__(self, idx):
         return self.rag[idx], self.var[idx]
@@ -450,10 +450,11 @@ class VariableTuple:
         return self.len
 
 
-def convert_enumerate(arg):
-    if isinstance(arg, Variable):
-        return VariableTuple(arg)
-    return enumerate(arg)
+def convert_enumerate(*args):
+    has_variable = any(map(lambda x: isinstance(x, Variable), args))
+    if has_variable:
+        return VariableTuple(*args)
+    return enumerate(*args)
 
 
 def convert_range(*args):

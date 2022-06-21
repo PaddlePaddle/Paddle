@@ -1077,9 +1077,14 @@ class ForNodeVisitor(object):
             converted into for A in B in ForLoopTuplePreTransformer.
         """
         self._args_check()
-        if self.is_for_iter():
+        if self.is_for_range_iter():
+            return self._parse_for_range_stmts()
+        elif self.is_for_iter():
             return self._parse_for_stmts()
-        return None
+        elif self.is_for_enumerate_iter():
+            return self._parse_for_enumerate_stmts()
+        else:
+            return None
 
     def is_for_range_iter(self):
         return isinstance(self.node.iter, gast.Call) and isinstance(
