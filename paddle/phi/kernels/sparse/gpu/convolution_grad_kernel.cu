@@ -139,54 +139,56 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
   }
 
   const int VecSize = VecBytes / sizeof(T);
-  if(in_channels % VecSize == 0){
-      auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-              dev_ctx, rulebook_len * in_channels / VecSize, 1);
-      GatherKernel<T, IntT, VecSize><<<config.block_per_grid.x,
-          config.thread_per_block.x,
-          0,
-          dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                  rulebook_ptr + rulebook_len,
-                  in_features_ptr,
-                  rulebook_len,
-                  in_channels);
-  }else{
-      auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-              dev_ctx, rulebook_len * in_channels, 1);
-      GatherKernel<T, IntT, 1><<<config.block_per_grid.x,
-          config.thread_per_block.x,
-          0,
-          dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                  rulebook_ptr + rulebook_len,
-                  in_features_ptr,
-                  rulebook_len,
-                  in_channels);
+  if (in_channels % VecSize == 0) {
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, rulebook_len * in_channels / VecSize, 1);
+    GatherKernel<T, IntT, VecSize>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
+                               rulebook_ptr + rulebook_len,
+                               in_features_ptr,
+                               rulebook_len,
+                               in_channels);
+  } else {
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, rulebook_len * in_channels, 1);
+    GatherKernel<T, IntT, 1>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
+                               rulebook_ptr + rulebook_len,
+                               in_features_ptr,
+                               rulebook_len,
+                               in_channels);
   }
 
-  if(out_channels % VecSize == 0){
-      auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-              dev_ctx, rulebook_len * out_channels / VecSize, 1);
-      GatherKernel<T, IntT, VecSize>
-          <<<config.block_per_grid.x,
-          config.thread_per_block.x,
-          0,
-          dev_ctx.stream()>>>(out_grad.non_zero_elements().data<T>(),
-                  rulebook_ptr + rulebook_len * 2,
-                  out_grad_features_ptr,
-                  rulebook_len,
-                  out_channels);
-  }else{
-      auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-              dev_ctx, rulebook_len * out_channels, 1);
-      GatherKernel<T, IntT, 1>
-          <<<config.block_per_grid.x,
-          config.thread_per_block.x,
-          0,
-          dev_ctx.stream()>>>(out_grad.non_zero_elements().data<T>(),
-                  rulebook_ptr + rulebook_len * 2,
-                  out_grad_features_ptr,
-                  rulebook_len,
-                  out_channels);
+  if (out_channels % VecSize == 0) {
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, rulebook_len * out_channels / VecSize, 1);
+    GatherKernel<T, IntT, VecSize>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(out_grad.non_zero_elements().data<T>(),
+                               rulebook_ptr + rulebook_len * 2,
+                               out_grad_features_ptr,
+                               rulebook_len,
+                               out_channels);
+  } else {
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, rulebook_len * out_channels, 1);
+    GatherKernel<T, IntT, 1>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(out_grad.non_zero_elements().data<T>(),
+                               rulebook_ptr + rulebook_len * 2,
+                               out_grad_features_ptr,
+                               rulebook_len,
+                               out_channels);
   }
 
   const T* kernel_ptr = kernel.data<T>();
