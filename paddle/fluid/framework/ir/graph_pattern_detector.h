@@ -1071,6 +1071,19 @@ struct Elementwise : public PatternBase {
   PATTERN_DECL_NODE(elementwise_out);
 };
 
+// Elementwise ops
+// Forward pass for element-wise operators
+// elementwise_out is the result of the operator
+struct ElementwiseOp : public PatternBase {
+  ElementwiseOp(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elementwise") {}
+
+  PDNode* operator()(const std::string elementwise_type);
+
+  PATTERN_DECL_NODE(elementwise_op);
+  PATTERN_DECL_NODE(elementwise_out);
+};
+
 // Residual Elementwise ops
 // This pattern allows operator output to be X or Y
 // and residual data Y or X, based on as_x flag
