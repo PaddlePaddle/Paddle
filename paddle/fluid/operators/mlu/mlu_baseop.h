@@ -495,6 +495,91 @@ class MLUCnnlDCNDesc {
   cnnlDCNDescriptor_t dcn_desc_ = nullptr;
 };
 
+class MLUSeqDataDesc {
+ public:
+  MLUSeqDataDesc(const MLUSeqDataDesc& desc) = delete;
+  MLUSeqDataDesc& operator=(const MLUSeqDataDesc& desc) = delete;
+
+  MLUSeqDataDesc(cnnlSeqDataLayout_t layout, cnnlDataType_t dtype, int dimNb,
+                 const int dimSize[], int seqLengthArraySize,
+                 const int seqLengthArray[], void* paddingFill);
+
+  //  void SetSeqDataPosAndScale(int pos, float scale) {
+  //    PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetSeqDataDescriptorPositionAndScale(
+  //       seq_data_desc_, pos, scale));
+  //  }
+
+  const cnnlSeqDataDescriptor_t get() const;
+
+  ~MLUSeqDataDesc();
+
+ private:
+  cnnlSeqDataDescriptor_t seq_data_desc_ = nullptr;
+};
+
+class MLURNNDesc {
+ public:
+  MLURNNDesc(const MLURNNDesc& desc) = delete;
+  MLURNNDesc& operator=(const MLURNNDesc& desc) = delete;
+
+  MLURNNDesc(const int hidden_size, const int num_layers,
+             const cnnlRNNInputMode_t input_mode,
+             const cnnlDirectionMode_t direction, const cnnlRNNMode_t rnn_mode);
+
+  MLURNNDesc(cnnlRNNMode_t cell_mode, cnnlRNNBiasMode_t bias_mode,
+             cnnlDirectionMode_t direction, cnnlRNNInputMode_t input_mode,
+             cnnlDataType_t data_type, cnnlDataType_t math_prec, int input_size,
+             int hidden_size, int proj_size, int layer_num, void* dropout_desc,
+             cnnlRNNPaddingMode_t padding_mode);
+
+  void SetRNNProjectionLayers(const int rec_proj_size,
+                              const int out_proj_size) {
+    PADDLE_ENFORCE_MLU_SUCCESS(
+        cnnlSetRNNProjectionLayers(rnn_desc_, rec_proj_size, out_proj_size));
+  }
+
+  void SetPeepholeMode(const cnnlRNNPeepholeMode_t peephole_mode) {
+    PADDLE_ENFORCE_MLU_SUCCESS(
+        cnnlSetRNNPeepholeMode(rnn_desc_, peephole_mode));
+  }
+
+  void SetRNNBiasMode(const cnnlRNNBiasMode_t bias_mode) {
+    PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetRNNBiasMode(rnn_desc_, bias_mode));
+  }
+
+  void SetRNNMaskMode(const cnnlRNNMaskMode_t mask_mode) {
+    PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetRNNMaskMode(rnn_desc_, mask_mode));
+  }
+
+  void SetRNNClip(const cnnlRNNClipMode_t clip_mode,
+                  const cnnlNanPropagation_t clip_nan_opt,
+                  const double left_clip, const double right_clip) {
+    PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetRNNClip(
+        rnn_desc_, clip_mode, clip_nan_opt, left_clip, right_clip));
+  }
+
+  void SetRNNPaddingMode(const cnnlRNNPaddingMode_t padding_mode) {
+    PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetRNNPaddingMode(rnn_desc_, padding_mode));
+  }
+
+  // void SetRNNWeightParams(const ExecutionContext& ctx,
+  //                         const cnnlTensorDescriptor_t m_desc,
+  //                         const void* m_ptr,
+  //                         const cnnlTensorDescriptor_t b_desc,
+  //                         const void* b_ptr);
+
+  // void GetRNNWeightParams(int32_t pseudo_layer, int32_t lin_layer_id,
+  //                         cnnlTensorDescriptor_t m_desc, void** m_addr,
+  //                         cnnlTensorDescriptor_t b_desc, void** b_addr);
+
+  const cnnlRNNDescriptor_t get() const;
+
+  ~MLURNNDesc();
+
+ private:
+  cnnlRNNDescriptor_t rnn_desc_ = nullptr;
+};
+
 class MLUCnnl {
  public:
   static void Active(const ExecutionContext& ctx,
@@ -1782,69 +1867,69 @@ class MLUCnnl {
                          const cnnlTensorDescriptor_t output_desc,
                          void* output);
 
-  static void BceLoss(const ExecutionContext& ctx,
-                      const cnnlBceLossReduction_t reduction,
-                      const cnnlTensorDescriptor_t input_desc,
-                      const void* input,
-                      const cnnlTensorDescriptor_t target_desc,
-                      const void* target,
-                      const cnnlTensorDescriptor_t weight_desc,
-                      const void* weight,
-                      const cnnlTensorDescriptor_t output_desc,
-                      void* output);
+  static void BceLoss(
+      const ExecutionContext& ctx, const cnnlBceLossReduction_t reduction,
+      const cnnlTensorDescriptor_t input_desc, const void* input,
+      const cnnlTensorDescriptor_t target_desc, const void* target,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t output_desc, void* output);
 
-  static void BceLossBackward(const ExecutionContext& ctx,
-                              const cnnlBceLossReduction_t reduction,
-                              const cnnlTensorDescriptor_t grad_desc,
-                              const void* grad,
-                              const cnnlTensorDescriptor_t input_desc,
-                              const void* input,
-                              const cnnlTensorDescriptor_t target_desc,
-                              const void* target,
-                              const cnnlTensorDescriptor_t weight_desc,
-                              const void* weight,
-                              const cnnlTensorDescriptor_t output_desc,
-                              void* output);
+  static void BceLossBackward(
+      const ExecutionContext& ctx, const cnnlBceLossReduction_t reduction,
+      const cnnlTensorDescriptor_t grad_desc, const void* grad,
+      const cnnlTensorDescriptor_t input_desc, const void* input,
+      const cnnlTensorDescriptor_t target_desc, const void* target,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t output_desc, void* output);
 
-  static void EmbeddingForward(const ExecutionContext& ctx,
-                               const int padding_idx,
-                               const cnnlTensorDescriptor_t weight_desc,
-                               const void* weight,
-                               const cnnlTensorDescriptor_t indices_desc,
-                               const int* indices,
-                               const cnnlTensorDescriptor_t output_desc,
-                               void* output);
+  static void EmbeddingForward(
+      const ExecutionContext& ctx, const int padding_idx,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t indices_desc, const int* indices,
+      const cnnlTensorDescriptor_t output_desc, void* output);
 
-  static void Transform(const ExecutionContext& ctx,
-                        const void* alpha,
-                        const void* beta,
-                        const cnnlTensorDescriptor_t input_desc,
-                        const void* input,
-                        const cnnlTensorDescriptor_t output_desc,
-                        void* output);
+  static void EmbeddingBackward(
+      const ExecutionContext& ctx, int padding_idx, bool scale_grad_by_freq,
+      const cnnlTensorDescriptor_t indices_desc, const void* indices,
+      const cnnlTensorDescriptor_t diff_desc, const void* diff,
+      const cnnlTensorDescriptor_t output_desc, void* output);
 
-  static void EmbeddingBackward(const ExecutionContext& ctx,
-                                int padding_idx,
-                                bool scale_grad_by_freq,
-                                const cnnlTensorDescriptor_t indices_desc,
-                                const void* indices,
-                                const cnnlTensorDescriptor_t diff_desc,
-                                const void* diff,
-                                const cnnlTensorDescriptor_t output_desc,
-                                void* output);
+  static void RNNForward(const ExecutionContext& ctx,
+                         const cnnlRNNDescriptor_t rnn_desc,
+                         const int dev_seq_lengths[],
+                         const void* weight_param_ptr, size_t weightspace_size,
+                         const cnnlSeqDataDescriptor_t x_desc, const void* x,
+                         const cnnlSeqDataDescriptor_t y_desc, void* y,
+                         const cnnlTensorDescriptor_t h_desc, const void* hx,
+                         void* hy, const cnnlTensorDescriptor_t c_desc,
+                         const void* cx, void* cy, void* reservespace_ptr);
 
-  static void BceWithLogits(const ExecutionContext& ctx,
-                            cnnlBceWithLogitsReduction_t reduction,
-                            const cnnlTensorDescriptor_t input_desc,
-                            const void* input,
-                            const cnnlTensorDescriptor_t target_desc,
-                            const void* target,
-                            const cnnlTensorDescriptor_t weight_desc,
-                            const void* weight,
-                            const cnnlTensorDescriptor_t pos_weight_desc,
-                            const void* pos_weight,
-                            const cnnlTensorDescriptor_t output_desc,
-                            void* output);
+  static void RNNBackward(const ExecutionContext& ctx,
+                          const cnnlRNNDescriptor_t rnn_desc,
+                          cnnlWgradMode_t add_grad, const int dev_seq_lengths[],
+                          void* weight_param_ptr,
+                          const cnnlSeqDataDescriptor_t x_desc, const void* x,
+                          void* dx, const cnnlSeqDataDescriptor_t y_desc,
+                          const void* y, const void* dy,
+                          const cnnlTensorDescriptor_t hx_desc, const void* hx,
+                          const void* dhy, void* dhx,
+                          const cnnlTensorDescriptor_t cx_desc, const void* cx,
+                          const void* dcy, void* dcx);
+
+  static void Mask(const ExecutionContext& ctx, cnnlMaskedOp_t masked_mode,
+                   const cnnlTensorDescriptor_t input_desc, const void* input,
+                   const cnnlTensorDescriptor_t masked_desc, const void* masked,
+                   const cnnlTensorDescriptor_t value_desc, const void* value,
+                   const cnnlTensorDescriptor_t output_desc, void* output,
+                   uint32_t* number);
+
+  static void BceWithLogits(
+      const ExecutionContext& ctx, cnnlBceWithLogitsReduction_t reduction,
+      const cnnlTensorDescriptor_t input_desc, const void* input,
+      const cnnlTensorDescriptor_t target_desc, const void* target,
+      const cnnlTensorDescriptor_t weight_desc, const void* weight,
+      const cnnlTensorDescriptor_t pos_weight_desc, const void* pos_weight,
+      const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void BceWithLogitsBackward(
       const ExecutionContext& ctx,

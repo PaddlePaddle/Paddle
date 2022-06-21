@@ -45,9 +45,19 @@ inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
     }
     // NOTE: Converting int64 to int32 may cause data overflow.
     vec_new_data = std::vector<T>(data, data + x->numel());
+  } else if (framework::TransToProtoVarType(x->dtype()) ==
+             framework::proto::VarType::FP32) {
+    auto* data = x->data<float>();
+    framework::Tensor cpu_attr_tensor;
+    if (!platform::is_cpu_place(x->place())) {
+      paddle::framework::TensorCopySync(*x, platform::CPUPlace(),
+                                        &cpu_attr_tensor);
+      data = cpu_attr_tensor.data<float>();
+    }
+    vec_new_data = std::vector<T>(data, data + x->numel());
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "The dtype of Tensor must be int32 or int64, but received: %s",
+        "The dtype of Tensor must be fp32, int32 or int64, but received: %s",
         framework::TransToProtoVarType(x->dtype())));
   }
   return vec_new_data;
