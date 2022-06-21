@@ -254,6 +254,14 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetInputTensor(
   }
   res->SetOrtMark(true);
   res->SetOrtBinding(binding_);
+  auto iter = input_buffers_.find(name);
+  if (iter == input_buffers_.end()) {
+    std::vector<int8_t> i_vector;
+    input_buffers_[name] = std::make_shared<std::vector<int8_t>>(i_vector);
+    res->SetOrtBuffer(input_buffers_[name]);
+  } else {
+    res->SetOrtBuffer(iter->second);
+  }
   return res;
 }
 

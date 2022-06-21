@@ -626,6 +626,10 @@ void Tensor::SetOrtBinding(const std::shared_ptr<Ort::IoBinding> binding) {
   binding_ = binding;
 }
 
+void Tensor::SetOrtBuffer(const std::shared_ptr<std::vector<int8_t>> buffer) {
+  buffer_ = buffer;
+}
+
 Ort::Value GetOrtVaule(const Ort::MemoryInfo &memory_info, float *data,
                        size_t size, const int64_t *shape, size_t shape_len) {
   return Ort::Value::CreateTensor<float>(memory_info, data, size, shape,
@@ -674,11 +678,12 @@ void Tensor::ORTCopyFromCpu(const T *data) {
                               OrtMemTypeDefault);
   size_t size = std::accumulate(begin(shape_), end(shape_), 1UL,
                                 std::multiplies<size_t>());
+  auto buffer = buffer_.lock();
   size_t buffer_size = size * sizeof(T);
-  if (buffer_size > buffer_.size()) {
-    buffer_.resize(buffer_size);
+  if (buffer_size > buffer->size()) {
+    buffer->resize(buffer_size);
   }
-  std::memcpy(static_cast<void *>(buffer_.data()), data, buffer_size);
+  std::memcpy(static_cast<void *>(buffer->data()), data, buffer_size);
 
   auto onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED;
   if (std::is_same<T, float>::value) {
@@ -695,16 +700,14 @@ void Tensor::ORTCopyFromCpu(const T *data) {
     onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8;
   } else if (std::is_same<T, float16>::value) {
     onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16;
-  }
-
-  if (onnx_dtype == ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED) {
+  } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Found undefined data type for onnxruntime, only supports "
         "float16/float32/float64/int8/uint8/int32/int64."));
   }
 
   auto ort_value =
-      Ort::Value::CreateTensor(memory_info, buffer_.data(), buffer_size,
+      Ort::Value::CreateTensor(memory_info, buffer.data(), buffer_size,
                                shape_.data(), shape_.size(), onnx_dtype);
 
   binding->BindInput(name_.c_str(), ort_value);
