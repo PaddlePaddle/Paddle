@@ -141,6 +141,15 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Paddle can't use NPU device since it's not compiled with NPU,"
           "Please recompile or reinstall Paddle with NPU support."));
 #endif
+    } else if (platform::is_ipu_place(place)) {
+#if defined(PADDLE_WITH_IPU)
+      gc.reset(new framework::IPUGarbageCollector(place, 0));
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use IPU device since it's not compiled with IPU,"
+          "Please recompile or reinstall Paddle with IPU support."));
+#endif
     } else if (platform::is_mlu_place(place)) {
 #if defined(PADDLE_WITH_MLU)
       gc.reset(new framework::MLUDefaultStreamGarbageCollector(place, 0));

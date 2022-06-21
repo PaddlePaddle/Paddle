@@ -109,6 +109,12 @@ class IpuStrategy {
   // Custom ops
   std::vector<IpuCustomOpIdentifier> custom_ops;
 
+  // lr for dynamic2static
+  float lr = 0.0;
+
+  // whether in dynamic mode
+  bool is_dynamic = false;
+
  public:
   void AddBoolOption(const std::string &option, bool value);
   void AddUint64Option(const std::string &option, std::uint64_t value);
