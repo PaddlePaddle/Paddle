@@ -73,11 +73,7 @@ class SliceOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-// in trt 7134 or 6015, CI test_trt_dynamic_shape_ernie failed because of
-// failing to infer desired value，we can solve by adding infer shape in fc and
-// multihead_mul，but fc int8 can't run. so we have to let slice trt layer run
-// in >= 7234
-#if IS_TRT_VERSION_GE(7000)
+#if IS_TRT_VERSION_GE(6000)
       auto nchw_input_dims = input->getDimensions();
       nvinfer1::Dims trt_start_dims;
       trt_start_dims.nbDims = nchw_input_dims.nbDims;
