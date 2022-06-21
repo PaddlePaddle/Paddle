@@ -23,7 +23,7 @@ Layer::Layer(
     const std::vector<std::string>& func_names,
     const std::vector<framework::ProgramDesc>& program_descs,
     const std::vector<std::vector<std::string>>& param_names_for_each_program,
-    const VariableNameMap& params_dict, const phi::Place place) {
+    const VariableNameMap& params_dict, const phi::Place& place) {
   VLOG(3) << "program size: " << program_descs.size();
   // Layer manage the life time of all parameter.
   for (size_t i = 0; i < func_names.size(); ++i) {

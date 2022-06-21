@@ -61,8 +61,8 @@ class Deserializer {
 
   void ReadTensorData(const std::string& file_name,
                       const std::set<std::string>& var_name,
-                      VariableNameMap* params_dict,
-                      const phi::Place place) const;
+                      const phi::Place& place,
+                      VariableNameMap* params_dict) const;
 
   // void ReadExtraInfo(const std::string& file_name) const;
   // void ReadByteCode(const std::string& file_name) const;

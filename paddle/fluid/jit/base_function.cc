@@ -46,10 +46,10 @@ void FunctionSchema::AddOutputArg(std::string name) {
   output_args.emplace_back(name, true);
 }
 
-BaseFunction::BaseFunction(
-    const framework::ProgramDesc &program_desc,
-    const std::vector<std::string> param_names_for_program,
-    const VariableNameMap &params_dict, const phi::Place place)
+BaseFunction::BaseFunction(const framework::ProgramDesc &program_desc,
+                           const std::vector<std::string> &param_names,
+                           const VariableNameMap &params_dict,
+                           const phi::Place &place)
     : program_desc_(program_desc), place_(place) {
   // Parse FunctionSchema
   for (auto &in_name : program_desc_.GetFeedTargetNames()) {
@@ -59,7 +59,7 @@ BaseFunction::BaseFunction(
     schema_.AddOutputArg(out_name);
   }
   // share params into scope
-  ShareParamsIntoScope(param_names_for_program, params_dict);
+  ShareParamsIntoScope(param_names, params_dict);
   VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
   // remove feed fetch op
   RemoveFeedFetch();
@@ -89,7 +89,7 @@ void BaseFunction::ShareInputsIntoScope(const std::vector<Variable> &vars) {
 
   for (size_t i = 0; i < vars.size(); i++) {
     VLOG(3) << "share into scope: " << ordered_input_names[i];
-    DenseTensor dense_tensor = vars[i].Get<DenseTensor>();
+    auto &dense_tensor = vars[i].Get<DenseTensor>();
     auto *var = scope_.Var(ordered_input_names[i]);
     auto *dst_tensor = var->GetMutable<DenseTensor>();
     *dst_tensor = dense_tensor;
@@ -97,11 +97,11 @@ void BaseFunction::ShareInputsIntoScope(const std::vector<Variable> &vars) {
 }
 
 void BaseFunction::ShareParamsIntoScope(
-    const std::vector<std::string> param_names_for_program,
+    const std::vector<std::string> &param_names,
     const VariableNameMap &params_dict) {
-  VLOG(3) << "param_names_for_program size: " << param_names_for_program.size();
-  for (size_t i = 0; i < param_names_for_program.size(); ++i) {
-    std::string name = param_names_for_program[i];
+  VLOG(3) << "param_names size: " << param_names.size();
+  for (size_t i = 0; i < param_names.size(); ++i) {
+    std::string name = param_names[i];
     Variable val = params_dict.find(name)->second;
     auto &dense_tensor = val.Get<DenseTensor>();
     VLOG(3) << "share into scope: " << name;

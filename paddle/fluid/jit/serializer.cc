@@ -48,7 +48,7 @@ Layer Deserializer::operator()(const std::string& dir_path) {
   auto default_place = imperative::GetCurrentTracer()->ExpectedPlace();
   // Read from one pdiparams file, refine here
   ReadTensorData(dir_path + "export.forward.pdiparams", param_names_set,
-                 &params_dict, default_place);
+                 default_place, &params_dict);
 
   return Layer(func_names, program_descs, param_names_for_each_program,
                params_dict, default_place);
@@ -94,8 +94,8 @@ Deserializer::GetPdmodelFileNamePrefix(const std::string& path) {
 
 void Deserializer::ReadTensorData(const std::string& file_name,
                                   const std::set<std::string>& var_name,
-                                  VariableNameMap* params_dict,
-                                  const phi::Place place) const {
+                                  const phi::Place& place,
+                                  VariableNameMap* params_dict) const {
   VLOG(3) << "ReadTensorData from: " << file_name;
   std::ifstream fin(file_name, std::ios::binary);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();

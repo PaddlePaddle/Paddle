@@ -63,8 +63,8 @@ class FunctionSchema {
 class BaseFunction {
  public:
   BaseFunction(const framework::ProgramDesc &program_desc,
-               const std::vector<std::string> param_names_for_program,
-               const VariableNameMap &params_dict, const phi::Place place);
+               const std::vector<std::string> &param_names,
+               const VariableNameMap &params_dict, const phi::Place &place);
 
   virtual ~BaseFunction() {}
 
@@ -76,9 +76,8 @@ class BaseFunction {
 
   void ShareInputsIntoScope(const std::vector<Variable> &vars);
 
-  void ShareParamsIntoScope(
-      const std::vector<std::string> param_names_for_program,
-      const VariableNameMap &params_dict);
+  void ShareParamsIntoScope(const std::vector<std::string> &param_names,
+                            const VariableNameMap &params_dict);
 
   void RemoveFeedFetch();
 
