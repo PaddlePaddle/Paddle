@@ -283,7 +283,7 @@ def get_name_ids(nodes, after_node=None, end_node=None):
     return name_visitor.name_ids
 
 
-def parse_cond_args(parent_ids_dict,
+def parse_cond_args(parent_ids,
                     var_ids_dict,
                     modified_ids_dict=None,
                     ctx=gast.Load):
@@ -321,7 +321,7 @@ def parse_cond_args(parent_ids_dict,
     #   ```
     #
     #   In the above case, `v` should not be in the args of cond()
-    arg_name_ids = set(arg_name_ids) & set(parent_ids_dict)
+    arg_name_ids = set(arg_name_ids) & set(parent_ids)
 
     return arg_name_ids
 
@@ -506,9 +506,14 @@ def transform_if_else(node, root):
         if "." not in name:
             create_new_vars_in_parent_stmts.append(create_undefined_var(name))
 
-    trun_args = parse_cond_args(parent_name_ids, body_name_ids,
+    parent_ids_set = set()
+    for k, ctxs in parent_name_ids.items():
+        if any([not isinstance(ctx, gast.Load) for ctx in ctxs]):
+            parent_ids_set.add(k)
+
+    trun_args = parse_cond_args(parent_ids_set, body_name_ids,
                                 modified_name_ids_from_parent)
-    false_args = parse_cond_args(parent_name_ids, orelse_name_ids,
+    false_args = parse_cond_args(parent_ids_set, orelse_name_ids,
                                  modified_name_ids_from_parent)
     nonlocal_names = list(trun_args | false_args | new_vars_to_create)
     nonlocal_names.sort()
@@ -519,7 +524,7 @@ def transform_if_else(node, root):
     if ARGS_NAME in nonlocal_names:
         nonlocal_names.remove(ARGS_NAME)
 
-    nonlocal_stmt_node = create_nonlocal_stmt_node(nonlocal_names)
+    nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)]
 
     empty_arg_node = gast.arguments(args=[],
                                     posonlyargs=[],
@@ -530,12 +535,12 @@ def transform_if_else(node, root):
                                     defaults=[])
 
     true_func_node = create_funcDef_node(
-        [nonlocal_stmt_node] + node.body,
+        nonlocal_stmt_node + node.body,
         name=unique_name.generate(TRUE_FUNC_PREFIX),
         input_args=empty_arg_node,
         return_name_ids=return_name_ids)
     false_func_node = create_funcDef_node(
-        [nonlocal_stmt_node] + node.orelse,
+        nonlocal_stmt_node + node.orelse,
         name=unique_name.generate(FALSE_FUNC_PREFIX),
         input_args=empty_arg_node,
         return_name_ids=return_name_ids)
