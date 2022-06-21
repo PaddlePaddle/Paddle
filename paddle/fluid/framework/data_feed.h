@@ -895,7 +895,7 @@ class GraphDataGenerator {
   int AcquireInstance(BufState* state);
   int GenerateBatch();
   int FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk);
-  int FillFeatureBuf(int64_t* d_walk, int64_t* d_feature, size_t key_num);
+  int FillFeatureBuf(uint64_t* d_walk, uint64_t* d_feature, size_t key_num);
   int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
                      std::shared_ptr<phi::Allocation> d_feature);
   void FillOneStep(uint64_t* start_ids, uint64_t* walk, int len,
@@ -921,9 +921,6 @@ class GraphDataGenerator {
   // point to device_keys_
   size_t cursor_;
   size_t jump_rows_;
-  int64_t* id_tensor_ptr_;
-  int64_t* show_tensor_ptr_;
-  int64_t* clk_tensor_ptr_;
   cudaStream_t stream_;
   paddle::platform::Place place_;
   std::vector<LoDTensor*> feed_vec_;

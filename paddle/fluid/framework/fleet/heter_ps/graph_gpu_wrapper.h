@@ -70,7 +70,7 @@ class GraphGpuWrapper {
                                               std::vector<uint64_t>& key,
                                               int sample_size);
   void set_feature_separator(std::string ch);
-  int get_feature_of_nodes(int gpu_id, int64_t* d_walk, int64_t* d_offset,
+  int get_feature_of_nodes(int gpu_id, uint64_t* d_walk, uint64_t* d_offset,
                         uint32_t size, int slot_num);
 
   std::unordered_map<std::string, int> edge_to_id, feature_to_id;
