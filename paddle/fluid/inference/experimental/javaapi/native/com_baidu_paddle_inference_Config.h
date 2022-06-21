@@ -16,8 +16,8 @@
 #include <jni.h>
 /* Header for class com_baidu_paddle_inference_Config */
 
-#ifndef PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_COM_BAIDU_PADDLE_INFERENCE_CONFIG_H_
-#define PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_COM_BAIDU_PADDLE_INFERENCE_CONFIG_H_
+#pragma once
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -282,4 +282,3 @@ Java_com_baidu_paddle_inference_Config_summary(JNIEnv *, jobject, jlong);
 #ifdef __cplusplus
 }
 #endif
-#endif  // PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_COM_BAIDU_PADDLE_INFERENCE_CONFIG_H_
