@@ -31,8 +31,10 @@ struct Compare {
 
 template <typename T>
 struct FindAbsMaxFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& ctx, const T* in,
-                  const int num, T* out) {
+  void operator()(const platform::CPUDeviceContext& ctx,
+                  const T* in,
+                  const int num,
+                  T* out) {
     *out = std::abs(*(std::max_element(in + 0, in + num, Compare<T>())));
   }
 };
@@ -42,12 +44,14 @@ template struct FindAbsMaxFunctor<platform::CPUDeviceContext, float>;
 template <typename T>
 struct FindChannelAbsMaxFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
-                  const framework::Tensor& in_tensor, const int quant_axis,
+                  const framework::Tensor& in_tensor,
+                  const int quant_axis,
                   T* out_abs_max) {
     // At present, channelwise quantization supports conv2d, depthwise_conv2d
     // conv2d_transpose and mul
     PADDLE_ENFORCE_EQ(
-        quant_axis == 0 || quant_axis == 1, true,
+        quant_axis == 0 || quant_axis == 1,
+        true,
         platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
                                           "the received is %d",
                                           quant_axis));
@@ -85,15 +89,19 @@ template struct FindChannelAbsMaxFunctor<platform::CPUDeviceContext, float>;
 template <typename T>
 struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
-                  const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, framework::Tensor* out) {
+                  const framework::Tensor& in,
+                  const framework::Tensor& scale,
+                  const int bin_cnt,
+                  const int round_type,
+                  framework::Tensor* out) {
     T s = scale.data<T>()[0];
     T inv_s = inverse(s);
     platform::Transform<platform::CPUDeviceContext> trans;
-    trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
-          out->mutable_data<T>(ctx.GetPlace()), phi::ClipFunctor<T>(-s, s));
-    auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
+    trans(ctx,
+          in.data<T>(),
+          in.data<T>() + in.numel(),
+          out->mutable_data<T>(ctx.GetPlace()),
+          QuantTensorFunctor<T>(static_cast<T>(bin_cnt), round_type, inv_s));
   }
 };
 
@@ -102,17 +110,22 @@ template struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, float>;
 template <typename T>
 struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
-                  const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, framework::Tensor* out) {
+                  const framework::Tensor& in,
+                  const framework::Tensor& scale,
+                  const int bin_cnt,
+                  const int round_type,
+                  framework::Tensor* out) {
     T s = scale.data<T>()[0];
     T inv_s = inverse(s);
 
     platform::Transform<platform::CPUDeviceContext> trans;
-    trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
-          out->mutable_data<T>(ctx.GetPlace()), phi::ClipFunctor<T>(-s, s));
+    trans(ctx,
+          in.data<T>(),
+          in.data<T>() + in.numel(),
+          out->mutable_data<T>(ctx.GetPlace()),
+          QuantTensorFunctor<T>(static_cast<T>(bin_cnt), round_type, inv_s));
     auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e.device(*ctx.eigen_device()) =
-        (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
+    out_e.device(*ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
   }
 };
 template struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext,
@@ -121,13 +134,17 @@ template struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext,
 template <typename T>
 struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
-                  const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, const int quant_axis,
+                  const framework::Tensor& in,
+                  const framework::Tensor& scale,
+                  const int bin_cnt,
+                  const int round_type,
+                  const int quant_axis,
                   framework::Tensor* out) {
     // At present, channelwise quantization supports conv2d, depthwise_conv2d
     // conv2d_transpose and mul
     PADDLE_ENFORCE_EQ(
-        quant_axis == 0 || quant_axis == 1, true,
+        quant_axis == 0 || quant_axis == 1,
+        true,
         platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
                                           "the received is %d",
                                           quant_axis));
@@ -143,15 +160,13 @@ struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
         T s = scale_data[i];
         auto* start = in_data + i * channel_size;
         auto* end = in_data + (i + 1) * channel_size;
-        trans(ctx, start, end, out_data + i * channel_size,
-              phi::ClipFunctor<T>(-s, s));
-      }
-      for (int64_t i = 0; i < channel; i++) {
-        T s = scale_data[i];
         T inv_s = inverse(s);
-        framework::Tensor one_channel_out = out->Slice(i, i + 1);
-        auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
-        out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
+        trans(
+            ctx,
+            start,
+            end,
+            out_data + i * channel_size,
+            QuantTensorFunctor<T>(static_cast<T>(bin_cnt), round_type, inv_s));
       }
     } else if (quant_axis == 1) {
       const int64_t step_i = in.numel() / in_dims[0];
@@ -163,10 +178,12 @@ struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
           auto* start = in_data + i * step_i + j * step_j;
           auto* end = in_data + i * step_i + (j + 1) * step_j;
           auto* cur_out_data = out_data + i * step_i + j * step_j;
-          trans(ctx, start, end, cur_out_data, phi::ClipFunctor<T>(-s, s));
-          for (int k = 0; k < step_j; k++) {
-            cur_out_data[k] = std::round(bin_cnt * inv_s * cur_out_data[k]);
-          }
+          trans(ctx,
+                start,
+                end,
+                cur_out_data,
+                QuantTensorFunctor<T>(
+                    static_cast<T>(bin_cnt), round_type, inv_s));
         }
       }
     }
@@ -178,11 +195,15 @@ template struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext,
 template <typename T>
 struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
-                  const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, const int quant_axis,
+                  const framework::Tensor& in,
+                  const framework::Tensor& scale,
+                  const int bin_cnt,
+                  const int round_type,
+                  const int quant_axis,
                   framework::Tensor* out) {
     PADDLE_ENFORCE_EQ(
-        quant_axis == 0 || quant_axis == 1, true,
+        quant_axis == 0 || quant_axis == 1,
+        true,
         platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
                                           "the received is %d",
                                           quant_axis));
@@ -199,16 +220,16 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
         T s = scale_data[i];
         auto* start = in_data + i * channel_size;
         auto* end = in_data + (i + 1) * channel_size;
-        trans(ctx, start, end, out_data + i * channel_size,
-              phi::ClipFunctor<T>(-s, s));
-      }
-      for (int i = 0; i < channel; i++) {
-        T s = scale_data[i];
         T inv_s = inverse(s);
+        trans(
+            ctx,
+            start,
+            end,
+            out_data + i * channel_size,
+            QuantTensorFunctor<T>(static_cast<T>(bin_cnt), round_type, inv_s));
         framework::Tensor one_channel_out = out->Slice(i, i + 1);
         auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
-        out_e.device(*ctx.eigen_device()) =
-            (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
+        out_e.device(*ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
       }
     } else if (quant_axis == 1) {
       const int64_t step_i = in.numel() / in_dims[0];
@@ -220,10 +241,14 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
           auto* start = in_data + i * step_i + j * step_j;
           auto* end = in_data + i * step_i + (j + 1) * step_j;
           auto* cur_out_data = out_data + i * step_i + j * step_j;
-          trans(ctx, start, end, cur_out_data, phi::ClipFunctor<T>(-s, s));
+          trans(ctx,
+                start,
+                end,
+                cur_out_data,
+                QuantTensorFunctor<T>(
+                    static_cast<T>(bin_cnt), round_type, inv_s));
           for (int k = 0; k < step_j; k++) {
-            cur_out_data[k] = std::round(bin_cnt * inv_s * cur_out_data[k]) *
-                              s / static_cast<T>(bin_cnt);
+            cur_out_data[k] = cur_out_data[k] * s / static_cast<T>(bin_cnt);
           }
         }
       }
@@ -238,8 +263,10 @@ struct FindRangeAbsMaxFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
                   const framework::Tensor& cur_scale,
                   const framework::Tensor& last_scale,
-                  const framework::Tensor& iter, const int window_size,
-                  framework::Tensor* scales_arr, framework::Tensor* out_scale) {
+                  const framework::Tensor& iter,
+                  const int window_size,
+                  framework::Tensor* scales_arr,
+                  framework::Tensor* out_scale) {
     T* scale_arr = scales_arr->mutable_data<T>(ctx.GetPlace());
     int64_t it = iter.data<int64_t>()[0];
     int idx = it % window_size;
@@ -252,8 +279,8 @@ struct FindRangeAbsMaxFunctor<platform::CPUDeviceContext, T> {
       max = cur;
     } else if (fabs(removed - max) < 1e-6) {
       int size = (it > window_size) ? window_size : it;
-      FindAbsMaxFunctor<platform::CPUDeviceContext, T>()(ctx, scale_arr, size,
-                                                         &max);
+      FindAbsMaxFunctor<platform::CPUDeviceContext, T>()(
+          ctx, scale_arr, size, &max);
     }
     out_scale->mutable_data<T>(ctx.GetPlace())[0] = max;
   }
@@ -265,9 +292,12 @@ template <typename T>
 struct FindMovingAverageAbsMaxFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
                   const framework::Tensor& in_accum,
-                  const framework::Tensor& in_state, const T* cur_scale,
-                  const float rate, framework::Tensor* out_state,
-                  framework::Tensor* out_accum, framework::Tensor* out_scale) {
+                  const framework::Tensor& in_state,
+                  const T* cur_scale,
+                  const float rate,
+                  framework::Tensor* out_state,
+                  framework::Tensor* out_accum,
+                  framework::Tensor* out_scale) {
     T accum = in_accum.data<T>()[0];
     T state = in_state.data<T>()[0];
     T scale = cur_scale[0];
@@ -294,11 +324,15 @@ class FakeQuantOrWithDequantAbsMaxOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+    OP_INOUT_CHECK(
+        ctx->HasInput("X"), "Input", "X", "FakeQuantOrWithDequantAbsMaxOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"),
+                   "Output",
+                   "Out",
                    "FakeQuantOrWithDequantAbsMaxOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "FakeQuantOrWithDequantAbsMaxOp");
-    OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
+    OP_INOUT_CHECK(ctx->HasOutput("OutScale"),
+                   "Output",
+                   "OutScale",
                    "FakeQuantOrWithDequantAbsMaxOp");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->SetOutputDim("OutScale", {1});
@@ -326,11 +360,27 @@ class FakeQuantOrWithDequantAbsMaxOpMaker
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
-          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
+          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
+        });
+    AddAttr<int>(
+        "round_type",
+        "(int, default 0) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(2.5)=3")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& round_type) {
+          PADDLE_ENFORCE_EQ(round_type >= 0 && round_type <= 1,
+                            true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 and 1, but "
+                                "the received is %d",
+                                round_type));
         });
     AddComment(R"DOC(
 This is a Base Op which supports FakeQuantAbsMaxOpMaker and FakeQuantDequantAbsMaxOpMaker.
@@ -355,11 +405,15 @@ class FakeChannelWiseQuantizeAbsMaxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+    OP_INOUT_CHECK(
+        ctx->HasInput("X"), "Input", "X", "FakeChannelWiseQuantizeAbsMax");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"),
+                   "Output",
+                   "Out",
                    "FakeChannelWiseQuantizeAbsMax");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "FakeChannelWiseQuantizeAbsMax");
-    OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
+    OP_INOUT_CHECK(ctx->HasOutput("OutScale"),
+                   "Output",
+                   "OutScale",
                    "FakeChannelWiseQuantizeAbsMax");
     int quant_axis = ctx->Attrs().Get<int>("quant_axis");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -390,7 +444,8 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
                  "and mul, the quant_axis is equal to the cout axis.")
         .SetDefault(0)
         .AddCustomChecker([](const int& quant_axis) {
-          PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1, true,
+          PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'quant_axis' should be 0 or 1, but "
                                 "the received is %d",
@@ -399,11 +454,27 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
-          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
+          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
+        });
+    AddAttr<int>(
+        "round_type",
+        "(int, default 0) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(2.5)=3")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& round_type) {
+          PADDLE_ENFORCE_EQ(round_type >= 0 && round_type <= 1,
+                            true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 and 1, but "
+                                "the received is %d",
+                                round_type));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
@@ -428,11 +499,17 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxOp
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+    OP_INOUT_CHECK(ctx->HasInput("X"),
+                   "Input",
+                   "X",
                    "FakeChannelWiseQuantizeDequantizeAbsMax");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+    OP_INOUT_CHECK(ctx->HasOutput("Out"),
+                   "Output",
+                   "Out",
                    "FakeChannelWiseQuantizeDequantizeAbsMax");
-    OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
+    OP_INOUT_CHECK(ctx->HasOutput("OutScale"),
+                   "Output",
+                   "OutScale",
                    "FakeChannelWiseQuantizeDequantizeAbsMax");
     int quant_axis = ctx->Attrs().Get<int>("quant_axis");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -463,7 +540,8 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxOpMaker
                  "and mul, the quant_axis is equal to the cout axis.")
         .SetDefault(0)
         .AddCustomChecker([](const int& quant_axis) {
-          PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1, true,
+          PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'quant_axis' should be 0 or 1, but "
                                 "the received is %d",
@@ -472,11 +550,27 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxOpMaker
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
-          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
+          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
+        });
+    AddAttr<int>(
+        "round_type",
+        "(int, default 0) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(2.5)=3")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& round_type) {
+          PADDLE_ENFORCE_EQ(round_type >= 0 && round_type <= 1,
+                            true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 and 1, but "
+                                "the received is %d",
+                                round_type));
         });
     AddComment(R"DOC(
 The scale of FakeChannelWiseQuantize operator is a vector.
@@ -501,9 +595,11 @@ class FakeQuantizeRangeAbsMaxOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FakeQuantizeRangeAbsMax");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "FakeQuantizeRangeAbsMax");
-    OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "FakeQuantizeRangeAbsMax");
+    OP_INOUT_CHECK(ctx->HasOutput("OutScale"),
+                   "Output",
+                   "OutScale",
                    "FakeQuantizeRangeAbsMax");
     if (ctx->HasOutput("OutScales")) {
       int window_size = ctx->Attrs().Get<int>("window_size");
@@ -538,11 +634,27 @@ class FakeQuantizeRangeAbsMaxOpMaker
     AddAttr<int>("bit_length", "(int, default 8), quantization bit number.")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
-          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
+          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
+        });
+    AddAttr<int>(
+        "round_type",
+        "(int, default 0) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(2.5)=3")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& round_type) {
+          PADDLE_ENFORCE_EQ(round_type >= 0 && round_type <= 1,
+                            true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 and 1, but "
+                                "the received is %d",
+                                round_type));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
@@ -563,17 +675,24 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOp
     : public framework::OperatorWithKernel {
  public:
   FakeQuantOrWithDequantMovingAverageAbsMaxOp(
-      const std::string& type, const framework::VariableNameMap& inputs,
+      const std::string& type,
+      const framework::VariableNameMap& inputs,
       const framework::VariableNameMap& outputs,
       const framework::AttributeMap& attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+    OP_INOUT_CHECK(ctx->HasInput("X"),
+                   "Input",
+                   "X",
                    "FakeQuantOrWithDequantMovingAverageAbsMax");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+    OP_INOUT_CHECK(ctx->HasOutput("Out"),
+                   "Output",
+                   "Out",
                    "FakeQuantOrWithDequantMovingAverageAbsMax");
-    OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
+    OP_INOUT_CHECK(ctx->HasOutput("OutScale"),
+                   "Output",
+                   "OutScale",
                    "FakeQuantOrWithDequantMovingAverageAbsMax");
     if (ctx->HasOutput("OutState")) {
       ctx->SetOutputDim("OutState", {1});
@@ -612,11 +731,27 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker
     AddAttr<int>("bit_length", "(int, default 8), quantization bit number.")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
-          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
+          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
+        });
+    AddAttr<int>(
+        "round_type",
+        "(int, default 0) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(2.5)=3")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& round_type) {
+          PADDLE_ENFORCE_EQ(round_type >= 0 && round_type <= 1,
+                            true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 and 1, but "
+                                "the received is %d",
+                                round_type));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
@@ -645,9 +780,11 @@ class MovingAverageAbsMaxScaleOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
-                   "MovingAverageAbsMaxScale");
-    OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
+    OP_INOUT_CHECK(
+        ctx->HasInput("X"), "Input", "X", "MovingAverageAbsMaxScale");
+    OP_INOUT_CHECK(ctx->HasOutput("OutScale"),
+                   "Output",
+                   "OutScale",
                    "MovingAverageAbsMaxScale");
 
     if (ctx->HasOutput("OutState")) {
@@ -708,9 +845,13 @@ class StrightThroughEstimatorGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
     auto x_grad_name = framework::GradVarName("X");
-    OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
+    OP_INOUT_CHECK(ctx->HasInput(out_grad_name),
+                   "Input",
+                   out_grad_name,
                    "StrightThroughEstimatorGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
+    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name),
+                   "Output",
+                   x_grad_name,
                    "StrightThroughEstimatorGradOp");
 
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim(out_grad_name));
@@ -745,7 +886,8 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(
-    fake_quantize_abs_max, ops::FakeQuantOrWithDequantAbsMaxOp,
+    fake_quantize_abs_max,
+    ops::FakeQuantOrWithDequantAbsMaxOp,
     ops::FakeQuantOrWithDequantAbsMaxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
@@ -753,7 +895,8 @@ REGISTER_OP_CPU_KERNEL(fake_quantize_abs_max,
                        ops::FakeQuantizeAbsMaxKernel<CPU, float>);
 
 REGISTER_OPERATOR(
-    fake_quantize_dequantize_abs_max, ops::FakeQuantOrWithDequantAbsMaxOp,
+    fake_quantize_dequantize_abs_max,
+    ops::FakeQuantOrWithDequantAbsMaxOp,
     ops::FakeQuantOrWithDequantAbsMaxOpMaker,
     ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>,
     ops::StrightThroughEstimatorMaker<paddle::imperative::OpBase>);
@@ -761,7 +904,8 @@ REGISTER_OP_CPU_KERNEL(fake_quantize_dequantize_abs_max,
                        ops::FakeQuantizeDequantizeAbsMaxKernel<CPU, float>);
 
 REGISTER_OPERATOR(
-    fake_quantize_range_abs_max, ops::FakeQuantizeRangeAbsMaxOp,
+    fake_quantize_range_abs_max,
+    ops::FakeQuantizeRangeAbsMaxOp,
     ops::FakeQuantizeRangeAbsMaxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
@@ -788,7 +932,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CPU, float>);
 
 REGISTER_OPERATOR(
-    fake_channel_wise_quantize_abs_max, ops::FakeChannelWiseQuantizeAbsMaxOp,
+    fake_channel_wise_quantize_abs_max,
+    ops::FakeChannelWiseQuantizeAbsMaxOp,
     ops::FakeChannelWiseQuantizeAbsMaxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
@@ -796,7 +941,8 @@ REGISTER_OP_CPU_KERNEL(fake_channel_wise_quantize_abs_max,
                        ops::FakeChannelWiseQuantizeAbsMaxKernel<CPU, float>);
 
 REGISTER_OPERATOR(
-    moving_average_abs_max_scale, ops::MovingAverageAbsMaxScaleOp,
+    moving_average_abs_max_scale,
+    ops::MovingAverageAbsMaxScaleOp,
     ops::MovingAverageAbsMaxScaleOpMaker,
     ops::StrightThroughEstimatorMaker<paddle::framework::OpDesc>,
     ops::StrightThroughEstimatorMaker<paddle::imperative::OpBase>);
@@ -832,7 +978,7 @@ REGISTER_OP_VERSION(moving_average_abs_max_scale)
             "Delete output in order to make the inference model not "
             "save moving_average_abs_max_scale operator. This will "
             "make the quantitative model be correctly applied in inference."))
-    .AddCheckpoint(
-        R"ROC(Incompatible upgrade of output [Out])ROC",
-        paddle::framework::compatible::OpVersionDesc().NewOutput(
-            "Out", "In order to support dygraph qat, add output again."));
+    .AddCheckpoint(R"ROC(Incompatible upgrade of output [Out])ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewOutput(
+                       "Out",
+                       "In order to support dygraph qat, add output again."));

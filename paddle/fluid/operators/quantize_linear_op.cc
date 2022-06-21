@@ -25,8 +25,11 @@ namespace operators {
 template <typename T>
 struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& dev_ctx,
-                  const framework::Tensor* in, const framework::Tensor* scale,
-                  T max_range, const int quant_axis, framework::Tensor* out) {
+                  const framework::Tensor* in,
+                  const framework::Tensor* scale,
+                  T max_range,
+                  const int quant_axis,
+                  framework::Tensor* out) {
     // Dequant op is before quantized op
     // Dequantize the weight of quantized op
     auto in_dims = in->dims();
@@ -67,8 +70,6 @@ struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct DequantizeFunctor<platform::CPUDeviceContext, float>;
-template struct DequantizeFunctor<platform::CPUDeviceContext, double>;
 template struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, float>;
 template struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, double>;
 
@@ -78,8 +79,8 @@ class QuantizeLinearOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "QuantizeLinear");
     OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "QuantizeLinear");
-    OP_INOUT_CHECK(ctx->HasInput("ZeroPoint"), "Input", "ZeroPoint",
-                   "QuantizeLinear");
+    OP_INOUT_CHECK(
+        ctx->HasInput("ZeroPoint"), "Input", "ZeroPoint", "QuantizeLinear");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "QuantizeLinear");
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
     int quant_axis = ctx->Attrs().Get<int>("quant_axis");
@@ -118,7 +119,8 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0)
         .AddCustomChecker([](const int& quant_axis) {
           PADDLE_ENFORCE_EQ(
-              quant_axis == 0 || quant_axis == 1 || quant_axis == -1, true,
+              quant_axis == 0 || quant_axis == 1 || quant_axis == -1,
+              true,
               platform::errors::InvalidArgument(
                   "'quant_axis' should be 0 or 1, but "
                   "the received is %d",
@@ -127,11 +129,27 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
-          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
+          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
+        });
+    AddAttr<int>(
+        "round_type",
+        "(int, default 0) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(2.5)=3")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& round_type) {
+          PADDLE_ENFORCE_EQ(round_type >= 0 && round_type <= 1,
+                            true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 and 1, but "
+                                "the received is %d",
+                                round_type));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
@@ -156,14 +174,18 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(
-    quantize_linear, ops::QuantizeLinearOp, ops::QuantizeLinearOpMaker,
+    quantize_linear,
+    ops::QuantizeLinearOp,
+    ops::QuantizeLinearOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(quantize_linear, ops::QuantizeLinearKernel<CPU, float>);
 
 REGISTER_OPERATOR(
-    dequantize_linear, ops::QuantizeLinearOp, ops::QuantizeLinearOpMaker,
+    dequantize_linear,
+    ops::QuantizeLinearOp,
+    ops::QuantizeLinearOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
