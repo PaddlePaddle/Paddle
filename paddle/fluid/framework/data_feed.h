@@ -921,6 +921,9 @@ class GraphDataGenerator {
   // point to device_keys_
   size_t cursor_;
   size_t jump_rows_;
+  int64_t* id_tensor_ptr_;
+  int64_t* show_tensor_ptr_;
+  int64_t* clk_tensor_ptr_;
   cudaStream_t stream_;
   paddle::platform::Place place_;
   std::vector<LoDTensor*> feed_vec_;
