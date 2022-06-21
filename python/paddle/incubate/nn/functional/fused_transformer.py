@@ -825,9 +825,9 @@ def fused_multi_transformer(x,
             time_step, attn_mask, linear_weights, linear_biases, ffn_ln_scales,
             ffn_ln_biases, ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases,
             cache_kvs, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
-            'trans_qkvw', trans_qkvw, 'dropout_rate', dropout_rate, 'is_test',
-            not training, 'dropout_implementation', mode, 'act_method',
-            activation, 'ring_id', ring_id)
+            'dropout_rate', dropout_rate, 'is_test', not training,
+            'dropout_implementation', mode, 'act_method', activation,
+            'trans_qkvw', trans_qkvw, 'ring_id', ring_id)
         if cache_kvs is not None:
             return final_out, cache_kv_out
         return final_out
