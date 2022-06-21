@@ -531,6 +531,7 @@ static void PreparedOpRunPtImpl(
         &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type,
         arg_map_fn, default_kernel_signature);
     op.Info().infer_shape_(&infer_shape_ctx);
+    record_event.End();
   }
 
   {
