@@ -321,29 +321,39 @@ def set_variable_data(scope, place, var_name, np_value):
         tensor.set(np_value, place)
 
 
-def quant_tensor(x, scale, quant_axis=0, weight_bits=8):
-    # symmetry quant
-    def _clip(x, scale):
-        x[x > scale] = scale
-        x[x < -scale] = -scale
-        return x
+def round_c_single_element(val):
+    dtype = type(val)
+    if val >= 0:
+        return dtype(np.floor(val + 0.5))
+    return dtype(np.ceil(val - 0.5))
 
+
+# rounding to nearest ties away from zero
+round_c = np.vectorize(round_c_single_element)
+
+
+def quant_tensor(x,
+                 scale,
+                 quant_axis=0,
+                 weight_bits=8,
+                 round_type='TiesToEven'):
     assert quant_axis in [0, 1], 'quant_axis should be 0 or 1 for now.'
+    distribution = np.round if round_type == 'TiesToEven' else round_c
     bnt = (1 << (weight_bits - 1)) - 1
     if isinstance(scale, list):
         for i, s in enumerate(scale):
             if s == 0.0:
                 s = 1e-8
             if quant_axis == 0:
-                x[i] = _clip(x[i], s)
-                x[i] = x[i] / s * bnt
+                x[i] = distribution(x[i] / s * bnt)
+                x[i] = np.clip(x[i], -bnt - 1, bnt)
             else:
-                x[:, i] = _clip(x[:, i], s)
-                x[:, i] = x[:, i] / s * bnt
+                x[:, i] = distribution(x[:, i] / s * bnt)
+                x[:, i] = np.clip(x[:, i], -bnt - 1, bnt)
     else:
         scale = 1e-8 if scale == 0.0 else scale
-        x = _clip(x, scale)
-        x = x / scale * bnt
+        x = distribution(x / scale * bnt)
+        x = np.clip(x, -bnt - 1, bnt)
     return x
 
 
