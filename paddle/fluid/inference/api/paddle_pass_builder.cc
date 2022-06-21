@@ -317,15 +317,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              // "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
              "conv_concat_relu_mkldnn_fuse_pass",
-             "conv_relu_mkldnn_fuse_pass",          //
-             "conv_leaky_relu_mkldnn_fuse_pass",    //
-             "conv_relu6_mkldnn_fuse_pass",         //
-             "conv_swish_mkldnn_fuse_pass",         //
-             "conv_hard_swish_mkldnn_fuse_pass",    //
-             "conv_mish_mkldnn_fuse_pass",          //
-             "conv_hard_sigmoid_mkldnn_fuse_pass",  //
-             // TODO(baoachun) fix int8 accuracy
-             "conv_gelu_mkldnn_fuse_pass",
+             "conv_activation_mkldnn_fuse_pass",              //
              "scale_matmul_fuse_pass",                        //
              "reshape_transpose_matmul_mkldnn_fuse_pass",     //
              "reshape_transpose_matmul_v2_mkldnn_fuse_pass",  //
@@ -414,14 +406,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("conv_transpose_bias_mkldnn_fuse_pass");
     passes_.push_back("conv_elementwise_add_mkldnn_fuse_pass");
     passes_.push_back("conv_concat_relu_mkldnn_fuse_pass");
-    passes_.push_back("conv_relu_mkldnn_fuse_pass");
-    passes_.push_back("conv_leaky_relu_mkldnn_fuse_pass");
-    passes_.push_back("conv_relu6_mkldnn_fuse_pass");
-    passes_.push_back("conv_swish_mkldnn_fuse_pass");
-    passes_.push_back("conv_hard_swish_mkldnn_fuse_pass");
-    passes_.push_back("conv_mish_mkldnn_fuse_pass");
-    passes_.push_back("conv_hard_sigmoid_mkldnn_fuse_pass");
-    passes_.push_back("conv_gelu_mkldnn_fuse_pass");
+    passes_.push_back("conv_activation_mkldnn_fuse_pass");
     passes_.push_back("matmul_transpose_reshape_fuse_pass");
     passes_.push_back("matmul_v2_transpose_reshape_fuse_pass");
     passes_.push_back("batch_norm_act_fuse_pass");

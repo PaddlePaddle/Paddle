@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/strings/strings_copy_kernel.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -20,7 +22,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/strings/gpu/copy_utils.h"
-#include "paddle/phi/kernels/strings/strings_copy_kernel.h"
 
 using pstring = ::phi::dtype::pstring;
 

@@ -437,15 +437,7 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'conv_transpose_bias_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_elementwise_add_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_concat_relu_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_relu_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_leaky_relu_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_relu6_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_swish_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_hard_swish_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_mish_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_hard_sigmoid_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_gelu_mkldnn_fuse_pass')
-
+        graph = self._apply_pass(graph, 'conv_activation_mkldnn_fuse_pass')
         if self._is_fc_quantized(graph):
             # Disabled due to topology-dependent speed-up
             graph = self._apply_pass(graph, 'fc_mkldnn_pass')
