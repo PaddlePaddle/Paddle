@@ -9,32 +9,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/dgc_comm_op.h"
+#include "paddle/fluid/operators/dgc_wait_comm_op.h"
 
 namespace paddle {
 namespace operators {
 
-class DGCCommOp : public framework::OperatorWithKernel {
+class DGCWaitCommOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "DGCCommOp");
-    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "DGCCommOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "DGCCommOp");
-
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
         ring_id, 0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for dgc comm op must be non-negative.", ring_id));
-
-    int nranks = ctx->Attrs().Get<int>("nranks");
-    PADDLE_ENFORCE_GT(
-        nranks, 1,
-        platform::errors::InvalidArgument(
-            "The nranks (%d) for dgc comm op must be greater than 1. ",
-            ring_id));
   }
 
  protected:
@@ -45,23 +34,17 @@ class DGCCommOp : public framework::OperatorWithKernel {
   }
 };
 
-class DGCCommOpMaker : public framework::OpProtoAndCheckerMaker {
+class DGCWaitCommOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(Tensor) encoded grad with 2 * k value in dgc. ");
-    AddInput("Grad", "(Tensor) the grad of the param in dgc. ");
-
-    AddAttr<int>("nranks",
-                 "(int) the number of trainers which must be more than 1.");
-    AddAttr<int>("k_var", "(int) the number of values of sparse grad. ");
-    AddAttr<int>("use_dgc_comm", "(bool) whether to use dgc comm. ");
-    AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
-        .SetDefault(0);
-
-    AddOutput("Out", "(Tensor) the result of dgc comm op.");
+    AddInput("X", "(Tensor) Dependency of the variable need to sync")
+        .AsDuplicable();
+    AddOutput("Out", "(Tensor) Dependency of the variable need to sync")
+        .AsDuplicable();
+    AddAttr<int>("ring_id", "(int default 0) ring id.").SetDefault(0);
     AddComment(R"DOC(
-DGC Comm Operator
-use allgather comm op to compute the grad reduce in dgc.
+CSyncCommStream Operator
+Call communication stream synchronization.
 )DOC");
   }
 };
@@ -71,8 +54,9 @@ use allgather comm op to compute the grad reduce in dgc.
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OPERATOR(dgc_comm, ops::DGCCommOp, ops::DGCCommOpMaker)
+REGISTER_OP_WITHOUT_GRADIENT(dgc_wait_comm, ops::DGCWaitCommOp,
+                             ops::DGCWaitCommOpMaker)
 
 REGISTER_OP_CPU_KERNEL(
-    dgc_comm,
-    ops::DGCCommOpCPUKernel<paddle::platform::CPUDeviceContext, float>);
+    dgc_wait_comm,
+    ops::DGCWaitCommOpCPUKernel<paddle::platform::CPUDeviceContext, float>);

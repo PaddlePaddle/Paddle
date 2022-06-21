@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "dgc/dgc.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/operators/dgc_comm_op.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -27,9 +28,10 @@ class DGCCommOpCUDAKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto grad = ctx.Input<phi::DenseTensor>("Grad");
     auto out = ctx.Output<phi::DenseTensor>("Out");
+    out->mutable_data<T>(grad->dims(), ctx.GetPlace());
+    paddle::framework::TensorCopySync(*grad, ctx.GetPlace(), out);
 
     auto place = ctx.GetPlace();
-    out->ShareDataWith(*grad);
 
     const int ring_id = ctx.Attr<int>("ring_id");
     const int nranks = ctx.Attr<int>("nranks");
@@ -56,13 +58,11 @@ class DGCCommOpCUDAKernel : public framework::OpKernel<T> {
         x_buff, gather_buff, static_cast<int64_t>(2 * k),
         static_cast<ncclDataType_t>(dtype), comm->comm(), stream));
 
-#if defined(PADDLE_WITH_DGC)
     PADDLE_ENFORCE_EQ(
         paddle::communication::dgc::sparseReduce(
             static_cast<void*>(gather_buff), k, out_data, out_numel, nranks,
             stream),
         true, platform::errors::Unavailable("Calling sparseReduce() failed."));
-#endif
   }
 };
 
