@@ -505,41 +505,20 @@ class ConvMKLDNNHandlerT
     if (fuse_residual_conn) {
       post_operations.append_sum(sum_scale);
     }
-    // Fusion with ReLU layer is executed through the PostOps feature. Create a
-    // PostOps object and configure it to execute an eltwise relu operation.
-    if (fuse_activation == "relu" || fuse_activation == "leaky_relu") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_relu, fuse_alpha,
-                                     fuse_beta);
-    } else if (fuse_activation == "relu6") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_bounded_relu,
-                                     fuse_alpha, fuse_beta);
-    } else if (fuse_activation == "swish") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_swish, fuse_alpha,
-                                     fuse_beta);
-    } else if (fuse_activation == "hard_swish") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_hardswish,
-                                     fuse_alpha, fuse_beta);
-    } else if (fuse_activation == "mish") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_mish, fuse_alpha,
-                                     fuse_beta);
-    } else if (fuse_activation == "hard_sigmoid") {
+
+    if (fuse_activation == "hard_sigmoid") {
       post_operations.append_eltwise(activation_scale,
                                      dnnl::algorithm::eltwise_linear,
                                      fuse_alpha, fuse_beta);
       post_operations.append_eltwise(activation_scale,
                                      dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
-    } else if (fuse_activation == "gelu_tanh") {
-      post_operations.append_eltwise(
-          activation_scale, dnnl::algorithm::eltwise_gelu_tanh, 0.0f, 0.0f);
-    } else if (fuse_activation == "gelu_erf") {
-      post_operations.append_eltwise(
-          activation_scale, dnnl::algorithm::eltwise_gelu_erf, 0.0f, 0.0f);
+    } else if (fuse_activation != "") {
+      const auto activation_algorithm =
+          platform::AcquireActivationAlgorithm(fuse_activation);
+      post_operations.append_eltwise(activation_scale, activation_algorithm,
+                                     fuse_alpha, fuse_beta);
     }
+
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
   }

@@ -45,6 +45,10 @@ DeleteQuantDequantFilterOpPass::DeleteQuantDequantFilterOpPass() {
       .End()
       .AddAttr("bit_length")
       .IsIntIn({8, 16})
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
+      .IsIntIn({0, 1})
       .End();
   AddOpCompat(OpCompat("fake_channel_wise_quantize_dequantize_abs_max"))
       .AddInput("X")
@@ -60,6 +64,10 @@ DeleteQuantDequantFilterOpPass::DeleteQuantDequantFilterOpPass() {
       .IsIntIn({8, 16})
       .End()
       .AddAttr("quant_axis")
+      .IsIntIn({0, 1})
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
       .IsIntIn({0, 1})
       .End();
 }
