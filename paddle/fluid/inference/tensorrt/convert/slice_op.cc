@@ -19,7 +19,8 @@ namespace tensorrt {
 class SliceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     // This OP is implemented by trt dynamic shpae plugin.
     // Dynamic shape plugin requires TRT version greater than 6.0.
     VLOG(4) << "convert slice op to tensorrt layer";
@@ -60,17 +61,19 @@ class SliceOpConverter : public OpConverter {
         }
         ends[i] = std::min(ends[i], input_dims.d[axes[i]]);
         PADDLE_ENFORCE_GT(
-            ends[i], starts[i],
+            ends[i],
+            starts[i],
             platform::errors::InvalidArgument(
                 "Attr(ends) should be greater than attr(starts) in "
                 "slice op. But received ends = %d, starts = %d.",
-                ends[i], starts[i]));
+                ends[i],
+                starts[i]));
       }
     }
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
+#if IS_TRT_VERSION_GE(7234)
       auto nchw_input_dims = input->getDimensions();
       nvinfer1::Dims trt_start_dims;
       trt_start_dims.nbDims = nchw_input_dims.nbDims;
@@ -117,8 +120,8 @@ class SliceOpConverter : public OpConverter {
       auto* size_tensor = Sub(Concat(end_vec_tensor), start_tensor);
 #endif
 
-      layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
-                                   trt_size_dims, trt_step_dims);
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Slice, *input, trt_start_dims, trt_size_dims, trt_step_dims);
       layer->setInput(1, *start_tensor);
       layer->setInput(2, *size_tensor);
 
@@ -161,8 +164,8 @@ class SliceOpConverter : public OpConverter {
         trt_start_dims.d[trt_axis] = starts[i];
         trt_size_dims.d[trt_axis] = ends[i] - starts[i];
       }
-      layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
-                                   trt_size_dims, trt_step_dims);
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Slice, *input, trt_start_dims, trt_size_dims, trt_step_dims);
 #else
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
