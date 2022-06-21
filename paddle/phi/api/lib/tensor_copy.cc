@@ -46,6 +46,8 @@ void copy(const Tensor& src, const Place& place, bool blocking, Tensor* dst) {
   phi::UnchangedInferMeta(*dense_x, &meta_out);
 
   phi::Copy(*dev_ctx, *dense_x, place, blocking, kernel_out);
+
+  VLOG(6) << "copy finished. ";
 }
 
 }  // namespace experimental
