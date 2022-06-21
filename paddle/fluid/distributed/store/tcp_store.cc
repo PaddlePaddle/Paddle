@@ -369,9 +369,13 @@ TCPStore::~TCPStore() {
   VLOG(3) << "~TCPStore";
   _client->send_command_for_key(Command::STOP, "");
   ReplyType ret = _client->receive_value<ReplyType>();
-  PADDLE_ENFORCE_EQ(ret, ReplyType::STOP_WAIT,
-                    platform::errors::InvalidArgument(
-                        "The reply for TCPStore destructure must be 0."));
+  if (ret != ReplyType::STOP_WAIT) {
+    std::string msg = paddle::string::Sprintf(
+        "The reply for TCPStore destructure must be ReplyType::STOP_WAIT now "
+        "%d",
+        static_cast<int>(ret));
+    LOG(WARNING) << msg;
+  }
 }
 
 }  // namespace distributed
