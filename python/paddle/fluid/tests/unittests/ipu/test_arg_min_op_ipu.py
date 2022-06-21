@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.nn.functional as F
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
@@ -33,10 +32,9 @@ class TestBase(IPUOpTest):
         self.set_op_attrs()
 
     def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 10, 10])
-        self.feed_fp32 = {'in_0': data.astype(np.float32)}
-        self.feed_fp16 = {'in_0': data.astype(np.float16)}
-        self.feed_list = list(self.feed_fp32.keys())
+        data = np.random.uniform(size=[10, 500]).astype(np.float16)
+        self.feed_fp32 = {"in_0": data.astype(np.float32)}
+        self.feed_fp16 = {"in_0": data.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
@@ -51,7 +49,7 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
-        out = F.log_softmax(x, **self.attrs)
+        out = paddle.fluid.layers.argmin(x, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -62,13 +60,15 @@ class TestBase(IPUOpTest):
             if not self.skip_mode(m):
                 self.build_model()
                 self.run_model(m)
+        for k, v in self.output_dict.items():
+            self.output_dict[k] = v.astype(np.int32)
         self.check()
 
 
 class TestCase1(TestBase):
 
-    def set_attrs(self):
-        self.attrs = {"axis": 1}
+    def set_op_attrs(self):
+        self.attrs = {"axis": 0}
 
 
 if __name__ == "__main__":
