@@ -1861,8 +1861,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       int in_dtype = BOOST_GET_CONST(int, desc.GetAttr("in_dtype"));
       int out_dtype = BOOST_GET_CONST(int, desc.GetAttr("out_dtype"));
       if (in_dtype < 0 || out_dtype < 0) {
-        VLOG(3) << "unknown data type;" 
-        return false;
+        VLOG(3) << "unknown data type"; return false;
       }
       if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2 ||
              in_dtype == 0) &&

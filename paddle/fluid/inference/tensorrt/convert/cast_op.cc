@@ -31,7 +31,8 @@ namespace tensorrt {
 class CastOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a cast op to tensorrt";
     framework::OpDesc op_desc(op, nullptr);
 
