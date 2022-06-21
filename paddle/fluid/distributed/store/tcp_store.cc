@@ -31,6 +31,7 @@ constexpr int INFTIME = 10000;  // 10 seconds
 
 std::unique_ptr<MasterDaemon> MasterDaemon::start(SocketType socket, int nranks,
                                                   int stop_check_timeout) {
+  VLOG(4) << ("begin to run start");
   return std::make_unique<MasterDaemon>(socket, nranks, stop_check_timeout);
 }
 
@@ -44,6 +45,7 @@ MasterDaemon::MasterDaemon(SocketType socket, int nranks,
 }
 
 MasterDaemon::~MasterDaemon() {
+  VLOG(4) << ("begin to destruct MasterDaemon");
   StopByControlFd();
   _background_thread.join();
   tcputils::close_socket(_listen_socket);
@@ -119,6 +121,7 @@ void MasterDaemon::CloseControlFd() {
   }
 }
 void MasterDaemon::StopByControlFd() {
+  VLOG(4) << ("begin to run StopByControlFd");
   if (_control_fd[1] != -1) {
     ::write(_control_fd[1], "\0", 1);
     // close the write end of the pipe
@@ -175,15 +178,17 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
           LOG(WARNING) << "Unknow command: " << static_cast<int>(command)
                        << " from addr info:" << GetSockName(fds[i].fd);
       }
-    } catch (...) {
-      fds.erase(fds.begin() + i + 1);
+    } catch (const std::exception& ex) {
+      fds.erase(fds.begin() + i);
       tcputils::close_socket(fds[i].fd);
-      _sockets.erase(_sockets.begin() + i - 1);
+      _sockets.erase(_sockets.begin() + i - 2);
+      LOG(WARNING) << "Meet exception " << ex.what();
     }
   }
 }
 
 void MasterDaemon::run() {
+  VLOG(4) << "begin to run run _stop:" << _stop << " _has_stop:" << _has_stop;
   std::vector<struct pollfd> fds;
 #ifdef _WIN32
   fds.push_back({_listen_socket, POLLIN});
@@ -214,12 +219,16 @@ void MasterDaemon::run() {
       fds[i].revents = 0;
     }
 
+    VLOG(9) << "begin to poll fds_size:"
+            << paddle::string::Sprintf("%d", fds.size());
 #ifdef _WIN32
     ::WSAPoll(fds.data(), fds.size(), INFTIME);
 #else
     ::poll(fds.data(), fds.size(), INFTIME);
 #endif
 
+    VLOG(9) << "begin to fds[1].revents:"
+            << paddle::string::Sprintf("%d", fds[1].revents);
     // The control pipe receive shutdown event, and begin to close it.
     if (fds[1].revents != 0) {
       if (fds[1].revents & ~(POLLIN | POLLHUP)) {
