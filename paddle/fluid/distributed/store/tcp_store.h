@@ -14,6 +14,13 @@
 
 #pragma once
 
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -43,6 +50,7 @@ class MasterDaemon {
 
  private:
   void run();
+  void ProcessCommands(const std::vector<struct pollfd>& fds);
   void _do_add(SocketType socket);
   void _do_wait(SocketType socket);
   void _do_get(SocketType socket);
@@ -57,6 +65,11 @@ class MasterDaemon {
   bool _stop = false;  // all workers stopped
   std::chrono::time_point<std::chrono::system_clock> _stop_time;
   bool _has_stop = false;  // at least one worker stopped
+
+  void InitControlFd();
+  void CloseControlFd();
+  void StopByControlFd();
+  std::array<int, 2> _control_fd{{-1, -1}};
 };
 
 class TCPServer {
@@ -94,6 +107,7 @@ class TCPClient {
 
 }  // namespace detail
 
+// TODO(gongwb):Add IP6 support.
 class TCPStore : public Store {
  public:
   static constexpr std::uint16_t kDefaultPort = 6170;

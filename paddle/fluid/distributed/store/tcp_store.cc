@@ -39,15 +39,18 @@ MasterDaemon::MasterDaemon(SocketType socket, int nranks,
     : _listen_socket(socket),
       _nranks(nranks),
       _stop_check_timeout(stop_check_timeout) {
+  InitControlFd();
   _background_thread = std::thread{&MasterDaemon::run, this};
 }
 
 MasterDaemon::~MasterDaemon() {
+  StopByControlFd();
   _background_thread.join();
   tcputils::close_socket(_listen_socket);
   for (SocketType socket : _sockets) {
     tcputils::close_socket(socket);
   }
+  CloseControlFd();
 }
 
 void MasterDaemon::_do_add(SocketType socket) {
@@ -66,21 +69,23 @@ void MasterDaemon::_do_add(SocketType socket) {
   std::string new_value_str = std::to_string(new_value);
   _store[key] =
       std::vector<uint8_t>(new_value_str.begin(), new_value_str.end());
-  VLOG(3) << "TCPStore: new value (" << new_value << ") for key (" << key
-          << ").";
+  VLOG(4) << "TCPStore: new value (" << new_value << ") for key (" << key
+          << ") " << GetSocketName(socket);
   tcputils::send_value<int64_t>(socket, new_value);
 }
 
 void MasterDaemon::_do_set(SocketType socket) {
-  VLOG(3) << "MasterDaemon::_do_set";
   std::string key = tcputils::receive_string(socket);
+  VLOG(4) << "MasterDaemon::_do_set key(" << key << ") " << GetSocketName(socket);
+
   auto value = tcputils::receive_vector<uint8_t>(socket);
   _store[key] = value;
 }
 
 void MasterDaemon::_do_get(SocketType socket) {
-  VLOG(3) << "MasterDaemon::_do_get";
   std::string key = tcputils::receive_string(socket);
+  VLOG(4) << "MasterDaemon::_do_get key(" << key << ") " << GetSocketName(socket);
+
   auto iter = _store.find(key);
   PADDLE_ENFORCE_NE(
       iter, _store.end(),
@@ -90,7 +95,7 @@ void MasterDaemon::_do_get(SocketType socket) {
 }
 
 void MasterDaemon::_do_stop(SocketType socket) {
-  VLOG(3) << "MasterDaemon::_do_stop";
+  VLOG(4) << "MasterDaemon::_do_stop " << GetSocketName(socket); 
   if (!_has_stop) {
     _stop_time = std::chrono::system_clock::now();
   }
@@ -102,9 +107,29 @@ void MasterDaemon::_do_stop(SocketType socket) {
   }
 }
 
+void MasterDaemon::InitControlFd(){
+  PADDLE_ENFORCE_NE(pipe(_control_fd.data()),  -1, "failed to cread control pipe errno:%d", errno);
+}
+void MasterDaemon::CloseControlFd(){
+  for (int fd : _control_fd) {
+    if (fd != -1) {
+      ::close(fd);
+    }
+  }
+}
+void MasterDaemon::StopByControlFd(){
+  if (_control_fd[1] != -1) {
+    ::write(_control_fd[1], "\0", 1);
+    // close the write end of the pipe
+    ::close(_control_fd[1]);
+    _control_fd[1] = -1;
+  }
+}
+
 void MasterDaemon::_do_wait(SocketType socket) {
-  VLOG(3) << "MasterDaemon::_do_wait";
   std::string key = tcputils::receive_string(socket);
+  VLOG(4) << "MasterDaemon::_do_wait key(" << key << ") " << GetSocketName(socket);
+
   auto iter = _store.find(key);
   auto reply = ReplyType::STOP_WAIT;
   if (iter == _store.end()) {
@@ -115,12 +140,54 @@ void MasterDaemon::_do_wait(SocketType socket) {
   tcputils::send_value<ReplyType>(socket, reply);
 }
 
+void MasterDaemon::ProcessCommands(const std::vector<struct pollfd>& fds){
+  // FIXME(gongwb): Don't loop all fds of set just the fds who have event.
+  // 0: listen socket, 1:controller pipe, so loop from 2.
+  for (size_t i = 2; i < fds.size(); i++) {
+    try {
+      if (fds[i].revents == 0) {
+        continue;
+      }
+
+      Command command = tcputils::receive_value<Command>(fds[i].fd);
+      VLOG(3) << "TCPStore: recv command: " << static_cast<int>(command)
+              << ".";
+
+      switch (command) {
+        case Command::ADD:
+          _do_add(fds[i].fd);
+          break;
+        case Command::GET:
+          _do_get(fds[i].fd);
+          break;
+        case Command::SET:
+          _do_set(fds[i].fd);
+          break;
+        case Command::WAIT:
+          _do_wait(fds[i].fd);
+          break;
+        case Command::STOP:
+          _do_stop(fds[i].fd);
+          break;
+        default:
+          LOG(WARNING) << "Unknow command: " << static_cast<int>(command) 
+              << " from addr info:" << GetSockName(fds[i].fd));  
+      }
+    } catch (...) {
+      fds.erase(fds.begin() + i);
+      _sockets.erase(_sockets.begin() + i - 1);
+    }
+  }
+}
+
 void MasterDaemon::run() {
   std::vector<struct pollfd> fds;
 #ifdef _WIN32
   fds.push_back({_listen_socket, POLLIN});
+  fds.push_back({_control_fd[0], POLLIN | POLLHUP});
 #else
   fds.push_back({.fd = _listen_socket, .events = POLLIN, .revents = 0});
+  fds.push_back({.fd = _control_fd[0], .events = POLLIN | POLLHUP, .revents=0});
 #endif
 
   while (!_stop) {
@@ -138,6 +205,7 @@ void MasterDaemon::run() {
               " to change the timeout value in seconds. The default one is 900",
               elapsed_seconds));
     }
+
     for (size_t i = 0; i < fds.size(); i++) {
       fds[i].revents = 0;
     }
@@ -147,6 +215,16 @@ void MasterDaemon::run() {
 #else
     ::poll(fds.data(), fds.size(), INFTIME);
 #endif
+
+    // The control pipe receive shutdown event, and begin to close it.
+    if (fds[1].revents != 0) {
+      if (fds[1].revents & ~(POLLIN | POLLHUP)) {
+        PADDLE_THROW(paddle::platform::errors::Fatal("Undefined event type:%d", fds[1].revents));
+      }
+      VLOG(0) << "receive shutdown event and so quit from MasterDaemon run loop";
+      _stop = true;
+      break;
+    }
 
     if (fds[0].revents != 0) {
       auto socket = tcputils::tcp_accept(_listen_socket);
@@ -158,41 +236,7 @@ void MasterDaemon::run() {
 #endif
     }
 
-    for (size_t i = 1; i < fds.size(); i++) {
-      try {
-        if (fds[i].revents == 0) {
-          continue;
-        }
-
-        Command command = tcputils::receive_value<Command>(fds[i].fd);
-        VLOG(3) << "TCPStore: recv command: " << static_cast<int>(command)
-                << ".";
-
-        switch (command) {
-          case Command::ADD:
-            _do_add(fds[i].fd);
-            break;
-          case Command::GET:
-            _do_get(fds[i].fd);
-            break;
-          case Command::SET:
-            _do_set(fds[i].fd);
-            break;
-          case Command::WAIT:
-            _do_wait(fds[i].fd);
-            break;
-          case Command::STOP:
-            _do_stop(fds[i].fd);
-            break;
-          default:
-            VLOG(0) << "Unknow command: " << static_cast<int>(command);
-            exit(-1);
-        }
-      } catch (...) {
-        fds.erase(fds.begin() + i);
-        _sockets.erase(_sockets.begin() + i - 1);
-      }
-    }
+    ProcessCommands(fds);
   }
 }
 
