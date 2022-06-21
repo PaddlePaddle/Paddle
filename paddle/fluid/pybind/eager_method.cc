@@ -245,8 +245,13 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
           place, dense_tensor->data(), sizeof_dtype * numel);
     }
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (self->tensor.is_gpu()) {
+#if defined(PADDLE_WITH_CUDA)   
+    gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
+#elif defined(PADDLE_WITH_HIP)
+    gpuMemcpyKind kind = hipMemcpyDeviceToHost;
+#endif
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -257,7 +262,7 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
           pybind11::detail::array_proxy(array)->data, dense_tensor->data(),
           paddle::framework::DataTypeSize(dense_tensor->dtype()) *
               dense_tensor->numel(),
-          cudaMemcpyDeviceToHost);
+          kind);
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -266,7 +271,7 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
           pybind11::detail::array_proxy(array)->data, dense_tensor->data(),
           paddle::framework::DataTypeSize(dense_tensor->dtype()) *
               dense_tensor->numel(),
-          cudaMemcpyDeviceToHost);
+          kind);
     }
 #endif
   } else {
