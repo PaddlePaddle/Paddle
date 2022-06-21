@@ -183,13 +183,13 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
     int const ldbtransform = 32 * ((m_ + 8 - 1) / 8 * 8);
     int const ldctransform = 32 * n_;
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
-        reinterpret_cast<void**> & Atransform_,
+        reinterpret_cast<void**>(&Atransform_),
         sizeof(int8_t) * ((k_ + 32 - 1) / 32 * 32) / 32 * ldatransform));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
-        reinterpret_cast<void**> & Btransform_,
+        reinterpret_cast<void**>(&Btransform_),
         sizeof(int8_t) * ((k_ + 32 - 1) / 32 * 32) / 32 * ldbtransform));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
-        reinterpret_cast<void**> & Ctransform_,
+        reinterpret_cast<void**>(&Ctransform_),
         sizeof(int8_t) * ((m_ + 32 - 1) / 32 * 32) / 32 * ldctransform));
 
     PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutCreate(
@@ -304,17 +304,17 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
       alpha_tem[i] = alpha_ * inscale_0 * inscale_1 / outscale;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
-        reinterpret_cast<void**> & alpha_scale_, n_ * sizeof(float)));
+        reinterpret_cast<void**>(&alpha_scale_), n_ * sizeof(float)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem[0], n_ * sizeof(float),
                     cudaMemcpyHostToDevice);
     float zero_tem = zero;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMalloc(reinterpret_cast<void**> & alpha_zero_, sizeof(float)));
+        cudaMalloc(reinterpret_cast<void**>(&alpha_zero_), sizeof(float)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
     float one_tem = 1;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMalloc(reinterpret_cast<void**> & alpha_one_, sizeof(float)));
+        cudaMalloc(reinterpret_cast<void**>(&alpha_one_), sizeof(float)));
     cudaMemcpyAsync(alpha_one_, &one_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
   } else if (type_ == nvinfer1::DataType::kHALF) {
@@ -384,12 +384,12 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
 
     half alpha_tem = static_cast<half>(alpha_);
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMalloc(reinterpret_cast<void**> & alpha_scale_, sizeof(half)));
+        cudaMalloc(reinterpret_cast<void**>(&alpha_scale_), sizeof(half)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(half),
                     cudaMemcpyHostToDevice);
     half zero_tem = static_cast<half>(zero);
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMalloc(reinterpret_cast<void**> & alpha_zero_, sizeof(half)));
+        cudaMalloc(reinterpret_cast<void**>(&alpha_zero_), sizeof(half)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(half),
                     cudaMemcpyHostToDevice);
   } else {
@@ -459,12 +459,12 @@ void MatmulPlugin::configurePlugin(const nvinfer1::PluginTensorDesc* inputs,
 
     float alpha_tem = alpha_;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMalloc(reinterpret_cast<void**> & alpha_scale_, sizeof(float)));
+        cudaMalloc(reinterpret_cast<void**>(&alpha_scale_), sizeof(float)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
     float zero_tem = zero;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMalloc(reinterpret_cast<void**> & alpha_zero_, sizeof(float)));
+        cudaMalloc(reinterpret_cast<void**>(&alpha_zero_), sizeof(float)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
   }
@@ -616,13 +616,13 @@ void MatmulPluginDynamic::configurePlugin(
   int const ldbtransform = 32 * ((m_max + 8 - 1) / 8 * 8);
   int const ldctransform = 32 * n_max;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
-      reinterpret_cast<void**> & Atransform_,
+      reinterpret_cast<void**>(&Atransform_),
       sizeof(int8_t) * ((k_max + 32 - 1) / 32 * 32) / 32 * ldatransform));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
-      reinterpret_cast<void**> & Btransform_,
+      reinterpret_cast<void**>(&Btransform_),
       sizeof(int8_t) * ((k_max + 32 - 1) / 32 * 32) / 32 * ldbtransform));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
-      reinterpret_cast<void**> & Ctransform_,
+      reinterpret_cast<void**>(&Ctransform_),
       sizeof(int8_t) * ((m_max + 32 - 1) / 32 * 32) / 32 * ldctransform));
 
   if (type_ == nvinfer1::DataType::kINT8) {
@@ -631,39 +631,39 @@ void MatmulPluginDynamic::configurePlugin(
       alpha_tem[i] = alpha_ * inscale_0 * inscale_1 / outscale;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
-        reinterpret_cast<void**> & alpha_scale_, n_max * sizeof(float)));
+        reinterpret_cast<void**>(&alpha_scale_), n_max * sizeof(float)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem[0], n_max * sizeof(float),
                     cudaMemcpyHostToDevice);
     float zero_tem = zero;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMalloc(reinterpret_cast<void**> & alpha_zero_, sizeof(float)));
+        cudaMalloc(reinterpret_cast<void**>(&alpha_zero_), sizeof(float)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
     float one_tem = 1;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMalloc(reinterpret_cast<void**> & alpha_one_, sizeof(float)));
+        cudaMalloc(reinterpret_cast<void**>(&alpha_one_), sizeof(float)));
     cudaMemcpyAsync(alpha_one_, &one_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
   } else if (type_ == nvinfer1::DataType::kHALF) {
     half alpha_tem = static_cast<half>(alpha_);
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMalloc(reinterpret_cast<void**> & alpha_scale_, sizeof(half)));
+        cudaMalloc(reinterpret_cast<void**>(&alpha_scale_), sizeof(half)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(half),
                     cudaMemcpyHostToDevice);
     half zero_tem = static_cast<half>(zero);
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMalloc(reinterpret_cast<void**> & alpha_zero_, sizeof(half)));
+        cudaMalloc(reinterpret_cast<void**>(&alpha_zero_), sizeof(half)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(half),
                     cudaMemcpyHostToDevice);
   } else {
     float alpha_tem = alpha_;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMalloc(reinterpret_cast<void**> & alpha_scale_, sizeof(float)));
+        cudaMalloc(reinterpret_cast<void**>(&alpha_scale_), sizeof(float)));
     cudaMemcpyAsync(alpha_scale_, &alpha_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
     float zero_tem = zero;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMalloc(reinterpret_cast<void**> & alpha_zero_, sizeof(float)));
+        cudaMalloc(reinterpret_cast<void**>(&alpha_zero_), sizeof(float)));
     cudaMemcpyAsync(alpha_zero_, &zero_tem, sizeof(float),
                     cudaMemcpyHostToDevice);
   }
