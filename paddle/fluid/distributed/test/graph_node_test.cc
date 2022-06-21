@@ -228,7 +228,7 @@ void testFeatureNodeSerializeFloat64() {
 // void testCache();
 void testGraphToBuffer();
 
-std::string edges[] = {
+const char* edges[] = {
     std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
     std::string("37\t112\t0.21"), std::string("96\t48\t1.4"),
     std::string("96\t247\t0.31"), std::string("96\t111\t1.21"),
@@ -237,7 +237,7 @@ std::string edges[] = {
     std::string("97\t247\t0.31"), std::string("97\t111\t0.21")};
 char edge_file_name[] = "edges.txt";
 
-std::string nodes[] = {
+const char* nodes[] = {
     std::string("user\t37\ta 0.34\tb 13 14\tc hello\td abc"),
     std::string("user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd"),
     std::string("user\t59\ta 0.11\tb 11 14"),
@@ -335,7 +335,7 @@ void GetDownpourSparseTableProto(
 
 /*-------------------------------------------------------------------------*/
 
-std::string ip_ = "127.0.0.1", ip2 = "127.0.0.1";
+const char *ip_ = "127.0.0.1", ip2 = "127.0.0.1";
 uint32_t port_ = 5209, port2 = 5210;
 
 std::vector<std::string> host_sign_list_;
@@ -382,7 +382,8 @@ void RunServer2() {
 }
 
 void RunClient(
-    std::map<uint64_t, std::vector<paddle::distributed::Region>>& dense_regions,
+    const std::map<uint64_t, std::vector<paddle::distributed::Region>>&
+        dense_regions,
     int index, paddle::distributed::PsBaseService* service) {
   ::paddle::distributed::PSParameter worker_proto = GetWorkerProto();
   paddle::distributed::PaddlePSEnvironment _ps_env;
@@ -605,7 +606,7 @@ void RunBrpcPushSparse() {
   node_feat =
       client1.get_node_feat(std::string("user"), node_ids, feature_names);
   VLOG(0) << "get_node_feat: " << node_feat[1][0];
-  ASSERT_TRUE(node_feat[1][0] == "helloworld");
+  ASSERT_EQ(node_feat[1][0] == "helloworld");
 
   // Test string
   node_ids.clear();
@@ -698,7 +699,7 @@ void testGraphToBuffer() {
   s.set_feature(0, std::string("hhhh"));
   s.set_id(65);
   int size = s.get_size(true);
-  char str[size];
+  vector<char> str[size];
   s.to_buffer(str, true);
   s1.recover_from_buffer(str);
   ASSERT_EQ(s.get_id(), s1.get_id());

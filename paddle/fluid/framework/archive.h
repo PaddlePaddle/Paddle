@@ -324,9 +324,10 @@ class Archive<BinaryArchiveType> : public ArchiveBase {
     size_t temp = Limit() - Finish();
     int len = snprintf(Finish(), temp, fmt, args...);
     CHECK(len >= 0);  // NOLINT
-    if ((size_t)len >= temp) {
+    if (static_cast<size_t>(len) >= temp) {
       PrepareWrite(len + 1);
-      CHECK(snprintf(Finish(), (size_t)len + 1, fmt, args...) == len);
+      CHECK(snprintf(Finish(), static_cast<size_t>(len) + 1, fmt, args...) ==
+            len);
     }
     AdvanceFinish(len);
   }
@@ -351,7 +352,7 @@ Archive<AR>& operator>>(Archive<AR>& ar, T (&p)[N]) {
 template <class AR, class T>
 Archive<AR>& operator<<(Archive<AR>& ar, const std::vector<T>& p) {
 #ifdef _LINUX
-  ar << (size_t)p.size();
+  ar << static_cast<size_t>(p).size();
 #else
   ar << (uint64_t)p.size();
 #endif
@@ -377,7 +378,7 @@ Archive<AR>& operator>>(Archive<AR>& ar, std::vector<T>& p) {
 template <class AR, class T>
 Archive<AR>& operator<<(Archive<AR>& ar, const std::valarray<T>& p) {
 #ifdef _LINUX
-  ar << (size_t)p.size();
+  ar << static_cast<size_t>(p).size();
 #else
   ar << (uint64_t)p.size();
 #endif
@@ -402,7 +403,7 @@ Archive<AR>& operator>>(Archive<AR>& ar, std::valarray<T>& p) {
 
 inline BinaryArchive& operator<<(BinaryArchive& ar, const std::string& s) {
 #ifdef _LINUX
-  ar << (size_t)s.length();
+  ar << static_cast<size_t>(s.length());
 #else
   ar << (uint64_t)s.length();
 #endif
@@ -529,7 +530,7 @@ Archive<AR>& operator>>(Archive<AR>& ar, std::tuple<T...>& x) {
   template <class AR, class KEY, class VALUE, class... ARGS>                   \
   Archive<AR>& operator<<(Archive<AR>& ar,                                     \
                           const MAP_TYPE<KEY, VALUE, ARGS...>& p) {            \
-    ar << (size_t)p.size();                                                    \
+    ar << static_cast<size_t>(p.size());                                       \
     for (auto it = p.begin(); it != p.end(); ++it) {                           \
       ar << *it;                                                               \
     }                                                                          \
@@ -579,7 +580,7 @@ ARCHIVE_REPEAT(std::unordered_multimap, p.reserve(size))
 #define ARCHIVE_REPEAT(SET_TYPE, RESERVE_STATEMENT)                           \
   template <class AR, class KEY, class... ARGS>                               \
   Archive<AR>& operator<<(Archive<AR>& ar, const SET_TYPE<KEY, ARGS...>& p) { \
-    ar << (size_t)p.size();                                                   \
+    ar << static_cast<size_t>(p.size());                                      \
     for (auto it = p.begin(); it != p.end(); ++it) {                          \
       ar << *it;                                                              \
     }                                                                         \

@@ -15,12 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include <fstream>
+#include <map>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <thread>         // NOLINT
 #include <unordered_map>  // NOLINT
 #include <unordered_set>  // NOLINT
+#include <utility>
 #include <vector>
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 #include "bthread/bthread.h"
@@ -145,7 +147,7 @@ class HeterObjectPool {
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 struct BthreadMutextGuard {
-  BthreadMutextGuard(bthread_mutex_t* rho) {
+  explicit BthreadMutextGuard(bthread_mutex_t* rho) {
     mutex_ = rho;
     bthread_mutex_lock(mutex_);
   }
@@ -220,7 +222,7 @@ class HeterList {
 
   void SetCap(int num) { cap_ = num; }
 
-  bool TryPut(K& key, T& value) {
+  bool TryPut(const K& key, const T& value) {
     std::unique_lock<std::mutex> lock(mutex_);
     cond_.wait(lock, [this] { return size < cap_; });
     if (task_map_.find(key) != task_map_.end()) {
@@ -236,7 +238,7 @@ class HeterList {
     }
   }
 
-  bool Put(K& key, T& value) {
+  bool Put(const K& key, const T& value) {
     std::unique_lock<std::mutex> lock(mutex_);
     cond_.wait(lock, [this] { return size < cap_; });
     HeterNode<K, T>* node = new HeterNode<K, T>;

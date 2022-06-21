@@ -11,7 +11,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_bfloat16_pass.h"
 
+#include <map>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -72,8 +74,9 @@ class Quanter {
 
   int counter = 0;
 
-  Quanter(Graph& graph, ir::Node* const op, const VariableNameMap& op_xputs)
-      : graph(graph), op(op), op_xputs(op_xputs){};
+  Quanter(const Graph& graph, ir::Node* const op,
+          const VariableNameMap& op_xputs)
+      : graph(graph), op(op), op_xputs(op_xputs) {}
 
   virtual bool IsNotPermittedOpType() const = 0;
   virtual bool IsNotPermittedName(const std::string& input_name) const = 0;
@@ -127,7 +130,7 @@ class Quantizer final : public Quanter {
             inputs.size()));
 
     for (auto input : inputs) xputs_map[input->Name()] = input;
-  };
+  }
 
  protected:
   bool IsNotPermittedOpType() const override { return false; }
@@ -175,7 +178,7 @@ class DeQuantizer final : public Quanter {
             outputs.size()));
 
     for (auto output : outputs) xputs_map[output->Name()] = output;
-  };
+  }
 
  protected:
   bool IsNotPermittedOpType() const override {
