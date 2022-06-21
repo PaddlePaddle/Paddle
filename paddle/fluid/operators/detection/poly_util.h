@@ -43,11 +43,11 @@ class Point_ {
 };
 
 template <class T>
-void Array2PointVec(T*& const box, const size_t box_size,
+void Array2PointVec(const T* box, const size_t box_size,
                     std::vector<Point_<T>>* vec);
 
 template <class T>
-void Array2Poly(T*& const box, const size_t box_size, gpc::gpc_polygon* poly);
+void Array2Poly(const T* box, const size_t box_size, gpc::gpc_polygon* poly);
 
 template <class T>
 void PointVec2Poly(const std::vector<Point_<T>>& vec, gpc::gpc_polygon* poly);

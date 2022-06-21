@@ -26,10 +26,10 @@ using gpc::gpc_free_polygon;
 using gpc::gpc_polygon_clip;
 
 template <class T>
-void Array2PointVec(T*& const box, const size_t box_size,
+void Array2PointVec(const T* box, const size_t box_size,
                     std::vector<Point_<T>>* vec) {
   size_t pts_num = box_size / 2;
-  vec.resize(pts_num);
+  (*vec).resize(pts_num);
   for (size_t i = 0; i < pts_num; i++) {
     (*vec).at(i).x = box[2 * i];
     (*vec).at(i).y = box[2 * i + 1];
@@ -37,7 +37,7 @@ void Array2PointVec(T*& const box, const size_t box_size,
 }
 
 template <class T>
-void Array2Poly(T*& const box, const size_t box_size, gpc::gpc_polygon* poly) {
+void Array2Poly(const T* box, const size_t box_size, gpc::gpc_polygon* poly) {
   size_t pts_num = box_size / 2;
   (*poly).num_contours = 1;
   (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));
@@ -72,7 +72,7 @@ template <class T>
 void Poly2PointVec(const gpc::gpc_vertex_list& contour,
                    std::vector<Point_<T>>* vec) {
   int pts_num = contour.num_vertices;
-  vec.resize(pts_num);
+  (*vec).resize(pts_num);
   for (int i = 0; i < pts_num; i++) {
     (*vec).at(i).x = contour.vertex[i].x;
     (*vec).at(i).y = contour.vertex[i].y;
@@ -115,7 +115,7 @@ T PolyOverlapArea(const T* box1, const T* box2, const size_t box_size,
   int contour_num = respoly.num_contours;
   for (int i = 0; i < contour_num; ++i) {
     std::vector<Point_<T>> resvec;
-    Poly2PointVec<T>(respoly.contour[i], resvec);
+    Poly2PointVec<T>(respoly.contour[i], &resvec);
     // inter_area += std::fabs(cv::contourArea(resvec)) + 0.5f *
     // (cv::arcLength(resvec, true));
     inter_area += GetContourArea<T>(resvec);
