@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/flatten_indices.cu.h"
+#include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/sparse_mask_kernel.h"
 
 namespace phi {
@@ -120,7 +121,7 @@ void SparseMaskKernel(const Context& dev_ctx,
       }));
 }
 
-template <typename T, typename IntT>
+template <typename T, typename IntT, int VecSize>
 __global__ void SparseMaskCopyKernel(const IntT* x_indexs,
                                      const IntT* mask_indexs,
                                      const IntT* bound_out,
@@ -129,10 +130,15 @@ __global__ void SparseMaskCopyKernel(const IntT* x_indexs,
                                      const int64_t stride,
                                      T* out_values) {
   CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
+    using LoadT = phi::AlignedVector<T, VecSize>;
+    using StoreT = phi::AlignedVector<T, VecSize>;
     const IntT j = bound_out[i];
     if (j >= 0 && j < n && mask_indexs[i] == x_indexs[j]) {
-      for (int k = 0; k < stride; k++) {
-        out_values[i * stride + k] = x_values[j * stride + k];
+      for (int k = 0; k < stride / VecSize; k++) {
+        // out_values[i * stride + k] = x_values[j * stride + k];
+        LoadT vec_x;
+        phi::Load<T, VecSize>(x_values + j * stride + k * VecSize, &vec_x);
+        phi::Store<T, VecSize>(vec_x, out_values + i * stride + k * VecSize);
       }
     }
   }
@@ -230,16 +236,32 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
   const int64_t stride =
       x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
 
-  SparseMaskCopyKernel<<<config.block_per_grid,
-                         config.thread_per_block,
-                         0,
-                         dev_ctx.stream()>>>(x_indexs_ptr,
-                                             mask_indexs_ptr,
-                                             bound_out_ptr,
-                                             x.non_zero_elements().data<T>(),
-                                             mask_indexs.numel(),
-                                             stride,
-                                             out_ptr);
+  const int VecSize = VecBytes / sizeof(T);
+  if (stride % VecSize == 0) {
+    SparseMaskCopyKernel<T, IntT, VecSize>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           dev_ctx.stream()>>>(x_indexs_ptr,
+                               mask_indexs_ptr,
+                               bound_out_ptr,
+                               x.non_zero_elements().data<T>(),
+                               mask_indexs.numel(),
+                               stride,
+                               out_ptr);
+  } else {
+    SparseMaskCopyKernel<T, IntT, 1>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           dev_ctx.stream()>>>(x_indexs_ptr,
+                               mask_indexs_ptr,
+                               bound_out_ptr,
+                               x.non_zero_elements().data<T>(),
+                               mask_indexs.numel(),
+                               stride,
+                               out_ptr);
+  }
 }
 
 template <typename T, typename Context>
