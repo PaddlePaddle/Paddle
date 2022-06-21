@@ -40,7 +40,7 @@ phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
   PADDLE_ENFORCE_GPU_SUCCESS(cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
 #endif
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
-  platform::RecordMemEvent(ptr, platform::CPUPlace(), size,
+  platform::RecordMemEvent(ptr, platform::CUDAPinnedPlace(), size,
                            platform::TracerMemEventType::ReservedAllocate);
   return new Allocation(ptr, size, platform::CUDAPinnedPlace());
 }

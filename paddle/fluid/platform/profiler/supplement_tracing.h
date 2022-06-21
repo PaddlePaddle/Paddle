@@ -16,12 +16,16 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
 
 namespace paddle {
+
+namespace framework {
+class RuntimeContext;
+}
 namespace platform {
 // Memory event tracing. A trace marks memory manipulation such as allocation
 // and free.

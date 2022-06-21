@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/nvtx.h"
 #endif
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 
 PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler, false,
@@ -266,14 +267,16 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
 RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
                                size_t size, const TracerMemEventType type) {
   if (g_state == ProfilerState::kDisabled &&
-      FLAGS_enable_host_event_recorder_hook == false)
+      FLAGS_enable_host_event_recorder_hook == false) {
     return;
+  }
   if (type == TracerMemEventType::Allocate) {
     uint64_t current_allocated;
     uint64_t peak_allocated;
     uint64_t current_reserved = 0;  // 0 means keep the same as before
     uint64_t peak_reserved = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place)) {
+    if (platform::is_cpu_place(place) ||
+        platform::is_cuda_pinned_place(place)) {
       current_allocated =
           HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
       peak_allocated =
@@ -293,7 +296,8 @@ RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
     uint64_t peak_reserved;
     uint64_t current_allocated = 0;  // 0 means keep the same as before
     uint64_t peak_allocated = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place)) {
+    if (platform::is_cpu_place(place) ||
+        platform::is_cuda_pinned_place(place)) {
       current_reserved =
           HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
       peak_reserved =
@@ -313,7 +317,8 @@ RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
     uint64_t peak_allocated;
     uint64_t current_reserved = 0;  // 0 means keep the same as before
     uint64_t peak_reserved = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place)) {
+    if (platform::is_cpu_place(place) ||
+        platform::is_cuda_pinned_place(place)) {
       current_allocated =
           HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
       peak_allocated =
@@ -333,7 +338,8 @@ RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
     uint64_t peak_reserved;
     uint64_t current_allocated = 0;  // 0 means keep the same as before
     uint64_t peak_allocated = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place)) {
+    if (platform::is_cpu_place(place) ||
+        platform::is_cuda_pinned_place(place)) {
       current_reserved =
           HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
       peak_reserved =
@@ -353,7 +359,9 @@ RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
 
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
                                     size_t size) {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (g_state == ProfilerState::kDisabled) {
+    return;
+  }
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE_EQ(events.count(ptr), 0,
@@ -390,7 +398,9 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
 }
 
 void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (g_state == ProfilerState::kDisabled) {
+    return;
+  }
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
   auto iter = events.find(ptr);
