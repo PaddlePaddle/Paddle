@@ -276,7 +276,7 @@ int32_t MemoryDenseTable::Load(const std::string& path,
           CHECK(str_len == param_col_ids_.size())
               << "expect " << param_col_ids_.size() << " float, but got "
               << str_len;
-          for (int col_idx = 0; col_idx < str_len; ++col_idx) {
+          for (size_t col_idx = 0; col_idx < str_len; ++col_idx) {
             if (param_col_ids_[col_idx] < 0) {
               continue;
             }
