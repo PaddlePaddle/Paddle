@@ -192,7 +192,7 @@ v8sf log256_ps(v8sf x) {
 
   // this is again another AVX2 instruction
   imm0 = avx2_mm256_sub_epi32(imm0,
-                              *reinterpret_cast<const v8sf *>(_pi32_256_0x7f));
+                              *reinterpret_cast<const v8si *>(_pi32_256_0x7f));
   v8sf e = _mm256_cvtepi32_ps(imm0);
 
   e = _mm256_add_ps(e, one);
@@ -457,7 +457,7 @@ v8sf sin256_ps(v8sf x) {  // any x
 
   /* Evaluate the second polynom  (Pi/4 <= x <= 0) */
 
-  v8sf y2 = *reinterpret_cast<const v8sf *> _ps256_sincof_p0;
+  v8sf y2 = *reinterpret_cast<const v8sf *>(_ps256_sincof_p0);
   y2 = _mm256_mul_ps(y2, z);
   y2 = _mm256_add_ps(y2, *reinterpret_cast<const v8sf *>(_ps256_sincof_p1));
   y2 = _mm256_mul_ps(y2, z);
