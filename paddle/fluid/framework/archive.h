@@ -352,7 +352,7 @@ Archive<AR>& operator>>(Archive<AR>& ar, T (&p)[N]) {
 template <class AR, class T>
 Archive<AR>& operator<<(Archive<AR>& ar, const std::vector<T>& p) {
 #ifdef _LINUX
-  ar << static_cast<size_t>(p).size();
+  ar << static_cast<size_t>(p.size());
 #else
   ar << (uint64_t)p.size();
 #endif
@@ -378,7 +378,7 @@ Archive<AR>& operator>>(Archive<AR>& ar, std::vector<T>& p) {
 template <class AR, class T>
 Archive<AR>& operator<<(Archive<AR>& ar, const std::valarray<T>& p) {
 #ifdef _LINUX
-  ar << static_cast<size_t>(p).size();
+  ar << static_cast<size_t>(p.size());
 #else
   ar << (uint64_t)p.size();
 #endif
