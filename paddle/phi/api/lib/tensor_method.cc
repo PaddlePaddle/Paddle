@@ -36,7 +36,8 @@ Tensor Tensor::cast(DataType target_type) const {
 }
 
 Tensor Tensor::copy_to(const Place &place, bool blocking) const {
-  return experimental::copy_to(*this, place, blocking);
+  return experimental::copy_to(
+    *this, detail::GetCorrectPlaceByPlaceType(place), blocking);
 }
 
 template <typename T>

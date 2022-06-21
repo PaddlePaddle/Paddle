@@ -599,5 +599,9 @@ class PADDLE_API Tensor final {
   std::string name_{""};
 };
 
+namespace detail {
+Place GetCorrectPlaceByPlaceType(const Place& place_type);
+}  // namespace detail
+
 }  // namespace experimental
 }  // namespace paddle

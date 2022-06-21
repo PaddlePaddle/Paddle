@@ -40,7 +40,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 namespace detail {
-static Place GetCorrectPlaceByPlaceType(const Place &place_type) {
+Place GetCorrectPlaceByPlaceType(const Place &place_type) {
   auto alloc_type = place_type.GetType();
   switch (alloc_type) {
     case AllocationType::CPU:
@@ -226,7 +226,8 @@ T *Tensor::mutable_data(const Place &place) {
          "the datatype, and data layout of tensor may be in "
          "an illegal state.";
   if (is_dense_tensor()) {
-    return static_cast<phi::DenseTensor *>(impl_.get())->mutable_data<T>(place);
+    return static_cast<phi::DenseTensor *>(impl_.get())->mutable_data<T>(
+        detail::GetCorrectPlaceByPlaceType(place));
   }
   return nullptr;
 }
