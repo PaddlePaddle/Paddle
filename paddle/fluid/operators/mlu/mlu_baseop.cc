@@ -4175,15 +4175,31 @@ MLUCnnlDCNDesc::~MLUCnnlDCNDesc() {
 /* static */ void MLUCnnl::Where(const ExecutionContext& ctx,
                                  const cnnlTensorDescriptor_t x_desc,
                                  const void* x,
-                                 const uint32_t* strides,
-                                 const uint32_t* index,
+                                 const cnnlTensorDescriptor_t num_true_desc,
+                                 const void* num_true,
+                                 const bool as_tuple,
                                  const cnnlTensorDescriptor_t y_desc,
-                                 int* y,
-                                 const bool as_tuple) {
+                                 void* y) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
-
+  size_t workspace_size;
   PADDLE_ENFORCE_MLU_SUCCESS(
-      cnnlWhere(handle, x_desc, x, strides, index, y_desc, y, as_tuple));
+      cnnlGetWhereWorkspaceSize(handle, num_true_desc, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlWhere_v2(handle,
+                                          x_desc,
+                                          x,
+                                          num_true_desc,
+                                          num_true,
+                                          as_tuple,
+                                          workspace_ptr,
+                                          workspace_size,
+                                          y_desc,
+                                          y));
 }
 
 /* static */ void MLUCnnl::InTopK(const ExecutionContext& ctx,
