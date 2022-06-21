@@ -120,11 +120,14 @@ class AutogradMeta : public AbstractAutogradMeta {
   int NumericStopGradient() const { return stop_gradient_; }
 
   void SetStopGradient(bool stop_gradient) {
+    VLOG(3) << "yoki: SetStopGradient stop_gradient: " << stop_gradient_;
     stop_gradient_ = static_cast<int>(stop_gradient);
   }
 
   void WeakSetStopGradient(bool stop_gradient) {
+    VLOG(3) << "yoki: WeakSetStopGradient stop_gradient2: " << stop_gradient_;
     if (stop_gradient_ == -1) {
+      VLOG(3) << "yoki: stop_gradient3: " << static_cast<int>(stop_gradient);
       stop_gradient_ = static_cast<int>(stop_gradient);
     }
   }

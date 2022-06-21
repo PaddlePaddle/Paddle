@@ -83,17 +83,17 @@ if(WIN32)
       VERBATIM)
 else()
     add_custom_target(eager_codegen
-          COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_CURRENT_BINARY_DIR}/../../pybind"
-                "${CMAKE_CURRENT_BINARY_DIR}/eager_generator" 
-                "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
-          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_forward_h_path} ${dygraph_forward_h_path}
-          COMMENT "copy_if_different ${tmp_dygraph_forward_h_path} to ${dygraph_forward_h_path}"
-          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_forward_cc_path} ${dygraph_forward_cc_path}
-          COMMENT "copy_if_different ${tmp_dygraph_forward_cc_path} to ${dygraph_forward_cc_path}"
-          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_node_h_path} ${dygraph_node_h_path}
-          COMMENT "copy_if_different ${tmp_dygraph_node_h_path} to ${dygraph_node_h_path}"
-          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_node_cc_path} ${dygraph_node_cc_path}
-          COMMENT "copy_if_different ${tmp_dygraph_node_cc_path} to ${dygraph_node_cc_path}"
+          # COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_CURRENT_BINARY_DIR}/../../pybind"
+          #       "${CMAKE_CURRENT_BINARY_DIR}/eager_generator" 
+          #       "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
+          # COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_forward_h_path} ${dygraph_forward_h_path}
+          # COMMENT "copy_if_different ${tmp_dygraph_forward_h_path} to ${dygraph_forward_h_path}"
+          # COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_forward_cc_path} ${dygraph_forward_cc_path}
+          # COMMENT "copy_if_different ${tmp_dygraph_forward_cc_path} to ${dygraph_forward_cc_path}"
+          # COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_node_h_path} ${dygraph_node_h_path}
+          # COMMENT "copy_if_different ${tmp_dygraph_node_h_path} to ${dygraph_node_h_path}"
+          # COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_node_cc_path} ${dygraph_node_cc_path}
+          # COMMENT "copy_if_different ${tmp_dygraph_node_cc_path} to ${dygraph_node_cc_path}"
           DEPENDS eager_generator
           VERBATIM)
 endif()
