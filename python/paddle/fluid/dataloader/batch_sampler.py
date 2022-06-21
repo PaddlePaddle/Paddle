@@ -188,6 +188,8 @@ class DistributedBatchSampler(BatchSampler):
             batch indices. Default False.
         drop_last(bool): whether drop the last incomplete batch dataset size
             is not divisible by the batch size. Default False
+        padding(bool): whether to supplement the samples so that it can be divisibled by 
+            the number of GPUs. Default True
 
     Examples:
         .. code-block:: python
@@ -223,7 +225,8 @@ class DistributedBatchSampler(BatchSampler):
                  num_replicas=None,
                  rank=None,
                  shuffle=False,
-                 drop_last=False):
+                 drop_last=False,
+                 padding=True):
         self.dataset = dataset
 
         assert isinstance(batch_size, int) and batch_size > 0, \
@@ -235,6 +238,7 @@ class DistributedBatchSampler(BatchSampler):
         assert isinstance(drop_last, bool), \
                 "drop_last should be a boolean number"
 
+        self.padding = padding
         from paddle.fluid.dygraph.parallel import ParallelEnv
 
         if num_replicas is not None:
@@ -259,8 +263,11 @@ class DistributedBatchSampler(BatchSampler):
     def __iter__(self):
         num_samples = len(self.dataset)
         indices = np.arange(num_samples).tolist()
-        indices += indices[:(self.total_size - len(indices))]
-        assert len(indices) == self.total_size
+
+        if self.padding:
+            indices += indices[:(self.total_size - len(indices))]
+            assert len(indices) == self.total_size
+
         if self.shuffle:
             np.random.RandomState(self.epoch).shuffle(indices)
             self.epoch += 1
@@ -273,11 +280,11 @@ class DistributedBatchSampler(BatchSampler):
             last_local_batch_size = last_batch_size // self.nranks
 
             for i in range(self.local_rank * self.batch_size,
-                           len(indices) - last_batch_size,
+                           self.total_size - last_batch_size,
                            self.batch_size * self.nranks):
                 subsampled_indices.extend(indices[i:i + self.batch_size])
 
-            indices = indices[len(indices) - last_batch_size:]
+            indices = indices[self.total_size - last_batch_size:]
             subsampled_indices.extend(
                 indices[self.local_rank *
                         last_local_batch_size:(self.local_rank + 1) *
@@ -287,7 +294,11 @@ class DistributedBatchSampler(BatchSampler):
         if self.nranks > 1:
             indices = _get_indices_by_batch_size(indices)
 
-        assert len(indices) == self.num_samples
+        if self.padding:
+            assert len(indices) == self.num_samples
+
+        self.real_num_samples = len(indices)
+
         _sample_iter = iter(indices)
 
         batch_indices = []
@@ -300,7 +311,8 @@ class DistributedBatchSampler(BatchSampler):
             yield batch_indices
 
     def __len__(self):
-        num_samples = self.num_samples
+        num_samples = self.real_num_samples
+
         num_samples += int(not self.drop_last) * (self.batch_size - 1)
         return num_samples // self.batch_size
 

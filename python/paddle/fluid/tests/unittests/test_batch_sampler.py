@@ -291,5 +291,31 @@ class TestWeightedRandomSampler(unittest.TestCase):
             self.assertTrue(True)
 
 
+class TestDistributedBatchSampler(unittest.TestCase):
+
+    def test_main(self):
+        dataset = RandomDataset(100, 10)
+        sampler1 = DistributedBatchSampler(dataset, 8, 3, 0, padding=False)
+        sampler2 = DistributedBatchSampler(dataset, 8, 3, 1, padding=False)
+        sampler3 = DistributedBatchSampler(dataset, 8, 3, 2, padding=False)
+
+        act_index = []
+        for data1 in sampler1:
+            act_index += data1
+
+        for data2 in sampler2:
+            act_index += data2
+
+        for data3 in sampler3:
+            act_index += data3
+
+        assert data1 == [96, 97]
+        assert data2 == [98, 99]
+        assert data3 == [88, 89, 90, 91, 92, 93, 94, 95]
+        act_index = sorted(act_index)
+        assert act_index[0] == 0
+        assert act_index[99] == 99
+
+
 if __name__ == '__main__':
     unittest.main()
