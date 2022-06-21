@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/transpose_kernel.h"
+
 #include <vector>
 
 #include "paddle/fluid/framework/gpu_utils.h"
@@ -22,7 +24,6 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
-#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 template <typename T, typename Context>
