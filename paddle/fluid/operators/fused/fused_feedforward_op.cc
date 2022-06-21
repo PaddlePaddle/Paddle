@@ -197,17 +197,25 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "ring id for tensor model parallel.")
         .SetDefault(-1);
     AddComment(R"DOC(
-        the function of fused_feedforward operator is the same as the following pseudo code:
-        residual = src;
-        ln1_out = src;
-        if(pre_layer_norm){
-            ln1_out = layer_norm(src);
-        }
-        out = linear(dropout(activation(dropout(linear(ln1_out)))));
-        if(!pre_layer_norm) {
-            out = layer_norm(out);
-        }
-        )DOC");
+  The fused_feedforward operator is the same as the following pseudo codes:
+
+  residual = src;
+  if (pre_layer_norm)
+    ln1_out = layer_norm(src);
+  else
+    ln1_out = src;
+  // linear 1
+  out = linear(ln1_out);
+  out = dropout(activation(out));
+  // linear 2
+  out = linear(out);
+  if (add_residual)
+    out = residual + dropout(out);
+  else
+    out = dropout(out);
+  if (!pre_layer_norm)
+    out = layer_norm(out);
+  )DOC");
   }
 };
 

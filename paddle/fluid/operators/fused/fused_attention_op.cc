@@ -380,13 +380,15 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(-1);
 
     AddComment(R"DOC(
-  Add fused attention op whose logic is as follows:
-  // @input: [batch_size, seq_len, 3, num_head, head_dim] 
+  The fused_attention operator is the same as following pseudo codes:
+
+  // @input: [batch_size, seq_len, embed_dim] 
   // @final_out: [batch_size, seq_len, num_heads, head_dim] 
+  residual = input
   if (pre_layernorm)
-    out = layer_norm(input);
-	out = compute_qkv(out) + bias;
-	// fmha module
+    query = layer_norm(input);
+  out = compute_qkv(query) + qkv_bias;
+  // fmha module
   {
     out = transpose(out, perm=[2, 0, 3, 1, 4]);
     out = q * k^t;
@@ -397,11 +399,14 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     out = transpose(out, perm=[0, 2, 1, 3]);
                 
   }
-	out = out_linear(out);
-  if (pre_layernorm)
-    final_out = residual + dropout(bias + out);
-  else
-    final_out = layer_norm(residual + dropout(bias + out));
+  // out linear
+  out = linear(out);
+  if add_residual:
+    out = residual + dropout(out);
+  else:
+    out = dropout(out);
+  if (!pre_layernorm)
+    out = layer_norm(out);
     )DOC");
   }
 };
