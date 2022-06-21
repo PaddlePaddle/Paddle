@@ -179,7 +179,8 @@ Node *squeeze_handler(Graph *graph, Node *node) {
 Node *cast_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto otype = BOOST_GET_CONST(int, op->GetAttr("out_dtype"));
-  auto new_node = CreateCast(graph, node, node->inputs, node->outputs, otype);
+  auto new_node = CreateCast(graph, node, node->inputs, node->outputs,
+                             static_cast<VarType::Type>(otype));
   // Cast op created in mixed-precison has no pipline attrs
   auto &prev_nodes = node->inputs.front()->inputs;
   if (!prev_nodes.empty()) {
@@ -356,8 +357,8 @@ Node *slice_handler(Graph *graph, Node *node) {
   } else {
     auto starts_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("starts"));
     auto dim = int64_t(starts_.size());
-    auto attr = MakeConstAttrMap<int>(starts_, {dim}, ONNXDataType::INT32);
-    starts = CreateConst(graph, node, {}, {}, attr);
+    starts = CreateConst(graph, node, std::vector<int>{starts_}, {dim},
+                         ONNXDataType::INT32);
     starts = starts->outputs[0];
   }
   Node *ends = nullptr;
@@ -366,16 +367,16 @@ Node *slice_handler(Graph *graph, Node *node) {
   } else {
     auto ends_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ends"));
     auto dim = int64_t(ends_.size());
-    auto attr = MakeConstAttrMap<int>(ends_, {dim}, ONNXDataType::INT32);
-    ends = CreateConst(graph, node, {}, {}, attr);
+    ends = CreateConst(graph, node, std::vector<int>{ends_}, {dim},
+                       ONNXDataType::INT32);
     ends = ends->outputs[0];
   }
   Node *axes = nullptr;
   {
     auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
     auto dim = int64_t(axes_.size());
-    auto attr = MakeConstAttrMap<int>(axes_, {dim}, ONNXDataType::INT32);
-    axes = CreateConst(graph, node, {}, {}, attr);
+    axes = CreateConst(graph, node, std::vector<int>{axes_}, {dim},
+                       ONNXDataType::INT32);
   }
 
   auto decrease_axis_ =
@@ -424,9 +425,8 @@ Node *expand_handler(Graph *graph, Node *node) {
     auto expand_times_ =
         std::vector<int64_t>{expand_times_i32.begin(), expand_times_i32.end()};
     auto dim = int64_t(expand_times_.size());
-    auto attr =
-        MakeConstAttrMap<int64_t>(expand_times_, {dim}, ONNXDataType::INT64);
-    expand_times = CreateConst(graph, node, {}, {}, attr);
+    expand_times = CreateConst(graph, node, std::vector<int64_t>{expand_times_},
+                               {dim}, ONNXDataType::INT64);
   }
   auto new_node = CreateBaseOp(
       graph, node, "popart_tile",
@@ -593,6 +593,19 @@ Node *split_handler(Graph *graph, Node *node) {
        {"split", std::vector<int64_t>{sections.begin(), sections.end()}}});
 }
 
+Node *dot_handler(Graph *graph, Node *node) {
+  auto x = GetInputVarNode("X", node);
+  auto mul_node = CreateBaseOp(graph, node, "popart_mul",
+                               {x, GetInputVarNode("Y", node)}, {})
+                      ->outputs.front();
+  int64_t axes = x->Var()->GetShape().size() - 1;
+  return CreateBaseOp(graph, node, "popart_reducesum", {mul_node},
+                      {GetOutputVarNode("Out", node)},
+                      {
+                          {"axes", std::vector<int64_t>{axes}},
+                      });
+}
+
 }  // namespace
 }  // namespace ipu
 }  // namespace platform
@@ -621,3 +634,4 @@ REGISTER_HANDLER(lookup_table_v2, lookup_table_v2_handler);
 REGISTER_HANDLER(split, split_handler);
 REGISTER_HANDLER(one_hot, one_hot_handler);
 REGISTER_HANDLER(one_hot_v2, one_hot_v2_handler);
+REGISTER_HANDLER(dot, dot_handler);

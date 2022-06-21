@@ -22,6 +22,7 @@ import os
 import numpy as np
 import math
 import sys
+import tempfile
 
 paddle.enable_static()
 
@@ -247,7 +248,7 @@ def infer(target, save_dirname=None):
         infer_inputs = [to_infer_tensor(t) for t in infer_inputs]
 
         infer_config = fluid.core.NativeConfig()
-        infer_config.model_dir = 'word2vec.inference.model'
+        infer_config.model_dir = save_dirname
         if target == "cuda":
             infer_config.use_gpu = True
             infer_config.device = 0
@@ -273,8 +274,9 @@ def main(target, is_sparse, is_parallel, use_bf16, pure_bf16):
     if use_bf16 and not fluid.core.is_compiled_with_mkldnn():
         return
 
+    temp_dir = tempfile.TemporaryDirectory()
     if not is_parallel:
-        save_dirname = "word2vec.inference.model"
+        save_dirname = os.path.join(temp_dir.name, "word2vec.inference.model")
     else:
         save_dirname = None
 
@@ -290,6 +292,7 @@ def main(target, is_sparse, is_parallel, use_bf16, pure_bf16):
               use_bf16=use_bf16,
               pure_bf16=pure_bf16)
     infer(target, save_dirname)
+    temp_dir.cleanup()
 
 
 FULL_TEST = os.getenv('FULL_TEST',
