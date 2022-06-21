@@ -21,7 +21,7 @@ from paddle.fluid import core
 __all__ = []
 
 
-class PyLayerContext(object):
+class LegacyPyLayerContext(object):
     """
     The object of this class is a context that is used in PyLayer to enhance the function.
 
@@ -181,7 +181,7 @@ class CPyLayer(object):
             return core.pylayer_apply(place, cls, *args, **kwargs)
 
 
-class PyLayerBackward(PyLayerContext):
+class PyLayerBackward(LegacyPyLayerContext):
 
     def backward(self, *args, **kwargs):
         with paddle.fluid.dygraph.guard():
@@ -205,7 +205,7 @@ class LayerMeta(type):
         return super(LayerMeta, cls).__init__(name, bases, attrs)
 
 
-class PyLayer(with_mateclass(LayerMeta, CPyLayer)):
+class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
     """
     Build a custom `Layer` by creating subclasses. Subclasses need to follow the following rules:
     1. Subclasses contain `forward` and `backward` function. Both forward and backward are @staticmethod.
