@@ -55,8 +55,6 @@ void Main() {
     input_num += 1;
     input_data.push_back(std::stof(d));
   }
-  std::cout << "input_num:" << input_num << std::endl;
-  LOG(INFO) << "input_num:" << input_num;
 
   std::vector<float> out_data;
   out_data.resize(1000);
@@ -65,20 +63,17 @@ void Main() {
   auto input_tensor = predictor->GetInputHandle(input_names[0]);
   input_tensor->Reshape(input_shape);
   auto output_tensor = predictor->GetOutputHandle(output_names[0]);
-  LOG(INFO) << "----get input and output tensor-----";
 
   input_tensor->CopyFromCpu(input_data.data());
-  LOG(INFO) << "----start run-----";
   predictor->Run();
   output_tensor->CopyToCpu(out_data.data());
 
-  LOG(INFO) << "----get output result-----:" << out_data.size();
   std::vector<int> out_index(out_data.size());
   std::iota(out_index.begin(), out_index.end(), 0);
-  std::sort(out_index.begin(), out_index.end(),
-            [&out_data](int index1, int index2) {
-              return out_data[index1] > out_data[index2];
-            });
+  std::sort(
+      out_index.begin(), out_index.end(), [&out_data](int index1, int index2) {
+        return out_data[index1] > out_data[index2];
+      });
   LOG(INFO) << "output.size " << out_data.size()
             << "  max_index:" << out_index[0];
   CHECK_EQ(out_data.size(), 1000);
