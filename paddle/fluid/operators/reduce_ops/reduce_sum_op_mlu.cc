@@ -73,6 +73,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_MLU_KERNEL(reduce_sum, ops::ReduceSumMLUKernel<float>,
+                       ops::ReduceSumMLUKernel<int>,
                        ops::ReduceSumMLUKernel<plat::float16>);
 REGISTER_OP_MLU_KERNEL(reduce_sum_grad, ops::ReduceSumGradMLUKernel<float>,
                        ops::ReduceSumGradMLUKernel<plat::float16>);
