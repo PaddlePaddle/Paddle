@@ -43,7 +43,7 @@ class ParallelTuner:
     def __init__(self,
                  dist_context,
                  mode="main",
-                 max_trials=3,
+                 max_trials=150,
                  tuner_id=None,
                  seed=None,
                  logger=None,
@@ -1215,6 +1215,7 @@ class ParallelTuner:
                     for output in op.output_arg_names:
                         dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr.dims_mapping = [-1 for i in range(len(block._var_recursive(output).shape))]
                         dist_context.get_dist_op_for_program(op).dist_attr.set_output_dims_mapping(output, [-1 for i in range(len(block._var_recursive(output).shape))])
+                        dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr.process_mesh = dist_context.get_dist_op_for_program(op).dist_attr.process_mesh
 
 
                     
@@ -1296,9 +1297,9 @@ class ParallelTuner:
             dist=True,
             dist_mode="to_default")
         
-        init_time = 1
-        best_time = init_time
-        # best_time = 10000 # for debug
+        # init_time = 1
+        # best_time = init_time
+        best_time = 10000 # for debug
         start_time = time.time()
         self.construct_space()
         end_time = time.time()
@@ -1669,16 +1670,16 @@ class ParallelTuner:
                     
         erine_pass(self._dist_context)
         
-        # hybrid mp hack to avoid 半自动补全错误
-        for block in self._dist_context.serial_main_program.blocks:
-            for op in block.ops:
-                if op.type == "scale":
-                    if "transpose" in op.input("X")[0]:
-                        dist_op = self._dist_context.get_dist_op_for_program(op)
-                        dist_op.dist_attr.set_input_dims_mapping(op.input("X")[0], [-1, 0, -1, -1])
-                        dist_op.dist_attr.set_output_dims_mapping(op.output("Out")[0], [-1, 0, -1, -1])
-                        output_dist_tensor = self._dist_context.get_dist_tensor_for_program(block._var_recursive(op.output("Out")[0]))
-                        output_dist_tensor.dist_attr.dims_mapping = [-1, 0, -1, -1]
+        # # hybrid mp hack to avoid 半自动补全错误
+        # for block in self._dist_context.serial_main_program.blocks:
+        #     for op in block.ops:
+        #         if op.type == "scale":
+        #             if "transpose" in op.input("X")[0]:
+        #                 dist_op = self._dist_context.get_dist_op_for_program(op)
+        #                 dist_op.dist_attr.set_input_dims_mapping(op.input("X")[0], [-1, 0, -1, -1])
+        #                 dist_op.dist_attr.set_output_dims_mapping(op.output("Out")[0], [-1, 0, -1, -1])
+        #                 output_dist_tensor = self._dist_context.get_dist_tensor_for_program(block._var_recursive(op.output("Out")[0]))
+        #                 output_dist_tensor.dist_attr.dims_mapping = [-1, 0, -1, -1]
 
         # for hybrid cost
         self._estimator = CostEstimator(

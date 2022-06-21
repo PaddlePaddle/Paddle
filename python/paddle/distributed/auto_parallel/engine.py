@@ -196,6 +196,8 @@ class Engine:
                 uninitialized.append(var)
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
+                print("engine.py startup_program")
+                print_program_with_dist_attr(prune_startup_prog, self.dist_context)
                 self._executor.run(prune_startup_prog)
 
     def fit(self,

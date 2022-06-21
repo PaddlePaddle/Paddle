@@ -92,13 +92,18 @@ class SendOpDesc:
         dst (int): The destination process to receive.
     """
 
-    def __init__(self, partition_index, dst, is_bool=False):
+    def __init__(self, partition_index, src, dst, is_bool=False):
         self._dst = dst
         self._partition_index = partition_index
         self._desc = "send"
         self._shape = []
         self._is_bool = is_bool
-
+        self._src = src
+    
+    @property
+    def src(self):
+        return self._src
+        
     @property
     def is_bool(self):
         return self._is_bool
@@ -134,16 +139,22 @@ class RecvOpDesc:
         src (int): The source process to send.
     """
 
-    def __init__(self, partition_index, src, is_bool=False):
+    def __init__(self, partition_index, src, dst, is_bool=False):
         self._src = src
         self._partition_index = partition_index
         self._desc = "recv"
         self._shape = []
         self._is_bool = is_bool
+        self._dst = dst
+    
+    @property
+    def dst(self):
+        return self._dst
     
     @property
     def is_bool(self):
         return self._is_bool
+
     @property
     def partition_index(self):
         return self._partition_index
@@ -254,36 +265,38 @@ class Inserter:
         return out
 
     @staticmethod
-    def insert_send_op(block, idx, tensor, dst, op_role):
+    def insert_send_op(block, idx, tensor, src, dst, op_role):
         """Insert send op into block at the given index."""
         op_type = 'send_v2'
         # print("reshard.py insert send_op", tensor.name, tensor.lod_level)
+        process_group = new_process_group([src, dst])
         block._insert_op(
             idx,
             type=op_type,
             inputs={'X': [tensor]},
             attrs={
-                'ring_id': 0,
-                'peer': dst,
+                'ring_id': process_group.id,
+                'peer': process_group.ranks.index(dst),
                 'use_calc_stream': True,
                 'op_role': op_role,
                 'dynamic_shape': True
             })
     
     @staticmethod
-    def insert_recv_op(block, idx, tensor, src, op_role):
+    def insert_recv_op(block, idx, tensor, src, dst, op_role):
         """Insert recv op into block at the given index."""
         op_type = 'recv_v2'
         # print("reshard.py insert recv_op", tensor.name, tensor.lod_level)
         # print("reshard.py recv tensor", tensor)
+        process_group = new_process_group([src, dst])
         block._insert_op(
             idx,
             type=op_type,
             inputs={'X': [tensor]},
             outputs={'Out': [tensor]},
             attrs={
-                'ring_id': 0,
-                'peer': src,
+                'ring_id': process_group.id,
+                'peer': process_group.ranks.index(src),
                 'out_shape': tensor.shape,
                 'dtype': tensor.dtype,
                 'use_calc_stream': True,
@@ -1314,10 +1327,10 @@ class Resharder:
 
                         # append send and recv op desc
                         is_bool = (dist_tensor.serial_tensor.dtype == paddle.bool)
-                        send_op_desc = SendOpDesc(source_partition_index,
+                        send_op_desc = SendOpDesc(source_partition_index, to_send_process,
                                                   target_process, is_bool=is_bool)
                         recv_op_desc = RecvOpDesc(source_partition_index,
-                                                  to_send_process, is_bool=is_bool)
+                                                  to_send_process, target_process, is_bool=is_bool)
                         op_desc_seq[to_send_process].append(send_op_desc)
                         op_desc_seq[target_process].append(recv_op_desc)
                         has_sent.append(source_partition_index)
@@ -1470,11 +1483,13 @@ class Resharder:
                         # print("reshard.py send bool")
                         out_cast = Inserter.insert_cast_op(block, idx, source_tensor, reshard_op.attr('op_role'), paddle.int64)
                         Inserter.insert_send_op(block, idx+1, out_cast,
+                                                op_desc.src,
                                                 op_desc.dst,
                                                 reshard_op.attr('op_role'))
                         idx += 2
                     else:
                         Inserter.insert_send_op(block, idx, source_tensor,
+                                                op_desc.src,
                                                 op_desc.dst,
                                                 reshard_op.attr('op_role'))                        
                         idx += 1
@@ -1498,6 +1513,7 @@ class Resharder:
                             type=source_tensor.type)
                         Inserter.insert_recv_op(block, idx, recv_tensor, 
                                                 op_desc.src,
+                                                op_desc.dst,
                                                 reshard_op.attr('op_role'))
                         out_cast = Inserter.insert_cast_op(block, idx+1, recv_tensor, reshard_op.attr('op_role'), paddle.bool)
                         tensor_list.append(out_cast)
@@ -1519,6 +1535,7 @@ class Resharder:
                         # recv_tensor.lod = source_tensor.lod
                         Inserter.insert_recv_op(block, idx, recv_tensor,
                                                 op_desc.src,
+                                                op_desc.dst,
                                                 reshard_op.attr('op_role'))
                         if recv_tensor.lod_level != 0:
                             # print("reshard.py enter set lod")
@@ -1972,10 +1989,12 @@ class Resharder:
                                                             if var.dtype == paddle.bool:
                                                                 cast_out = Inserter.insert_cast_op(block, idx+1, var, op.attr('op_role'), paddle.int64)
                                                                 Inserter.insert_send_op(block, idx + 2, cast_out,
+                                                                                        item,
                                                                                         recv_rank,
                                                                                         op.attr('op_role'))
                                                             else:
                                                                 Inserter.insert_send_op(block, idx + 1, var,
+                                                                                        item,
                                                                                         recv_rank,
                                                                                         op.attr('op_role'))
                                                         if self.rank_id == recv_rank:
@@ -1989,6 +2008,7 @@ class Resharder:
                                                                     type=var.type)
                                                                 Inserter.insert_recv_op(block, idx + 1, recv_cast_out,
                                                                                         item,
+                                                                                        recv_rank,
                                                                                         op.attr('op_role'))
                                                                 # cast int64 to bool
                                                                 block._insert_op(
@@ -2002,6 +2022,7 @@ class Resharder:
                                                             else:
                                                                 Inserter.insert_recv_op(block, idx + 1, var,
                                                                                         item,
+                                                                                        recv_rank,
                                                                                         op.attr('op_role'))
 
                                             elif len(tensor_process_mesh.processes) > len(output_attr[0].processes):
@@ -2018,10 +2039,12 @@ class Resharder:
                                                             if var.dtype == paddle.bool:
                                                                 cast_out = Inserter.insert_cast_op(block, idx+1, var, op.attr('op_role'), paddle.int64)
                                                                 Inserter.insert_send_op(block, idx + 2, cast_out,
+                                                                                        item,
                                                                                         recv_rank,
                                                                                         op.attr('op_role'))
                                                             else:
                                                                 Inserter.insert_send_op(block, idx + 1, var,
+                                                                                        item,
                                                                                         recv_rank,
                                                                                         op.attr('op_role'))
                                                         if self.rank_id == recv_rank:
@@ -2035,6 +2058,7 @@ class Resharder:
                                                                     type=var.type)
                                                                 Inserter.insert_recv_op(block, idx + 1, recv_cast_out,
                                                                                         item,
+                                                                                        recv_rank,
                                                                                         op.attr('op_role'))
                                                                 # cast int64 to bool
                                                                 block._insert_op(
@@ -2048,6 +2072,7 @@ class Resharder:
                                                             else:
                                                                 Inserter.insert_recv_op(block, idx + 1, var,
                                                                                         item,
+                                                                                        recv_rank,
                                                                                         op.attr('op_role'))                                         
                                             else:
                                                 for index, tensor_process in enumerate(tensor_process_mesh.processes):
@@ -2058,10 +2083,12 @@ class Resharder:
                                                         if var.dtype == paddle.bool:
                                                             cast_out = Inserter.insert_cast_op(block, idx+1, var, op.attr('op_role'), paddle.int64)
                                                             Inserter.insert_send_op(block, idx + 2, cast_out,
+                                                                                    item,
                                                                                     recv_rank,
                                                                                     op.attr('op_role'))
                                                         else:
                                                             Inserter.insert_send_op(block, idx + 1, var,
+                                                                                    item,
                                                                                     recv_rank,
                                                                                     op.attr('op_role'))
                                                     if self.rank_id == recv_rank:
@@ -2075,6 +2102,7 @@ class Resharder:
                                                                 type=var.type)
                                                             Inserter.insert_recv_op(block, idx + 1, recv_cast_out,
                                                                                     item,
+                                                                                    recv_rank,
                                                                                     op.attr('op_role'))
                                                             # cast int64 to bool
                                                             block._insert_op(
@@ -2088,6 +2116,7 @@ class Resharder:
                                                         else:
                                                             Inserter.insert_recv_op(block, idx + 1, var,
                                                                                     item,
+                                                                                    recv_rank,
                                                                                     op.attr('op_role')) 
                                             # for index, item in enumerate(output_attr[0].processes):
                                             #     print("reshard.py processes", tensor_process_mesh, output_attr[0])
@@ -2121,10 +2150,12 @@ class Resharder:
                                                     if var.dtype == paddle.bool:
                                                         cast_out = Inserter.insert_cast_op(block, idx+1, var, op.attr('op_role'), paddle.int64)
                                                         Inserter.insert_send_op(block, idx + 2, cast_out,
+                                                                                item,
                                                                                 recv_rank,
                                                                                 op.attr('op_role'))
                                                     else:
                                                         Inserter.insert_send_op(block, idx + 1, var,
+                                                                                item,
                                                                                 recv_rank,
                                                                                 op.attr('op_role'))
                                                 if self.rank_id == recv_rank:
@@ -2137,6 +2168,7 @@ class Resharder:
                                                             type=var.type)
                                                         Inserter.insert_recv_op(block, idx + 1, recv_cast_out,
                                                                                 item,
+                                                                                recv_rank,
                                                                                 op.attr('op_role'))
                                                         # cast int64 to bool
                                                         block._insert_op(
@@ -2150,6 +2182,7 @@ class Resharder:
                                                     else:
                                                         Inserter.insert_recv_op(block, idx + 1, var,
                                                                                 item,
+                                                                                recv_rank,
                                                                                 op.attr('op_role'))
 
                                     elif len(tensor_process_mesh.processes) > len(output_attr[0].processes):
@@ -2166,10 +2199,12 @@ class Resharder:
                                                     if var.dtype == paddle.bool:
                                                         cast_out = Inserter.insert_cast_op(block, idx+1, var, op.attr('op_role'), paddle.int64)
                                                         Inserter.insert_send_op(block, idx + 2, cast_out,
+                                                                                item,
                                                                                 recv_rank,
                                                                                 op.attr('op_role'))
                                                     else:
                                                         Inserter.insert_send_op(block, idx + 1, var,
+                                                                                item,
                                                                                 recv_rank,
                                                                                 op.attr('op_role'))
                                                 if self.rank_id == recv_rank:
@@ -2183,6 +2218,7 @@ class Resharder:
                                                             type=var.type)
                                                         Inserter.insert_recv_op(block, idx + 1, recv_cast_out,
                                                                                 item,
+                                                                                recv_rank,
                                                                                 op.attr('op_role'))
                                                         # cast int64 to bool
                                                         block._insert_op(
@@ -2196,6 +2232,7 @@ class Resharder:
                                                     else:
                                                         Inserter.insert_recv_op(block, idx + 1, var,
                                                                                 item,
+                                                                                recv_rank,
                                                                                 op.attr('op_role'))                                           
                                     else:
                                         for index, tensor_process in enumerate(tensor_process_mesh.processes):
@@ -2205,10 +2242,12 @@ class Resharder:
                                                 if var.dtype == paddle.bool:
                                                     cast_out = Inserter.insert_cast_op(block, idx+1, var, op.attr('op_role'), paddle.int64)
                                                     Inserter.insert_send_op(block, idx + 2, cast_out,
+                                                                            item,
                                                                             recv_rank,
                                                                             op.attr('op_role'))
                                                 else:
                                                     Inserter.insert_send_op(block, idx + 1, var,
+                                                                            item,
                                                                             recv_rank,
                                                                             op.attr('op_role'))
                                             if self.rank_id == recv_rank:
@@ -2222,6 +2261,7 @@ class Resharder:
                                                         type=var.type)
                                                     Inserter.insert_recv_op(block, idx + 1, recv_cast_out,
                                                                             item,
+                                                                            recv_rank,
                                                                             op.attr('op_role'))
                                                     # cast int64 to bool
                                                     block._insert_op(
@@ -2235,6 +2275,7 @@ class Resharder:
                                                 else:
                                                     Inserter.insert_recv_op(block, idx + 1, var,
                                                                             item,
+                                                                            recv_rank,
                                                                             op.attr('op_role'))
 
                                     # for index, item in enumerate(output_attr[0].processes):
@@ -2272,6 +2313,8 @@ class Resharder:
 
         # reset some variable when remove operation ended
         Resharder.while_block_info = {}
+        print("reshard.py startup prgram")
+        print_program_with_dist_attr(self.auto_parallel_startup_prog, self.dist_context)
 
     def get_cost(self, op, tensor, cluster):
         # NOTE: The program should be the serial_program which is not been parted
