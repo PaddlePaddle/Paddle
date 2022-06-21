@@ -208,12 +208,6 @@ def declarative(function=None, input_spec=None, build_strategy=None, property=Fa
         """
         Decorates a python function into a StaticFunction object.
         """
-        import inspect
-        print((python_func))
-        print(dir(python_func))
-        print(inspect.signature(python_func))
-        print(inspect.ismethod(python_func))
-        
         # Step 1. unwrap the function if it is already decorated.
         _, python_func = unwrap_decorators(python_func)
 
