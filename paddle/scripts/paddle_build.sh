@@ -2034,7 +2034,7 @@ function parallel_test_base_gpups() {
     ========================================
 EOF
         ut_startTime_s=`date +%s`
-        ctest -L "RUN_TYPE=GPUPS" --timeout 150
+        ctest -L "RUN_TYPE=GPUPS" --timeout 120
         ut_endTime_s=`date +%s`
         echo "GPUPS testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
 
