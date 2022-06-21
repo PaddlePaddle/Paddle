@@ -23,7 +23,8 @@ class ExectorFunction : public BaseFunction {
  public:
   ExectorFunction(const framework::ProgramDesc &program_desc,
                   const std::vector<std::string> param_names,
-                  const VariableNameMap &params_dict, const phi::Place &place)
+                  const VariableNameMap &params_dict,
+                  const phi::Place &place)
       : BaseFunction(program_desc, param_names, params_dict, place),
         inner_exe_(place_) {}
 
@@ -33,7 +34,11 @@ class ExectorFunction : public BaseFunction {
     // share input into scope
     ShareInputsIntoScope(inputs);
     // run program
-    inner_exe_.Run(program_desc_, &scope_, /*blockID=*/0, false, true,
+    inner_exe_.Run(program_desc_,
+                   &scope_,
+                   /*blockID=*/0,
+                   false,
+                   true,
                    schema_.GetOutputArgNames());
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
     // fetch outputs

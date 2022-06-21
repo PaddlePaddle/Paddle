@@ -64,7 +64,8 @@ class BaseFunction {
  public:
   BaseFunction(const framework::ProgramDesc &program_desc,
                const std::vector<std::string> &param_names,
-               const VariableNameMap &params_dict, const phi::Place &place);
+               const VariableNameMap &params_dict,
+               const phi::Place &place);
 
   virtual ~BaseFunction() {}
 

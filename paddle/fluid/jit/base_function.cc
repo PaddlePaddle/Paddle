@@ -83,7 +83,8 @@ void BaseFunction::ShareInputsIntoScope(const std::vector<Variable> &vars) {
   VLOG(3) << "vars size: " << vars.size();
   std::vector<std::string> ordered_input_names = schema_.GetInputArgNames();
   PADDLE_ENFORCE_EQ(
-      vars.size(), ordered_input_names.size(),
+      vars.size(),
+      ordered_input_names.size(),
       platform::errors::InvalidArgument(
           "vars.size() should be equal to ordered_input_names.size()."));
 

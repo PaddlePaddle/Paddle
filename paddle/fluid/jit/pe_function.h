@@ -28,7 +28,8 @@ class PEFunction : public BaseFunction {
  public:
   PEFunction(const framework::ProgramDesc &program_desc,
              const std::vector<std::string> param_names,
-             const VariableNameMap &params_dict, const phi::Place &place)
+             const VariableNameMap &params_dict,
+             const phi::Place &place)
       : BaseFunction(program_desc, param_names, params_dict, place) {}
 
   ~PEFunction() {}
@@ -49,9 +50,13 @@ class PEFunction : public BaseFunction {
     std::vector<std::string> dout_var_names;
     if (end_op_index > start_op_index) {
       // TODO(dev): support other devices
-      auto cache_info = framework::GetExecutorInfoFromCache(
-          program_desc_, place_, start_op_index, end_op_index,
-          /*is_grad=*/false, program_id, &scope_);
+      auto cache_info = framework::GetExecutorInfoFromCache(program_desc_,
+                                                            place_,
+                                                            start_op_index,
+                                                            end_op_index,
+                                                            /*is_grad=*/false,
+                                                            program_id,
+                                                            &scope_);
       auto &parallel_executor = cache_info.first;
       auto &skip_eager_delete_vars =
           framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
@@ -65,7 +70,9 @@ class PEFunction : public BaseFunction {
                                       dout_var_names.begin(),
                                       dout_var_names.end());
         framework::details::ParseSafeEagerDeletionSkipVars(
-            program_desc_, end_op_index, output_var_names,
+            program_desc_,
+            end_op_index,
+            output_var_names,
             &skip_eager_delete_vars);
       }
       parallel_executor->RunWithoutFetch(skip_eager_delete_vars);

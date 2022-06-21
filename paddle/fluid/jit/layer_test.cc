@@ -112,8 +112,8 @@ TEST(GpuLayerTest, Construct) {
   auto outs = layer.forward(inputs);
   auto out_vars = outs[0];
   auto out_dense_tensor = out_vars.Get<DenseTensor>();
-  phi::Copy(*dev_ctx_gpu, out_dense_tensor, phi::CPUPlace(), true,
-            &cpu_dense_tensor);
+  phi::Copy(
+      *dev_ctx_gpu, out_dense_tensor, phi::CPUPlace(), true, &cpu_dense_tensor);
   auto out_data = cpu_dense_tensor.data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
@@ -121,8 +121,8 @@ TEST(GpuLayerTest, Construct) {
   outs = (*func)(inputs);
   out_vars = outs[0];
   out_dense_tensor = out_vars.Get<DenseTensor>();
-  phi::Copy(*dev_ctx_gpu, out_dense_tensor, phi::CPUPlace(), true,
-            &cpu_dense_tensor);
+  phi::Copy(
+      *dev_ctx_gpu, out_dense_tensor, phi::CPUPlace(), true, &cpu_dense_tensor);
   out_data = cpu_dense_tensor.data<float>();
   EXPECT_NEAR(out_data[0], 1.41562390, 1e-6);
 }

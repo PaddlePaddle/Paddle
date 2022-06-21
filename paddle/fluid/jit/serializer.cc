@@ -47,11 +47,16 @@ Layer Deserializer::operator()(const std::string& dir_path) {
 
   auto default_place = imperative::GetCurrentTracer()->ExpectedPlace();
   // Read from one pdiparams file, refine here
-  ReadTensorData(dir_path + "export.forward.pdiparams", param_names_set,
-                 default_place, &params_dict);
+  ReadTensorData(dir_path + "export.forward.pdiparams",
+                 param_names_set,
+                 default_place,
+                 &params_dict);
 
-  return Layer(func_names, program_descs, param_names_for_each_program,
-               params_dict, default_place);
+  return Layer(func_names,
+               program_descs,
+               param_names_for_each_program,
+               params_dict,
+               default_place);
 }
 
 bool Deserializer::IsPersistable(framework::VarDesc* desc_ptr) {
