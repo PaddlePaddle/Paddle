@@ -146,7 +146,9 @@ __global__ void dy_mf_fill_shard_grads_kernel(
   }
 }
 
-__global__ void merge_gradients_kernel(const uint32_t* offset,
+template <typename KeyType>
+__global__ void merge_gradients_kernel(const KeyType* d_keys,
+                                       const uint32_t* offset,
                                        const uint32_t* fea_num,
                                        const uint32_t* index, const char* input,
                                        char* output, int n,
@@ -163,10 +165,13 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
     float* in =
         (float*)(input + size_t(ori_index) * grad_value_size);
     merger_.update_one(out, in, feature_value_accessor);
-    for (int j = 1; j < num; ++j) {
-      ori_index = index[start + j];
-      in = (float*)(input + size_t(ori_index) * grad_value_size);
-      merger_.merge_one(out, in, feature_value_accessor);
+    KeyType key = d_keys[i];
+    if (key != 0) {
+      for (int j = 1; j < num; ++j) {
+        ori_index = index[start + j];
+        in = (float*)(input + size_t(ori_index) * grad_value_size);
+        merger_.merge_one(out, in, feature_value_accessor);
+      }
     }
   }
 }
@@ -316,13 +321,15 @@ void HeterCommKernel::dy_mf_fill_shard_grads(
       grad_value_size, feature_value_accessor_);
 }
 
-template <typename StreamType>
+template <typename KeyType, typename StreamType>
 void HeterCommKernel::merge_gradient(
+    const KeyType* d_keys,
     const uint32_t* offset, const uint32_t* fea_num, const uint32_t* index,
     const char* input, char* output, int n, size_t grad_value_size,
     DynamicGradMerger& merger_, const StreamType& stream) {
   int grid_size = (n - 1) / block_size_ + 1;
   merge_gradients_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_keys,
       offset, fea_num, index, input, output, n, grad_value_size, merger_, feature_value_accessor_);
 }
 
@@ -407,7 +414,14 @@ template void HeterCommKernel::dy_mf_fill_shard_grads<
     float* d_shard_grads, float* d_grads, int* idx, long long len,
     size_t grad_value_size, const cudaStream_t& stream);
 
-template void HeterCommKernel::merge_gradient<cudaStream_t>(
+template void HeterCommKernel::merge_gradient<uint32_t, cudaStream_t>(
+    const uint32_t* d_keys,
+    const uint32_t* offset, const uint32_t* fea_num, const uint32_t* index,
+    const char* input, char* output, int n, size_t grad_value_size,
+    DynamicGradMerger& merger_, const cudaStream_t& stream);
+
+template void HeterCommKernel::merge_gradient<uint64_t, cudaStream_t>(
+    const uint64_t* d_keys,
     const uint32_t* offset, const uint32_t* fea_num, const uint32_t* index,
     const char* input, char* output, int n, size_t grad_value_size,
     DynamicGradMerger& merger_, const cudaStream_t& stream);
