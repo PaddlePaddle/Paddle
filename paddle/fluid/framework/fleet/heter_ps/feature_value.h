@@ -81,7 +81,7 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
 
     __host__ __device__ int Dim() { return 8 + embed_sgd_dim + embedx_sgd_dim + embedx_dim; } // has cpu_ptr(1)
     __host__ __device__ int DimSize(size_t dim, int embedx_dim) { return sizeof(float); }
-    __host__ __device__ int Size() { return (Dim()-1) * sizeof(float) + sizeof(uint64_t); } // cpu_ptr:uint64
+    __host__ __device__ int Size() { return (Dim() - 1) * sizeof(float) + sizeof(uint64_t); } // cpu_ptr:uint64
     __host__ __device__ int EmbedDim() { return embed_sgd_dim;}
     __host__ __device__ int EmbedXDim() { return embedx_sgd_dim;}
     __host__ __device__ int EmbedWDim() { return embedx_dim;}
@@ -97,21 +97,48 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
     __host__ __device__ int EmbedxG2SumIndex() { return MfSizeIndex() + 1; }
     __host__ __device__ int EmbedxWIndex() { return EmbedxG2SumIndex() + embedx_sgd_dim; }
     
+
+    // 根据mf_dim计算的总长度
+    __host__ __device__ int Dim(int& mf_dim) {
+      int tmp_embedx_sgd_dim = 1;
+      if (optimizer_type_ == 3) {//adam
+        tmp_embedx_sgd_dim = mf_dim * 2 + 2;
+      } else if (optimizer_type_ == 4) { //shared_adam
+        tmp_embedx_sgd_dim = 4;
+      }
+      return 8 + embed_sgd_dim + tmp_embedx_sgd_dim + mf_dim;
+    }
+
+    // 根据mf_dim 计算的总byte数
+    __host__ __device__ int Size(int& mf_dim) {
+      return (Dim(mf_dim) - 1) * sizeof(float) + sizeof(uint64_t); // cpu_ptr:2
+    }
+
+    // 根据mf_dim 计算的总byte数
+    __host__ __device__ int MfSize(int& mf_dim) {
+      int tmp_embedx_sgd_dim = 1;
+      if (optimizer_type_ == 3) {//adam
+        tmp_embedx_sgd_dim = mf_dim * 2 + 2;
+      } else if (optimizer_type_ == 4) { //shared_adam
+        tmp_embedx_sgd_dim = 4;
+      }
+      return (tmp_embedx_sgd_dim + mf_dim) * sizeof(float);
+    }
+
     __host__ __device__ int EmbedxG2SumOffsetIndex() { return 0; }
     __host__ __device__ int EmbedxWOffsetIndex(float* val) {
       // has mf 
+      int tmp_embedx_sgd_dim = 1;
       if (int(MfSize(val)) > 0) {
         if (optimizer_type_ == 3) {//adam
-          embedx_sgd_dim = int(MfDim(val)) * 2 + 2;
+          tmp_embedx_sgd_dim = int(MfDim(val)) * 2 + 2;
         } else if (optimizer_type_ == 4) { //shared_adam
-          embedx_sgd_dim = 4;
-        } else {
-          embedx_sgd_dim = 1;
+          tmp_embedx_sgd_dim = 4;
         }
         // PADDLE_ENFORCE(embedx_sgd_dim + int(MfDim(val)) == int(MfSize(val)), 
         //               "The number of embedx_sgd_dim size must be equal to mf_size."
         //               "But got embedx_sgd_dim = %d, mf_size = %s", embedx_sgd_dim, int(MfSize(val)));
-        return EmbedxG2SumIndex() + embedx_sgd_dim; 
+        return EmbedxG2SumIndex() + tmp_embedx_sgd_dim; 
       } else {
         // no mf
         return 0;

@@ -200,8 +200,8 @@ __global__ void dy_mf_fill_dvals_kernel(float* d_shard_vals,
     uint64_t new_offset = uint64_t(idx[i]) * val_size;
     float* cur = (float*)((char*)d_vals + new_offset);
     float* shard_val = (float*)((char*)d_shard_vals + uint64_t(i) * val_size);
-    int mf_dim = int(shard_val[feature_value_accessor.common_feature_value.MfDimIndex()]);
-    feature_value_accessor.DynamicChangeDim(mf_dim);
+    // int mf_dim = int(shard_val[feature_value_accessor.common_feature_value.MfDimIndex()]);
+    // feature_value_accessor.DynamicChangeDim(mf_dim);
     cur[feature_value_accessor.common_feature_value.SlotIndex()] =
       shard_val[feature_value_accessor.common_feature_value.SlotIndex()];
     cur[feature_value_accessor.common_feature_value.ShowIndex()] =
@@ -214,8 +214,10 @@ __global__ void dy_mf_fill_dvals_kernel(float* d_shard_vals,
       shard_val[feature_value_accessor.common_feature_value.EmbedWIndex()];
     cur[feature_value_accessor.common_feature_value.MfSizeIndex()] =
       shard_val[feature_value_accessor.common_feature_value.MfSizeIndex()];
-    cur[feature_value_accessor.common_feature_value.CpuPtrIndex()] =
-      shard_val[feature_value_accessor.common_feature_value.CpuPtrIndex()];
+    for (int i = 0; i < 2; i ++) {
+      cur[feature_value_accessor.common_feature_value.CpuPtrIndex() + i] =
+        shard_val[feature_value_accessor.common_feature_value.CpuPtrIndex() + i];
+    }
     cur[feature_value_accessor.common_feature_value.DeltaScoreIndex()] =
       shard_val[feature_value_accessor.common_feature_value.DeltaScoreIndex()];
     cur[feature_value_accessor.common_feature_value.EmbedWIndex()] =

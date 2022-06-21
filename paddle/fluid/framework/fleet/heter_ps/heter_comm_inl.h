@@ -459,16 +459,18 @@ int HeterComm<KeyType, ValType, GradType>::get_index_by_devid(int devid) {
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::set_sparse_sgd(
     const OptimizerConfig& optimizer_config) {
-  for (auto& table : tables_) {
-    table->set_sparse_sgd(optimizer_config);
+  for (int i = 0; i < resource_->total_device(); ++i) {
+    AnyDeviceGuard guard(resource_->dev_id(i));
+    ptr_tables_[i]->set_sparse_sgd(optimizer_config);
   }
 }
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::set_embedx_sgd(
     const OptimizerConfig& optimizer_config) {
-  for (auto& table : tables_) {
-    table->set_embedx_sgd(optimizer_config);
+  for (int i = 0; i < resource_->total_device(); ++i) {
+    AnyDeviceGuard guard(resource_->dev_id(i));
+    ptr_tables_[i]->set_embedx_sgd(optimizer_config);
   }
 }
 
@@ -915,7 +917,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   auto d_idx = memory::Alloc(place, len * sizeof(int));
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
   size_t val_type_size = TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().size);
-  VLOG(5) << "pull_sparse len:" << len << "  val_type_size: " << val_type_size;  
+  VLOG(3) << "pull_sparse len:" << len << "  val_type_size: " << val_type_size;
   auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
   auto d_shard_vals = memory::Alloc(place, len * val_type_size);
@@ -996,6 +998,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     }
     destroy_storage(num, i);
   }
+  VLOG(0) << "pull sparse done";
 }
 
 #if defined(PADDLE_WITH_CUDA)
@@ -1148,6 +1151,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
     }
     destroy_storage(dev_num, i);
   }
+
+  VLOG(0) << " PUSHSPARSE destroy_storage done";
+
 }
 
 #elif defined(PADDLE_WITH_XPU_KP)

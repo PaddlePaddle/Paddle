@@ -395,8 +395,7 @@ void PSGPUWrapper::SetSparseSGD(float nonclk_coeff,
 				float beta1_decay_rate,
                                 float beta2_decay_rate, 
 				float ada_epsilon) {
-  OptimizerConfig optimizer_config;
-  optimizer_config.set_sparse_sgd(nonclk_coeff,
+  optimizer_config_.set_sparse_sgd(nonclk_coeff,
                                   clk_coeff,
                                   min_bound,
                                   max_bound,
@@ -406,7 +405,6 @@ void PSGPUWrapper::SetSparseSGD(float nonclk_coeff,
                                   beta1_decay_rate, 
 				  beta2_decay_rate, 
 				  ada_epsilon);
-  HeterPs_->set_sparse_sgd(optimizer_config);
 }
 
 void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
@@ -418,8 +416,7 @@ void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
 				float mf_beta1_decay_rate,
                                 float mf_beta2_decay_rate, 
 				float mf_ada_epsilon) {
-  OptimizerConfig optimizer_config;
-  optimizer_config.set_embedx_sgd(mf_create_thresholds,
+  optimizer_config_.set_embedx_sgd(mf_create_thresholds,
                                   mf_learning_rate,
                                   mf_initial_g2sum,
                                   mf_initial_range,
@@ -428,7 +425,6 @@ void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
 				  mf_beta1_decay_rate,
                                   mf_beta2_decay_rate, 
 				  mf_ada_epsilon);
-  HeterPs_->set_embedx_sgd(optimizer_config);
 }
 
 }  // end namespace framework
