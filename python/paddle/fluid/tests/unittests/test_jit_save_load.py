@@ -1153,6 +1153,62 @@ class LayerSaved(paddle.nn.Layer):
         return self._linear_2(y)
 
 
+class Net(paddle.nn.Layer):
+    x_spec = [InputSpec([None, 4],dtype='float32')]
+    
+    def __init__(self):
+        super(Net, self).__init__()
+        self.fc1 = paddle.nn.Linear(4, 4)
+        self.fc2 = paddle.nn.Linear(4, 4)
+        self.bias = 0.4
+        self.flag = paddle.ones([2],dtype="int32")
+    ################## 导出函数 ① ##################
+    @to_static(input_spec=Net.x_spec)
+    def forward(self, x):
+        out = self.fc1(x)
+        out = paddle.nn.functional.relu(out)
+        out = paddle.mean(out)
+        return out
+    ################## 导出函数 ② ##################
+    @to_static(input_spec=Net.x_spec)
+    def infer(self, input):
+        out = self.fc2(input)
+        out = out + self.bias
+        out = paddle.mean(out)
+        return out
+    ################## 导出变量 ① ##################
+    # For extra Python float
+    @to_static(property=True)
+    def fbias(self):
+        return self.bias + 1
+    ################## 导出变量 ② ##################
+    # For extra Tensor
+    @to_static(property=True)
+    def fflag(self):
+        return self.flag
+    
+
+class TestJitSaveCombine(unittest.TestCase):
+
+    def setUp(self):
+        # enable dygraph mode
+        paddle.disable_static()
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_save_load_finetune_load(self):
+        model_path = os.path.join(
+            self.temp_dir.name, "test_jit_save_combine/model")
+
+        # Use new namespace
+        with unique_name.guard():
+            net = Net()
+        #save
+        paddle.jit.save(net, model_path, use_combine=True)
+
+
 class LayerLoadFinetune(paddle.nn.Layer):
 
     def __init__(self, in_size, out_size, load_path):

@@ -204,11 +204,16 @@ def declarative(function=None, input_spec=None, build_strategy=None, property=Fa
             print(x_v) # [[2. 2.]]
 
     """
-
     def decorated(python_func):
         """
         Decorates a python function into a StaticFunction object.
         """
+        import inspect
+        print((python_func))
+        print(dir(python_func))
+        print(inspect.signature(python_func))
+        print(inspect.ismethod(python_func))
+        
         # Step 1. unwrap the function if it is already decorated.
         _, python_func = unwrap_decorators(python_func)
 
@@ -864,41 +869,23 @@ def save(layer, path, input_spec=None, **configs):
             layer,
         ]
     
-    # when save multi `StaticFunction`, all `StaticFunction` share params.
-    dygraph_state_dict = None
-    if isinstance(inner_layer, Layer):
-        dygraph_state_dict = inner_layer.to_static_state_dict()
-    elif isinstance(attr_func, StaticFunction):
-        if attr_func._class_instance:
-            dygraph_state_dict = attr_func._class_instance.to_static_state_dict(
-            )
 
-    if dygraph_state_dict:
-        # NOTE(chenweihang): we maintain the mapping of variable name to
-        # structured name, the buffer variable (non-persistable)
-        # saved to inference program may not need by dygraph Layer,
-        # we only record the state_dict variable's structured name
-        state_names_dict = dict()
-        state_var_dict = dict()
-        for structured_name, var in six.iteritems(dygraph_state_dict):
-            state_names_dict[var.name] = structured_name
-            state_var_dict[var.name] = var
              
     # when use_combine is True and input `Layer` is `Layer`, will save multi StaticFunction else only one
     static_programs = []
     all_vars = set()
     property_vals = []
     
-    for attr_func in functions:
+    for attr_func in functions:     
         if isinstance(layer, Layer):
             static_func = getattr(inner_layer, attr_func, None)
             if isinstance(static_func, StaticFunction):
                 if static_func.is_property:
                     # property method to be exported
-                    immediate_val = StaticFunction()
-                    property_vals.append(immediate_val)
+                    immediate_val = static_func()
+                    property_vals.append((immediate_val, attr_func))
                     continue
-                    
+                
                 concrete_program = static_func.concrete_program_specify_input_spec(
                     inner_input_spec, with_hook=with_hook)
             elif 'forward' == attr_func:
@@ -923,7 +910,8 @@ def save(layer, path, input_spec=None, **configs):
             if isinstance(attr_func, StaticFunction):
                 if static_func.is_property:
                     # property method to be exported
-                    immediate_val = StaticFunction()
+                    immediate_val = static_func()
+                    property_vals.append((immediate_val, attr_func))
                     continue
                 
                 concrete_program = attr_func.concrete_program_specify_input_spec(
@@ -941,6 +929,26 @@ def save(layer, path, input_spec=None, **configs):
                         '`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'
                         .format(layer))
 
+        # when save multi `StaticFunction`, all `StaticFunction` share params.
+        dygraph_state_dict = None
+        if isinstance(inner_layer, Layer):
+            dygraph_state_dict = inner_layer.to_static_state_dict()
+        elif isinstance(attr_func, StaticFunction):
+            if attr_func._class_instance:
+                dygraph_state_dict = attr_func._class_instance.to_static_state_dict(
+                )
+
+        if dygraph_state_dict:
+            # NOTE(chenweihang): we maintain the mapping of variable name to
+            # structured name, the buffer variable (non-persistable)
+            # saved to inference program may not need by dygraph Layer,
+            # we only record the state_dict variable's structured name
+            state_names_dict = dict()
+            state_var_dict = dict()
+            for structured_name, var in six.iteritems(dygraph_state_dict):
+                state_names_dict[var.name] = structured_name
+                state_var_dict[var.name] = var
+            
         # 3. share parameters from Layer to scope & record var info
         with dygraph.guard():
             for param_or_buffer in concrete_program.parameters:
@@ -1036,6 +1044,8 @@ def save(layer, path, input_spec=None, **configs):
                     dirname=model_path,
                     vars=list(filter(fluid.io.is_persistable, all_vars)),
                     filename=params_filename)
+            
+        print('property vals:', property_vals)
      
     # NOTE(chenweihang): [ Save extra variable info ]
     # save_inference_model will lose some important variable information, including:

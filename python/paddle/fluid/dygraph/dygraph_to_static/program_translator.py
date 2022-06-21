@@ -252,15 +252,17 @@ class StaticFunction(object):
             **kwargs(dict): other arguments like `build_strategy` et.al.
         """
         # save the instance `self` while decorating a method of class.
+        
         if inspect.ismethod(function):
             self._dygraph_function = getattr(function, '__func__')
             self._class_instance = getattr(function, '__self__')
+
             self._class_instance._original_funcs[
                 function.__name__] = self._dygraph_function
         else:
             self._dygraph_function = function
             self._class_instance = None
-
+            
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)
         self._program_cache = ProgramCache()
@@ -332,7 +334,7 @@ class StaticFunction(object):
         return self._descriptor_cache[instance]
 
     def _clone(self):
-        return self.__class__(self._dygraph_function, self._input_spec)
+        return self.__class__(self._dygraph_function, self._input_spec, **self._kwargs)
 
     def __call__(self, *args, **kwargs):
         """
@@ -346,7 +348,7 @@ class StaticFunction(object):
             Outputs of decorated function.
         """
         if self._property:
-            return self._dygraph_function()
+            return self._call_dygraph_function(*args, **kwargs)
 
         # 1. call dygraph function directly if not enable `declarative`
         if not self._program_trans.enable_to_static:
