@@ -16,6 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import tempfile
+import os
 import paddle
 import paddle.nn as nn
 import paddle.optimizer as opt
@@ -76,6 +78,9 @@ def train(layer, loader, loss_fn, opt):
 
 class TestTranslatedLayer(unittest.TestCase):
 
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def setUp(self):
         # enable dygraph mode
         place = paddle.CPUPlace()
@@ -100,11 +105,14 @@ class TestTranslatedLayer(unittest.TestCase):
                                            drop_last=True,
                                            num_workers=0)
 
+        self.temp_dir = tempfile.TemporaryDirectory()
+
         # train
         train(self.layer, self.loader, self.loss_fn, self.sgd)
 
         # save
-        self.model_path = "linear.example.model"
+        self.model_path = os.path.join(self.temp_dir.name,
+                                       './linear.example.model')
         paddle.jit.save(self.layer, self.model_path)
 
     def test_inference_and_fine_tuning(self):

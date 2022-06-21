@@ -481,10 +481,10 @@ EOF
 }
 
 function cmake_gen_and_build() {
-    startTime_s=100
+    startTime_s=`date +%s`
     cmake_gen $1
     build $2
-    endTime_s=200
+    endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -955,6 +955,9 @@ function fetch_upstream_develop_if_not_exist() {
 }
 
 function check_whl_size() {
+    if [ ${BRANCH} != 'develop' ];then
+        return
+    fi
 
     set +x
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/*.whl|awk '{print $1}'`
@@ -1094,6 +1097,10 @@ function check_approvals_of_unittest() {
             fi
         fi
     elif [ $check_times == 3 ]; then
+        if [ ${BRANCH} != 'develop' ];then
+            return
+        fi
+
         rm -f fluidInference_so_size
         curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
         oriBuildSize=`cat fluidInference_so_size`
@@ -3143,11 +3150,11 @@ function collect_ccache_hits() {
 
 function test_op_benchmark() {
     # The PR will pass quickly when get approval from specific person.
-    # Xreki 12538138, luotao1 6836917, ZzSean 32410583
+    # Xreki 12538138, luotao1 6836917, ZzSean 32410583, JamesLim-sy 61349199
     set +x
     approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
     if [ "${approval_line}" != "" ]; then
-        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917)
+        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917 61349199)
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "TRUE" ]; then
             echo "==================================="
@@ -3276,6 +3283,10 @@ function build_develop() {
 }
 
 function check_coverage_build() {
+    if [ ${BRANCH} != 'develop' ];then
+        return
+    fi
+
     rm -f build_size
     curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
     curl -O https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/coverage_build_size
@@ -3299,7 +3310,6 @@ function check_coverage_build() {
     fi
     set -x
 }
-
 
 function main() {
     local CMD=$1 

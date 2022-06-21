@@ -74,10 +74,7 @@ class TestPSPassWithBow(unittest.TestCase):
         is_sparse = True
 
         # query
-        q = fluid.layers.data(name="query_ids",
-                              shape=[1],
-                              dtype="int64",
-                              lod_level=1)
+        q = fluid.layers.data(name="1", shape=[1], dtype="int64", lod_level=1)
         # embedding
         q_emb = fluid.contrib.layers.sparse_embedding(
             input=q,
@@ -101,10 +98,7 @@ class TestPSPassWithBow(unittest.TestCase):
         # label data
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
         # pt
-        pt = fluid.layers.data(name="pos_title_ids",
-                               shape=[1],
-                               dtype="int64",
-                               lod_level=1)
+        pt = fluid.layers.data(name="2", shape=[1], dtype="int64", lod_level=1)
         # embedding
         pt_emb = fluid.contrib.layers.sparse_embedding(
             input=pt,
@@ -127,10 +121,7 @@ class TestPSPassWithBow(unittest.TestCase):
                 learning_rate=base_lr),
             bias_attr=fluid.ParamAttr(name="__fc_b__"))
         # nt
-        nt = fluid.layers.data(name="neg_title_ids",
-                               shape=[1],
-                               dtype="int64",
-                               lod_level=1)
+        nt = fluid.layers.data(name="3", shape=[1], dtype="int64", lod_level=1)
         # embedding
         nt_emb = fluid.contrib.layers.sparse_embedding(
             input=nt,
@@ -184,6 +175,45 @@ class TestPSPassWithBow(unittest.TestCase):
         optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(loss)
+
+    def test_gpups_dataset(self):
+        """
+        Testcase for GPUPS InMemoryDataset .
+        """
+        with open("test_in_memory_dataset_run_a.txt", "w") as f:
+            data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
+            data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
+            data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
+            f.write(data)
+        with open("test_in_memory_dataset_run_b.txt", "w") as f:
+            data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
+            data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
+            data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
+            data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
+            f.write(data)
+
+        slots = ["slot1", "slot2", "slot3", "slot4"]
+        slots_vars = []
+        for slot in slots:
+            var = fluid.layers.data(name=slot,
+                                    shape=[1],
+                                    dtype="int64",
+                                    lod_level=1)
+            slots_vars.append(var)
+
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset._set_use_ps_gpu(True)
+        dataset.init(batch_size=32,
+                     thread_num=3,
+                     pipe_command="cat",
+                     use_var=slots_vars)
+        dataset.set_filelist([
+            "test_in_memory_dataset_run_a.txt",
+            "test_in_memory_dataset_run_b.txt"
+        ])
+
+        os.remove("./test_in_memory_dataset_run_a.txt")
+        os.remove("./test_in_memory_dataset_run_b.txt")
 
 
 if __name__ == '__main__':

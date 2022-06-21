@@ -516,7 +516,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
   std::vector<int64_t> local_id;
   std::vector<int> local_query_idx;
   size_t rank = GetRank();
-  for (int query_idx = 0; query_idx < node_num; ++query_idx) {
+  for (size_t query_idx = 0; query_idx < node_num; ++query_idx) {
     int server_index =
         ((GraphTable *)table)->get_server_index_by_id(node_data[query_idx]);
     if (server2request[server_index] == -1) {
@@ -538,7 +538,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
   std::vector<size_t> seq;
   std::vector<std::vector<int64_t>> node_id_buckets(request_call_num);
   std::vector<std::vector<int>> query_idx_buckets(request_call_num);
-  for (int query_idx = 0; query_idx < node_num; ++query_idx) {
+  for (size_t query_idx = 0; query_idx < node_num; ++query_idx) {
     int server_index =
         ((GraphTable *)table)->get_server_index_by_id(node_data[query_idx]);
     int request_idx = server2request[server_index];
@@ -547,7 +547,8 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
     seq.push_back(request_idx);
   }
   size_t remote_call_num = request_call_num;
-  if (request2server.size() != 0 && request2server.back() == rank) {
+  if (request2server.size() != 0 &&
+      static_cast<size_t>(request2server.back()) == rank) {
     remote_call_num--;
     local_buffers.resize(node_id_buckets.back().size());
     local_actual_sizes.resize(node_id_buckets.back().size());
@@ -582,7 +583,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
     for (size_t i = 0; i < node_num; i++) {
       if (fail_num > 0 && failed[seq[i]]) {
         size = 0;
-      } else if (request2server[seq[i]] != rank) {
+      } else if (static_cast<size_t>(request2server[seq[i]]) != rank) {
         res[seq[i]]->copy_and_forward(&size, sizeof(int));
       } else {
         size = local_actual_sizes[local_index++];
@@ -596,7 +597,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
     for (size_t i = 0; i < node_num; i++) {
       if (fail_num > 0 && failed[seq[i]]) {
         continue;
-      } else if (request2server[seq[i]] != rank) {
+      } else if (static_cast<size_t>(request2server[seq[i]]) != rank) {
         char temp[actual_size[i] + 1];
         res[seq[i]]->copy_and_forward(temp, actual_size[i]);
         cntl->response_attachment().append(temp, actual_size[i]);
@@ -614,7 +615,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
   closure->add_promise(promise);
   std::future<int> fut = promise->get_future();
 
-  for (int request_idx = 0; request_idx < remote_call_num; ++request_idx) {
+  for (size_t request_idx = 0; request_idx < remote_call_num; ++request_idx) {
     int server_index = request2server[request_idx];
     closure->request(request_idx)->set_cmd_id(PS_GRAPH_SAMPLE_NEIGHBORS);
     closure->request(request_idx)->set_table_id(request.table_id());

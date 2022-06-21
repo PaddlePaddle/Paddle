@@ -349,14 +349,14 @@ def create_api_shape_node(tensor_shape_node):
 
     if isinstance(tensor_shape_node, gast.Name):
         api_shape_node = gast.Call(
-            func=gast.parse('fluid.layers.shape').body[0].value,
+            func=gast.parse('paddle.shape').body[0].value,
             args=[tensor_shape_node],
             keywords=[])
         return api_shape_node
 
     if isinstance(tensor_shape_node, gast.Attribute):
         api_shape_node = gast.Call(
-            func=gast.parse('fluid.layers.shape').body[0].value,
+            func=gast.parse('paddle.shape').body[0].value,
             args=[tensor_shape_node.value],
             keywords=[])
         return api_shape_node
@@ -368,8 +368,8 @@ def create_api_shape_node(tensor_shape_node):
 
 
 def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
-    return gast.parse('%s = fluid.layers.fill_constant(%s, "%s", %s)' %
-                      (name, str(shape), dtype, str(value)))
+    return gast.parse('%s = paddle.full(%s, "%s", %s)' %
+                      (name, str(shape), str(value), dtype))
 
 
 def get_attribute_full_name(node):

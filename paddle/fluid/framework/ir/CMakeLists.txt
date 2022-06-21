@@ -84,7 +84,7 @@ cc_library(
 set(GRAPH_PATTERN_DETECTOR_DEPS graph graph_helper graph_traits)
 if(WITH_TESTING)
   set(GRAPH_PATTERN_DETECTOR_DEPS ${GRAPH_PATTERN_DETECTOR_DEPS} gtest)
-endif(WITH_TESTING)
+endif()
 cc_library(
   graph_pattern_detector
   SRCS graph_pattern_detector.cc
@@ -143,6 +143,8 @@ pass_library(delete_quant_dequant_filter_op_pass inference)
 pass_library(delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
+pass_library(delete_c_identity_op_pass inference)
+pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
@@ -156,6 +158,8 @@ pass_library(add_support_int8_pass inference)
 pass_library(matmul_scale_fuse_pass inference)
 pass_library(gpu_cpu_map_matmul_to_mul_pass inference)
 pass_library(mixed_precision_configure_pass inference)
+pass_library(dense_fc_to_sparse_pass inference)
+pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
 
@@ -379,6 +383,14 @@ if(NOT WIN32)
     test_sync_batch_norm_pass
     SRCS sync_batch_norm_pass_tester.cc
     DEPS sync_batch_norm_pass)
+  cc_test(
+    test_dense_fc_to_sparse_pass_cc
+    SRCS dense_fc_to_sparse_pass_tester.cc
+    DEPS fc_fuse_pass dense_fc_to_sparse_pass framework_proto)
+  cc_test(
+    test_dense_multihead_matmul_to_sparse_pass
+    SRCS dense_multihead_matmul_to_sparse_pass_tester.cc
+    DEPS multihead_matmul_fuse_pass dense_multihead_matmul_to_sparse_pass)
 endif()
 if(WITH_MKLDNN)
   cc_test(
