@@ -137,9 +137,9 @@ def fused_feedforward(x,
             'ln2_epsilon', ln2_epsilon, 'act_method', activation,
             'dropout1_rate', dropout1_rate, 'dropout2_rate', dropout2_rate,
             "is_test", not training, "dropout1_fix_seed", seed is not None,
-            "dropout2_fix_seed", seed is not None, "dropout1_seed",
-            seed if seed is not None else 0, "dropout2_seed",
-            seed if seed is not None else 0, 'dropout1_implementation', mode,
+            "dropout2_fix_seed", seed is not None, "dropout1_seed", seed
+            if seed is not None else 0, "dropout2_seed", seed
+            if seed is not None else 0, 'dropout1_implementation', mode,
             'dropout2_implementation', mode, 'add_residual', add_residual,
             'ring_id', ring_id)
         return out
@@ -176,48 +176,49 @@ def fused_feedforward(x,
     if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
         seed = helper.main_program.random_seed
 
-    helper.append_op(type='fused_feedforward',
-                     inputs={
-                         'X': x,
-                         'Linear1Weight': linear1_weight,
-                         'Linear1Bias': linear1_bias,
-                         'Linear2Weight': linear2_weight,
-                         'Linear2Bias': linear2_bias,
-                         'Ln1Scale': ln1_scale,
-                         'Ln1Bias': ln1_bias,
-                         'Ln2Scale': ln2_scale,
-                         'Ln2Bias': ln2_bias,
-                     },
-                     outputs={
-                         'Out': out,
-                         'Dropout1Mask': dropout1_mask,
-                         'Dropout2Mask': dropout2_mask,
-                         'Ln1Mean': ln1_mean,
-                         'Ln1Variance': ln1_variance,
-                         'Ln2Mean': ln2_mean,
-                         'Ln2Variance': ln2_variance,
-                         'Linear1Out': linear1_out,
-                         'Ln1Out': ln1_out,
-                         'Dropout1Out': dropout1_out,
-                         'Dropout2Out': dropout2_out,
-                     },
-                     attrs={
-                         'dropout1_rate': dropout1_rate,
-                         'dropout2_rate': dropout2_rate,
-                         'act_method': activation,
-                         'pre_layer_norm': pre_layer_norm,
-                         'ln1_epsilon': ln1_epsilon,
-                         'ln2_epsilon': ln2_epsilon,
-                         'is_test': not training,
-                         'dropout1_fix_seed': seed is not None,
-                         'dropout2_fix_seed': seed is not None,
-                         'dropout1_seed': seed if seed is not None else 0,
-                         'dropout2_seed': seed if seed is not None else 0,
-                         'dropout1_implementation': mode,
-                         'dropout2_implementation': mode,
-                         'add_residual': add_residual,
-                         'ring_id': ring_id,
-                     })
+    helper.append_op(
+        type='fused_feedforward',
+        inputs={
+            'X': x,
+            'Linear1Weight': linear1_weight,
+            'Linear1Bias': linear1_bias,
+            'Linear2Weight': linear2_weight,
+            'Linear2Bias': linear2_bias,
+            'Ln1Scale': ln1_scale,
+            'Ln1Bias': ln1_bias,
+            'Ln2Scale': ln2_scale,
+            'Ln2Bias': ln2_bias,
+        },
+        outputs={
+            'Out': out,
+            'Dropout1Mask': dropout1_mask,
+            'Dropout2Mask': dropout2_mask,
+            'Ln1Mean': ln1_mean,
+            'Ln1Variance': ln1_variance,
+            'Ln2Mean': ln2_mean,
+            'Ln2Variance': ln2_variance,
+            'Linear1Out': linear1_out,
+            'Ln1Out': ln1_out,
+            'Dropout1Out': dropout1_out,
+            'Dropout2Out': dropout2_out,
+        },
+        attrs={
+            'dropout1_rate': dropout1_rate,
+            'dropout2_rate': dropout2_rate,
+            'act_method': activation,
+            'pre_layer_norm': pre_layer_norm,
+            'ln1_epsilon': ln1_epsilon,
+            'ln2_epsilon': ln2_epsilon,
+            'is_test': not training,
+            'dropout1_fix_seed': seed is not None,
+            'dropout2_fix_seed': seed is not None,
+            'dropout1_seed': seed if seed is not None else 0,
+            'dropout2_seed': seed if seed is not None else 0,
+            'dropout1_implementation': mode,
+            'dropout2_implementation': mode,
+            'add_residual': add_residual,
+            'ring_id': ring_id,
+        })
     return out
 
 
@@ -388,10 +389,10 @@ def fused_multi_head_attention(x,
             'dropout_rate', dropout_rate, 'attn_dropout_rate',
             attn_dropout_rate, 'ln_epsilon', ln_epsilon, 'is_test',
             not training, 'attn_dropout_fix_seed', seed is not None,
-            'dropout_fix_seed', seed is not None, 'attn_dropout_seed',
-            seed if seed is not None else 0, 'dropout_seed',
-            seed if seed is not None else 0, 'attn_dropout_implementation',
-            mode, 'dropout_implementation', mode, 'add_residual', add_residual,
+            'dropout_fix_seed', seed is not None, 'attn_dropout_seed', seed
+            if seed is not None else 0, 'dropout_seed', seed
+            if seed is not None else 0, 'attn_dropout_implementation', mode,
+            'dropout_implementation', mode, 'add_residual', add_residual,
             'ring_id', ring_id)
         if cache_kv is not None:
             return final_out, cache_kv_out
