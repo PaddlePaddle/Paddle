@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <thrust/device_vector.h>
 #include <string>
 #include <utility>
 #include <vector>
