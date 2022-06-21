@@ -202,7 +202,7 @@ int32_t SparseAccessor::Merge(float** update_values,
     float* update_value = update_values[value_item];
     const float* other_update_value = other_update_values[value_item];
     for (size_t i = 0; i < total_dim; ++i) {
-      if (i != SparsePushValue::SlotIndex()) {
+      if (static_cast<int>(i) != SparsePushValue::SlotIndex()) {
         update_value[i] += other_update_value[i];
       }
     }
