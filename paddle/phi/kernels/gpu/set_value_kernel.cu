@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/set_value_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/set_value_kernel_impl.h"
-#include "paddle/phi/kernels/set_value_kernel.h"
 
 PD_REGISTER_KERNEL(set_value,
                    GPU,

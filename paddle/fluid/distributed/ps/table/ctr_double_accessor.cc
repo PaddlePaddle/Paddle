@@ -234,7 +234,7 @@ int32_t CtrDoubleAccessor::Merge(float** update_values,
         update_value[i] += other_update_value[i];
     }*/
     for (size_t i = 0; i < total_dim; ++i) {
-      if (i != CtrDoublePushValue::SlotIndex()) {
+      if (static_cast<int>(i) != CtrDoublePushValue::SlotIndex()) {
         update_value[i] += other_update_value[i];
       }
     }

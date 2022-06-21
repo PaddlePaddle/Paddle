@@ -239,7 +239,7 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     push_v.show = grad[i][1];
     push_v.click = grad[i][2];
     push_v.embed_g = grad[i][3];
-    for (int j = 0; j < parameter.embedx_dim(); ++j) {
+    for (unsigned int j = 0; j < parameter.embedx_dim(); ++j) {
       push_v.embedx_g.push_back(grad[i][4 + j]);
     }
 
