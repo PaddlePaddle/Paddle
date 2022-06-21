@@ -22,8 +22,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
 
   py_test_modules(test_engine_api_dp MODULES test_engine_api_dp ENVS
                   ${dist_ENVS})
-  set_tests_properties(test_engine_api_dp PROPERTIES LABELS
-                                                     "RUN_TYPE=EXCLUSIVE")
+  set_tests_properties(test_engine_api_dp
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
 
   py_test_modules(test_converter MODULES test_converter ENVS ${dist_ENVS})
   set_tests_properties(test_converter PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
