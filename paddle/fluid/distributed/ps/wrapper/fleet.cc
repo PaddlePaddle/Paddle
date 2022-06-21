@@ -537,7 +537,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
 
     if (tensor->lod().size() > 0) {
       for (size_t i = 0; i < tensor->lod()[0].size() - 1; ++i) {
-        for (int j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
+        for (size_t j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
              ++j, output_len += fea_dim) {
           uint64_t real_id = static_cast<uint64_t>(ids[j]);
           if (real_id == padding_id) {
@@ -555,10 +555,12 @@ void FleetWrapper::PushSparseFromTensorAsync(
             // in
             // ctr_accessor.h
             push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-            push_values.back()[1] =
-                (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
-            push_values.back()[2] =
-                (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+            push_values.back()[1] = (static_cast<int>(i) >= show_size
+                                         ? 1
+                                         : static_cast<float>(show_tensor[i]));
+            push_values.back()[2] = (static_cast<int>(i) >= clk_size
+                                         ? 0
+                                         : static_cast<float>(clk_tensor[i]));
             float* data = push_values.back().data() + 3;
             memcpy(data, g + output_len, sizeof(float) * fea_dim);
           }
@@ -582,17 +584,19 @@ void FleetWrapper::PushSparseFromTensorAsync(
           // slot show clk grad... consistent with CtrCommonPushValue defined in
           // ctr_accessor.h
           push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-          push_values.back()[1] =
-              (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
-          push_values.back()[2] =
-              (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+          push_values.back()[1] = (static_cast<int>(i) >= show_size
+                                       ? 1
+                                       : static_cast<float>(show_tensor[i]));
+          push_values.back()[2] = (static_cast<int>(i) >= clk_size
+                                       ? 0
+                                       : static_cast<float>(clk_tensor[i]));
           float* data = push_values.back().data() + 3;
           memcpy(data, g + output_len, sizeof(float) * fea_dim);
         }
         ++input_idx;
       }
     }
-    CHECK(output_len == g_tensor->numel());
+    CHECK(static_cast<int64_t>(output_len) == g_tensor->numel());
   }
 
   std::vector<float*> push_g_vec(input_idx, nullptr);

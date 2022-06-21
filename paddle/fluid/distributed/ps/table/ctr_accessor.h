@@ -143,7 +143,7 @@ class CtrCommonAccessor : public ValueAccessor {
   // 判断该value是否保存到ssd
   // virtual bool save_ssd(float* value);
   virtual bool NeedExtendMF(float* value);
-  virtual bool HasMF(size_t size);
+  virtual bool HasMF(int size);
   // 判断该value是否在save阶段dump,
   // param作为参数用于标识save阶段，如downpour的xbox与batch_model
   // param = 0, save all feature

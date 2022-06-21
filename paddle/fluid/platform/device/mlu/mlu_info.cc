@@ -116,6 +116,13 @@ int GetMLURuntimeVersion(int id) {
   return x * 10000 + y * 100 + z;
 }
 
+int GetMLUCnnlVersion(int id) {
+  CheckDeviceId(id);
+  int x, y, z;
+  cnnlGetLibVersion(&x, &y, &z);
+  return x * 10000 + y * 100 + z;
+}
+
 int GetMLUCurrentDeviceId() {
   int device_id;
   PADDLE_ENFORCE_MLU_SUCCESS(cnrtGetDevice(&device_id));

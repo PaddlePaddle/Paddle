@@ -807,9 +807,9 @@ def gen_einsum_op(equation, *operands):
 
     if _in_legacy_dygraph():
         # dygraph
-        return _C_ops.einsum(operands, len(operands), 'equation', equation)[0]
+        return _C_ops.einsum(operands, len(operands), len(operands), 'equation',
+                             equation)[0]
 
-    # static graph
     for inp in operands:
         check_variable_and_dtype(inp, 'dtype', ['float32', 'float64'], 'einsum')
     check_type(equation, 'equation', str, 'einsum')
@@ -821,11 +821,16 @@ def gen_einsum_op(equation, *operands):
         helper.create_variable_for_type_inference(dtype=operands[0].dtype)
         for i in range(len(operands))
     ]
+    xshape = [
+        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+        for i in range(len(operands))
+    ]
     helper.append_op(type='einsum',
                      inputs={'Operands': operands},
                      outputs={
                          'Out': out,
-                         "InnerCache": caches
+                         "InnerCache": caches,
+                         "XShape": xshape
                      },
                      attrs=attrs)
     return out

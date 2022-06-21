@@ -39,6 +39,7 @@ using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
 class InterpreterCore {
  public:
   InterpreterCore(const platform::Place& place, const BlockDesc& block,
+                  const std::set<std::string>& skip_gc_vars,
                   VariableScope* global_scope);
 
   ~InterpreterCore();
@@ -99,6 +100,8 @@ class InterpreterCore {
 
   const platform::Place& place_;
   const BlockDesc& block_;  // not owned
+  const std::set<std::string> skip_gc_vars_;
+
   // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
   // copy a new program and block, the copy_program_ here is used to
   // hold the program, otherwise block_ maybe not valid after the
@@ -130,5 +133,12 @@ class InterpreterCore {
   bool create_local_scope_{true};
   Scope* local_scope_{nullptr};  // not owned
 };
+
+std::shared_ptr<InterpreterCore> CreateInterpreterCore(
+    const platform::Place& place, const ProgramDesc& prog,
+    VariableScope* global_scope,
+    const std::vector<std::string>& fetch_names = {},
+    const std::set<std::string>& skip_gc_vars = {});
+
 }  // namespace framework
 }  // namespace paddle
