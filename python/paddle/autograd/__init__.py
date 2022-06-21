@@ -17,8 +17,8 @@ from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
 from ..framework import is_grad_enabled, set_grad_enabled  # noqa: F401
 from . import backward_mode  # noqa: F401
 from .backward_mode import backward  # noqa: F401
-from ..fluid.framework import in_dygraph_mode
-if in_dygraph_mode():
+import os
+if os.environ.get('FLAGS_enable_eager_mode') == '1':
     from .py_layer import EagerPyLayer as PyLayer  # noqa: F401
     from .py_layer import EagerPyLayerContext as PyLayerContext  # noqa: F401
 else:

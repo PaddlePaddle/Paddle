@@ -200,8 +200,14 @@ class RecomputeFunction(PyLayer):
                 paddle.autograd.backward(forward_outputs_with_grad,
                                          backward_inputs_with_grad)
 
-            grads = list(inp._grad_ivar() for inp in detached_inputs
-                         if isinstance(inp, (core.VarBase, core.eager.Tensor)))
+            if in_dygraph_mode():
+                grads = tuple(
+                    inp._grad_ivar() for inp in detached_inputs
+                    if isinstance(inp, (core.VarBase, core.eager.Tensor)))
+            else:
+                grads = list(
+                    inp._grad_ivar() for inp in detached_inputs
+                    if isinstance(inp, (core.VarBase, core.eager.Tensor)))
             return grads
 
 
