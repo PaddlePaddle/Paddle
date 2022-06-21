@@ -35,6 +35,9 @@ from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_no
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
+GET_ARGS_FUNC_PREFIX = 'get_args'
+SET_ARGS_FUNC_PREFIX = 'set_args'
+ARGS_NAME = '__args'
 
 
 class IfElseTransformer(gast.NodeTransformer):
@@ -197,6 +200,12 @@ class NameVisitor(gast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
+        # NOTE: We skip to visit names of get_args and set_args, because they contains
+        # nonlocal statement such as 'nonlocal x, self' where 'self' should not be
+        # parsed as returned value in contron flow.
+        if GET_ARGS_FUNC_PREFIX in node.name or SET_ARGS_FUNC_PREFIX in node.name:
+            return
+
         if not self._in_range:
             self.generic_visit(node)
             return
@@ -502,12 +511,13 @@ def transform_if_else(node, root):
     false_args = parse_cond_args(parent_name_ids, orelse_name_ids,
                                  modified_name_ids_from_parent)
     nonlocal_names = list(trun_args | false_args | new_vars_to_create)
+    nonlocal_names.sort()
     # NOTE: All var in return_name_ids should be in nonlocal_names.
     nonlocal_names = _valid_nonlocal_names(return_name_ids, nonlocal_names)
 
-    # TODO: fix it
-    if 'args' in nonlocal_names:
-        nonlocal_names.remove('args')
+    # TODO(dev): Need a better way to deal this.
+    if ARGS_NAME in nonlocal_names:
+        nonlocal_names.remove(ARGS_NAME)
 
     nonlocal_stmt_node = create_nonlocal_stmt_node(nonlocal_names)
 
@@ -549,8 +559,9 @@ def create_get_args_node(names):
         nonlocal {vars}
         return {vars}
     """
-    func_def = template.format(func_name=unique_name.generate("get_args"),
-                               vars=",".join(names))
+    func_def = template.format(
+        func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
+        vars=",".join(names))
     return gast.parse(textwrap.dedent(func_def)).body[0]
 
 
@@ -558,18 +569,20 @@ def create_set_args_node(names):
     """
     Create set_args function as follows:
 
-        def set_args_0(args):
+        def set_args_0(__args):
             nonlocal x, y
-            x, y = args
+            x, y = __args
     """
     assert isinstance(names, (list, tuple))
     template = """
-    def {func_name}(args):
+    def {func_name}({args}):
         nonlocal {vars}
-        {vars} = args
+        {vars} = {args}
     """
-    func_def = template.format(func_name=unique_name.generate("set_args"),
-                               vars=",".join(names))
+    func_def = template.format(
+        func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
+        args=ARGS_NAME,
+        vars=",".join(names))
     return gast.parse(textwrap.dedent(func_def)).body[0]
 
 
