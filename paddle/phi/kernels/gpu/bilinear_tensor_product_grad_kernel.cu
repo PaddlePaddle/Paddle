@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/bilinear_tensor_product_grad_kernel.h"
+
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/bilinear_tensor_product_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(bilinear_tensor_product_grad,

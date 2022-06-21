@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/dropout_kernel.h"
+
 #include "paddle/fluid/operators/dropout_impl.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/dropout_kernel.h"
 
 namespace phi {
 
