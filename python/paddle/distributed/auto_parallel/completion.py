@@ -767,9 +767,8 @@ class Completer:
             self._dist_context._serial_main_program = serial_main_program
 
         start_time = time.time()
-        print("start time", start_time, flush=True)
+        # print("start time", start_time, flush=True)
         if not self._dist_context.data_parallel:
-            print("not data parallel 2", flush=True)
             self._dist_context.initialize(with_graph=True)
 
             # self._dist_context.validate_dist_attr_for_program()
@@ -783,7 +782,6 @@ class Completer:
             # Copy the corresponding distributed attribute from graph to serial_main_program
             self._dist_context.copy_dist_attr_from_graph_to_program()
         else:
-            print("data parallel 2", flush=True)
             self._dist_context.initialize(with_graph=False)
 
             # A fast and special completion for data parallel
@@ -800,21 +798,15 @@ class Completer:
 
         self._dist_context.validate_dist_attr_for_program()
 
-        # exit(0)
         end_time = time.time()
-        print("end time", end_time, flush=True)
-        print("elapsed time", end_time - start_time, flush=True)
+        # print("end time", end_time, flush=True)
+        # print("elapsed time", end_time - start_time, flush=True)
 
         return serial_main_program
 
     def _update_dist_attr_for_dp(self):
         # TODO: we must ensure the world process group contains all ranks
         ranks = get_world_process_group().ranks
-        print("ranks",
-              ranks,
-              len(self._dist_context._dist_tensors_for_program.values()),
-              len(self._dist_context._dist_ops_for_program.values()),
-              flush=True)
         process_mesh = ProcessMesh(ranks)
         for dist_tensor in self._dist_context._dist_tensors_for_program.values(
         ):

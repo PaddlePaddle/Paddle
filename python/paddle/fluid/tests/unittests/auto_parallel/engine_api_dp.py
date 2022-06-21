@@ -91,10 +91,11 @@ class MLPLayer(nn.Layer):
         out = self.linear1(out)
         out = self.dropout(out)
         out = self.linear2(out)
+        self.out = out
         return out
 
 
-def train():
+def train(fetch):
     mlp = MLPLayer(hidden_size=hidden_size,
                    intermediate_size=4 * hidden_size,
                    dropout_ratio=0.1,
@@ -124,20 +125,26 @@ def train():
                     strategy=dist_strategy)
     engine.prepare(optimizer, loss, metrics=paddle.metric.Accuracy())
 
+    # fetch
+    if fetch:
+        fetches = {'out': mlp.out}
+    else:
+        fetches = None
+
     # train
     train_dataset = MyDataset(batch_num * batch_size)
     engine.fit(train_dataset,
                batch_size=batch_size,
                steps_per_epoch=batch_num * batch_size,
-               fetch_list=['label'])
+               fetches=fetches)
 
     # eval
     eval_dataset = MyDataset(batch_size)
-    engine.evaluate(eval_dataset, batch_size, fetch_list=['label'])
+    engine.evaluate(eval_dataset, batch_size, fetches=fetches)
 
     # predict
     test_dataset = MyDataset(batch_size)
-    engine.predict(test_dataset, batch_size, fetch_list=['label'])
+    engine.predict(test_dataset, batch_size, fetches=fetches)
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
@@ -147,4 +154,4 @@ def train():
 
 
 if __name__ == "__main__":
-    train()
+    train(True)

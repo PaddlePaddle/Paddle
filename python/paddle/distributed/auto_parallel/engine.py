@@ -159,7 +159,6 @@ class Engine:
                 # needs all ranks by default.
                 new_process_group(list(range(self._nranks)))
                 default_ctx.data_parallel = True
-                print("data parallel 0", default_ctx.data_parallel, flush=True)
 
             # self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
             feed_vars = {"inputs": inputs, "labels": labels}
