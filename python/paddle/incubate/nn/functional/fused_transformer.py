@@ -678,6 +678,7 @@ def fused_multi_transformer(x,
                             activation="gelu",
                             training=False,
                             mode='upscale_in_train',
+                            trans_qkvw=True,
                             ring_id=-1,
                             name=None):
     r"""
@@ -754,6 +755,7 @@ def fused_multi_transformer(x,
 
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
+        trans_qkvw (bool, optional): Whether to transpose for weights of qkv. Default True.
         ring_id (int, optional): For distributed forward in tensor model parallel, only support NCCL. Default is -1, means not using mp.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -823,9 +825,9 @@ def fused_multi_transformer(x,
             time_step, attn_mask, linear_weights, linear_biases, ffn_ln_scales,
             ffn_ln_biases, ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases,
             cache_kvs, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
-            'dropout_rate', dropout_rate, 'is_test', not training,
-            'dropout_implementation', mode, 'act_method', activation, 'ring_id',
-            ring_id)
+            'trans_qkvw', trans_qkvw, 'dropout_rate', dropout_rate, 'is_test',
+            not training, 'dropout_implementation', mode, 'act_method',
+            activation, 'ring_id', ring_id)
         if cache_kvs is not None:
             return final_out, cache_kv_out
         return final_out
@@ -873,6 +875,7 @@ def fused_multi_transformer(x,
             'is_test': not training,
             'dropout_implementation': mode,
             'act_method': activation,
+            'trans_qkvw': trans_qkvw,
             'ring_id': ring_id
         }
 
