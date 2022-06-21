@@ -194,20 +194,29 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<int>("dropout1_seed", "Dropout1 random seed.").SetDefault(0);
     AddAttr<int>("dropout2_seed", "Dropout2 random seed.").SetDefault(0);
+    AddAttr<bool>("add_residual", "Whether to add residual.").SetDefault(true);
     AddAttr<int>("ring_id", "ring id for tensor model parallel.")
         .SetDefault(-1);
     AddComment(R"DOC(
-        the function of fused_feedforward operator is the same as the following pseudo code:
-        residual = src;
-        ln1_out = src;
-        if(pre_layer_norm){
-            ln1_out = layer_norm(src);
-        }
-        out = linear(dropout(activation(dropout(linear(ln1_out)))));
-        if(!pre_layer_norm) {
-            out = layer_norm(out);
-        }
-        )DOC");
+  The fused_feedforward operator is the same as the following pseudo codes:
+
+  residual = src;
+  if (pre_layer_norm)
+    ln1_out = layer_norm(src);
+  else
+    ln1_out = src;
+  // linear 1
+  out = linear(ln1_out);
+  out = dropout(activation(out));
+  // linear 2
+  out = linear(out);
+  if (add_residual)
+    out = residual + dropout(out);
+  else
+    out = dropout(out);
+  if (!pre_layer_norm)
+    out = layer_norm(out);
+  )DOC");
   }
 };
 
@@ -367,3 +376,11 @@ REGISTER_OPERATOR(fused_feedforward, ops::FusedFeedForwardOp,
                   ops::FusedFeedForwardOpGradMaker<paddle::framework::OpDesc>,
                   ops::FusedFeedForwardOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_feedforward_grad, ops::FusedFeedForwardOpGrad);
+
+REGISTER_OP_VERSION(fused_feedforward)
+    .AddCheckpoint(
+        R"ROC(
+              Add a new attribute [add_residual] )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "add_residual", "A flag to indicate whether to add residual.",
+            true));

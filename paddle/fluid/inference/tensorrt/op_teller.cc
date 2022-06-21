@@ -156,6 +156,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       "slice",
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
+      "preln_residual_bias",
+      "c_allreduce_sum",
+      "c_allreduce_min",
+      "c_allreduce_max",
+      "c_allreduce_prod",
       "roll",
       "preln_skip_layernorm",
       "transformer_input_convert",
@@ -254,6 +259,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
+      "preln_residual_bias",
+      "c_allreduce_sum",
+      "c_allreduce_min",
+      "c_allreduce_max",
+      "c_allreduce_prod",
       "roll",
       "multiclass_nms3",
       "transformer_input_convert",
@@ -1604,11 +1614,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "shuffle_channel") {
+#if !IS_TRT_VERSION_GE(8000)
       if (with_dynamic_shape) {
         VLOG(3) << "You are running the TRT Dynamic Shape mode, "
-                   "the shuffle_channel op does not support dynamic shape yet";
+                   "the shuffle_channel op does not support dynamic shape "
+                   "trt versions below 8.0 yet";
         return false;
       }
+#endif
     }
 
     if (op_type == "skip_layernorm") {
@@ -1991,9 +2004,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
   return false;
 }
-
 OpTeller::OpTeller() { tellers_.emplace_back(new SimpleOpTypeSetTeller); }
-
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

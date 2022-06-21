@@ -506,6 +506,24 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
   }
 }
 
+MLUCnnlDCNDesc::MLUCnnlDCNDesc(int dimNb, const int* pad, const int* stride,
+                               const int* dilation, int deformable_group,
+                               int conv_group, int im2col_step) {
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlCreateDCNDescriptor(&dcn_desc_));
+  const cnnlDataType_t compute_type = CNNL_DTYPE_FLOAT;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetDCNDescriptor(
+      dcn_desc_, dimNb, pad, stride, dilation, deformable_group, conv_group,
+      im2col_step, compute_type));
+}
+
+const cnnlDCNDescriptor_t MLUCnnlDCNDesc::get() const { return dcn_desc_; }
+
+MLUCnnlDCNDesc::~MLUCnnlDCNDesc() {
+  if (dcn_desc_) {
+    PADDLE_ENFORCE_MLU_SUCCESS(cnnlDestroyDCNDescriptor(dcn_desc_));
+  }
+}
+
 /* static */ void MLUCnnl::Active(const ExecutionContext& ctx,
                                   cnnlActivationDescriptor_t active_desc,
                                   const cnnlTensorDescriptor_t input_desc,
@@ -1116,7 +1134,7 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
                         indices_desc, indices, output_desc, output));
 }
 
-/* static */ void MLUCnnl::ScatterFunctor(
+/* static */ void MLUCnnl::ScatterRefFunctor(
     const ExecutionContext& ctx, const cnnlTensorDescriptor_t params_desc,
     const void* params, const cnnlTensorDescriptor_t updates_desc,
     const void* updates, const cnnlTensorDescriptor_t indices_desc,
@@ -1126,6 +1144,19 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlScatterRef(handle, params_desc, params,
                                             indices_desc, indices, updates_desc,
                                             updates, 0, mode));
+}
+
+/* static */ void MLUCnnl::ScatterFunctor(
+    const ExecutionContext& ctx, const cnnlTensorDescriptor_t params_desc,
+    void* params, const cnnlTensorDescriptor_t updates_desc,
+    const void* updates, const cnnlTensorDescriptor_t indices_desc,
+    const void* indices, const int dim, const cnnlScatterMode_t mode) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlScatter(
+      handle, dim, params_desc, params, indices_desc, indices, updates_desc,
+      updates, params_desc, params, /* output_desc, output, same with params*/
+      mode));
 }
 
 /* static */ void MLUCnnl::StridedSliceGrad(
@@ -1160,15 +1191,25 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 }
 
 /* static */ void MLUCnnl::Select(
-    const ExecutionContext& ctx, const cnnlTensorDescriptor_t then_desc,
-    const void* p_then, const cnnlTensorDescriptor_t else_desc,
-    const void* p_else, const cnnlTensorDescriptor_t output_desc, void* output,
-    const bool* condition, const int condition_size) {
+    const ExecutionContext& ctx, const cnnlTensorDescriptor_t condition_desc,
+    const void* condition_ptr, const cnnlTensorDescriptor_t then_desc,
+    const void* then_ptr, const cnnlTensorDescriptor_t else_desc,
+    const void* else_ptr, const cnnlTensorDescriptor_t output_desc,
+    void* output_ptr) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSelect(handle, then_desc, p_then, else_desc,
-                                        p_else, output_desc, output, condition,
-                                        condition_size));
+  size_t workspace_size = 0;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetSelectV2WorkspaceSize(
+      handle, condition_desc, then_desc, else_desc, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSelectV2(
+      handle, condition_desc, condition_ptr, then_desc, then_ptr, else_desc,
+      else_ptr, workspace_ptr, workspace_size, output_desc, output_ptr));
 }
 
 /*static */ void MLUCnnl::GatherNd(const ExecutionContext& ctx,
@@ -2478,6 +2519,88 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
       workspace_size, nullptr /*beta*/, filter_backprop_desc, filter_backprop));
 }
 
+/* static */ void MLUCnnl::DCNForward(
+    const ExecutionContext& ctx, const cnnlDCNDescriptor_t dcn_desc,
+    const cnnlTensorDescriptor_t input_desc, const void* input,
+    const cnnlTensorDescriptor_t offset_desc, const void* offset,
+    const cnnlTensorDescriptor_t mask_desc, const void* mask,
+    const cnnlTensorDescriptor_t weight_desc, const void* weight,
+    const cnnlTensorDescriptor_t bias_desc, const void* bias,
+    const cnnlTensorDescriptor_t output_desc, void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size = 0;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetDCNForwardWorkspaceSize(
+      handle, dcn_desc, input_desc, offset_desc, mask_desc, weight_desc,
+      bias_desc, output_desc, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlDCNForward(handle, dcn_desc, input_desc, input, offset_desc, offset,
+                     mask_desc, mask, weight_desc, weight, bias_desc, bias,
+                     workspace_ptr, workspace_size, output_desc, output));
+}
+
+/* static */ void MLUCnnl::DCNBackwardData(
+    const ExecutionContext& ctx, const cnnlDCNDescriptor_t dcn_desc,
+    const cnnlTensorDescriptor_t input_desc, const void* input,
+    const cnnlTensorDescriptor_t offset_desc, const void* offset,
+    const cnnlTensorDescriptor_t mask_desc, const void* mask,
+    const cnnlTensorDescriptor_t weight_desc, const void* weight,
+    const cnnlTensorDescriptor_t grad_output_desc, const void* grad_output,
+    const cnnlTensorDescriptor_t grad_input_desc, void* grad_input,
+    const cnnlTensorDescriptor_t grad_offset_desc, void* grad_offset,
+    const cnnlTensorDescriptor_t grad_mask_desc, void* grad_mask) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size = 0;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetDCNBakcwardDataWorkspaceSize(
+      handle, dcn_desc, input_desc, offset_desc, mask_desc, weight_desc,
+      grad_output_desc, grad_input_desc, grad_offset_desc, grad_mask_desc,
+      &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlDCNBackwardData(
+      handle, dcn_desc, input_desc, input, offset_desc, offset, mask_desc, mask,
+      weight_desc, weight, grad_output_desc, grad_output, workspace_ptr,
+      workspace_size, grad_input_desc, grad_input, grad_offset_desc,
+      grad_offset, grad_mask_desc, grad_mask));
+}
+
+/* static */ void MLUCnnl::DCNBackwardWeight(
+    const ExecutionContext& ctx, const cnnlDCNDescriptor_t dcn_desc,
+    const cnnlTensorDescriptor_t input_desc, const void* input,
+    const cnnlTensorDescriptor_t offset_desc, const void* offset,
+    const cnnlTensorDescriptor_t mask_desc, const void* mask,
+    const cnnlTensorDescriptor_t grad_output_desc, const void* grad_output,
+    const cnnlTensorDescriptor_t grad_weight_desc, void* grad_weight,
+    const cnnlTensorDescriptor_t grad_bias_desc, void* grad_bias) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size = 0;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetDCNBackwardWeightWorkspaceSize(
+      handle, dcn_desc, input_desc, offset_desc, mask_desc, grad_output_desc,
+      grad_weight_desc, grad_bias_desc, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlDCNBackwardWeight(
+      handle, dcn_desc, input_desc, input, offset_desc, offset, mask_desc, mask,
+      grad_output_desc, grad_output, workspace_ptr, workspace_size,
+      grad_weight_desc, grad_weight, grad_bias_desc, grad_bias));
+}
+
 /* static */ void MLUCnnl::QuantizeMatMul(
     const ExecutionContext& ctx, const bool transpose_a, const bool transpose_b,
     const cnnlTensorDescriptor_t a_desc, const void* a, const void* a_position,
@@ -2855,6 +2978,20 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlEmbeddingForward_v2(
       handle, weight_desc, weight, indices_desc, indices, padding_idx,
       nullptr /*max_norm*/, nullptr /*norm_type*/, output_desc, output));
+}
+
+/* static */ void MLUCnnl::Transform(const ExecutionContext& ctx,
+                                     const void* alpha, const void* beta,
+                                     const cnnlTensorDescriptor_t input_desc,
+                                     const void* input,
+                                     const cnnlTensorDescriptor_t output_desc,
+                                     void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  const cnnlPointerMode_t pointer_mode = CNNL_POINTER_MODE_HOST;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlTransform_v2(handle, pointer_mode, alpha,
+                                              input_desc, input, beta,
+                                              output_desc, output));
 }
 
 /* static */ void MLUCnnl::EmbeddingBackward(

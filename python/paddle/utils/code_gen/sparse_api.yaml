@@ -46,6 +46,14 @@
     layout : x
   backward : sin_grad
 
+- api : softmax
+  args : (Tensor x, int axis=-1)
+  output : Tensor(out)
+  kernel :
+    func : softmax_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : softmax_grad
+
 - api : sqrt
   args : (Tensor x)
   output : Tensor(out)
