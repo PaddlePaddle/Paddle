@@ -140,12 +140,14 @@ void CacheManager::prepare_current_batch_fid_seq() {
   std::lock_guard<std::mutex> lock(*current_batch_fid_seq_lock);
   if (current_batch_fid_seq_ == nullptr || current_batch_fid_seq_ref_ == worker_num_) {
     current_batch_fid_seq_ref_ = 0;
+    current_batch_fid2bfid_.clear();
     if (!fid_seq_channel_->Get(current_batch_fid_seq_)) {
       current_batch_fid_seq_ = nullptr;
     } else {
       for (size_t i = 0; i < current_batch_fid_seq_->size(); ++i) {
           current_batch_fid2bfid_[(*current_batch_fid_seq_)[i]] = i;
       }
+      current_batch_fid_seq_ref_++;
     }
   } else {
     current_batch_fid_seq_ref_++;
@@ -161,6 +163,16 @@ void CacheManager::convert_fid2bfid(const uint32_t * fids, int * out_bfids, int 
   std::lock_guard<std::mutex> lock(*current_batch_fid_seq_lock);
   for (int i = 0; i < size; ++i) {
     out_bfids[i] = current_batch_fid2bfid_[fids[i]];
+  }
+}
+
+uint64_t CacheManager::convert_fid2feasign(const uint32_t fid) {
+  return fid2meta_[fid].sign_;
+}
+
+void CacheManager::debug() {
+  for (auto iter = current_batch_fid2bfid_.begin(); iter != current_batch_fid2bfid_.end(); iter++) {
+    VLOG(0) << "cache manager debug:" << iter->first << " " << iter -> second;
   }
 }
 

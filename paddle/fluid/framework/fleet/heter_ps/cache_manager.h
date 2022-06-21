@@ -54,6 +54,8 @@ class CacheManager {
   void prepare_current_batch_fid_seq();
   std::shared_ptr<std::vector<uint32_t>>  get_current_batch_fid_seq();
   void convert_fid2bfid(const uint32_t * fids, int * out_bfids, int size);
+  uint64_t convert_fid2feasign(const uint32_t fids);
+  void debug();
 #endif
 
  private:
