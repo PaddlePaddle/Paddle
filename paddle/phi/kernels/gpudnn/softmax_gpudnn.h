@@ -967,6 +967,25 @@ inline void LaunchSoftmaxBackwardCudnnKernel<phi::dtype::bfloat16>(
 }
 #endif
 
+template <typename T>
+bool UseCudnnSoftmax(const GPUContext& ctx, int softmax_dim, bool last_dim) {
+  bool cudnn_available = ctx.cudnn_handle();
+  if (!ctx.cudnn_handle()) {
+    if (std::is_same<T, phi::dtype::bfloat16>::value) {
+#if CUDNN_VERSION < 8100
+      cudnn_available = false;
+#endif
+    }
+  }
+  constexpr int max_dim = 512;
+  if (!cudnn_available || !last_dim ||
+      (softmax_dim <= max_dim && sizeof(T) <= 4)) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
 template <typename T, bool LogMode = false>
 void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
                                     const DenseTensor& x,
