@@ -243,6 +243,7 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
       : PassStrategy(other.AllPasses()) {
     use_gpu_ = true;
     use_cudnn_ = other.use_cudnn_;
+    use_gpu_fp16_ = other.use_gpu_fp16_;
   }
 
   /// \brief Enable the use of cuDNN kernel.
