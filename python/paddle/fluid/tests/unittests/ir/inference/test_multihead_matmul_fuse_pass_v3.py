@@ -30,14 +30,12 @@ class TestMultiheadMatmulFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # gpu
         config = self.create_inference_config(use_gpu=True)
-        yield config, [
-            "multihead_matmul",
-        ], (1e-5, 1e-5)
+        yield config, ["multihead_matmul", "mul"], (1e-2, 1e-3)
 
     def sample_program_config(self, draw):
 
         def generate_mul_input():
-            return np.random.random([1, 128, 768]).astype(np.float32)
+            return np.random.random([1, 128, 768]).astype(np.float32) - 0.5
 
         def generate_elewise_input():
             return np.random.random([1, 12, 128, 128]).astype(np.float32)
@@ -93,21 +91,21 @@ class TestMultiheadMatmulFusePass(PassAutoScanTest):
                                  "Out": ["reshape_0_out"],
                                  "XShape": ["reshape_0_Xout"]
                              },
-                             shape=(0, 0, 12, 64))
+                             shape=(1, 128, 12, 64))
         reshape_1 = OpConfig("reshape2",
                              inputs={"X": [ele_1.outputs["Out"][0]]},
                              outputs={
                                  "Out": ["reshape_1_out"],
                                  "XShape": ["reshape_1_Xout"]
                              },
-                             shape=(0, 0, 12, 64))
+                             shape=(1, 128, 12, 64))
         reshape_2 = OpConfig("reshape2",
                              inputs={"X": [ele_2.outputs["Out"][0]]},
                              outputs={
                                  "Out": ["reshape_2_out"],
                                  "XShape": ["reshape_2_Xout"]
                              },
-                             shape=(0, 0, 12, 64))
+                             shape=(1, 128, 12, 64))
         transpose_0 = OpConfig("transpose2",
                                inputs={"X": [reshape_0.outputs["Out"][0]]},
                                outputs={"Out": ["transpose_0_out"]},
@@ -172,11 +170,19 @@ class TestMultiheadMatmulFusePass(PassAutoScanTest):
                                  "Out": ["reshape_3_out"],
                                  "XShape": ["reshape_3_Xout"]
                              },
-                             shape=(0, 0, 768))
+                             shape=(1, 128, 768))
+        mul_3 = OpConfig("mul",
+                         inputs={
+                             "X": [reshape_3.outputs["Out"][0]],
+                             "Y": ["mul_3_w"]
+                         },
+                         outputs={"Out": ["mul_3_out"]},
+                         x_num_col_dims=2,
+                         y_num_col_dims=1)
         ops = [
             mul_0, mul_1, mul_2, ele_0, ele_1, ele_2, reshape_0, reshape_1,
             reshape_2, transpose_0, transpose_1, transpose_2, matmul_0, ele_3,
-            softmax_op, matmul_1, transpose_3, reshape_3
+            softmax_op, matmul_1, transpose_3, reshape_3, mul_3
         ]
         program_config = ProgramConfig(
             ops=ops,
@@ -190,6 +196,7 @@ class TestMultiheadMatmulFusePass(PassAutoScanTest):
                 "mul_0_w": TensorConfig(shape=[768, 768]),
                 "mul_1_w": TensorConfig(shape=[768, 768]),
                 "mul_2_w": TensorConfig(shape=[768, 768]),
+                "mul_3_w": TensorConfig(shape=[768, 768]),
                 "ele_0_w": TensorConfig(shape=[768]),
                 "ele_1_w": TensorConfig(shape=[768]),
                 "ele_2_w": TensorConfig(shape=[768])
@@ -200,6 +207,7 @@ class TestMultiheadMatmulFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(quant=False,
                             max_examples=100,
+                            min_success_num=1,
                             passes=["multihead_matmul_fuse_pass_v3"])
 
 
