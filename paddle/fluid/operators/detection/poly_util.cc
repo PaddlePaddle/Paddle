@@ -26,8 +26,8 @@ using gpc::gpc_free_polygon;
 using gpc::gpc_polygon_clip;
 
 template <class T>
-void Array2PointVec(const T*& box, const size_t box_size,
-                    std::vector<Point_<T>>& vec) {
+void Array2PointVec(const T*& const box, const size_t box_size,
+                    const std::vector<Point_<T>>& vec) {
   size_t pts_num = box_size / 2;
   vec.resize(pts_num);
   for (size_t i = 0; i < pts_num; i++) {
@@ -37,10 +37,11 @@ void Array2PointVec(const T*& box, const size_t box_size,
 }
 
 template <class T>
-void Array2Poly(const T*& box, const size_t box_size, gpc::gpc_polygon& poly) {
+void Array2Poly(const T*& const box, const size_t box_size,
+                const gpc::gpc_polygon& poly) {
   size_t pts_num = box_size / 2;
   poly.num_contours = 1;
-  poly.hole = (int*)malloc(sizeof(int));
+  poly.hole = reinterpret_cast<int*>(malloc(sizeof(int)));
   poly.hole[0] = 0;
   poly.contour = (gpc::gpc_vertex_list*)malloc(sizeof(gpc::gpc_vertex_list));
   poly.contour->num_vertices = pts_num;
@@ -53,10 +54,11 @@ void Array2Poly(const T*& box, const size_t box_size, gpc::gpc_polygon& poly) {
 }
 
 template <class T>
-void PointVec2Poly(const std::vector<Point_<T>>& vec, gpc::gpc_polygon& poly) {
+void PointVec2Poly(const std::vector<Point_<T>>& vec,
+                   const gpc::gpc_polygon& poly) {
   int pts_num = vec.size();
   poly.num_contours = 1;
-  poly.hole = (int*)malloc(sizeof(int));
+  poly.hole = reinterpret_cast<int*>(malloc(sizeof(int)));
   poly.hole[0] = 0;
   poly.contour = (gpc::gpc_vertex_list*)malloc(sizeof(gpc::gpc_vertex_list));
   poly.contour->num_vertices = pts_num;
@@ -70,7 +72,7 @@ void PointVec2Poly(const std::vector<Point_<T>>& vec, gpc::gpc_polygon& poly) {
 
 template <class T>
 void Poly2PointVec(const gpc::gpc_vertex_list& contour,
-                   std::vector<Point_<T>>& vec) {
+                   const std::vector<Point_<T>>& vec) {
   int pts_num = contour.num_vertices;
   vec.resize(pts_num);
   for (int i = 0; i < pts_num; i++) {
@@ -80,7 +82,7 @@ void Poly2PointVec(const gpc::gpc_vertex_list& contour,
 }
 
 template <class T>
-T GetContourArea(std::vector<Point_<T>>& vec) {
+T GetContourArea(const std::vector<Point_<T>>& vec) {
   size_t pts_num = vec.size();
   if (pts_num < 3) return T(0.);
   T area = T(0.);

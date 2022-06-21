@@ -126,9 +126,10 @@ void ExecuteMatMulV2(const ExecutionContext& ctx,
                      const MKLDNNDeviceContext& dev_ctx,
                      const dnnl::engine onednn_engine,
                      paddle::platform::Place cpu_place, const Tensor* x,
-                     std::vector<int64_t>& x_dims, bool trans_x,
-                     const Tensor* y, std::vector<int64_t>& y_dims,
-                     bool trans_y, Tensor* out, std::vector<int64_t>& out_dims,
+                     const std::vector<int64_t>& x_dims, bool trans_x,
+                     const Tensor* y, const std::vector<int64_t>& y_dims,
+                     bool trans_y, Tensor* out,
+                     const std::vector<int64_t>& out_dims,
                      int execution_number = 0) {
   std::vector<int64_t> x_strides_override = GetInputStrides(ctx, "X");
   std::vector<int64_t> y_strides_override = GetInputStrides(ctx, "Y");
@@ -177,9 +178,10 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
   void CalculateMatrixDims(const ExecutionContext& ctx,
                            const std::vector<int64_t>& x_dims,
                            const std::vector<int64_t>& y_dims,
-                           std::vector<int64_t>& x_bd_dims,
-                           std::vector<int64_t>& y_bd_dims,
-                           std::vector<int64_t>& out_dims, Tensor* out) const {
+                           const std::vector<int64_t>& x_bd_dims,
+                           const std::vector<int64_t>& y_bd_dims,
+                           const std::vector<int64_t>& out_dims,
+                           Tensor* out) const {
     if (x_dims.size() == 1) {
       x_bd_dims[x_bd_dims.size() - 1] = x_dims[0];
     } else if (x_dims.size() == 2) {
@@ -257,8 +259,8 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
                                Tensor* dy_tmp,
                                const std::vector<int64_t>& dx_dims,
                                const std::vector<int64_t>& dy_dims,
-                               std::vector<int64_t>& dx_bd_dims,
-                               std::vector<int64_t>& dy_bd_dims) const {
+                               const std::vector<int64_t>& dx_bd_dims,
+                               const std::vector<int64_t>& dy_bd_dims) const {
     for (size_t i = 0; i < dx_dims.size() - 2; ++i) {
       if (dx_dims[i] != dy_dims[i]) {
         if (dx_dims[i] == 1) {
@@ -278,7 +280,7 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
   void ReduceSumForMatmulGradOutput(
       const ExecutionContext& ctx, const MKLDNNDeviceContext& dev_ctx,
       const dnnl::engine onednn_engine, const Tensor* dx_tmp, Tensor* dx,
-      std::vector<int64_t>& dx_dims,
+      const std::vector<int64_t>& dx_dims,
       const std::vector<int64_t>& squeezed_dims) const {
     paddle::platform::ReductionMKLDNNHandler<T> handler(
         dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
