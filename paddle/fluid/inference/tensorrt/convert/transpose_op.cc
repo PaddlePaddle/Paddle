@@ -60,3 +60,4 @@ class TransposeOpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(transpose, TransposeOpConverter);
+REGISTER_TRT_OP_CONVERTER(transpose2, TransposeOpConverter);

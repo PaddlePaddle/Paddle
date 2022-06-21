@@ -625,7 +625,7 @@ int32_t SSDSparseTable::Load(const std::string& path,
 }
 
 //加载path目录下数据[start_idx, end_idx)
-int32_t SSDSparseTable::Load(size_t start_idx, int end_idx,
+int32_t SSDSparseTable::Load(size_t start_idx, size_t end_idx,
                              const std::vector<std::string>& file_list,
                              const std::string& param) {
   if (start_idx >= file_list.size()) {
@@ -637,8 +637,9 @@ int32_t SSDSparseTable::Load(size_t start_idx, int end_idx,
   size_t mf_value_size =
       _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
 
-  end_idx =
-      end_idx < _sparse_table_shard_num ? end_idx : _sparse_table_shard_num;
+  end_idx = static_cast<int>(end_idx) < _sparse_table_shard_num
+                ? end_idx
+                : _sparse_table_shard_num;
   int thread_num = (end_idx - start_idx) < 20 ? (end_idx - start_idx) : 20;
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
@@ -699,7 +700,8 @@ int32_t SSDSparseTable::Load(size_t start_idx, int end_idx,
             ssd_values.emplace_back(std::make_pair((char*)data_buffer_ptr,
                                                    value_size * sizeof(float)));
             data_buffer_ptr += feature_value_size;
-            if (ssd_keys.size() == FLAGS_pserver_load_batch_size) {
+            if (static_cast<int>(ssd_keys.size()) ==
+                FLAGS_pserver_load_batch_size) {
               _db->put_batch(local_shard_id, ssd_keys, ssd_values,
                              ssd_keys.size());
               ssd_keys.clear();

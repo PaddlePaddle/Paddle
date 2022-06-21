@@ -46,6 +46,9 @@ int GetMLUDriverVersion(int id);
 //! Get the runtime version of the ith MLU.
 int GetMLURuntimeVersion(int id);
 
+//! Get the cnnl version of the ith MLU.
+int GetMLUCnnlVersion(int id);
+
 //! Get the total number of MLU devices in system.
 int GetMLUDeviceCount();
 

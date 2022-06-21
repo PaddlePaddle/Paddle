@@ -547,7 +547,8 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
     seq.push_back(request_idx);
   }
   size_t remote_call_num = request_call_num;
-  if (request2server.size() != 0 && request2server.back() == rank) {
+  if (request2server.size() != 0 &&
+      static_cast<size_t>(request2server.back()) == rank) {
     remote_call_num--;
     local_buffers.resize(node_id_buckets.back().size());
     local_actual_sizes.resize(node_id_buckets.back().size());
@@ -582,7 +583,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
     for (size_t i = 0; i < node_num; i++) {
       if (fail_num > 0 && failed[seq[i]]) {
         size = 0;
-      } else if (request2server[seq[i]] != rank) {
+      } else if (static_cast<size_t>(request2server[seq[i]]) != rank) {
         res[seq[i]]->copy_and_forward(&size, sizeof(int));
       } else {
         size = local_actual_sizes[local_index++];
@@ -596,7 +597,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
     for (size_t i = 0; i < node_num; i++) {
       if (fail_num > 0 && failed[seq[i]]) {
         continue;
-      } else if (request2server[seq[i]] != rank) {
+      } else if (static_cast<size_t>(request2server[seq[i]]) != rank) {
         char temp[actual_size[i] + 1];
         res[seq[i]]->copy_and_forward(temp, actual_size[i]);
         cntl->response_attachment().append(temp, actual_size[i]);
