@@ -14,12 +14,12 @@
 
 #pragma once
 
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include <iostream>
 #include <memory>
@@ -27,6 +27,7 @@
 #include <thread>
 #include <unordered_map>
 
+#include "paddle/fluid/distributed/store/socket.h"
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/distributed/store/tcp_utils.h"
 
@@ -50,7 +51,7 @@ class MasterDaemon {
 
  private:
   void run();
-  void ProcessCommands(const std::vector<struct pollfd>& fds);
+  void ProcessCommands(std::vector<struct pollfd>* p_fds);
   void _do_add(SocketType socket);
   void _do_wait(SocketType socket);
   void _do_get(SocketType socket);
@@ -107,7 +108,7 @@ class TCPClient {
 
 }  // namespace detail
 
-// TODO(gongwb):Add IP6 support.
+// TODO(gongwb) :Add IP6 support.
 class TCPStore : public Store {
  public:
   static constexpr std::uint16_t kDefaultPort = 6170;

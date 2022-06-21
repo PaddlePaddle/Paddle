@@ -21,6 +21,6 @@ namespace distributed {
 
 int GetSockName(int fd, char* out, int out_len);
 
-std::string GetSocketName(int fd);
-};
-};
+std::string GetSockName(int fd);
+};  // namespace distributed
+};  // namespace paddle
