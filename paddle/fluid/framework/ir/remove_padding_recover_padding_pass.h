@@ -47,7 +47,8 @@ struct PrelnEmbEltwiseLayernorm : public PatternBase {
 
   void operator()();
   PATTERN_DECL_NODE(preln_emb_elt_layernorm_op);
-  PATTERN_DECL_NODE(preln_emb_elt_layernorm_out);
+  PATTERN_DECL_NODE(preln_emb_elt_layernorm_out_0);
+  PATTERN_DECL_NODE(preln_emb_elt_layernorm_out_1);
 };
 
 struct SkipLayernorm : public PatternBase {
@@ -71,7 +72,8 @@ struct PrelnSkipLayernorm : public PatternBase {
   PATTERN_DECL_NODE(preln_skip_layernorm_x);
   PATTERN_DECL_NODE(preln_skip_layernorm_y);
   PATTERN_DECL_NODE(preln_skip_layernorm_op);
-  PATTERN_DECL_NODE(preln_skip_layernorm_out);
+  PATTERN_DECL_NODE(preln_skip_layernorm_out_0);
+  PATTERN_DECL_NODE(preln_skip_layernorm_out_1);
 };
 
 struct MultiheadMatmul : public PatternBase {

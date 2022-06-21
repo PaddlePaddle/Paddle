@@ -159,7 +159,7 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     std::unordered_set<const Node *> del_node_set;
 
     // Create an PrelnSkipLayerNorm op node
-    OpDesc new_desc;
+    OpDesc new_desc(elementwise->Op()->Block());
     new_desc.SetType("preln_skip_layernorm");
 
     // inputs

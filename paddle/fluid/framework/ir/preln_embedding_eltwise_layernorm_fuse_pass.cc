@@ -321,7 +321,7 @@ int PrelnEmbeddingEltwiseLayerNormFusePass::BuildFusion(
       embs.push_back(inner_pattern_ins[js[iter]].second->Name());
     }
 
-    OpDesc new_op_desc;
+    OpDesc new_op_desc(end_patter_layernorms[0]->Op()->Block());
     new_op_desc.SetType("fused_preln_embedding_eltwise_layernorm");
     new_op_desc.SetInput("Ids", ids);
     new_op_desc.SetInput("Embs", embs);

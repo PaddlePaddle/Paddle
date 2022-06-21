@@ -32,9 +32,16 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
 #if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert fluid PrelnEmbEltwiseLayerNorm op to tensorrt layer";
 
-    if (!(engine_->use_varseqlen() && engine_->with_interleaved())) {
+    auto pos_id_name = engine_->tensorrt_transformer_posid();
+    auto mask_id_name = engine_->tensorrt_transformer_maskid();
+    bool flag_prelayernorm = engine_->with_interleaved() &&
+                             engine_->use_varseqlen() && pos_id_name != "" &&
+                             mask_id_name != "";
+
+    if (!flag_prelayernorm) {
       PADDLE_THROW(platform::errors::Fatal(
-          "PrelnErnie: If you want to use oss, must be with interleaved"));
+          "PrelnErnie: If you want to use varseqlen, must be with interleaved, "
+          "set pos_id_name, set mask_id_name."));
     }
     framework::OpDesc op_desc(op, nullptr);
     bool enable_int8 = op_desc.HasAttr("enable_int8");
@@ -43,13 +50,16 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
           platform::errors::Fatal("use with_interleaved must be int8."));
     }
     auto word_id_name = op_desc.Input("WordId").front();
-    auto pos_id_name = op_desc.Input("PosId").front();
     engine_->Set("ernie_pos_name", new std::string(pos_id_name));
 
     auto sent_id_name = op_desc.Input("SentId").front();
     auto word_emb_name = op_desc.Input("WordEmbedding").front();
     auto pos_emb_name = op_desc.Input("PosEmbedding").front();
     auto sent_emb_name = op_desc.Input("SentEmbedding").front();
+
+    engine_->SetITensor("word_id", engine_->GetITensor(word_id_name));
+    engine_->SetITensor("pos_id", engine_->GetITensor(pos_id_name));
+    engine_->SetITensor("mask_id", engine_->GetITensor(mask_id_name));
 
     std::vector<std::string> emb_names;
     emb_names =
@@ -136,8 +146,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     plugin_inputs.emplace_back(
         engine_->GetITensor(pos_id_name));  // cu_seqlens,
                                             // eval_placeholder_2
-    auto max_seqlen_tensor =
-        engine_->GetITensor(engine_->network()->getInput(3)->getName());
+    auto max_seqlen_tensor = engine_->GetITensor(mask_id_name);
     auto* shuffle_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *max_seqlen_tensor);
     nvinfer1::Dims shape_dim;
