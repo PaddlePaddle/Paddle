@@ -43,10 +43,10 @@ TEST(ProfilerTest, TestHostTracer) {
   profiler->Prepare();
   profiler->Start();
   {
-    RecordInstantEvent("TestTraceLevel_record1", TracerEventType::UserDefined,
-                       2);
-    RecordInstantEvent("TestTraceLevel_record2", TracerEventType::UserDefined,
-                       3);
+    RecordInstantEvent(
+        "TestTraceLevel_record1", TracerEventType::UserDefined, 2);
+    RecordInstantEvent(
+        "TestTraceLevel_record2", TracerEventType::UserDefined, 3);
   }
   auto profiler_result = profiler->Stop();
   auto nodetree = profiler_result->GetNodeTrees();
@@ -117,19 +117,25 @@ TEST(ProfilerTest, TestHostTracerForMem) {
   profiler->Prepare();
   profiler->Start();
   {
-    RecordEvent event1("TestTracerForMem_phase1", TracerEventType::UserDefined,
-                       1);
-    RecordMemEvent(reinterpret_cast<void*>(0), CPUPlace(), 1024,
+    RecordEvent event1(
+        "TestTracerForMem_phase1", TracerEventType::UserDefined, 1);
+    RecordMemEvent(reinterpret_cast<void*>(0),
+                   CPUPlace(),
+                   1024,
                    TracerMemEventType::Allocate);
-    RecordMemEvent(reinterpret_cast<void*>(0), CPUPlace(), 1024,
-                   TracerMemEventType::Free);
+    RecordMemEvent(
+        reinterpret_cast<void*>(0), CPUPlace(), 1024, TracerMemEventType::Free);
   }
   {
-    RecordEvent event2("TestTracerForMem_phase2", TracerEventType::UserDefined,
-                       1);
-    RecordMemEvent(reinterpret_cast<void*>(1024), CPUPlace(), 1024,
+    RecordEvent event2(
+        "TestTracerForMem_phase2", TracerEventType::UserDefined, 1);
+    RecordMemEvent(reinterpret_cast<void*>(1024),
+                   CPUPlace(),
+                   1024,
                    TracerMemEventType::Allocate);
-    RecordMemEvent(reinterpret_cast<void*>(1024), CPUPlace(), 1024,
+    RecordMemEvent(reinterpret_cast<void*>(1024),
+                   CPUPlace(),
+                   1024,
                    TracerMemEventType::Free);
   }
   auto profiler_result = profiler->Stop();

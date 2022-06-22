@@ -39,7 +39,9 @@ class RecordMemEvent {
    * @param type: Denote manipulation type for this memory event.
    */
   explicit RecordMemEvent(
-      const void* ptr, const Place& place, size_t size,
+      const void* ptr,
+      const Place& place,
+      size_t size,
       const TracerMemEventType type = TracerMemEventType::Allocate);
 };
 

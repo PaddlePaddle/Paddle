@@ -28,8 +28,11 @@ namespace platform {
 
 struct CommonEvent {
  public:
-  CommonEvent(const char *name, uint64_t start_ns, uint64_t end_ns,
-              EventRole role, TracerEventType type)
+  CommonEvent(const char *name,
+              uint64_t start_ns,
+              uint64_t end_ns,
+              EventRole role,
+              TracerEventType type)
       : name(name),
         start_ns(start_ns),
         end_ns(end_ns),
@@ -37,8 +40,12 @@ struct CommonEvent {
         type(type) {}
 
   CommonEvent(std::function<void *(size_t)> arena_allocator,
-              const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role, TracerEventType type, const std::string &attr_str)
+              const std::string &name_str,
+              uint64_t start_ns,
+              uint64_t end_ns,
+              EventRole role,
+              TracerEventType type,
+              const std::string &attr_str)
       : start_ns(start_ns), end_ns(end_ns), role(role), type(type) {
     auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
     strncpy(buf, name_str.c_str(), name_str.length() + 1);
@@ -49,8 +56,11 @@ struct CommonEvent {
   }
 
   CommonEvent(std::function<void *(size_t)> arena_allocator,
-              const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role, TracerEventType type)
+              const std::string &name_str,
+              uint64_t start_ns,
+              uint64_t end_ns,
+              EventRole role,
+              TracerEventType type)
       : start_ns(start_ns), end_ns(end_ns), role(role), type(type) {
     auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
     strncpy(buf, name_str.c_str(), name_str.length() + 1);
@@ -67,10 +77,15 @@ struct CommonEvent {
 
 struct CommonMemEvent {
  public:
-  CommonMemEvent(uint64_t timestamp_ns, uint64_t addr, TracerMemEventType type,
-                 int64_t increase_bytes, const Place &place,
-                 uint64_t current_allocated, uint64_t current_reserved,
-                 uint64_t peak_allocated, uint64_t peak_reserved)
+  CommonMemEvent(uint64_t timestamp_ns,
+                 uint64_t addr,
+                 TracerMemEventType type,
+                 int64_t increase_bytes,
+                 const Place &place,
+                 uint64_t current_allocated,
+                 uint64_t current_reserved,
+                 uint64_t peak_allocated,
+                 uint64_t peak_reserved)
       : timestamp_ns(timestamp_ns),
         addr(addr),
         type(type),
@@ -92,7 +107,8 @@ struct CommonMemEvent {
 struct OperatorSupplementOriginEvent {
  public:
   OperatorSupplementOriginEvent(
-      std::function<void *(size_t)> arena_allocator, uint64_t timestamp_ns,
+      std::function<void *(size_t)> arena_allocator,
+      uint64_t timestamp_ns,
       const std::string &type_name,
       const std::map<std::string, std::vector<framework::DDim>> &input_shapes,
       const std::map<std::string, std::vector<framework::proto::VarType::Type>>

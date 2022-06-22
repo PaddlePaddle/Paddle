@@ -34,10 +34,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 
-PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler, false,
+PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler,
+                            false,
                             "Enable rpc profiler or not.");
 
-DEFINE_bool(enable_host_event_recorder_hook, false,
+DEFINE_bool(enable_host_event_recorder_hook,
+            false,
             "enable HostEventRecorder, hook Profiler");
 
 namespace paddle {
@@ -45,8 +47,11 @@ namespace platform {
 
 MemEvenRecorder MemEvenRecorder::recorder;
 
-Event::Event(EventType type, std::string name, uint32_t thread_id,
-             EventRole role, std::string attr)
+Event::Event(EventType type,
+             std::string name,
+             uint32_t thread_id,
+             EventRole role,
+             std::string attr)
     : type_(type),
       name_(name),
       thread_id_(thread_id),
@@ -70,8 +75,10 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
-RecordEvent::RecordEvent(const char *name, const TracerEventType type,
-                         uint32_t level, const EventRole role) {
+RecordEvent::RecordEvent(const char *name,
+                         const TracerEventType type,
+                         uint32_t level,
+                         const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -102,8 +109,10 @@ RecordEvent::RecordEvent(const char *name, const TracerEventType type,
   start_ns_ = PosixInNsec();
 }
 
-RecordEvent::RecordEvent(const std::string &name, const TracerEventType type,
-                         uint32_t level, const EventRole role) {
+RecordEvent::RecordEvent(const std::string &name,
+                         const TracerEventType type,
+                         uint32_t level,
+                         const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
@@ -132,8 +141,10 @@ RecordEvent::RecordEvent(const std::string &name, const TracerEventType type,
   start_ns_ = PosixInNsec();
 }
 
-RecordEvent::RecordEvent(const std::string &name, const std::string &attr,
-                         const TracerEventType type, uint32_t level,
+RecordEvent::RecordEvent(const std::string &name,
+                         const std::string &attr,
+                         const TracerEventType type,
+                         uint32_t level,
                          const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
@@ -217,8 +228,8 @@ void RecordEvent::End() {
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer) {
     uint64_t end_ns = PosixInNsec();
-    tracer->AddCPURecords(CurAnnotationName(), start_ns_, end_ns, BlockDepth(),
-                          g_thread_id);
+    tracer->AddCPURecords(
+        CurAnnotationName(), start_ns_, end_ns, BlockDepth(), g_thread_id);
   }
   ClearCurAnnotation();
   PopEvent(*name_, role_);
@@ -228,7 +239,8 @@ void RecordEvent::End() {
   is_enabled_ = false;
 }
 
-RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
+RecordInstantEvent::RecordInstantEvent(const char *name,
+                                       TracerEventType type,
                                        uint32_t level) {
   if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
     return;
@@ -239,7 +251,8 @@ RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
 }
 
 RecordOpInfoSupplement::RecordOpInfoSupplement(
-    const std::string &type, const framework::AttributeMap &attrs,
+    const std::string &type,
+    const framework::AttributeMap &attrs,
     const framework::InferShapeContext &shape_ctx,
     const framework::RuntimeContext &ctx) {
   if (FLAGS_enable_host_event_recorder_hook == false) {
@@ -264,8 +277,10 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
       PosixInNsec(), type, input_shapes, dtypes, callstack);
 }
 
-RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
-                               size_t size, const TracerMemEventType type) {
+RecordMemEvent::RecordMemEvent(const void *ptr,
+                               const phi::Place &place,
+                               size_t size,
+                               const TracerMemEventType type) {
   if (g_state == ProfilerState::kDisabled &&
       FLAGS_enable_host_event_recorder_hook == false) {
     return;
@@ -288,9 +303,14 @@ RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
           DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
     }
 
-    platform::MemEvenRecorder::Instance().PushMemRecord(
-        ptr, place, size, type, current_allocated, current_reserved,
-        peak_allocated, peak_reserved);
+    platform::MemEvenRecorder::Instance().PushMemRecord(ptr,
+                                                        place,
+                                                        size,
+                                                        type,
+                                                        current_allocated,
+                                                        current_reserved,
+                                                        peak_allocated,
+                                                        peak_reserved);
   } else if (type == TracerMemEventType::ReservedAllocate) {
     uint64_t current_reserved;
     uint64_t peak_reserved;
@@ -309,9 +329,14 @@ RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
           DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
     }
 
-    platform::MemEvenRecorder::Instance().PushMemRecord(
-        ptr, place, size, type, current_allocated, current_reserved,
-        peak_allocated, peak_reserved);
+    platform::MemEvenRecorder::Instance().PushMemRecord(ptr,
+                                                        place,
+                                                        size,
+                                                        type,
+                                                        current_allocated,
+                                                        current_reserved,
+                                                        peak_allocated,
+                                                        peak_reserved);
   } else if (type == TracerMemEventType::Free) {
     uint64_t current_allocated;
     uint64_t peak_allocated;
@@ -330,9 +355,14 @@ RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
           DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
     }
 
-    platform::MemEvenRecorder::Instance().PopMemRecord(
-        ptr, place, size, type, current_allocated, current_reserved,
-        peak_allocated, peak_reserved);
+    platform::MemEvenRecorder::Instance().PopMemRecord(ptr,
+                                                       place,
+                                                       size,
+                                                       type,
+                                                       current_allocated,
+                                                       current_reserved,
+                                                       peak_allocated,
+                                                       peak_reserved);
   } else if (type == TracerMemEventType::ReservedFree) {
     uint64_t current_reserved;
     uint64_t peak_reserved;
@@ -351,28 +381,38 @@ RecordMemEvent::RecordMemEvent(const void *ptr, const phi::Place &place,
           DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
     }
 
-    platform::MemEvenRecorder::Instance().PopMemRecord(
-        ptr, place, size, type, current_allocated, current_reserved,
-        peak_allocated, peak_reserved);
+    platform::MemEvenRecorder::Instance().PopMemRecord(ptr,
+                                                       place,
+                                                       size,
+                                                       type,
+                                                       current_allocated,
+                                                       current_reserved,
+                                                       peak_allocated,
+                                                       peak_reserved);
   }
 }
 
-void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
+void MemEvenRecorder::PushMemRecord(const void *ptr,
+                                    const Place &place,
                                     size_t size) {
   if (g_state == ProfilerState::kDisabled) {
     return;
   }
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
-  PADDLE_ENFORCE_EQ(events.count(ptr), 0,
+  PADDLE_ENFORCE_EQ(events.count(ptr),
+                    0,
                     platform::errors::InvalidArgument(
                         "The Place can't exist in the stage of PushMemRecord"));
-  events.emplace(ptr, std::unique_ptr<RecordMemEvent>(
-                          new MemEvenRecorder::RecordMemEvent(place, size)));
+  events.emplace(ptr,
+                 std::unique_ptr<RecordMemEvent>(
+                     new MemEvenRecorder::RecordMemEvent(place, size)));
 }
 
-void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
-                                    size_t size, TracerMemEventType type,
+void MemEvenRecorder::PushMemRecord(const void *ptr,
+                                    const Place &place,
+                                    size_t size,
+                                    TracerMemEventType type,
                                     uint64_t current_allocated,
                                     uint64_t current_reserved,
                                     uint64_t peak_allocated,
@@ -380,8 +420,15 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
   std::lock_guard<std::mutex> guard(mtx_);
   if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
     HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
-        PosixInNsec(), reinterpret_cast<uint64_t>(ptr), type, size, place,
-        current_allocated, current_reserved, peak_allocated, peak_reserved);
+        PosixInNsec(),
+        reinterpret_cast<uint64_t>(ptr),
+        type,
+        size,
+        place,
+        current_allocated,
+        current_reserved,
+        peak_allocated,
+        peak_reserved);
     return;
   }
   if (type == TracerMemEventType::ReservedAllocate) {
@@ -390,11 +437,13 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
   }
   if (g_state == ProfilerState::kDisabled) return;
   auto &events = address_memevent_[place];
-  PADDLE_ENFORCE_EQ(events.count(ptr), 0,
+  PADDLE_ENFORCE_EQ(events.count(ptr),
+                    0,
                     platform::errors::InvalidArgument(
                         "The Place can't exist in the stage of PushMemRecord"));
-  events.emplace(ptr, std::unique_ptr<RecordMemEvent>(
-                          new MemEvenRecorder::RecordMemEvent(place, size)));
+  events.emplace(ptr,
+                 std::unique_ptr<RecordMemEvent>(
+                     new MemEvenRecorder::RecordMemEvent(place, size)));
 }
 
 void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
@@ -410,8 +459,10 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
   }
 }
 
-void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place,
-                                   size_t size, TracerMemEventType type,
+void MemEvenRecorder::PopMemRecord(const void *ptr,
+                                   const Place &place,
+                                   size_t size,
+                                   TracerMemEventType type,
                                    uint64_t current_allocated,
                                    uint64_t current_reserved,
                                    uint64_t peak_allocated,
@@ -419,8 +470,15 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place,
   std::lock_guard<std::mutex> guard(mtx_);
   if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
     HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
-        PosixInNsec(), reinterpret_cast<uint64_t>(ptr), type, -size, place,
-        current_allocated, current_reserved, peak_allocated, peak_reserved);
+        PosixInNsec(),
+        reinterpret_cast<uint64_t>(ptr),
+        type,
+        -size,
+        place,
+        current_allocated,
+        current_reserved,
+        peak_allocated,
+        peak_reserved);
     return;
   }
   if (type == TracerMemEventType::ReservedFree) {
@@ -456,8 +514,13 @@ MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {
 
   auto annotation_free = CurAnnotationName();
   if (tracer) {
-    tracer->AddMemInfoRecord(start_ns_, end_ns_, bytes_, place_, alloc_in_,
-                             annotation_free, g_mem_thread_id);
+    tracer->AddMemInfoRecord(start_ns_,
+                             end_ns_,
+                             bytes_,
+                             place_,
+                             alloc_in_,
+                             annotation_free,
+                             g_mem_thread_id);
   }
   PopMemEvent(start_ns_, end_ns_, bytes_, place_, annotation_free);
 }
@@ -484,22 +547,38 @@ RecordBlock::~RecordBlock() {
   if (tracer) {
     // We try to put all blocks at the same nested depth in the
     // same timeline lane. and distinguish the using thread_id.
-    tracer->AddCPURecords(name_, start_ns_, PosixInNsec(), BlockDepth(),
-                          g_thread_id);
+    tracer->AddCPURecords(
+        name_, start_ns_, PosixInNsec(), BlockDepth(), g_thread_id);
   }
   ClearCurBlock();
 }
 
-void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                  const Place &place, const std::string &annotation) {
-  GetMemEventList().Record(EventType::kPushRange, start_ns, end_ns, bytes,
-                           place, g_mem_thread_id, annotation);
+void PushMemEvent(uint64_t start_ns,
+                  uint64_t end_ns,
+                  size_t bytes,
+                  const Place &place,
+                  const std::string &annotation) {
+  GetMemEventList().Record(EventType::kPushRange,
+                           start_ns,
+                           end_ns,
+                           bytes,
+                           place,
+                           g_mem_thread_id,
+                           annotation);
 }
 
-void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                 const Place &place, const std::string &annotation) {
-  GetMemEventList().Record(EventType::kPopRange, start_ns, end_ns, bytes, place,
-                           g_mem_thread_id, annotation);
+void PopMemEvent(uint64_t start_ns,
+                 uint64_t end_ns,
+                 size_t bytes,
+                 const Place &place,
+                 const std::string &annotation) {
+  GetMemEventList().Record(EventType::kPopRange,
+                           start_ns,
+                           end_ns,
+                           bytes,
+                           place,
+                           g_mem_thread_id,
+                           annotation);
 }
 
 void Mark(const std::string &name) {
@@ -511,17 +590,19 @@ void Mark(const std::string &name) {
   GetEventList().Record(EventType::kMark, name, g_thread_id);
 }
 
-Event *PushEvent(const std::string &name, const EventRole role,
+Event *PushEvent(const std::string &name,
+                 const EventRole role,
                  std::string attr) {
-  return GetEventList().Record(EventType::kPushRange, name, g_thread_id, role,
-                               attr);
+  return GetEventList().Record(
+      EventType::kPushRange, name, g_thread_id, role, attr);
 }
 
 void PopEvent(const std::string &name, const EventRole role, std::string attr) {
   GetEventList().Record(EventType::kPopRange, name, g_thread_id, role, attr);
 }
 void EnableProfiler(ProfilerState state) {
-  PADDLE_ENFORCE_NE(state, ProfilerState::kDisabled,
+  PADDLE_ENFORCE_NE(state,
+                    ProfilerState::kDisabled,
                     platform::errors::InvalidArgument(
                         "Can't enable profiling, since the input state is"
                         "ProfilerState::kDisabled"));
@@ -557,7 +638,8 @@ void ResetProfiler() {
     (*it)->Clear();
   }
   for (auto it = g_all_mem_event_lists.begin();
-       it != g_all_mem_event_lists.end(); ++it) {
+       it != g_all_mem_event_lists.end();
+       ++it) {
     (*it)->Clear();
   }
 }
@@ -753,8 +835,8 @@ static void EmulateEventPushAndPop(
       std::string name =
           prefix_stk.empty() ? evt.name : prefix_stk.top() + "/" + evt.name;
       const char *attr = (evt.attr == nullptr ? "none" : evt.attr);
-      Event *orig_evt = cur_thr_list->Record(EventType::kPushRange, name, tid,
-                                             evt.role, attr);
+      Event *orig_evt = cur_thr_list->Record(
+          EventType::kPushRange, name, tid, evt.role, attr);
       (*out)[tid][evt.end_ns] = std::make_pair(orig_evt, evt.start_ns);
       cur_thr_list->Record(EventType::kPopRange, name, tid, evt.role, attr);
     }
@@ -770,8 +852,8 @@ static void EmulateCPURecordsAdd(
   for (const auto &thr_sec : host_sec.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
     for (const auto &evt : thr_sec.events) {
-      tracer->AddCPURecords(evt.name, evt.start_ns, evt.end_ns, BlockDepth(),
-                            tid);
+      tracer->AddCPURecords(
+          evt.name, evt.start_ns, evt.end_ns, BlockDepth(), tid);
     }
   }
 }

@@ -22,7 +22,8 @@
 
 // Used to filter events, works like glog VLOG(level).
 // RecordEvent will works if host_trace_level >= level.
-PADDLE_DEFINE_EXPORTED_int64(host_trace_level, 1,
+PADDLE_DEFINE_EXPORTED_int64(host_trace_level,
+                             1,
                              "RecordEvent will works "
                              "if host_trace_level >= level.");
 
@@ -134,7 +135,8 @@ void HostTracer::PrepareTracing() {
 
 void HostTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
-      state_ == TracerState::READY || state_ == TracerState::STOPED, true,
+      state_ == TracerState::READY || state_ == TracerState::STOPED,
+      true,
       platform::errors::PreconditionNotMet("TracerState must be READY"));
   HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
   HostEventRecorder<CommonMemEvent>::GetInstance().GatherEvents();
@@ -146,7 +148,8 @@ void HostTracer::StartTracing() {
 
 void HostTracer::StopTracing() {
   PADDLE_ENFORCE_EQ(
-      state_, TracerState::STARTED,
+      state_,
+      TracerState::STARTED,
       platform::errors::PreconditionNotMet("TracerState must be STARTED"));
   HostTraceLevel::GetInstance().SetLevel(HostTraceLevel::kDisabled);
   state_ = TracerState::STOPED;
@@ -154,7 +157,8 @@ void HostTracer::StopTracing() {
 
 void HostTracer::CollectTraceData(TraceEventCollector* collector) {
   PADDLE_ENFORCE_EQ(
-      state_, TracerState::STOPED,
+      state_,
+      TracerState::STOPED,
       platform::errors::PreconditionNotMet("TracerState must be STOPED"));
   HostEventSection<CommonEvent> host_events =
       HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
