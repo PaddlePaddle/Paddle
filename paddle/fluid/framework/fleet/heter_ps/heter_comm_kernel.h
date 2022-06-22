@@ -135,8 +135,8 @@ class HeterCommKernel {
                               T* idx, long long len, size_t grad_value_size,
                               const StreamType& stream);
 
-  template <typename StreamType>
-  void merge_gradient(const uint32_t* offset, const uint32_t* fea_num,
+  template <typename KeyType, typename StreamType>
+  void merge_gradient(const KeyType* d_shard_keys, const uint32_t* offset, const uint32_t* fea_num,
                       const uint32_t* index, const char* input, char* output,
                       int n, size_t grad_value_size, DynamicGradMerger& merger_,
                       const StreamType& stream);
