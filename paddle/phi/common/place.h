@@ -123,7 +123,7 @@ class CPUPlace : public Place {
 
 class GPUPlace : public Place {
  public:
-  GPUPlace() : Place(AllocationType::GPU, 0) {}
+  GPUPlace();
   explicit GPUPlace(int device_id) : Place(AllocationType::GPU, device_id) {}
 
   GPUPlace(const GPUPlace&) = default;
