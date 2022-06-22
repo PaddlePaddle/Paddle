@@ -76,6 +76,8 @@ class NaiveExecutor {
   const platform::Place place_;
   // Catch the required resource to avoid recreate.
   std::vector<std::unique_ptr<OperatorBase>> ops_;
+  std::map<OperatorBase*, cudaGraphExec_t> graph_instances_;
+  std::vector<std::string> graphed_ops {"conv2d"};
   Scope* scope_;
 };
 
