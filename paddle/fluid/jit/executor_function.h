@@ -30,17 +30,17 @@
 namespace paddle {
 namespace jit {
 
-class ExectorFunction : public BaseFunction {
+class ExecutorFunction : public BaseFunction {
  public:
-  ExectorFunction(const std::shared_ptr<FunctionInfo> &info,
-                  const Name2VariableMap &params_dict,
-                  const phi::Place &place)
+  ExecutorFunction(const std::shared_ptr<FunctionInfo> &info,
+                   const Name2VariableMap &params_dict,
+                   const phi::Place &place)
       : info_(info), place_(place), inner_exe_(place_) {
     ShareParamsIntoScope(info_->GetParamNames(), params_dict, &scope_);
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
   }
 
-  ~ExectorFunction() noexcept {}
+  ~ExecutorFunction() noexcept {}
 
   std::vector<Variable> operator()(const std::vector<Variable> &inputs) {
     ShareInputsIntoScope(info_->GetInputArgNames(), inputs, &scope_);

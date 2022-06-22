@@ -27,15 +27,14 @@ Layer::Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
   // Layer manage the life time of all parameter.
   for (size_t i = 0; i < infos.size(); ++i) {
     // TODO(dev): choose exector or pe by flag
-    function_dict_[infos[i]->GetFunctionName()] =
-        std::make_shared<ExectorFunction>(infos[i], params_dict_, place);
+    unit_.AddExecutorFunction(
+        infos[i]->GetFunctionName(), infos[i], params_dict_, place);
   }
 }
 
 std::shared_ptr<BaseFunction> Layer::GetFunction(
     const std::string& name) const {
-  VLOG(3) << "funcs_ size: " << function_dict_.size();
-  return function_dict_.at(name);
+  return unit_.GetFunction(name);
 }
 
 std::vector<Variable> Layer::forward(const std::vector<Variable>& inputs) {
