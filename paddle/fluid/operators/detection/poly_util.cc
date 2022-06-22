@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #ifndef POLY_UTIL_CC_
 #define POLY_UTIL_CC_
 
@@ -26,7 +25,8 @@ using gpc::gpc_free_polygon;
 using gpc::gpc_polygon_clip;
 
 template <class T>
-void Array2PointVec(const T* box, const size_t box_size,
+void Array2PointVec(const T* box,
+                    const size_t box_size,
                     std::vector<Point_<T>>* vec) {
   size_t pts_num = box_size / 2;
   (*vec).resize(pts_num);
@@ -101,7 +101,9 @@ T PolyArea(const T* box, const size_t box_size, const bool normalized) {
 }
 
 template <class T>
-T PolyOverlapArea(const T* box1, const T* box2, const size_t box_size,
+T PolyOverlapArea(const T* box1,
+                  const T* box2,
+                  const size_t box_size,
                   const bool normalized) {
   gpc::gpc_polygon poly1;
   gpc::gpc_polygon poly2;
