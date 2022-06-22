@@ -49,7 +49,8 @@ class MasterDaemon {
                                              int nranks,
                                              int stop_check_timeout);
   MasterDaemon() = delete;
-  explicit MasterDaemon(SocketType listen_socket, int nranks,
+  explicit MasterDaemon(SocketType listen_socket,
+                        int nranks,
                         int stop_check_timeout);
   ~MasterDaemon();
 
@@ -74,13 +75,14 @@ class MasterDaemon {
   void InitControlFd();
   void CloseControlFd();
   void StopByControlFd();
-  std::array<int, 2> _control_fd{{-1, -1}};
+  std::array<SocketType, 2> _control_fd{{-1, -1}};
 };
 
 class TCPServer {
  public:
   TCPServer() = default;
-  static std::unique_ptr<TCPServer> create(std::uint16_t port, int nranks,
+  static std::unique_ptr<TCPServer> create(std::uint16_t port,
+                                           int nranks,
                                            int stop_check_timeout);
 
  private:
@@ -116,8 +118,10 @@ class TCPClient {
 class TCPStore : public Store {
  public:
   static constexpr std::uint16_t kDefaultPort = 6170;
-  explicit TCPStore(std::string host, uint16_t port = kDefaultPort,
-                    bool is_master = false, size_t num_workers = 1,
+  explicit TCPStore(std::string host,
+                    uint16_t port = kDefaultPort,
+                    bool is_master = false,
+                    size_t num_workers = 1,
                     std::chrono::seconds timeout = tcputils::kDefaultTimeout,
                     int stop_check_timeout = 900);
 

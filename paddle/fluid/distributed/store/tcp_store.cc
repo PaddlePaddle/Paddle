@@ -29,13 +29,15 @@ namespace detail {
 
 constexpr int INFTIME = 10000;  // 10 seconds
 
-std::unique_ptr<MasterDaemon> MasterDaemon::start(SocketType socket, int nranks,
+std::unique_ptr<MasterDaemon> MasterDaemon::start(SocketType socket,
+                                                  int nranks,
                                                   int stop_check_timeout) {
   VLOG(4) << ("begin to run start");
   return std::make_unique<MasterDaemon>(socket, nranks, stop_check_timeout);
 }
 
-MasterDaemon::MasterDaemon(SocketType socket, int nranks,
+MasterDaemon::MasterDaemon(SocketType socket,
+                           int nranks,
                            int stop_check_timeout)
     : _listen_socket(socket),
       _nranks(nranks),
@@ -90,7 +92,8 @@ void MasterDaemon::_do_get(SocketType socket) {
 
   auto iter = _store.find(key);
   PADDLE_ENFORCE_NE(
-      iter, _store.end(),
+      iter,
+      _store.end(),
       platform::errors::InvalidArgument("Key %s not found in TCPStore.", key));
   std::vector<uint8_t> value = iter->second;
   tcputils::send_vector<uint8_t>(socket, value);
@@ -109,9 +112,12 @@ void MasterDaemon::_do_stop(SocketType socket) {
   }
 }
 
+#ifndef _WIN32
 void MasterDaemon::InitControlFd() {
-  PADDLE_ENFORCE_NE(pipe(_control_fd.data()), -1,
-                    "failed to cread control pipe errno:%d", errno);
+  PADDLE_ENFORCE_NE(pipe(_control_fd.data()),
+                    -1,
+                    "failed to cread control pipe errno:%d",
+                    errno);
 }
 void MasterDaemon::CloseControlFd() {
   for (int fd : _control_fd) {
@@ -129,6 +135,11 @@ void MasterDaemon::StopByControlFd() {
     _control_fd[1] = -1;
   }
 }
+#else
+void MasterDaemon::InitControlFd() {}
+void MasterDaemon::CloseControlFd() {}
+void MasterDaemon::StopByControlFd() {}
+#endif
 
 void MasterDaemon::_do_wait(SocketType socket) {
   std::string key = tcputils::receive_string(socket);
@@ -205,7 +216,8 @@ void MasterDaemon::run() {
       std::chrono::duration<double> diff = end_time - _stop_time;
       int elapsed_seconds = static_cast<int>(diff.count());
       PADDLE_ENFORCE_LT(
-          elapsed_seconds, _stop_check_timeout,
+          elapsed_seconds,
+          _stop_check_timeout,
           platform::errors::Fatal(
               "%d seconds elapsed after the first worker "
               "stopped, so we think there may be something wrong and will "
@@ -256,7 +268,8 @@ void MasterDaemon::run() {
   }
 }
 
-std::unique_ptr<TCPServer> TCPServer::create(uint16_t port, int nranks,
+std::unique_ptr<TCPServer> TCPServer::create(uint16_t port,
+                                             int nranks,
                                              int stop_check_timeout) {
   int socket = tcputils::tcp_listen("", std::to_string(port), AF_INET);
   auto server = std::make_unique<TCPServer>();
@@ -303,8 +316,11 @@ std::vector<T> TCPClient::receive_vector() {
 
 }  // namespace detail
 
-TCPStore::TCPStore(std::string host, uint16_t port, bool is_master,
-                   size_t num_workers, std::chrono::seconds timeout,
+TCPStore::TCPStore(std::string host,
+                   uint16_t port,
+                   bool is_master,
+                   size_t num_workers,
+                   std::chrono::seconds timeout,
                    int stop_check_timeout)
     : Store(timeout), _is_master(is_master), _num_workers(num_workers) {
   if (_is_master) {
@@ -335,7 +351,8 @@ void TCPStore::waitWorkers() {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if (_timeout != tcputils::kNoTimeout && elapsed > _timeout) {
       PADDLE_ENFORCE_EQ(
-          completed, _num_workers,
+          completed,
+          _num_workers,
           platform::errors::InvalidArgument(
               "TCPStore timeouted and not all workers got ready."));
     }
