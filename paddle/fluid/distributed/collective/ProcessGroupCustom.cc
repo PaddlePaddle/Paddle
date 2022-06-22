@@ -71,6 +71,7 @@ void ProcessGroupCustom::CustomTask::SynchronizeStreams() {
   for (size_t i = 0; i < places_.size(); ++i) {
     auto* default_ctx = static_cast<platform::CustomDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(places_[i]));
+    phi::DeviceGuard guard(default_ctx->GetPlace());
     phi::stream::Stream stream(default_ctx->GetPlace(), default_ctx->stream());
     stream.WaitEvent(control_events_[i].GetCustomEvent());
   }

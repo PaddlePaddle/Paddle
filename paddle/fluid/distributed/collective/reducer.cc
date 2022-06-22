@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/reducer.h"
+#include "paddle/phi/backends/device_guard.h"
+#include "paddle/phi/backends/device_manager.h"
 
 namespace paddle {
 namespace distributed {
@@ -184,23 +186,25 @@ static void SplitTensorsForAllReduce(
   }
 };
 
-#ifdef PADDLE_WITH_CUSOTM_DEVICE
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 // note(wangran16): A temporary solution for all backends.
 template <typename T>
 struct ConcatTensorsForAllReduce<platform::CustomDeviceContext, T> {
   void operator()(const platform::CustomDeviceContext &context,
                   const std::vector<phi::DenseTensor> &dense_tensors_,
                   Tensor *p_dense_contents) {
+    phi::DeviceGuard guard(context.GetPlace());
     auto *out =
         std::dynamic_pointer_cast<phi::DenseTensor>(p_dense_contents->impl())
             .get();
-    void *out_data = reinterpret_cast<void *>(out->data<T>());
+    uint8_t *out_data = reinterpret_cast<uint8_t *>(out->data<T>());
     auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
 
     size_t offset = 0;
-    for (auto i = 0; i < dense_tensors_.size(); ++i) {
-      void *in_data = reinterpret_cast<void *>(dense_tensors_[i].data<T>());
-      auto sz = dense_tensor_[i].numel() * sizeof(T);
+    for (const auto &tensor : dense_tensors_) {
+      const uint8_t *in_data =
+          reinterpret_cast<const uint8_t *>(tensor.data<T>());
+      auto sz = tensor.numel() * sizeof(T);
       device->MemoryCopyD2D(out_data + offset, in_data, sz, nullptr);
       offset += sz;
     }
@@ -215,13 +219,13 @@ struct SplitTensorsForAllReduce<platform::CustomDeviceContext, T> {
     auto *in =
         std::dynamic_pointer_cast<phi::DenseTensor>(p_dense_contents->impl())
             .get();
-    void *in_data = reinterpret_cast<void *>(in->data<T>());
+    uint8_t *in_data = reinterpret_cast<uint8_t *>(in->data<T>());
     auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
 
     size_t offset = 0;
-    for (auto i = 0; i < p_dense_tensors.size(); ++i) {
-      void *out_data = reinterpret_cast<void *>(p_dense_tensors[i].data<T>());
-      auto sz = p_dense_tensors[i].numel() * sizeof(T);
+    for (auto &tensor : *p_dense_tensors) {
+      uint8_t *out_data = reinterpret_cast<uint8_t *>(tensor.data<T>());
+      auto sz = tensor.numel() * sizeof(T);
       device->MemoryCopyD2D(out_data, in_data + offset, sz, nullptr);
       offset += sz;
     }
