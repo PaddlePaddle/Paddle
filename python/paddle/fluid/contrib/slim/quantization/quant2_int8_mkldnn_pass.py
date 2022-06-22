@@ -411,7 +411,7 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'multi_gru_seq_fuse_pass')
         graph = self._apply_pass(graph, 'seq_concat_fc_fuse_pass')
         graph = self._apply_pass(graph, 'gpu_cpu_squeeze2_matmul_fuse_pass')
-        graph = self._apply_pass(graph, 'gpu_cpu_reshape2_matmul_fuse_pass')
+        #graph = self._apply_pass(graph, 'gpu_cpu_reshape2_matmul_fuse_pass')
         graph = self._apply_pass(graph, 'gpu_cpu_flatten2_matmul_fuse_pass')
         graph = self._apply_pass(graph, 'matmul_v2_scale_fuse_pass')
         graph = self._apply_pass(graph, 'squared_mat_sub_fuse_pass')
