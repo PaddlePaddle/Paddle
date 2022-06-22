@@ -17,9 +17,9 @@
 #include <ostream>
 #include <string>
 
-#include "paddle/fluid/framework/variable.h"
-
 #include "paddle/phi/common/place.h"
+
+#include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace jit {

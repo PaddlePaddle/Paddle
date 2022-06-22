@@ -18,18 +18,16 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/jit/ast.h"
-#include "paddle/fluid/jit/base_function.h"
-#include "paddle/fluid/jit/compilation_unit.h"
-#include "paddle/fluid/jit/exector_function.h"
-#include "paddle/fluid/jit/function_schema.h"
-#include "paddle/fluid/jit/pe_function.h"
-
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/common/place.h"
+
+#include "paddle/fluid/jit/base_function.h"
+#include "paddle/fluid/jit/exector_function.h"
+#include "paddle/fluid/jit/function_schema.h"
+#include "paddle/fluid/jit/pe_function.h"
 
 namespace paddle {
 namespace jit {

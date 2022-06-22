@@ -18,10 +18,10 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/jit/layer_utils.h"
-
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/enforce.h"
+
+#include "paddle/fluid/jit/layer_utils.h"
 
 namespace paddle {
 namespace jit {

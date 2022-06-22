@@ -20,13 +20,13 @@
 #include <set>
 #include <string>
 
-#include "paddle/fluid/jit/function_schema.h"
-#include "paddle/fluid/jit/layer.h"
-
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
+
+#include "paddle/fluid/jit/function_schema.h"
+#include "paddle/fluid/jit/layer.h"
 
 namespace paddle {
 namespace jit {
