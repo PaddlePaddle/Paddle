@@ -55,7 +55,14 @@ class ElementwiseTensorOpConverter : public OpConverter {
       Y = tmp;
     }
     nvinfer1::Dims dims_x = X->getDimensions();
+std::cout << dims_x.d[0]  << std::endl;
+std::cout << dims_x.d[1]  << std::endl;
+std::cout << dims_x.nbDims  << std::endl;
     nvinfer1::Dims dims_y = Y->getDimensions();
+std::cout << dims_y.d[0]  << std::endl;
+std::cout << dims_y.d[1]  << std::endl;
+std::cout << dims_y.nbDims  << std::endl;
+std::cout << "还是短发" << std::endl;
     auto output_name = op_desc.Output("Out")[0];
 
     // axis here is relative to explicit batch
@@ -81,6 +88,9 @@ class ElementwiseTensorOpConverter : public OpConverter {
     int left_one_num = axis;
     int right_one_num = dims_x.nbDims - axis - dims_y.nbDims;
     nvinfer1::IShuffleLayer* reshape_layer;
+    nvinfer1::ITensor* reshape_y_tensor;
+    if (left_one_num > 0 || right_one_num > 0)
+{
     if (engine_->with_dynamic_shape()) {
       auto* y_shape_tensor = Shape(Y);
       auto* new_y_shape_tensor = y_shape_tensor;
@@ -101,14 +111,20 @@ class ElementwiseTensorOpConverter : public OpConverter {
     } else {
       nvinfer1::Dims new_y_dims;
       new_y_dims.nbDims = left_one_num + dims_y.nbDims + right_one_num;
+      std::cout << left_one_num << dims_y.nbDims << right_one_num << std::endl;
       for (int i = 0; i < new_y_dims.nbDims; i++) new_y_dims.d[i] = 1;
       for (int i = 0; i < dims_y.nbDims; i++)
         new_y_dims.d[left_one_num + i] = dims_y.d[i];
       reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *Y);
       reshape_layer->setReshapeDimensions(new_y_dims);
     }
+reshape_y_tensor = reshape_layer->getOutput(0);
+}
+else
+{
+    reshape_y_tensor = Y;
+}
 
-    auto* reshape_y_tensor = reshape_layer->getOutput(0);
 
     auto op_pair = ops.find(op_type_);
     PADDLE_ENFORCE_NE(op_pair, ops.end(),
