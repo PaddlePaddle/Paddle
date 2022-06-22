@@ -380,17 +380,10 @@ if(WITH_PYTHON)
     # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
     if(WITH_ONNXRUNTIME)
-      if(APPLE)
-        set(PADDLE2ONNX_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.dylib)
-        set(ONNXRUNTIME_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.1.10.0.dylib)
-      else()
-        set(PADDLE2ONNX_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so)
-        set(ONNXRUNTIME_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so.1.10.0)
-      endif()
+      set(PADDLE2ONNX_PYBIND_OUT
+          ${CMAKE_CURRENT_BINARY_DIR}/${PADDLE2ONNX_LIB_NAME})
+      set(ONNXRUNTIME_PYBIND_OUT
+          ${CMAKE_CURRENT_BINARY_DIR}/${ONNXRUNTIME_LIB_NAME})
 
       add_custom_command(
         OUTPUT ${PADDLE2ONNX_PYBIND_OUT}
