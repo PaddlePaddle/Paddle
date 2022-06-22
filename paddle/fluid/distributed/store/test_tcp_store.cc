@@ -16,14 +16,22 @@
 #include "paddle/fluid/distributed/store/tcp_store.h"
 #include "paddle/fluid/distributed/store/tcp_utils.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 namespace paddle {
 namespace distributed {
 
 TEST(MasterDaemon, init) {
   int socket = tcputils::tcp_listen("", std::to_string(0), AF_INET);
   auto d = detail::MasterDaemon::start(socket, 1, 100);
-  printf("started to sleep 1\n");
+  printf("started to sleep 2s\n");
+#ifdef _WIN32
+  Sleep(2 * 1000);
+#else
   usleep(2 * 1000 * 1000);
+#endif
   printf("end to reset\n");
 
   d.reset();
