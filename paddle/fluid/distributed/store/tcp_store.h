@@ -75,7 +75,7 @@ class MasterDaemon {
   void InitControlFd();
   void CloseControlFd();
   void StopByControlFd();
-#ifndef _WIN32
+#ifdef _WIN32
   std::array<SocketType, 2> _control_fd{{INVALID_SOCKET, -1}};
 #else
   std::array<SocketType, 2> _control_fd{{-1, -1}};
