@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <unistd.h>
-
-#include <iostream>
-#include <unordered_map>
-
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/store/tcp_store.h"
 #include "paddle/fluid/distributed/store/tcp_utils.h"
