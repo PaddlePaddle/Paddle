@@ -182,7 +182,7 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
       fds.erase(fds.begin() + i);
       tcputils::close_socket(fds[i].fd);
       _sockets.erase(_sockets.begin() + i - 2);
-      LOG(WARNING) << "Meet exception " << ex.what();
+      VLOG(3) << "Meet some exceptions during run:" << ex.what();
     }
   }
 }
@@ -374,18 +374,7 @@ void TCPStore::wait(const std::string& key) {
   } while (reply != ReplyType::STOP_WAIT);
 }
 
-TCPStore::~TCPStore() {
-  VLOG(3) << "~TCPStore";
-  _client->send_command_for_key(Command::STOP, "");
-  ReplyType ret = _client->receive_value<ReplyType>();
-  if (ret != ReplyType::STOP_WAIT) {
-    std::string msg = paddle::string::Sprintf(
-        "The reply for TCPStore destructure must be ReplyType::STOP_WAIT now "
-        "%d",
-        static_cast<int>(ret));
-    LOG(WARNING) << msg;
-  }
-}
+TCPStore::~TCPStore() { VLOG(3) << "TCPStore destructure"; }
 
 }  // namespace distributed
 }  // namespace paddle
