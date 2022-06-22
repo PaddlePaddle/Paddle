@@ -91,14 +91,18 @@ DECLARE_INPLACE_OP_INFERER(IdentityLossGradInplaceInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(identity_loss, IdentityLossInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(identity_loss,
+                            IdentityLossInferShapeFunctor,
                             PD_INFER_META(phi::IdentityLossInferMeta));
 
-REGISTER_OPERATOR(identity_loss, ops::IdentityLossOp, ops::IdentityLossOpMaker,
+REGISTER_OPERATOR(identity_loss,
+                  ops::IdentityLossOp,
+                  ops::IdentityLossOpMaker,
                   ops::IdentityLossGradMaker<paddle::framework::OpDesc>,
                   ops::IdentityLossGradMaker<paddle::imperative::OpBase>,
                   ops::IdentityLossInplaceInferer,
                   IdentityLossInferShapeFunctor);
 
-REGISTER_OPERATOR(identity_loss_grad, ops::IdentityLossGradOp,
+REGISTER_OPERATOR(identity_loss_grad,
+                  ops::IdentityLossGradOp,
                   ops::IdentityLossGradInplaceInferer);
