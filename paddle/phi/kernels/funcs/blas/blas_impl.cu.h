@@ -1248,9 +1248,6 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
           "but received %d",
           context_.GetComputeCapability()));
 
-  float h_alpha = static_cast<float>(alpha);
-  float h_beta = static_cast<float>(beta);
-
 #if CUDA_VERSION >= 8000
   // cublasHgemm does true FP16 computation which is slow for non-Volta
   // GPUs. So use cublasGemmEx instead which does pesudo FP16 computation:
@@ -1263,18 +1260,18 @@ inline void Blas<paddle::platform::CUDADeviceContext>::GEMM(
                                        N,
                                        M,
                                        K,
-                                       &h_alpha,
+                                       static_cast<void *>(&alpha),
                                        B,
                                        CUDA_R_16F,
                                        ldb,
                                        A,
                                        CUDA_R_16F,
                                        lda,
-                                       &h_beta,
+                                       static_cast<void *>(&beta),
                                        C,
                                        CUDA_R_16F,
                                        N,
-                                       CUDA_R_32F);
+                                       CUDA_R_16F);
 #else
   // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
 
@@ -1327,9 +1324,6 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
           "but received %d",
           context_.GetComputeCapability()));
 
-  float h_alpha = static_cast<float>(alpha);
-  float h_beta = static_cast<float>(beta);
-
 #if CUDA_VERSION >= 8000
   // cublasHgemm does true FP16 computation which is slow for non-Volta
   // GPUs. So use cublasGemmEx instead which does pesudo FP16 computation:
@@ -1342,18 +1336,18 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                        N,
                                        M,
                                        K,
-                                       &h_alpha,
+                                       static_cast<void *>(&alpha),
                                        B,
                                        CUDA_R_16F,
                                        ldb,
                                        A,
                                        CUDA_R_16F,
                                        lda,
-                                       &h_beta,
+                                       static_cast<void *>(&beta),
                                        C,
                                        CUDA_R_16F,
                                        N,
-                                       CUDA_R_32F);
+                                       CUDA_R_16F);
 #else
   // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
 
