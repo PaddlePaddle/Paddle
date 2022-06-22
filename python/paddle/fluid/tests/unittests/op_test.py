@@ -548,7 +548,6 @@ class OpTest(unittest.TestCase):
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
-
         return op
 
     def _get_io_vars(self, block, numpy_inputs):
@@ -563,6 +562,7 @@ class OpTest(unittest.TestCase):
                 inputs[name] = block.var(name)
         return inputs
 
+    #get the value of input 
     def _get_inputs(self, block):
         return self._get_io_vars(block, self.inputs)
 
