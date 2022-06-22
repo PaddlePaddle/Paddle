@@ -993,8 +993,8 @@ static void LaunchReduceKernel(const Tx* x_data,
 #else
     auto grid_size = grid;
     auto block_size = block;
-    const VecSize = 1;
-    const read_lens = VecSize;
+    const int VecSize = 1;
+    const int read_lens = VecSize;
 #endif
     ReduceHigherDimKernel<Ty,
                           Ty,
