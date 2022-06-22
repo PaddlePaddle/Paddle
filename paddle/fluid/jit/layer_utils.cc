@@ -51,7 +51,7 @@ void ShareInputsIntoScope(const std::vector<std::string> &ordered_input_names,
 }
 
 void ShareParamsIntoScope(const std::vector<std::string> &param_names,
-                          const VariableNameMap &params_dict,
+                          const Name2VariableMap &params_dict,
                           framework::Scope *scope) {
   VLOG(3) << "param_names size: " << param_names.size();
   for (size_t i = 0; i < param_names.size(); ++i) {

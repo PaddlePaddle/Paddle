@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/executor.h"
@@ -32,7 +32,7 @@
 namespace paddle {
 namespace jit {
 using Variable = paddle::framework::Variable;
-using VariableNameMap = std::map<std::string, Variable>;
+using Name2VariableMap = std::unordered_map<std::string, Variable>;
 
 class Layer {
  public:
@@ -41,7 +41,7 @@ class Layer {
   // {}
   // TODO(dev): consider make `func_name, program_desc, param_nams` as a class
   Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
-        const VariableNameMap& params_dict,
+        const Name2VariableMap& params_dict,
         const phi::Place& place);
 
   std::shared_ptr<BaseFunction> GetFunction(const std::string& name) const;
@@ -54,8 +54,8 @@ class Layer {
 
  private:
   // internal::Object obj_;
-  VariableNameMap params_dict_;
-  VariableNameMap attrs_dict_;
+  Name2VariableMap params_dict_;
+  Name2VariableMap attrs_dict_;
   std::map<std::string, std::shared_ptr<BaseFunction>> function_dict_;
 };
 

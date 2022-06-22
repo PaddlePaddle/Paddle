@@ -22,7 +22,7 @@ Layer Deserializer::operator()(const std::string& dir_path) {
   // set is ordered
   std::set<std::string> param_names_set;
   std::vector<std::shared_ptr<FunctionInfo>> infos;
-  VariableNameMap params_dict;
+  Name2VariableMap params_dict;
   for (auto& it : file_name_prefixs) {
     auto& func_name = it.first;
     auto program_desc = LoadProgram(dir_path + it.second + PDMODEL_SUFFIX);
@@ -92,7 +92,7 @@ Deserializer::GetPdmodelFileNamePrefix(const std::string& path) {
 void Deserializer::ReadTensorData(const std::string& file_name,
                                   const std::set<std::string>& var_name,
                                   const phi::Place& place,
-                                  VariableNameMap* params_dict) const {
+                                  Name2VariableMap* params_dict) const {
   VLOG(3) << "ReadTensorData from: " << file_name;
   std::ifstream fin(file_name, std::ios::binary);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();

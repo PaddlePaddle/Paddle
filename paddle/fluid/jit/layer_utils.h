@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/program_desc.h"
@@ -28,7 +29,7 @@ namespace paddle {
 namespace jit {
 
 using Variable = paddle::framework::Variable;
-using VariableNameMap = std::map<std::string, Variable>;
+using Name2VariableMap = std::unordered_map<std::string, Variable>;
 using DenseTensor = phi::DenseTensor;
 
 void FetchVarsByNames(const std::vector<std::string> &names,
@@ -40,7 +41,7 @@ void ShareInputsIntoScope(const std::vector<std::string> &ordered_input_names,
                           framework::Scope *scope);
 
 void ShareParamsIntoScope(const std::vector<std::string> &param_names,
-                          const VariableNameMap &params_dict,
+                          const Name2VariableMap &params_dict,
                           framework::Scope *scope);
 
 void RemoveFeedFetch(framework::ProgramDesc *program_desc);

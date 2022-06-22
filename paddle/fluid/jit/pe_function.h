@@ -34,7 +34,7 @@ namespace jit {
 class PEFunction : public BaseFunction {
  public:
   PEFunction(const std::shared_ptr<FunctionInfo> &info,
-             const VariableNameMap &params_dict,
+             const Name2VariableMap &params_dict,
              const phi::Place &place)
       : info_(info), place_(place) {
     ShareParamsIntoScope(info_->GetParamNames(), params_dict, &scope_);

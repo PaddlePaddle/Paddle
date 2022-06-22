@@ -20,7 +20,7 @@ namespace jit {
 // Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
 // {}
 Layer::Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
-             const VariableNameMap& params_dict,
+             const Name2VariableMap& params_dict,
              const phi::Place& place)
     : params_dict_(params_dict) {
   VLOG(3) << "infos size: " << infos.size();
