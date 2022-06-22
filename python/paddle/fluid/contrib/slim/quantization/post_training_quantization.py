@@ -122,7 +122,6 @@ class PostTrainingQuantization(object):
                  hist_percent=0.99999,
                  quantizable_op_type=["conv2d", "depthwise_conv2d", "mul"],
                  weight_round_algo='round',
-                 round_type='TiesToEven',
                  learning_rate=0.001,
                  is_full_quantize=False,
                  bias_correction=False,
@@ -185,10 +184,6 @@ class PostTrainingQuantization(object):
                 value float->int. Currently supports ['round', 'adaround'] methods.
                 Default is `round`, which is rounding nearest to the integer.
                 'adaround' is refer to https://arxiv.org/abs/2004.10568.
-            round_type(str, optional): The method of converting the tensor value float->int.
-                Currently supports ['TiesToEven', 'TiesAwayFromZero'] methods.
-                Default is `TiesToEven`, which is rounding to nearest ties to even. 
-                'TiesAwayFromZero' is rounding to nearest ties away from zero.
             learning_rate(float, optional): The learning rate of adaround method.
             is_full_quantized(bool, optional): If set is_full_quantized as True, 
                 apply quantization to all supported quantizable op type. If set
@@ -269,8 +264,6 @@ class PostTrainingQuantization(object):
         self._support_algo_type = [
             'KL', 'hist', 'avg', 'mse', 'emd', 'abs_max', 'min_max'
         ]
-        assert round_type in ['TiesToEven', 'TiesAwayFromZero']
-        self._round_type = round_type
         assert weight_round_algo in ['adaround', 'round']
         self._weight_round_algo = weight_round_algo
         self._learning_rate = learning_rate
@@ -651,7 +644,6 @@ class PostTrainingQuantization(object):
                                 float(np.max(np.abs(var_tensor[i]))))
                 self._quantized_threshold[var_name] = abs_max_value
         _logger.info("MSE searching stage ...")
-        distribution = np.round if self._round_type == 'TiesToEven' else utils.round_c
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
             var_tensor = var_tensor.flatten()
@@ -664,9 +656,14 @@ class PostTrainingQuantization(object):
                 scale = s * abs_max_value
                 s += 0.02
                 bins = 2**(self._activation_bits - 1) - 1
-                quant_var = np.clip(distribution(var_tensor / scale * bins),
-                                    -bins - 1, bins)
-                quant_dequant_var = quant_var / bins * scale
+                if self._onnx_format:
+                    quant_var = np.clip(distribution(var_tensor / scale * bins),
+                                        -bins - 1, bins)
+                    quant_dequant_var = quant_var / bins * scale
+                else:
+                    quant_dequant_var = np.round(
+                        np.clip(var_tensor, 0.0, scale) / scale *
+                        bins) / bins * scale
                 mse_loss = ((var_tensor - quant_dequant_var)**2).mean()
                 if mse_loss <= self._best_calibration_loss[var_name]:
                     self._best_calibration_loss[var_name] = mse_loss
@@ -691,7 +688,6 @@ class PostTrainingQuantization(object):
                                 float(np.max(np.abs(var_tensor[i]))))
                 self._quantized_threshold[var_name] = abs_max_value
         _logger.info("EMD searching stage ...")
-        distribution = np.round if self._round_type == 'TiesToEven' else utils.round_c
         for var_name in self._quantized_act_var_name:
             var_tensor = utils.load_variable_data(self._scope, var_name)
             var_tensor = var_tensor.flatten()
@@ -704,9 +700,14 @@ class PostTrainingQuantization(object):
                 scale = s * abs_max_value
                 s += 0.02
                 bins = 2**(self._activation_bits - 1) - 1
-                quant_var = np.clip(distribution(var_tensor / scale * bins),
-                                    -bins - 1, bins)
-                quant_dequant_var = quant_var / bins * scale
+                if self._onnx_format:
+                    quant_var = np.clip(distribution(var_tensor / scale * bins),
+                                        -bins - 1, bins)
+                    quant_dequant_var = quant_var / bins * scale
+                else:
+                    quant_dequant_var = np.round(
+                        np.clip(var_tensor, 0.0, scale) / scale *
+                        bins) / bins * scale
                 emd_loss = np.abs(
                     np.mean(var_tensor) - np.mean(quant_dequant_var)) + np.abs(
                         np.std(var_tensor) - np.std(quant_dequant_var))
@@ -918,8 +919,7 @@ class PostTrainingQuantization(object):
                 activation_bits=self._activation_bits,
                 activation_quantize_type=self._activation_quantize_type,
                 weight_quantize_type=self._weight_quantize_type,
-                quantizable_op_type=major_quantizable_op_types,
-                round_type=self._round_type)
+                quantizable_op_type=major_quantizable_op_types)
         else:
             transform_pass = QuantizationTransformPassV2(
                 scope=self._scope,
@@ -928,8 +928,7 @@ class PostTrainingQuantization(object):
                 activation_bits=self._activation_bits,
                 activation_quantize_type=self._activation_quantize_type,
                 weight_quantize_type=self._weight_quantize_type,
-                quantizable_op_type=major_quantizable_op_types,
-                round_type=self._round_type)
+                quantizable_op_type=major_quantizable_op_types)
 
         for sub_graph in graph.all_sub_graphs():
             # Insert fake_quant/fake_dequantize op must in test graph, so
@@ -946,15 +945,13 @@ class PostTrainingQuantization(object):
             add_quant_dequant_pass = AddQuantDequantPass(
                 scope=self._scope,
                 place=self._place,
-                quantizable_op_type=minor_quantizable_op_types,
-                round_type=self._round_type)
+                quantizable_op_type=minor_quantizable_op_types)
         else:
             add_quant_dequant_pass = AddQuantDequantPassV2(
                 scope=self._scope,
                 place=self._place,
                 quantizable_op_type=minor_quantizable_op_types,
-                is_full_quantized=self._is_full_quantize,
-                round_type=self._round_type)
+                is_full_quantized=self._is_full_quantize)
 
         for sub_graph in graph.all_sub_graphs():
             sub_graph._for_test = True
@@ -980,7 +977,6 @@ class PostTrainingQuantization(object):
                 bias_correction=self._bias_correction,
                 weight_bits=self._weight_bits,
                 weight_round_algo=self._weight_round_algo,
-                round_type=self._round_type,
                 activation_bits=self._activation_bits,
                 weight_quantize_type=self._weight_quantize_type,
                 quantizable_op_type=major_quantizable_op_types)
