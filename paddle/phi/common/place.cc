@@ -25,7 +25,14 @@ limitations under the License. */
 namespace phi {
 
 GPUPlace::GPUPlace()
-    : Place(AllocationType::GPU, phi::backends::gpu::GetCurrentDeviceId()) {}
+    : Place(AllocationType::GPU,
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+            phi::backends::gpu::GetCurrentDeviceId()
+#else
+            0
+#endif
+      ) {
+}
 
 const char *AllocationTypeStr(AllocationType type) {
   switch (type) {
