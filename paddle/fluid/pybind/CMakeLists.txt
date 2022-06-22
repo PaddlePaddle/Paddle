@@ -384,12 +384,12 @@ if(WITH_PYTHON)
         set(PADDLE2ONNX_PYBIND_OUT
             ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.dylib)
         set(ONNXRUNTIME_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.dylib)
+            ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.1.10.0.dylib)
       else()
         set(PADDLE2ONNX_PYBIND_OUT
             ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so)
         set(ONNXRUNTIME_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so)
+            ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so.1.10.0)
       endif()
 
       add_custom_command(
