@@ -39,7 +39,7 @@ bool LayoutAutoTune::UseLayoutAutoTune() const {
 LayoutAutoTune::LayoutAutoTune() {
   const auto& op_info = paddle::framework::OpInfoMap::Instance().map();
   for (auto it = op_info.begin(); it != op_info.end(); it++) {
-    // only when op's was not in Lightly、Heavily or Agnostic Set
+    // only when op was not in Lightly、Heavily or Agnostic Set
     if (IsLightlyLayoutSensitive(it->first) ||
         IsHeavilyLayoutSensitive(it->first) || IsLayoutAgnostic(it->first)) {
       VLOG(4) << "Already exists in Layout OP: " << it->first;
