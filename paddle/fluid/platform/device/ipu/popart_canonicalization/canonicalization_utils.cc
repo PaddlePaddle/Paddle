@@ -117,15 +117,20 @@ const bool is_float_equal(float a, float b, float eps) {
   return std::fabs(a - b) <= eps;
 }
 
-const int GetOutputVarDType(const Node *node, const std::string &output_name) {
-  auto out_node = GetOutputVarNode(output_name, node);
-  PADDLE_ENFORCE_NOT_NULL(out_node, platform::errors::Unavailable(
-                                        "Node's out node does not exist."));
-  auto var = out_node->Var();
+const ONNXDataType GetVarDType(const Node *node) {
+  auto var = node->Var();
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::Unavailable("Node is not a variable."));
   auto proto_var_type = var->GetDataType();
-  return static_cast<int>(VarType2OnnxDType(proto_var_type));
+  return VarType2OnnxDType(proto_var_type);
+}
+
+const ONNXDataType GetOutputVarDType(const Node *node,
+                                     const std::string &output_name) {
+  auto out_node = GetOutputVarNode(output_name, node);
+  PADDLE_ENFORCE_NOT_NULL(out_node, platform::errors::Unavailable(
+                                        "Node's out node does not exist."));
+  return GetVarDType(out_node);
 }
 
 }  // namespace ipu
