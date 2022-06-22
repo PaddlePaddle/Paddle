@@ -44,6 +44,7 @@ class JudgeVisitor(gast.NodeVisitor):
         scope = node.pd_scope
         expected = self.ans.get(node.name, set())
         assert scope.created_vars() == expected, "Not Equals."
+        self.generic_visit(node)
 
 
 def test_normal_0(x):
@@ -110,7 +111,7 @@ class TestClosureAnalysis(unittest.TestCase):
                 'test_nonlocal': set('i')
             },
             {
-                'func': set('i'),
+                'func': set({'i'}),
             },
             {
                 'func': set('i'),
