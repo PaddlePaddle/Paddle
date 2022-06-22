@@ -559,16 +559,25 @@ class TestLayerTo(unittest.TestCase):
             else:
                 self.assertTrue(isinstance(p, paddle.fluid.framework.ParamBase))
 
+    def func_test_to_api_none_buffer(self):
+        model = paddle.nn.Linear(2, 4)
+        buffer = None
+        model.register_buffer("buf_name", buffer, persistable=True)
+        model.to(dtype='float64')
+        self.assertEqual(model._buffers['buf_name'], None)
+
     def test_main(self):
         with _test_eager_guard():
             self.funcsetUp()
             self.func_test_to_api()
             self.func_test_to_api_paddle_dtype()
             self.func_test_to_api_numpy_dtype()
+            self.func_test_to_api_none_buffer()
         self.funcsetUp()
         self.func_test_to_api()
         self.func_test_to_api_paddle_dtype()
         self.func_test_to_api_numpy_dtype()
+        self.func_test_to_api_none_buffer()
 
 
 if __name__ == '__main__':

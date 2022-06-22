@@ -231,7 +231,7 @@ if(NOT WITH_DISTRIBUTE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
   list(REMOVE_ITEM TEST_OPS test_fleet_utils)
   list(REMOVE_ITEM TEST_OPS test_collective_cpu_barrier_with_gloo)
-
+  list(REMOVE_ITEM TEST_OPS test_delete_c_identity_op_pass)
   # TODO: Fix these unittests failed on Windows
   list(REMOVE_ITEM TEST_OPS test_fake_init_op)
 endif()
@@ -244,6 +244,7 @@ endif()
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_complex_matmul)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
+  list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fleet_checkpoint)
@@ -1176,6 +1177,11 @@ if(WITH_XPU_BKCL)
   #py_test(test_collective_reduce_api_xpu SRCS "test_collective_reduce_api.py")
   py_test(test_collective_allreduce_api_xpu
           SRCS "test_collective_allreduce_api.py")
+endif()
+
+if(WITH_HETERPS)
+  set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
+  set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
 endif()
 
 if(WIN32)
