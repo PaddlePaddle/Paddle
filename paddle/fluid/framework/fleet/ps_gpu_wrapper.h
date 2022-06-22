@@ -319,8 +319,8 @@ class PSGPUWrapper {
     config["embedx_dim"] = sparse_table_accessor.embedx_dim();
     config["nonclk_coeff"] = sparse_table_accessor_parameter.nonclk_coeff();
     config["clk_coeff"] = sparse_table_accessor_parameter.click_coeff();
-    
-  
+    config["mf_create_thresholds"] = sparse_table_accessor.embedx_threshold();
+
     if (accessor_class == "CtrDymfAccessor") {
       // optimizer config for embed_w and embedx
       add_sparse_optimizer(config, sparse_table_accessor.embed_sgd_param());
@@ -348,13 +348,13 @@ class PSGPUWrapper {
                           ? 10.0
                           : config["max_bound"];
     float learning_rate = (config.find("learning_rate") == config.end())
-                              ? 1.0
+                              ? 0.05
                               : config["learning_rate"];
     float initial_g2sum = (config.find("initial_g2sum") == config.end())
-                              ? 1.0
+                              ? 3.0
                               : config["initial_g2sum"];
     float initial_range = (config.find("initial_range") == config.end())
-                              ? 1.0
+                              ? 1e-4
                               : config["initial_range"];
     float beta1_decay_rate = (config.find("beta1_decay_rate") == config.end())
                                  ? 0.9
@@ -371,19 +371,19 @@ class PSGPUWrapper {
             ? static_cast<float>(1.0)
             : config["mf_create_thresholds"];
     float mf_learning_rate = (config.find("mf_learning_rate") == config.end())
-                                 ? 1.0
+                                 ? 0.05
                                  : config["mf_learning_rate"];
     float mf_initial_g2sum = (config.find("mf_initial_g2sum") == config.end())
-                                 ? 1.0
+                                 ? 3.0
                                  : config["mf_initial_g2sum"];
     float mf_initial_range = (config.find("mf_initial_range") == config.end())
-                                 ? 1.0
+                                 ? 1e-4
                                  : config["mf_initial_range"];
     float mf_min_bound = (config.find("mf_min_bound") == config.end())
-                             ? 1.0
+                             ? -10.0
                              : config["mf_min_bound"];
     float mf_max_bound = (config.find("mf_max_bound") == config.end())
-                             ? 1.0
+                             ? 10.0
                              : config["mf_max_bound"];
     float mf_beta1_decay_rate = (config.find("mf_beta1_decay_rate") == config.end())
                                  ? 0.9
@@ -394,20 +394,14 @@ class PSGPUWrapper {
     float mf_ada_epsilon = (config.find("mf_ada_epsilon") == config.end())
                                  ? 1e-8
                                  : config["mf_ada_epsilon"];
-    for (size_t i = 0; i < heter_devices_.size(); i++) {
-#ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(heter_devices_[i]));
-#elif defined(PADDLE_WITH_XPU_KP)
-      PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(heter_devices_[i]));
-#endif
-      this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
-                         learning_rate, initial_g2sum, initial_range, 
-                         beta1_decay_rate, beta2_decay_rate, ada_epsilon);
-      this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
-                         mf_initial_g2sum, mf_initial_range, mf_min_bound,
-                         mf_max_bound, mf_beta1_decay_rate, mf_beta2_decay_rate, 
-                         mf_ada_epsilon);
-    }
+
+    this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
+                        learning_rate, initial_g2sum, initial_range,
+                        beta1_decay_rate, beta2_decay_rate, ada_epsilon);
+    this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
+                        mf_initial_g2sum, mf_initial_range, mf_min_bound,
+                        mf_max_bound, mf_beta1_decay_rate, mf_beta2_decay_rate,
+                        mf_ada_epsilon);
 
     // set optimizer type(naive,adagrad,std_adagrad,adam,share_adam)
     optimizer_type_ = (config.find("optimizer_type") == config.end())
@@ -630,7 +624,7 @@ class PSGPUWrapper {
   bool running_ = false;
   std::vector<std::shared_ptr<ThreadPool>> pull_thread_pool_;
   std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
-
+  OptimizerConfig optimizer_config_;
  protected:
   static bool is_initialized_;
 };
