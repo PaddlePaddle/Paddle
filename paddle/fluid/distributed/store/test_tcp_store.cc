@@ -25,18 +25,13 @@ namespace paddle {
 namespace distributed {
 
 TEST(MasterDaemon, init) {
-  int port = 6170;
-  int socket = tcputils::tcp_listen("", std::to_string(port), AF_INET);
+  int socket = tcputils::tcp_listen("", std::to_string(0), AF_INET);
   auto d = detail::MasterDaemon::start(socket, 1, 100);
   printf("started to sleep 1\n");
   usleep(2 * 1000 * 1000);
   printf("end to reset\n");
 
   d.reset();
-
-  // printf("started to sleep 5\n");
-  // usleep(5*1000*1000);
-  // printf("end to exit\n");
 }
 
 };  // namespace distributed
