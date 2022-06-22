@@ -41,8 +41,6 @@ class LayoutAutoTune {
 
   void DisableLayoutAutoTune() { use_layout_autotune_ = false; }
 
-  bool GetLayoutAutoTune() { return use_layout_autotune_; }
-
   bool IsHeavilyLayoutSensitive(const std::string& op_type) const {
     return heavily_layout_sensitive_ops_.count(op_type) != 0;
   }
@@ -54,6 +52,8 @@ class LayoutAutoTune {
   bool IsLayoutAgnostic(const std::string& op_type) const {
     return layout_agnostic_ops_.count(op_type) != 0;
   }
+
+  DataLayout GetDesiredLayout() const { return layout_; }
 
   void SetDesiredLayout(const DataLayout& layout) { layout_ = layout; }
 
