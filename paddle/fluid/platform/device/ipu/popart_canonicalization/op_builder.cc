@@ -123,8 +123,9 @@ Node *CreateConst(Graph *graph, Node *node, const std::vector<Node *> &inputs,
 }
 
 Node *CreateCast(Graph *graph, Node *node, const std::vector<Node *> &inputs,
-                 const std::vector<Node *> &outputs, const int otype) {
-  auto to = VarType2PopartStr(static_cast<VarType::Type>(otype));
+                 const std::vector<Node *> &outputs,
+                 const VarType::Type otype) {
+  auto to = VarType2PopartStr(otype);
   return CreateBaseOp(graph, node, "popart_cast", inputs, outputs,
                       {{"to", to}});
 }

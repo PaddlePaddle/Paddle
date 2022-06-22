@@ -246,26 +246,32 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     // tensor model parallel
     AllReduce<T>(*out_linear_out, ring_id, ctx.cuda_device_context());
 
+    bool add_residual = ctx.Attr<bool>("add_residual");
+    const T *residual_ptr = add_residual ? x_data : nullptr;
     if (pre_layer_norm) {
       // output = (residual + dropout(input + bias))
       fused_dropout_layernorm_helper.ResidualDropoutBias(
-          ctx.cuda_device_context(), out_linear_out_data, x_data,
+          ctx.cuda_device_context(), out_linear_out_data, residual_ptr,
           out_linear_bias_data, final_out_data, dropout_mask_out_data);
     } else {
-      auto *ln_scale_2_data =
-          (ln_scale_2 == nullptr ? nullptr : ln_scale_2->data<U>());
-      auto *ln_bias_2_data =
-          (ln_bias_2 == nullptr ? nullptr : ln_bias_2->data<U>());
-      auto *bias_dropout_residual_out_data =
+      // TODO(Xreki): support post layer_norm case when add_residual is false.
+      PADDLE_ENFORCE_EQ(add_residual, true,
+                        platform::errors::InvalidArgument(
+                            "Attribute add_residual is expected to be true "
+                            "when pre_layer_norm is false."));
+
+      const U *ln_scale_2_ptr = ln_scale_2 ? ln_scale_2->data<U>() : nullptr;
+      const U *ln_bias_2_ptr = ln_bias_2 ? ln_bias_2->data<U>() : nullptr;
+      T *bias_dropout_residual_out_ptr =
           bias_dropout_residual_out->mutable_data<T>(ctx.GetPlace());
-      auto *ln_mean_2_data = ln_mean_2->mutable_data<U>(ctx.GetPlace());
-      auto *ln_var_2_data = ln_var_2->mutable_data<U>(ctx.GetPlace());
+      U *ln_mean_2_ptr = ln_mean_2->mutable_data<U>(ctx.GetPlace());
+      U *ln_var_2_ptr = ln_var_2->mutable_data<U>(ctx.GetPlace());
       // output = layernorm(residual + dropout(input + bias))
       fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
-          ctx.cuda_device_context(), out_linear_out_data, x_data,
-          out_linear_bias_data, ln_scale_2_data, ln_bias_2_data,
-          bias_dropout_residual_out_data, dropout_mask_out_data, final_out_data,
-          ln_mean_2_data, ln_var_2_data);
+          ctx.cuda_device_context(), out_linear_out_data, residual_ptr,
+          out_linear_bias_data, ln_scale_2_ptr, ln_bias_2_ptr,
+          bias_dropout_residual_out_ptr, dropout_mask_out_data, final_out_data,
+          ln_mean_2_ptr, ln_var_2_ptr);
     }
   }
 };
@@ -419,16 +425,17 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     int output_size = 3 * hidden_size;
     int input_size = dim_embed;
 
+    bool add_residual = ctx.Attr<bool>("add_residual");
     Tensor d_residual;
-    d_residual.Resize(input_x_dims);
-    T *d_residual_data = d_residual.mutable_data<T>(ctx.GetPlace());
+    T *d_residual_data = nullptr;
+    if (add_residual) {
+      d_residual.Resize(input_x_dims);
+      d_residual_data = d_residual.mutable_data<T>(ctx.GetPlace());
+    }
 
     bool transA = false;
     bool transB = true;
-    bool compute_qkv_bias = true;
-    if (qkv_bias == nullptr) {
-      compute_qkv_bias = false;
-    }
+    bool compute_qkv_bias = qkv_bias ? true : false;
     auto layer_norm_compute = AttnLayerNorm<T>(ctx.cuda_device_context(),
                                                epsilon, bsz_seq, dim_embed);
     auto qkv_compute =
@@ -539,16 +546,14 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
       // tensor model parallel
       AllReduce<T>(*d_x, ring_id, ctx.cuda_device_context());
     }
-    // gradient accumulation
-    std::vector<const Tensor *> ins;
-    std::vector<Tensor *> outs;
-    ins.emplace_back(&d_residual);
-    ins.emplace_back(d_x);
-    outs.emplace_back(d_x);
-    int elewise_add_axis = -1;
-    phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
-        ctx.cuda_device_context(), ins, &outs, elewise_add_axis,
-        phi::funcs::AddFunctor<T>());
+
+    if (add_residual) {
+      // gradient accumulation
+      std::vector<const Tensor *> ins = {&d_residual, d_x};
+      std::vector<Tensor *> outs = {d_x};
+      phi::funcs::ElementwiseKernel<T>(ctx.cuda_device_context(), ins, &outs,
+                                       phi::funcs::AddFunctor<T>());
+    }
   }
 };
 

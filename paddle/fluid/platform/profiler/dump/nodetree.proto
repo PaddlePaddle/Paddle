@@ -51,10 +51,14 @@ enum TracerEventTypeProto {
 };
 
 enum TracerMemEventTypeProto {
-  // Used to mark memory allocation
+  // Used to mark memory allocation which is managed by paddle
   Allocate = 0;
-  // Used to mark memory free
+  // Used to mark memory free which is managed by paddle
   Free = 1;
+  // Used to mark reserved memory allocation which is applied from device.
+  ReservedAllocate = 2;
+  // Used to mark reserved memory free which is released to device.
+  ReservedFree = 3;
 };
 
 message KernelEventInfoProto {
@@ -150,6 +154,10 @@ message MemTraceEventProto {
   required uint64 current_allocated = 8;
   // current total reserved memory
   required uint64 current_reserved = 9;
+  // current peak allocated memory
+  required uint64 peak_allocated = 10;
+  // current peak reserved memory
+  required uint64 peak_reserved = 11;
 }
 
 message OperatorSupplementEventProto {
