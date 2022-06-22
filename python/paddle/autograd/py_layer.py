@@ -425,11 +425,13 @@ class EagerPyLayerContext(object):
         Examples:
             .. code-block:: python
 
+                import os
+                os.environ['FLAGS_enable_eager_mode'] = '1'
                 import paddle
-                from paddle.autograd import PyLayer
+                from paddle.autograd import EagerPyLayer
                 import numpy as np
 
-                class Tanh(PyLayer):
+                class Tanh(EagerPyLayer):
                     @staticmethod
                     def forward(ctx, x):
                         a = x + x
@@ -464,11 +466,13 @@ class EagerPyLayerContext(object):
         Examples:
             .. code-block:: python
 
+                import os
+                os.environ['FLAGS_enable_eager_mode'] = '1'
                 import paddle
-                from paddle.autograd import PyLayer
+                from paddle.autograd import EagerPyLayer
                 import numpy as np
 
-                class Tanh(PyLayer):
+                class Tanh(EagerPyLayer):
                     @staticmethod
                     def forward(ctx, x):
                         return x, x+x
@@ -478,7 +482,7 @@ class EagerPyLayerContext(object):
                         assert np.equal(grad2.numpy(), paddle.zeros([1]).numpy())
                         return grad
 
-                class Tanh2(PyLayer):
+                class Tanh2(EagerPyLayer):
                     @staticmethod
                     def forward(ctx, x):
                         ctx.set_materialize_grads(False)
