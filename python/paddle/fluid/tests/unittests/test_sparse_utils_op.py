@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
+from paddle.incubate import sparse
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
@@ -314,6 +315,53 @@ class TestSparseConvert(unittest.TestCase):
                                           sparse_x.indices().numpy())
                     assert np.array_equal(values_sorted,
                                           sparse_x.values().numpy())
+
+    def test_batch_csr(self):
+        with _test_eager_guard():
+            shape = [3, 3, 3]
+
+            def verify(x, crows, cols, values):
+                x = paddle.to_tensor(x)
+                csr = x.to_sparse_csr()
+                assert np.allclose(crows, csr.crows().numpy())
+                assert np.allclose(cols, csr.cols().numpy())
+                assert np.allclose(values, csr.values().numpy())
+
+                dense = csr.to_dense()
+                assert np.allclose(x.numpy(), dense.numpy())
+
+            x = [
+                [[1.0, 0, 0], [0, 2.0, 0], [0, 0, 3.0]],
+                [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+                [[1.0, 0, 0], [0, 2.0, 0], [0, 0, 3.0]],
+            ]
+            crows = [[0, 1, 2, 3, 0, 0, 0, 0, 0, 1, 2, 3]]
+            cols = [0, 1, 2, 0, 1, 2]
+            values = [1.0, 2.0, 3.0, 1.0, 2.0, 3.0]
+
+            verify(x, crows, cols, values)
+
+            x = [
+                [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+                [[1.0, 0, 0], [0, 2.0, 0], [0, 0, 3.0]],
+                [[1.0, 0, 0], [0, 2.0, 0], [0, 0, 3.0]],
+            ]
+            crows = [[0, 0, 0, 0, 0, 1, 2, 3, 0, 1, 2, 3]]
+            cols = [0, 1, 2, 0, 1, 2]
+            values = [1.0, 2.0, 3.0, 1.0, 2.0, 3.0]
+
+            verify(x, crows, cols, values)
+
+            x = [
+                [[1.0, 0, 0], [0, 2.0, 0], [0, 0, 3.0]],
+                [[1.0, 0, 0], [0, 2.0, 0], [0, 0, 3.0]],
+                [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+            ]
+            crows = [[0, 1, 2, 3, 0, 1, 2, 3, 0, 0, 0, 0]]
+            cols = [0, 1, 2, 0, 1, 2]
+            values = [1.0, 2.0, 3.0, 1.0, 2.0, 3.0]
+
+            verify(x, crows, cols, values)
 
 
 class TestCooError(unittest.TestCase):
