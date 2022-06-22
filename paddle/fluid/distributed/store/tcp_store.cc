@@ -175,7 +175,7 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
           _do_stop(fds[i].fd);
           break;
         default:
-          LOG(WARNING) << "Unknow command: " << static_cast<int>(command)
+          LOG(WARNING) << "Unknown command: " << static_cast<int>(command)
                        << " from addr info:" << GetSockName(fds[i].fd);
       }
     } catch (const std::exception& ex) {
