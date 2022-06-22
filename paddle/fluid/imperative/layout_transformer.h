@@ -298,9 +298,6 @@ class ElementwiseOpTransformer
       this->SetVarsLayout(outs, desired_layout);
       return ins;
     } else {
-      if (no_trans)
-        VLOG(3) << "asdf elementwise Optimze Layout agnostic op:  axis "
-                << BOOST_GET_CONST(int, (*attrs)["axis"]);
       return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(ins, outs,
                                                                  attrs, tracer);
     }

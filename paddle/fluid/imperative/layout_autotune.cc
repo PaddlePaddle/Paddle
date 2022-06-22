@@ -26,6 +26,7 @@ namespace imperative {
 bool LayoutAutoTune::UseLayoutAutoTune() const {
 #if defined(PADDLE_WITH_CUDA)
   if (!phi::backends::gpu::TensorCoreAvailable()) {
+    LayoutAutoTune::Instance().DisableLayoutAutoTune();
     return false;
   } else {
     return use_layout_autotune_;
