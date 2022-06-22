@@ -38,6 +38,12 @@ class TestTraceOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['Input'], 'Out', check_eager=True)
 
+    def init_config(self):
+        self.case = np.random.randn(20, 6).astype('float64')
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
+        self.target = np.trace(self.inputs['Input'])
+
 
 class TestTraceOpCase1(TestTraceOp):
 
