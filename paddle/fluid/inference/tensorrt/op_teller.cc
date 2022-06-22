@@ -738,7 +738,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "arg_max") {
-      if (with_dynamic_shape) return false;
       int axis = desc.HasAttr("axis")
                      ? BOOST_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
