@@ -297,11 +297,18 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
         std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
     VLOG(1) << "writing a batch takes " << tt.count() << " us";
 
-    for (size_t i = 0; i < ars.size(); i++) {
-      if (ars[i].length() == 0) {
-        continue;
+    size_t acutal_thread_num =
+        std::min((size_t)batch_size, tensor_iterator_thread_num);
+    for (size_t i = 0; i < acutal_thread_num; i++) {
+      size_t average_size = batch_size / acutal_thread_num;
+      size_t begin =
+          average_size * i + std::min(batch_size % acutal_thread_num, i);
+      size_t end =
+          begin + average_size + (i < batch_size % acutal_thread_num ? 1 : 0);
+      for (size_t j = begin + 1; j < end; j++) {
+        ars[begin] += "\n" + ars[j];
       }
-      writer_ << ars[i];
+      writer_ << ars[begin];
     }
     return;
   }

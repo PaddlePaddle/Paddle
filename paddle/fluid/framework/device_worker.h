@@ -235,7 +235,7 @@ class DeviceWorker {
   int dump_mode_ = 0;
   int dump_interval_ = 10000;
   ChannelWriter<std::string> writer_;
-  const size_t tensor_iterator_thread_num = 12;
+  const size_t tensor_iterator_thread_num = 16;
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
 
