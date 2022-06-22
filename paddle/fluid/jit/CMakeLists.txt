@@ -13,7 +13,10 @@ cc_library(
   SRCS layer.cc
   DEPS executor parallel_executor executor_cache)
 
-cc_library(jit_function_schema SRCS function_schema.cc)
+cc_library(
+  jit_function_schema
+  SRCS function_schema.cc
+  DEPS proto_desc)
 
 if(WITH_TESTING AND NOT WIN32)
   add_custom_target(
