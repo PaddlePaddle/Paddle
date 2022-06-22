@@ -75,7 +75,11 @@ class MasterDaemon {
   void InitControlFd();
   void CloseControlFd();
   void StopByControlFd();
-  std::array<SocketType, 2> _control_fd{{static_cast<SocketType>(-1), -1}};
+#ifndef _WIN32
+  std::array<SocketType, 2> _control_fd{{INVALID_SOCKET, -1}};
+#else
+  std::array<SocketType, 2> _control_fd{{-1, -1}};
+#endif
 };
 
 class TCPServer {
