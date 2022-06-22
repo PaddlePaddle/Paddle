@@ -423,7 +423,8 @@ PDNode* MultiHeadMatmulPattern::operator()() {
 }
 
 PDNode* MultiHeadMatmulV3Pattern::operator()() {
-  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
+  // Add mul op to support huggingface onnx model convertsion by x2paddle
+  std::unordered_set<std::string> matmul_ops{"mul", "matmul", "matmul_v2"};
   auto* input0 = pattern->NewNode(input0_repr());
   input0->assert_is_ops_input(matmul_ops);
 
