@@ -155,6 +155,11 @@ class SparseCooTensor : public TensorBase,
 
   /// \brief get the dnese dim
   int32_t dense_dim() const;
+  const DenseTensor& rulebook() const { return rulebook_; }
+  DenseTensor* mutable_rulebook() { return &rulebook_; }
+  void SetRulebook(const DenseTensor& rulebook) { rulebook_ = rulebook; }
+  const bool subm() const { return subm_; }
+  void SetSubm(const bool subm) { subm_ = subm; }
 
  private:
   // save the indices of non zero elements in original dense tensor
@@ -165,6 +170,8 @@ class SparseCooTensor : public TensorBase,
   bool coalesced_ = false;
   // save the number of non zero elements in each batch
   DDim dims_;
+  DenseTensor rulebook_;
+  bool subm_ = false;
   /* --------------------------- */
   /*   example: non zero element is scalar */
   /* --------------------------- */

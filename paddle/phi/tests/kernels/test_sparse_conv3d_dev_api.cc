@@ -112,8 +112,8 @@ void TestConv3dBase(const std::vector<IntT>& indices,
   };
 
   if (!std::is_same<T, phi::dtype::float16>::value) {
-    DenseTensor rulebook = phi::Empty(
-        dev_ctx_cpu, DenseTensorMeta(indices_dtype, {1}, DataLayout::NCHW));
+    // DenseTensor rulebook = phi::Empty(
+    //     dev_ctx_cpu, DenseTensorMeta(indices_dtype, {1}, DataLayout::NCHW));
     SparseCooTensor out = sparse::Conv3d<T>(dev_ctx_cpu,
                                             x_tensor,
                                             kernel_tensor,
@@ -121,8 +121,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
                                             dilations,
                                             strides,
                                             1,
-                                            subm,
-                                            &rulebook);
+                                            subm);
 
     ASSERT_EQ(correct_out_dims.size(), out.dims().size());
     for (int i = 0; i < correct_out_dims.size(); i++) {
@@ -142,7 +141,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
           sparse::Conv3dGrad<T>(dev_ctx_cpu,
                                 x_tensor,
                                 kernel_tensor,
-                                rulebook,
+                                out,
                                 out,
                                 paddings,
                                 dilations,
@@ -196,8 +195,8 @@ void TestConv3dBase(const std::vector<IntT>& indices,
   phi::Copy(
       dev_ctx_gpu, kernel_tensor, phi::GPUPlace(), true, &d_kernel_tensor);
 
-  DenseTensor d_rulebook = phi::Empty(
-      dev_ctx_gpu, DenseTensorMeta(indices_dtype, {1}, DataLayout::NCHW));
+  // DenseTensor d_rulebook = phi::Empty(
+  //     dev_ctx_gpu, DenseTensorMeta(indices_dtype, {1}, DataLayout::NCHW));
   SparseCooTensor d_out = sparse::Conv3d<T>(dev_ctx_gpu,
                                             d_x_tensor,
                                             d_kernel_tensor,
@@ -205,8 +204,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
                                             dilations,
                                             strides,
                                             1,
-                                            subm,
-                                            &d_rulebook);
+                                            subm);
 
   ASSERT_EQ(correct_out_dims.size(), d_out.dims().size());
   ASSERT_EQ((int64_t)correct_out_features.size() / out_channels, d_out.nnz());
@@ -243,7 +241,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
         sparse::Conv3dGrad<T>(dev_ctx_gpu,
                               d_x_tensor,
                               d_kernel_tensor,
-                              d_rulebook,
+                              d_out,
                               d_out,
                               paddings,
                               dilations,

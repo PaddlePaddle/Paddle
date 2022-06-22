@@ -1,10 +1,9 @@
 - api : conv3d
   args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm)
-  output : Tensor(out), Tensor(rulebook)
+  output : Tensor(out)
   kernel :
-    func : sparse_conv3d{sparse_coo, dense -> sparse_coo, dense}
+    func : sparse_conv3d{sparse_coo, dense -> sparse_coo}
     layout : x
-  intermediate : rulebook
   backward : conv3d_grad
 
 - api : coo_to_dense

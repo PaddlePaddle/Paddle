@@ -555,6 +555,7 @@ int ProductRuleBook(const Context& dev_ctx,
     phi::Copy(
         dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
     out->SetMember(out_indices, out_values, out_dims, true);
+    out->SetSubm(true);
   }
   return rulebook_len;
 }
