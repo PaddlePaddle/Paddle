@@ -1,3 +1,6 @@
+# The apis in this file are unstandardized that may caused by a variety of reasons,
+# we are trying to fix these apis and will move standardized apis into api.yaml.
+
 - api : abs
   args : (Tensor x)
   output : Tensor
@@ -1779,7 +1782,7 @@
 
 - api : relu
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :

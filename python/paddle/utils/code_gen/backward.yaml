@@ -7,4 +7,5 @@
     param : [x]
   kernel :
     func : trace_grad
+    data_type : out_grad
   no_need_buffer : x
