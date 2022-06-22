@@ -37,7 +37,7 @@ from ..meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
-from paddle.distributed.fleet.utils.recompute import RecomputeFunction
+from paddle.distributed.fleet.utils.recompute import LegacyRecomputeFunction
 from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 
 __all__ = []
@@ -68,7 +68,8 @@ class _RecomputeModelWrapper(paddle.nn.Layer):
         return do_run
 
     def _checkpoint(self, func, *args, **kwargs):
-        return RecomputeFunction.apply(func, self._preserve_rng_state, *args)
+        return LegacyRecomputeFunction.apply(func, self._preserve_rng_state,
+                                             *args)
 
     def forward(self, input):
         end = 0
