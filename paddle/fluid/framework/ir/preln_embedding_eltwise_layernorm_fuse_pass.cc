@@ -443,18 +443,18 @@ void PrelnEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
   std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
   std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+  if (!(enable_int8 && use_varseqlen && with_interleaved && pos_id != "" &&
+        mask_id != "" && with_dynamic_shape)) {
+    VLOG(3) << "preln_embedding_eltwise_layernorm_fuse_pass need: use_trt, "
+               "enable_int8, set pos_id, set mask_id, "
+               "use_varseqlen, with_interleaved, with_dynamic_shape. Stop this "
+               "pass, "
+               "please reconfig.";
+    return;
+  }
   int fusion_count =
       PrelnEmbeddingEltwiseLayerNormFusePass::BuildFusion(graph, name_scope_);
   if (fusion_count > 0) {
-    if (!(enable_int8 && use_varseqlen && with_interleaved && pos_id != "" &&
-          mask_id != "" && with_dynamic_shape)) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "preln_embedding_eltwise_layernorm_fuse_pass need: use_trt, "
-          "enable_int8, set pos_id, set mask_id, "
-          "use_varseqlen, with_interleaved, with_dynamic_shape. Stop this "
-          "pass, "
-          "please reconfig."));
-    }
     graph->Set(kPrelnEmbEltwiseLayernormPass, new bool(true));
   }
   AddStatis(fusion_count);
