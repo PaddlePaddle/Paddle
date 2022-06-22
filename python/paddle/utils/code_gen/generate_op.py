@@ -22,7 +22,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from filters import to_op_attr_type, to_opmaker_name, to_opmaker_name_cstr, to_pascal_case
 from tests import is_base_api, is_vec, is_scalar, is_initializer_list, supports_inplace, supports_no_need_buffer
-from filters import to_input_name
+from filters import to_input_name, cartesian_prod_mapping
 from parse_utils import to_named_dict
 
 file_loader = FileSystemLoader(Path(__file__).parent / "templates")
@@ -37,6 +37,7 @@ env.filters["to_opmaker_name"] = to_opmaker_name
 env.filters["to_pascal_case"] = to_pascal_case
 env.filters["to_input_name"] = to_input_name
 env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
+env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.tests["base_api"] = is_base_api
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
