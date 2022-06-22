@@ -471,7 +471,7 @@ def _valid_nonlocal_names(return_name_ids, nonlocal_names):
         if name not in nonlocal_names:
             raise ValueError(
                 "Required returned var '{}' must be in 'nonlocal' statement '', but not found."
-                .format(name, ','.join(nonlocal_names)))
+                .format(name))
         nonlocal_names.remove(name)
 
     return return_name_ids + nonlocal_names
