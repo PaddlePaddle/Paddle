@@ -1299,8 +1299,13 @@ class ParallelTuner:
 
                     
         erine_pass(self._dist_context)
-
-        global_cost = self._estimator.estimate(self._dist_context)
+        max_memory = self._estimator._estimate_max_memory(self._dist_context)
+        print("\tmax_memory", "{:,}".format(max_memory), flush=True)
+        # The max memory must be less than 80% of 32GB (hard code)
+        if max_memory > 32 * 0.8 * 1024* 1024 * 1024:
+            return math.inf
+        else:
+            global_cost = self._estimator.estimate(self._dist_context)
         return global_cost.time
 
     def _store_init_parallel_strategy(self):
