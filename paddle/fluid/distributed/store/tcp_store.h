@@ -75,7 +75,7 @@ class MasterDaemon {
   void InitControlFd();
   void CloseControlFd();
   void StopByControlFd();
-  std::array<SocketType, 2> _control_fd{{-1, -1}};
+  std::array<SocketType, 2> _control_fd{{static_cast<SocketType>(-1), -1}};
 };
 
 class TCPServer {

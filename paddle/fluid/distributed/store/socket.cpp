@@ -28,7 +28,7 @@ namespace distributed {
 
 #ifdef _WIN32
 static int _get_sockname_of_win(int sock, char* out, int out_len) {
-  snprintf(out, outlen, "not support win now");
+  snprintf(out, out_len, "not support win now");
   return 0;
 }
 #else
@@ -37,8 +37,8 @@ static int _get_sockname(int sock, char *out, int out_len) {
   socklen_t s_len = sizeof(addr);
 
   if (::getsockname(sock, reinterpret_cast<sockaddr *>(&addr), &s_len)) {
-    ::snprintf(out, out_len, "can't getsocketname of %d, errno:%d", sock,
-               errno);
+    ::snprintf(
+        out, out_len, "can't getsocketname of %d, errno:%d", sock, errno);
     return -1;
   }
 
@@ -63,7 +63,7 @@ static int _get_sockname(int sock, char *out, int out_len) {
 
 int GetSockName(int sock, char* out, int out_len) {
 #ifdef _WIN32
-  return _get_sockname_of_win(sock, out, out_len)
+  return _get_sockname_of_win(sock, out, out_len);
 #else
   return _get_sockname(sock, out, out_len);
 #endif
