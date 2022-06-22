@@ -295,23 +295,19 @@ class ElementwiseOpTransformer
       }
     }
 
+    // for conv's bias
     if (no_trans && attrs->find("axis") != attrs->end() &&
         BOOST_GET_CONST(int, (*attrs)["axis"]) != -1) {
-      VLOG(3) << "Optimze layout agnostic op " << this->Type();
-      if (desired_layout == DataLayout::NHWC) {
+      auto& in_vars = ins.at("X")[0];
+      auto in_layout = paddle::imperative::GetDataLayout(in_vars);
+      if (in_var == DataLayout::NHWC) {
         (*attrs)["axis"] = 3;
-      } else if (desired_layout == DataLayout::NCHW) {
+      } else if (in_var == DataLayout::NCHW) {
         (*attrs)["axis"] = 1;
-      } else {
-        PADDLE_ENFORCE_EQ(
-            desired_layout,
-            DataLayout::UNDEFINED,
-            phi::errors::PreconditionNotMet("DataLayout is unsupport."));
       }
-      this->SetVarsLayout(outs, desired_layout);
+      this->SetVarsLayout(outs, in_layout);
       return ins;
     } else if (no_trans && attrs->find("axis") == attrs->end()) {
-      VLOG(3) << "Optimze layout agnostic op " << this->Type();
       this->SetVarsLayout(outs, desired_layout);
       return ins;
     } else {
@@ -333,8 +329,7 @@ class TransposeOpTransformer
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
       const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
-    VLOG(3) << "TransposeOpTransformer Optimze lightly layout sensitive op "
-            << this->Type();
+    VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
     // When the input layout is the desired format, it means that there
     // is a transpose layer in the network, it is better to transpose
     // the result to the original format.
@@ -368,19 +363,16 @@ class FlattenOpTransformer
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
       const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
-    VLOG(3) << "FlattenOpTransformer lightly layout sensitive op "
-            << this->Type();
+    VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
     // Flatten the C, H, W dimensions will not affect functionality.
     // So transformation is unnecessary. But in other cases, it needs to
     // fall back to the LightlyLayoutSensitiveOpTransformer.
     auto start_axis = BOOST_GET_CONST(int, (*attrs)["start_axis"]);
     auto stop_axis = BOOST_GET_CONST(int, (*attrs)["stop_axis"]);
     auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
-    if (desired_layout == DataLayout::NCHW) {
-      return ins;
-    } else if (paddle::imperative::GetDataLayout(ins.at("X")[0]) ==
-                   LayoutAutoTune::Instance().GetDesiredLayout() &&
-               start_axis == 1 && stop_axis == 3) {
+    if (paddle::imperative::GetDataLayout(ins.at("X")[0]) ==
+            LayoutAutoTune::Instance().GetDesiredLayout() &&
+        start_axis == 1 && stop_axis == 3) {
       return ins;
     } else {
       return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(
@@ -402,11 +394,6 @@ class ArgmaxOpTransformer
       paddle::framework::AttributeMap* attrs,
       const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
     VLOG(4) << "Optimze lightly layout sensitive op ArgmaxOpTransformer";
-    // When the input layout is the desired format, it means that there
-    // is a transpose layer in the network, it is better to transpose
-    // the result to the original format.
-    // Instead of actually inserting a transpose Op, we fuse the inserted
-    // transpose Op with the current transpose Op by transforming 'axis' attr.
     auto& in_var = ins.at("X")[0];
     auto var_layout = paddle::imperative::GetDataLayout(in_var);
     auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
