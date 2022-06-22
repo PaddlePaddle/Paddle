@@ -55,8 +55,6 @@ class LayoutAutoTune {
     return layout_agnostic_ops_.count(op_type) != 0;
   }
 
-  DataLayout GetDesiredLayout() const { return layout_; }
-
   void SetDesiredLayout(const DataLayout& layout) { layout_ = layout; }
 
  private:

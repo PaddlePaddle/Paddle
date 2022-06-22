@@ -39,7 +39,7 @@ bool LayoutAutoTune::UseLayoutAutoTune() const {
 LayoutAutoTune::LayoutAutoTune() {
   const auto& op_info = paddle::framework::OpInfoMap::Instance().map();
   for (auto it = op_info.begin(); it != op_info.end(); it++) {
-    // only when op's was not in layout
+    // only when op's was not in Lightly、Heavily or Agnostic Set
     if (IsLightlyLayoutSensitive(it->first) ||
         IsHeavilyLayoutSensitive(it->first) || IsLayoutAgnostic(it->first)) {
       VLOG(4) << "Already exists in Layout OP: " << it->first;
@@ -51,8 +51,6 @@ LayoutAutoTune::LayoutAutoTune() {
       continue;
     }
 
-    // some normalization operators such as instance_norm and layer_norm
-    // do not have data_format attr, but are layout sensitive.
     auto* attr_checker = it->second.Checker();
     bool layout_agnostic = true;
     if (attr_checker) {
@@ -83,6 +81,8 @@ LayoutAutoTune::LayoutAutoTune() {
       }
     }
 
+    // some normalization operators such as instance_norm and layer_norm
+    // do not have data_format attr, but are layout sensitive.
     if (it->first.find("norm") != std::string::npos && layout_agnostic) {
       lightly_layout_sensitive_ops_.emplace(it->first);
       continue;
@@ -111,12 +111,8 @@ paddle::imperative::NameVarMap<VarType> DealHeavilyLayoutSensitive(
   std::shared_ptr<LayoutTransformer<VarType>> transposer = nullptr;
   transposer =
       std::make_shared<HeavilyLayoutSensitiveOpTransformer<VarType>>(op_type);
-  if (op_type == "pool2d") {
-    transposer->SetArguments({"X"}, {"Out"}, {"data_format"});
-  } else {
-    transposer->SetArguments({"Input", "X"}, {"Output", "Out", "Y"},
-                             {"data_format"});
-  }
+  transposer->SetArguments(
+      {"Input", "X"}, {"Output", "Out", "Y"}, {"data_format", "data_layout"});
 
   return transposer->Apply(ins, outs, attrs, tracer);
 }
@@ -156,7 +152,6 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
   if (!LayoutAutoTune::Instance().UseLayoutAutoTune()) {
     return ins;
   }
-  VLOG(3) << "AutoTuneLayout use LayoutAutoTune: " << op_type;
   // When layout autotuning is enabled, the tuner will check the desired layout.
   // (1) If the desired layout is undefined, and there is no convolutional
   // layers, layout optimization is unnecessary. Otherwise, the desired layout
@@ -197,20 +192,20 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
   }
 
   if (LayoutAutoTune::Instance().IsHeavilyLayoutSensitive(op_type)) {
-    return DealHeavilyLayoutSensitive<VarType>(op_type, ins, outs, attrs,
-                                               tracer);
+    return DealHeavilyLayoutSensitive<VarType>(
+        op_type, ins, outs, attrs, tracer);
   } else if (LayoutAutoTune::Instance().IsLightlyLayoutSensitive(op_type)) {
-    return DealLightlyLayoutSensitive<VarType>(op_type, ins, outs, attrs,
-                                               tracer);
+    return DealLightlyLayoutSensitive<VarType>(
+        op_type, ins, outs, attrs, tracer);
   } else {
-    VLOG(4) << "LayoutAgnostic" << op_type;
     std::shared_ptr<LayoutTransformer<VarType>> transposer = nullptr;
     if (LayoutAutoTune::Instance().IsLayoutAgnostic(op_type)) {
       transposer = std::make_shared<LayoutTransformer<VarType>>(op_type);
     }
     PADDLE_ENFORCE_NOT_NULL(
-        transposer, phi::errors::Unimplemented(
-                        "%s 's LayoutTransformer is unimplemented.", op_type));
+        transposer,
+        phi::errors::Unimplemented("%s 's LayoutTransformer is unimplemented.",
+                                   op_type));
     return transposer->Apply(ins, outs, attrs, tracer);
   }
 }

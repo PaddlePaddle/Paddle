@@ -24,7 +24,8 @@ namespace imperative {
 
 template <typename VarType>
 std::shared_ptr<VarType> TraceTransposeOp(
-    const std::shared_ptr<VarType>& var, const DataLayout layout,
+    const std::shared_ptr<VarType>& var,
+    const DataLayout layout,
     const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
   std::vector<int> axis;
   if (layout == DataLayout::NHWC) {
@@ -103,15 +104,8 @@ class LayoutTransformer {
   // will be considered. Otherwise, it only set layout for the specified output.
   void SetVarsLayout(const paddle::imperative::NameVarMap<VarType>& outs,
                      DataLayout layout) const {
-    if (outs_.empty()) {
-      for (auto& pair : outs) {
-        for (auto& var : pair.second) {
-          if (var != nullptr) {
-            paddle::imperative::SetDataLayout(var, layout);
-          }
-        }
-      }
-    } else {
+    bool not_in_out = true;
+    if (!outs_.empty()) {
       for (auto& name : outs_) {
         if (outs.find(name) != outs.end()) {
           auto out_vars = outs.at(name);
@@ -119,6 +113,17 @@ class LayoutTransformer {
             if (var != nullptr) {
               paddle::imperative::SetDataLayout(var, layout);
             }
+          }
+          not_in_out = false;
+        }
+      }
+    }
+
+    if (not_in_out) {
+      for (auto& pair : outs) {
+        for (auto& var : pair.second) {
+          if (var != nullptr) {
+            paddle::imperative::SetDataLayout(var, layout);
           }
         }
       }
@@ -178,10 +183,24 @@ class HeavilyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
 
     // Step 2: Transpose the specified input for Op and set the transposed var's
     // layout.
+    bool not_in_set = true;
     for (auto& name : this->Inputs()) {
       if (new_ins.find(name) != new_ins.end()) {
         auto& in_vars = new_ins[name];
         for (auto& var : in_vars) {
+          if (var != nullptr &&
+              paddle::imperative::GetDataLayout(var) != desired_layout) {
+            var = TraceTransposeOp(var, desired_layout, tracer);
+          }
+        }
+        not_in_set = false;
+      }
+    }
+
+    if (not_in_set) {
+      for (auto& pair : new_ins) {
+        for (auto& var : pair.second) {
+          VLOG(4) << "Origin input attr was not in init set: " << pair->first;
           if (var != nullptr &&
               paddle::imperative::GetDataLayout(var) != desired_layout) {
             var = TraceTransposeOp(var, desired_layout, tracer);
@@ -212,7 +231,7 @@ class LightlyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
       const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
-    VLOG(4) << "Optimze lightly layout sensitive op " << this->Type();
+    VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
     paddle::imperative::NameVarMap<VarType> new_ins(ins);
     // If input's layout is not tuned, transformation is unnecessary.
     // If input's layout is already tuned, it will be transformed back to NCHW.
@@ -262,13 +281,10 @@ class ElementwiseOpTransformer
     // The Elementwise Ops has a axis attr, it is to support broadcast.
     // When bias_attr of Conv is not false, the elementwise_add will be
     // appended, and the axis will be set to the channel dimension.
-
     // If the axis is set to the channel dimension, the attr transformation
     // is necessary. Otherwise, it will fall back to the
     // LayoutTransformer::Apply.
     auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
-    // get the shape of input and output
-    // if shape's size is 4 and x's shape equal to y'shape no tranpose
     bool no_trans = true;
     for (auto& pair : ins) {
       for (auto& var : pair.second) {
@@ -288,7 +304,8 @@ class ElementwiseOpTransformer
         (*attrs)["axis"] = 1;
       } else {
         PADDLE_ENFORCE_EQ(
-            desired_layout, DataLayout::UNDEFINED,
+            desired_layout,
+            DataLayout::UNDEFINED,
             phi::errors::PreconditionNotMet("DataLayout is unsupport."));
       }
       this->SetVarsLayout(outs, desired_layout);
@@ -298,8 +315,8 @@ class ElementwiseOpTransformer
       this->SetVarsLayout(outs, desired_layout);
       return ins;
     } else {
-      return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(ins, outs,
-                                                                 attrs, tracer);
+      return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(
+          ins, outs, attrs, tracer);
     }
   }
 };
@@ -331,8 +348,8 @@ class TransposeOpTransformer
       // NHWC->NCHW, permutaion will be set as follows.
       std::vector<int> perm = {0, 3, 1, 2};
       // fuse the transpose Ops by transforming axis.
-      std::vector<int> fusion_axis = {perm[axis[0]], perm[axis[1]],
-                                      perm[axis[2]], perm[axis[3]]};
+      std::vector<int> fusion_axis = {
+          perm[axis[0]], perm[axis[1]], perm[axis[2]], perm[axis[3]]};
       (*attrs)["axis"] = fusion_axis;
     }
     return ins;
@@ -366,8 +383,8 @@ class FlattenOpTransformer
                start_axis == 1 && stop_axis == 3) {
       return ins;
     } else {
-      return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(ins, outs,
-                                                                 attrs, tracer);
+      return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(
+          ins, outs, attrs, tracer);
     }
   }
 };
@@ -421,8 +438,8 @@ class ArgmaxOpTransformer
                   << (AttrTypeID((*attrs)["axis"]));
       }
     }
-    return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(ins, outs, attrs,
-                                                               tracer);
+    return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(
+        ins, outs, attrs, tracer);
   }
 };
 
