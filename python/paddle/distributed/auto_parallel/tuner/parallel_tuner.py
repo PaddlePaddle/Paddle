@@ -36,6 +36,7 @@ from .trial import Trial, TrialStatus
 from .tuner import Tuner
 from .tunable_space import TunableSpace
 from ..cost import CostEstimator
+from .tunable_variable import Boolean, IntRange
 from ..process_group import get_all_process_groups
 
 
@@ -499,41 +500,119 @@ class ParallelTuner:
         self._num_trials += 1
         return trial
 
+    # def _apply_pipeline_partition(self, process_mesh_list):
+    #     op_id_to_process_mesh = {}
+    #     total_ops = len(self._dist_context._dist_ops_for_program)
+    #     total_stages = len(process_mesh_list)
+    #     ops_per_stages = total_ops // total_stages
+    #     if ops_per_stages == 0:
+    #         return None
+    #     # pipeline_starts = []
+    #     start = 0
+    #     # pipeline_starts.append(0)
+    #     # for _ in process_mesh_list:
+    #     #     start += ops_per_stages
+    #     #     pipeline_starts.append(start)
+    #     # pipeline_starts[-1] = total_ops
+        
+    #     random_times = total_stages - 1
+    #     pipeline_starts = [0, total_ops]
+    #     random_start = 0
+    #     while random_start < total_stages-1:
+    #         partition_index = np.random.randint(1, total_ops)
+    #         if partition_index not in pipeline_starts:
+    #             pipeline_starts.append(partition_index)
+    #             random_start += 1
+    #     pipeline_starts.sort()
+
+
+    #     start = 1
+    #     sorted_op_ids = sorted(self._dist_context._dist_ops_for_program.keys())
+    #     for idx, op_id in enumerate(sorted_op_ids):
+    #         if idx < pipeline_starts[start]:
+    #             op_id_to_process_mesh[op_id] = process_mesh_list[start - 1]
+    #         else:
+    #             start += 1
+    #             op_id_to_process_mesh[op_id] = process_mesh_list[start - 1]
+    #     return op_id_to_process_mesh
+
+    def _generate_pipeline_starts(self, process_mesh_list):
+        total_ops = len(self._dist_context._dist_ops_for_program)
+        total_stages = len(process_mesh_list)
+        ops_per_stage = total_ops // total_stages
+        if ops_per_stage == 0:
+            return None
+        # Compute the initial pipeline starts
+        pipeline_starts = []
+        start = 0
+        pipeline_starts.append(0)
+        # The pipeline_starts have total_stages+1 items, and 
+        # at least have 2 items.
+        for _ in process_mesh_list:
+            start += ops_per_stage
+            pipeline_starts.append(start)
+        pipeline_starts[-1] = total_ops
+        # Adjust the pipeline starts by random selection
+        directions = []
+        sizes = []
+        half_ops_per_stage = ops_per_stage // 2
+        if half_ops_per_stage > 0 and total_stages > 1:
+            new_pipeline_starts = []
+            # Don't change the first start
+            new_pipeline_starts.append(0)
+            # Consider the starts except the first and the last one
+            for _ in pipeline_starts[1:-2]:
+                directions.append(Boolean("direction"))
+                sizes.append(
+                    IntRange("size",
+                             start=0,
+                             stop=half_ops_per_stage,
+                             endpoint=True))
+            for i, start in enumerate(pipeline_starts[1:-2]):
+                direction = directions[i].random(self._seed)
+                size = sizes[i].random(self._seed)
+                if direction:
+                    # Substract 1 from size to avoid the overlapping of new starts
+                    new_start = start - (size - 1)
+                else:
+                    new_start = start + size
+                new_pipeline_starts.append(new_start)
+            # Don't change the last start
+            new_pipeline_starts.append(pipeline_starts[-1])
+            # Validate the new starts
+            print("Adjusted pipeline starts", new_pipeline_starts, half_ops_per_stage, flush=True)
+            for i, new_start in enumerate(new_pipeline_starts[1:]):
+                assert new_start > new_pipeline_starts[i] 
+            return new_pipeline_starts
+        else:
+            print("Non-adjusted pipeline starts", pipeline_starts, half_ops_per_stage, flush=True)
+            return pipeline_starts
+
     def _apply_pipeline_partition(self, process_mesh_list):
         op_id_to_process_mesh = {}
         total_ops = len(self._dist_context._dist_ops_for_program)
         total_stages = len(process_mesh_list)
-        ops_per_stages = total_ops // total_stages
-        if ops_per_stages == 0:
+        ops_per_stage = total_ops // total_stages
+        if ops_per_stage == 0:
             return None
+        pipeline_starts = self._generate_pipeline_starts(process_mesh_list)
         # pipeline_starts = []
-        start = 0
+        # start = 0
         # pipeline_starts.append(0)
         # for _ in process_mesh_list:
-        #     start += ops_per_stages
+        #     start += ops_per_stage
         #     pipeline_starts.append(start)
         # pipeline_starts[-1] = total_ops
-        
-        random_times = total_stages - 1
-        pipeline_starts = [0, total_ops]
-        random_start = 0
-        while random_start < total_stages-1:
-            partition_index = np.random.randint(1, total_ops)
-            if partition_index not in pipeline_starts:
-                pipeline_starts.append(partition_index)
-                random_start += 1
-        pipeline_starts.sort()
-
-
-        start = 1
+        start_idx = 1
         sorted_op_ids = sorted(self._dist_context._dist_ops_for_program.keys())
         for idx, op_id in enumerate(sorted_op_ids):
-            if idx < pipeline_starts[start]:
-                op_id_to_process_mesh[op_id] = process_mesh_list[start - 1]
+            if idx < pipeline_starts[start_idx]:
+                op_id_to_process_mesh[op_id] = process_mesh_list[start_idx - 1]
             else:
-                start += 1
-                op_id_to_process_mesh[op_id] = process_mesh_list[start - 1]
+                start_idx += 1
+                op_id_to_process_mesh[op_id] = process_mesh_list[start_idx - 1]
         return op_id_to_process_mesh
+
 
     def _amend_dist_attr(self):
         # 1) Reshape the process mesh of [1, x] to [x] or [x, 1] to [x],
@@ -1285,8 +1364,8 @@ class ParallelTuner:
         self._dist_context._backup(serial=True, dist=True)
         # This store statement must follow the above backup statement
         self._store_init_parallel_strategy()
-        init_time = self._estimate_trial() # estimate_trial when init
-        print("init time", init_time, flush=True)
+        # init_time = self._estimate_trial() # estimate_trial when init
+        # print("init time", init_time, flush=True)
         # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
         # We have to restore the distributed context, because the estimation of one trail need to
         # generate the backward and update parts. Since we will do the tuning process,
@@ -1299,7 +1378,7 @@ class ParallelTuner:
         
         # init_time = 1
         # best_time = init_time
-        best_time = 10000 # for debug
+        best_time = 100000000 # for debug
         start_time = time.time()
         self.construct_space()
         end_time = time.time()

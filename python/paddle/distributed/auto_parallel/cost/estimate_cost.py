@@ -230,6 +230,52 @@ class CostEstimator:
                                 continue
                             self.local_cost(rank).time += item[rank].time
 
+    def _calculate_bytes(self, sizes, dtype):
+        total_count = reduce(lambda x, y: x * y, sizes)
+
+        if dtype == paddle.float64 or dtype == paddle.int64:
+            dtype_factor = 8
+        elif dtype == paddle.float32 or dtype == paddle.int32:
+            dtype_factor = 4
+        elif dtype == paddle.float16 or dtype == paddle.bfloat16 \
+            or dtype == paddle.int16:
+            dtype_factor = 2
+        elif dtype == paddle.int8 or dtype == paddle.uint8:
+            dtype_factor = 1
+        else:
+            dtype_factor = 8
+
+        memory = total_count * dtype_factor
+        return memory
+
+    def _estimate_max_memory(self, dist_context):
+        # This estimation will be improved
+        memories = {}
+        for block in self.program.blocks:
+            for tensor in block.vars.values():
+                dist_tensor = dist_context.get_dist_tensor_for_program(
+                    tensor)
+                dist_attr = dist_tensor.dist_attr
+                processes = dist_attr.process_mesh.processes
+                for process in processes:
+                    sizes = dist_tensor.local_sizes()
+                    dtype = dist_tensor.serial_tensor.dtype
+                    if not all(size >= 0 for size in sizes):
+                        print("$$$$$$$$$$",
+                              dist_tensor.serial_tensor.name,
+                              sizes,
+                              dtype,
+                              flush=True)
+                    if process in memories:
+                        memories[process] += self._calculate_bytes(
+                            sizes, dtype)
+                    else:
+                        memories[process] = self._calculate_bytes(
+                            sizes, dtype)
+        # Calculate the max memory in all ranks
+        max_memory = max(memories.values())
+        return max_memory
+
     def prepare(self):
         self._global_cost = Cost()
         self._local_cost_mapping = {}
