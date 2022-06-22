@@ -198,9 +198,9 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
       fds.erase(fds.begin() + i);
       tcputils::close_socket(fds[i].fd);
 #ifdef _WIN32
-      _sockets.erase(_sockets.begin() + i - 2);
-#else
       _sockets.erase(_sockets.begin() + i - 1);
+#else
+      _sockets.erase(_sockets.begin() + i - 2);
 #endif
 
       VLOG(3) << "Meet some exceptions during run:" << ex.what();
