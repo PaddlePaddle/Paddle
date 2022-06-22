@@ -13,6 +13,7 @@
 # limitations under the License
 
 import copy
+
 from .common import infer_shape
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
@@ -35,6 +36,10 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY,
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
 from .dist_default import DistributedDefaultImpl0
+from ..cost import build_comp_desc_from_dist_op, build_comm_desc_from_dist_op, build_dp_costs
+from ..cost import build_comm_costs_from_desc_mapping, build_comp_costs_from_desc_mapping
+from ..cost import MatmulV2OpCost, MatmulOpCost, MulOpCost, IdentityOpCost, AllreduceSumOpCost
+from ..cost import MatmulV2GradOpCost, MatmulGradOpCost, MulGradOpCost
 
 
 def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):
@@ -482,6 +487,101 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         self._forward_implemented = True
         self._backward_implemented = True
 
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Forward):
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        elif int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        # by now the backward function only insert the gradient allreduce for dist op itself
+        res = []
+        backward_op = dist_op.serial_op
+        dist_attr = dist_op.dist_attr
+        main_block = backward_op.main_block
+        vars = main_block.vars
+        Y_var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("Y")[0])
+        # col parallel: matmul + allreduce
+        assert Y_var_dim_mapping[0] < 0
+        parallel_axis = Y_var_dim_mapping[1]
+
+        has_x_grad = len(backward_op.output("X@GRAD")) > 0
+        if has_x_grad:
+            assert len(backward_op.output("X@GRAD")) == 1
+
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = process_mesh.processes
+        cost_mpping = build_comp_costs_from_desc_mapping(
+            MatmulGradOpCost, ctx, processes, desc_mapping, cluster)
+        res.append(cost_mpping)
+
+        # calc comm op cost
+        if has_x_grad:
+            attrs = {"use_calc_stream": True, "use_model_parallel": True}
+            var_names = backward_op.output("X@GRAD")
+            c_allreduce_sum_desc_mapping = build_comm_desc_from_dist_op(
+                "c_allreduce_sum",
+                dist_op,
+                ctx,
+                var_names,
+                attrs=attrs,
+                parallel_axis=parallel_axis)
+            comm_op_cost_list = build_comm_costs_from_desc_mapping(
+                AllreduceSumOpCost, ctx, processes,
+                c_allreduce_sum_desc_mapping, cluster)
+            res.append(comm_op_cost_list)
+
+        # need gradient allreduce
+        process_mesh = dist_attr.process_mesh
+        var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("X")[0])
+        mesh_shape = process_mesh.topology
+        batch_size_axis = var_dim_mapping[0]
+        if batch_size_axis > -1 and mesh_shape[
+                batch_size_axis] > 1 and is_parameter_related(
+                    backward_op.input("Y")[0], main_block):
+            parallel_axis = batch_size_axis
+            attrs = {"use_calc_stream": True}
+            var_names = [backward_op.output('Y@GRAD')[0]]
+            build_dp_costs(res, dist_op, ctx, var_names, attrs, parallel_axis,
+                           cluster)
+        return res
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        cost_mpping = build_comp_costs_from_desc_mapping(
+            MatmulOpCost, ctx, processes, desc_mapping, cluster)
+
+        # calc comm op cost
+        serial_op = dist_op.serial_op
+        vars = serial_op.block.vars
+        parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
+            serial_op.input("Y")[0])[-1]
+        attrs = {"use_calc_stream": True, "use_model_parallel": True}
+        var_names = serial_op.input("X")
+        c_identity_desc_mapping = build_comm_desc_from_dist_op(
+            "c_identity",
+            dist_op,
+            ctx,
+            var_names,
+            attrs=attrs,
+            parallel_axis=parallel_axis)
+
+        comm_op_cost_list = build_comm_costs_from_desc_mapping(
+            IdentityOpCost, ctx, processes, c_identity_desc_mapping, cluster)
+        res_cost = [comm_op_cost_list, cost_mapping]
+
+        return res_cost
+
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
@@ -706,6 +806,98 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         self._forward_implemented = True
         self._backward_implemented = True
 
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Forward):
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        elif int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        # by now the backward function only insert the gradient allreduce for dist op itself
+        res = []
+        backward_op = dist_op.serial_op
+        dist_attr = dist_op.dist_attr
+        main_block = backward_op.main_block
+        vars = main_block.vars
+        Y_var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("Y")[0])
+        assert Y_var_dim_mapping[1] < 0
+        parallel_axis = Y_var_dim_mapping[0]
+
+        # calc comm op cost
+        var_names = [backward_op.input("Out@GRAD")[0]]
+        attrs = {"use_calc_stream": True, "use_model_parallel": True}
+        c_identity_desc_mapping = build_comm_desc_from_dist_op(
+            "c_identity",
+            dist_op,
+            ctx,
+            var_names,
+            attrs=attrs,
+            parallel_axis=parallel_axis)
+        comm_op_cost_list = build_comm_costs_from_desc_mapping(
+            IdentityOpCost, ctx, processes, c_identity_desc_mapping, cluster)
+        res.append(comm_op_cost_list)
+
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = process_mesh.processes
+        cost_mpping = build_comp_costs_from_desc_mapping(
+            MatmulGradOpCost, ctx, processes, desc_mapping, cluster)
+        res.append(cost_mpping)
+
+        # need gradient allreduce
+        process_mesh = dist_attr.process_mesh
+        var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("X")[0])
+        mesh_shape = process_mesh.topology
+        batch_size_axis = var_dim_mapping[0]
+        if batch_size_axis > -1 and mesh_shape[
+                batch_size_axis] > 1 and is_parameter_related(
+                    backward_op.input("Y")[0], main_block):
+            parallel_axis = batch_size_axis
+            attrs = {"use_calc_stream": True}
+            var_names = [backward_op.output('Y@GRAD')[0]]
+            build_dp_costs(res, dist_op, ctx, var_names, attrs, parallel_axis,
+                           cluster)
+        return res
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            MatmulOpCost, ctx, processes, desc_mapping, cluster)
+
+        # calc comm op cost
+        serial_op = dist_op.serial_op
+        vars = serial_op.block.vars
+
+        parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
+            serial_op.input("Y")[0])[-2]
+        attrs = {"use_calc_stream": True, "use_model_parallel": True}
+
+        var_names = serial_op.output("Out")
+        c_allreduce_sum_desc_mapping = build_comm_desc_from_dist_op(
+            "c_allreduce_sum",
+            dist_op,
+            ctx,
+            var_names,
+            attrs=attrs,
+            parallel_axis=parallel_axis)
+
+        comm_op_cost_list = build_comm_costs_from_desc_mapping(
+            AllreduceSumOpCost, ctx, processes, c_allreduce_sum_desc_mapping,
+            cluster)
+
+        res_cost = [cost_mapping, comm_op_cost_list]
+
+        return res_cost
+
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
@@ -914,6 +1106,57 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedMatmulImpl2, self).__init__(name)
 
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Forward):
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        elif int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        res = []
+        backward_op = dist_op.serial_op
+        dist_attr = dist_op.dist_attr
+        main_block = backward_op.block
+        vars = main_block.vars
+
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        process_mesh = dist_attr.process_mesh
+        processes = process_mesh.processes
+        cost_mpping = build_comp_costs_from_desc_mapping(
+            MatmulGradOpCost, ctx, processes, desc_mapping, cluster)
+        res.append(cost_mpping)
+
+        # need gradient allreduce
+        var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("X")[0])
+        mesh_shape = process_mesh.topology
+        batch_size_axis = var_dim_mapping[0]
+        if batch_size_axis > -1 and mesh_shape[
+                batch_size_axis] > 1 and is_parameter_related(
+                    backward_op.input("Y")[0], main_block):
+            parallel_axis = batch_size_axis
+            attrs = {"use_calc_stream": True}
+            var_names = [backward_op.output('Y@GRAD')[0]]
+            build_dp_costs(res, dist_op, ctx, var_names, attrs, parallel_axis)
+
+        return res
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            MatmulOpCost, ctx, processes, desc_mapping, cluster)
+
+        res_cost = [cost_mapping]
+        return res_cost
+
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
@@ -1001,6 +1244,105 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         self._forward_implemented = True
         self._backward_implemented = True
 
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Forward):
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        elif int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        # by now the backward function only insert the gradient allreduce for dist op itself
+        res = []
+        backward_op = dist_op.serial_op
+        dist_attr = dist_op.dist_attr
+        main_block = backward_op.block
+        vars = main_block.vars
+        Y_var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("Y")[0])
+        process_mesh = dist_attr.process_mesh
+        processes = process_mesh.processes
+        # col parallel: matmul + allreduce
+        assert Y_var_dim_mapping[0] < 0
+        parallel_axis = Y_var_dim_mapping[1]
+
+        has_x_grad = len(backward_op.output("X@GRAD")) > 0
+        if has_x_grad:
+            assert len(backward_op.output("X@GRAD")) == 1
+
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+
+        cost_mpping = build_comp_costs_from_desc_mapping(
+            MatmulV2GradOpCost, ctx, processes, desc_mapping, cluster)
+        res.append(cost_mpping)
+
+        # calc comm op cost
+        if has_x_grad:
+            attrs = {"use_calc_stream": True, "use_model_parallel": True}
+            var_names = backward_op.output("X@GRAD")
+            c_allreduce_sum_desc_mapping = build_comm_desc_from_dist_op(
+                "c_allreduce_sum",
+                dist_op,
+                ctx,
+                var_names,
+                attrs=attrs,
+                parallel_axis=parallel_axis)
+            comm_op_cost_list = build_comm_costs_from_desc_mapping(
+                AllreduceSumOpCost, ctx, processes,
+                c_allreduce_sum_desc_mapping, cluster)
+            res.append(comm_op_cost_list)
+
+        # need gradient allreduce
+        process_mesh = dist_attr.process_mesh
+        var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("X")[0])
+        mesh_shape = process_mesh.topology
+        batch_size_axis = var_dim_mapping[0]
+        if batch_size_axis > -1 and mesh_shape[
+                batch_size_axis] > 1 and is_parameter_related(
+                    backward_op.input("Y")[0], main_block):
+            parallel_axis = batch_size_axis
+            attrs = {"use_calc_stream": True}
+            var_names = [backward_op.output('Y@GRAD')[0]]
+            build_dp_costs(res, dist_op, ctx, var_names, attrs, parallel_axis,
+                           cluster)
+        return res
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        # TODO: trans shape if trans_x or trans_y is True
+        comp_desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                         dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        comp_cost_mapping = build_comp_costs_from_desc_mapping(
+            MatmulV2OpCost, ctx, processes, comp_desc_mapping, cluster)
+
+        # calc comm op cost
+        serial_op = dist_op.serial_op
+        vars = serial_op.block.vars
+
+        parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
+            serial_op.input("Y")[0])[-1]
+        attrs = {"use_calc_stream": True, "use_model_parallel": True}
+
+        var_names = serial_op.input("X")
+        c_identity_desc_mapping = build_comm_desc_from_dist_op(
+            "c_identity",
+            dist_op,
+            ctx,
+            var_names,
+            attrs=attrs,
+            parallel_axis=parallel_axis)
+        comm_op_cost_list = build_comm_costs_from_desc_mapping(
+            IdentityOpCost, ctx, processes, c_identity_desc_mapping, cluster)
+
+        res_cost = [comm_op_cost_list, comp_cost_mapping]
+        return res_cost
+
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
@@ -1008,14 +1350,18 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         y_name = op_desc.input('Y')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
+        # print("col in 1", x_name, y_name, x_dims_mapping, y_dims_mapping, flush=True)
         if is_dim_shard(x_dims_mapping[-1]):
             return False
+        # print("col in 2", x_name, y_name, x_dims_mapping, y_dims_mapping, flush=True)
         if is_dim_shard(y_dims_mapping[-2]) or is_dim_replicate(
                 y_dims_mapping[-1]):
             return False
+        # print("col in 3", x_name, y_name, x_dims_mapping, y_dims_mapping, flush=True)
         for mapping in x_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
                 return False
+        # print("col in 4", x_name, y_name, x_dims_mapping, y_dims_mapping, flush=True)
         return True
 
     def is_output_compatible(self, dist_op):
@@ -1023,20 +1369,25 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         op_dist_attr = dist_op.dist_attr
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        # print("col out 1", out_name, out_dims_mapping, flush=True)
         if is_dim_replicate(out_dims_mapping[-1]):
             return False
+        # print("col out 2", out_name, out_dims_mapping, flush=True)
         for mapping in out_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
                 return False
+        # print("col out 3", out_name, out_dims_mapping, flush=True)
         return True
 
     def is_auto_compatible(self, dist_op):
+        # print("auto out 0", flush=True)
         if (not self.is_input_compatible(dist_op)) or \
             (not self.is_output_compatible(dist_op)):
             return False
-
+        # print("auto out 1", flush=True)
         if not _is_auto_compatible_for_matmul(dist_op):
             return False
+        # print("auto out 2", flush=True)
 
         return True
 
@@ -1089,6 +1440,8 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         # TODO infer logic comm presentation
         matmul_col_dim_mapping = op_dist_attr.get_input_dims_mapping(
             Weight_var.name)[-1]
+        if matmul_col_dim_mapping < 0:
+            print(op_dist_attr, flush=True)
         assert matmul_col_dim_mapping >= 0, "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_col_dim_mapping)
         process_mesh_shape = op_dist_attr.process_mesh.topology
@@ -1218,6 +1571,98 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         self._forward_implemented = True
         self._backward_implemented = True
 
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Forward):
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        elif int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        # by now the backward function only insert the gradient allreduce for dist op itself
+        res = []
+        backward_op = dist_op.serial_op
+        dist_attr = dist_op.dist_attr
+        main_block = backward_op.block
+        vars = main_block.vars
+        Y_var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("Y")[0])
+        assert Y_var_dim_mapping[1] < 0
+        parallel_axis = Y_var_dim_mapping[0]
+
+        process_mesh = dist_attr.process_mesh
+        processes = process_mesh.processes
+        # calc comm op cost
+        var_names = [backward_op.input("Out@GRAD")[0]]
+        attrs = {"use_calc_stream": True, "use_model_parallel": True}
+        c_identity_desc_mapping = build_comm_desc_from_dist_op(
+            "c_identity",
+            dist_op,
+            ctx,
+            var_names,
+            attrs=attrs,
+            parallel_axis=parallel_axis)
+        comm_op_cost_list = build_comm_costs_from_desc_mapping(
+            IdentityOpCost, ctx, processes, c_identity_desc_mapping, cluster)
+        res.append(comm_op_cost_list)
+
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        cost_mpping = build_comp_costs_from_desc_mapping(
+            MatmulV2GradOpCost, ctx, processes, desc_mapping, cluster)
+        res.append(cost_mpping)
+
+        # need gradient allreduce
+        process_mesh = dist_attr.process_mesh
+        var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("X")[0])
+        mesh_shape = process_mesh.topology
+        batch_size_axis = var_dim_mapping[0]
+        if batch_size_axis > -1 and mesh_shape[
+                batch_size_axis] > 1 and is_parameter_related(
+                    backward_op.input("Y")[0], main_block):
+            parallel_axis = batch_size_axis
+            attrs = {"use_calc_stream": True}
+            var_names = [backward_op.output('Y@GRAD')[0]]
+            build_dp_costs(res, dist_op, ctx, var_names, attrs, parallel_axis,
+                           cluster)
+        return res
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            MatmulV2OpCost, ctx, processes, desc_mapping, cluster)
+
+        # calc comm op cost
+        serial_op = dist_op.serial_op
+        vars = serial_op.block.vars
+
+        parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
+            serial_op.input("Y")[0])[-2]
+        attrs = {"use_calc_stream": True, "use_model_parallel": True}
+
+        var_names = serial_op.output("Out")
+        c_allreduce_sum_desc_mapping = build_comm_desc_from_dist_op(
+            "c_allreduce_sum",
+            dist_op,
+            ctx,
+            var_names,
+            attrs=attrs,
+            parallel_axis=parallel_axis)
+
+        comm_op_cost_list = build_comm_costs_from_desc_mapping(
+            AllreduceSumOpCost, ctx, processes, c_allreduce_sum_desc_mapping,
+            cluster)
+        res_cost = [cost_mapping, comm_op_cost_list]
+
+        return res_cost
+
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
@@ -1308,6 +1753,8 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         # TODO infer logic comm presentation
         matmul_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
             Weight_var.name)[-2]
+        if matmul_row_dim_mapping < 0:
+            print(op_dist_attr, flush=True)
         assert matmul_row_dim_mapping >= 0, "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_row_dim_mapping)
         process_mesh_shape = op_dist_attr.process_mesh.topology
@@ -1422,6 +1869,59 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedMatmulV2Impl2, self).__init__(name)
 
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Forward):
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        elif int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        res = []
+        backward_op = dist_op.serial_op
+        dist_attr = dist_op.dist_attr
+        main_block = backward_op.block
+        vars = main_block.vars
+        process_mesh = dist_attr.process_mesh
+
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = process_mesh.processes
+        cost_mpping = build_comp_costs_from_desc_mapping(
+            MatmulV2GradOpCost, ctx, processes, desc_mapping, cluster)
+        res.append(cost_mpping)
+
+        # need gradient allreduce
+        var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("X")[0])
+        mesh_shape = process_mesh.topology
+        batch_size_axis = var_dim_mapping[0]
+        if batch_size_axis > -1 and mesh_shape[
+                batch_size_axis] > 1 and is_parameter_related(
+                    backward_op.input("Y")[0], main_block):
+            parallel_axis = batch_size_axis
+            attrs = {"use_calc_stream": True}
+            var_names = [backward_op.output('Y@GRAD')[0]]
+            build_dp_costs(res, dist_op, ctx, var_names, attrs, parallel_axis,
+                           cluster)
+
+        return res
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            MatmulV2OpCost, ctx, processes, desc_mapping, cluster)
+
+        res_cost = [cost_mapping]
+
+        return res_cost
+
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
@@ -1509,6 +2009,101 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         super(DistributedMulImpl0, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
+
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Forward):
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        elif int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        # by now the backward function only insert the gradient allreduce for dist op itself
+        res = []
+        backward_op = dist_op.serial_op
+        dist_attr = dist_op.dist_attr
+        main_block = backward_op.main_block
+        vars = main_block.vars
+        Y_var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("Y")[0])
+        # col parallel: matmul + allreduce
+        assert Y_var_dim_mapping[0] < 0
+        parallel_axis = Y_var_dim_mapping[1]
+
+        has_x_grad = len(backward_op.output("X@GRAD")) > 0
+        if has_x_grad:
+            assert len(backward_op.output("X@GRAD")) == 1
+
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = process_mesh.processes
+        cost_mpping = build_comp_costs_from_desc_mapping(
+            MulGradOpCost, ctx, processes, desc_mapping, cluster)
+        res.append(cost_mpping)
+
+        # calc comm op cost
+        if has_x_grad:
+            attrs = {"use_calc_stream": True, "use_model_parallel": True}
+            var_names = backward_op.output("X@GRAD")
+            c_allreduce_sum_desc_mapping = build_comm_desc_from_dist_op(
+                "c_allreduce_sum",
+                dist_op,
+                ctx,
+                var_names,
+                attrs=attrs,
+                parallel_axis=parallel_axis)
+            comm_op_cost_list = build_comm_costs_from_desc_mapping(
+                AllreduceSumOpCost, ctx, processes,
+                c_allreduce_sum_desc_mapping, cluster)
+            res.append(comm_op_cost_list)
+
+        # need gradient allreduce
+        process_mesh = dist_attr.process_mesh
+        var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("X")[0])
+        mesh_shape = process_mesh.topology
+        batch_size_axis = var_dim_mapping[0]
+        if batch_size_axis > -1 and mesh_shape[
+                batch_size_axis] > 1 and is_parameter_related(
+                    backward_op.input("Y")[0], main_block):
+            parallel_axis = batch_size_axis
+            attrs = {"use_calc_stream": True}
+            var_names = [backward_op.output('Y@GRAD')[0]]
+            build_dp_costs(res, dist_op, ctx, var_names, attrs, parallel_axis,
+                           cluster)
+        return res
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        cost_mpping = build_comp_costs_from_desc_mapping(
+            MulOpCost, ctx, processes, desc_mapping, cluster)
+
+        # calc comm op cost
+        serial_op = dist_op.serial_op
+        vars = serial_op.block.vars
+        parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
+            serial_op.input("Y")[0])[-1]
+        attrs = {"use_calc_stream": True, "use_model_parallel": True}
+        var_names = serial_op.input("X")
+        c_identity_desc_mapping = build_comm_desc_from_dist_op(
+            "c_identity",
+            dist_op,
+            ctx,
+            var_names,
+            attrs=attrs,
+            parallel_axis=parallel_axis)
+
+        comm_op_cost_list = build_comm_costs_from_desc_mapping(
+            IdentityOpCost, ctx, processes, c_identity_desc_mapping, cluster)
+        res_cost = [comm_op_cost_list, cost_mapping]
+
+        return res_cost
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
@@ -1731,6 +2326,98 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         self._forward_implemented = True
         self._backward_implemented = True
 
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Forward):
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        elif int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        # by now the backward function only insert the gradient allreduce for dist op itself
+        res = []
+        backward_op = dist_op.serial_op
+        dist_attr = dist_op.dist_attr
+        main_block = backward_op.main_block
+        vars = main_block.vars
+        Y_var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("Y")[0])
+        assert Y_var_dim_mapping[1] < 0
+        parallel_axis = Y_var_dim_mapping[0]
+
+        # calc comm op cost
+        var_names = [backward_op.input("Out@GRAD")[0]]
+        attrs = {"use_calc_stream": True, "use_model_parallel": True}
+        c_identity_desc_mapping = build_comm_desc_from_dist_op(
+            "c_identity",
+            dist_op,
+            ctx,
+            var_names,
+            attrs=attrs,
+            parallel_axis=parallel_axis)
+        comm_op_cost_list = build_comm_costs_from_desc_mapping(
+            IdentityOpCost, ctx, processes, c_identity_desc_mapping, cluster)
+        res.append(comm_op_cost_list)
+
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = process_mesh.processes
+        cost_mpping = build_comp_costs_from_desc_mapping(
+            MulGradOpCost, ctx, processes, desc_mapping, cluster)
+        res.append(cost_mpping)
+
+        # need gradient allreduce
+        process_mesh = dist_attr.process_mesh
+        var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("X")[0])
+        mesh_shape = process_mesh.topology
+        batch_size_axis = var_dim_mapping[0]
+        if batch_size_axis > -1 and mesh_shape[
+                batch_size_axis] > 1 and is_parameter_related(
+                    backward_op.input("Y")[0], main_block):
+            parallel_axis = batch_size_axis
+            attrs = {"use_calc_stream": True}
+            var_names = [backward_op.output('Y@GRAD')[0]]
+            build_dp_costs(res, dist_op, ctx, var_names, attrs, parallel_axis,
+                           cluster)
+        return res
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            MulOpCost, ctx, processes, desc_mapping, cluster)
+
+        # calc comm op cost
+        serial_op = dist_op.serial_op
+        vars = serial_op.block.vars
+
+        parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
+            serial_op.input("Y")[0])[-2]
+        attrs = {"use_calc_stream": True, "use_model_parallel": True}
+
+        var_names = serial_op.output("Out")
+        c_allreduce_sum_desc_mapping = build_comm_desc_from_dist_op(
+            "c_allreduce_sum",
+            dist_op,
+            ctx,
+            var_names,
+            attrs=attrs,
+            parallel_axis=parallel_axis)
+
+        comm_op_cost_list = build_comm_costs_from_desc_mapping(
+            AllreduceSumOpCost, ctx, processes, c_allreduce_sum_desc_mapping,
+            cluster)
+
+        res_cost = [cost_mapping, comm_op_cost_list]
+
+        return res_cost
+
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
@@ -1938,6 +2625,57 @@ class DistributedMulImpl2(DistributedOperatorImpl):
 
     def __init__(self, name):
         super(DistributedMulImpl2, self).__init__(name)
+
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Forward):
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        elif int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        res = []
+        backward_op = dist_op.serial_op
+        dist_attr = dist_op.dist_attr
+        main_block = backward_op.block
+        vars = main_block.vars
+
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        process_mesh = dist_attr.process_mesh
+        processes = process_mesh.processes
+        cost_mpping = build_comp_costs_from_desc_mapping(
+            MulGradOpCost, ctx, processes, desc_mapping, cluster)
+        res.append(cost_mpping)
+
+        # need gradient allreduce
+        var_dim_mapping = dist_attr.get_input_dims_mapping(
+            backward_op.input("X")[0])
+        mesh_shape = process_mesh.topology
+        batch_size_axis = var_dim_mapping[0]
+        if batch_size_axis > -1 and mesh_shape[
+                batch_size_axis] > 1 and is_parameter_related(
+                    backward_op.input("Y")[0], main_block):
+            parallel_axis = batch_size_axis
+            attrs = {"use_calc_stream": True}
+            var_names = [backward_op.output('Y@GRAD')[0]]
+            build_dp_costs(res, dist_op, ctx, var_names, attrs, parallel_axis)
+
+        return res
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            MulOpCost, ctx, processes, desc_mapping, cluster)
+
+        res_cost = [cost_mapping]
+        return res_cost
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc

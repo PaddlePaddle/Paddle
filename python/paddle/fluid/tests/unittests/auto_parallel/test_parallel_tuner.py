@@ -26,7 +26,8 @@ import paddle.nn.functional as F
 from paddle.distributed import fleet
 import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.cluster import Cluster, get_default_cluster
+from paddle.distributed.auto_parallel.cluster import Cluster
+# from paddle.distributed.auto_parallel.cluster import Cluster, get_default_cluster
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.utils import make_data_unshard
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
@@ -35,6 +36,7 @@ from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
 
 import sys
+
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import GPTModel, GPTForPretraining, GPTPretrainingCriterion
@@ -56,6 +58,7 @@ def get_random_inputs_and_labels(input_shape, label_shape):
 
 
 def batch_generator_creator():
+
     def __reader__():
         for _ in range(batch_size):
             batch_input, batch_label = get_random_inputs_and_labels(
@@ -67,6 +70,7 @@ def batch_generator_creator():
 
 
 class MLPLayer(nn.Layer):
+
     def __init__(self,
                  hidden_size=1024,
                  intermediate_size=4 * 1024,
@@ -75,8 +79,8 @@ class MLPLayer(nn.Layer):
         super(MLPLayer, self).__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
-        param_initializer = nn.initializer.Normal(
-            mean=0.0, std=initializer_range)
+        param_initializer = nn.initializer.Normal(mean=0.0,
+                                                  std=initializer_range)
 
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.linear0 = nn.Linear(
@@ -92,20 +96,18 @@ class MLPLayer(nn.Layer):
 
     def forward(self, input):
         out = self.norm(input)
-        auto.shard_tensor(
-            self.linear0.weight,
-            dist_attr={
-                "process_mesh": _g_process_mesh[0],
-                "dims_mapping": [-1, 0]
-            })
+        auto.shard_tensor(self.linear0.weight,
+                          dist_attr={
+                              "process_mesh": _g_process_mesh[0],
+                              "dims_mapping": [-1, 0]
+                          })
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
-        auto.shard_tensor(
-            self.linear1.weight,
-            dist_attr={
-                "process_mesh": _g_process_mesh[1],
-                "dims_mapping": [0, -1]
-            })
+        auto.shard_tensor(self.linear1.weight,
+                          dist_attr={
+                              "process_mesh": _g_process_mesh[1],
+                              "dims_mapping": [0, -1]
+                          })
         out = self.linear1(out)
 
         return out
@@ -117,17 +119,15 @@ def loop_cond(i, loop_len, input_array):
 
 def loop_body(i, loop_len, input_array):
     pre_input = paddle.tensor.array_read(array=input_array, i=i)
-    mlp_while0 = MLPLayer(
-        hidden_size=hidden_size,
-        intermediate_size=4 * hidden_size,
-        dropout_ratio=0.1,
-        initializer_range=0.02)
+    mlp_while0 = MLPLayer(hidden_size=hidden_size,
+                          intermediate_size=4 * hidden_size,
+                          dropout_ratio=0.1,
+                          initializer_range=0.02)
 
-    mlp_while1 = MLPLayer(
-        hidden_size=hidden_size,
-        intermediate_size=4 * hidden_size,
-        dropout_ratio=0.1,
-        initializer_range=0.02)
+    mlp_while1 = MLPLayer(hidden_size=hidden_size,
+                          intermediate_size=4 * hidden_size,
+                          dropout_ratio=0.1,
+                          initializer_range=0.02)
 
     output = mlp_while0(pre_input)
     cur_pred = mlp_while1(output)
@@ -153,37 +153,36 @@ def get_program_v1():
         loop_len = paddle.full(shape=[1], fill_value=epoch_num, dtype='int64')
 
         # input
-        input = static.data(
-            name="input",
-            shape=[batch_size, sequence_len, hidden_size],
-            dtype='float32')
-        label = static.data(
-            name="label", shape=[batch_size, sequence_len, 1], dtype='float32')
+        input = static.data(name="input",
+                            shape=[batch_size, sequence_len, hidden_size],
+                            dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, sequence_len, 1],
+                            dtype='float32')
         data_holder = [input, label]
         # dataloader
-        dataloader = paddle.io.DataLoader.from_generator(
-            feed_list=data_holder, capacity=4 * batch_size, iterable=False)
-        dataloader.set_batch_generator(
-            batch_generator_creator(), places=paddle.static.cuda_places())
+        dataloader = paddle.io.DataLoader.from_generator(feed_list=data_holder,
+                                                         capacity=4 *
+                                                         batch_size,
+                                                         iterable=False)
+        dataloader.set_batch_generator(batch_generator_creator(),
+                                       places=paddle.static.cuda_places())
         # data dist_attr
-        auto.shard_tensor(
-            input,
-            dist_attr={
-                "process_mesh": _g_process_mesh[0],
-                "dims_mapping": [0, -1, -1]
-            })
-        auto.shard_tensor(
-            label,
-            dist_attr={
-                "process_mesh": _g_process_mesh[0],
-                "dims_mapping": [0, -1, -1]
-            })
+        auto.shard_tensor(input,
+                          dist_attr={
+                              "process_mesh": _g_process_mesh[0],
+                              "dims_mapping": [0, -1, -1]
+                          })
+        auto.shard_tensor(label,
+                          dist_attr={
+                              "process_mesh": _g_process_mesh[0],
+                              "dims_mapping": [0, -1, -1]
+                          })
 
-        mlp_start = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            dropout_ratio=0.1,
-            initializer_range=0.02)
+        mlp_start = MLPLayer(hidden_size=hidden_size,
+                             intermediate_size=4 * hidden_size,
+                             dropout_ratio=0.1,
+                             initializer_range=0.02)
         pred = mlp_start(input)
 
         input_array = paddle.tensor.array_write(pred, i)
@@ -193,23 +192,21 @@ def get_program_v1():
             loop_vars=[i, loop_len, input_array])
         end_pred = paddle.tensor.array_read(array=input_array, i=i)
 
-        mlp_end = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            dropout_ratio=0.1,
-            initializer_range=0.02)
+        mlp_end = MLPLayer(hidden_size=hidden_size,
+                           intermediate_size=4 * hidden_size,
+                           dropout_ratio=0.1,
+                           initializer_range=0.02)
         pred = mlp_end(end_pred)
 
         error_cost = paddle.nn.functional.square_error_cost(pred, label)
         # error_cost = paddle.nn.functional.square_error_cost(end_pred, label)
         loss = paddle.mean(error_cost)
 
-        optimizer = paddle.optimizer.Adam(
-            learning_rate=0.00001,
-            beta1=0.9,
-            beta2=0.999,
-            epsilon=1e-08,
-            grad_clip=None)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
+                                          beta1=0.9,
+                                          beta2=0.999,
+                                          epsilon=1e-08,
+                                          grad_clip=None)
 
         feed_vars = {"inputs": [input], "labels": [label]}
         fetch_vars = {"loss": [loss]}
@@ -227,62 +224,58 @@ def get_program_v2():
     with static.program_guard(train_program, start_program):
 
         # input
-        input = static.data(
-            name="input",
-            shape=[batch_size, sequence_len, hidden_size],
-            dtype='float32')
-        label = static.data(
-            name="label", shape=[batch_size, sequence_len, 1], dtype='float32')
+        input = static.data(name="input",
+                            shape=[batch_size, sequence_len, hidden_size],
+                            dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, sequence_len, 1],
+                            dtype='float32')
         data_holder = [input, label]
         # dataloader
-        dataloader = paddle.io.DataLoader.from_generator(
-            feed_list=data_holder, capacity=4 * batch_size, iterable=False)
-        dataloader.set_batch_generator(
-            batch_generator_creator(), places=paddle.static.cuda_places())
+        dataloader = paddle.io.DataLoader.from_generator(feed_list=data_holder,
+                                                         capacity=4 *
+                                                         batch_size,
+                                                         iterable=False)
+        dataloader.set_batch_generator(batch_generator_creator(),
+                                       places=paddle.static.cuda_places())
         # data dist_attr
-        auto.shard_tensor(
-            input,
-            dist_attr={
-                "process_mesh": _g_process_mesh[0],
-                "dims_mapping": [0, -1, -1]
-            })
-        auto.shard_tensor(
-            label,
-            dist_attr={
-                "process_mesh": _g_process_mesh[0],
-                "dims_mapping": [0, -1, -1]
-            })
+        auto.shard_tensor(input,
+                          dist_attr={
+                              "process_mesh": _g_process_mesh[0],
+                              "dims_mapping": [0, -1, -1]
+                          })
+        auto.shard_tensor(label,
+                          dist_attr={
+                              "process_mesh": _g_process_mesh[0],
+                              "dims_mapping": [0, -1, -1]
+                          })
 
-        mlp_start = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            dropout_ratio=0.1,
-            initializer_range=0.02)
+        mlp_start = MLPLayer(hidden_size=hidden_size,
+                             intermediate_size=4 * hidden_size,
+                             dropout_ratio=0.1,
+                             initializer_range=0.02)
         pred = mlp_start(input)
 
-        mlp_mid = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            dropout_ratio=0.1,
-            initializer_range=0.02)
+        mlp_mid = MLPLayer(hidden_size=hidden_size,
+                           intermediate_size=4 * hidden_size,
+                           dropout_ratio=0.1,
+                           initializer_range=0.02)
         pred = mlp_mid(pred)
 
-        mlp_end = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            dropout_ratio=0.1,
-            initializer_range=0.02)
+        mlp_end = MLPLayer(hidden_size=hidden_size,
+                           intermediate_size=4 * hidden_size,
+                           dropout_ratio=0.1,
+                           initializer_range=0.02)
         pred = mlp_end(pred)
 
         error_cost = paddle.nn.functional.square_error_cost(pred, label)
         loss = paddle.mean(error_cost)
 
-        optimizer = paddle.optimizer.Adam(
-            learning_rate=0.00001,
-            beta1=0.9,
-            beta2=0.999,
-            epsilon=1e-08,
-            grad_clip=None)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
+                                          beta1=0.9,
+                                          beta2=0.999,
+                                          epsilon=1e-08,
+                                          grad_clip=None)
 
         feed_vars = {"inputs": [input], "labels": [label]}
         fetch_vars = {"loss": [loss]}
@@ -303,52 +296,57 @@ def get_program_v3():
     train_program = static.Program()
     start_program = static.Program()
     modeling.init_global()
+    modeling._global_parallel_strategy = "dp_mp_pp"
+    modeling.DPMPPP_MESH_LIST = [[[0, 1], [2, 3]], [[4, 5], [6, 7]]]
     with static.program_guard(train_program, start_program):
-        tokens = paddle.static.data(
-            name="tokens", shape=[batch_size, sequence_len], dtype='int64')
-        position_ids = paddle.static.data(
-            name="position_ids",
-            shape=[batch_size, sequence_len],
-            dtype='int64')
+        tokens = paddle.static.data(name="tokens",
+                                    shape=[batch_size, sequence_len],
+                                    dtype='int64')
+        position_ids = paddle.static.data(name="position_ids",
+                                          shape=[batch_size, sequence_len],
+                                          dtype='int64')
         attention_mask = paddle.static.data(
             name="attention_mask",
             shape=[batch_size, 1, sequence_len, sequence_len],
             dtype='float32')
-        labels = paddle.static.data(
-            name="labels", shape=[batch_size, sequence_len], dtype='int64')
-        loss_mask = paddle.static.data(
-            name="loss_mask", shape=[batch_size, sequence_len], dtype='float32')
+        labels = paddle.static.data(name="labels",
+                                    shape=[batch_size, sequence_len],
+                                    dtype='int64')
+        loss_mask = paddle.static.data(name="loss_mask",
+                                       shape=[batch_size, sequence_len],
+                                       dtype='float32')
         data_holder = [tokens, position_ids, attention_mask, labels, loss_mask]
 
-        gpt = GPTModel(
-            vocab_size=1000,
-            hidden_size=64,
-            num_hidden_layers=2,
-            num_attention_heads=8,
-            intermediate_size=256,
-            hidden_act="gelu",
-            hidden_dropout_prob=0.0,
-            attention_probs_dropout_prob=0.0,
-            max_position_embeddings=1024,
-            type_vocab_size=1,
-            initializer_range=0.02,
-            pad_token_id=0,
-            eos_token_id=7,
-            bos_token_id=0,
-            eol_token_id=3)
+        gpt = GPTModel(vocab_size=1000,
+                       hidden_size=1024,
+                       num_hidden_layers=2,
+                       num_attention_heads=16,
+                       intermediate_size=4 * 1024,
+                       hidden_act="gelu",
+                       hidden_dropout_prob=0.0,
+                       attention_probs_dropout_prob=0.0,
+                       max_position_embeddings=1024,
+                       type_vocab_size=1,
+                       initializer_range=0.02,
+                       pad_token_id=0,
+                       eos_token_id=7,
+                       bos_token_id=0,
+                       eol_token_id=3,
+                       pp_degree=len(modeling.DPMPPP_MESH_LIST))
 
-        model = GPTForPretraining(
-            gpt, vocab_size=1000, hidden_size=64, initializer_range=0.02)
+        model = GPTForPretraining(gpt,
+                                  vocab_size=1000,
+                                  hidden_size=64,
+                                  initializer_range=0.02)
         preds = model(tokens, position_ids, attention_mask)
         criterion = GPTPretrainingCriterion()
         loss = criterion(preds, labels, loss_mask)
 
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(
-            learning_rate=0.00001,
-            beta1=0.9,
-            beta2=0.999,
-            epsilon=1e-08,
-            grad_clip=None)
+        optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
+                                                         beta1=0.9,
+                                                         beta2=0.999,
+                                                         epsilon=1e-08,
+                                                         grad_clip=None)
 
         feed_vars = {
             "inputs": [tokens, position_ids, attention_mask, loss_mask],
@@ -360,6 +358,7 @@ def get_program_v3():
 
 
 class TestParallelTuner(unittest.TestCase):
+
     def test_tune_without_materialization(self):
         set_default_distributed_context(DistributedContext())
         train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program_v3(
@@ -371,8 +370,9 @@ class TestParallelTuner(unittest.TestCase):
                                           fetch_vars, cluster)
         dist_context.initialize()
 
-        self.parallel_tuner = ParallelTuner(
-            dist_context, max_trials=3, mode="eval")
+        self.parallel_tuner = ParallelTuner(dist_context,
+                                            max_trials=10,
+                                            mode="predict")
         self.parallel_tuner.tune()
 
     def test_tune_with_materialization(self):
@@ -385,8 +385,9 @@ class TestParallelTuner(unittest.TestCase):
                                           optimizer, loss, feed_vars,
                                           fetch_vars, cluster)
         dist_context.initialize()
-        self.parallel_tuner = ParallelTuner(
-            dist_context, max_trials=3, mode="train")
+        self.parallel_tuner = ParallelTuner(dist_context,
+                                            max_trials=3,
+                                            mode="train")
         self.parallel_tuner._materialized_for_all_ranks = True
         self.parallel_tuner.tune()
 

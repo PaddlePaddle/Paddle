@@ -26,6 +26,10 @@ from ..collective import _get_global_env
 from .dist_context import DistributedContext
 from .dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from .process_group import new_process_group, ProcessGroup, _g_process_group_map
+from .cost import build_comm_desc, CommContext
+from .cost import AllgatherOpCost, SendOpCost
+from .cost import SliceOpCost, SplitOpCost, ConcatOpCost
+from .cluster import Cluster
 
 # NOTE: If op in _g_special_ops, it will not be resharded.
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
@@ -47,14 +51,15 @@ def get_var_with_recursion(var_name, block, program):
 class AllGatherOpDesc:
     """
     Describe the allgather op in the reshard phase.
-
     Args:
         group (list): Process group.
+        shape (list): The tensor shape.
     """
 
-    def __init__(self, group):
+    def __init__(self, group, shape):
         self._group = group
         self._desc = "all_gather"
+        self._shape = shape
 
     @property
     def group(self):
@@ -64,14 +69,17 @@ class AllGatherOpDesc:
     def desc(self):
         return self._desc
 
+    @property
+    def shape(self):
+        return self._shape
+
     def __repr__(self):
-        return f"op: {self._desc}, group: {self._group}."
+        return f"op: {self._desc}, group: {self._group}, shape: {self._shape}."
 
 
 class SendOpDesc:
     """
     Describe the send op in the reshard phase.
-
     Args:
         partition_index (list): The index of partition in complete tensor.
         dst (int): The destination process to receive.
@@ -81,6 +89,7 @@ class SendOpDesc:
         self._dst = dst
         self._partition_index = partition_index
         self._desc = "send"
+        self._shape = []
 
     @property
     def partition_index(self):
@@ -94,14 +103,20 @@ class SendOpDesc:
     def desc(self):
         return self._desc
 
+    @property
+    def shape(self):
+        if not self._shape:
+            for item in self.partition_index:
+                self._shape.append(item[1] - item[0])
+        return self._shape
+
     def __repr__(self):
-        return f"op: {self._desc}, partition_index: {self._partition_index}, dst: {self._dst}."
+        return f"op: {self._desc}, partition_index: {self._partition_index}, dst: {self._dst}, shape: {self._shape}."
 
 
 class RecvOpDesc:
     """
     Describe the recv op in the reshard op.
-
     Args:
         partition_index (list): The index of partition in complete tensor.
         src (int): The source process to send.
@@ -111,6 +126,7 @@ class RecvOpDesc:
         self._src = src
         self._partition_index = partition_index
         self._desc = "recv"
+        self._shape = []
 
     @property
     def partition_index(self):
@@ -124,25 +140,32 @@ class RecvOpDesc:
     def desc(self):
         return self._desc
 
+    @property
+    def shape(self):
+        if not self._shape:
+            for item in self.partition_index:
+                self._shape.append(item[1] - item[0])
+        return self._shape
+
     def __repr__(self):
-        return f"op: {self._desc}, partition_index: {self._partition_index}, src: {self._src}."
+        return f"op: {self._desc}, src: {self._src}, shape: {self._shape}."
 
 
 class SliceOpDesc:
     """
     Describe the slice op in the reshard phase.
-
     Args:
         starts (list): It represents starting indices of corresponding axis in ``axes``.
         ends (list):  It represents ending indices of corresponding axis in ``axes``.
         axes (list):  Axes that `starts` and `ends` apply to .
     """
 
-    def __init__(self, starts, ends, axes):
+    def __init__(self, starts, ends, axes, shape=None):
         self._starts = starts
         self._ends = ends
         self._axes = axes
         self._desc = "slice"
+        self._shape = shape
 
     @property
     def starts(self):
@@ -160,14 +183,20 @@ class SliceOpDesc:
     def desc(self):
         return self._desc
 
+    @property
+    def shape(self):
+        return self._shape
+
     def __repr__(self):
-        return f"op: {self._desc}, starts: {self._starts}, ends: {self._ends}, axes: {self._axes}."
+        if self._shape is not None:
+            return f"op: {self._desc}, starts: {self._starts}, ends: {self._ends}, axes: {self._axes}, shape: {self._shape}."
+        else:
+            return f"op: {self._desc}, starts: {self._starts}, ends: {self._ends}, axes: {self._axes}."
 
 
 class ConcatOpDesc:
     """
     Describe the concat op in the reshard phase.
-
     Args:
         partition_index_list (list): The list contains all partition index.
     """
@@ -516,10 +545,12 @@ class Remover:
     def remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id,
                                dist_params_grads):
         """Remove no need vars and ops in the main program."""
-        Remover.remove_no_need_ops(auto_parallel_main_prog, dist_context,
-                                   rank_id)
+        # print("reshard remove 1", auto_parallel_main_prog, flush=True)
         Resharder.change_while_op_input_and_output(auto_parallel_main_prog,
                                                    dist_context)
+        # print("reshard remove 0", auto_parallel_main_prog, flush=True)
+        Remover.remove_no_need_ops(auto_parallel_main_prog, dist_context,
+                                   rank_id)
         Remover.remove_no_need_vars(auto_parallel_main_prog, dist_params_grads)
 
     @staticmethod
@@ -600,7 +631,6 @@ class Remover:
 class Resharder:
     """
     Reshard tensor in the program according to its distributed attribute and corresponding op distributed attribute.
-
     Args:
         auto_parallel_main_prog (Program): An auto parallel main program.
         auto_parallel_startup_prog (Program): An auto parallel startup program.
@@ -608,6 +638,7 @@ class Resharder:
         dist_context (DistributedContext): The distributed context of this rank.
         dist_params_grads (list): The list contains the tuple of param and grad.
         batch_size (int): The batch size. Default: None.
+        cluster (Cluster): The cluster which the program run on. Default: None.
     """
     while_block_info = {}
 
@@ -620,12 +651,14 @@ class Resharder:
                  batch_size=None):
         assert isinstance(auto_parallel_main_prog, Program), "The type of auto_parallel_main_prog should be Program, " \
                                             "but got {}.".format(type(auto_parallel_main_prog))
-        assert isinstance(auto_parallel_main_prog, Program), "The type of auto_parallel_startup_prog should be Program, " \
-                                            "but got {}.".format(type(auto_parallel_startup_prog))
+        if auto_parallel_startup_prog is not None:
+            assert isinstance(auto_parallel_main_prog, Program), "The type of auto_parallel_startup_prog should be Program or None, " \
+                                                "but got {}.".format(type(auto_parallel_startup_prog))
         assert isinstance(rank_id, int), "The type of rank_id should be int, " \
                                             "but got {}.".format(type(rank_id))
         assert isinstance(dist_context, DistributedContext), "The type of dist_context should be DistributedContext, " \
                                             "but got {}.".format(type(dist_context))
+
         if batch_size is not None:
             assert isinstance(batch_size, int), "The type of batch_size should be int, " \
                                                 "but got {}.".format(type(batch_size))
@@ -639,6 +672,7 @@ class Resharder:
         self._has_sent = {}
         self._has_recv = {}
         self._has_allgather = {}
+        self._has_resharded = {}
 
     @property
     def auto_parallel_main_prog(self):
@@ -791,6 +825,11 @@ class Resharder:
             sub_block = auto_parallel_main_prog.blocks[sub_block_idx]
             parent_while_op_id = Resharder.while_block_info[sub_block_idx][
                 "op_id"]
+            # print(
+            #     "reshard change 0",
+            #     Resharder.while_block_info,
+            #     parent_while_op_id,
+            #     flush=True)
             parent_block = auto_parallel_main_prog.blocks[sub_block.parent_idx]
 
             sub_block_op_inputs = set()
@@ -807,7 +846,9 @@ class Resharder:
 
             # find the while op
             while_op = None
+            # print("reshard change 1", parent_block, flush=True)
             for op in parent_block.ops:
+                # print("reshard change 2", op.type, op.desc.id(), flush=True)
                 if op.desc.id() == parent_while_op_id and op.type == "while":
                     while_op = op
                     break
@@ -888,70 +929,89 @@ class Resharder:
             op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(
                 tensor_name)
             if all(
-                    map(lambda x: x is not None, [
+                    map(lambda x: x, [
                         tensor_dims_mapping, tensor_process_mesh,
                         op_input_dims_mapping, op_process_mesh
                     ])):
                 # dims_mapping
                 if tensor_dims_mapping != op_input_dims_mapping:
-                    if dist_op.serial_op.type == "while":
-                        sub_block = self.auto_parallel_main_prog.blocks[
-                            dist_op.serial_op.attr("sub_block").id]
-                        for op in sub_block.ops:
-                            for var_name in op.input_arg_names:
-                                if var_name == tensor_name:
-                                    dist_op_attr = self.dist_context.get_dist_op_for_program(
-                                        op).dist_attr
-                                    var_dims_mapping = dist_op_attr.get_input_dims_mapping(
-                                        var_name)
-                                    if var_dims_mapping != tensor_dims_mapping:
-                                        is_reshard = True
-                                        break
-                    else:
-                        is_reshard = True
+                    if tensor_process_mesh not in self.dist_context.process_meshes:
+                        if not is_reshard:
+                            return is_reshard
+                        else:
+                            raise ValueError(
+                                "it is not supported that tensor processes is a union and need reshard"
+                            )
+                    if dist_tensor.serial_tensor.dtype == paddle.bool:
+                        raise ValueError("Bool var is not supported reshard.")
+                        # for op in sub_block.ops:
+                        #     for var_name in op.input_arg_names:
+                        #         if var_name == tensor_name:
+                        #             dist_op_attr = self.dist_context.get_dist_op_for_program(
+                        #                 op).dist_attr
+                        #             var_dims_mapping = dist_op_attr.get_input_dims_mapping(
+                        #                 var_name)
+                        #             if var_dims_mapping != tensor_dims_mapping:
+                        #                 is_reshard = True
+                        #                 break
+                    is_reshard = True
                 # process_mesh
                 if tensor_process_mesh != op_process_mesh:
                     # when processes length is not the same, the dims mapping must be replicative now
-                    if len(tensor_process_mesh.processes) != len(
-                            op_process_mesh.processes):
-                        assert self.is_unshard(tensor_dims_mapping)
-                        assert self.is_unshard(op_input_dims_mapping)
-                    else:
-                        if dist_tensor.serial_tensor.dtype == paddle.bool:
-                            raise ValueError(
-                                "Bool var is not supported reshard.")
-
-                        # for while op, it should find the process mesh of op actually used the tensor as input
-                        if dist_op.serial_op.type == "while":
-                            sub_block = self.auto_parallel_main_prog.blocks[
-                                dist_op.serial_op.attr("sub_block").id]
-                            for op in sub_block.ops:
-                                for var_name in op.input_arg_names:
-                                    if var_name == tensor_name:
-                                        dist_op_attr = self.dist_context.get_dist_op_for_program(
-                                            op).dist_attr
-                                        process_mesh = dist_op_attr.process_mesh
-                                        if process_mesh == op_process_mesh:
-                                            is_reshard = True
-                                            break
+                    # if len(tensor_process_mesh.processes) != len(
+                    #         op_process_mesh.processes):
+                    #     assert self.is_unshard(tensor_dims_mapping)
+                    #     assert self.is_unshard(op_input_dims_mapping)
+                    # else:
+                    if tensor_process_mesh not in self.dist_context.process_meshes:
+                        if not is_reshard:
+                            return is_reshard
                         else:
-                            is_reshard = True
+                            raise ValueError(
+                                "it is not supported that tensor processes is a union and need reshard"
+                            )
+                    if dist_tensor.serial_tensor.dtype == paddle.bool:
+                        raise ValueError("Bool var is not supported reshard.")
+
+                    # for while op, it should find the process mesh of op actually used the tensor as input
+                    # if dist_op.serial_op.type == "while":
+                    #     sub_block = self.auto_parallel_main_prog.blocks[
+                    #         dist_op.serial_op.attr("sub_block").id]
+                    #     is_reshard = True
+                    # for op in sub_block.ops:
+                    #     for var_name in op.input_arg_names:
+                    #         if var_name == tensor_name:
+                    #             dist_op_attr = self.dist_context.get_dist_op_for_program(
+                    #                 op).dist_attr
+                    #             process_mesh = dist_op_attr.process_mesh
+                    #             if process_mesh == op_process_mesh:
+                    #                 is_reshard = True
+                    #                 break
+                    # else:
+                    is_reshard = True
         else:
             op_output_dims_mapping = op_dist_attr.get_output_dims_mapping(
                 tensor_name)
             if all(
-                    map(lambda x: x is not None, [
+                    map(lambda x: x, [
                         tensor_dims_mapping, tensor_process_mesh,
                         op_output_dims_mapping, op_process_mesh
                     ])):
-                if tensor_process_mesh != op_process_mesh:
-                    if dist_tensor.serial_tensor.dtype == paddle.bool:
-                        raise ValueError("Bool var is not supported reshard.")
-                    is_reshard = True
                 if tensor_dims_mapping != op_output_dims_mapping:
                     raise ValueError(
                         "It is not supported that tensor dims mapping is different from op output dims mapping."
                     )
+                if tensor_process_mesh != op_process_mesh:
+                    if dist_tensor.serial_tensor.dtype == paddle.bool:
+                        raise ValueError("Bool var is not supported reshard.")
+                    if tensor_process_mesh not in self.dist_context.process_meshes:
+                        if not is_reshard:
+                            return is_reshard
+                        else:
+                            raise ValueError(
+                                "it is not supported that tensor processes is a union and need reshard"
+                            )
+                    is_reshard = True
 
         return is_reshard
 
@@ -993,40 +1053,46 @@ class Resharder:
 
         return process_meshes
 
-    def get_while_op_actual_process_mesh(self, op):
+    def get_while_op_actual_process_meshes(self, op, var_name):
         """Get the while op actual Process mesh corresponding to rank"""
         assert op.type == "while"
         while_op_process_mesh = self.dist_context.get_dist_op_for_program(
             op).dist_attr.process_mesh
         sub_block = self.auto_parallel_main_prog.blocks[op.attr("sub_block").id]
         ops = sub_block.ops
-        actual_process_mesh = None
+        actual_process_meshes = []
         for op in ops:
             dist_op = self.dist_context.get_dist_op_for_program(op)
             if not dist_op:
                 continue
-            process_mesh = dist_op.dist_attr.process_mesh
-            if process_mesh == while_op_process_mesh:
-                continue
-            if self.rank_id in process_mesh.processes:
-                raw_process_mesh = process_mesh
-                break
+            for name in op.input_arg_names:
+                if name == var_name:
+                    actual_process_meshes.append(dist_op.dist_attr.process_mesh)
+            # process_mesh = dist_op.dist_attr.process_mesh
+            # if process_mesh == while_op_process_mesh:
+            #     continue
+            # if self.rank_id in process_mesh.processes:
+            #     actual_process_mesh = process_mesh
+            #     break
 
-        if actual_process_mesh is None and self.rank_id in while_op_process_mesh.processes:
-            actual_process_mesh = while_op_process_mesh
+            # if actual_process_mesh is None and self.rank_id in while_op_process_mesh.processes:
+            #     actual_process_mesh = while_op_process_mesh
 
-        assert actual_process_mesh is not None
-        return actual_process_mesh
+            # assert actual_process_mesh is not None
+        return actual_process_meshes
 
-    def find_op_desc_seq(self, dist_tensor, dist_op, actual_process_mesh):
+    def find_op_desc_seq(self,
+                         dist_tensor,
+                         dist_op,
+                         actual_process_mesh,
+                         serial=False):
         """
         Find the op description sequence to reshard the source tensor for matching the op requirement.
-
         Args:
             dist_tensor (DistributedTensor): A distributed tensor.
             dist_op (DistributedOperator): A distributed operator.
             actual_process_mesh (ProcessMesh): The actual op process mesh.
-
+            serial (bool): If serial is true, the dist tensor and dist op come from serial program. Otherwise, they come from auto program.
         Returns:
             Dict, the dict represents the required op description sequence corresponding to process, The key of dict is
             process and value is a list containing op description.
@@ -1051,7 +1117,8 @@ class Resharder:
             source_tensor.desc.set_shape(new_shape)
 
         complete_shape = Resharder.compute_complete_shape(
-            source_tensor.shape, source_process_shape, source_dims_mapping)
+            source_tensor.shape, source_process_shape,
+            source_dims_mapping) if not serial else source_tensor.shape
         op_desc_seq = {}
 
         # TODO: if the target process group has the same process with source process group
@@ -1146,16 +1213,23 @@ class Resharder:
                 slice_ends = []
                 slices_axes = []
                 concatenated_partition_index = partition_index_list[0]
+                to_slice_tensor_shape = []
+
                 for idx, item in enumerate(concatenated_partition_index):
                     slice_starts.append(target_partition_index[idx][0] -
                                         item[0])
                     slice_ends.append(target_partition_index[idx][1] - item[0])
                     slices_axes.append(idx)
+                    to_slice_tensor_shape.append(item[1] - item[0])
                 op_desc_seq[target_process].append(
-                    SliceOpDesc(slice_starts, slice_ends, slices_axes))
+                    SliceOpDesc(slice_starts,
+                                slice_ends,
+                                slices_axes,
+                                shape=to_slice_tensor_shape))
 
-        # in the same process group, it will use allgahther and slice op
+        # in the same process group, it will use allgahther and slice op.
         else:
+            # NOTE: it just supports even partition scene.
             partition_index_list = []
             all_partition_index_list = []
             process_index = []
@@ -1191,10 +1265,20 @@ class Resharder:
                         slice_ends.append(item[1])
                         slices_axes.append(idx)
 
-                    slice_op_desc = SliceOpDesc(starts=slice_starts,
-                                                ends=slice_ends,
-                                                axes=slices_axes)
-                    op_desc_seq[process] = [AllGatherOpDesc(group=group),
+                    to_slice_tensor_shape = dist_tensor.global_sizes()
+                    if len(group) <= 1:
+                        slice_op_desc = SliceOpDesc(starts=slice_starts,
+                                                    ends=slice_ends,
+                                                    axes=slices_axes,
+                                                    shape=to_slice_tensor_shape)
+                    else:
+                        slice_op_desc = SliceOpDesc(starts=slice_starts,
+                                                    ends=slice_ends,
+                                                    axes=slices_axes,
+                                                    shape=to_slice_tensor_shape)
+                    allgather_shape = None if not serial else dist_tensor.local_sizes(
+                        rank=process)
+                    op_desc_seq[process] = [AllGatherOpDesc(group=group, shape=allgather_shape),
                                             ConcatOpDesc(partition_index_list=all_partition_index_list), slice_op_desc] \
                         if len(group) > 1 else [slice_op_desc]
 
@@ -1329,9 +1413,16 @@ class Resharder:
                         if name == var_name and op_dist_attr is not None:
                             if op.desc.id() == matched_op.desc.id():
                                 op.desc._rename_input(name, target_tensor.name)
+                                old_name = name
+                                new_name = target_tensor.name
+                                assert old_name != new_name
+                                op_input_dist_attr = op_dist_attr.get_input_dist_attr(
+                                    old_name)
+                                op_dist_attr.set_input_dist_attr(
+                                    new_name, op_input_dist_attr)
                                 op_dist_attr.set_input_dims_mapping(
-                                    target_tensor.name, dims_mapping)
-                                op_dist_attr.set_input_dist_attr(name, None)
+                                    new_name, dims_mapping)
+                                op_dist_attr.del_input_dist_attr(old_name)
                                 continue
 
                             # NOTE: For op whose process mesh is a union, its input will not be renamed by other op reshard result now which means that it will have more reshard operation.
@@ -1340,9 +1431,16 @@ class Resharder:
                                 var_name)
                             if op_process_mesh == process_mesh and op_input_dims_mapping == dims_mapping:
                                 op.desc._rename_input(name, target_tensor.name)
+                                old_name = name
+                                new_name = target_tensor.name
+                                assert old_name != new_name
+                                op_input_dist_attr = op_dist_attr.get_input_dist_attr(
+                                    old_name)
+                                op_dist_attr.set_input_dist_attr(
+                                    new_name, op_input_dist_attr)
                                 op_dist_attr.set_input_dims_mapping(
-                                    target_tensor.name, dims_mapping)
-                                op_dist_attr.set_input_dist_attr(name, None)
+                                    new_name, dims_mapping)
+                                op_dist_attr.del_input_dist_attr(old_name)
 
     def reshard(self):
         for block_idx, block in enumerate(self.auto_parallel_main_prog.blocks):
@@ -1359,15 +1457,16 @@ class Resharder:
                                 dist_op = self.dist_context.get_dist_op_for_program(
                                     op)
                                 op_dist_attr = dist_op.dist_attr
-                                if op_dist_attr.process_mesh == Resharder.while_block_info[
-                                        block_idx]["actual_process_mesh"]:
-                                    dims_mapping = op_dist_attr.get_input_dims_mapping(
-                                        var_name)
-                                    op_dist_attr.set_input_dims_mapping(
-                                        var_reshard_mapping[var_name],
-                                        dims_mapping)
-                                    op_dist_attr.set_input_dist_attr(
-                                        var_name, None)
+                                # if op_dist_attr.process_mesh == Resharder.while_block_info[
+                                #         block_idx]["actual_process_mesh"]:
+                                old_name = var_name
+                                new_name = var_reshard_mapping[var_name]
+                                assert old_name != new_name
+                                op_input_dist_attr = op_dist_attr.get_input_dist_attr(
+                                    old_name)
+                                op_dist_attr.set_input_dist_attr(
+                                    new_name, op_input_dist_attr)
+                                op_dist_attr.del_input_dist_attr(old_name)
 
                         # the outputs also need to be renamed when the output name is the same with input name
                         for var_name in op.output_arg_names:
@@ -1377,15 +1476,16 @@ class Resharder:
                                 dist_op = self.dist_context.get_dist_op_for_program(
                                     op)
                                 op_dist_attr = dist_op.dist_attr
-                                if op_dist_attr.process_mesh == Resharder.while_block_info[
-                                        block_idx]["actual_process_mesh"]:
-                                    dims_mapping = op_dist_attr.get_output_dims_mapping(
-                                        var_name)
-                                    op_dist_attr.set_output_dims_mapping(
-                                        var_reshard_mapping[var_name],
-                                        dims_mapping)
-                                    op_dist_attr.set_output_dist_attr(
-                                        var_name, None)
+                                # if op_dist_attr.process_mesh == Resharder.while_block_info[
+                                #         block_idx]["actual_process_mesh"]:
+                                old_name = var_name
+                                new_name = var_reshard_mapping[var_name]
+                                assert old_name != new_name
+                                op_output_dist_attr = op_dist_attr.get_output_dist_attr(
+                                    old_name)
+                                op_dist_attr.set_output_dist_attr(
+                                    new_name, op_output_dist_attr)
+                                op_dist_attr.del_output_dist_attr(old_name)
 
             idx = 0
             while idx < len(block.ops):
@@ -1404,17 +1504,17 @@ class Resharder:
                             raise ValueError(
                                 "Please check the condition due to the dims mapping is not replicative."
                             )
-                        process_meshes = self.get_process_meshes(op)
-                        assert process_meshes
+                        # process_meshes = self.get_process_meshes(op)
+                        # assert process_meshes
                         if op.attr("sub_block"
                                    ).id not in Resharder.while_block_info:
                             Resharder.while_block_info[op.attr(
                                 "sub_block").id] = {}
                         Resharder.while_block_info[op.attr(
                             "sub_block").id]["op_id"] = op.desc.id()
-                        Resharder.while_block_info[op.attr("sub_block").id][
-                            "actual_process_mesh"] = self.get_while_op_actual_process_mesh(
-                                op)
+                        # Resharder.while_block_info[op.attr("sub_block").id][
+                        #     "actual_process_mesh"] = self.get_while_op_actual_process_mesh(
+                        #         op)
                     else:
                         process_meshes = self.get_op_process_meshes(op)
                     input_vars = None
@@ -1431,6 +1531,10 @@ class Resharder:
                             var_name, block, self.auto_parallel_main_prog)
                         dist_tensor = self.dist_context.get_dist_tensor_for_program(
                             var)
+                        process_meshes = self.get_while_op_actual_process_meshes(
+                            op, var_name) if op.type == "while" else [
+                                dist_op.dist_attr.process_mesh
+                            ]
                         for process_mesh in process_meshes:
                             if dist_tensor is not None and self.need_reshard(
                                     dist_tensor, dist_op, process_mesh):
@@ -1497,3 +1601,209 @@ class Resharder:
 
         # reset some variable when remove operation ended
         Resharder.while_block_info = {}
+
+    def get_cost(self, op, tensor, cluster):
+        # NOTE: The program should be the serial_program which is not been parted
+        # TODO: Support sub block in the future
+        global _g_special_ops
+        not_supported_op_type = _g_special_ops + ["while"]
+        reshard_op_cost = None
+        if op.type in not_supported_op_type:
+            return reshard_op_cost
+        else:
+            tensor_name = tensor.name
+            if tensor_name == "lod_tensor_blocking_queue_0":
+                return reshard_op_cost
+            else:
+                dist_tensor = self.dist_context.get_dist_tensor_for_program(
+                    tensor)
+                dist_op = self.dist_context.get_dist_op_for_program(op)
+                dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
+                    tensor.name)
+                process_mesh = dist_op.dist_attr.process_mesh
+                if dist_tensor is not None and self.need_reshard(
+                        dist_tensor, dist_op, process_mesh):
+                    if tensor_name not in self._has_resharded:
+                        self._has_resharded[tensor_name] = [dist_op]
+                    else:
+                        for item in self._has_resharded[tensor_name]:
+                            item_dist_attr = item.dist_attr
+                            item_dims_mapping = item_dist_attr.get_input_dims_mapping(
+                                tensor_name)
+                            item_process_mesh = item_dist_attr.process_mesh
+                            if dims_mapping == item_dims_mapping and item_process_mesh == process_mesh:
+                                return reshard_op_cost
+                        self._has_resharded[tensor_name].append(dist_op)
+
+                    reshard_op_desc = self.find_op_desc_seq(dist_tensor,
+                                                            dist_op,
+                                                            process_mesh,
+                                                            serial=True)
+                    dtype = dist_tensor.serial_tensor.dtype
+                    reshard_op_cost = self.parse_op_desc_for_cost(
+                        reshard_op_desc, dtype, cluster)
+
+        return reshard_op_cost
+
+    def _concat_partitions_for_cost(self, partition_tensor_list,
+                                    partition_index, dtype, rank_id,
+                                    local_rank_comp_cost, cluster):
+        if not partition_tensor_list:
+            partition_tensor_list.append(partition_index)
+        else:
+            i = 0
+            has_concat = False
+            while i < len(partition_tensor_list):
+                concat_axis, first_order, new_partition = Resharder.compute_concat_info(
+                    partition_tensor_list[i], partition_index)
+                if concat_axis != -1:
+                    has_concat = True
+                    concat_desc = {}
+                    concat_desc["op"] = "concat"
+                    concat_desc["attrs"] = {"axis": concat_axis}
+                    if first_order == 0:
+                        concat_desc["inputs"] = {
+                            "X": [(dtype, partition_tensor_list[i]),
+                                  (dtype, partition_index)]
+                        }
+                    else:
+                        concat_desc["inputs"] = {
+                            "X": [(dtype, partition_index),
+                                  (dtype, partition_tensor_list[i])]
+                        }
+                    partition_tensor_list.pop(i)
+                    if rank_id not in local_rank_comp_cost:
+                        local_rank_comp_cost[rank_id] = []
+                    local_rank_comp_cost[rank_id].append(
+                        ConcatOpCost(op_desc=concat_desc, cluster=cluster))
+                    self._concat_partitions_for_cost(partition_tensor_list,
+                                                     new_partition, dtype,
+                                                     rank_id,
+                                                     local_rank_comp_cost,
+                                                     cluster)
+                    break
+                i += 1
+            if not has_concat:
+                partition_tensor_list.append(partition_index)
+
+    def parse_op_desc_for_cost(self, reshard_op_desc, dtype, cluster):
+
+        def _get_idx(comm_ranks, group_ranks):
+            res, is_the_same = None, False
+            idx = 0
+            while idx < len(comm_ranks):
+                if comm_ranks[idx] == set(group_ranks):
+                    is_the_same = True
+
+                for rank in group_ranks:
+                    if rank in comm_ranks[idx]:
+                        res = idx
+                        comm_ranks[idx].add(rank)
+                if res is None:
+                    idx += 1
+                else:
+                    break
+            return res, is_the_same
+
+        comm_context = CommContext(cluster)
+        # run communication op before computation op
+        # TODO: Communication cost is not calculated when the var has been transfered by the same group in the past
+        comm_costs = []
+        comm_ranks = []
+        local_rank_comp_cost = {}
+        for key in reshard_op_desc:
+            partition_tensor_list = []
+            op_desc_list = reshard_op_desc[key]
+            for op_desc in op_desc_list:
+                if isinstance(op_desc, SendOpDesc):
+                    group_ranks = [key, op_desc.dst]
+                    shape = op_desc.shape
+                    send_desc = build_comm_desc("send_v2", group_ranks, dtype,
+                                                shape)
+                    idx, is_the_same = _get_idx(comm_ranks, group_ranks)
+                    if idx is None:
+                        comm_costs.append([
+                            (group_ranks,
+                             SendOpCost(op_desc=send_desc,
+                                        comm_context=comm_context))
+                        ])
+                        comm_ranks.append(set(group_ranks))
+                    else:
+                        if not is_the_same:
+                            comm_costs[idx].append(
+                                (group_ranks,
+                                 SendOpCost(op_desc=send_desc,
+                                            comm_context=comm_context)))
+                elif isinstance(op_desc, AllGatherOpDesc):
+                    # NOTE: fill_const and other unnecessary op is not calculated because those cost is very small
+                    group_ranks = op_desc.group
+                    shape = op_desc.shape
+                    allgather_desc = build_comm_desc("c_allgather", group_ranks,
+                                                     dtype, shape)
+                    split_inputs_shape = []
+                    for idx, dim in enumerate(shape):
+                        if idx == 0:
+                            split_inputs_shape.append(dim * len(group_ranks))
+                        else:
+                            split_inputs_shape.append(dim)
+                    idx, is_the_same = _get_idx(comm_ranks, group_ranks)
+                    if idx is None:
+                        comm_costs.append([
+                            (group_ranks,
+                             AllgatherOpCost(op_desc=allgather_desc,
+                                             comm_context=comm_context))
+                        ])
+                        comm_ranks.append(set(group_ranks))
+                    else:
+                        if not is_the_same:
+                            comm_costs[idx].append(
+                                (group_ranks,
+                                 AllgatherOpCost(op_desc=allgather_desc,
+                                                 comm_context=comm_context)))
+                    # calc the split op cost
+                    if key not in local_rank_comp_cost:
+                        local_rank_comp_cost[key] = []
+                    split_desc = {}
+                    split_desc["op"] = "split"
+                    split_desc["inputs"] = {
+                        "inputs": [(dtype, split_inputs_shape)]
+                    }
+                    split_desc["attrs"] = {"num": len(group_ranks), "axis": 0}
+                    local_rank_comp_cost[key].append(
+                        SplitOpCost(op_desc=split_desc, cluster=cluster))
+                elif isinstance(op_desc, ConcatOpDesc):
+                    partition_index_list = op_desc._partition_index_list
+                    for idx, partion_idex in enumerate(partition_index_list):
+                        self._concat_partitions_for_cost(
+                            partition_tensor_list, partion_idex, dtype, key,
+                            local_rank_comp_cost, cluster)
+
+                elif isinstance(op_desc, SliceOpDesc):
+                    if key not in local_rank_comp_cost:
+                        local_rank_comp_cost[key] = []
+                    assert len(
+                        partition_tensor_list) == 1 or not partition_tensor_list
+                    to_slice_tensor_shape = []
+                    if len(partition_tensor_list) == 1:
+                        for item in partition_tensor_list[0]:
+                            to_slice_tensor_shape.append(item[1] - item[0])
+                    else:
+                        to_slice_tensor_shape = op_desc.shape
+                    slice_desc = {}
+                    slice_desc["op"] = "slice"
+                    infer_flags = list(1 for i in range(len(op_desc.axes)))
+                    slice_desc["attrs"] = {
+                        "axes": op_desc.axes,
+                        "starts": op_desc.starts,
+                        "ends": op_desc.ends,
+                        "infer_flags": infer_flags
+                    }
+                    slice_desc["inputs"] = {
+                        "Input": [(dtype, to_slice_tensor_shape)]
+                    }
+                    local_rank_comp_cost[key].append(
+                        SliceOpCost(op_desc=slice_desc, cluster=cluster))
+
+        res = (comm_costs, local_rank_comp_cost)
+
+        return res

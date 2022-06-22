@@ -325,8 +325,8 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         process_mesh_shape = op_dist_attr.process_mesh.topology
         process_mesh_group = op_dist_attr.process_mesh.processes
         dims_mapping = [0] + [-1 for _ in range(len(new_X_grad.shape) - 1)]
-        from ..reshard import Resharder
 
+        from ..reshard import Resharder
         partition_idx = Resharder.compute_partition_index(
             rank_id, new_X_grad.shape, dims_mapping, process_mesh_shape,
             process_mesh_group)

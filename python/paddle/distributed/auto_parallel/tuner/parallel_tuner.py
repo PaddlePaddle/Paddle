@@ -14,6 +14,7 @@
 
 import math
 import time
+import datetime
 import copy
 import hashlib
 import itertools
@@ -34,10 +35,12 @@ from ..utils import print_program_with_dist_attr
 from .trial import Trial, TrialStatus
 from .tuner import Tuner
 from .tunable_space import TunableSpace
+from .tunable_variable import Boolean, IntRange
 from ..cost import CostEstimator
 
 
 class ParallelTuner:
+
     def __init__(self,
                  dist_context,
                  mode="main",
@@ -61,17 +64,16 @@ class ParallelTuner:
         self._max_trials = max_trials
         self._tuner_id = tuner_id
         self._seed = seed or np.random.randint(1, 10000)
-        self._seed = 3895
-        print(
-            "seed",
-            self._seed,
-            "mode",
-            self._mode,
-            "num_machies",
-            self._num_machines,
-            "num_devices_per_machine",
-            self._num_devices_per_machine,
-            flush=True)
+        # self._seed = 3895
+        print("seed",
+              self._seed,
+              "mode",
+              self._mode,
+              "num_machies",
+              self._num_machines,
+              "num_devices_per_machine",
+              self._num_devices_per_machine,
+              flush=True)
         self._seed_state = self._seed
         self._logger = logger
         self._max_collisions = 3
@@ -79,6 +81,17 @@ class ParallelTuner:
         self._num_trials = 0
         self._rng = np.random.default_rng(self._seed)
         self._materialized_for_all_ranks = False
+
+        # Search the op types in the include_op_types,
+        # and will search all op types if it is empty.
+        # self._include_op_types = ["matmul_v2", "matmul", "mul", "embedding"]
+        self._include_op_types = []
+        # Exclude the op types in the exclude_op_types
+        # from the search list.
+        self._exclude_op_types = []
+        # The final dist ops will be searched after considering
+        # the include_op_types and exclude_op_types.
+        self._concerned_dist_ops = {}
 
         self._op_id_to_dist_attr_candidates = defaultdict(list)
         self._cached_dims_mapping_candidates = {}
@@ -200,8 +213,8 @@ class ParallelTuner:
             for n in intra_node_partition:
                 process_mesh = []
                 for p in range(m):
-                    start = (start_row + p
-                             ) * self._num_devices_per_machine + start_col
+                    start = (start_row +
+                             p) * self._num_devices_per_machine + start_col
                     tmp = []
                     for q in range(n):
                         tmp.append(start + q)
@@ -225,8 +238,9 @@ class ParallelTuner:
                     dims_mapping, dims_list, start + 1, visited, candidates)
                 visited[idx] = False
         dims_mapping[start] = -1
-        self._generate_dims_mapping_candidates_helper(
-            dims_mapping, dims_list, start + 1, visited, candidates)
+        self._generate_dims_mapping_candidates_helper(dims_mapping, dims_list,
+                                                      start + 1, visited,
+                                                      candidates)
 
     def _generate_dims_mapping_candidates(self, dims_mapping_len,
                                           process_mesh_len):
@@ -317,8 +331,8 @@ class ParallelTuner:
                     [copy.deepcopy(original_dims_mapping)])
             else:
                 dims_mapping_generated.append(
-                    self._generate_dims_mapping_candidates(dims_mapping_len,
-                                                           process_mesh_len))
+                    self._generate_dims_mapping_candidates(
+                        dims_mapping_len, process_mesh_len))
         input_dims_mapping_candidates = []
         for dims_mapping_list in itertools.product(*dims_mapping_generated):
             dims_mapping_list = list(dims_mapping_list)
@@ -346,15 +360,15 @@ class ParallelTuner:
                     [copy.deepcopy(original_dims_mapping)])
             else:
                 dims_mapping_generated.append(
-                    self._generate_dims_mapping_candidates(dims_mapping_len,
-                                                           process_mesh_len))
+                    self._generate_dims_mapping_candidates(
+                        dims_mapping_len, process_mesh_len))
         output_dims_mapping_candidates = []
         for dims_mapping_list in itertools.product(*dims_mapping_generated):
             dims_mapping_list = list(dims_mapping_list)
             assert len(dims_mapping_list) == len(output_names)
             for i, dims_mapping in enumerate(dims_mapping_list):
-                new_op_dist_attr.set_output_dims_mapping(output_names[i],
-                                                         dims_mapping)
+                new_op_dist_attr.set_output_dims_mapping(
+                    output_names[i], dims_mapping)
             new_dist_op = DistributedOperator(dist_op.serial_op,
                                               new_op_dist_attr)
             dist_op_impls = find_compatible_distributed_operator_impls(
@@ -387,13 +401,13 @@ class ParallelTuner:
             # set the dims_mappings for inputs
             for i, dims_mapping in enumerate(inout_dims_mapping_list[0]):
                 if dims_mapping != [-2]:
-                    new_op_dist_attr.set_input_dims_mapping(input_names[i],
-                                                            dims_mapping)
+                    new_op_dist_attr.set_input_dims_mapping(
+                        input_names[i], dims_mapping)
             # set the dims_mappings for outputs
             for i, dims_mapping in enumerate(inout_dims_mapping_list[1]):
                 if dims_mapping != [-2]:
-                    new_op_dist_attr.set_output_dims_mapping(output_names[i],
-                                                             dims_mapping)
+                    new_op_dist_attr.set_output_dims_mapping(
+                        output_names[i], dims_mapping)
             new_dist_op = DistributedOperator(dist_op.serial_op,
                                               new_op_dist_attr)
             dist_op_impls = find_compatible_distributed_operator_impls(
@@ -413,23 +427,43 @@ class ParallelTuner:
     def construct_space(self):
         inter_node_partitions, intra_node_partitions = self._partition_devices(
             self._num_machines, self._num_devices_per_machine)
-        self._space.choice(
-            "inter_node_partitions",
-            inter_node_partitions,
-            default=inter_node_partitions[0])
-        self._space.choice(
-            "intra_node_partitions",
-            intra_node_partitions,
-            default=intra_node_partitions[0])
+        self._space.choice("inter_node_partitions",
+                           inter_node_partitions,
+                           default=inter_node_partitions[0])
+        self._space.choice("intra_node_partitions",
+                           intra_node_partitions,
+                           default=intra_node_partitions[0])
 
         dist_ops = self._dist_context._dist_ops_for_program
         for op_id, dist_op in dist_ops.items():
+            op_type = dist_op.serial_op.type
+            if self._include_op_types:
+                if op_type in self._include_op_types:
+                    self._concerned_dist_ops[op_id] = dist_op
+            else:
+                self._concerned_dist_ops[op_id] = dist_op
+
+        for op_id, dist_op in self._concerned_dist_ops.items():
+            op_type = dist_op.serial_op.type
+            if op_type in self._exclude_op_types:
+                del self._concerned_dist_ops[op_id]
+
+        print("Number of the concered dist ops",
+              len(self._concerned_dist_ops),
+              flush=True)
+        search_space = 1
+        for op_id, dist_op in self._concerned_dist_ops.items():
             op_dist_attr_candidates = self._generate_dist_attr_candidates(
                 op_id, dist_op)
-            self._space.choice(
-                str(op_id),
-                op_dist_attr_candidates,
-                default=op_dist_attr_candidates[0])
+            print("concerned dist ops",
+                  dist_op.serial_op.type,
+                  len(op_dist_attr_candidates),
+                  flush=True)
+            search_space *= len(op_dist_attr_candidates)
+            self._space.choice(str(op_id),
+                               op_dist_attr_candidates,
+                               default=op_dist_attr_candidates[0])
+        # print("Number of the search space", f"{float(search_space): .2E}", flush=True)
 
     def _compute_values_hash(self, values):
         keys = sorted(values.keys())
@@ -480,28 +514,87 @@ class ParallelTuner:
         self._num_trials += 1
         return trial
 
+    def _generate_pipeline_starts(self, process_mesh_list):
+        total_ops = len(self._dist_context._dist_ops_for_program)
+        total_stages = len(process_mesh_list)
+        ops_per_stage = total_ops // total_stages
+        if ops_per_stage == 0:
+            return None
+        # Compute the initial pipeline starts
+        pipeline_starts = []
+        start = 0
+        pipeline_starts.append(0)
+        # The pipeline_starts have total_stages+1 items, and
+        # at least have 2 items.
+        for _ in process_mesh_list:
+            start += ops_per_stage
+            pipeline_starts.append(start)
+        pipeline_starts[-1] = total_ops
+        # Adjust the pipeline starts by random selection
+        directions = []
+        sizes = []
+        half_ops_per_stage = ops_per_stage // 2
+        if half_ops_per_stage > 0 and total_stages > 1:
+            new_pipeline_starts = []
+            # Don't change the first start
+            new_pipeline_starts.append(0)
+            # Consider the starts except the first and the last one
+            for _ in pipeline_starts[1:-2]:
+                directions.append(Boolean("direction"))
+                sizes.append(
+                    IntRange("size",
+                             start=0,
+                             stop=half_ops_per_stage,
+                             endpoint=True))
+            for i, start in enumerate(pipeline_starts[1:-2]):
+                direction = directions[i].random(self._seed)
+                size = sizes[i].random(self._seed)
+                if direction:
+                    # Substract 1 from size to avoid the overlapping of new starts
+                    new_start = start - (size - 1)
+                else:
+                    new_start = start + size
+                new_pipeline_starts.append(new_start)
+            # Don't change the last start
+            new_pipeline_starts.append(pipeline_starts[-1])
+            # Validate the new starts
+            print("Adjusted pipeline starts",
+                  new_pipeline_starts,
+                  half_ops_per_stage,
+                  flush=True)
+            for i, new_start in enumerate(new_pipeline_starts[1:]):
+                assert new_start > new_pipeline_starts[i]
+            return new_pipeline_starts
+        else:
+            print("Non-adjusted pipeline starts",
+                  pipeline_starts,
+                  half_ops_per_stage,
+                  flush=True)
+            return pipeline_starts
+
     def _apply_pipeline_partition(self, process_mesh_list):
         op_id_to_process_mesh = {}
         total_ops = len(self._dist_context._dist_ops_for_program)
         total_stages = len(process_mesh_list)
-        ops_per_stages = total_ops // total_stages
-        if ops_per_stages == 0:
+        ops_per_stage = total_ops // total_stages
+        if ops_per_stage == 0:
             return None
-        pipeline_starts = []
-        start = 0
-        pipeline_starts.append(0)
-        for _ in process_mesh_list:
-            start += ops_per_stages
-            pipeline_starts.append(start)
-        pipeline_starts[-1] = total_ops
-        start = 1
+        pipeline_starts = self._generate_pipeline_starts(process_mesh_list)
+        # pipeline_starts = []
+        # start = 0
+        # pipeline_starts.append(0)
+        # for _ in process_mesh_list:
+        #     start += ops_per_stage
+        #     pipeline_starts.append(start)
+        # pipeline_starts[-1] = total_ops
+        start_idx = 1
         sorted_op_ids = sorted(self._dist_context._dist_ops_for_program.keys())
         for idx, op_id in enumerate(sorted_op_ids):
-            if idx < pipeline_starts[start]:
-                op_id_to_process_mesh[op_id] = process_mesh_list[start - 1]
+            if idx < pipeline_starts[start_idx]:
+                op_id_to_process_mesh[op_id] = process_mesh_list[start_idx - 1]
             else:
-                start += 1
-                op_id_to_process_mesh[op_id] = process_mesh_list[start - 1]
+                start_idx += 1
+                op_id_to_process_mesh[op_id] = process_mesh_list[start_idx - 1]
         return op_id_to_process_mesh
 
     def _amend_dist_attr(self):
@@ -598,6 +691,10 @@ class ParallelTuner:
                 dist_op.dist_attr.impl_idx = 0
 
     def _eval_trial(self, trial):
+        if self._num_trials == 0:
+            num_prev_trials = 0
+        else:
+            num_prev_trials = self._num_trials - 1
         results = None
         start_time = time.time()
         inter_node_partition = trial.space.values["inter_node_partitions"]
@@ -608,6 +705,7 @@ class ParallelTuner:
             process_mesh_list)
         if op_id_to_process_mesh is None:
             print("Operators are less than pipeline stages", flush=True)
+            results = {"estimate_time": math.inf}
             return results
 
         op_id_to_dist_attr = {}
@@ -616,18 +714,26 @@ class ParallelTuner:
                 and name !="intra_node_partitions":
                 op_id_to_dist_attr[int(name)] = value
         end_time = time.time()
-        print("sample time", end_time - start_time, flush=True)
-
-        assert len(op_id_to_process_mesh) == len(op_id_to_dist_attr)
+        cur_sample_time = end_time - start_time
+        self._sample_time = (num_prev_trials * self._sample_time +
+                             cur_sample_time) / self._num_trials
+        print("\tsample_time",
+              num_prev_trials,
+              self._num_trials,
+              self._sample_time,
+              cur_sample_time,
+              flush=True)
 
         start_time = time.time()
         for op_id, process_mesh in op_id_to_process_mesh.items():
             dist_op = self._dist_context._dist_ops_for_program[op_id]
-            dist_op.dist_attr = copy.deepcopy(op_id_to_dist_attr[op_id])
-            assert dist_op.dist_attr.impl_type == op_id_to_dist_attr[
-                op_id].impl_type
-            assert dist_op.dist_attr.impl_idx == op_id_to_dist_attr[
-                op_id].impl_idx
+            # Only set the dist attr in concerned_dist_ops
+            if op_id in self._concerned_dist_ops:
+                dist_op.dist_attr = copy.deepcopy(op_id_to_dist_attr[op_id])
+                assert dist_op.dist_attr.impl_type == op_id_to_dist_attr[
+                    op_id].impl_type
+                assert dist_op.dist_attr.impl_idx == op_id_to_dist_attr[
+                    op_id].impl_idx
             dist_op.dist_attr.process_mesh = process_mesh
         self._amend_dist_attr()
 
@@ -640,13 +746,29 @@ class ParallelTuner:
             self._parallelizer.parallel_all()
 
         end_time = time.time()
-        print("complete time", end_time - start_time, flush=True)
+        cur_complete_time = end_time - start_time
+        self._complete_time = (num_prev_trials * self._complete_time +
+                               cur_complete_time) / self._num_trials
+        print("\tcomplete_time",
+              num_prev_trials,
+              self._num_trials,
+              self._complete_time,
+              cur_complete_time,
+              flush=True)
 
         start_time = time.time()
         estimate_time = self._estimate_trial()
-        print("time of cost model 0", estimate_time, flush=True)
+        # print("time of cost model 0", estimate_time, flush=True)
         end_time = time.time()
-        print("estimate time", end_time - start_time, flush=True)
+        cur_estimate_time = end_time - start_time
+        self._estimate_time = (num_prev_trials * self._estimate_time +
+                               cur_estimate_time) / self._num_trials
+        print("\testimate_time",
+              num_prev_trials,
+              self._num_trials,
+              self._estimate_time,
+              cur_estimate_time,
+              flush=True)
 
         # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
         results = {"estimate_time": estimate_time}
@@ -680,11 +802,18 @@ class ParallelTuner:
             params_grads = self._parallelizer._generate_backward(
                 serial_main_program, serial_startup_program, serial_loss)
 
-            self._estimator = CostEstimator(
-                serial_main_program, self._cluster, loop_count=self._loop_count)
+            self._estimator = CostEstimator(serial_main_program,
+                                            self._cluster,
+                                            loop_count=self._loop_count)
 
-        global_cost = self._estimator.estimate(self._dist_context)
-        return global_cost.time
+        max_memory = self._estimator._estimate_max_memory(self._dist_context)
+        print("\tmax_memory", "{:,}".format(max_memory), flush=True)
+        # The max memory must be less than 80% of 32GB (hard code)
+        if max_memory > 32 * 0.8 * 1024 * 1024 * 1024:
+            return math.inf
+        else:
+            global_cost = self._estimator.estimate(self._dist_context)
+            return global_cost.time
 
     def _store_init_parallel_strategy(self):
         # If there is no annotation information, use the dp as the initial parallel strategy.
@@ -743,28 +872,51 @@ class ParallelTuner:
         self._dist_context._process_meshes = tmp[2]
 
     def tune(self):
+        begin_time = time.time()
         self._dist_context._backup(serial=True, dist=True)
         # This store statement must follow the above backup statement
         self._store_init_parallel_strategy()
         init_time = self._estimate_trial()
-        print("init time", init_time, flush=True)
         # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
         # We have to restore the distributed context, because the estimation of one trail need to
         # generate the backward and update parts. Since we will do the tuning process,
         # here we only need to reset all distributed information to the default one.
-        self._dist_context._restore(
-            serial=True,
-            serial_mode="to_backup",
-            dist=True,
-            dist_mode="to_default")
+        self._dist_context._restore(serial=True,
+                                    serial_mode="to_backup",
+                                    dist=True,
+                                    dist_mode="to_default")
 
         best_time = init_time
         start_time = time.time()
         self.construct_space()
         end_time = time.time()
-        print("construct trial time", end_time - start_time, flush=True)
-        while True:
+        print("construct_space time",
+              self._num_trials,
+              end_time - start_time,
+              flush=True)
+        create_trial_time = 0.0
+        eval_trial_time = 0.0
+        self._sample_time = 0.0
+        self._complete_time = 0.0
+        self._estimate_time = 0.0
+        found_better = False
+        while True and not found_better:
+            start_time = time.time()
             trial = self._create_trial()
+            if self._num_trials == 0:
+                num_prev_trials = 0
+            else:
+                num_prev_trials = self._num_trials - 1
+            end_time = time.time()
+            cur_create_trial_time = end_time - start_time
+            create_trial_time = (num_prev_trials * create_trial_time +
+                                 cur_create_trial_time) / self._num_trials
+            print("create_trial time",
+                  num_prev_trials,
+                  self._num_trials,
+                  create_trial_time,
+                  cur_create_trial_time,
+                  flush=True)
             if trial.status == TrialStatus.STOPPED:
                 break
             # We need to backup the distributed context, because the evaluation of one trail will
@@ -775,23 +927,38 @@ class ParallelTuner:
             start_time = time.time()
             results = self._eval_trial(trial)
             end_time = time.time()
-            print("eval trial time", end_time - start_time, flush=True)
+            cur_eval_trial_time = end_time - start_time
+            eval_trial_time = (num_prev_trials * eval_trial_time +
+                               cur_eval_trial_time) / self._num_trials
+            print("eval_trial time",
+                  num_prev_trials,
+                  self._num_trials,
+                  eval_trial_time,
+                  cur_eval_trial_time,
+                  "\n",
+                  flush=True)
 
             cur_time = results["estimate_time"]
-            print("time of cost model: ", cur_time, flush=True)
+            # print("\ttime of cost model: ", cur_time, flush=True)
             if cur_time < best_time:
+                print("$$$$cur_time",
+                      cur_time,
+                      "previous best_time",
+                      best_time,
+                      flush=True)
                 self._update_trail(trial, results)
                 self._store_best_parallel_strategy()
                 best_time = cur_time
+                found_better = True
             # We need to restore the distributed context and reset the distributed information to the default.
-            self._dist_context._restore(
-                serial=True,
-                serial_mode="to_backup",
-                dist=True,
-                dist_mode="to_default")
+            self._dist_context._restore(serial=True,
+                                        serial_mode="to_backup",
+                                        dist=True,
+                                        dist_mode="to_default")
         # Select the best parallel strategy
         self._dist_context._dist_tensors_for_program = self._best_parallel_strategy[
             0]
         self._dist_context._dist_ops_for_program = self._best_parallel_strategy[
             1]
         self._dist_context._process_meshes = self._best_parallel_strategy[2]
+        print("\n#### Total Time", time.time() - begin_time, flush=True)

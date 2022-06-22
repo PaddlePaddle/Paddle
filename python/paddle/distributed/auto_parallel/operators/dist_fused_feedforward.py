@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
@@ -24,6 +25,9 @@ from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
 from ..utils import _get_comm_group, _get_corresponding_rank
 from ..process_group import new_process_group
+from ..cost import build_comm_desc_from_dist_op
+from ..cost import build_comm_costs_from_desc_mapping
+from ..cost import AllreduceSumOpCost
 
 
 class DistributedFusedFeedForward(DistributedOperatorImplContainer):
@@ -42,6 +46,45 @@ class DistributedFusedFeedForwardImpl(DistributedOperatorImpl):
         super(DistributedFusedFeedForwardImpl, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
+
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Forward):
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        elif int(op_role) == int(OpRole.Backward):
+            raise NotImplementedError(
+                "The backward cost of dist fused attention has not implemented."
+            )
+        assert cost is not None
+        return cost
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # for fused op, when comp cost is 0, just calc the comp cost in fused op
+        # NOTE:The fused ops will has OpCost composed of the other op costs in the future
+
+        # calc comm op cost
+        processes = dist_op.dist_attr.process_mesh.processes
+        serial_op = dist_op.serial_op
+        vars = serial_op.block.vars
+        parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
+            serial_op.input("Linear1Weight")[0])[-1]
+
+        # this attrs are the same with the comm op in the other dist op such as matmul
+        attrs = {"use_calc_stream": True, "use_model_parallel": True}
+        var_names = serial_op.output("Out")
+        allreduce_desc_mapping = build_comm_desc_from_dist_op(
+            "c_allreduce_sum",
+            dist_op,
+            ctx,
+            var_names,
+            attrs=attrs,
+            parallel_axis=parallel_axis)
+
+        comm_op_cost_list = build_comm_costs_from_desc_mapping(
+            AllreduceSumOpCost, ctx, processes, allreduce_desc_mapping, cluster)
+        res_cost = [comm_op_cost_list]
+
+        return res_cost
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
