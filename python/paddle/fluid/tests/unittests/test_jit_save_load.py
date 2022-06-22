@@ -1160,20 +1160,20 @@ class Net(paddle.nn.Layer):
         self.fc1 = paddle.nn.Linear(4, 4)
         self.fc2 = paddle.nn.Linear(4, 4)
         self.bias = 0.4
-        self.flag = paddle.ones([2],dtype="int32")
-        
-    @paddle.jit.to_static(input_spec=[InputSpec([None, 4],dtype='float32')])
+        self.flag = paddle.ones([2], dtype="int32")
+
+    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
     def log_softmax(self, input):
         return paddle.nn.functional.log_softmax(input, axis=-1)
-    
-    @paddle.jit.to_static(input_spec=[InputSpec([None, 4],dtype='float32')])
+
+    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
     def forward(self, x):
         out = self.fc1(x)
         out = paddle.nn.functional.relu(out)
         out = paddle.mean(out)
         return out
 
-    @paddle.jit.to_static(input_spec=[InputSpec([None, 4],dtype='float32')])
+    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
     def infer(self, input):
         out = self.fc2(input)
         out = out + self.bias
@@ -1189,7 +1189,7 @@ class Net(paddle.nn.Layer):
     @paddle.jit.to_static(property=True)
     def fflag(self):
         return self.flag
-    
+
 
 class TestJitSaveCombine(unittest.TestCase):
 
@@ -1202,8 +1202,8 @@ class TestJitSaveCombine(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_save_load_finetune_load(self):
-        model_path = os.path.join(
-            self.temp_dir.name, "test_jit_save_combine/model")
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_jit_save_combine/model")
 
         # Use new namespace
         with unique_name.guard():

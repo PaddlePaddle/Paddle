@@ -161,7 +161,10 @@ def copy_decorator_attrs(original_func, decorated_obj):
     return decorated_obj
 
 
-def declarative(function=None, input_spec=None, build_strategy=None, property=False):
+def declarative(function=None,
+                input_spec=None,
+                build_strategy=None,
+                property=False):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
     @declarative handles the Program and Executor of static mode and returns
@@ -204,6 +207,7 @@ def declarative(function=None, input_spec=None, build_strategy=None, property=Fa
             print(x_v) # [[2. 2.]]
 
     """
+
     def decorated(python_func):
         """
         Decorates a python function into a StaticFunction object.
@@ -305,7 +309,7 @@ class _SaveLoadConfig(object):
         # If True, It will save inference program only, and do not save params of Program
         self._program_only = False
         self.with_hook = False
-        
+
         # if True, multi `StaticFunction` will share params in one file.
         self.use_combine = False
 
@@ -862,15 +866,13 @@ def save(layer, path, input_spec=None, **configs):
         functions = [
             layer,
         ]
-    
 
-             
     # when use_combine is True and input `Layer` is `Layer`, will save multi StaticFunction else only one
     static_programs = []
     all_vars = set()
     property_vals = []
-    
-    for attr_func in functions:     
+
+    for attr_func in functions:
         if isinstance(layer, Layer):
             static_func = getattr(inner_layer, attr_func, None)
             if isinstance(static_func, StaticFunction):
@@ -879,7 +881,7 @@ def save(layer, path, input_spec=None, **configs):
                     immediate_val = static_func()
                     property_vals.append((immediate_val, attr_func))
                     continue
-                
+
                 concrete_program = static_func.concrete_program_specify_input_spec(
                     inner_input_spec, with_hook=with_hook)
             elif 'forward' == attr_func:
@@ -907,7 +909,7 @@ def save(layer, path, input_spec=None, **configs):
                     immediate_val = attr_func()
                     property_vals.append((immediate_val, attr_func))
                     continue
-                
+
                 concrete_program = attr_func.concrete_program_specify_input_spec(
                     inner_input_spec)
             else:
@@ -942,7 +944,7 @@ def save(layer, path, input_spec=None, **configs):
             for structured_name, var in six.iteritems(dygraph_state_dict):
                 state_names_dict[var.name] = structured_name
                 state_var_dict[var.name] = var
-            
+
         # 3. share parameters from Layer to scope & record var info
         with dygraph.guard():
             for param_or_buffer in concrete_program.parameters:
@@ -962,15 +964,12 @@ def save(layer, path, input_spec=None, **configs):
                 if param_or_buffer.name not in extra_var_info:
                     extra_info_dict = dict()
                     if param_or_buffer.name in state_names_dict:
-                        extra_info_dict[
-                            'structured_name'] = state_names_dict[
-                                param_or_buffer.name]
+                        extra_info_dict['structured_name'] = state_names_dict[
+                            param_or_buffer.name]
                     extra_info_dict[
                         'stop_gradient'] = param_or_buffer.stop_gradient
-                    if isinstance(param_or_buffer,
-                                    (ParamBase, EagerParamBase)):
-                        extra_info_dict[
-                            'trainable'] = param_or_buffer.trainable
+                    if isinstance(param_or_buffer, (ParamBase, EagerParamBase)):
+                        extra_info_dict['trainable'] = param_or_buffer.trainable
                     extra_var_info[param_or_buffer.name] = extra_info_dict
 
         # 4. build input & output of save_infernece_model
@@ -1007,7 +1006,7 @@ def save(layer, path, input_spec=None, **configs):
         else:
             model_filename = file_prefix + '.' + attr_func + INFER_MODEL_SUFFIX
             params_filename = file_prefix + '.' + attr_func + INFER_PARAMS_SUFFIX
-            
+
         if use_combine:
             # set parms filepath to None
             params_filename = None
@@ -1024,7 +1023,7 @@ def save(layer, path, input_spec=None, **configs):
                 export_for_deployment=configs._export_for_deployment,
                 program_only=configs._program_only,
                 clip_extra=False)
-            
+
         # collect all vars
         for var in concrete_program.main_program.list_vars():
             all_vars.add(var)
@@ -1035,12 +1034,13 @@ def save(layer, path, input_spec=None, **configs):
         params_filename = file_prefix + INFER_PARAMS_SUFFIX
         with scope_guard(scope):
             fluid.io.save_vars(Executor(_current_expected_place()),
-                    dirname=model_path,
-                    vars=list(filter(fluid.io.is_persistable, all_vars)),
-                    filename=params_filename)
-            
+                               dirname=model_path,
+                               vars=list(
+                                   filter(fluid.io.is_persistable, all_vars)),
+                               filename=params_filename)
+
         print('property vals:', property_vals)
-     
+
     # NOTE(chenweihang): [ Save extra variable info ]
     # save_inference_model will lose some important variable information, including:
     #   - Variable name and correspondence (when saved variables as one file)

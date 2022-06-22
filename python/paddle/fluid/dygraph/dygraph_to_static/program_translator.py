@@ -252,7 +252,7 @@ class StaticFunction(object):
             **kwargs(dict): other arguments like `build_strategy` et.al.
         """
         # save the instance `self` while decorating a method of class.
-        
+
         if inspect.ismethod(function):
             self._dygraph_function = getattr(function, '__func__')
             self._class_instance = getattr(function, '__self__')
@@ -262,7 +262,7 @@ class StaticFunction(object):
         else:
             self._dygraph_function = function
             self._class_instance = None
-            
+
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)
         self._program_cache = ProgramCache()
@@ -273,9 +273,9 @@ class StaticFunction(object):
         self._training = True
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
-        
+
         self._property = kwargs.get("property", False)
-        
+
     @property
     def is_property(self):
         # whether is class proproty to be exported.
@@ -334,7 +334,8 @@ class StaticFunction(object):
         return self._descriptor_cache[instance]
 
     def _clone(self):
-        return self.__class__(self._dygraph_function, self._input_spec, **self._kwargs)
+        return self.__class__(self._dygraph_function, self._input_spec,
+                              **self._kwargs)
 
     def __call__(self, *args, **kwargs):
         """
