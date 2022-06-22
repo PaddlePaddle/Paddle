@@ -88,14 +88,14 @@ template <typename T>
 struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
                   const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, framework::Tensor* out) {
+                  const int bin_cnt, const int round_type,
+                  framework::Tensor* out) {
     T s = scale.data<T>()[0];
     T inv_s = inverse(s);
     platform::Transform<platform::CPUDeviceContext> trans;
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
-          out->mutable_data<T>(ctx.GetPlace()), phi::ClipFunctor<T>(-s, s));
-    auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
+          out->mutable_data<T>(ctx.GetPlace()),
+          QuantTensorFunctor<T>(static_cast<T>(bin_cnt), round_type, inv_s));
   }
 };
 
@@ -105,16 +105,17 @@ template <typename T>
 struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
                   const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, framework::Tensor* out) {
+                  const int bin_cnt, const int round_type,
+                  framework::Tensor* out) {
     T s = scale.data<T>()[0];
     T inv_s = inverse(s);
 
     platform::Transform<platform::CPUDeviceContext> trans;
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
-          out->mutable_data<T>(ctx.GetPlace()), phi::ClipFunctor<T>(-s, s));
+          out->mutable_data<T>(ctx.GetPlace()),
+          QuantTensorFunctor<T>(static_cast<T>(bin_cnt), round_type, inv_s));
     auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e.device(*ctx.eigen_device()) =
-        (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
+    out_e.device(*ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
   }
 };
 template struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext,
@@ -124,7 +125,7 @@ template <typename T>
 struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
                   const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, const int quant_axis,
+                  const int bin_cnt, const int round_type, const int quant_axis,
                   framework::Tensor* out) {
     // At present, channelwise quantization supports conv2d, depthwise_conv2d
     // conv2d_transpose and mul
@@ -145,15 +146,10 @@ struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
         T s = scale_data[i];
         auto* start = in_data + i * channel_size;
         auto* end = in_data + (i + 1) * channel_size;
-        trans(ctx, start, end, out_data + i * channel_size,
-              phi::ClipFunctor<T>(-s, s));
-      }
-      for (int64_t i = 0; i < channel; i++) {
-        T s = scale_data[i];
         T inv_s = inverse(s);
-        framework::Tensor one_channel_out = out->Slice(i, i + 1);
-        auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
-        out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
+        trans(
+            ctx, start, end, out_data + i * channel_size,
+            QuantTensorFunctor<T>(static_cast<T>(bin_cnt), round_type, inv_s));
       }
     } else if (quant_axis == 1) {
       const int64_t step_i = in.numel() / in_dims[0];
@@ -165,10 +161,9 @@ struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
           auto* start = in_data + i * step_i + j * step_j;
           auto* end = in_data + i * step_i + (j + 1) * step_j;
           auto* cur_out_data = out_data + i * step_i + j * step_j;
-          trans(ctx, start, end, cur_out_data, phi::ClipFunctor<T>(-s, s));
-          for (int k = 0; k < step_j; k++) {
-            cur_out_data[k] = std::round(bin_cnt * inv_s * cur_out_data[k]);
-          }
+          trans(ctx, start, end, cur_out_data,
+                QuantTensorFunctor<T>(static_cast<T>(bin_cnt), round_type,
+                                      inv_s));
         }
       }
     }
@@ -181,7 +176,7 @@ template <typename T>
 struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
                   const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, const int quant_axis,
+                  const int bin_cnt, const int round_type, const int quant_axis,
                   framework::Tensor* out) {
     PADDLE_ENFORCE_EQ(
         quant_axis == 0 || quant_axis == 1, true,
@@ -201,16 +196,13 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
         T s = scale_data[i];
         auto* start = in_data + i * channel_size;
         auto* end = in_data + (i + 1) * channel_size;
-        trans(ctx, start, end, out_data + i * channel_size,
-              phi::ClipFunctor<T>(-s, s));
-      }
-      for (int i = 0; i < channel; i++) {
-        T s = scale_data[i];
         T inv_s = inverse(s);
+        trans(
+            ctx, start, end, out_data + i * channel_size,
+            QuantTensorFunctor<T>(static_cast<T>(bin_cnt), round_type, inv_s));
         framework::Tensor one_channel_out = out->Slice(i, i + 1);
         auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
-        out_e.device(*ctx.eigen_device()) =
-            (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
+        out_e.device(*ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
       }
     } else if (quant_axis == 1) {
       const int64_t step_i = in.numel() / in_dims[0];
@@ -222,10 +214,11 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
           auto* start = in_data + i * step_i + j * step_j;
           auto* end = in_data + i * step_i + (j + 1) * step_j;
           auto* cur_out_data = out_data + i * step_i + j * step_j;
-          trans(ctx, start, end, cur_out_data, phi::ClipFunctor<T>(-s, s));
+          trans(ctx, start, end, cur_out_data,
+                QuantTensorFunctor<T>(static_cast<T>(bin_cnt), round_type,
+                                      inv_s));
           for (int k = 0; k < step_j; k++) {
-            cur_out_data[k] = std::round(bin_cnt * inv_s * cur_out_data[k]) *
-                              s / static_cast<T>(bin_cnt);
+            cur_out_data[k] = cur_out_data[k] * s / static_cast<T>(bin_cnt);
           }
         }
       }
@@ -334,6 +327,20 @@ class FakeQuantOrWithDequantAbsMaxOpMaker
                                 "the received is %d",
                                 bit_length));
         });
+    AddAttr<int>(
+        "round_type",
+        "(int, default 0) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(2.5)=3")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& round_type) {
+          PADDLE_ENFORCE_EQ(round_type >= 0 && round_type <= 1, true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 and 1, but "
+                                "the received is %d",
+                                round_type));
+        });
     AddComment(R"DOC(
 This is a Base Op which supports FakeQuantAbsMaxOpMaker and FakeQuantDequantAbsMaxOpMaker.
 FakeQuantAbsMaxOp operator is used in the dynamic quantization.
@@ -406,6 +413,20 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
+        });
+    AddAttr<int>(
+        "round_type",
+        "(int, default 0) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(2.5)=3")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& round_type) {
+          PADDLE_ENFORCE_EQ(round_type >= 0 && round_type <= 1, true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 and 1, but "
+                                "the received is %d",
+                                round_type));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
@@ -480,6 +501,20 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxOpMaker
                                 "the received is %d",
                                 bit_length));
         });
+    AddAttr<int>(
+        "round_type",
+        "(int, default 0) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(2.5)=3")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& round_type) {
+          PADDLE_ENFORCE_EQ(round_type >= 0 && round_type <= 1, true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 and 1, but "
+                                "the received is %d",
+                                round_type));
+        });
     AddComment(R"DOC(
 The scale of FakeChannelWiseQuantize operator is a vector.
 In detail, each channel of the input X has a scale value.
@@ -545,6 +580,20 @@ class FakeQuantizeRangeAbsMaxOpMaker
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
+        });
+    AddAttr<int>(
+        "round_type",
+        "(int, default 0) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(2.5)=3")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& round_type) {
+          PADDLE_ENFORCE_EQ(round_type >= 0 && round_type <= 1, true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 and 1, but "
+                                "the received is %d",
+                                round_type));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
@@ -619,6 +668,20 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
+        });
+    AddAttr<int>(
+        "round_type",
+        "(int, default 0) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(2.5)=3")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& round_type) {
+          PADDLE_ENFORCE_EQ(round_type >= 0 && round_type <= 1, true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 and 1, but "
+                                "the received is %d",
+                                round_type));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "

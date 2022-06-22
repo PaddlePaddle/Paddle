@@ -27,13 +27,14 @@ namespace jit {
 class PEFunction : public BaseFunction {
  public:
   PEFunction(const framework::ProgramDesc &program_desc,
-             const std::vector<std::string> param_names_for_program,
-             const VariableNameMap &params_dict)
-      : BaseFunction(program_desc, param_names_for_program, params_dict) {}
+             const std::vector<std::string> param_names,
+             const VariableNameMap &params_dict,
+             const phi::Place &place)
+      : BaseFunction(program_desc, param_names, params_dict, place) {}
 
   ~PEFunction() {}
 
-  std::vector<Variable> operator()(const VariableNameMap &inputs) {
+  std::vector<Variable> operator()(const std::vector<Variable> &inputs) {
     // bool is_test = true;
     std::string prog_string;
     std::hash<std::string> string_hash;
@@ -43,15 +44,19 @@ class PEFunction : public BaseFunction {
     int64_t start_op_index = 0;
     int64_t end_op_index = static_cast<int64_t>(global_block.OpSize());
 
-    ShareIntoScope(inputs);
+    ShareInputsIntoScope(inputs);
     std::vector<std::string> input_var_names = schema_.GetInputArgNames();
     std::vector<std::string> output_var_names = schema_.GetOutputArgNames();
     std::vector<std::string> dout_var_names;
     if (end_op_index > start_op_index) {
       // TODO(dev): support other devices
-      auto cache_info = framework::GetExecutorInfoFromCache(
-          program_desc_, phi::CPUPlace(), start_op_index, end_op_index,
-          /*is_grad=*/false, program_id, &scope_);
+      auto cache_info = framework::GetExecutorInfoFromCache(program_desc_,
+                                                            place_,
+                                                            start_op_index,
+                                                            end_op_index,
+                                                            /*is_grad=*/false,
+                                                            program_id,
+                                                            &scope_);
       auto &parallel_executor = cache_info.first;
       auto &skip_eager_delete_vars =
           framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
@@ -65,7 +70,9 @@ class PEFunction : public BaseFunction {
                                       dout_var_names.begin(),
                                       dout_var_names.end());
         framework::details::ParseSafeEagerDeletionSkipVars(
-            program_desc_, end_op_index, output_var_names,
+            program_desc_,
+            end_op_index,
+            output_var_names,
             &skip_eager_delete_vars);
       }
       parallel_executor->RunWithoutFetch(skip_eager_delete_vars);

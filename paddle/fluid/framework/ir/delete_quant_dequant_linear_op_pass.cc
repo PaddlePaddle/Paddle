@@ -54,6 +54,10 @@ DeleteQuantDequantLinearOpPass::DeleteQuantDequantLinearOpPass() {
       .End()
       .AddAttr("quant_axis")
       .IsType<int>()
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
+      .IsType<int>()
       .End();
   AddOpCompat(OpCompat("dequantize_linear"))
       .AddInput("X")
@@ -73,6 +77,10 @@ DeleteQuantDequantLinearOpPass::DeleteQuantDequantLinearOpPass() {
       .IsType<int>()
       .End()
       .AddAttr("quant_axis")
+      .IsType<int>()
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
       .IsType<int>()
       .End();
 }
