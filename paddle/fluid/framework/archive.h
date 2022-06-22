@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
 
 #if defined _WIN32 || defined __APPLE__
@@ -92,17 +91,21 @@ class ArchiveBase {
 
   char* Buffer() { return buffer_; }
 
-  void SetReadBuffer(char* buffer, size_t length,
+  void SetReadBuffer(char* buffer,
+                     size_t length,
                      std::function<void(char*)>&& deleter) {
     SetBuffer(buffer, length, length, std::move(deleter));
   }
 
-  void SetWriteBuffer(char* buffer, size_t capacity,
+  void SetWriteBuffer(char* buffer,
+                      size_t capacity,
                       std::function<void(char*)>&& deleter) {
     SetBuffer(buffer, 0, capacity, std::move(deleter));
   }
 
-  void SetBuffer(char* buffer, size_t length, size_t capacity,
+  void SetBuffer(char* buffer,
+                 size_t length,
+                 size_t capacity,
                  std::function<void(char*)>&& deleter) {
     CHECK(length <= capacity);
     FreeBuffer();
@@ -483,13 +486,15 @@ Archive<AR>& operator<<(Archive<AR>& ar, const std::tuple<T...>& x) {
 
 #ifdef _LINUX
 template <class AR, class... T>
-Archive<AR>& DeserializeTuple(Archive<AR>& ar, std::tuple<T...>& x,  // NOLINT
+Archive<AR>& DeserializeTuple(const Archive<AR>& ar,
+                              std::tuple<T...>& x,  // NOLINT
                               std::integral_constant<size_t, 0> n) {
   return ar;
 }
 #else
 template <class AR, class... T>
-Archive<AR>& DeserializeTuple(Archive<AR>& ar, std::tuple<T...>& x,  // NOLINT
+Archive<AR>& DeserializeTuple(const Archive<AR>& ar,
+                              std::tuple<T...>& x,  // NOLINT
                               std::integral_constant<uint64_t, 0> n) {
   return ar;
 }
@@ -497,14 +502,16 @@ Archive<AR>& DeserializeTuple(Archive<AR>& ar, std::tuple<T...>& x,  // NOLINT
 
 #ifdef _LINUX
 template <class AR, class... T, size_t N>
-Archive<AR>& DeserializeTuple(Archive<AR>& ar, std::tuple<T...>& x,  // NOLINT
+Archive<AR>& DeserializeTuple(const Archive<AR>& ar,
+                              std::tuple<T...>& x,  // NOLINT
                               std::integral_constant<size_t, N> n) {
   return DeserializeTuple(ar, x, std::integral_constant<size_t, N - 1>()) >>
          std::get<N - 1>(x);
 }
 #else
 template <class AR, class... T, uint64_t N>
-Archive<AR>& DeserializeTuple(Archive<AR>& ar, std::tuple<T...>& x,  // NOLINT
+Archive<AR>& DeserializeTuple(const Archive<AR>& ar,
+                              std::tuple<T...>& x,  // NOLINT
                               std::integral_constant<uint64_t, N> n) {
   return DeserializeTuple(ar, x, std::integral_constant<uint64_t, N - 1>()) >>
          std::get<N - 1>(x);
