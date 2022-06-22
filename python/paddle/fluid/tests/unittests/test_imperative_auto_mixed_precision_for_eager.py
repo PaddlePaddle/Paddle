@@ -14,7 +14,7 @@
 
 import os
 
-os.environ['FLAGS_enable_eager_mode'] = '0'
+os.environ['FLAGS_enable_eager_mode'] = '1'
 
 import unittest
 import paddle
