@@ -24,6 +24,15 @@ from typing import Optional, List, Callable, Dict, Any, Set
 class TrtConvertCastTest(TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
+        if attrs[0]['in_dtype'] in [4, 5] and attrs[0]['out_dtype'] == 4:
+            return False
+        if attrs[0]['in_dtype'] not in [
+                0, 2, 4, 5
+        ] or attrs[0]['out_dtype'] not in [2, 4, 5]:
+            return False
         return True
 
     def sample_program_configs(self):
@@ -31,15 +40,15 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
         def generate_input(type):
             if type == 0:
                 return np.ones([1, 3, 64, 64]).astype(np.bool)
-            if type == 2:
+            elif type == 2:
                 return np.ones([1, 3, 64, 64]).astype(np.int32)
-            if type == 4:
+            elif type == 4:
                 return np.ones([1, 3, 64, 64]).astype(np.float16)
-            if type == 5:
+            else:
                 return np.ones([1, 3, 64, 64]).astype(np.float32)
 
-        for in_dtype in [0, 2, 4, 5]:
-            for out_dtype in [2, 5]:
+        for in_dtype in [0, 2, 4, 5, 6]:
+            for out_dtype in [0, 2, 4, 5, 6]:
                 dics = [{"in_dtype": in_dtype, "out_dtype": out_dtype}]
 
                 ops_config = [{
