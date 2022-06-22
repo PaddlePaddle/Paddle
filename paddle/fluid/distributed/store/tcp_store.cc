@@ -159,8 +159,13 @@ void MasterDaemon::_do_wait(SocketType socket) {
 void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
   std::vector<struct pollfd>& fds = *p_fds;
   // FIXME(gongwb): Don't loop all fds of set just the fds who have event.
+#ifdef _WIN32
+  // 0: listen socket, so loop from 1.
+  for (size_t i = 1; i < fds.size(); i++) {
+#else
   // 0: listen socket, 1:controller pipe, so loop from 2.
   for (size_t i = 2; i < fds.size(); i++) {
+#endif
     try {
       if (fds[i].revents == 0) {
         continue;
@@ -192,7 +197,12 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
     } catch (const std::exception& ex) {
       fds.erase(fds.begin() + i);
       tcputils::close_socket(fds[i].fd);
+#ifdef _WIN32
       _sockets.erase(_sockets.begin() + i - 2);
+#else
+      _sockets.erase(_sockets.begin() + i - 1);
+#endif
+
       VLOG(3) << "Meet some exceptions during run:" << ex.what();
     }
   }
@@ -203,7 +213,6 @@ void MasterDaemon::run() {
   std::vector<struct pollfd> fds;
 #ifdef _WIN32
   fds.push_back({_listen_socket, POLLIN});
-  fds.push_back({_control_fd[0], POLLIN | POLLHUP});
 #else
   fds.push_back({.fd = _listen_socket, .events = POLLIN, .revents = 0});
   fds.push_back(
@@ -237,7 +246,6 @@ void MasterDaemon::run() {
     ::WSAPoll(fds.data(), fds.size(), INFTIME);
 #else
     ::poll(fds.data(), fds.size(), INFTIME);
-#endif
 
     VLOG(9) << "begin to fds[1].revents:"
             << paddle::string::Sprintf("%d", fds[1].revents);
@@ -252,6 +260,7 @@ void MasterDaemon::run() {
       _stop = true;
       break;
     }
+#endif
 
     // accept connect request.
     if (fds[0].revents != 0) {
