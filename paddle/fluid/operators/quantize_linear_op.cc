@@ -146,12 +146,14 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
         "round(2.5)=3")
         .SetDefault(0)
         .AddCustomChecker([](const int &round_type) {
-          PADDLE_ENFORCE_EQ(round_type >= 0 && round_type <= 1,
-                            true,
-                            platform::errors::InvalidArgument(
-                                "'round_type' should be between 0 and 1, but "
-                                "the received is %d",
-                                round_type));
+          PADDLE_ENFORCE_EQ(
+              round_type == 0 || round_type == 1,
+              true,
+              platform::errors::InvalidArgument(
+                  "'round_type' should be 0 or 1, 0 rounding to "
+                  "nearest ties to even and 1 is rounding to nearest "
+                  "ties away from zero.but the received is %d",
+                  round_type));
         })
         .AsExtra();
     AddAttr<bool>("is_test",
