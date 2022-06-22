@@ -30,17 +30,18 @@ int64_t RegisterGradientHookForTensor(
   std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
   auto rank_info = EagerUtils::unsafe_autograd_meta(tensor)->OutRankInfo();
 
-  return grad_node->RegisterGradientHook(rank_info.first, rank_info.second,
-                                         std::move(hook));
+  return grad_node->RegisterGradientHook(
+      rank_info.first, rank_info.second, std::move(hook));
 }
 
 int64_t RegisterGradientHookForTensor(
     const paddle::experimental::Tensor& tensor,
-    std::shared_ptr<egr::TensorHook>&& hook, egr::GradNodeBase* target_node) {
+    std::shared_ptr<egr::TensorHook>&& hook,
+    egr::GradNodeBase* target_node) {
   auto rank_info = EagerUtils::unsafe_autograd_meta(tensor)->OutRankInfo();
 
-  return target_node->RegisterGradientHook(rank_info.first, rank_info.second,
-                                           std::move(hook));
+  return target_node->RegisterGradientHook(
+      rank_info.first, rank_info.second, std::move(hook));
 }
 
 void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
