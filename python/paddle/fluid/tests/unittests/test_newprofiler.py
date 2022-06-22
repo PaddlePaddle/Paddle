@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import tempfile
-
+import os
 import paddle
 import paddle.profiler as profiler
 import paddle.profiler.utils as utils
@@ -28,13 +28,19 @@ from paddle.io import Dataset, DataLoader
 
 class TestProfiler(unittest.TestCase):
 
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_profiler(self):
 
         def my_trace_back(prof):
-            profiler.export_chrome_tracing('./test_profiler_chrometracing/')(
-                prof)
-            profiler.export_protobuf('./test_profiler_pb/')(prof)
+            path = os.path.join(self.temp_dir.name,
+                                './test_profiler_chrometracing')
+            profiler.export_chrome_tracing(path)(prof)
+            path = os.path.join(self.temp_dir.name, './test_profiler_pb')
+            profiler.export_protobuf(path)(prof)
 
+        self.temp_dir = tempfile.TemporaryDirectory()
         x_value = np.random.randn(2, 3, 3)
         x = paddle.to_tensor(x_value,
                              stop_gradient=False,
@@ -135,9 +141,10 @@ class TestProfiler(unittest.TestCase):
                 paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
                 prof.step()
 
-        prof.export(path='./test_profiler_pb.pb', format='pb')
+        path = os.path.join(self.temp_dir.name, './test_profiler_pb.pb')
+        prof.export(path=path, format='pb')
         prof.summary()
-        result = profiler.utils.load_profiler_result('./test_profiler_pb.pb')
+        result = profiler.utils.load_profiler_result(path)
         prof = None
         dataset = RandomDataset(10 * 4)
         simple_net = SimpleNet()
