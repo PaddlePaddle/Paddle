@@ -287,7 +287,6 @@ class ElementwiseOpTransformer
     auto& in1_vars = ins.at("X")[0];
     auto& in2_vars = ins.at("Y")[0];
     auto in_layout = paddle::imperative::GetDataLayout(in1_vars);
-    auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
     // for conv's bias
     if (attrs->find("axis") != attrs->end() &&
         BOOST_GET_CONST(int, (*attrs)["axis"]) != -1) {
@@ -362,7 +361,6 @@ class FlattenOpTransformer
     // fall back to the LightlyLayoutSensitiveOpTransformer.
     auto start_axis = BOOST_GET_CONST(int, (*attrs)["start_axis"]);
     auto stop_axis = BOOST_GET_CONST(int, (*attrs)["stop_axis"]);
-    auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
     if (paddle::imperative::GetDataLayout(ins.at("X")[0]) ==
             LayoutAutoTune::Instance().GetDesiredLayout() &&
         start_axis == 1 && stop_axis == 3) {
@@ -389,7 +387,6 @@ class ArgmaxOpTransformer
     VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
     auto& in_var = ins.at("X")[0];
     auto var_layout = paddle::imperative::GetDataLayout(in_var);
-    auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
     bool keep_dims = BOOST_GET_CONST(bool, (*attrs)["keepdims"]);
     if (keep_dims) {
       if (var_layout != DataLayout::UNDEFINED) {
