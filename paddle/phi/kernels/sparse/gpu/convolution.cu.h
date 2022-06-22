@@ -289,6 +289,41 @@ __global__ void GetOutIndexTable(const IntT* indices,
   }
 }
 
+template <typename IntT>
+__global__ void CopyRuleBook(const int* counters,
+                             const int* offsets,
+                             const IntT* in_rulebook,
+                             const int len,
+                             const int kernel_size,
+                             const int non_zero_num,
+                             IntT* out_rulebook) {
+  int tid = threadIdx.x + blockDim.x * blockIdx.x;
+  extern __shared__ int cache_counters[];
+  int* cache_offsets = cache_counters + kernel_size;
+  for (int i = threadIdx.x; i < kernel_size; i += blockDim.x) {
+    cache_counters[i] = counters[i];
+    cache_offsets[i] = offsets[i];
+  }
+  __syncthreads();
+  for (int i = tid; i < len; i += gridDim.x * blockDim.x) {
+    // get the kernel index
+    int kernel_index = 0;
+    for (; kernel_index < kernel_size - 1; kernel_index++) {
+      if (i >= offsets[kernel_index] && i < offsets[kernel_index + 1]) {
+        break;
+      }
+    }
+    int inner_index = i - offsets[kernel_index];
+    out_rulebook[i] = in_rulebook[kernel_index * non_zero_num + inner_index];
+    out_rulebook[len + i] =
+        in_rulebook[kernel_size * non_zero_num + kernel_index * non_zero_num +
+                    inner_index];
+    out_rulebook[2 * len + i] =
+        in_rulebook[2 * kernel_size * non_zero_num +
+                    kernel_index * non_zero_num + inner_index];
+  }
+}
+
 template <typename T>
 __global__ void ProductSubmRuleBookKernel(const T* x_indices,
                                           const Dims4D x_dims,
@@ -355,9 +390,6 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
                            kernel_size * blockDim.x + buf_i] = real_out_index;
             }
           }
-          // rulebook[kernel_index * non_zero_num + i] = kernel_i;
-          // rulebook[kernel_index * non_zero_num + offset + i] = in_i;
-          // rulebook[kernel_index * non_zero_num + offset * 2 + i] = out_index;
           ++kernel_index;
         }
       }
@@ -519,26 +551,18 @@ int ProductRuleBook(const Context& dev_ctx,
         (*h_offsets)[kernel_size - 1] + (*h_counter)[kernel_size - 1];
     DenseTensor out_rulebook = phi::Empty<IntT>(dev_ctx, {3, rulebook_len});
     IntT* out_rulebook_ptr = out_rulebook.data<IntT>();
-    for (int i = 0; i < kernel_size; i++) {
-      if ((*h_counter)[i] <= 0) continue;
-      phi::backends::gpu::GpuMemcpyAsync(out_rulebook_ptr + (*h_offsets)[i],
-                                         rulebook_ptr + i * non_zero_num,
-                                         (*h_counter)[i] * sizeof(IntT),
-                                         gpuMemcpyDeviceToDevice,
-                                         dev_ctx.stream());
-      phi::backends::gpu::GpuMemcpyAsync(
-          out_rulebook_ptr + rulebook_len + (*h_offsets)[i],
-          rulebook_ptr + kernel_size * non_zero_num + i * non_zero_num,
-          (*h_counter)[i] * sizeof(IntT),
-          gpuMemcpyDeviceToDevice,
-          dev_ctx.stream());
-      phi::backends::gpu::GpuMemcpyAsync(
-          out_rulebook_ptr + 2 * rulebook_len + (*h_offsets)[i],
-          rulebook_ptr + 2 * kernel_size * non_zero_num + i * non_zero_num,
-          (*h_counter)[i] * sizeof(IntT),
-          gpuMemcpyDeviceToDevice,
-          dev_ctx.stream());
-    }
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+    cache_size = kernel_size * 2 * sizeof(int);
+    CopyRuleBook<IntT><<<config.block_per_grid,
+                         config.thread_per_block,
+                         cache_size,
+                         dev_ctx.stream()>>>(counter_ptr,
+                                             offsets_ptr,
+                                             rulebook_ptr,
+                                             rulebook_len,
+                                             kernel_size,
+                                             non_zero_num,
+                                             out_rulebook_ptr);
     *rulebook = out_rulebook;
     return rulebook_len;
 
