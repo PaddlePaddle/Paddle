@@ -58,6 +58,8 @@ class CacheManager {
   void debug();
 #endif
 
+  void dump_to_file();
+
  private:
   std::atomic<int> feasign_cnt_;
   std::unordered_map<FeatureKey, uint32_t> sign2fid_;

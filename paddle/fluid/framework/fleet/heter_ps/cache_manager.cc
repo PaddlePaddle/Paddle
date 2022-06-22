@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <set>
 #include <thread>
+#include <fstream>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cache_manager.h"
 
@@ -39,12 +40,24 @@ void CacheManager::clear_sign2fids() {
   sign2fid_.clear();
   fid2meta_.clear();
   feasign_cnt_ = 0;
+
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+  current_batch_fid2bfid_.clear();
+  current_batch_fid_seq_ref_ = 0;
+#endif
 }
 
 void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
   VLOG(0) << "build_sign2fids: keylen:" << len;
   // pre-build the sign2fid_, in order not to use mutex
+  if (sign2fid_.find(0) == sign2fid_.end()) {
+    // feasign == 0 is invalid, fid set 0, to be processed specially later in pull/push
+    sign2fid_[0] = feasign_cnt_++;
+  }
   for (size_t i = 0; i < len; ++i) {
+    if (d_keys[i] == 0) {
+      continue;
+    }
     CHECK(sign2fid_.find(d_keys[i]) == sign2fid_.end()) 
         << "build_sign2fids: error, the same key found:" << d_keys[i];
     sign2fid_[d_keys[i]] = 0;
@@ -58,9 +71,12 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
   for (int i = 0; i < thread_num_; ++i) {
     threads[i] = std::thread([i, this](const FeatureKey* keys, size_t keys_len) {
       for (size_t j = 0; j < keys_len; ++j) {
-          int tmp = feasign_cnt_++;
-          sign2fid_[keys[j]] = tmp;
-          fid2meta_[tmp] = {keys[j]};
+        if (keys[j] == 0) {
+          continue;
+        }
+        int tmp = feasign_cnt_++;
+        sign2fid_[keys[j]] = tmp;
+        fid2meta_[tmp] = {keys[j]};
       }
     }, &d_keys[i * split_len], std::min(split_len, len - i * split_len));
   }
@@ -73,6 +89,37 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
 uint32_t CacheManager::query_sign2fid(const FeatureKey & key) {
   //VLOG(0) << "query_sign2fid:" << key << "->" << sign2fid_[key];
   return sign2fid_[key];
+}
+
+void CacheManager::dump_to_file() {
+  std::ofstream ofs;
+  ofs.open("cache_manager.dump", std::ios::app);
+  for (size_t i = 0; i < fid2meta_.size(); i++) {
+    ofs << "fid2meta:" << i << " " << fid2meta_[i].sign_;
+    if (sign2fid_.find(fid2meta_[i].sign_) != sign2fid_.end()) {
+      ofs << " " << sign2fid_[fid2meta_[i].sign_] << std::endl;
+    } else {
+      ofs << " " << "error-NULL" << std::endl;
+    }
+  }
+
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+  if (fid_seq_channel_ != nullptr) {
+    auto & chan_dq = fid_seq_channel_->GetData();
+    auto iter = chan_dq.begin();
+    
+    for (size_t i = 0; i < chan_dq.size(); i++) {
+      auto & fid_vec = *(*(iter + i));
+      ofs << "fidseq:" << i << ">>>>>>>>>>>>>>>>>>>>>" << std::endl;
+      for (size_t j = 0; j < fid_vec.size(); j++) {
+        ofs << "fidseq:" << i << ":bfid-" << j << ":" << fid_vec[j] << std::endl;
+      }
+      ofs << "fidseq:" << i << "<<<<<<<<<<<<<<<<<<<<<" << std::endl;
+    }
+  }
+#endif
+  ofs << "------------------------------------------" << std::endl;
+  ofs.close(); 
 }
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
@@ -145,7 +192,7 @@ void CacheManager::prepare_current_batch_fid_seq() {
       current_batch_fid_seq_ = nullptr;
     } else {
       for (size_t i = 0; i < current_batch_fid_seq_->size(); ++i) {
-          current_batch_fid2bfid_[(*current_batch_fid_seq_)[i]] = i;
+        current_batch_fid2bfid_[(*current_batch_fid_seq_)[i]] = i;
       }
       current_batch_fid_seq_ref_++;
     }
