@@ -339,7 +339,7 @@ void GetDownpourSparseTableProto(
 
 /*-------------------------------------------------------------------------*/
 
-const char *ip_ = "127.0.0.1", ip2 = "127.0.0.1";
+const char* ip_ = "127.0.0.1" const char* ip2 = "127.0.0.1";
 uint32_t port_ = 5209, port2 = 5210;
 
 std::vector<std::string> host_sign_list_;
@@ -705,7 +705,7 @@ void testGraphToBuffer() {
   s.set_feature(0, std::string("hhhh"));
   s.set_id(65);
   int size = s.get_size(true);
-  vector<char> str[size];
+  std::vector<char> str[size];
   s.to_buffer(str, true);
   s1.recover_from_buffer(str);
   ASSERT_EQ(s.get_id(), s1.get_id());
