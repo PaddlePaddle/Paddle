@@ -21,9 +21,8 @@
 
 #ifndef _WIN32
 #include <sys/wait.h>
-#endif
-
 #include <unistd.h>
+#endif
 
 #include <array>
 #include <iostream>
