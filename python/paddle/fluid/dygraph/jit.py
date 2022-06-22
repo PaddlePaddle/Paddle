@@ -1039,8 +1039,6 @@ def save(layer, path, input_spec=None, **configs):
                                    filter(fluid.io.is_persistable, all_vars)),
                                filename=params_filename)
 
-        print('property vals:', property_vals)
-
     # NOTE(chenweihang): [ Save extra variable info ]
     # save_inference_model will lose some important variable information, including:
     #   - Variable name and correspondence (when saved variables as one file)
