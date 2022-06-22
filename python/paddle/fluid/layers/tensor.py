@@ -1562,13 +1562,13 @@ def linspace(start, stop, num, dtype=None, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if not isinstance(start, Variable):
         with device_guard("cpu"):
-            tensor_start = fill_constant([1], dtype, start)
+            tensor_start = fill_constant([1], dtype, start, force_cpu=True)
     if not isinstance(stop, Variable):
         with device_guard("cpu"):
-            tensor_stop = fill_constant([1], dtype, stop)
+            tensor_stop = fill_constant([1], dtype, stop, force_cpu=True)
     if not isinstance(num, Variable):
         with device_guard("cpu"):
-            tensor_num = fill_constant([1], 'int32', num)
+            tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
     if _in_legacy_dygraph():
         return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
                                dtype)
