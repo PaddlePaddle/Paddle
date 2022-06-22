@@ -200,7 +200,7 @@ class HeavilyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
     if (not_in_set) {
       for (auto& pair : new_ins) {
         for (auto& var : pair.second) {
-          VLOG(4) << "Origin input attr was not in init set: " << pair->first;
+          VLOG(4) << "Origin input attr was not in init set: " << pair.first;
           if (var != nullptr &&
               paddle::imperative::GetDataLayout(var) != desired_layout) {
             var = TraceTransposeOp(var, desired_layout, tracer);

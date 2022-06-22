@@ -136,7 +136,8 @@ paddle::imperative::NameVarMap<VarType> DealLightlyLayoutSensitive(
   } else {
     VLOG(4) << op_type
             << "'s LayoutTransformer is unimplemented. Use default "
-               "LightlyLayoutTransformer instead." transposer =
+               "LightlyLayoutTransformer instead.";
+    transposer =
         std::make_shared<LightlyLayoutSensitiveOpTransformer<VarType>>(op_type);
   }
   return transposer->Apply(ins, outs, attrs, tracer);
