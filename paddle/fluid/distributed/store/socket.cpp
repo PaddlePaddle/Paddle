@@ -14,12 +14,14 @@
 
 #include "paddle/fluid/distributed/store/socket.h"
 
+#ifndef _WIN32
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/ip.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#endif
 
 namespace paddle {
 namespace distributed {

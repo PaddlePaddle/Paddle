@@ -21,6 +21,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <array>
 #include <iostream>
 #include <memory>
 #include <mutex>
