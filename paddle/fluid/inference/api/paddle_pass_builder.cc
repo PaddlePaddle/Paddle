@@ -163,6 +163,8 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "gpu_cpu_flatten2_matmul_fuse_pass",      //
         "gpu_cpu_map_matmul_v2_to_mul_pass",      //
         "gpu_cpu_map_matmul_v2_to_matmul_pass",   //
+        "matmul_scale_fuse_pass",                 //
+        "multihead_matmul_fuse_pass_v3",          //
         "gpu_cpu_map_matmul_to_mul_pass",         //
         "fc_fuse_pass",                           //
         "fc_elementwise_layernorm_fuse_pass",     //
@@ -302,15 +304,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              // "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
              "conv_concat_relu_mkldnn_fuse_pass",
-             "conv_relu_mkldnn_fuse_pass",          //
-             "conv_leaky_relu_mkldnn_fuse_pass",    //
-             "conv_relu6_mkldnn_fuse_pass",         //
-             "conv_swish_mkldnn_fuse_pass",         //
-             "conv_hard_swish_mkldnn_fuse_pass",    //
-             "conv_mish_mkldnn_fuse_pass",          //
-             "conv_hard_sigmoid_mkldnn_fuse_pass",  //
-             // TODO(baoachun) fix int8 accuracy
-             "conv_gelu_mkldnn_fuse_pass",
+             "conv_activation_mkldnn_fuse_pass",              //
              "scale_matmul_fuse_pass",                        //
              "reshape_transpose_matmul_mkldnn_fuse_pass",     //
              "reshape_transpose_matmul_v2_mkldnn_fuse_pass",  //
@@ -403,14 +397,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("conv_transpose_bias_mkldnn_fuse_pass");
     passes_.push_back("conv_elementwise_add_mkldnn_fuse_pass");
     passes_.push_back("conv_concat_relu_mkldnn_fuse_pass");
-    passes_.push_back("conv_relu_mkldnn_fuse_pass");
-    passes_.push_back("conv_leaky_relu_mkldnn_fuse_pass");
-    passes_.push_back("conv_relu6_mkldnn_fuse_pass");
-    passes_.push_back("conv_swish_mkldnn_fuse_pass");
-    passes_.push_back("conv_hard_swish_mkldnn_fuse_pass");
-    passes_.push_back("conv_mish_mkldnn_fuse_pass");
-    passes_.push_back("conv_hard_sigmoid_mkldnn_fuse_pass");
-    passes_.push_back("conv_gelu_mkldnn_fuse_pass");
+    passes_.push_back("conv_activation_mkldnn_fuse_pass");
     passes_.push_back("fc_fuse_pass");
     passes_.push_back("repeated_fc_relu_fuse_pass");
     passes_.push_back("fc_mkldnn_pass");
