@@ -707,7 +707,7 @@ void Tensor::ORTCopyFromCpu(const T *data) {
   }
 
   auto ort_value =
-      Ort::Value::CreateTensor(memory_info, buffer.data(), buffer_size,
+      Ort::Value::CreateTensor(memory_info, buffer->data(), buffer_size,
                                shape_.data(), shape_.size(), onnx_dtype);
 
   binding->BindInput(name_.c_str(), ort_value);
