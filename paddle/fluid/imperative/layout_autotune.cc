@@ -134,9 +134,9 @@ paddle::imperative::NameVarMap<VarType> DealLightlyLayoutSensitive(
   } else if (op_type.find("elementwise_") != std::string::npos) {
     transposer = std::make_shared<ElementwiseOpTransformer<VarType>>(op_type);
   } else {
-    VLOG(4) << "Default LightlyLayout " << op_type
-            << " 's LayoutTransformer is unimplemented.";
-    transposer =
+    VLOG(4) << op_type
+            << "'s LayoutTransformer is unimplemented. Use default "
+               "LightlyLayoutTransformer instead." transposer =
         std::make_shared<LightlyLayoutSensitiveOpTransformer<VarType>>(op_type);
   }
   return transposer->Apply(ins, outs, attrs, tracer);
