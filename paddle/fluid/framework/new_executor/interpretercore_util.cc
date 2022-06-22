@@ -113,13 +113,6 @@ AsyncWorkQueue::PrepareAtomicVarRef(
       kPrepareWorkQueueIdx, interpreter::PrepareAtomicVarRef, vec_meta_info);
 }
 
-void AsyncWorkQueue::ResetWorkQueueOptions(size_t host_num_threads,
-                                           size_t device_num_threads,
-                                           EventsWaiter* waiter) {
-  queue_group_->ResetWorkQueueOptions(
-      ConstructWorkQueueOptions(host_num_threads, device_num_threads, waiter));
-}
-
 std::unique_ptr<AtomicVectorSizeT> PrepareAtomicDeps(
     const std::vector<size_t>& dependecy_count) {
   VLOG(4) << "PrepareAtomicDeps";

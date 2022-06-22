@@ -100,7 +100,6 @@ class InterpreterCore {
   void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
 
   bool is_build_;
-  bool is_workqueue_sharing_{false};
 
   const platform::Place& place_;
   const BlockDesc& block_;  // not owned

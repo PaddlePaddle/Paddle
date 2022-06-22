@@ -100,9 +100,6 @@ class WorkQueueGroupImpl : public WorkQueueGroup {
 
   void Cancel() override;
 
-  void ResetWorkQueueOptions(
-      const std::vector<WorkQueueOptions>& queues_options) override;
-
  private:
   std::vector<NonblockingThreadPool*> queues_;
   NonblockingThreadPool* queues_storage_;
@@ -185,11 +182,6 @@ void WorkQueueGroupImpl::Cancel() {
   for (auto queue : queues_) {
     queue->WaitThreadsExit();
   }
-}
-
-void WorkQueueGroupImpl::ResetWorkQueueOptions(
-    const std::vector<WorkQueueOptions>& queues_options) {
-  queues_options_ = queues_options;
 }
 
 }  // namespace

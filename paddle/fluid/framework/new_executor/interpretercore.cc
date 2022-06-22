@@ -226,7 +226,6 @@ void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
 
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
   async_work_queue_ = src->GetWorkQueue();
-  is_workqueue_sharing_ = src->is_workqueue_sharing_ = true;
   VLOG(8) << "Share AsyncWorkQueue from InterpreterCore(" << &src
           << ") to InterpreterCore(" << this << ")";
 }
@@ -252,12 +251,6 @@ std::shared_ptr<interpreter::AsyncWorkQueue> InterpreterCore::GetWorkQueue() {
     async_work_queue_ = std::make_shared<interpreter::AsyncWorkQueue>(
         kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_);
   }
-
-  if (is_workqueue_sharing_) {
-    async_work_queue_->ResetWorkQueueOptions(kHostNumThreads, kDeviceNumThreads,
-                                             &main_thread_blocker_);
-  }
-
   return async_work_queue_;
 }
 

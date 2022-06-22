@@ -67,9 +67,6 @@ class AsyncWorkQueue {
 
   void Cancel() { queue_group_->Cancel(); }
 
-  void ResetWorkQueueOptions(size_t host_num_threads, size_t deivce_num_threads,
-                             EventsWaiter* waiter);
-
  private:
   size_t host_num_thread_;
   std::unique_ptr<WorkQueueGroup> queue_group_;
