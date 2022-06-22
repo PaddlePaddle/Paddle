@@ -22,18 +22,23 @@ namespace jit {
 class ExectorFunction : public BaseFunction {
  public:
   ExectorFunction(const framework::ProgramDesc &program_desc,
-                  const std::vector<std::string> param_names_for_program,
-                  const VariableNameMap &params_dict)
-      : BaseFunction(program_desc, param_names_for_program, params_dict),
-        inner_exe_(phi::CPUPlace()) {}
+                  const std::vector<std::string> param_names,
+                  const VariableNameMap &params_dict,
+                  const phi::Place &place)
+      : BaseFunction(program_desc, param_names, params_dict, place),
+        inner_exe_(place_) {}
 
   ~ExectorFunction() {}
 
-  std::vector<Variable> operator()(const VariableNameMap &inputs) {
+  std::vector<Variable> operator()(const std::vector<Variable> &inputs) {
     // share input into scope
-    ShareIntoScope(inputs);
+    ShareInputsIntoScope(inputs);
     // run program
-    inner_exe_.Run(program_desc_, &scope_, /*blockID=*/0, false, true,
+    inner_exe_.Run(program_desc_,
+                   &scope_,
+                   /*blockID=*/0,
+                   false,
+                   true,
                    schema_.GetOutputArgNames());
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
     // fetch outputs
@@ -43,7 +48,6 @@ class ExectorFunction : public BaseFunction {
   }
 
  private:
-  // TODO(dev): support other devices exe
   framework::Executor inner_exe_;
 };
 

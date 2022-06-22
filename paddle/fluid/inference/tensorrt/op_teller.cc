@@ -156,6 +156,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       "slice",
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
+      "preln_residual_bias",
+      "c_allreduce_sum",
+      "c_allreduce_min",
+      "c_allreduce_max",
+      "c_allreduce_prod",
       "roll",
       "preln_skip_layernorm",
       "transformer_input_convert",
@@ -254,6 +259,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
+      "preln_residual_bias",
+      "c_allreduce_sum",
+      "c_allreduce_min",
+      "c_allreduce_max",
+      "c_allreduce_prod",
       "roll",
       "multiclass_nms3",
       "transformer_input_convert",
@@ -728,7 +738,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "arg_max") {
-      if (with_dynamic_shape) return false;
       int axis = desc.HasAttr("axis")
                      ? BOOST_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
@@ -1994,9 +2003,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
   return false;
 }
-
 OpTeller::OpTeller() { tellers_.emplace_back(new SimpleOpTypeSetTeller); }
-
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

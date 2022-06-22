@@ -23,6 +23,7 @@
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -58,8 +59,10 @@ class Deserializer {
   const std::vector<std::pair<std::string, std::string>>
   GetPdmodelFileNamePrefix(const std::string& path);
 
-  VariableNameMap ReadTensorData(const std::string& file_name,
-                                 const std::set<std::string>& var_name) const;
+  void ReadTensorData(const std::string& file_name,
+                      const std::set<std::string>& var_name,
+                      const phi::Place& place,
+                      VariableNameMap* params_dict) const;
 
   // void ReadExtraInfo(const std::string& file_name) const;
   // void ReadByteCode(const std::string& file_name) const;

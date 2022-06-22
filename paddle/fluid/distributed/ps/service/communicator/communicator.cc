@@ -727,7 +727,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
         ++input_idx;
       }
     }
-    CHECK(static_cast<size_t>(output_len) == g_tensor->numel());
+    CHECK(static_cast<int64_t>(output_len) == g_tensor->numel());
   }
 
   std::vector<float *> push_g_vec(input_idx, nullptr);
