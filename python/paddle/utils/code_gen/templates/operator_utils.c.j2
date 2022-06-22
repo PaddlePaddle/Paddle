@@ -184,8 +184,7 @@ framework::OpKernelType GetExpectedKernelType(
   }
   {% endif %}
 {% endif %}
-  platform::Place place = ctx.GetPlace();
-  return framework::OpKernelType(data_type, place);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 {% endmacro %}
 

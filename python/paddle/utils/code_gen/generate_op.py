@@ -100,6 +100,21 @@ def main(api_yaml_path, backward_yaml_path, api_args_compat_yaml_path,
             args_map[param] if param in args_map else param
             for param in forward_api_item['kernel']['param']
         ]
+        if forward_api_item['kernel']['data_type']:
+            forward_api_item['kernel']['data_type']['candidates'] = [
+                args_map[param] if param in args_map else param for param in
+                forward_api_item['kernel']['data_type']['candidates']
+            ]
+        if forward_api_item['kernel']['backend']:
+            forward_api_item['kernel']['backend']['candidates'] = [
+                args_map[param] if param in args_map else param
+                for param in forward_api_item['kernel']['backend']['candidates']
+            ]
+        if forward_api_item['kernel']['layout']:
+            forward_api_item['kernel']['layout']['candidates'] = [
+                args_map[param] if param in args_map else param
+                for param in forward_api_item['kernel']['layout']['candidates']
+            ]
         if forward_api_item['inplace']:
             inplace_map = {}
             for key, val in forward_api_item['inplace'].items():
@@ -116,16 +131,19 @@ def main(api_yaml_path, backward_yaml_path, api_args_compat_yaml_path,
                     args_item['name'] = args_map[args_item['name']]
                 elif args_item['name'].endswith(
                         '_grad') and args_item['name'][:-5] in args_map:
-                    args_item['name'] = args_map[args_item['name']
-                                                 [:-5]] + '_grad'
+                    args_map[args_item['name']] = args_map[args_item['name']
+                                                           [:-5]] + '_grad'
+                    args_item['name'] = args_map[args_item['name']]
             for args_item in backward_api_item['attrs']:
                 if args_item['name'] in args_map:
                     args_item['name'] = args_map[args_item['name']]
             for args_item in backward_api_item['outputs']:
                 if args_item['name'].endswith(
                         '_grad') and args_item['name'][:-5] in args_map:
-                    args_item['name'] = args_map[args_item['name']
-                                                 [:-5]] + '_grad'
+                    args_map[args_item['name']] = args_map[args_item['name']
+                                                           [:-5]] + '_grad'
+                    args_item['name'] = args_map[args_item['name']]
+
             backward_api_item['infer_meta']['param'] = [
                 args_map[param] if param in args_map else param
                 for param in backward_api_item['infer_meta']['param']
@@ -134,6 +152,21 @@ def main(api_yaml_path, backward_yaml_path, api_args_compat_yaml_path,
                 args_map[param] if param in args_map else param
                 for param in backward_api_item['kernel']['param']
             ]
+            if backward_api_item['kernel']['data_type']:
+                backward_api_item['kernel']['data_type']['candidates'] = [
+                    args_map[param] if param in args_map else param for param in
+                    backward_api_item['kernel']['data_type']['candidates']
+                ]
+            if backward_api_item['kernel']['backend']:
+                backward_api_item['kernel']['backend']['candidates'] = [
+                    args_map[param] if param in args_map else param for param in
+                    backward_api_item['kernel']['backend']['candidates']
+                ]
+            if backward_api_item['kernel']['layout']:
+                backward_api_item['kernel']['layout']['candidates'] = [
+                    args_map[param] if param in args_map else param for param in
+                    backward_api_item['kernel']['layout']['candidates']
+                ]
             if backward_api_item['no_need_buffer']:
                 backward_api_item['no_need_buffer'] = [
                     args_map[param] if param in args_map else param
