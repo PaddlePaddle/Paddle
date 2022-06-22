@@ -284,33 +284,26 @@ class ElementwiseOpTransformer
     // If the axis is set to the channel dimension, the attr transformation
     // is necessary. Otherwise, it will fall back to the
     // LayoutTransformer::Apply.
+    auto& in1_vars = ins.at("X")[0];
+    auto& in2_vars = ins.at("Y")[0];
+    auto in_layout = paddle::imperative::GetDataLayout(in1_vars);
     auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
-    bool no_trans = true;
-    for (auto& pair : ins) {
-      for (auto& var : pair.second) {
-        if (var != nullptr &&
-            (paddle::imperative::GetDataLayout(var) == DataLayout::UNDEFINED)) {
-          no_trans = false;
-        }
-      }
-    }
-
     // for conv's bias
-    if (no_trans && attrs->find("axis") != attrs->end() &&
+    if (attrs->find("axis") != attrs->end() &&
         BOOST_GET_CONST(int, (*attrs)["axis"]) != -1) {
-      auto& in_vars = ins.at("X")[0];
-      auto in_layout = paddle::imperative::GetDataLayout(in_vars);
-      if (in_var == DataLayout::NHWC) {
+      if (in_layout == DataLayout::NHWC) {
         (*attrs)["axis"] = 3;
-      } else if (in_var == DataLayout::NCHW) {
+      } else if (in_layout == DataLayout::NCHW) {
         (*attrs)["axis"] = 1;
       }
       this->SetVarsLayout(outs, in_layout);
       return ins;
-    } else if (no_trans && attrs->find("axis") == attrs->end()) {
-      this->SetVarsLayout(outs, desired_layout);
-      return ins;
     } else {
+      auto in2_layout = paddle::imperative::GetDataLayout(in2_vars);
+      if (in_layout == in2_layout) {
+        this->SetVarsLayout(outs, in_layout);
+        return ins;
+      }
       return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(
           ins, outs, attrs, tracer);
     }
@@ -393,37 +386,35 @@ class ArgmaxOpTransformer
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
       const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
-    VLOG(4) << "Optimze lightly layout sensitive op ArgmaxOpTransformer";
+    VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
     auto& in_var = ins.at("X")[0];
     auto var_layout = paddle::imperative::GetDataLayout(in_var);
     auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
-    if (desired_layout == DataLayout::NCHW) {
-      return ins;
-    } else if (var_layout == desired_layout) {  // NHWC
-      switch (AttrTypeID((*attrs)["axis"])) {
-        case paddle::framework::proto::AttrType::INT: {
-          auto axis = BOOST_GET_CONST(int, (*attrs)["axis"]);
-          if (axis == 0) {  // NHWC -> don't need transpose
-            return ins;
-          } else if (axis == 1) {  // NCHW -> NHWC: axis = 3
-            (*attrs)["axis"] = static_cast<int>(3);
+    bool keep_dims = BOOST_GET_CONST(bool, (*attrs)["keepdims"]);
+    if (keep_dims) {
+      if (var_layout != DataLayout::UNDEFINED) {
+        std::vector<int> perm_nhwc = {0, 2, 3, 1};
+        std::vector<int> perm_nchw = {0, 3, 1 2};
+        auto perm = var_layout == DataLayout::NHWC ? perm_nhwc ：perm_nchw;
+        switch (AttrTypeID((*attrs)["axis"])) {
+          case paddle::framework::proto::AttrType::INT: {
+            auto axis = BOOST_GET_CONST(int, (*attrs)["axis"]);
+            (*attrs)["axis"] = static_cast<int>(perm[axis]);
+          }
+          case paddle::framework::proto::AttrType::LONG: {
+            auto axis = BOOST_GET_CONST(int64_t, (*attrs)["axis"]);
+            (*attrs)["axis"] = static_cast<int64_t>(perm[axis]);
+            this->SetVarsLayout(outs, var_layout);
             return ins;
           }
+          default:
+            VLOG(4) << "The data_type of axis is Error, axis must be int or "
+                       "int64, bug got "
+                    << (AttrTypeID((*attrs)["axis"]));
         }
-        case paddle::framework::proto::AttrType::LONG: {
-          auto axis = BOOST_GET_CONST(int64_t, (*attrs)["axis"]);
-          if (axis == 0) {  // NHWC -> don't need transpose
-            return ins;
-          } else if (axis == 1) {  // NCHW -> NHWC: axis = 3
-            (*attrs)["axis"] = static_cast<int64_t>(3);
-            return ins;
-          }
-        }
-        default:
-          VLOG(4) << "The data_type of axis is Error, axis must be int or "
-                     "int64, bug got "
-                  << (AttrTypeID((*attrs)["axis"]));
       }
+      this->SetVarsLayout(outs, var_layout);
+      return ins;
     }
     return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(
         ins, outs, attrs, tracer);
