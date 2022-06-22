@@ -1,4 +1,7 @@
-cc_library(phi_place SRCS place.cc)
+cc_library(
+  phi_place
+  SRCS place.cc
+  DEPS phi_gpu_info)
 cc_library(
   scalar
   SRCS scalar.cc

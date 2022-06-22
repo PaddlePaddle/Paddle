@@ -20,8 +20,12 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/phi/api/ext/exception.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 
 namespace phi {
+
+GPUPlace::GPUPlace()
+    : Place(AllocationType::GPU, phi::backends::gpu::GetCurrentDeviceId()) {}
 
 const char *AllocationTypeStr(AllocationType type) {
   switch (type) {
@@ -109,8 +113,26 @@ uint32_t Place::Hash::operator()(const Place &place) const {
   return hash_value;
 }
 
+namespace detail {
+static int8_t GetCorrectDeviceIdByPlaceType(
+    const paddle::PlaceType &place_type) {
+  switch (place_type) {
+    case paddle::PlaceType::kCPU:
+      return 0;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    case paddle::PlaceType::kGPU:
+      return phi::backends::gpu::GetCurrentDeviceId();
+#endif
+    default:
+      PD_THROW(
+          "The PlaceType is a legacy design, only supports CPU and GPU, "
+          "and will not support other place types in the future.");
+  }
+}
+}  // namespace detail
+
 Place::Place(paddle::PlaceType type)
-    : device(0),
+    : device(detail::GetCorrectDeviceIdByPlaceType(type)),
       alloc_type_(static_cast<AllocationType>(type)),
       device_type_id_(GetOrRegisterGlobalDeviceTypeId("")) {
   LOG_FIRST_N(WARNING, 1)
