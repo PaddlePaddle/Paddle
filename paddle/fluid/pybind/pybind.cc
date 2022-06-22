@@ -4373,12 +4373,15 @@ All parameter, weight, gradient are variables in Paddle.
                pybind11::gil_scoped_release release;
                ret = self.Run(fetch_tensors, return_merged);
              }
+
+             // TODO(Ruibiao): Refactor the run interface of PE to avoid use
+             // boost::get here
              if (return_merged) {
                return py::cast(
-                   std::move(BOOST_GET(paddle::framework::FetchList, ret)));
+                   std::move(boost::get<paddle::framework::FetchList>(ret)));
              } else {
                return py::cast(std::move(
-                   BOOST_GET(paddle::framework::FetchUnmergedList, ret)));
+                   boost::get<paddle::framework::FetchUnmergedList>(ret)));
              }
            })
       .def("device_count", &ParallelExecutor::DeviceCount);

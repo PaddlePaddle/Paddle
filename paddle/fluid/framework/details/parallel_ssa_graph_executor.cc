@@ -262,8 +262,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
         if (!is_valid[scope_idx]) {
           continue;
         }
-        const auto &fetch_list =
-            BOOST_GET_CONST(FetchList, fetch_data[scope_idx]);
+        const auto &fetch_list = boost::get<FetchList>(fetch_data[scope_idx]);
         if (data_is_lod_tensor(fetch_list[fetch_idx])) {
           lodtensor_ptrs.push_back(
               &(BOOST_GET_CONST(LoDTensor, fetch_list[fetch_idx])));
@@ -302,7 +301,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
           continue;
         }
         const auto &fetch_list =
-            BOOST_GET_CONST(FetchUnmergedList, fetch_data[scope_idx]);
+            boost::get<FetchUnmergedList>(fetch_data[scope_idx]);
         PADDLE_ENFORCE_EQ(
             fetch_list[fetch_idx].size(), 1,
             platform::errors::Fatal("Each place must have only one fetched "
