@@ -52,8 +52,9 @@ else()
   )
 endif()
 
-include_directories(${ONNXRUNTIME_INC_DIR}
-)# For ONNXRUNTIME code to include internal headers.
+# For ONNXRUNTIME code to include internal headers.
+include_directories(${ONNXRUNTIME_INC_DIR})
+
 if(WIN32)
   set(ONNXRUNTIME_SOURCE_LIB
       "${ONNXRUNTIME_SOURCE_DIR}/lib/onnxruntime.dll"

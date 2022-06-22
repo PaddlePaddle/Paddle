@@ -1179,6 +1179,11 @@ if(WITH_XPU_BKCL)
           SRCS "test_collective_allreduce_api.py")
 endif()
 
+if(WITH_HETERPS)
+  set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
+  set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
+endif()
+
 if(WIN32)
   cc_test(
     cc_imp_py_test
