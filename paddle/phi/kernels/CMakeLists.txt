@@ -136,7 +136,15 @@ if(WITH_GPU OR WITH_ROCM)
   endif()
   kernel_declare("${kernel_cu}")
   target_link_libraries(phi_gpu ${COMMON_KERNEL_DEPS})
-  target_precompile_headers(phi_gpu REUSE_FROM phi_cpu)
+  # NOTE(zhiqiu): do not reuse pch from phi_cpu, since it
+  # make phi_gpu depends phi_cpu.
+  target_precompile_headers(
+    phi_gpu
+    PUBLIC
+    ${PADDLE_SOURCE_DIR}/paddle/phi/backends/gpu/gpu_context.h
+    ${PADDLE_SOURCE_DIR}/paddle/phi/core/dense_tensor.h
+    ${PADDLE_SOURCE_DIR}/paddle/phi/core/kernel_registry.h
+    ${PADDLE_SOURCE_DIR}/paddle/phi/common/scalar.h)
   set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu phi_gpu)
 endif()
 
@@ -149,6 +157,12 @@ if(WITH_XPU)
   endif()
   kernel_declare(${kernel_xpu})
   target_link_libraries(phi_xpu ${COMMON_KERNEL_DEPS})
-  target_precompile_headers(phi_xpu REUSE_FROM phi_cpu)
+  target_precompile_headers(
+    phi_xpu
+    PUBLIC
+    ${PADDLE_SOURCE_DIR}/paddle/phi/backends/xpu/xpu_context.h
+    ${PADDLE_SOURCE_DIR}/paddle/phi/core/dense_tensor.h
+    ${PADDLE_SOURCE_DIR}/paddle/phi/core/kernel_registry.h
+    ${PADDLE_SOURCE_DIR}/paddle/phi/common/scalar.h)
   set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu phi_xpu)
 endif()
