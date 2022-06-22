@@ -706,7 +706,7 @@ void testGraphToBuffer() {
   s.set_feature(0, std::string("hhhh"));
   s.set_id(65);
   int size = s.get_size(true);
-  std::unique<char[]> str = new char[size];
+  char str[size];  // NOLINT
   s.to_buffer(str, true);
   s1.recover_from_buffer(str);
   ASSERT_EQ(s.get_id(), s1.get_id());
