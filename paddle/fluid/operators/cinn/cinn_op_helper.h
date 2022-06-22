@@ -34,11 +34,21 @@ constexpr char kInstructionIndex[] = "instruction_index";
 namespace details {
 
 template <typename DeviceContext>
+void ReleaseResource(const std::vector<void*>& resources, void* stream) {
+  auto* temp_scope = static_cast<framework::Scope*>(resources[0]);
+  delete temp_scope;
+}
+
+template <typename DeviceContext>
 void* GetStream(const framework::ExecutionContext& ctx) {
   return nullptr;
 }
 
 #ifdef PADDLE_WITH_CUDA
+template <>
+void ReleaseResource<platform::CUDADeviceContext>(
+    const std::vector<void*>& resources, void* stream);
+
 template <>
 void* GetStream<platform::CUDADeviceContext>(
     const framework::ExecutionContext& ctx);

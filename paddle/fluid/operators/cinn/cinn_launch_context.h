@@ -74,6 +74,9 @@ class CinnLaunchContext {
   framework::ParallelExecutor* InitializePE(const platform::Place& place,
                                             framework::Scope* scope);
 
+  framework::Scope* PrepareTensorBuffer(const framework::Scope& scope,
+                                        const platform::Place& place);
+
   // explicitly update several environment variables captured
   // by callback of execution arguments
   void UpdateCapturedEnv(const framework::Scope& scope,

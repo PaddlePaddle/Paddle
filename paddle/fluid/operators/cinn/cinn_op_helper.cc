@@ -17,9 +17,26 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+#endif
+
 namespace paddle::operators::details {
 
 #ifdef PADDLE_WITH_CUDA
+
+void CUDART_CB ReleaseScope(void* data) {
+  auto* temp_scope = static_cast<framework::Scope*>(data);
+  delete temp_scope;
+}
+
+template <>
+void ReleaseResource<platform::CUDADeviceContext>(
+    const std::vector<void*>& resources, void* stream) {
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaLaunchHostFunc(
+      static_cast<gpuStream_t>(stream), ReleaseScope, resources[0]));
+}
+
 template <>
 void* GetStream<platform::CUDADeviceContext>(
     const framework::ExecutionContext& ctx) {

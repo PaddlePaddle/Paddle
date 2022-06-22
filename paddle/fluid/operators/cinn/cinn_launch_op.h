@@ -30,6 +30,7 @@
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DECLARE_bool(enable_cinn_allocate_oneshot);
 DECLARE_bool(enable_pe_launch_cinn);
 namespace paddle {
 namespace operators {
@@ -48,7 +49,8 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result);
 
 // Launch cinn to execute compiled executable program and wait done
 void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
-                         const CinnLaunchContext& context, void* stream);
+                         const CinnLaunchContext& context,
+                         void* stream);
 
 // Set cinn FLAGS (such as FLAGS_cinn_cudnn_deterministic) with paddle's FLAGS.
 void SetCinnRuntimeFlags();
@@ -65,7 +67,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     platform::RecordEvent record_event_1(
         "Step 1. Find graph object and prepare input");
     // Step 1. Find graph object and prepare input
-    PADDLE_ENFORCE_EQ(ctx.HasAttr(kCompilationKey), true,
+    PADDLE_ENFORCE_EQ(ctx.HasAttr(kCompilationKey),
+                      true,
                       platform::errors::NotFound(
                           "No Attribute(%s) found for CinnLaunchOp operator.",
                           kCompilationKey));
@@ -81,7 +84,9 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         [&inputs_name2tensor](const std::vector<std::string>& variable_names,
                               const std::vector<const LoDTensor*>& tensors) {
           std::transform(
-              variable_names.begin(), variable_names.end(), tensors.begin(),
+              variable_names.begin(),
+              variable_names.end(),
+              tensors.begin(),
               std::inserter(inputs_name2tensor, inputs_name2tensor.end()),
               [](const std::string& name, const LoDTensor* tensor) {
                 return std::make_pair(name, tensor);
@@ -141,8 +146,14 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
       platform::RecordEvent record_event_4(
           "Step 4. Execute the compiled executable program.");
       VLOG(4) << "Execute the compiled executable program";
-      launch_context->UpdateCapturedEnv(scope, place);
-      LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
+      if (FLAGS_enable_cinn_allocate_oneshot) {
+        auto temp_scope = launch_context->PrepareTensorBuffer(scope, place);
+        LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
+        details::ReleaseResource<DeviceContext>({temp_scope}, stream);
+      } else {
+        launch_context->UpdateCapturedEnv(scope, place);
+        LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
+      }
     }
     VLOG(4) << "CinnLaunchOp launch execution done.";
   }
