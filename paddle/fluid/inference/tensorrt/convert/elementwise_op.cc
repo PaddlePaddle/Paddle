@@ -55,14 +55,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
       Y = tmp;
     }
     nvinfer1::Dims dims_x = X->getDimensions();
-std::cout << dims_x.d[0]  << std::endl;
-std::cout << dims_x.d[1]  << std::endl;
-std::cout << dims_x.nbDims  << std::endl;
     nvinfer1::Dims dims_y = Y->getDimensions();
-std::cout << dims_y.d[0]  << std::endl;
-std::cout << dims_y.d[1]  << std::endl;
-std::cout << dims_y.nbDims  << std::endl;
-std::cout << "还是短发" << std::endl;
     auto output_name = op_desc.Output("Out")[0];
 
     // axis here is relative to explicit batch
@@ -89,42 +82,41 @@ std::cout << "还是短发" << std::endl;
     int right_one_num = dims_x.nbDims - axis - dims_y.nbDims;
     nvinfer1::IShuffleLayer* reshape_layer;
     nvinfer1::ITensor* reshape_y_tensor;
-    if (left_one_num > 0 || right_one_num > 0)
-{
-    if (engine_->with_dynamic_shape()) {
-      auto* y_shape_tensor = Shape(Y);
-      auto* new_y_shape_tensor = y_shape_tensor;
-      if (axis > 0) {
-        std::vector<int32_t> left_one(left_one_num, 1);
-        auto* left_one_tensor = Add1DConstantLayer(left_one);
-        new_y_shape_tensor = Concat(std::vector<nvinfer1::ITensor*>{
-            left_one_tensor, new_y_shape_tensor});
+    if (left_one_num > 0 || right_one_num > 0) {
+      if (engine_->with_dynamic_shape()) {
+        auto* y_shape_tensor = Shape(Y);
+        auto* new_y_shape_tensor = y_shape_tensor;
+        if (axis > 0) {
+          std::vector<int32_t> left_one(left_one_num, 1);
+          auto* left_one_tensor = Add1DConstantLayer(left_one);
+          new_y_shape_tensor = Concat(std::vector<nvinfer1::ITensor*>{
+              left_one_tensor, new_y_shape_tensor});
+        }
+        if (right_one_num > 0) {
+          std::vector<int32_t> right_one(right_one_num, 1);
+          auto* right_one_tensor = Add1DConstantLayer(right_one);
+          new_y_shape_tensor = Concat(std::vector<nvinfer1::ITensor*>{
+              new_y_shape_tensor, right_one_tensor});
+        }
+        reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *Y);
+        reshape_layer->setInput(1, *new_y_shape_tensor);
+      } else {
+        nvinfer1::Dims new_y_dims;
+        new_y_dims.nbDims = left_one_num + dims_y.nbDims + right_one_num;
+        std::cout << left_one_num << dims_y.nbDims << right_one_num
+                  << std::endl;
+        for (int i = 0; i < new_y_dims.nbDims; i++) new_y_dims.d[i] = 1;
+        for (int i = 0; i < dims_y.nbDims; i++)
+          new_y_dims.d[left_one_num + i] = dims_y.d[i];
+        reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *Y);
+        reshape_layer->setReshapeDimensions(new_y_dims);
       }
-      if (right_one_num > 0) {
-        std::vector<int32_t> right_one(right_one_num, 1);
-        auto* right_one_tensor = Add1DConstantLayer(right_one);
-        new_y_shape_tensor = Concat(std::vector<nvinfer1::ITensor*>{
-            new_y_shape_tensor, right_one_tensor});
-      }
-      reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *Y);
-      reshape_layer->setInput(1, *new_y_shape_tensor);
+      reshape_y_tensor = reshape_layer->getOutput(0);
     } else {
-      nvinfer1::Dims new_y_dims;
-      new_y_dims.nbDims = left_one_num + dims_y.nbDims + right_one_num;
-      std::cout << left_one_num << dims_y.nbDims << right_one_num << std::endl;
-      for (int i = 0; i < new_y_dims.nbDims; i++) new_y_dims.d[i] = 1;
-      for (int i = 0; i < dims_y.nbDims; i++)
-        new_y_dims.d[left_one_num + i] = dims_y.d[i];
-      reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *Y);
-      reshape_layer->setReshapeDimensions(new_y_dims);
+      // In fact , we can remove this `else`, but -> rt_resnet50_test CI in trt
+      // 6015 faling, how ridiculous！
+      reshape_y_tensor = Y;
     }
-reshape_y_tensor = reshape_layer->getOutput(0);
-}
-else
-{
-    reshape_y_tensor = Y;
-}
-
 
     auto op_pair = ops.find(op_type_);
     PADDLE_ENFORCE_NE(op_pair, ops.end(),
