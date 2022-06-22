@@ -16,12 +16,12 @@
 
 #ifndef _WIN32
 #include <arpa/inet.h>
+#endif
 #include <errno.h>
 #include <netinet/ip.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#endif
 
 namespace paddle {
 namespace distributed {
