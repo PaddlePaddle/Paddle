@@ -16,8 +16,11 @@ cc_library(
 if(WITH_TESTING AND NOT WIN32)
   add_custom_target(
     jit_download_program
-    COMMAND wget -nc https://paddle-ci.gz.bcebos.com/dy2st/Testing.tar.gz
-    COMMAND tar zxvf Testing.tar.gz)
+    COMMAND wget -nc
+            https://paddle-ci.gz.bcebos.com/dy2st/export.forward.pdiparams
+    COMMAND wget -nc
+            https://paddle-ci.gz.bcebos.com/dy2st/export.forward.pdmodel
+    COMMAND wget -nc https://paddle-ci.gz.bcebos.com/dy2st/export.infer.pdmodel)
   set(JIT_DEPS
       phi
       elementwise_add_op
