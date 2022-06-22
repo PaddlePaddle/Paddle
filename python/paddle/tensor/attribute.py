@@ -114,12 +114,15 @@ def shape(input):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
+    print("shape asdf", input)
     if in_dygraph_mode():
         out = _C_ops.final_state_shape(input)
+        print("mode shape asdf", input)
         out.stop_gradient = True
         return out
     if _in_legacy_dygraph():
         out = _C_ops.shape(input)
+        print("legacy shape asdf", input)
         out.stop_gradient = True
         return out
 
@@ -127,6 +130,7 @@ def shape(input):
         'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
         'complex128'
     ], 'shape')
+    print("op shape asdf", input)
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(type='shape',

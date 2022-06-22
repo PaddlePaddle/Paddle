@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
-
 namespace paddle {
 namespace imperative {
 
@@ -76,8 +76,8 @@ class LayoutTransformer {
       for (auto& var : pair.second) {
         // Once the any input is desired layout, we set in_layout is desired
         // layout.
-        if (paddle::imperative::GetDataLayout(var) ==
-            LayoutAutoTune::Instance().GetDesiredLayout()) {
+        if (var != nullptr && (paddle::imperative::GetDataLayout(var) ==
+                               LayoutAutoTune::Instance().GetDesiredLayout())) {
           in_layout = LayoutAutoTune::Instance().GetDesiredLayout();
           break;
         }
@@ -106,14 +106,20 @@ class LayoutTransformer {
     if (outs_.empty()) {
       for (auto& pair : outs) {
         for (auto& var : pair.second) {
-          paddle::imperative::SetDataLayout(var, layout);
+          if (var != nullptr) {
+            paddle::imperative::SetDataLayout(var, layout);
+          }
         }
       }
     } else {
       for (auto& name : outs_) {
-        auto out_vars = outs.at(name);
-        for (auto& var : out_vars) {
-          paddle::imperative::SetDataLayout(var, layout);
+        if (outs.find(name) != outs.end()) {
+          auto out_vars = outs.at(name);
+          for (auto& var : out_vars) {
+            if (var != nullptr) {
+              paddle::imperative::SetDataLayout(var, layout);
+            }
+          }
         }
       }
     }
@@ -130,46 +136,6 @@ class LayoutTransformer {
   std::vector<std::string> ins_{};
   std::vector<std::string> outs_{};
   std::vector<std::string> attrs_{};
-};
-
-template <typename VarType>
-class ElementwiseOpTransformer : public LayoutTransformer<VarType> {
- public:
-  explicit ElementwiseOpTransformer(const std::string& type)
-      : LayoutTransformer<VarType>(type) {}
-
-  paddle::imperative::NameVarMap<VarType> Apply(
-      const paddle::imperative::NameVarMap<VarType>& ins,
-      const paddle::imperative::NameVarMap<VarType>& outs,
-      paddle::framework::AttributeMap* attrs,
-      const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
-    // [Why we need the this?]
-    // The Elementwise Ops has a axis attr, it is to support broadcast.
-    // When bias_attr of Conv is not false, the elementwise_add will be
-    // appended, and the axis will be set to the channel dimension.
-
-    // If the axis is set to the channel dimension, the attr transformation
-    // is necessary. Otherwise, it will fall back to the
-    // LayoutTransformer::Apply.
-    auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
-    if (attrs->find("axis") != attrs->end() &&
-        BOOST_GET_CONST(int, (*attrs)["axis"]) != -1) {
-      VLOG(3) << "Optimze layout agnostic op " << this->Type();
-      if (desired_layout == DataLayout::NHWC) {
-        (*attrs)["axis"] = 3;
-      } else if (desired_layout == DataLayout::NCHW) {
-        (*attrs)["axis"] = 1;
-      } else {
-        PADDLE_ENFORCE_EQ(
-            desired_layout, DataLayout::UNDEFINED,
-            phi::errors::PreconditionNotMet("DataLayout is unsupport."));
-      }
-      this->SetVarsLayout(outs, desired_layout);
-      return ins;
-    } else {
-      return LayoutTransformer<VarType>::Apply(ins, outs, attrs, tracer);
-    }
-  }
 };
 
 /*
@@ -213,11 +179,13 @@ class HeavilyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
     // Step 2: Transpose the specified input for Op and set the transposed var's
     // layout.
     for (auto& name : this->Inputs()) {
-      auto& in_vars = new_ins[name];
-      for (auto& var : in_vars) {
-        auto var_layout = paddle::imperative::GetDataLayout(var);
-        if (var_layout != desired_layout) {
-          var = TraceTransposeOp(var, DataLayout::NHWC, tracer);
+      if (new_ins.find(name) != new_ins.end()) {
+        auto& in_vars = new_ins[name];
+        for (auto& var : in_vars) {
+          if (var != nullptr &&
+              paddle::imperative::GetDataLayout(var) != desired_layout) {
+            var = TraceTransposeOp(var, desired_layout, tracer);
+          }
         }
       }
     }
@@ -244,7 +212,7 @@ class LightlyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
       const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
-    VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
+    VLOG(4) << "Optimze lightly layout sensitive op " << this->Type();
     paddle::imperative::NameVarMap<VarType> new_ins(ins);
     // If input's layout is not tuned, transformation is unnecessary.
     // If input's layout is already tuned, it will be transformed back to NCHW.
@@ -252,17 +220,90 @@ class LightlyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
     // operator output data layout. Currently only a few operators are
     // supported, and transposers need to be carefully designed to ensure that
     // they do not cause exceptions.
+    auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
     for (auto& pair : new_ins) {
       for (auto& var : pair.second) {
-        auto var_layout = paddle::imperative::GetDataLayout(var);
-        if (var_layout == LayoutAutoTune::Instance().GetDesiredLayout()) {
+        if (var != nullptr) {
+          VLOG(3) << "Tune the layout from "
+                  << paddle::framework::DataLayoutToString(
+                         paddle::imperative::GetDataLayout(var))
+                  << " to "
+                  << paddle::framework::DataLayoutToString(
+                         LayoutAutoTune::Instance().GetDesiredLayout());
+        }
+        if (var != nullptr &&
+            paddle::imperative::GetDataLayout(var) == desired_layout &&
+            desired_layout == DataLayout::NHWC) {
           // Set layout to UNDEFINED so that TransposeOpTransformer do
           // NHWC->NCHW transformation.
           var = TraceTransposeOp(var, DataLayout::UNDEFINED, tracer);
         }
       }
     }
+    VLOG(4) << "Optimze lightly layout sensitive op no transpose "
+            << this->Type();
     return new_ins;
+  }
+};
+
+template <typename VarType>
+class ElementwiseOpTransformer
+    : public LightlyLayoutSensitiveOpTransformer<VarType> {
+ public:
+  explicit ElementwiseOpTransformer(const std::string& type)
+      : LightlyLayoutSensitiveOpTransformer<VarType>(type) {}
+
+  paddle::imperative::NameVarMap<VarType> Apply(
+      const paddle::imperative::NameVarMap<VarType>& ins,
+      const paddle::imperative::NameVarMap<VarType>& outs,
+      paddle::framework::AttributeMap* attrs,
+      const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
+    // [Why we need the this?]
+    // The Elementwise Ops has a axis attr, it is to support broadcast.
+    // When bias_attr of Conv is not false, the elementwise_add will be
+    // appended, and the axis will be set to the channel dimension.
+
+    // If the axis is set to the channel dimension, the attr transformation
+    // is necessary. Otherwise, it will fall back to the
+    // LayoutTransformer::Apply.
+    auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
+    // get the shape of input and output
+    // if shape's size is 4 and x's shape equal to y'shape no tranpose
+    bool no_trans = true;
+    for (auto& pair : ins) {
+      for (auto& var : pair.second) {
+        if (var != nullptr &&
+            (paddle::imperative::GetDataLayout(var) == DataLayout::UNDEFINED)) {
+          no_trans = false;
+        }
+      }
+    }
+
+    if (no_trans && attrs->find("axis") != attrs->end() &&
+        BOOST_GET_CONST(int, (*attrs)["axis"]) != -1) {
+      VLOG(3) << "Optimze layout agnostic op " << this->Type();
+      if (desired_layout == DataLayout::NHWC) {
+        (*attrs)["axis"] = 3;
+      } else if (desired_layout == DataLayout::NCHW) {
+        (*attrs)["axis"] = 1;
+      } else {
+        PADDLE_ENFORCE_EQ(
+            desired_layout, DataLayout::UNDEFINED,
+            phi::errors::PreconditionNotMet("DataLayout is unsupport."));
+      }
+      this->SetVarsLayout(outs, desired_layout);
+      return ins;
+    } else if (no_trans && attrs->find("axis") == attrs->end()) {
+      VLOG(3) << "Optimze layout agnostic op " << this->Type();
+      this->SetVarsLayout(outs, desired_layout);
+      return ins;
+    } else {
+      if (no_trans)
+        VLOG(3) << "asdf elementwise Optimze Layout agnostic op:  axis "
+                << BOOST_GET_CONST(int, (*attrs)["axis"]);
+      return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(ins, outs,
+                                                                 attrs, tracer);
+    }
   }
 };
 
@@ -278,7 +319,8 @@ class TransposeOpTransformer
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
       const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
-    VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
+    VLOG(3) << "TransposeOpTransformer Optimze lightly layout sensitive op "
+            << this->Type();
     // When the input layout is the desired format, it means that there
     // is a transpose layer in the network, it is better to transpose
     // the result to the original format.
@@ -286,7 +328,8 @@ class TransposeOpTransformer
     // transpose Op with the current transpose Op by transforming 'axis' attr.
     auto& in_var = ins.at("X")[0];
     auto var_layout = paddle::imperative::GetDataLayout(in_var);
-    if (var_layout == LayoutAutoTune::Instance().GetDesiredLayout()) {
+    auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
+    if (var_layout == desired_layout && desired_layout == DataLayout::NHWC) {
       auto axis = BOOST_GET_CONST(std::vector<int>, (*attrs)["axis"]);
       // NHWC->NCHW, permutaion will be set as follows.
       std::vector<int> perm = {0, 3, 1, 2};
@@ -311,20 +354,78 @@ class FlattenOpTransformer
       const paddle::imperative::NameVarMap<VarType>& outs,
       paddle::framework::AttributeMap* attrs,
       const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
-    VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
+    VLOG(3) << "FlattenOpTransformer lightly layout sensitive op "
+            << this->Type();
     // Flatten the C, H, W dimensions will not affect functionality.
     // So transformation is unnecessary. But in other cases, it needs to
     // fall back to the LightlyLayoutSensitiveOpTransformer.
     auto start_axis = BOOST_GET_CONST(int, (*attrs)["start_axis"]);
     auto stop_axis = BOOST_GET_CONST(int, (*attrs)["stop_axis"]);
-    if (paddle::imperative::GetDataLayout(ins.at("X")[0]) ==
-            LayoutAutoTune::Instance().GetDesiredLayout() &&
-        start_axis == 1 && stop_axis == 3) {
+    auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
+    if (desired_layout == DataLayout::NCHW) {
+      return ins;
+    } else if (paddle::imperative::GetDataLayout(ins.at("X")[0]) ==
+                   LayoutAutoTune::Instance().GetDesiredLayout() &&
+               start_axis == 1 && stop_axis == 3) {
       return ins;
     } else {
       return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(ins, outs,
                                                                  attrs, tracer);
     }
+  }
+};
+
+template <typename VarType>
+class ArgmaxOpTransformer
+    : public LightlyLayoutSensitiveOpTransformer<VarType> {
+ public:
+  explicit ArgmaxOpTransformer(const std::string& type)
+      : LightlyLayoutSensitiveOpTransformer<VarType>(type) {}
+
+  paddle::imperative::NameVarMap<VarType> Apply(
+      const paddle::imperative::NameVarMap<VarType>& ins,
+      const paddle::imperative::NameVarMap<VarType>& outs,
+      paddle::framework::AttributeMap* attrs,
+      const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
+    VLOG(4) << "Optimze lightly layout sensitive op ArgmaxOpTransformer";
+    // When the input layout is the desired format, it means that there
+    // is a transpose layer in the network, it is better to transpose
+    // the result to the original format.
+    // Instead of actually inserting a transpose Op, we fuse the inserted
+    // transpose Op with the current transpose Op by transforming 'axis' attr.
+    auto& in_var = ins.at("X")[0];
+    auto var_layout = paddle::imperative::GetDataLayout(in_var);
+    auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
+    if (desired_layout == DataLayout::NCHW) {
+      return ins;
+    } else if (var_layout == desired_layout) {  // NHWC
+      switch (AttrTypeID((*attrs)["axis"])) {
+        case paddle::framework::proto::AttrType::INT: {
+          auto axis = BOOST_GET_CONST(int, (*attrs)["axis"]);
+          if (axis == 0) {  // NHWC -> don't need transpose
+            return ins;
+          } else if (axis == 1) {  // NCHW -> NHWC: axis = 3
+            (*attrs)["axis"] = static_cast<int>(3);
+            return ins;
+          }
+        }
+        case paddle::framework::proto::AttrType::LONG: {
+          auto axis = BOOST_GET_CONST(int64_t, (*attrs)["axis"]);
+          if (axis == 0) {  // NHWC -> don't need transpose
+            return ins;
+          } else if (axis == 1) {  // NCHW -> NHWC: axis = 3
+            (*attrs)["axis"] = static_cast<int64_t>(3);
+            return ins;
+          }
+        }
+        default:
+          VLOG(4) << "The data_type of axis is Error, axis must be int or "
+                     "int64, bug got "
+                  << (AttrTypeID((*attrs)["axis"]));
+      }
+    }
+    return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(ins, outs, attrs,
+                                                               tracer);
   }
 };
 

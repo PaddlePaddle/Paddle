@@ -29,7 +29,9 @@ void ShapeKernel(const Context& ctx,
   auto out_t = out;
   out_t->Resize({in_dims.size()});
   auto out_data = ctx.template HostAlloc<int32_t>(out_t);
+  VLOG(4) << "asdf shape size " << in_dims.size();
   for (int i = 0; i < in_dims.size(); ++i) {
+    VLOG(4) << "asdf shape " << in_dims[i] << " i" << i;
     out_data[i] = in_dims[i];
   }
 }

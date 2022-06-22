@@ -225,11 +225,9 @@ void Tracer::TraceOpImpl(const std::string& type,
   std::unique_ptr<NameVarMap<VarType>> ins_amp = nullptr;
   if (amp_level_ == AmpLevel::O1) {
     if (amp_dtype_ == phi::DataType::FLOAT16) {
-      const auto& tracer = imperative::GetCurrentTracer();
       VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
-          AutoCastInputs<VarType>(type, imperative::AutoTuneLayout<VarType>(
-                                            type, ins, outs, &attrs, tracer)));
+          AutoCastInputs<VarType>(type, ins));
     } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O1 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
@@ -237,18 +235,32 @@ void Tracer::TraceOpImpl(const std::string& type,
     }
   } else if (amp_level_ == AmpLevel::O2) {
     if (amp_dtype_ == phi::DataType::FLOAT16) {
-      const auto& tracer = imperative::GetCurrentTracer();
       VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
-      ins_amp =
-          std::make_unique<NameVarMap<VarType>>(CastPureFp16Inputs<VarType>(
-              type, imperative::AutoTuneLayout<VarType>(type, ins, outs, &attrs,
-                                                        tracer)));
+      ins_amp = std::make_unique<NameVarMap<VarType>>(
+          CastPureFp16Inputs<VarType>(type, ins));
     } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O2 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           CastPureBf16Inputs<VarType>(type, ins));
     }
   }
+  if (platform::is_gpu_place(place)) {
+    const auto& new_tmp = ins_amp == nullptr ? ins : *ins_amp;
+    const auto& tracer = imperative::GetCurrentTracer();
+    ins_amp = std::make_unique<NameVarMap<VarType>>(AutoCastInputs<VarType>(
+        type, imperative::AutoTuneLayout<VarType>(type, new_tmp, outs, &attrs,
+                                                  tracer)));
+  }
+  // else  if (platform::is_cpu_place(place) && op_type == "shape") {
+  //   const auto& new_tmp = ins_amp == nullptr ? ins : *ins_amp;
+  //   auto& in_var = new_tmp.at("Input")[0];
+  //   auto var_layout = paddle::imperative::GetDataLayout(in_var);
+  //   auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
+  //   if (var_layout == desired_layout && desired_layout == DataLayout::NHWC) {
+  //   }
+  //
+  // }
+
   const auto& new_ins = ins_amp == nullptr ? ins : *ins_amp;
 
   try {

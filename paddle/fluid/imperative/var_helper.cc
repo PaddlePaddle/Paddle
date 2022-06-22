@@ -218,7 +218,11 @@ template paddle::experimental::DataLayout GetDataLayout<VariableWrapper>(
 template <typename VarType>
 void SetDataLayout(std::shared_ptr<VarType> var,
                    const paddle::experimental::DataLayout layout) {
-  var->SetDataLayout(layout);
+  if (var == nullptr) {
+    VLOG(5) << "SetDataLayout is nullptr" << std::endl;
+  } else {
+    var->SetDataLayout(layout);
+  }
 }
 template <>
 void SetDataLayout<egr::EagerVariable>(
