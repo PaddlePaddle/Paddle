@@ -287,8 +287,10 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param precision Calculation accuracy of multi_encoder
   /// \param adaptive_seqlen Is the input of multi_encoder variable length
   ///
-  void EnableXpu(int l3_workspace_size = 0xfffc00, bool locked = false,
-                 bool autotune = true, const std::string& autotune_file = "",
+  void EnableXpu(int l3_workspace_size = 0xfffc00,
+                 bool locked = false,
+                 bool autotune = true,
+                 const std::string& autotune_file = "",
                  const std::string& precision = "int16",
                  bool adaptive_seqlen = false);
 
@@ -301,7 +303,8 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param ipu_enable_pipelining enable pipelining.
   /// \param ipu_batches_per_step the number of batches per run in pipelining.
   ///
-  void EnableIpu(int ipu_device_num = 1, int ipu_micro_batch_size = 1,
+  void EnableIpu(int ipu_device_num = 1,
+                 int ipu_micro_batch_size = 1,
                  bool ipu_enable_pipelining = false,
                  int ipu_batches_per_step = 1);
 
@@ -315,7 +318,8 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param ipu_enable_half_partial enable fp16 partial for matmul, only work
   /// with fp16.
   ///
-  void SetIpuConfig(bool ipu_enable_fp16 = false, int ipu_replica_num = 1,
+  void SetIpuConfig(bool ipu_enable_fp16 = false,
+                    int ipu_replica_num = 1,
                     float ipu_available_memory_proportion = 1.0,
                     bool ipu_enable_half_partial = false);
 
@@ -525,7 +529,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableTensorRtEngine(int workspace_size = 1 << 20,
-                            int max_batch_size = 1, int min_subgraph_size = 3,
+                            int max_batch_size = 1,
+                            int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
                             bool use_static = false,
                             bool use_calib_mode = true);
@@ -834,8 +839,10 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param params_buffer The memory buffer of the combined parameters file.
   /// \param params_buffer_size The size of the combined parameters data.
   ///
-  void SetModelBuffer(const char* prog_buffer, size_t prog_buffer_size,
-                      const char* params_buffer, size_t params_buffer_size);
+  void SetModelBuffer(const char* prog_buffer,
+                      size_t prog_buffer_size,
+                      const char* params_buffer,
+                      size_t params_buffer_size);
   ///
   /// \brief A boolean state telling whether the model is set from the CPU
   /// memory.

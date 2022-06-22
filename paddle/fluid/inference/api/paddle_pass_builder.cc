@@ -88,7 +88,8 @@ void CpuPassStrategy::InsertFcMkldnnPasses() {
     std::vector<std::string> fc_passes({"fc_mkldnn_pass",
                                         "fc_act_mkldnn_fuse_pass",
                                         "fc_elementwise_add_mkldnn_fuse_pass"});
-    passes_.insert(std::begin(passes_) + idx + 1, std::begin(fc_passes),
+    passes_.insert(std::begin(passes_) + idx + 1,
+                   std::begin(fc_passes),
                    std::end(fc_passes));
   }
 }

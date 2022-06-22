@@ -163,7 +163,9 @@ void profile(bool use_mkldnn = false) {
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
-                 inputs, &outputs, FLAGS_num_threads);
+                 inputs,
+                 &outputs,
+                 FLAGS_num_threads);
 }
 
 TEST(Analyzer_bert, profile) { profile(); }
@@ -248,11 +250,13 @@ TEST(Analyzer_bert, transfer_scope_cache) {
   // paddle::framework::global_transfer_data_cache() are thread_local,
   // their pointer should be different among different thread id.
   PADDLE_ENFORCE_EQ(
-      global_transfer_scope_cache.size(), threads_num,
+      global_transfer_scope_cache.size(),
+      threads_num,
       paddle::platform::errors::Fatal(
           "The size of scope cache is not equal to thread number."));
   PADDLE_ENFORCE_EQ(
-      global_transfer_data_cache.size(), threads_num,
+      global_transfer_data_cache.size(),
+      threads_num,
       paddle::platform::errors::Fatal(
           "The size of data cache is not equal to thread number."));
 }
