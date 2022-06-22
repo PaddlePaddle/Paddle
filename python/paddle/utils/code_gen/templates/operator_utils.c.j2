@@ -100,8 +100,24 @@ KernelSignature {{api["name"] | to_pascal_case }}OpArgumentMapping(const Argumen
   {% endfilter %}
   {% endfor %}
   {{get_output_list(api["outputs"], kernel_args)}};
-  return KernelSignature("{{api["name"]}}", std::move(inputs), std::move(attrs), std::move(outputs));
+  {% if api["kernel"]["func"] | length == 1 %}
+  KernelSignature sig("{{api["name"]}}", std::move(inputs), std::move(attrs), std::move(outputs));
+  return sig;
+  {% else %}{# it has kernel for selected rows #}
+  const char* kernel_name = ctx.IsSelectedRowsInput({{kernel_args[0] | to_opmaker_name_cstr}}) ? "{{api["kernel"]["func"][1]}}" : "{{api["kernel"]["func"][0]}}";
+  KernelSignature sig (kernel_name, std::move(inputs), std::move(attrs), std::move(outputs));
+  return sig;
+  {%endif%}
 }
+
+/*
+******************************************************************
+NOTE: The following codes are for 'get_compat_kernel_signature.py'
+All possible KernelSignatures returned by {{api["name"] | to_pascal_case }}OpArgumentMapping:
+
+{{api | cartesian_prod_mapping}}
+******************************************************************
+*/
 {% endmacro %}
 
 
@@ -147,14 +163,47 @@ paddle::small_vector<const char*> outputs {
 }
 {%- endmacro %}
 
+{% macro get_expected_kernel(api) %}
+{% set kernel = api["kernel"] %}
+framework::OpKernelType GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const override {
+{%if kernel["data_type"] is not none %}{# data type ---------------------------------#}
+  {% if kernel["data_type"]["candidates"] | length == 1 %}
+    {% set data_type_arg = kernel["data_type"]["candidates"][0] %}
+    {% set inputs = api["inputs"] | map(attribute="name") | list %}
+    {% if data_type_arg in inputs %}
+  auto data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_arg | to_opmaker_name}});
+    {% else %}{# it is an attribute and probably named dtype#}
+  auto data_type = framework::proto::VarType::Type(ctx.Attr<int>("{{data_type_arg}}"));
+    {% endif %}
+  {% elif kernel["data_type"]["candidates"] | length == 2 %}
+    {% set data_type_args = kernel["data_type"]["candidates"] %}
+  auto data_type = framework::proto::VarType::Type(ctx.Attr<int>("{{data_type_args[0]}}");
+  if (data_type == static_cast<proto::VarType::Type>(-1)) {
+    data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_args[1] | to_opmaker_name}});
+  }
+  {% endif %}
+{% endif %}
+  platform::Place place = ctx.GetPlace();
+  return framework::OpKernelType(data_type, place);
+}
+{% endmacro %}
+
 {# --------------------------------------- operator  ---------------------------------------------- #}
 {% macro operator(api) %}
 class {{api["name"] | to_pascal_case}}Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+  {# ----------- get expected kernel type function -------------------------- #}
+  {% set kernel = api["kernel"] %}
+  {% if kernel["data_type"] is not none %}
+ protected:
+  {% filter indent(2, True)%}
+{{get_expected_kernel(api)}}
+  {% endfilter %}
+  {% endif %}
 };
 
-{# infershape functor #}
 DECLARE_INFER_SHAPE_FUNCTOR({{api["name"]}}, {{api["name"] | to_pascal_case}}InferShapeFunctor,
                             PD_INFER_META(phi::{{api["infer_meta"]["func"]}}));
 {# inplace inferer #}
@@ -185,6 +234,9 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
   {% set backward_name = api["backward"] %}
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::framework::OpDesc>,
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::imperative::OpBase>,
+{% else %}
+                  paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+                  paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
 {% endif %}
 {% if api is supports_inplace %}{# inplace#}
                   ops::{{name | to_pascal_case}}InplaceInferer,

@@ -136,7 +136,7 @@ std::future<int32_t> BrpcPsServer::SendPServer2PServerMsg(
     int msg_type, int to_pserver_id, const std::string &msg) {
   auto promise = std::make_shared<std::promise<int32_t>>();
   std::future<int> fut = promise->get_future();
-  if (to_pserver_id >= _pserver_channels.size()) {
+  if (static_cast<size_t>(to_pserver_id) >= _pserver_channels.size()) {
     LOG(FATAL) << "to_pserver_id is out of range pservers, which size is "
                << _pserver_channels.size();
     promise->set_value(-1);
@@ -713,7 +713,7 @@ int32_t BrpcPsService::CacheShuffle(Table *table,
   };
 
   std::vector<Table *> table_ptrs;
-  for (size_t i = 3; i < request.params_size(); ++i) {
+  for (int i = 3; i < request.params_size(); ++i) {
     int table_id = std::stoi(request.params(i));
     Table *table_ptr = _server->GetTable(table_id);
     table_ptrs.push_back(table_ptr);

@@ -558,7 +558,7 @@ if(LINUX AND WITH_MKLDNN)
                                                                      120)
   set_tests_properties(test_quant2_int8_ernie_mkldnn PROPERTIES TIMEOUT 120)
   set_tests_properties(test_quant_int8_googlenet_mkldnn PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_quant2_int8_resnet50_mkldnn PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_quant2_int8_resnet50_mkldnn PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant2_int8_lstm_mkldnn PROPERTIES TIMEOUT 120)
 endif()
 
