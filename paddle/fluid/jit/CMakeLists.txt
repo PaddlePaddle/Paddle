@@ -4,14 +4,16 @@ cc_library(
   DEPS lod_tensor device_context)
 
 cc_library(
+  jit_layer_utils
+  SRCS layer_utils.cc
+  DEPS scope proto_desc)
+
+cc_library(
   jit_layer
   SRCS layer.cc
   DEPS executor parallel_executor executor_cache)
 
-cc_library(
-  jit_base_function
-  SRCS base_function.cc
-  DEPS scope proto_desc)
+cc_library(jit_function_schema SRCS function_schema.cc)
 
 if(WITH_TESTING AND NOT WIN32)
   add_custom_target(
@@ -32,7 +34,8 @@ if(WITH_TESTING AND NOT WIN32)
       scale_op
       jit_serializer
       jit_layer
-      jit_base_function)
+      jit_layer_utils
+      jit_function_schema)
   cc_test(
     layer_test
     SRCS layer_test.cc

@@ -22,14 +22,19 @@
 #include "paddle/fluid/jit/base_function.h"
 #include "paddle/fluid/jit/compilation_unit.h"
 #include "paddle/fluid/jit/exector_function.h"
-#include "paddle/fluid/jit/object.h"
+#include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/pe_function.h"
+
+#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace jit {
 using Variable = paddle::framework::Variable;
 using VariableNameMap = std::map<std::string, Variable>;
-using DenseTensor = phi::DenseTensor;
 
 class Layer {
  public:
@@ -37,23 +42,23 @@ class Layer {
   // Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
   // {}
   // TODO(dev): consider make `func_name, program_desc, param_nams` as a class
-  Layer(
-      const std::vector<std::string>& func_names,
-      const std::vector<framework::ProgramDesc>& program_descs,
-      const std::vector<std::vector<std::string>>& param_names_for_each_program,
-      const VariableNameMap& params_dict,
-      const phi::Place& place);
+  Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
+        const VariableNameMap& params_dict,
+        const phi::Place& place);
 
   std::shared_ptr<BaseFunction> GetFunction(const std::string& name) const;
 
+  Variable GetAttribute(const std::string& name) const;
+
   std::vector<Variable> forward(const std::vector<Variable>& inputs);
+
+  void to(const phi::Place& place);
 
  private:
   // internal::Object obj_;
-  // std::vector<framework::ProgramDesc> all_program_desc_;
-  // std::vector<std::vector<std::string>> param_name_for_each_program_;
-  // std::vector<Variable> all_param_;
-  std::map<std::string, std::shared_ptr<BaseFunction>> function_dict;
+  VariableNameMap params_dict_;
+  VariableNameMap attrs_dict_;
+  std::map<std::string, std::shared_ptr<BaseFunction>> function_dict_;
 };
 
 }  // namespace jit

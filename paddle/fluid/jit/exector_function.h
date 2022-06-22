@@ -14,40 +14,52 @@
 
 #pragma once
 
+#include <iostream>
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/jit/base_function.h"
+#include "paddle/fluid/jit/function_schema.h"
+#include "paddle/fluid/jit/layer_utils.h"
+
+#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace jit {
 
 class ExectorFunction : public BaseFunction {
  public:
-  ExectorFunction(const framework::ProgramDesc &program_desc,
-                  const std::vector<std::string> param_names,
+  ExectorFunction(const std::shared_ptr<FunctionInfo> &info,
                   const VariableNameMap &params_dict,
                   const phi::Place &place)
-      : BaseFunction(program_desc, param_names, params_dict, place),
-        inner_exe_(place_) {}
+      : info_(info), place_(place), inner_exe_(place_) {
+    ShareParamsIntoScope(info_->GetParamNames(), params_dict, &scope_);
+    VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
+  }
 
-  ~ExectorFunction() {}
+  ~ExectorFunction() noexcept {}
 
   std::vector<Variable> operator()(const std::vector<Variable> &inputs) {
-    // share input into scope
-    ShareInputsIntoScope(inputs);
-    // run program
-    inner_exe_.Run(program_desc_,
+    ShareInputsIntoScope(info_->GetInputArgNames(), inputs, &scope_);
+    inner_exe_.Run(info_->GetProgramDesc(),
                    &scope_,
                    /*blockID=*/0,
                    false,
                    true,
-                   schema_.GetOutputArgNames());
+                   info_->GetOutputArgNames());
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
-    // fetch outputs
     std::vector<Variable> res;
-    FetchOutput(&res);
+    FetchVarsByNames(info_->GetOutputArgNames(), scope_, &res);
     return res;
   }
 
  private:
+  std::shared_ptr<FunctionInfo> info_;
+  framework::Scope scope_;
+  phi::Place place_;
   framework::Executor inner_exe_;
 };
 
