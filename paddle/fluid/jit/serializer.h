@@ -15,7 +15,6 @@
 #pragma once
 
 #include <dirent.h>
-#include <algorithm>
 #include <fstream>
 #include <set>
 #include <string>

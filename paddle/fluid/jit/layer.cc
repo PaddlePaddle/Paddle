@@ -28,7 +28,7 @@ Layer::Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
   for (size_t i = 0; i < infos.size(); ++i) {
     // TODO(dev): choose exector or pe by flag
     function_dict_[infos[i]->GetFunctionName()] =
-        std::make_shared<ExectorFunction>(infos[i], params_dict, place);
+        std::make_shared<ExectorFunction>(infos[i], params_dict_, place);
   }
 }
 
