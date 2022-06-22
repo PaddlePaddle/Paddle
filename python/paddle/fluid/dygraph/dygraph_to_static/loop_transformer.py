@@ -108,6 +108,113 @@ def create_while_nodes(condition_name, body_name, loop_var_names):
     return ret
 
 
+class NameScope:
+
+    def __init__(self):
+        """ we don't analysis the read only variable
+            because they keep the same in control flow.
+        """
+        self.globals = set()
+        self.nonlocals = set()
+        self.args = set()
+        self.w_vars = set()  # all vars been stored,
+        # may be globals or non-locals
+    def created_vars(self):
+        return self.w_vars - self.globals - self.nonlocals - self.args
+
+    def write_vars(self):
+        return self.w_vars
+
+    def global_vars(self):
+        return self.globals
+
+
+class FunctionNameLivenessAnalysis(gast.NodeVisitor):
+    """ analysis the liveness of a function.
+
+        every variables stored in this scope will be collected,
+        in addition with global/nonlocal information.
+
+        1. global variable is stored in node.var_globals.
+        2. nonlocal variable is stored in node.var_nonlocals.
+        3. arguments is stored in node.var_args.
+
+        for example:
+        def func(*args, **kargs):
+            a = 12
+            global i,j
+            nonlocal x,y
+            print(a)
+            i = k
+            for m in range(10):
+                q = 12
+        
+        After this visitor we have: 
+        # node is the FunctionDef node with name: "func"
+        node.pd_scope = NameInFunction(
+            globals = ['i', 'j'],
+            nonlocals = ['x', 'y'],
+            args = ['args', 'kargs'], 
+            wr_vars = ['a', 'i', 'q', 'm']
+        )
+    """
+
+    def __init__(self, root_node):
+        self.funcdef_stack = []
+        self.visit(root_node)
+
+    def _current_funcdef_scope(self):
+        return self.funcdef_stack[-1].pd_scope
+
+    def get_funcion_create_var_names(self, node):
+        assert isinstance(
+            node, gast.FunctionDef), "Input node is not function define node"
+        return self.func_to_created_variables[node]
+
+    def visit_Name(self, node):
+        self.generic_visit(node)
+        write_context = {
+            type(gast.Store()),
+            type(gast.AugStore()),
+            type(gast.Del())
+        }
+        if type(node.ctx) in write_context:
+            self._current_funcdef_scope().w_vars.add(node.id)
+
+    def visit_FunctionDef(self, node):
+        setattr(node, 'pd_scope', NameScope())
+        self.funcdef_stack.append(node)
+        self._current_funcdef_scope().args |= set(
+            self._get_argument_names(node))
+        self.generic_visit(node)
+        self.funcdef_stack.pop()
+
+    def visit(self, node):
+        method = 'visit_' + node.__class__.__name__
+        visitor = getattr(self, method, self.generic_visit)
+        ret = visitor(node)
+        return ret
+
+    def visit_Global(self, node):
+        self._current_funcdef_scope().globals |= set(node.names)
+
+    def visit_Nonlocal(self, node):
+        self._current_funcdef_scope().nonlocals |= set(node.names)
+
+    def _get_argument_names(self, node):
+        """ get all arguments name in the functiondef node.
+            this node is local to the function and shouldn't 
+            be created.
+        """
+        assert isinstance(
+            node, gast.FunctionDef), "Input node is not function define node"
+        names = [a for a in node.args.args]
+        names.append(node.args.vararg)
+        names.append(node.args.kwarg)
+        names = [i.id for i in names if i is not None]
+        return names
+
+
 class NameVisitor(gast.NodeVisitor):
     '''
     Analysis name liveness for loop transformer
@@ -122,16 +229,6 @@ class NameVisitor(gast.NodeVisitor):
 
         # List of nodes that have scope of variables.
         self.nodes_with_scope = []
-
-        # Function -> Variables Created in this scope.
-        # In python, only function can have scope. So we record all variable
-        # Created in this function,and insert unifed create statements:
-        # x = UndefinedVar()
-        self.func_closure_stack = []
-        self.func_name_blacklist = [
-        ]  # non-local / global / arguments stored here.
-        self.func_to_created_variables = defaultdict(set)
-
         self.blacklist_names = {"False", "True", "None"}
 
         # Mapping from gast.While/gast.For to variable nodes
@@ -153,11 +250,6 @@ class NameVisitor(gast.NodeVisitor):
         )
 
         self.visit(root_node)
-
-    def get_funcion_create_var_names(self, node):
-        assert isinstance(
-            node, gast.FunctionDef), "Input node is not function define node"
-        return self.func_to_created_variables[node]
 
     def get_loop_var_names(self, node):
         assert isinstance(
@@ -245,9 +337,6 @@ class NameVisitor(gast.NodeVisitor):
         return loop_var_names, create_var_names
 
     def visit_Name(self, node):
-        if self._is_argument_name(node):
-            self.func_name_blacklist[-1].append(node.id)
-
         if self._is_call_func_name_node(node):
             self.generic_visit(node)
             return
@@ -262,13 +351,6 @@ class NameVisitor(gast.NodeVisitor):
             type(gast.Del())
         }
 
-        if type(
-                node.ctx
-        ) in write_context and node.id not in self.func_name_blacklist[-1]:
-            # TODO: deal with non-local
-            self.func_to_created_variables[self.func_closure_stack[-1]].add(
-                node.id)
-
         for loop_node in self.current_loop:
             self.in_loop_vars[loop_node].append(node)
             if type(node.ctx) in write_context:
@@ -279,8 +361,6 @@ class NameVisitor(gast.NodeVisitor):
 
     def visit_FunctionDef(self, node):
         self.nodes_with_scope.append(node)
-        self.func_closure_stack.append(node)
-        self.func_name_blacklist.append([])
         self.blacklist_names.add(node.name)
 
         # The variables in the function are not visible to the outside scope.
@@ -288,8 +368,6 @@ class NameVisitor(gast.NodeVisitor):
 
         self.generic_visit(node)
         self.nodes_with_scope.pop()
-        self.func_name_blacklist.pop()
-        self.func_closure_stack.pop()
         # After exiting the scope of the node, variables in this scope
         # should be removed from self.current_seen_vars.
         if self.nodes_with_scope:
@@ -300,12 +378,6 @@ class NameVisitor(gast.NodeVisitor):
         visitor = getattr(self, method, self.generic_visit)
         ret = visitor(node)
         return ret
-
-    def visit_Global(self, node):
-        self.func_name_blacklist[-1].extend(node.names)
-
-    def visit_Nonlocal(self, node):
-        self.func_name_blacklist[-1].extend(node.names)
 
     def visit_Attribute(self, node):
         if self._is_call_func_name_node(node):
@@ -387,11 +459,6 @@ class NameVisitor(gast.NodeVisitor):
         parent_node = self._get_parent_node(node)
         if isinstance(parent_node, gast.Call) and parent_node.func == node:
             return True
-        return False
-
-    def _is_argument_name(self, node):
-        parent_node = self._get_parent_node(node)
-        if isinstance(parent_node, gast.arguments): return True
         return False
 
     def _is_global_or_nonlocal(self, node):

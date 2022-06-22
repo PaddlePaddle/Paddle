@@ -21,12 +21,29 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.layers.utils import map_structure
-from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import NameVisitor
+from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import FunctionNameLivenessAnalysis
 from paddle.utils import gast
 import inspect
 
 SEED = 2020
 np.random.seed(SEED)
+
+
+class JudgeVisitor(gast.NodeVisitor):
+
+    def __init__(self, ans):
+        self.ans = ans
+
+    def visit(self, node):
+        method = 'visit_' + node.__class__.__name__
+        visitor = getattr(self, method, self.generic_visit)
+        ret = visitor(node)
+        return ret
+
+    def visit_FunctionDef(self, node):
+        scope = node.pd_scope
+        expected = self.ans.get(node.name, set())
+        assert scope.created_vars() == expected, "Not Equals."
 
 
 def test_normal_0(x):
@@ -64,17 +81,17 @@ def test_global(x):
     return x
 
 
-def test_nonlocal(x):
+def test_nonlocal(x, *args, **kargs):
     i = 10
 
-    def func():
+    def func(*args, **kargs):
         nonlocal i
         k = 10
         if True:
             print(x)
             i = i + 1
 
-    func()
+    func(*args, **kargs)
     return x
 
 
@@ -107,12 +124,8 @@ class TestClosureAnalysis(unittest.TestCase):
         for ans, func in zip(self.answer, self.all_dygraph_funcs):
             test_func = inspect.getsource(func)
             gast_root = gast.parse(test_func)
-            name_visitor = NameVisitor(gast_root)
-            d = name_visitor.func_to_created_variables
-            d = {k.name: v for k, v in d.items()}
-            self.assertEqual(len(d), len(ans))
-            for name in d.keys():
-                self.assertEqual(d[name], ans[name])
+            name_visitor = FunctionNameLivenessAnalysis(gast_root)
+            JudgeVisitor(ans).visit(gast_root)
 
 
 if __name__ == '__main__':
