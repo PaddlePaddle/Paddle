@@ -136,7 +136,7 @@ int32_t BrpcPsClient::CreateClient2ClientConnection(
     server_ip_port.append(":");
     server_ip_port.append(std::to_string(client_list[i].port));
     _client_channels[i].reset(new brpc::Channel());
-    if (_client_channels[i]->Init(server_ip_port.c_str(), "", &options) != 0) {
+    if (_client_channels[i]->Init(server_ip_port.c_str(), "", &options)) {
       VLOG(0) << "BrpcPSClient connect to Client:" << server_ip_port
               << " Failed! Try again.";
       std::string int_ip_port =
@@ -1195,7 +1195,8 @@ std::future<int32_t> BrpcPsClient::SendClient2ClientMsg(
     int msg_type, int to_client_id, const std::string &msg) {
   auto promise = std::make_shared<std::promise<int32_t>>();
   std::future<int> fut = promise->get_future();
-  if (to_client_id >= _client_channels.size()) {
+  if (to_client_id >= 0 &&
+      static_cast<size_t>(to_client_id) >= _client_channels.size()) {
     VLOG(0) << "to_client_id is out of range clients, which size is "
             << _client_channels.size();
     promise->set_value(-1);
@@ -1778,7 +1779,7 @@ void BrpcPsClient::PushDenseTaskConsume() {
               });
           ++merge_count;
         }
-        for (uint32_t i = 0; i < merge_count; ++i) {
+        for (size_t i = 0; i < merge_count; ++i) {
           merge_status[i].wait();
         }
 

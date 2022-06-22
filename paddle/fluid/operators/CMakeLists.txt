@@ -1,6 +1,6 @@
 include(operators)
 
-# solve "math constants not defined" problems caused by the order of inclusion 
+# solve "math constants not defined" problems caused by the order of inclusion
 # of <cmath> and the definition of macro _USE_MATH_DEFINES
 add_definitions(-D_USE_MATH_DEFINES)
 

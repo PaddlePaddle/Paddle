@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/log_softmax_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
-#include "paddle/phi/kernels/log_softmax_kernel.h"
 
 namespace phi {
 
