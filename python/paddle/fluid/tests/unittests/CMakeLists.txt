@@ -129,6 +129,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model)
+list(APPEND MIXED_DIST_TEST_OPS test_tcp_store)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -868,6 +869,7 @@ if(WITH_DISTRIBUTE)
                       test_auto_parallel_reshard_dpmppp ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_cost_model MODULES
                       test_auto_parallel_cost_model ENVS ${dist_ENVS})
+
       if(WITH_GPU
          OR WITH_XPU
          OR WITH_ASCEND
@@ -931,6 +933,18 @@ if(WITH_DISTRIBUTE)
 
     # port range (20000, 23000) is reserved for dist-ops
     set(dist_ut_port 20001)
+    if(NOT WIN32)
+      bash_test_modules(
+        test_tcp_store
+        START_BASH
+        dist_test.sh
+        LABELS
+        "RUN_TYPE=EXCLUSIVE"
+        ENVS
+        "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+      math(EXPR dist_ut_port "${dist_ut_port}+1")
+    endif()
+
     foreach(TEST_OP ${DIST_TEST_OPS})
       bash_test_modules(
         ${TEST_OP}
