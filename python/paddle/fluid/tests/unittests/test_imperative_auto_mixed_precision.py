@@ -707,6 +707,14 @@ class TestAmpDecorator(unittest.TestCase):
         for param in model.parameters():
             self.assertEqual((param.dtype == paddle.float32), True)
 
+    def test_floating_only(self):
+        model = paddle.nn.Linear(2, 4)
+        buffer = paddle.to_tensor(np.array([5]).astype("int32"))
+        model.register_buffer("buffer_name", buffer, persistable=True)
+        model = paddle.amp.decorate(models=model, level='O2')
+        self.assertEqual((model._buffers["buffer_name"].dtype == paddle.int32),
+                         True)
+
 
 class TestStateDictHookForAMP(unittest.TestCase):
 
