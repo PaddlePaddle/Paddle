@@ -75,8 +75,8 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    const auto* x = ctx.Input<Tensor>("X");
-    const auto* y = ctx.Input<Tensor>("Y");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
     auto* z = ctx.Output<Tensor>("Out");
 
     float scale_x = ctx.Attr<float>("Scale_x");
@@ -87,6 +87,10 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     platform::BinaryMKLDNNHandler<T> handler(
         BINARY_OP, axis, mkldnn_engine, ctx.GetPlace(), x, y, z, scale_x,
         scale_y, scale_o, get_post_ops(ctx));
+
+    if (x->numel() < y->numel()) {
+      std::swap(x, y);
+    }
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
