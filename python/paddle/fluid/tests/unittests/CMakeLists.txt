@@ -1626,7 +1626,7 @@ endif()
 if(WITH_GPU OR WITH_ROCM)
   set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT
                                                                        300)
-  set_tests_properties(test_imperative_auto_mixed_precision_for_test
+  set_tests_properties(test_imperative_auto_mixed_precision_for_eager
                        PROPERTIES TIMEOUT 300)
   set_tests_properties(test_parallel_dygraph_sync_batch_norm PROPERTIES TIMEOUT
                                                                         120)
