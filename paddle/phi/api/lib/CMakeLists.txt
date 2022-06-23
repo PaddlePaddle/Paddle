@@ -100,7 +100,12 @@ if(NOT PYTHON_EXECUTABLE)
 endif()
 
 # install extra dependencies
-execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml jinja2)
+if(${PYTHON_VERSION_STRING} VERSION_LESS "3.6.2")
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml
+                          jinja2==3.0.0)
+else()
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml jinja2)
+endif()
 
 # parse apis
 set(parsed_api_dir ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/parsed_apis)
