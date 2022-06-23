@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-// clang-format off
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -27,7 +26,6 @@ limitations under the License. */
 
 #include "cinn/frontend/net_builder.h"
 #include "cinn/frontend/op_mapper_registry.h"
-// clang-format on
 
 namespace paddle {
 namespace framework {
@@ -65,7 +63,8 @@ namespace paddle2cinn {
 class CinnGraphSymbolization {
  public:
   CinnGraphSymbolization(
-      int64_t graph_id, const ir::Graph& graph,
+      int64_t graph_id,
+      const ir::Graph& graph,
       const ::cinn::common::Target& target,
       const std::map<std::string, const LoDTensor*>& input_tensors)
       : graph_id_(graph_id),

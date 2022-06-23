@@ -17,6 +17,9 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import six
+import cv2
+import os
+import tempfile
 from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_parameters, optimizer_setting
 import paddle.nn as nn
 from paddle.static import InputSpec
@@ -737,6 +740,12 @@ class TestStateDictHookForAMP(unittest.TestCase):
 
 class TestPureFp16SaveLoad(unittest.TestCase):
 
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_save_dtype_exception(self):
 
         def func():
@@ -848,7 +857,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                     'opt': optimizer.state_dict(),
                     'scaler': scaler.state_dict()
                 }
-                path = 'model.pdparams'
+                path = os.path.join(self.temp_dir.name, 'model.pdparams')
                 paddle.save(obj, path)
                 # paddle.load
                 obj_load = paddle.load(path)
@@ -887,6 +896,12 @@ class TestPureFp16SaveLoad(unittest.TestCase):
 
 
 class TestPureFp16InferenceSaveLoad(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def inference_save_load(self):
         BATCH_SIZE = 16
@@ -951,7 +966,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
         train(layer, loader, loss_fn, adam)
 
         # save
-        path = "example_model/linear"
+        path = os.path.join(self.temp_dir.name, 'example_model/linear')
         paddle.jit.save(layer,
                         path,
                         input_spec=[InputSpec(shape=[IMAGE_SIZE], name='x')])

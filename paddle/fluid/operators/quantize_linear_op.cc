@@ -69,8 +69,6 @@ struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct DequantizeFunctor<platform::CPUDeviceContext, float>;
-template struct DequantizeFunctor<platform::CPUDeviceContext, double>;
 template struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, float>;
 template struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, double>;
 
@@ -134,6 +132,20 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
+        });
+    AddAttr<int>(
+        "round_type",
+        "(int, default 0) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(2.5)=3")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& round_type) {
+          PADDLE_ENFORCE_EQ(round_type >= 0 && round_type <= 1, true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 and 1, but "
+                                "the received is %d",
+                                round_type));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "

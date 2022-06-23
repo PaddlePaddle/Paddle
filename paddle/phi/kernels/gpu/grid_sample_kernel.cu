@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/grid_sample_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/grid_sample_utils.h"
-#include "paddle/phi/kernels/grid_sample_kernel.h"
 
 namespace phi {
 
