@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cstdarg>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/svd_helper.h"

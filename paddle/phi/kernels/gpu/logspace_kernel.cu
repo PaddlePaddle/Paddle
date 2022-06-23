@@ -90,8 +90,8 @@ void LogspaceKernel(const Context& ctx,
     LogspaceKernelInner<T><<<grid, block, 0, stream>>>(
         start_data, stop_data, step, base_data, num, out_data);
   } else {
-    LogspaceSpecialKernel<T><<<grid, block, 0, stream>>>(
-        start_data, base_data, out_data);
+    LogspaceSpecialKernel<T>
+        <<<grid, block, 0, stream>>>(start_data, base_data, out_data);
   }
 }
 

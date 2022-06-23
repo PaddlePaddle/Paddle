@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/core/kernel_registry.h"

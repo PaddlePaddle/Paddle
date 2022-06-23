@@ -14,6 +14,7 @@
 
 #include "paddle/infrt/host_context/mlir_to_runtime_translate.h"
 
+#include <glog/logging.h>
 #include <llvm/Support/SourceMgr.h>
 #include <mlir/Dialect/StandardOps/IR/Ops.h>
 #include <mlir/IR/BuiltinAttributes.h>
@@ -23,7 +24,6 @@
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/Parser.h>
 
-#include <glog/logging.h>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -591,8 +591,8 @@ bool MlirToRuntimeTranslator::EmitCallOp(mlir::Operation* op,
   {
     // lookup the callee function
     auto it = table.find(callee_name.getValue().str());
-    CHECK(it != table.end()) << "can't find function ["
-                             << callee_name.getValue().str() << "]";
+    CHECK(it != table.end())
+        << "can't find function [" << callee_name.getValue().str() << "]";
     auto* function =
         impl_->cur_op->CreateFunctionExecutable(it->second, &impl_->func_defs);
     impl_->cur_op->AppendAttribute(new Value(function));

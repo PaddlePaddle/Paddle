@@ -20,6 +20,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
@@ -109,7 +110,7 @@ class PSClient {
                                          size_t table_id) = 0;  // 保留
 
   // firstly push dense param for parameter server
-  // this is neccessary because dense weight initialized in trainer on cold
+  // this is necessary because dense weight initialized in trainer on cold
   // start
   virtual std::future<int32_t> PushDenseParam(const Region *regions,
                                               size_t region_num,

@@ -385,7 +385,7 @@ independently for each class. The outputs is a 2-D LoDTenosr, for each
 image, the offsets in first dimension of LoDTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bbox for this image. Now this operator has one more
-ouput, which is RoisNum. The size of RoisNum is N, RoisNum[i] means the number of 
+output, which is RoisNum. The size of RoisNum is N, RoisNum[i] means the number of 
 detected bbox for this image.
 
 For more information on Matrix NMS, please refer to:
@@ -405,7 +405,6 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(matrix_nms, ops::MatrixNMSKernel<float>,
                        ops::MatrixNMSKernel<double>);
 REGISTER_OP_VERSION(matrix_nms)
-    .AddCheckpoint(
-        R"ROC(Upgrade matrix_nms: add a new output [RoisNum].)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewOutput(
-            "RoisNum", "The number of RoIs in each image."));
+    .AddCheckpoint(R"ROC(Upgrade matrix_nms: add a new output [RoisNum].)ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewOutput(
+                       "RoisNum", "The number of RoIs in each image."));

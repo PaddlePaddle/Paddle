@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
+
 #include <functional>
 #include <iosfwd>
 #include <string>
@@ -242,7 +243,7 @@ class AttrReader {
     return *attr_value;
   }
 
-  inline const Attribute& GetAttr(const std::string& name) const {
+  const Attribute* GetAttr(const std::string& name) const {
     auto it = attrs_.find(name);
     bool found = it != attrs_.end();
     if (!found) {
@@ -251,11 +252,10 @@ class AttrReader {
         found = it != default_attrs_->end();
       }
     }
-    PADDLE_ENFORCE_EQ(found, true,
-                      platform::errors::NotFound(
-                          "Attribute (%s) should be in AttributeMap.", name));
-
-    return it->second;
+    if (found) {
+      return &it->second;
+    }
+    return nullptr;
   }
 
  private:

@@ -21,6 +21,7 @@ from paddle.fluid.op import Operator
 
 
 class TestMergeSelectedRows(unittest.TestCase):
+
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():

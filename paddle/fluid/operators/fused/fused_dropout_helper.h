@@ -30,7 +30,7 @@ namespace operators {
  * The DropoutParam will be used in the fused_dropout_act_bias,
  * fused_residual_dropout_bias(pre_layer_norm=ture) or
  * fused_layernorm_residual_dropout_bias(pre_layer_norm=false).
-*/
+ */
 struct DropoutParam {
   uint64_t seed;
   float dropout_prob;
@@ -82,7 +82,7 @@ struct DropoutParam {
     auto& dropout_implementation =
         context.Attr<std::string>(pre_fix + "implementation");
     is_upscale_in_train = (dropout_implementation == "upscale_in_train");
-    is_test = context.Attr<bool>(pre_fix + "is_test");
+    is_test = context.Attr<bool>("is_test");
     fix_seed = context.Attr<bool>(pre_fix + "fix_seed");
 
     std::string str_seed = "Dropout";
@@ -150,9 +150,10 @@ class FusedDropoutHelper {
     LaunchResidualDropoutBiasGrad<T, uint8_t>(
         d_out, mask, dropout_param_.dropout_prob,
         dropout_param_.is_upscale_in_train, rows_, cols_, d_src, d_bias, ctx);
-    auto cuda_place = ctx.GetPlace();
-    memory::Copy(cuda_place, d_residual, cuda_place, d_out,
-                 rows_ * cols_ * sizeof(T), ctx.stream());
+    if (d_residual) {
+      memory::Copy(ctx.GetPlace(), d_residual, ctx.GetPlace(), d_out,
+                   rows_ * cols_ * sizeof(T), ctx.stream());
+    }
   }
 
   // out = dropout(activation(src + bias))
@@ -232,8 +233,8 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
     using U = LayerNormParamType<T>;
     switch (GetDesiredBlockDim(this->cols_)) {
       FIXED_BLOCK_DIM_CASE(
-          LayerNormForward<
-              T, U, kBlockDim><<<this->rows_, kBlockDim, 0, ctx.stream()>>>(
+          LayerNormForward<T, U, kBlockDim>
+          <<<this->rows_, kBlockDim, 0, ctx.stream()>>>(
               src, gamma, beta, out, mean, variance, epsilon_, this->cols_));
     }
   }

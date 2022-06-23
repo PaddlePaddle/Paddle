@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/jit/kernels.h"
@@ -66,34 +67,32 @@ class SoftmaxEigen {
     if (num_remain == 1) {
       // axis == -1, axis and class in same dimension, calculate along
       // class dimension directly for higher performance
-      softmax.device(*context.eigen_device()) = (logits -
-                                                 logits.maximum(along_axis)
-                                                     .eval()
-                                                     .reshape(batch_by_one)
-                                                     .broadcast(one_by_class))
-                                                    .unaryExpr(ValueClip<T>());
+      softmax.device(*context.eigen_device()) =
+          (logits - logits.maximum(along_axis)
+                        .eval()
+                        .reshape(batch_by_one)
+                        .broadcast(one_by_class))
+              .unaryExpr(ValueClip<T>());
     } else {
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
       softmax.device(*context.eigen_device()) =
-          (logits.reshape(batch_axis_remain) -
-           logits.reshape(batch_axis_remain)
-               .maximum(along_axis)
-               .eval()
-               .reshape(batch_one_remain)
-               .broadcast(one_axis_one)
-               .reshape(batch_classes))
+          (logits.reshape(batch_axis_remain) - logits.reshape(batch_axis_remain)
+                                                   .maximum(along_axis)
+                                                   .eval()
+                                                   .reshape(batch_one_remain)
+                                                   .broadcast(one_axis_one)
+                                                   .reshape(batch_classes))
               .unaryExpr(ValueClip<T>());
     }
 
     softmax.device(*context.eigen_device()) = softmax.exp();
     softmax.device(*context.eigen_device()) =
-        (softmax *
-         softmax.reshape(batch_axis_remain)
-             .sum(along_axis)
-             .inverse()
-             .eval()
-             .broadcast(one_axis));
+        (softmax * softmax.reshape(batch_axis_remain)
+                       .sum(along_axis)
+                       .inverse()
+                       .eval()
+                       .broadcast(one_axis));
   }
 };
 
@@ -128,31 +127,28 @@ class SoftmaxEigen<DeviceContext, platform::float16, is_test> {
       // axis == -1, axis and class in same dimension, calculate along
       // class dimension directly for higher performance
       softmax.device(*context.eigen_device()) =
-          (logits -
-           logits.maximum(along_axis)
-               .reshape(batch_by_one)
-               .broadcast(one_by_class))
+          (logits - logits.maximum(along_axis)
+                        .reshape(batch_by_one)
+                        .broadcast(one_by_class))
               .unaryExpr(ValueClip<platform::float16>());
     } else {
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
       softmax.device(*context.eigen_device()) =
-          (logits.reshape(batch_axis_remain) -
-           logits.reshape(batch_axis_remain)
-               .maximum(along_axis)
-               .reshape(batch_one_remain)
-               .broadcast(one_axis_one)
-               .reshape(batch_classes))
+          (logits.reshape(batch_axis_remain) - logits.reshape(batch_axis_remain)
+                                                   .maximum(along_axis)
+                                                   .reshape(batch_one_remain)
+                                                   .broadcast(one_axis_one)
+                                                   .reshape(batch_classes))
               .unaryExpr(ValueClip<platform::float16>());
     }
 
     softmax.device(*context.eigen_device()) = softmax.exp();
     softmax.device(*context.eigen_device()) =
-        (softmax *
-         softmax.reshape(batch_axis_remain)
-             .sum(along_axis)
-             .inverse()
-             .broadcast(one_axis));
+        (softmax * softmax.reshape(batch_axis_remain)
+                       .sum(along_axis)
+                       .inverse()
+                       .broadcast(one_axis));
   }
 };
 
@@ -187,31 +183,28 @@ class SoftmaxEigen<DeviceContext, platform::bfloat16, is_test> {
       // axis == -1, axis and class in same dimension, calculate along
       // class dimension directly for higher performance
       softmax.device(*context.eigen_device()) =
-          (logits -
-           logits.maximum(along_axis)
-               .reshape(batch_by_one)
-               .broadcast(one_by_class))
+          (logits - logits.maximum(along_axis)
+                        .reshape(batch_by_one)
+                        .broadcast(one_by_class))
               .unaryExpr(ValueClip<platform::bfloat16>());
     } else {
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
       softmax.device(*context.eigen_device()) =
-          (logits.reshape(batch_axis_remain) -
-           logits.reshape(batch_axis_remain)
-               .maximum(along_axis)
-               .reshape(batch_one_remain)
-               .broadcast(one_axis_one)
-               .reshape(batch_classes))
+          (logits.reshape(batch_axis_remain) - logits.reshape(batch_axis_remain)
+                                                   .maximum(along_axis)
+                                                   .reshape(batch_one_remain)
+                                                   .broadcast(one_axis_one)
+                                                   .reshape(batch_classes))
               .unaryExpr(ValueClip<platform::bfloat16>());
     }
 
     softmax.device(*context.eigen_device()) = softmax.exp();
     softmax.device(*context.eigen_device()) =
-        (softmax *
-         softmax.reshape(batch_axis_remain)
-             .sum(along_axis)
-             .inverse()
-             .broadcast(one_axis));
+        (softmax * softmax.reshape(batch_axis_remain)
+                       .sum(along_axis)
+                       .inverse()
+                       .broadcast(one_axis));
   }
 };
 
@@ -231,7 +224,7 @@ class SoftmaxFunctor<DeviceContext, T, is_test, enable_if_CPU<DeviceContext>> {
  public:
   void operator()(const DeviceContext& context, const int axis_dim,
                   const framework::Tensor* X, framework::Tensor* Y) {
-    auto in_dims = X->dims();
+    const auto& in_dims = X->dims();
     constexpr int kBatchDim = 0;
     constexpr int kClassDim = 1;
 
@@ -269,7 +262,7 @@ class SoftmaxFunctor<DeviceContext, float, true, enable_if_CPU<DeviceContext>> {
  public:
   void operator()(const DeviceContext& context, const int axis_dim,
                   const framework::Tensor* X, framework::Tensor* Y) {
-    auto in_dims = X->dims();
+    const auto& in_dims = X->dims();
     const float* in_data = X->data<float>();
     float* out_data = Y->data<float>();
     const int kBatchDim = 0;
@@ -394,7 +387,7 @@ class SoftmaxGradFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
   void operator()(const DeviceContext& context, const int axis_dim,
                   const framework::Tensor* y, const framework::Tensor* y_grad,
                   framework::Tensor* x_grad) {
-    auto out_dims = y->dims();
+    const auto& out_dims = y->dims();
     constexpr int kBatchDim = 0;
     constexpr int kClassDim = 1;
     const int num_classes = out_dims[kClassDim];

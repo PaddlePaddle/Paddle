@@ -19,6 +19,7 @@
 #endif  // PADDLE_WITH_CUDA && __NVCC__
 #include <cmath>
 #include <vector>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/device_context.h"

@@ -26,18 +26,6 @@ public:
 */
 explicit DenseTensor(paddle::experimental::DataType dtype);
 
-/// \brief Use existing storage space to create dense tensor. This interface
-/// can be used to deliberately create an uninitialized dense tensor.
-/// \param storage The existing storage.
-/// \param meta The meta data of dense tensor.
-DenseTensor(intrusive_ptr<Storage> storage, const DenseTensorMeta& meta);
-
-/// \brief Use existing storage space to create dense tensor. This interface
-/// can be used to deliberately create an uninitialized dense tensor.
-/// \param storage The existing storage.
-/// \param meta The meta data of dense tensor.
-DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta);
-
 inline bool IsInitialized() const { return holder_ != nullptr; }
 
 template <typename T>

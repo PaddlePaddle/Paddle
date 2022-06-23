@@ -64,7 +64,7 @@ void MaxPoolGradGPUKernel(const GPUContext& dev_ctx,
   int rulebook_len = rulebook.dims()[1];
   const IntT* rulebook_ptr = rulebook.data<IntT>();
   std::vector<IntT> offsets(kernel_size + 1), counter(kernel_size, 0),
-      h_counter(kernel_size);
+      h_counter(rulebook_len, 0);
   phi::backends::gpu::GpuMemcpyAsync(&h_counter[0],
                                      rulebook_ptr,
                                      rulebook_len * sizeof(IntT),
@@ -105,18 +105,18 @@ void MaxPoolGradGPUKernel(const GPUContext& dev_ctx,
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, counter[i] * in_channels, 1);
-    MaxPoolGradCudaKernel<T, IntT><<<config.block_per_grid.x,
-                                     config.thread_per_block.x,
-                                     0,
-                                     dev_ctx.stream()>>>(
-        in_features_ptr,
-        out_features_ptr,
-        out_grad_ptr,
-        rulebook_ptr + offsets[i] + rulebook_len,
-        counter[i],
-        rulebook_len,
-        in_channels,
-        x_grad_ptr);
+    MaxPoolGradCudaKernel<T, IntT>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(in_features_ptr,
+                               out_features_ptr,
+                               out_grad_ptr,
+                               rulebook_ptr + offsets[i] + rulebook_len,
+                               counter[i],
+                               rulebook_len,
+                               in_channels,
+                               x_grad_ptr);
   }
 }
 

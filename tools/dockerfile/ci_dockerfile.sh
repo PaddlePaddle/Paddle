@@ -20,8 +20,8 @@ function make_ubuntu_dockerfile(){
   sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
-     tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name} 
-  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libcurl4-openssl-dev gettext \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
+     tar -xzf     hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libcurl4-openssl-dev gettext zstd \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
     tar -xvf git-2.17.1.tar.gz \&\& \
     cd git-2.17.1 \&\& \
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
@@ -38,7 +38,42 @@ function make_ubuntu_dockerfile(){
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
   sed -i "s#bash /build_scripts/install_nccl2.sh#wget -q --no-proxy https://nccl2-deb.cdn.bcebos.com/nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
     RUN dpkg -i nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
-    RUN apt update \&\& apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y libnccl2=2.7.8-1+cuda10.1 libnccl-dev=2.7.8-1+cuda10.1 pigz --allow-change-held-packages #g" ${dockerfile_name}
+    RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y libnccl2=2.7.8-1+cuda10.1 libnccl-dev=2.7.8-1+cuda10.1 pigz --allow-change-held-packages #g" ${dockerfile_name}
+}
+
+function make_ubuntu_trt7_dockerfile(){
+  dockerfile_name="Dockerfile.cuda102_cudnn8_gcc82_ubuntu16"
+  sed "s/<baseimg>/10.2-cudnn8-devel-ubuntu16.04/g" ./Dockerfile.ubuntu >${dockerfile_name}
+  sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
+  dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
+  sed -i "${dockerfile_line}i RUN apt remove -y libcudnn* --allow-change-held-packages \&\& \
+      apt-get install -y --allow-unauthenticated libcudnn8=8.1.0.77-1+cuda10.2 libcudnn8-dev=8.1.0.77-1+cuda10.2 --allow-change-held-packages" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q  \
+      https://developer.download.nvidia.com/compute/cuda/10.2/Prod/patches/2/cuda_10.2.2_linux.run \&\& \
+      bash cuda_10.2.2_linux.run --silent --toolkit \&\& ldconfig" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q  \
+      https://developer.download.nvidia.com/compute/cuda/10.2/Prod/patches/1/cuda_10.2.1_linux.run \&\& \
+      bash cuda_10.2.1_linux.run --silent --toolkit \&\& ldconfig" ${dockerfile_name}
+  sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh ubuntu1604-7234#g' ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
+     tar -xzf     hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libcurl4-openssl-dev gettext zstd \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
+    tar -xvf git-2.17.1.tar.gz \&\& \
+    cd git-2.17.1 \&\& \
+    ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
+    make -j8 \&\& make install " ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.7 install PyGithub " ${dockerfile_name}
+  sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
+    COPY tools/dockerfile/build_scripts /build_scripts \\
+    RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \\
+    RUN cp gcc  gcc.bak \&\& cp g++  g++.bak \&\& rm gcc \&\& rm g++ \\
+    RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc \\
+    RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ \\
+    RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \\
+    RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \\
+    ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
+  sed -i "s#bash /build_scripts/install_nccl2.sh#wget -q --no-proxy https://nccl2-deb.cdn.bcebos.com/nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
+    RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y libnccl2=2.7.8-1+cuda10.1 libnccl-dev=2.7.8-1+cuda10.1 pigz --allow-change-held-packages #g" ${dockerfile_name}
 }
 
 
@@ -61,7 +96,9 @@ function make_centos_dockerfile(){
 
 function make_cinn_dockerfile(){
   dockerfile_name="Dockerfile.cuda11_cudnn8_gcc82_ubuntu18_cinn"
-  sed "s/<baseimg>/11.2.0-cudnn8-devel-ubuntu18.04/g" ./Dockerfile.ubuntu18 >${dockerfile_name}
+  sed "s#<baseimg>#nvidia/cuda:11.2.0-cudnn8-devel-ubuntu18.04#g" ./Dockerfile.ubuntu18 >${dockerfile_name}
+  sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-11.2/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
+  sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
   sed -i "8i RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone" ${dockerfile_name}
   sed -i "9i RUN apt-get update && apt-get install -y liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev" ${dockerfile_name}
@@ -107,6 +144,7 @@ function make_ce_framework_dockcerfile(){
 
 function main() {
   make_ubuntu_dockerfile
+  make_ubuntu_trt7_dockerfile
   make_centos_dockerfile
   make_cinn_dockerfile
   make_ce_framework_dockcerfile

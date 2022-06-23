@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <limits>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/phi/core/hostdevice.h"
@@ -38,7 +39,7 @@ struct TolerableValue {
 // NOTE(dzh): float16 value clip behave different.
 // 1. Our ValueClipping has a  hardcore threshold 1e20
 // for float number. 1e20 will resulting in overflow in float16.
-// 2. float16 should expose the the real number overflow to python.
+// 2. float16 should expose the real number overflow to python.
 // because mixed-training depends the inf/nan value to determine
 // if the scale value will be adjusted.
 // Also. In standard implementation of cross entropy, other

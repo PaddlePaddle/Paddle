@@ -13,30 +13,31 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
+
+#include "glog/logging.h"
 #include "paddle/fluid/eager/eager_tensor.h"
-
-#include "paddle/phi/api/all.h"
-#include "paddle/phi/core/dense_tensor.h"
-
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-
-#include "glog/logging.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/core/dense_tensor.h"
 #pragma GCC diagnostic ignored "-Wattributes"
 #include "pybind11/pytypes.h"
 
 namespace egr {
-std::vector<std::vector<paddle::experimental::Tensor>> GradNodePyLayer::
-operator()(
-    std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     kSlotSmallVectorSize>
+GradNodePyLayer::operator()(
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>& grads,  // NOLINT
     bool create_graph, bool is_new_grad) {
   VLOG(3) << "Running Eager Backward Node: " << name();
 
-  std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
-      GradNodePyLayer::ApplyGradientHooks(grads);
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
+      hooked_grads = GradNodePyLayer::ApplyGradientHooks(grads);
 
   paddle::pybind::PyLayerObject* ctx =
       reinterpret_cast<paddle::pybind::PyLayerObject*>(ctx_);
@@ -102,8 +103,6 @@ operator()(
         pybind11::detail::error_string().c_str()));
   }
 
-  outputs_ = outputs;
-
   VLOG(6) << "PyLayer backward function finish...";
 
   PyObject* outputs_tuple = nullptr;
@@ -124,7 +123,9 @@ operator()(
         ctx->forward_input_tensor_is_duplicable.size(), outputs_size));
   }
 
-  std::vector<std::vector<paddle::experimental::Tensor>> grad_out;
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
+      grad_out;
   grad_out.reserve(ctx->forward_input_tensor_is_duplicable.size());
   for (size_t i = 0; i < ctx->forward_input_tensor_is_duplicable.size(); i++) {
     if (i < outputs_size) {
@@ -159,6 +160,9 @@ operator()(
   if (!PyTuple_Check(outputs)) {
     Py_XDECREF(outputs_tuple);
   }
+  Py_XDECREF(outputs);
+  Py_XDECREF(ctx_);
+  ctx_ = nullptr;
 
   return grad_out;
 }

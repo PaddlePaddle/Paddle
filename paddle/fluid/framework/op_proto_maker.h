@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
 namespace paddle {

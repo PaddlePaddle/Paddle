@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
+
 #include <atomic>
 #include <thread>
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
@@ -37,10 +39,10 @@ TEST(WorkQueueUtils, TestEventsWaiter) {
 
 TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   VLOG(1) << "In Test";
-  using paddle::framework::WorkQueueOptions;
-  using paddle::framework::WorkQueue;
   using paddle::framework::CreateSingleThreadedWorkQueue;
   using paddle::framework::EventsWaiter;
+  using paddle::framework::WorkQueue;
+  using paddle::framework::WorkQueueOptions;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kLoopNum = 1000000;
@@ -83,10 +85,10 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
 
 TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   VLOG(1) << "In Test";
-  using paddle::framework::WorkQueueOptions;
-  using paddle::framework::WorkQueue;
   using paddle::framework::CreateMultiThreadedWorkQueue;
   using paddle::framework::EventsWaiter;
+  using paddle::framework::WorkQueue;
+  using paddle::framework::WorkQueueOptions;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kExternalLoopNum = 100;
@@ -136,10 +138,10 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
 }
 
 TEST(WorkQueue, TestWorkQueueGroup) {
-  using paddle::framework::WorkQueueOptions;
-  using paddle::framework::WorkQueueGroup;
   using paddle::framework::CreateWorkQueueGroup;
   using paddle::framework::EventsWaiter;
+  using paddle::framework::WorkQueueGroup;
+  using paddle::framework::WorkQueueOptions;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kExternalLoopNum = 100;

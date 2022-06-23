@@ -16,22 +16,17 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
+#include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-
-#include "paddle/fluid/eager/api/all.h"
-
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/tensor_meta.h"
-
 #include "paddle/fluid/eager/tests/test_utils.h"
-
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
@@ -69,7 +64,7 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
   meta->SetSingleOutRankWithSlot(0, 0);
   meta->SetGradNode(acc_node_ptr);
   std::vector<egr::AutogradMeta*> res = {meta};
-  scale_node_ptr->AddEdges(&res, 0);
+  scale_node_ptr->SetGradOutMeta(leaf_tensor, 0);
 
   Backward(target_tensors, {});
 

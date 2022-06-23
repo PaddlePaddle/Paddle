@@ -24,6 +24,7 @@ paddle.enable_static()
 
 
 class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "3"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = \
@@ -193,8 +194,11 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         strategy.fuse_grad_size_in_MB = 32
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
 
-        self.optimizer(
-            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
         self.debug_program(train_prog, startup_prog)
@@ -267,8 +271,11 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         strategy.fuse_grad_merge = True
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
 
-        self.optimizer(
-            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
         self.debug_program(train_prog, startup_prog)
@@ -325,7 +332,9 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
 
         self.set_strategy(strategy, 'pipeline')
         self.set_strategy(strategy, 'amp')
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.recompute = True
         strategy.recompute_configs = {
             "checkpoints":
@@ -397,6 +406,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
 
 
 class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "3"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = \
@@ -430,8 +440,11 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         strategy.fuse_grad_size_in_MB = 32
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
 
-        self.optimizer(
-            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
         self.debug_program(train_prog, startup_prog)
@@ -491,8 +504,11 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         strategy.fuse_grad_size_in_MB = 32
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
 
-        self.optimizer(
-            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
         self.debug_program(train_prog, startup_prog)

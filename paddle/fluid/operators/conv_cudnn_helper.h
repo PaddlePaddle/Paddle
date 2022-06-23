@@ -72,8 +72,10 @@ static inline bool UseFixedWorkspace() {
 static size_t CalcWorkspaceLimitInBytes(bool use_fixed_workspace) {
   if (!use_fixed_workspace) {
     int device_id = platform::GetCurrentDeviceId();
-    int64_t allocated = memory::StatGetCurrentValue("Allocated", device_id);
-    int64_t reserved = memory::StatGetCurrentValue("Reserved", device_id);
+    int64_t allocated =
+        memory::DeviceMemoryStatCurrentValue("Allocated", device_id);
+    int64_t reserved =
+        memory::DeviceMemoryStatCurrentValue("Reserved", device_id);
     int64_t availble = platform::GpuAvailableMemToAlloc();
     VLOG(3) << "[memory] allocated=" << ToMegaBytes(allocated)
             << " MB, reserved=" << ToMegaBytes(reserved)

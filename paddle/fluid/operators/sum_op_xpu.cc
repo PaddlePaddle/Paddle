@@ -11,8 +11,9 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/sum_op.h"
 #include <vector>
+
+#include "paddle/fluid/operators/sum_op.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {

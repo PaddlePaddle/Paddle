@@ -15,6 +15,7 @@ limitations under the License. */
 #include <initializer_list>
 #include <iostream>
 #include <memory>
+
 #include "dnnl.hpp"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/operator.h"
@@ -31,8 +32,8 @@ using paddle::platform::CPUDeviceContext;
 using paddle::platform::CreateKey;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
-using platform::to_void_cast;
 using phi::vectorize;
+using platform::to_void_cast;
 using Direction = dnnl::rnn_direction;
 
 namespace {

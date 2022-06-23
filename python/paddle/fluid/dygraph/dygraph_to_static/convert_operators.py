@@ -21,6 +21,7 @@ from paddle.fluid.layers import assign, fill_constant, slice, reduce_all, reduce
 from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME
+from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
 
 
 def convert_while_loop(cond, body, loop_vars):
@@ -167,7 +168,7 @@ def convert_logical_not(x):
     A function representation of a Python ``not`` statement.
 
     Args:
-        x(bool|Tensor): Operand of of ``not`` operator.
+        x(bool|Tensor): Operand of ``not`` operator.
 
     Returns:
         A python bool variable or a bool Tensor.
@@ -188,7 +189,8 @@ def _run_py_logical_not(x):
     return not x
 
 
-def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
+def convert_ifelse(pred, true_fn, false_fn, get_args, set_args,
+                   return_name_ids):
     """
     A function representation of a Python ``if/else`` statement.
 
@@ -196,19 +198,18 @@ def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
         pred(bool|Tensor): A boolean Tensor which determines whether to return the result of ``true_fn`` or ``false_fn`` .
         true_fn(callable): A callable to be performed if ``pred`` is true.
         false_fn(callable): A callable to be performed if ``pred`` is false.
-        true_args(tuple): Parameters of ``true_fn``.
-        false_args(tuple): Parameters of ``false_fn``.
-        return_vars(tuple): Return variables of ``true_fn`` and ``false_fn``.
+        get_args(callable): Get all arguments that needed in true_fn and false_fn.
+        set_args(callable): Update arguments that modified in trure_fn and false_fn.
 
     Returns:
-        ``true_fn(true_args)`` if the predicate ``pred`` is true else ``false_fn(false_args)`` .
+        ``true_fn()`` if the predicate ``pred`` is true else ``false_fn()`` .
 
     """
     if isinstance(pred, Variable):
-        out = _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
-                               return_vars)
+        out = _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
+                               return_name_ids)
     else:
-        out = _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args)
+        out = _run_py_ifelse(pred, true_fn, false_fn)
 
     return _remove_no_value_return_var(out)
 
@@ -219,8 +220,8 @@ def _remove_no_value_return_var(out):
         align_ret = out[0]
         if isinstance(align_ret, tuple):
             for index, item in enumerate(align_ret):
-                if isinstance(item, Variable) and (
-                        RETURN_NO_VALUE_VAR_NAME in item.name):
+                if isinstance(item, Variable) and (RETURN_NO_VALUE_VAR_NAME
+                                                   in item.name):
                     # return None
                     if index == 0:
                         processed_out = (None, ) + out[1:]
@@ -231,8 +232,8 @@ def _remove_no_value_return_var(out):
                     break
 
         for index, item in enumerate(processed_out):
-            if isinstance(item, Variable) and (
-                    RETURN_NO_VALUE_VAR_NAME in item.name):
+            if isinstance(item, Variable) and (RETURN_NO_VALUE_VAR_NAME
+                                               in item.name):
                 processed_out = processed_out[:index]
 
         if not processed_out:
@@ -246,15 +247,59 @@ def _remove_no_value_return_var(out):
         return out
 
 
-def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
-                     return_vars):
+def _check_no_undefined_var(outs, names, branch_name):
+    if names is None: return
+    if not isinstance(outs, (list, tuple)):
+        outs = [outs]
+    for var, name in zip(list(outs), names):
+        if isinstance(var, UndefinedVar):
+            raise ValueError(
+                "Required '{}' must be initialized both in if-else branch, but found it not initialized in '{}'."
+                .format(name, branch_name))
+
+
+def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
+                     return_name_ids):
+    """
+    Paddle cond API will evaluate both ture_fn and false_fn codes.
+    """
     pred = cast_bool_if_necessary(pred)
-    return control_flow.cond(pred, lambda: true_fn(*true_args),
-                             lambda: false_fn(*false_args))
+    init_args = get_args()
+
+    def new_true_fn():
+        set_args(init_args)
+        outs = true_fn()
+        _check_no_undefined_var(outs, return_name_ids, 'if_body')
+        return outs
+
+    def new_false_fn():
+        set_args(init_args)
+        outs = false_fn()
+        _check_no_undefined_var(outs, return_name_ids, 'else_body')
+        return outs
+
+    cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn)
+    # IfExpr's return_name_ids maybe None
+    if return_name_ids is None:
+        return cond_outs
+
+    # recover args state
+    num_outs = len(return_name_ids)
+    num_args = 1 if not isinstance(init_args, tuple) else len(init_args)
+    assert num_outs <= num_args
+
+    if num_args == 1:
+        final_outs = cond_outs
+    else:
+        cond_outs = (cond_outs, ) if num_outs == 1 else cond_outs
+        final_outs = cond_outs + init_args[num_outs:]
+
+    set_args(final_outs)
+    return final_outs
 
 
-def _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args):
-    return true_fn(*true_args) if pred else false_fn(*false_args)
+def _run_py_ifelse(pred, true_fn, false_fn):
+    return true_fn() if pred else false_fn()
 
 
 def convert_len(var):
@@ -316,11 +361,10 @@ def convert_var_shape(x, idx=None, in_control_flow=False):
     #      # Assume x.shape=[3, -1] in static mode
     #      y = paddle.reshape(x, shape=[1, x.shape[1]])
     #      ```
-    if isinstance(x, Variable) and (in_control_flow or has_negative(x.shape,
-                                                                    idx)):
+    if isinstance(x, Variable) and has_negative(x.shape, idx):
         return nn.shape(x) if idx is None else nn.shape(x)[idx]
     else:
-        return x.shape if idx is None else x.shape[idx]
+        return list(x.shape) if idx is None else x.shape[idx]
 
 
 def convert_var_shape_simple(x):
@@ -330,7 +374,8 @@ def convert_var_shape_simple(x):
     if isinstance(x, Variable):
         return nn.shape(x)
     else:
-        return x.shape
+        # Use list() to make returned type consistant with dygraph
+        return list(x.shape)
 
 
 def eval_if_exist_else_none(name, global_symbol_table):
@@ -549,6 +594,7 @@ def _run_paddle_pop(array, *args):
 # TODO(liym27): A better way to slice tensor array.
 #  Maybe support start == end for slice op.
 def _slice_tensor_array(array, start, end):
+
     def true_fn():
         null_array = create_array("float32")
         return null_array

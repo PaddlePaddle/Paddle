@@ -23,6 +23,7 @@ import numpy as np
 
 
 class TestMathOpPatches(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
 
@@ -141,8 +142,10 @@ class TestMathOpPatches(unittest.TestCase):
         a_np = numpy.random.random(size=[10, 1]).astype('float32')
         b_np = numpy.random.random(size=[10, 1]).astype('float32') + 1e-2
         c_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np,
-                             'b': b_np},
+                       feed={
+                           "a": a_np,
+                           'b': b_np
+                       },
                        fetch_list=[c])
         self.assertTrue(numpy.allclose(a_np / b_np, c_np))
 
@@ -156,8 +159,10 @@ class TestMathOpPatches(unittest.TestCase):
         a_np = numpy.random.random(size=[10, 1]).astype('float32')
         b_np = numpy.random.random(size=[10, 1]).astype('float32')
         c_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np,
-                             'b': b_np},
+                       feed={
+                           "a": a_np,
+                           'b': b_np
+                       },
                        fetch_list=[c])
         self.assertTrue(numpy.allclose(a_np * b_np, c_np))
 
@@ -171,8 +176,10 @@ class TestMathOpPatches(unittest.TestCase):
         a_np = numpy.random.random(size=[10, 1]).astype('float32')
         b_np = numpy.random.random(size=[10, 1]).astype('float32')
         c_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np,
-                             'b': b_np},
+                       feed={
+                           "a": a_np,
+                           'b': b_np
+                       },
                        fetch_list=[c])
         self.assertTrue(numpy.allclose(a_np + b_np, c_np))
 
@@ -186,8 +193,10 @@ class TestMathOpPatches(unittest.TestCase):
         a_np = numpy.random.random(size=[10, 1]).astype('float32')
         b_np = numpy.random.random(size=[10, 1]).astype('float32')
         c_np = exe.run(fluid.default_main_program(),
-                       feed={"a": a_np,
-                             'b': b_np},
+                       feed={
+                           "a": a_np,
+                           'b': b_np
+                       },
                        fetch_list=[c])
         self.assertTrue(numpy.allclose(a_np - b_np, c_np))
 
@@ -217,8 +226,10 @@ class TestMathOpPatches(unittest.TestCase):
         b_np = numpy.array([3, 4, 11, 15, 8, 18]).astype('float32')
 
         c_np, = exe.run(fluid.default_main_program(),
-                        feed={"a": a_np,
-                              "b": b_np},
+                        feed={
+                            "a": a_np,
+                            "b": b_np
+                        },
                         fetch_list=[c])
 
         self.assertTrue(numpy.array_equal(c_np, a_np == b_np))
@@ -239,8 +250,10 @@ class TestMathOpPatches(unittest.TestCase):
         a_np = numpy.array([3, 4, 10, 14, 9, 18]).astype('float')
         b_np = numpy.array([3, 4, 11, 15, 8, 18]).astype('float')
         c_np, = exe.run(fluid.default_main_program(),
-                        feed={"a": a_np,
-                              "b": b_np},
+                        feed={
+                            "a": a_np,
+                            "b": b_np
+                        },
                         fetch_list=[c])
 
         self.assertTrue(numpy.array_equal(c_np, a_np - b_np))
@@ -282,8 +295,10 @@ class TestMathOpPatches(unittest.TestCase):
 
         exe = fluid.Executor()
         out = exe.run(fluid.default_main_program(),
-                      feed={"x": x_np,
-                            "y": y_np},
+                      feed={
+                          "x": x_np,
+                          "y": y_np
+                      },
                       fetch_list=[z])
         self.assertTrue(np.array_equal(out[0], out_np))
 
@@ -299,8 +314,10 @@ class TestMathOpPatches(unittest.TestCase):
 
         exe = fluid.Executor()
         out = exe.run(fluid.default_main_program(),
-                      feed={"x": x_np,
-                            "y": y_np},
+                      feed={
+                          "x": x_np,
+                          "y": y_np
+                      },
                       fetch_list=[z])
         self.assertTrue(np.array_equal(out[0], out_np))
 
@@ -316,8 +333,10 @@ class TestMathOpPatches(unittest.TestCase):
 
         exe = fluid.Executor()
         out = exe.run(fluid.default_main_program(),
-                      feed={"x": x_np,
-                            "y": y_np},
+                      feed={
+                          "x": x_np,
+                          "y": y_np
+                      },
                       fetch_list=[z])
         self.assertTrue(np.array_equal(out[0], out_np))
 
@@ -360,16 +379,18 @@ class TestMathOpPatches(unittest.TestCase):
     def test_matmul(self):
         a = paddle.static.data(name='a', shape=[2, 3], dtype='float32')
         b = paddle.static.data(name='b', shape=[3, 5], dtype='float32')
-        c = a @b  # __matmul__
+        c = a @ b  # __matmul__
         a_np = numpy.random.uniform(-1, 1, size=[2, 3]).astype('float32')
         b_np = numpy.random.uniform(-1, 1, size=[3, 5]).astype('float32')
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         c_np = exe.run(paddle.static.default_main_program(),
-                       feed={"a": a_np,
-                             "b": b_np},
+                       feed={
+                           "a": a_np,
+                           "b": b_np
+                       },
                        fetch_list=[c])
-        self.assertTrue(numpy.allclose(a_np @b_np, c_np))
+        self.assertTrue(numpy.allclose(a_np @ b_np, c_np))
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <array>
 #include <functional>
 #include <mutex>
+
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
@@ -198,6 +199,10 @@ class PADDLE_API GPUContext : public DeviceContext {
   void SetEigenDevice(Eigen::GpuDevice*);
 
   void SetBlasHandle(blasHandle_t);
+
+  void SetBlasTensorCoreHandle(blasHandle_t);
+
+  void SetBlasTF32Handle(blasHandle_t);
 
   void SetBlasLtHandle(blasLtHandle_t);
 

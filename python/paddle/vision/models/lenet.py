@@ -20,37 +20,41 @@ __all__ = []
 
 class LeNet(nn.Layer):
     """LeNet model from
-    `"LeCun Y, Bottou L, Bengio Y, et al. Gradient-based learning applied to document recognition[J]. Proceedings of the IEEE, 1998, 86(11): 2278-2324.`_
+    `"Gradient-based learning applied to document recognition" <https://ieeexplore.ieee.org/document/726791>`_.
 
     Args:
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
                             will not be defined. Default: 10.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of LeNet model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import LeNet
 
             model = LeNet()
+
+            x = paddle.rand([1, 1, 28, 28])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 10]
     """
 
     def __init__(self, num_classes=10):
         super(LeNet, self).__init__()
         self.num_classes = num_classes
-        self.features = nn.Sequential(
-            nn.Conv2D(
-                1, 6, 3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2D(2, 2),
-            nn.Conv2D(
-                6, 16, 5, stride=1, padding=0),
-            nn.ReLU(),
-            nn.MaxPool2D(2, 2))
+        self.features = nn.Sequential(nn.Conv2D(1, 6, 3, stride=1, padding=1),
+                                      nn.ReLU(), nn.MaxPool2D(2, 2),
+                                      nn.Conv2D(6, 16, 5, stride=1, padding=0),
+                                      nn.ReLU(), nn.MaxPool2D(2, 2))
 
         if num_classes > 0:
-            self.fc = nn.Sequential(
-                nn.Linear(400, 120),
-                nn.Linear(120, 84), nn.Linear(84, num_classes))
+            self.fc = nn.Sequential(nn.Linear(400, 120), nn.Linear(120, 84),
+                                    nn.Linear(84, num_classes))
 
     def forward(self, inputs):
         x = self.features(inputs)

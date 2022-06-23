@@ -52,10 +52,13 @@ class SkipLayerNormOpConverter : public OpConverter {
     bool enable_int8 = op_desc.HasAttr("enable_int8");
 
     nvinfer1::ILayer* layer = nullptr;
-
-    if (engine_->use_oss()) {
+    bool flag_varseqlen = engine_->use_varseqlen() &&
+                          engine_->tensorrt_transformer_posid() != "" &&
+                          engine_->tensorrt_transformer_maskid() != "";
+    if (flag_varseqlen) {
       if (engine_->with_interleaved()) {
-        VLOG(4) << "fused skip_layernorm op: use_oss and with_interleaved";
+        VLOG(4)
+            << "fused skip_layernorm op: use_varseqlen and with_interleaved";
         if (!enable_int8) {
           PADDLE_THROW(
               platform::errors::Fatal("use with_interleaved must be int8."));

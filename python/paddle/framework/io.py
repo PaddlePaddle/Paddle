@@ -96,7 +96,7 @@ def _load_state_dict_from_save_inference_model(model_path, config):
 
 
 def _load_state_dict_from_save_params(model_path):
-    # Try to load all the files in the directory in VarBase format, 
+    # Try to load all the files in the directory in VarBase format,
     # the file name is used as the name of VarBase
     load_var_list = []
 
@@ -157,7 +157,7 @@ def _build_load_path_and_config(path, config):
     elif not prefix_format_exist and not directory_format_exist:
         error_msg = "The ``path`` (%s) to load model not exists."
         # if current path is a prefix, and the path.pdparams or path.pdopt
-        # is exist, users may want use `paddle.load` load the result of 
+        # is exist, users may want use `paddle.load` load the result of
         # `fluid.save_dygraph`, we raise error here for users
         params_file_path = path + ".pdparams"
         opti_file_path = path + ".pdopt"
@@ -237,8 +237,9 @@ def _pickle_save(obj, f, protocol):
             type(protocol)))
 
     if protocol < 2 or protocol > 4:
-        raise ValueError("Expected 1<'protocol'<5, but received protocol={}".
-                         format(protocol))
+        raise ValueError(
+            "Expected 1<'protocol'<5, but received protocol={}".format(
+                protocol))
 
     def reduce_varbase(self):
         data = self.numpy()
@@ -330,20 +331,20 @@ def _is_state_dict(obj):
     if isinstance(obj, dict):
 
         def condition(obj):
-            return isinstance(obj, (fluid.Layer, Program, core.VarBase,
-                                    core.eager.Tensor, core.LoDTensor,
-                                    core.SelectedRows))
+            return isinstance(
+                obj, (fluid.Layer, Program, core.VarBase, core.eager.Tensor,
+                      core.LoDTensor, core.SelectedRows))
 
-        # If the value of a dict is a core.VarBase/LoDTensor or a dict 
-        # that does not contain a paddle type(Layer, Program, VarBase, LoDTensor, SelectedRows), 
+        # If the value of a dict is a core.VarBase/LoDTensor or a dict
+        # that does not contain a paddle type(Layer, Program, VarBase, LoDTensor, SelectedRows),
         # the dict is considered to be a state_ dict.
         for key, value in obj.items():
             if isinstance(value, dict):
                 for k, v in value.items():
                     if _contain_x(v, condition):
                         return False
-            elif not isinstance(value, (core.VarBase, core.eager.Tensor,
-                                        core.LoDTensor)):
+            elif not isinstance(
+                    value, (core.VarBase, core.eager.Tensor, core.LoDTensor)):
                 return False
         return True
 
@@ -432,12 +433,13 @@ def _parse_every_object(obj, condition_func, convert_func):
                 obj,
             (str, np.ndarray, core.VarBase, core.eager.Tensor, core.LoDTensor)):
             raise NotImplementedError(
-                "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".
-                format(type(obj)))
+                "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}."
+                .format(type(obj)))
         return obj
 
 
 def _parse_load_result(obj, return_numpy):
+
     def is_layer(obj):
         return isinstance(obj, fluid.Layer)
 
@@ -460,12 +462,12 @@ def _parse_load_result(obj, return_numpy):
     def ndarray_to_tensor(obj):
         return _ndarray_to_tensor(obj, return_numpy=return_numpy)
 
-    # tuple(name, ndarry) was converted from varbase of paddle2.1, 
+    # tuple(name, ndarry) was converted from varbase of paddle2.1,
     # and all tuple(name, ndarry) are converted to tensor.
     if _contain_x(obj, _transformed_from_varbase):
         return _parse_every_object(obj, _transformed_from_varbase,
                                    tuple_to_tensor)
-    # If there is no tuple(name, ndary), it is considered to be saved by paddle2.0 
+    # If there is no tuple(name, ndary), it is considered to be saved by paddle2.0
     # or converted from LoDTensor, and all ndarrays are converted to tensor.
     else:
         return _parse_every_object(obj, _transformed_from_lodtensor,
@@ -565,8 +567,8 @@ def _save_binary_var(obj, path):
     else:
         # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'LoDTensor' or 'SelectedRows'
         raise NotImplementedError(
-            "When use_binary_format = True, `paddle.save`  expected Tensor, but received {}.".
-            format(type(obj)))
+            "When use_binary_format = True, `paddle.save`  expected Tensor, but received {}."
+            .format(type(obj)))
 
 
 def save(obj, path, protocol=4, **configs):
@@ -752,8 +754,9 @@ def _legacy_save(obj, path, protocol=2):
             type(protocol)))
 
     if protocol < 2 or protocol > 4:
-        raise ValueError("Expected 1<'protocol'<5, but received protocol={}".
-                         format(protocol))
+        raise ValueError(
+            "Expected 1<'protocol'<5, but received protocol={}".format(
+                protocol))
 
     if _is_file_path(path):
         filename = os.path.basename(path)
@@ -968,8 +971,8 @@ def load(path, **configs):
                             del load_result["StructuredToParameterName@@"]
                     else:
                         # paddle2.1 static.save/load
-                        load_result = _parse_load_result(load_result,
-                                                         config.return_numpy)
+                        load_result = _parse_load_result(
+                            load_result, config.return_numpy)
 
                 else:
                     load_result = _parse_load_result(load_result,
@@ -1030,18 +1033,18 @@ def _legacy_load(path, **configs):
         if os.path.exists(model_file_path):
             # Load state dict by `jit.save/io.save_inference_model` save format
             # NOTE(chenweihang): [ Compatibility of save_inference_model save format ]
-            # The model saved by `save_inference_model` does not completely correspond to 
-            # the information required by the `state_dict` under the dygraph. 
-            # `save_inference_model` not save structured name, we need to remind 
+            # The model saved by `save_inference_model` does not completely correspond to
+            # the information required by the `state_dict` under the dygraph.
+            # `save_inference_model` not save structured name, we need to remind
             # the user to configure the `use_structured_name` argument when `set_state_dict`
-            # NOTE(chenweihang): `jit.save` doesn't save optimizer state 
-            load_result = _load_state_dict_from_save_inference_model(model_path,
-                                                                     config)
+            # NOTE(chenweihang): `jit.save` doesn't save optimizer state
+            load_result = _load_state_dict_from_save_inference_model(
+                model_path, config)
         else:
             # load state dict by `io.save_params/persistables` save format
-            # TODO(chenweihang): [ Now only supports loading parameters seperately ]
+            # TODO(chenweihang): [ Now only supports loading parameters separately ]
             # If users save all parameters as one file, the [ variable.name -> variable ]
-            # mapping info will lost, so users need to give variable list, but users build 
+            # mapping info will lost, so users need to give variable list, but users build
             # variable list in dygraph mode is difficult, we recommend users to use
             # paddle.static.load_program_state in this case
             load_result = _load_state_dict_from_save_params(model_path)

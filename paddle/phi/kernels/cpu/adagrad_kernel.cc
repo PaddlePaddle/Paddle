@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/adagrad_kernel.h"
+
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"

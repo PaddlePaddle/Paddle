@@ -20,7 +20,9 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #else
 #include <thrust/fill.h>
+
 #include <vector>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/compare_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"

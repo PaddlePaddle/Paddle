@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/pybind/op_function_common.h"
+
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
@@ -28,7 +30,6 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/pybind/imperative.h"
-#include "paddle/fluid/pybind/op_function_common.h"
 
 namespace py = pybind11;
 namespace paddle {
@@ -282,6 +283,7 @@ std::vector<int> CastPyArg2Ints(PyObject* obj, const std::string& op_type,
   std::vector<int> value;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
+    value.reserve(len);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
@@ -298,6 +300,7 @@ std::vector<int> CastPyArg2Ints(PyObject* obj, const std::string& op_type,
     }
   } else if (PyTuple_Check(obj)) {
     Py_ssize_t len = PyTuple_Size(obj);
+    value.reserve(len);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
@@ -314,6 +317,7 @@ std::vector<int> CastPyArg2Ints(PyObject* obj, const std::string& op_type,
     }
   } else if (PySequence_Check(obj)) {
     Py_ssize_t len = PySequence_Size(obj);
+    value.reserve(len);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PySequence_GetItem(obj, i);
@@ -637,10 +641,11 @@ void CastPyArg2AttrBlock(PyObject* obj,
 void ConstructAttrMapFromPyArgs(
     const std::string& op_type, PyObject* args, ssize_t attr_start,
     ssize_t attr_end, paddle::framework::AttributeMap& attrs) {  // NOLINT
-  PADDLE_ENFORCE_EQ(
-      (attr_end - attr_start) % 2, 0,
-      platform::errors::InvalidArgument(
-          "The number of arguments for attributes should be even."));
+  PADDLE_ENFORCE_EQ((attr_end - attr_start) % 2, 0,
+                    platform::errors::InvalidArgument(
+                        "The number of arguments for attributes should be even "
+                        "but attr_start = %d, attr_end = %d.",
+                        attr_start, attr_end));
 
   auto attr_type_map = &(OpAttrTypeMap::Instance().Map()[op_type]);
 

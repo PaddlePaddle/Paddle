@@ -18,8 +18,6 @@ limitations under the License. */
 #undef _XOPEN_SOURCE
 #endif
 
-#include "paddle/fluid/pybind/fleet_py.h"
-
 #include <map>
 #include <memory>
 #include <string>
@@ -35,17 +33,18 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#include "paddle/fluid/pybind/fleet_py.h"
 
 namespace py = pybind11;
 using paddle::distributed::CommContext;
 using paddle::distributed::Communicator;
-using paddle::distributed::FleetWrapper;
-using paddle::distributed::HeterClient;
-using paddle::distributed::GraphPyService;
-using paddle::distributed::GraphNode;
-using paddle::distributed::GraphPyServer;
-using paddle::distributed::GraphPyClient;
 using paddle::distributed::FeatureNode;
+using paddle::distributed::FleetWrapper;
+using paddle::distributed::GraphNode;
+using paddle::distributed::GraphPyClient;
+using paddle::distributed::GraphPyServer;
+using paddle::distributed::GraphPyService;
+using paddle::distributed::HeterClient;
 
 namespace paddle {
 namespace pybind {
@@ -222,8 +221,8 @@ void BindGraphPyClient(py::module* m) {
              auto feats =
                  self.get_node_feat(node_type, node_ids, feature_names);
              std::vector<std::vector<py::bytes>> bytes_feats(feats.size());
-             for (int i = 0; i < feats.size(); ++i) {
-               for (int j = 0; j < feats[i].size(); ++j) {
+             for (size_t i = 0; i < feats.size(); ++i) {
+               for (size_t j = 0; j < feats[i].size(); ++j) {
                  bytes_feats[i].push_back(py::bytes(feats[i][j]));
                }
              }
@@ -235,8 +234,8 @@ void BindGraphPyClient(py::module* m) {
               std::vector<std::string> feature_names,
               std::vector<std::vector<py::bytes>> bytes_feats) {
              std::vector<std::vector<std::string>> feats(bytes_feats.size());
-             for (int i = 0; i < bytes_feats.size(); ++i) {
-               for (int j = 0; j < bytes_feats[i].size(); ++j) {
+             for (size_t i = 0; i < bytes_feats.size(); ++i) {
+               for (size_t j = 0; j < bytes_feats[i].size(); ++j) {
                  feats[i].push_back(std::string(bytes_feats[i][j]));
                }
              }
@@ -246,13 +245,13 @@ void BindGraphPyClient(py::module* m) {
       .def("bind_local_server", &GraphPyClient::bind_local_server);
 }
 
-using paddle::distributed::TreeIndex;
-using paddle::distributed::IndexWrapper;
 using paddle::distributed::IndexNode;
+using paddle::distributed::IndexWrapper;
+using paddle::distributed::TreeIndex;
 #ifdef PADDLE_WITH_HETERPS
 using paddle::framework::GraphGpuWrapper;
-using paddle::framework::NeighborSampleResult;
 using paddle::framework::NeighborSampleQuery;
+using paddle::framework::NeighborSampleResult;
 using paddle::framework::NodeQueryResult;
 #endif
 
@@ -325,14 +324,16 @@ void BindNeighborSampleResult(py::module* m) {
   py::class_<NeighborSampleResult>(*m, "NeighborSampleResult")
       .def(py::init<>())
       .def("initialize", &NeighborSampleResult::initialize)
+      .def("get_len", &NeighborSampleResult::get_len)
+      .def("get_val", &NeighborSampleResult::get_actual_val)
+      .def("get_sampled_graph", &NeighborSampleResult::get_sampled_graph)
       .def("display", &NeighborSampleResult::display);
 }
 
 void BindGraphGpuWrapper(py::module* m) {
-  py::class_<GraphGpuWrapper>(*m, "GraphGpuWrapper")
-      .def(py::init<>())
-      //.def("test", &GraphGpuWrapper::test)
-      .def("initialize", &GraphGpuWrapper::initialize)
+  py::class_<GraphGpuWrapper, std::shared_ptr<GraphGpuWrapper>>(
+      *m, "GraphGpuWrapper")
+      .def(py::init([]() { return GraphGpuWrapper::GetInstance(); }))
       .def("neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample_v3)
       .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample)
       .def("set_device", &GraphGpuWrapper::set_device)
@@ -342,6 +343,19 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("add_table_feat_conf", &GraphGpuWrapper::add_table_feat_conf)
       .def("load_edge_file", &GraphGpuWrapper::load_edge_file)
       .def("upload_batch", &GraphGpuWrapper::upload_batch)
+      .def("get_all_id", &GraphGpuWrapper::get_all_id)
+      .def("init_sample_status", &GraphGpuWrapper::init_sample_status)
+      .def("free_sample_status", &GraphGpuWrapper::free_sample_status)
+      .def("load_next_partition", &GraphGpuWrapper::load_next_partition)
+      .def("make_partitions", &GraphGpuWrapper::make_partitions)
+      .def("make_complementary_graph",
+           &GraphGpuWrapper::make_complementary_graph)
+      .def("set_search_level", &GraphGpuWrapper::set_search_level)
+      .def("init_search_level", &GraphGpuWrapper::init_search_level)
+      .def("get_partition_num", &GraphGpuWrapper::get_partition_num)
+      .def("get_partition", &GraphGpuWrapper::get_partition)
+      .def("load_node_weight", &GraphGpuWrapper::load_node_weight)
+      .def("export_partition_files", &GraphGpuWrapper::export_partition_files)
       .def("load_node_file", &GraphGpuWrapper::load_node_file);
 }
 #endif

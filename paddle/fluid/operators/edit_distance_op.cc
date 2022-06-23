@@ -37,12 +37,13 @@ class EditDistanceOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           hyp_dims.size() == 2 && ref_dims.size() == 2 &&
               hyp_dims[0] == ref_dims[0],
-          true, platform::errors::InvalidArgument(
-                    "Input(Hyps) and Input(Refs) must be 2-D Tensors with "
-                    "identical first dimension. But received Input(Hyps): "
-                    "input rank %u, input shape [%s]; received Input(Refs): "
-                    "input rank %u, input shape [%s]",
-                    hyp_dims.size(), hyp_dims, ref_dims.size(), ref_dims));
+          true,
+          platform::errors::InvalidArgument(
+              "Input(Hyps) and Input(Refs) must be 2-D Tensors with "
+              "identical first dimension. But received Input(Hyps): "
+              "input rank %u, input shape [%s]; received Input(Refs): "
+              "input rank %u, input shape [%s]",
+              hyp_dims.size(), hyp_dims, ref_dims.size(), ref_dims));
       PADDLE_ENFORCE_EQ(
           hyp_length_dims[0] == ref_length_dims[0] &&
               hyp_length_dims[0] == hyp_dims[0],

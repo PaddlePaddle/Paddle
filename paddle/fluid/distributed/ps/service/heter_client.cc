@@ -23,6 +23,8 @@ DEFINE_int32(switch_send_recv_timeout_s, 600, "switch_send_recv_timeout_s");
 namespace paddle {
 namespace distributed {
 std::shared_ptr<HeterClient> HeterClient::s_instance_ = nullptr;
+std::mutex HeterClient::mtx_;
+std::shared_ptr<HeterClient> HeterClient::switch_s_instance_ = nullptr;
 
 int GetMicroId(const platform::DeviceContext& ctx,
                const framework::Scope* scope) {
@@ -137,8 +139,9 @@ void HeterClient::SendAndRecvAsync(
       message_name, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
       &request, &request_io_buffer);
 
-  int micro_id = GetMicroId(ctx, p_scope);
+  int micro_id = GetMicroId(ctx, p_scope);  // global
   auto minibatch_id = micro_id / 10;
+  VLOG(4) << "micro_id: " << micro_id;
   // select channel according to micro id
   if (mode == "forward") {
     int num = minibatch_id % xpu_channels_.size();

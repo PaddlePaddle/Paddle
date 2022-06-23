@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/kernel_factory.h"
 
-// See Note [ Why still include the fluid headers? ]
+#include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {

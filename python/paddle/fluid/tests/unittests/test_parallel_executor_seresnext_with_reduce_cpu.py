@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 
 
 class TestResnetWithReduceBase(TestParallelExecutorBase):
+
     def _compare_reduce_and_allreduce(self, use_device, delta2=1e-5):
         if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
@@ -86,9 +87,10 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
 
 
 class TestResnetWithReduceCPU(TestResnetWithReduceBase):
+
     def test_seresnext_with_reduce(self):
-        self._compare_reduce_and_allreduce(
-            use_device=DeviceType.CPU, delta2=1e-3)
+        self._compare_reduce_and_allreduce(use_device=DeviceType.CPU,
+                                           delta2=1e-3)
 
 
 if __name__ == '__main__':

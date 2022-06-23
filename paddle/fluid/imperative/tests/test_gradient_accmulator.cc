@@ -384,7 +384,7 @@ static void TestGradientAccumulatorTestUnchangeInput(
     for (auto use_tensor2 : use_tensors) {
       /** g_accum1 && g_accum2: has not been initialized
        *    test accumulate on this graph
-      */
+       */
       auto g_var1 = std::make_shared<VariableWrapper>("g_var1");
       g_var1->SetOverridedStopGradient(false);
       auto g_accum1 = CreateAccumulator(g_var1, sort_gradient);
@@ -437,7 +437,7 @@ static void TestGradientAccumulatorTestUnchangeInput(
 
       /** g_accum3 && g_accum4: has been initialized
        *    test accumulate on previous graph
-      */
+       */
       auto var3 = create_var(use_tensor1);
       auto var_wrapper3_3 = std::make_shared<VariableWrapper>("tmp1_3");
       auto var_wrapper4_3 = std::make_shared<VariableWrapper>("tmp2_3");

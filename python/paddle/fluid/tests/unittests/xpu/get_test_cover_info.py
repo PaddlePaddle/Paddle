@@ -84,12 +84,13 @@ type_dict_str_to_numpy = {
 
 xpu_test_op_white_list = []
 xpu_test_type_white_list = ['float64']
-xpu_test_op_type_white_list = []
+xpu_test_op_type_white_list = ['dropout_float16', 'dropout_grad_float16']
 xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []
 
 
 class XPUOpTestWrapper(object):
+
     def create_classes(self):
         base_class = None
         classes = []
@@ -158,8 +159,10 @@ def make_xpu_op_list(xpu_version):
         for op_type in type_list:
             if op_type == paddle.bfloat16:
                 op_type = paddle.bfloat16
-            if op_type in type_white_list or op_type not in type_dict_paddle_to_str.keys(
-            ):
+
+            if type_dict_paddle_to_str[
+                    op_type] in type_white_list or op_type not in type_dict_paddle_to_str.keys(
+                    ):
                 continue
 
             device_op_type_name = device_op_name + '_' + type_dict_paddle_to_str[
@@ -177,19 +180,23 @@ def make_xpu_op_list(xpu_version):
 
 def get_xpu_op_support_types(op_name, dev_id=0):
     xpu_version = core.get_xpu_device_version(dev_id)
-    support_type_list = core.get_xpu_device_op_support_types(op_name,
-                                                             xpu_version)
+    support_type_list = core.get_xpu_device_op_support_types(
+        op_name, xpu_version)
     support_type_str_list = []
     for stype in support_type_list:
         if stype == paddle.bfloat16:
-            support_type_str_list.append(type_dict_paddle_to_str[
-                paddle.bfloat16])
+            support_type_str_list.append(
+                type_dict_paddle_to_str[paddle.bfloat16])
         else:
             support_type_str_list.append(type_dict_paddle_to_str[stype])
-    type_white_list = get_type_white_list()
-    return [
-        stype for stype in support_type_str_list if stype not in type_white_list
-    ]
+    ops = make_xpu_op_list(xpu_version)
+    support_types = []
+    for stype in support_type_str_list:
+        op_name_type = op_name + "_" + stype
+        if op_name_type in ops:
+            support_types.append(stype)
+
+    return support_types
 
 
 def record_op_test(op_name, test_type):
@@ -239,11 +246,12 @@ def create_test_class(func_globals,
             continue
         class_obj = test_class[1]
         cls_name = "{0}_{1}".format(test_class[0], str(test_type))
-        func_globals[cls_name] = type(cls_name, (class_obj, ), {
-            'in_type': type_dict_str_to_numpy[test_type],
-            'in_type_str': test_type,
-            'op_type_need_check_grad': True
-        })
+        func_globals[cls_name] = type(
+            cls_name, (class_obj, ), {
+                'in_type': type_dict_str_to_numpy[test_type],
+                'in_type_str': test_type,
+                'op_type_need_check_grad': True
+            })
 
     if hasattr(test_class_obj, 'use_dynamic_create_class'
                ) and test_class_obj.use_dynamic_create_class:

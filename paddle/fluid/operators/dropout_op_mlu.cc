@@ -82,7 +82,7 @@ class DropoutMLUKernel : public framework::OpKernel<T> {
             *x, ctx.GetPlace(),
             ctx.template device_context<platform::MLUDeviceContext>(), out);
       } else {
-        float scale = static_cast<T>(1.0f - dropout_prob);
+        auto scale = static_cast<T>(1.0f - dropout_prob);
         Tensor scale_tensor(x->dtype());
         scale_tensor.mutable_data<T>({1}, ctx.GetPlace());
         MLUCnnlTensorDesc scale_desc(scale_tensor);

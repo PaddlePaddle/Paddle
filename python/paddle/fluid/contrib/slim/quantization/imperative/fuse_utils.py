@@ -28,6 +28,27 @@ class Identity(nn.Layer):
         return input
 
 
+def fuse_conv_bn(model):
+    is_train = False
+    if model.training:
+        model.eval()
+        is_train = True
+    fuse_list = []
+    tmp_pair = [None, None]
+    for name, layer in model.named_sublayers():
+        if isinstance(layer, nn.Conv2D):
+            tmp_pair[0] = name
+        if isinstance(layer, nn.BatchNorm2D):
+            tmp_pair[1] = name
+
+        if tmp_pair[0] and tmp_pair[1] and len(tmp_pair) == 2:
+            fuse_list.append(tmp_pair)
+            tmp_pair = [None, None]
+    model = fuse_layers(model, fuse_list)
+    if is_train:
+        model.train()
+
+
 def fuse_layers(model, layers_to_fuse, inplace=False):
     '''
        fuse layers in layers_to_fuse
@@ -61,8 +82,8 @@ def _fuse_layers(model, layers_list):
         layer_list.append(getattr(parent_layer, sub_name))
     new_layers = _fuse_func(layer_list)
     for i, item in enumerate(layers_list):
-        parent_layer, sub_name = utils.find_parent_layer_and_sub_name(model,
-                                                                      item)
+        parent_layer, sub_name = utils.find_parent_layer_and_sub_name(
+            model, item)
         setattr(parent_layer, sub_name, new_layers[i])
 
 
@@ -102,9 +123,10 @@ def _fuse_conv_bn_eval(conv, bn):
     assert (not (conv.training or bn.training)), "Fusion only for eval!"
     fused_conv = copy.deepcopy(conv)
 
-    fused_weight, fused_bias = _fuse_conv_bn_weights(
-        fused_conv.weight, fused_conv.bias, bn._mean, bn._variance, bn._epsilon,
-        bn.weight, bn.bias)
+    fused_weight, fused_bias = _fuse_conv_bn_weights(fused_conv.weight,
+                                                     fused_conv.bias, bn._mean,
+                                                     bn._variance, bn._epsilon,
+                                                     bn.weight, bn.bias)
     fused_conv.weight.set_value(fused_weight)
     if fused_conv.bias is None:
         fused_conv.bias = paddle.create_parameter(
@@ -145,9 +167,11 @@ def _fuse_linear_bn_eval(linear, bn):
     assert (not (linear.training or bn.training)), "Fusion only for eval!"
     fused_linear = copy.deepcopy(linear)
 
-    fused_weight, fused_bias = _fuse_linear_bn_weights(
-        fused_linear.weight, fused_linear.bias, bn._mean, bn._variance,
-        bn._epsilon, bn.weight, bn.bias)
+    fused_weight, fused_bias = _fuse_linear_bn_weights(fused_linear.weight,
+                                                       fused_linear.bias,
+                                                       bn._mean, bn._variance,
+                                                       bn._epsilon, bn.weight,
+                                                       bn.bias)
     fused_linear.weight.set_value(fused_weight)
     if fused_linear.bias is None:
         fused_linear.bias = paddle.create_parameter(

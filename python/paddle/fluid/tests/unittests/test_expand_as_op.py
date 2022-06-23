@@ -31,6 +31,7 @@ def bcast(x, target_tensor):
 
 
 class TestExpandAsOpRank1(OpTest):
+
     def setUp(self):
         self.op_type = "expand_as"
         x = np.random.rand(100).astype("float64")
@@ -49,6 +50,7 @@ class TestExpandAsOpRank1(OpTest):
 
 
 class TestExpandAsOpRank2(OpTest):
+
     def setUp(self):
         self.op_type = "expand_as"
         x = np.random.rand(10, 12).astype("float64")
@@ -67,6 +69,7 @@ class TestExpandAsOpRank2(OpTest):
 
 
 class TestExpandAsOpRank3(OpTest):
+
     def setUp(self):
         self.op_type = "expand_as"
         x = np.random.rand(2, 3, 20).astype("float64")
@@ -85,6 +88,7 @@ class TestExpandAsOpRank3(OpTest):
 
 
 class TestExpandAsOpRank4(OpTest):
+
     def setUp(self):
         self.op_type = "expand_as"
         x = np.random.rand(1, 1, 7, 16).astype("float64")
@@ -104,6 +108,7 @@ class TestExpandAsOpRank4(OpTest):
 
 # Test dygraph API
 class TestExpandAsDygraphAPI(unittest.TestCase):
+
     def test_api(self):
         import paddle
         paddle.disable_static()
@@ -119,24 +124,28 @@ class TestExpandAsDygraphAPI(unittest.TestCase):
 
 # Test python API
 class TestExpandAsAPI(unittest.TestCase):
+
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([48, 14]).astype("float32")
-        x = fluid.layers.data(
-            name='x', shape=[12, 14], append_batch_size=False, dtype="float32")
+        x = fluid.layers.data(name='x',
+                              shape=[12, 14],
+                              append_batch_size=False,
+                              dtype="float32")
 
-        y = fluid.layers.data(
-            name='target_tensor',
-            shape=[48, 14],
-            append_batch_size=False,
-            dtype="float32")
+        y = fluid.layers.data(name='target_tensor',
+                              shape=[48, 14],
+                              append_batch_size=False,
+                              dtype="float32")
 
         out_1 = fluid.layers.expand_as(x, target_tensor=y)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         res_1 = exe.run(fluid.default_main_program(),
-                        feed={"x": input1,
-                              "target_tensor": input2},
+                        feed={
+                            "x": input1,
+                            "target_tensor": input2
+                        },
                         fetch_list=[out_1])
         assert np.array_equal(res_1[0], np.tile(input1, (4, 1)))
 

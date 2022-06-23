@@ -90,8 +90,10 @@ class ServiceHandlerBase {
 
 using SharedMiniScope =
     std::shared_ptr<std::unordered_map<int, ::paddle::framework::Scope*>>;
+
 using SharedMicroScope = std::shared_ptr<std::unordered_map<
     int, std::shared_ptr<std::vector<::paddle::framework::Scope*>>>>;
+
 using SharedTaskQueue = std::shared_ptr<
     std::unordered_map<int, std::shared_ptr<::paddle::framework::BlockingQueue<
                                 std::pair<std::string, int>>>>>;
@@ -144,31 +146,41 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
                             brpc::Controller* cntl);
 
   void WaitForVarsConsumed(int32_t group_id, const std::string& var_name) {
-    timeline_.Start();
+    // timeline_.Start();
     while (true) {
-      if (vars_ready_flag[group_id][var_name] == 0) {
-        break;
+      {
+        std::lock_guard<std::mutex> lock(scope_mutex_);
+        if (vars_ready_flag[group_id][var_name] == 0) {
+          break;
+        }
       }
+      /*
       timeline_.Pause();
       if (timeline_.ElapsedSec() > FLAGS_switch_send_recv_timeout_s) {
         VLOG(0) << "vars not consumed exceed 10 miniutes";
         break;
       }
+      */
     }
     return;
   }
 
   void WaitForVarsProduced(int32_t group_id, const std::string& var_name) {
-    timeline_.Start();
+    // timeline_.Start();
     while (true) {
-      if (vars_ready_flag[group_id][var_name] == 1) {
-        break;
+      {
+        std::lock_guard<std::mutex> lock(scope_mutex_);
+        if (vars_ready_flag[group_id][var_name] == 1) {
+          break;
+        }
       }
+      /*
       timeline_.Pause();
       if (timeline_.ElapsedSec() > FLAGS_switch_send_recv_timeout_s) {
         VLOG(0) << "vars not produced exceed 10 miniutes";
         break;
       }
+      */
     }
     return;
   }
@@ -216,6 +228,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     auto* tensor = var->GetMutable<framework::LoDTensor>();
     auto data = reinterpret_cast<const float*>(tensor->data());
     auto micro_id = static_cast<int>(data[0]);
+    VLOG(4) << "micro_id in heter server: " << micro_id;
     int minibatch_index = micro_id / 10;
     int microbatch_index = micro_id % 10;
 
@@ -251,6 +264,9 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     distributed::DeserializeFromMultiVarMsgAndIOBuf(
         *request, &request_io_buffer, *dev_ctx_, micro_scope);
     // blocking queue handles multi thread
+    VLOG(4) << "Handle in HeterServer: " << message_name << ", "
+            << microbatch_index;
+    VLOG(4) << "task_queue_ size: " << task_queue_->size();
     (*task_queue_)[minibatch_index]->Push(
         std::make_pair(message_name, microbatch_index));
 
@@ -264,6 +280,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     distributed::SerializeToMultiVarMsgAndIOBuf(
         message_name, response_var_names, empty_var_names, *dev_ctx_,
         &local_scope, response, &response_io_buffer);
+    VLOG(4) << "Handle over";
     return 0;
   }
 
@@ -379,12 +396,12 @@ class HeterService : public PsService {
                             ::google::protobuf::Closure* done) {
     VLOG(4) << "entering SendToSwitch";
     brpc::ClosureGuard done_guard(done);
-    auto& switch_client_ptr_ =
+    std::shared_ptr<HeterClient> switch_client_ptr_ =
         HeterClient::GetSwitchInstance(peer_endpoints_, PEER_ROLE_IS_SWITCH);
-    if (switch_client_ptr_.peer_switch_channels_.empty()) {
-      LOG(ERROR) << "switch_client_ptr_.peer_switch_channels_ null";
+    if (switch_client_ptr_->peer_switch_channels_.empty()) {
+      LOG(ERROR) << "switch_client_ptr_->peer_switch_channels_ null";
     }
-    brpc::Channel* channel = switch_client_ptr_.peer_switch_channels_[0].get();
+    brpc::Channel* channel = switch_client_ptr_->peer_switch_channels_[0].get();
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     // proxy: 定义新的 OnHeterRpcDone 对象（或者在类 OnHeterRpcDone 中 reset）
     OnHeterRpcDone* closure2 = new OnHeterRpcDone([](void* done) {
@@ -414,6 +431,7 @@ class HeterService : public PsService {
         std_cntl.response_attachment().movable());
     fut.wait();
     VLOG(4) << "SendToSwitch done";
+    delete closure2;
   }
 
   void SendS2S(::google::protobuf::RpcController* controller,
@@ -446,11 +464,11 @@ class HeterService : public PsService {
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     VLOG(4) << "SendToWorker(client addr) =" << cntl->remote_side();
-    auto& switch_client_ptr_ =
+    std::shared_ptr<distributed::HeterClient> switch_client_ptr_ =
         HeterClient::GetSwitchInstance(peer_endpoints_, PEER_ROLE_IS_WORKER);
     VLOG(4) << "in switch client, peer worker 0: "
-            << switch_client_ptr_.peer_worker_list_[0];
-    brpc::Channel* channel = switch_client_ptr_.peer_worker_channels_[0].get();
+            << switch_client_ptr_->peer_worker_list_[0];
+    brpc::Channel* channel = switch_client_ptr_->peer_worker_channels_[0].get();
 
     auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
     PsService_Stub stub(channel);
@@ -601,11 +619,9 @@ class HeterServer {
 
   // HeterWrapper singleton
   static std::shared_ptr<HeterServer> GetInstance() {
+    std::unique_lock<std::mutex> lock(mtx_);
     if (s_instance_ == nullptr) {
-      std::unique_lock<std::mutex> lock(mtx_);
-      if (NULL == s_instance_) {
-        s_instance_.reset(new HeterServer());
-      }
+      s_instance_.reset(new HeterServer());
     }
     return s_instance_;
   }

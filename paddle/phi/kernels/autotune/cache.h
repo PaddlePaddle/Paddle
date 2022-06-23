@@ -19,6 +19,7 @@
 #include <numeric>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -216,7 +217,8 @@ enum class AlgorithmType {
   kConvForward = 1,
   kConvBackwardData = 2,
   kConvBackwardFilter = 3,
-  kAlgorithmCount = 4
+  kTranspose = 4,
+  kAlgorithmCount = 5
 };
 
 // AlgorithmsConfigKey -> AlgorithmsID
@@ -248,6 +250,8 @@ class AutoTuneCache {
   AlgorithmsCacheMap& GetConvBackwardFilter() {
     return Get(AlgorithmType::kConvBackwardFilter);
   }
+
+  AlgorithmsCacheMap& GetTranspose() { return Get(AlgorithmType::kTranspose); }
 
   void Clean() {
     for (auto& v : auto_tune_map_) {
