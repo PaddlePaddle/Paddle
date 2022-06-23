@@ -61,7 +61,7 @@ void MasterDaemon::_do_add(SocketType socket) {
   int64_t new_value{};
   std::string key = tcputils::receive_string(socket);
   new_value = tcputils::receive_value<int64_t>(socket);
-  std::vector<int> old_value;
+  std::vector<uint8_t> old_value;
   auto it = _store.find(key);
   if (it != _store.end()) {
     old_value = it->second;
@@ -71,7 +71,8 @@ void MasterDaemon::_do_add(SocketType socket) {
   }
 
   std::string new_value_str = std::to_string(new_value);
-  _store[key] = std::vector<int>(new_value_str.begin(), new_value_str.end());
+  _store[key] =
+      std::vector<uint8_t>(new_value_str.begin(), new_value_str.end());
   VLOG(4) << "TCPStore: new value (" << new_value << ") for key (" << key
           << ") " << GetSockName(socket);
   tcputils::send_value<int64_t>(socket, new_value);
@@ -81,7 +82,7 @@ void MasterDaemon::_do_set(SocketType socket) {
   std::string key = tcputils::receive_string(socket);
   VLOG(4) << "MasterDaemon::_do_set key(" << key << ") " << GetSockName(socket);
 
-  auto value = tcputils::receive_vector<int>(socket);
+  auto value = tcputils::receive_vector<uint8_t>(socket);
   _store[key] = value;
 }
 
@@ -94,8 +95,8 @@ void MasterDaemon::_do_get(SocketType socket) {
       iter,
       _store.end(),
       platform::errors::InvalidArgument("Key %s not found in TCPStore.", key));
-  std::vector<int> value = iter->second;
-  tcputils::send_vector<int>(socket, value);
+  std::vector<uint8_t> value = iter->second;
+  tcputils::send_vector<uint8_t>(socket, value);
 }
 
 void MasterDaemon::_do_stop(SocketType socket) {
@@ -388,17 +389,17 @@ int64_t TCPStore::add(const std::string& key, int64_t value) {
   return _client->receive_value<std::int64_t>();
 }
 
-void TCPStore::set(const std::string& key, const std::vector<int>& value) {
+void TCPStore::set(const std::string& key, const std::vector<uint8_t>& value) {
   VLOG(3) << "TCPStore set.";
   _client->send_command_for_key(Command::SET, _key_prefix + key);
-  _client->send_vector<int>(value);
+  _client->send_vector<uint8_t>(value);
 }
 
-std::vector<int> TCPStore::get(const std::string& key) {
+std::vector<uint8_t> TCPStore::get(const std::string& key) {
   wait(key);
   _client->send_command_for_key(Command::GET, _key_prefix + key);
   VLOG(3) << "TCPStore get.";
-  return _client->receive_vector<int>();
+  return _client->receive_vector<uint8_t>();
 }
 
 void TCPStore::wait(const std::string& key) {
