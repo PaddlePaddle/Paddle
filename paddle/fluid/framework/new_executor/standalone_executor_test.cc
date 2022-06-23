@@ -173,20 +173,24 @@ TEST(InterpreterCore, skip_gc_vars) {
       CreateInterpreterCore(place, startup_prog, &startup_scope);
   startup_core->Run({}, {});
 
-  std::set<std::string> skip_gc_vars = {"uniform_0.tmp_0", "transpose_0.tmp_0",
-                                        "embedding_0.tmp_0", "slice_0.tmp_0",
+  std::set<std::string> skip_gc_vars = {"uniform_0.tmp_0",
+                                        "transpose_0.tmp_0",
+                                        "embedding_0.tmp_0",
+                                        "slice_0.tmp_0",
                                         "split_1.tmp_2"};
-  std::set<std::string> gc_vars = {"uniform_1.tmp_0", "matmul_0.tmp_0",
-                                   "split_0.tmp_0", "elementwise_add_0.tmp_0",
+  std::set<std::string> gc_vars = {"uniform_1.tmp_0",
+                                   "matmul_0.tmp_0",
+                                   "split_0.tmp_0",
+                                   "elementwise_add_0.tmp_0",
                                    "tmp_0"};
-  auto check_gc_result = [](VariableScope& scope, std::set<std::string>& vars,
-                            bool is_skip_gc) {
-    for (const std::string& var_name : vars) {
-      ASSERT_EQ(
-          scope.FindVar(var_name)->GetMutable<LoDTensor>()->IsInitialized(),
-          is_skip_gc);
-    }
-  };
+  auto check_gc_result =
+      [](VariableScope& scope, std::set<std::string>& vars, bool is_skip_gc) {
+        for (const std::string& var_name : vars) {
+          ASSERT_EQ(
+              scope.FindVar(var_name)->GetMutable<LoDTensor>()->IsInitialized(),
+              is_skip_gc);
+        }
+      };
 
   VariableScope main_scope(&scope);
   std::shared_ptr<InterpreterCore> main_core =
@@ -216,8 +220,8 @@ void TestShareWorkQueue(const ProgramDesc& prog,
       CreateInterpreterCore(place, prog, &variable_scope, fetch_names);
   core2->ShareWorkQueueFrom(core1);
 
-  auto run_and_check = [&feed_names, &feed_tensors,
-                        &fetch_results](std::shared_ptr<InterpreterCore> core) {
+  auto run_and_check = [&feed_names, &feed_tensors, &fetch_results](
+                           std::shared_ptr<InterpreterCore> core) {
     FetchList fetch_list = core->Run(feed_names, feed_tensors);
     for (size_t i = 0; i < fetch_list.size(); ++i) {
       const float* fetch_data =
@@ -260,8 +264,8 @@ TEST(InterpreterCore, workqueue_multiplexing) {
   std::copy_n(data_a, 4, tensor_a.mutable_data<float>(dims, place));
   std::copy_n(data_b, 4, tensor_b.mutable_data<float>(dims, place));
 
-  TestShareWorkQueue(program, {"a", "b"}, {tensor_a, tensor_b}, {"c"},
-                     {0.0, 1.1, 2.2, 3.3});
+  TestShareWorkQueue(
+      program, {"a", "b"}, {tensor_a, tensor_b}, {"c"}, {0.0, 1.1, 2.2, 3.3});
 }
 
 }  // namespace framework

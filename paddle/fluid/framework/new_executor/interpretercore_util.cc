@@ -32,12 +32,14 @@
 // Program, while "serial_run" ensures that all Ops are scheduled in a singal
 // thread. In standalone executor, "sequential_run" is also "serial_run", while
 // "serial_run" is not necessarily "sequential_run".
-PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run, false,
+PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
+                            false,
                             "Enable sequential execution for standalone "
                             "executor, only applied to GPU OPs.");
 
 PADDLE_DEFINE_EXPORTED_bool(
-    new_executor_serial_run, false,
+    new_executor_serial_run,
+    false,
     "Enable serial execution for standalone executor, used for debug.");
 
 DECLARE_bool(use_mkldnn);
@@ -80,7 +82,8 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
 }
 
 AsyncWorkQueue::AsyncWorkQueue(size_t host_num_threads,
-                               size_t device_num_threads, EventsWaiter* waiter)
+                               size_t device_num_threads,
+                               EventsWaiter* waiter)
     : host_num_thread_(host_num_threads) {
   queue_group_ = CreateWorkQueueGroup(
       ConstructWorkQueueOptions(host_num_threads, device_num_threads, waiter));
@@ -204,7 +207,8 @@ get_unused_vars(const BlockDesc& block,
 }
 
 void build_variable_scope(const framework::BlockDesc& block,
-                          VariableScope* var_scope, bool use_local_scope) {
+                          VariableScope* var_scope,
+                          bool use_local_scope) {
   VLOG(3) << "Creating Variables";
   auto inner_scope = var_scope->GetMutableScope();
 
@@ -273,7 +277,8 @@ void create_all_ops(const framework::BlockDesc& block,
 }
 
 std::tuple<VariableValueMap, VariableIdMap> build_variable_map(
-    const VariableNameMap& var_name_map, VariableScope* var_scope,
+    const VariableNameMap& var_name_map,
+    VariableScope* var_scope,
     bool enforce_exist = true) {
   VariableValueMap name2var;
   VariableIdMap name2id;
@@ -337,7 +342,8 @@ void apply_device_guard(const OperatorBase* op_base,
 void deal_operator_base(const platform::Place& place,
                         const VariableScope* var_scope,
                         std::shared_ptr<OperatorBase> op_base,
-                        OpFuncNode* op_func_node, Scope* local_scope) {
+                        OpFuncNode* op_func_node,
+                        Scope* local_scope) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
@@ -369,7 +375,8 @@ void build_op_func_list(const platform::Place& place,
                         const framework::BlockDesc& block,
                         const std::set<std::string>& skip_gc_vars,
                         std::vector<OpFuncNode>* vec_func_list,
-                        VariableScope* var_scope, bool use_local_scope) {
+                        VariableScope* var_scope,
+                        bool use_local_scope) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
@@ -472,9 +479,14 @@ void build_op_func_list(const platform::Place& place,
 
       // NOTE(zhiqiu): op_func_node->operator_base_ maybe changed in
       // ApplyDataTransform
-      ApplyDataTransform(expected_kernel_key, place, &ins_map_temp,
-                         &outs_map_temp, var_scope, &op_func_node,
-                         vec_func_list, use_local_scope);
+      ApplyDataTransform(expected_kernel_key,
+                         place,
+                         &ins_map_temp,
+                         &outs_map_temp,
+                         var_scope,
+                         &op_func_node,
+                         vec_func_list,
+                         use_local_scope);
       op_with_kernel = const_cast<framework::OperatorWithKernel*>(
           static_cast<const framework::OperatorWithKernel*>(
               op_func_node.operator_base_.get()));
@@ -507,8 +519,8 @@ void build_op_func_list(const platform::Place& place,
         op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
       }
 
-      auto exec_ctx = ExecutionContext(*op_with_kernel, *runtime_scope,
-                                       *dev_ctx, runtime_context);
+      auto exec_ctx = ExecutionContext(
+          *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
 
       auto run_phi_kernel = false;
       if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
@@ -542,25 +554,27 @@ void build_op_func_list(const platform::Place& place,
               << " : expected_kernel_key : " << expected_kernel_key;
       if (run_phi_kernel) {
         phi::KernelContext pt_kernel_context;
-        op_with_kernel->BuildPhiKernelContext(runtime_context, dev_ctx,
-                                              &pt_kernel_context);
+        op_with_kernel->BuildPhiKernelContext(
+            runtime_context, dev_ctx, &pt_kernel_context);
         op_func_node.pt_kernel_ = op_with_kernel->PhiKernel();
         (*op_func_node.pt_kernel_)(&pt_kernel_context);
       } else {
         auto kernels_iter = all_op_kernels.find(op->Type());
         PADDLE_ENFORCE_NE(
-            kernels_iter, all_op_kernels.end(),
+            kernels_iter,
+            all_op_kernels.end(),
             platform::errors::Unavailable(
                 "There are no kernels which are registered in the %s operator.",
                 op->Type()));
         OpKernelMap& kernels = kernels_iter->second;
 
         auto kernel_iter = kernels.find(expected_kernel_key);
-        PADDLE_ENFORCE_NE(
-            kernel_iter, kernels.end(),
-            platform::errors::NotFound(
-                "Operator (%s) does not have kernel for %s.", op->Type(),
-                KernelTypeToString(expected_kernel_key)));
+        PADDLE_ENFORCE_NE(kernel_iter,
+                          kernels.end(),
+                          platform::errors::NotFound(
+                              "Operator (%s) does not have kernel for %s.",
+                              op->Type(),
+                              KernelTypeToString(expected_kernel_key)));
         // TODO(zhiqiu): add fallback logic
         op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
         op_func_node.kernel_func_(exec_ctx);
@@ -569,9 +583,13 @@ void build_op_func_list(const platform::Place& place,
       // post-process grad_op.outputs if need cast complex grad into real grad.
       // NOTE(Aurelius84): insert a transfer_dtype_op inplacely to cast it.
       if (framework::IsComplexType(expected_kernel_key.data_type_)) {
-        interpreter::HandleComplexGradToRealGrad(
-            op_func_node, place, outputs_names, &runtime_context.outputs,
-            var_scope, vec_func_list, local_scope);
+        interpreter::HandleComplexGradToRealGrad(op_func_node,
+                                                 place,
+                                                 outputs_names,
+                                                 &runtime_context.outputs,
+                                                 var_scope,
+                                                 vec_func_list,
+                                                 local_scope);
       }
       if (!op_func_node.inplace_back_map.empty()) {
         auto& m = op_func_node.inplace_back_map;
@@ -627,7 +645,8 @@ void build_op_func_list(const platform::Place& place,
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Type %s of variable %s is not supported eager deletion.",
-            framework::ToTypeName(var->Type()), var_name));
+            framework::ToTypeName(var->Type()),
+            var_name));
       }
     }
     delete garbages;  // free mem
@@ -656,8 +675,8 @@ void add_fetch(const std::vector<std::string>& fetch_names,
 std::vector<size_t> merge_vector(const std::vector<size_t>& first,
                                  const std::vector<size_t>& second) {
   std::vector<size_t> out(first.size() + second.size());
-  std::merge(first.begin(), first.end(), second.begin(), second.end(),
-             out.begin());
+  std::merge(
+      first.begin(), first.end(), second.begin(), second.end(), out.begin());
 
   std::vector<size_t>::iterator it;
   it = std::unique(out.begin(), out.end());
@@ -669,7 +688,8 @@ std::vector<size_t> merge_vector(const std::vector<size_t>& first,
 
 void update_var_min_rw_op(const std::map<int, std::set<int>>& op2dependences,
                           std::map<int, std::list<int>>* var2min_rw_op,
-                          int cur_op, int rw_var) {
+                          int cur_op,
+                          int rw_var) {
   // rw_var is inputs or outputs of cur_op
   // this function update the var2min_rw_op set .
   if (var2min_rw_op->find(rw_var) == var2min_rw_op->end()) {
@@ -681,7 +701,8 @@ void update_var_min_rw_op(const std::map<int, std::set<int>>& op2dependences,
   var2min_rw_op->at(rw_var).push_back(cur_op);
 }
 
-void AddDownstreamOp(int prior_op_idx, int posterior_op_idx,
+void AddDownstreamOp(int prior_op_idx,
+                     int posterior_op_idx,
                      std::map<int, std::list<int>>* op_downstream_map) {
   if (op_downstream_map->find(prior_op_idx) == op_downstream_map->end()) {
     op_downstream_map->emplace(std::make_pair(prior_op_idx, std::list<int>()));
@@ -689,7 +710,8 @@ void AddDownstreamOp(int prior_op_idx, int posterior_op_idx,
   op_downstream_map->at(prior_op_idx).push_back(posterior_op_idx);
 }
 
-void AddDownstreamOp(int prior_op_idx, int posterior_op_idx,
+void AddDownstreamOp(int prior_op_idx,
+                     int posterior_op_idx,
                      std::map<int, std::list<int>>* op_downstream_map,
                      const std::vector<std::vector<bool>>& op_happens_before) {
   if (op_downstream_map->find(prior_op_idx) != op_downstream_map->end()) {
@@ -719,7 +741,8 @@ const std::string StringizeDownstreamMap(
   std::ostringstream oss;
   for (auto pair : downstream_map) {
     oss << pair.first << " -> ";
-    std::copy(pair.second.begin(), pair.second.end(),
+    std::copy(pair.second.begin(),
+              pair.second.end(),
               std::ostream_iterator<int>(oss, " "));
     oss << std::endl;
   }
@@ -761,8 +784,8 @@ void ShrinkDownstreamMap(std::map<int, std::list<int>>* downstream_map,
   op_happens_before->resize(op_num);
   for (size_t i = 0; i < op_num; ++i) {
     (*op_happens_before)[i].resize(op_num);
-    std::fill((*op_happens_before)[i].begin(), (*op_happens_before)[i].end(),
-              false);
+    std::fill(
+        (*op_happens_before)[i].begin(), (*op_happens_before)[i].end(), false);
   }
 
   // bfs to get all next ops
@@ -779,11 +802,15 @@ void ShrinkDownstreamMap(std::map<int, std::list<int>>* downstream_map,
       }
       for (auto next : downstream_map->at(op)) {
         if (!visited[next]) {
-          PADDLE_ENFORCE_EQ((*op_happens_before)[next][op_idx], false,
+          PADDLE_ENFORCE_EQ((*op_happens_before)[next][op_idx],
+                            false,
                             paddle::platform::errors::AlreadyExists(
                                 "There exists circle in graph, expected "
                                 "%d->%d, but already got %d->%d",
-                                op_idx, next, next, op_idx));
+                                op_idx,
+                                next,
+                                next,
+                                op_idx));
           (*op_happens_before)[op_idx][next] = true;
           VLOG(8) << "happens before: " << op_idx << " " << next;
           q.push(next);
@@ -936,8 +963,8 @@ std::map<int, std::list<int>> build_op_downstream_map(
   for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
     if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
       if (dependence_op_idx != -1) {
-        AddDownstreamOp(dependence_op_idx, op_idx, &op_downstream_map,
-                        *op_happens_before);
+        AddDownstreamOp(
+            dependence_op_idx, op_idx, &op_downstream_map, *op_happens_before);
       }
       dependence_op_idx = op_idx;
     }
@@ -963,8 +990,8 @@ std::map<int, std::list<int>> build_op_downstream_map(
   for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
     if (is_comm_op(vec_instruction[op_idx].OpBase()->Type())) {
       if (dependence_op_idx != -1) {
-        AddDownstreamOp(dependence_op_idx, op_idx, &op_downstream_map,
-                        *op_happens_before);
+        AddDownstreamOp(
+            dependence_op_idx, op_idx, &op_downstream_map, *op_happens_before);
         VLOG(4) << "Add depend from "
                 << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
                 << vec_instruction[op_idx].OpBase()->Type();
@@ -992,8 +1019,8 @@ std::map<int, std::list<int>> build_op_downstream_map(
         VLOG(4) << "Add depend from "
                 << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
                 << vec_instruction[op_idx].OpBase()->Type();
-        AddDownstreamOp(dependence_op_idx, op_idx, &op_downstream_map,
-                        *op_happens_before);
+        AddDownstreamOp(
+            dependence_op_idx, op_idx, &op_downstream_map, *op_happens_before);
       }
     }
   }
@@ -1046,10 +1073,13 @@ std::map<int, std::list<int>> build_op_downstream_map(
       // first_read_fused_out_op)
       // add depend: them->first_read_fused_out_op
       for (auto j = op_idx + 1;
-           j < static_cast<size_t>(first_read_fused_out_op); ++j) {
+           j < static_cast<size_t>(first_read_fused_out_op);
+           ++j) {
         for (auto var_id : outputs) {
           if (is_write(vec_instruction[j], var_id)) {
-            AddDownstreamOp(j, first_read_fused_out_op, &op_downstream_map,
+            AddDownstreamOp(j,
+                            first_read_fused_out_op,
+                            &op_downstream_map,
                             *op_happens_before);
             VLOG(4) << j << " -> " << first_read_fused_out_op;
             VLOG(4)
@@ -1099,7 +1129,9 @@ std::map<int, std::list<int>> build_op_downstream_map(
     for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
       if (!IsCpuOp(vec_instruction[op_idx])) {
         if (dependence_op_idx != -1) {
-          AddDownstreamOp(dependence_op_idx, op_idx, &op_downstream_map,
+          AddDownstreamOp(dependence_op_idx,
+                          op_idx,
+                          &op_downstream_map,
                           *op_happens_before);
           VLOG(4) << "Add depend from "
                   << vec_instruction[dependence_op_idx].OpBase()->Type() << "("

@@ -37,7 +37,8 @@ namespace framework {
 
 class InterpreterCore {
  public:
-  InterpreterCore(const platform::Place& place, const BlockDesc& block,
+  InterpreterCore(const platform::Place& place,
+                  const BlockDesc& block,
                   const std::set<std::string>& skip_gc_vars,
                   VariableScope* global_scope);
 
@@ -141,7 +142,8 @@ class InterpreterCore {
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(
-    const platform::Place& place, const ProgramDesc& prog,
+    const platform::Place& place,
+    const ProgramDesc& prog,
     VariableScope* global_scope,
     const std::vector<std::string>& fetch_names = {},
     const std::set<std::string>& skip_gc_vars = {});

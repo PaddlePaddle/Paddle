@@ -53,7 +53,8 @@ namespace interpreter {
 
 class AsyncWorkQueue {
  public:
-  AsyncWorkQueue(size_t host_num_threads, size_t deivce_num_threads,
+  AsyncWorkQueue(size_t host_num_threads,
+                 size_t deivce_num_threads,
                  EventsWaiter* waiter);
 
   std::future<std::unique_ptr<AtomicVectorSizeT>> PrepareAtomicDeps(
@@ -85,7 +86,8 @@ void build_op_func_list(const platform::Place& place,
                         const framework::BlockDesc& block,
                         const std::set<std::string>& skip_gc_vars,
                         std::vector<OpFuncNode>* vec_func_list,
-                        VariableScope* var_scope, bool use_local_scope = true);
+                        VariableScope* var_scope,
+                        bool use_local_scope = true);
 
 std::map<int, std::list<int>> build_op_downstream_map(
     const std::vector<Instruction>& vec_instruction,
