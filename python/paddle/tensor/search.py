@@ -589,6 +589,7 @@ def where(condition, x=None, y=None, name=None):
         Tensor: A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`.
 
     Examples:
+
         .. code-block:: python
             :name:where-example
 
