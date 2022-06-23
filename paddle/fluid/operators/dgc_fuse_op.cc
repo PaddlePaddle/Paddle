@@ -30,7 +30,7 @@ class DGCFuseOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("U"), "Input", "U", "DGCOp");
     OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "DGCOp");
     OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "DGCOp");
-    OP_INOUT_CHECK(ctx->HasInput("RawGrad"), "Input", "RawGrad", "DGCOp");
+    // OP_INOUT_CHECK(ctx->HasInput("RawGrad"), "Input", "RawGrad", "DGCOp");
     OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "DGCOp");
     OP_INOUT_CHECK(ctx->HasInput("current_step"), "Input", "current_step",
                    "DGCOp");
@@ -60,7 +60,7 @@ class DGCFuseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("U", "(Tensor) U velocity tensor of DGC");
     AddInput("V", "(Tensor) V velocity tensor of DGC");
     AddInput("Grad", "(Tensor) Input gradient");
-    AddInput("RawGrad", "(Tensor) Input gradient");
+    // AddInput("RawGrad", "(Tensor) Input gradient");
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("current_step", "(Tensor) Current step.");
     AddInput("nranks", "(Tensor) nranks.");
@@ -134,7 +134,7 @@ class DGCFuseOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-// DECLARE_INPLACE_OP_INFERER(DGCFuseOpInplaceInferer, {"RawGrad", "Out"});
+// DECLARE_INPLACE_OP_INFERER(DGCFuseOpInplaceInferer, {"Grad", "Out"});
 
 }  // namespace operators
 }  // namespace paddle

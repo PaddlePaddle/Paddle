@@ -49,12 +49,11 @@ class DGCCommOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor) encoded grad with 2 * k value in dgc. ");
-    AddInput("Grad", "(Tensor) the grad of the param in dgc. ");
+    AddInput("Grad", "(Tensor) encoded grad with 2 * k value in dgc. ");
 
     AddAttr<int>("nranks",
                  "(int) the number of trainers which must be more than 1.");
     AddAttr<int>("k_var", "(int) the number of values of sparse grad. ");
-    AddAttr<int>("use_dgc_comm", "(bool) whether to use dgc comm. ");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
 
@@ -66,12 +65,15 @@ use allgather comm op to compute the grad reduce in dgc.
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(DgcCommInplaceInferer, {"Grad", "Out"});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OPERATOR(dgc_comm, ops::DGCCommOp, ops::DGCCommOpMaker)
+REGISTER_OPERATOR(dgc_comm, ops::DGCCommOp, ops::DGCCommOpMaker,
+                  ops::DgcCommInplaceInferer)
 
 REGISTER_OP_CPU_KERNEL(
     dgc_comm,

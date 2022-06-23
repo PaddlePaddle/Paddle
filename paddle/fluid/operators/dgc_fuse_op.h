@@ -60,8 +60,8 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::CUDADeviceContext>();
-    framework::Tensor grad_out =
-        ctx.AllocateTmpTensor<T, DeviceContext>(g->dims(), dev_ctx);
+    // framework::Tensor grad_out =
+    //     ctx.AllocateTmpTensor<T, DeviceContext>(g->dims(), dev_ctx);
 
     // attrs
     float m = ctx.Attr<float>("m");
@@ -83,13 +83,14 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
     float regular_coeff = ctx.Attr<float>("regular_coeff");
     int regular_type = ctx.Attr<int>("regular_type");
 
+    auto grad_out = ctx.Output<framework::Tensor>("Out");
+    // grad_out->mutable_data<T>(g->dims(), ctx.GetPlace());
+
     auto p_e = framework::EigenVector<T>::Flatten(*p);
     auto g_e = framework::EigenVector<T>::Flatten(*g);
-    auto grad_out_e = framework::EigenVector<T>::Flatten(grad_out);
+    auto grad_out_e = framework::EigenVector<T>::Flatten(*grad_out);
 
     auto place = ctx.GetPlace();
-    auto out = ctx.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(g->dims(), ctx.GetPlace());
 
     // auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto& eigen_ctx = *dev_ctx.eigen_device();
@@ -128,35 +129,24 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
       VLOG(10) << "current_step:" << *current_step
                << " < rampup_begin_step:" << rampup_begin_step
                << " so does't use dgc";
-      framework::TensorCopySync(*g, place, out);
+      // framework::TensorCopySync(*g, place, out);
       // do allreduce
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      auto compute_stream =
-          static_cast<platform::CUDADeviceContext*>(
-              platform::DeviceContextPool::Instance().Get(place))
-              ->stream();
-      auto comm_stream = stream;
-      auto event = platform::NCCLCommContext::Instance()
-                       .Get(ring_id, ctx.GetPlace())
-                       ->compute_event();
+      // compute_stream-->event-->comm_stream
+      auto compute_stream = dev_ctx.stream();
+      auto event = comm->compute_event();
 
-// compute_stream-->event-->comm_stream
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, compute_stream));
-      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(comm_stream, event, 0));
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(stream, event, 0));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, compute_stream));
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
-#endif
-#else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with GPU."));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(stream, event, 0));
 #endif
 
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-          grad_out.data<T>(), out->data<T>(), grad_out.numel(),
+          grad_out->data<T>(), grad_out->data<T>(), grad_out->numel(),
           platform::ToNCCLDataType(
-              framework::TransToProtoVarType(grad_out.dtype())),
+              framework::TransToProtoVarType(grad_out->dtype())),
           ncclSum, comm->comm(), stream));
 
       // memory::Copy(ctx.GetPlace(), raw_g->data<T>(),
@@ -185,11 +175,9 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
              << ", k:" << k << ", nranks:" << nranks;
 
     auto u_out = ctx.Output<framework::Tensor>("U_out");
-    u_out->mutable_data<T>(u->dims(), ctx.GetPlace());
-    // u_out->ShareDataWith(*u);
+    // u_out->mutable_data<T>(u->dims(), ctx.GetPlace());
     auto v_out = ctx.Output<framework::Tensor>("V_out");
-    v_out->mutable_data<T>(v->dims(), ctx.GetPlace());
-    // v_out->ShareDataWith(*v);
+    // v_out->mutable_data<T>(v->dims(), ctx.GetPlace());
 
     // FIXME(gongwb): use cublas.
     auto u_out_e = framework::EigenVector<T>::Flatten(*u_out);
@@ -221,68 +209,54 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
           ctx, u, v, 0, phi::funcs::AddFunctor<T>(), v_out);
     }
 
-    framework::Tensor encode_grad_out =
-        ctx.AllocateTmpTensor<T, DeviceContext>({2 * k}, dev_ctx);
-    framework::Tensor gather_buff =
-        ctx.AllocateTmpTensor<T, DeviceContext>({2 * k * nranks}, dev_ctx);
+    phi::funcs::SetConstant<DeviceContext, T> tset;
+    tset(dev_ctx, grad_out, static_cast<T>(0));
+
+    framework::Tensor encode_grad_out;
+    encode_grad_out.mutable_data<T>({2 * k}, place);
 
     T* v_out_data = v_out->mutable_data<T>(ctx.GetPlace());
     T* u_out_data = u_out->mutable_data<T>(ctx.GetPlace());
     T* encode_grad_out_data = encode_grad_out.data<T>();
 
+    framework::Tensor gather_buff;
+    gather_buff.mutable_data<T>({2 * k * nranks}, place);
+
     int buf_size = paddle::communication::dgc::get_buffer_size(k);
     auto tmp_ious_data = memory::Alloc(dev_ctx, buf_size);
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
+    auto compute_stream = dev_ctx.stream();
+    auto event = comm->compute_event();
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, compute_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(stream, event, 0));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, compute_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(stream, event, 0));
+#endif
+
     if (!paddle::communication::dgc::k_select(
             static_cast<void*>(encode_grad_out_data), k, v_out_data,
-            static_cast<int>(v_out->numel()), buf, dev_ctx.stream(),
-            u_out_data)) {
+            static_cast<int>(v_out->numel()), buf, stream, u_out_data)) {
       // TODO(weihang): owner should polish this error message
       PADDLE_THROW(platform::errors::InvalidArgument(
           "V_out numel error, V_out numel is %d.", v_out->numel()));
     }
 
-    phi::funcs::SetConstant<DeviceContext, T> tset;
-    tset(dev_ctx, &grad_out, static_cast<T>(0));
-
     // do dgc comm
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto compute_stream =
-        static_cast<platform::CUDADeviceContext*>(
-            platform::DeviceContextPool::Instance().Get(place))
-            ->stream();
-    auto comm_stream = stream;
-    auto event = platform::NCCLCommContext::Instance()
-                     .Get(ring_id, ctx.GetPlace())
-                     ->compute_event();
-
-// compute_stream-->event-->comm_stream
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, compute_stream));
-    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(comm_stream, event, 0));
-#else
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, compute_stream));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
-#endif
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU."));
-#endif
-
-    framework::TensorCopySync(*g, place, out);
+    // framework::TensorCopySync(*g, place, out);
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
-        encode_grad_out.data<T>(), gather_buff.data<T>(),
-        static_cast<int64_t>(2 * k),
+        encode_grad_out.data(), gather_buff.data(), static_cast<int64_t>(2 * k),
         platform::ToNCCLDataType(
-            framework::TransToProtoVarType(grad_out.dtype())),
+            framework::TransToProtoVarType(grad_out->dtype())),
         comm->comm(), stream));
 
     PADDLE_ENFORCE_EQ(
         paddle::communication::dgc::sparseReduce(
-            reinterpret_cast<void*>(gather_buff.data<T>()), k, out->data<T>(),
-            out->numel(), nranks, stream),
+            gather_buff.data(), k, grad_out->data<T>(), grad_out->numel(),
+            nranks, stream),
         true, platform::errors::Unavailable("Calling sparseReduce() failed."));
 
     // memory::Copy(ctx.GetPlace(), raw_g->data<T>(),

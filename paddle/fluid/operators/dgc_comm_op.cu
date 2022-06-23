@@ -29,7 +29,8 @@ class DGCCommOpCUDAKernel : public framework::OpKernel<T> {
     auto grad = ctx.Input<phi::DenseTensor>("Grad");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(grad->dims(), ctx.GetPlace());
-    paddle::framework::TensorCopySync(*grad, ctx.GetPlace(), out);
+
+    // paddle::framework::TensorCopySync(*grad, ctx.GetPlace(), out);
 
     auto place = ctx.GetPlace();
 
@@ -46,13 +47,12 @@ class DGCCommOpCUDAKernel : public framework::OpKernel<T> {
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     framework::Tensor gather_res;
-    gather_res =
-        ctx.AllocateTmpTensor<T, DeviceContext>({2 * k * nranks}, dev_ctx);
+    gather_res.mutable_data<T>({2 * k * nranks}, place);
 
     const T* x_buff = x->data<T>();
-
     T* gather_buff = gather_res.data<T>();
-    T* out_data = out->data<T>();
+
+    platform::GpuStreamSync(dev_ctx.stream());
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
         x_buff, gather_buff, static_cast<int64_t>(2 * k),
@@ -60,9 +60,13 @@ class DGCCommOpCUDAKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(
         paddle::communication::dgc::sparseReduce(
-            static_cast<void*>(gather_buff), k, out_data, out_numel, nranks,
-            stream),
+            static_cast<void*>(gather_buff), k, out->data<T>(), out_numel,
+            nranks, stream),
         true, platform::errors::Unavailable("Calling sparseReduce() failed."));
+
+    // memory::Copy(ctx.GetPlace(), rawgrad_out->data<T>(),
+    //              ctx.GetPlace(),  grad_out->data<T>(),
+    //              grad_out->numel(), stream);
   }
 };
 
