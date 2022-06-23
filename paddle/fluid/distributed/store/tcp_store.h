@@ -47,7 +47,7 @@ class MasterDaemon {
  public:
   static std::unique_ptr<MasterDaemon> start(SocketType listen_socket,
                                              int nranks,
-                                             int stop_check_timeout);
+                                             int timeout);
   MasterDaemon() = delete;
   explicit MasterDaemon(SocketType listen_socket,
                         int nranks,
@@ -66,8 +66,8 @@ class MasterDaemon {
   std::vector<SocketType> _sockets;
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
   std::thread _background_thread{};
-  int _nranks;
-  int _stop_check_timeout;
+  int _nranks = -1;
+  int _timeout = 0;
   bool _stop = false;  // all workers stopped
   std::chrono::time_point<std::chrono::system_clock> _stop_time;
   bool _has_stop = false;  // at least one worker stopped
@@ -125,8 +125,7 @@ class TCPStore : public Store {
                     uint16_t port = kDefaultPort,
                     bool is_master = false,
                     size_t num_workers = 1,
-                    std::chrono::seconds timeout = tcputils::kDefaultTimeout,
-                    int stop_check_timeout = 900);
+                    int timeout = 900);
 
   ~TCPStore();
 
@@ -142,7 +141,7 @@ class TCPStore : public Store {
 
   const std::string _init_key = "init/";
   const std::string _key_prefix = "/";
-  std::chrono::seconds _timeout;
+
   bool _is_master;
   int _num_workers;
 };

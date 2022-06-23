@@ -31,17 +31,13 @@ constexpr int INFTIME = 10000;  // 10 seconds
 
 std::unique_ptr<MasterDaemon> MasterDaemon::start(SocketType socket,
                                                   int nranks,
-                                                  int stop_check_timeout) {
+                                                  int timeout) {
   VLOG(4) << ("begin to run start");
-  return std::make_unique<MasterDaemon>(socket, nranks, stop_check_timeout);
+  return std::make_unique<MasterDaemon>(socket, nranks, timeout);
 }
 
-MasterDaemon::MasterDaemon(SocketType socket,
-                           int nranks,
-                           int stop_check_timeout)
-    : _listen_socket(socket),
-      _nranks(nranks),
-      _stop_check_timeout(stop_check_timeout) {
+MasterDaemon::MasterDaemon(SocketType socket, int nranks, int timeout)
+    : _listen_socket(socket), _nranks(nranks), _timeout(timeout) {
   InitControlFd();
   _background_thread = std::thread{&MasterDaemon::run, this};
 }
@@ -226,7 +222,7 @@ void MasterDaemon::run() {
       int elapsed_seconds = static_cast<int>(diff.count());
       PADDLE_ENFORCE_LT(
           elapsed_seconds,
-          _stop_check_timeout,
+          _timeout,
           platform::errors::Fatal(
               "%d seconds elapsed after the first worker "
               "stopped, so we think there may be something wrong and will "
@@ -329,14 +325,14 @@ TCPStore::TCPStore(std::string host,
                    uint16_t port,
                    bool is_master,
                    size_t num_workers,
-                   std::chrono::seconds timeout,
-                   int stop_check_timeout)
+                   int timeout)
     : Store(timeout), _is_master(is_master), _num_workers(num_workers) {
   _timeout = timeout;
-  VLOG(3) << "input timeout" << timeout.count()
-          << ", member timeout:" << _timeout.count();
+  PADDLE_ENFORCE_GT(timeout, 0, "timeout must >= %d", timeout);
+
+  VLOG(3) << "input timeout" << timeout << ", member timeout:" << _timeout;
   if (_is_master) {
-    _server = detail::TCPServer::create(port, num_workers, stop_check_timeout);
+    _server = detail::TCPServer::create(port, num_workers, timeout);
   }
 
   _client = detail::TCPClient::connect(host, port);
@@ -349,13 +345,13 @@ void TCPStore::waitWorkers() {
   }
   add(_init_key, 1);
 
-  VLOG(3) << paddle::string::Sprintf("_timeout:%d", _timeout.count());
+  VLOG(3) << paddle::string::Sprintf("_timeout:%d", _timeout);
   auto begin = std::chrono::steady_clock::now();
   do {
     auto value = get(_init_key);
     int completed = std::stoi(std::string(value.begin(), value.end()));
     VLOG(3) << completed << " worker ready, total " << _num_workers
-            << ", _timeout:" << _timeout.count();
+            << ", _timeout:" << _timeout;
     if (completed >= _num_workers) {
       break;
     }
@@ -363,15 +359,13 @@ void TCPStore::waitWorkers() {
         std::chrono::steady_clock::now() - begin);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    if (_timeout != tcputils::kNoTimeout && elapsed > _timeout) {
+    if (_timeout != 0 && elapsed.count() > _timeout) {
       LOG(FATAL) << paddle::string::Sprintf(
-          "tcputils::kNoTimeout:%d _timeout:%d elapsed:%d (elapsed > "
-          "_timeout)=%d (_timeout != tcputils::kNoTimeout)=%d",
-          tcputils::kNoTimeout.count(),
-          _timeout.count(),
+          "_timeout:%d elapsed:%d (elapsed > _timeout)=%d",
+          _timeout,
           elapsed.count(),
-          elapsed > _timeout,
-          _timeout != tcputils::kNoTimeout);
+          elapsed.count() > _timeout);
+
       PADDLE_ENFORCE_EQ(
           completed,
           _num_workers,
