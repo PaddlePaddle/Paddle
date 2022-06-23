@@ -78,18 +78,23 @@ void CommonGraphSampler::init(GpuPsGraphTable *g,
 int AllInGpuGraphSampler::run_graph_sampling() { return 0; }
 int AllInGpuGraphSampler::load_from_ssd(std::string path) {
   graph_table->load_edges(path, false);
-  sample_nodes.clear();
+  sample_node_ids.clear()
+  sample_node_infos.clear()
   sample_neighbors.clear();
   sample_res.clear();
-  sample_nodes.resize(gpu_num);
+  sample_node_ids.resize(gpu_num);
+  sample_node_infos.resize(gpu_num);
   sample_neighbors.resize(gpu_num);
   sample_res.resize(gpu_num);
-  std::vector<std::vector<std::vector<paddle::framework::GpuPsGraphNode>>>
-      sample_nodes_ex(graph_table->task_pool_size_);
+  std::vector<std::vector<std::vector<uint64_t>>>
+      sample_node_ids_ex(graph_table->task_pool_size_);
+  std::vector<std::vector<std::vector<paddle::framework::GpuPsNodeInfo>>>
+      sample_node_infos_ex(graph_table->task_pool_size_);
   std::vector<std::vector<std::vector<uint64_t>>> sample_neighbors_ex(
       graph_table->task_pool_size_);
   for (int i = 0; i < graph_table->task_pool_size_; i++) {
-    sample_nodes_ex[i].resize(gpu_num);
+    sample_node_ids_ex[i].resize(gpu_num);
+    sample_node_infos_ex[i].resize(gpu_num);
     sample_neighbors_ex[i].resize(gpu_num);
   }
   std::vector<std::future<int>> tasks;
@@ -98,17 +103,15 @@ int AllInGpuGraphSampler::load_from_ssd(std::string path) {
         graph_table->_shards_task_pool[i % graph_table->task_pool_size_]
             ->enqueue([&, i, this]() -> int {
               if (this->status == GraphSamplerStatus::terminating) return 0;
-              paddle::framework::GpuPsGraphNode node;
+              paddle::framework::GpuPsNodeInfo info;
               std::vector<paddle::distributed::Node *> &v =
                   this->graph_table->shards[i]->get_bucket();
               size_t ind = i % this->graph_table->task_pool_size_;
               for (size_t j = 0; j < v.size(); j++) {
-                size_t location = v[j]->get_id() % this->gpu_num;
-                node.node_id = v[j]->get_id();
-                node.neighbor_size = v[j]->get_neighbor_size();
-                node.neighbor_offset =
-                    (int)sample_neighbors_ex[ind][location].size();
-                sample_nodes_ex[ind][location].emplace_back(node);
+                info.neighbor_size = v[j]->get_neighbor_size();
+                info.neighbor_offset = sample_neighbors_ex[ind][location].size();
+                sample_node_infos_ex[ind][location].emplace_back(info);
+                sample_node_ids_ex[ind][location].emplace_back(v[j]->get_id());
                 for (int k = 0; k < node.neighbor_size; k++)
                   sample_neighbors_ex[ind][location].push_back(
                       v[j]->get_neighbor_id(k));
@@ -126,9 +129,10 @@ int AllInGpuGraphSampler::load_from_ssd(std::string path) {
               int total_offset = 0;
               size_t ind = i;
               for (int j = 0; j < this->graph_table->task_pool_size_; j++) {
-                for (size_t k = 0; k < sample_nodes_ex[j][ind].size(); k++) {
-                  sample_nodes[ind].push_back(sample_nodes_ex[j][ind][k]);
-                  sample_nodes[ind].back().neighbor_offset += total_offset;
+                for (size_t k = 0; k < sample_node_ids_ex[j][ind].size(); k++) {
+                  sample_node_ids[ind].push_back(sample_node_ids_ex[j][ind][k]);
+                  sample_node_infos[ind].push_back(sample_node_infos_ex[j][ind][k]);
+                  sample_node_infos[ind].back().neighbor_offset += total_offset;
                 }
                 size_t neighbor_size = sample_neighbors_ex[j][ind].size();
                 total_offset += neighbor_size;
@@ -142,9 +146,10 @@ int AllInGpuGraphSampler::load_from_ssd(std::string path) {
   }
   for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
   for (size_t i = 0; i < gpu_num; i++) {
-    sample_res[i].node_list = sample_nodes[i].data();
+    sample_res[i].node_list = sample_node_ids[i].data();
+    sample_res[i].node_info_list = sample_node_infos[i].data();
     sample_res[i].neighbor_list = sample_neighbors[i].data();
-    sample_res[i].node_size = sample_nodes[i].size();
+    sample_res[i].node_size = sample_node_ids[i].size();
     sample_res[i].neighbor_size = sample_neighbors[i].size();
   }
 
