@@ -226,6 +226,7 @@ def create_fake_model(program_config):
         var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var_desc.set_dtype(convert_np_dtype_to_dtype_(tensor_config.dtype))
         var_desc.set_shape(tensor_config.shape)
+        print(f"name: {name}; shape: {tensor_config.shape}")
         var_desc.set_need_check_feed(True)
         if tensor_config.lod is not None:
             var_desc.set_lod_level(len(tensor_config.lod))
@@ -323,6 +324,7 @@ def create_fake_model(program_config):
     with fluid.scope_guard(scope):
         executor.run(util_program)
         params = scope.find_var("out_var_0").get_bytes()
+
     return model, params
 
 
