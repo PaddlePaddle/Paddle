@@ -1466,3 +1466,9 @@ def to_list(value):
     if isinstance(value, (list, tuple)):
         return list(value)
     return [value]
+
+def debug_program(program, path, name):
+
+    filename = os.path.join(path, name + '_program' + ".%d" % (paddle.distributed.get_rank()))
+    with open(filename, 'w') as f:
+        f.write(str(program))   

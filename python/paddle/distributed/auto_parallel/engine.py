@@ -129,6 +129,66 @@ class Engine:
             # Init comm and startup program
             self._initialize(mode)
 
+    def tuning(self,
+                tuning_config=None,
+                optimizer=None,
+                loss=None,
+                dataset=None,
+                batch_size=16,
+                gradient_scale=True,
+                metrics=None):
+
+        if optimizer and not isinstance(
+                optimizer,
+            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
+            raise TypeError(
+                    "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
+                        " or `paddle.fluid.optimizer.Optimizer`."
+                )
+        self._optimizer = optimizer
+
+        if loss and not isinstance(loss,
+                                   paddle.nn.Layer) and not callable(loss):
+            raise TypeError(
+                "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
+            )
+        self._loss = loss
+
+        metrics = metrics or []
+        for metric in to_list(metrics):
+            assert isinstance(metric, Metric), \
+                "{} is not sub class of Metric".format(
+                    metric.__class__.__name__)
+                    
+        self._metrics = to_list(metrics)
+        self._gradient_scale = gradient_scale
+
+        self._planned_mode = None
+        self._modes = ['tuning']
+
+        # step1 Generate Forward program
+        self._build()
+        from .utils import debug_program
+        debug_program(self._dist_contexts[self._modes[0]]._original_serial_main_program, "./", "build_main")
+        debug_program(self._dist_contexts[self._modes[0]]._original_serial_startup_program, "./", "build_startup")
+
+        # step2 Do Parallelism tuning
+        self._plan(self._modes[0])
+ 
+        # step3 Do Optimization tuning
+        from .tuner.optimization_tuner import OptimizationTuner
+        self._optimization_tuner = OptimizationTuner(                 
+            self._dist_contexts[self._modes[0]],
+            self._planners[self._modes[0]].completer,
+            tuning_config = tuning_config,
+            rank = self._cur_rank)
+
+        self._optimization_tuner.tune()
+
+        # step4 summary tuning result or continue running
+        print(" end of tunning ! " * 8)
+        
+
     def _build(self):
         for mode in self._modes:
             serial_main_prog = self._serial_main_progs.get(mode, None)
@@ -159,14 +219,8 @@ class Engine:
                 inputs = [self._set_data_parallel(var) for var in inputs]
                 labels = [self._set_data_parallel(var) for var in labels]
 
-            # self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
             feed_vars = {"inputs": inputs, "labels": labels}
 
-            # self._fetch_vars[mode] = {
-            #     "outputs": flatten(outputs),
-            #     "loss": losses,
-            #     "metrics": metrics
-            # }
             fetch_vars = {
                 "outputs": flatten(outputs),
                 "loss": losses,

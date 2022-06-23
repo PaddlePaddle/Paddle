@@ -363,7 +363,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 output_name)
 
         # replicate op in dist program
-        dist_op_desc = main_block.desc.append_op()
+        dist_op_desc = main_block.append_op(type='nop').desc
         dist_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
         for input_name in src_op.desc.input_names():
@@ -371,7 +371,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         for output_name in src_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
-        main_block._sync_with_cpp()
+        # main_block._sync_with_cpp()
 
         # data parallel synchronization for primtive operators
         from paddle.incubate.autograd import prim_enabled
@@ -461,7 +461,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 output_name)
 
         # replicate op in dist program
-        dist_op_desc = main_block.desc.append_op()
+        dist_op_desc = main_block.append_op(type='nop').desc
+        # dist_op_desc = main_block.desc.append_op()
         dist_op_desc.copy_from(backward_op.desc)
         # Refer to the related dist op
         set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
@@ -470,7 +471,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         for output_name in backward_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
-        main_block._sync_with_cpp()
+        # main_block._sync_with_cpp()
 
         # check if need gradient allreduce
         # if there is a non-gradient & non-parameter input and its batch dimension is splited,
@@ -552,7 +553,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                                                        dims_mapping)
                         ctx.set_op_dist_attr_for_program(op, op_attr)
 
-                main_block._sync_with_cpp()
+                # main_block._sync_with_cpp()
 
 
 register_distributed_operator_impl(
