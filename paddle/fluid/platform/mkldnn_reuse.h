@@ -657,6 +657,8 @@ class BinaryMKLDNNHandler
     auto attributes =
         CreateAttributes(algo, scale_x, scale_y, scale_out, post_ops);
 
+    // oneDNN's binary is optimized for broadcasting y into x, so in other case
+    // we have to swap tensors to achieve optimal performance
     if (x->numel() > y->numel()) {
       this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md,
                                               src1_md, dst_md);
