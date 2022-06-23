@@ -12,15 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-namespace phi {
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
-KernelSignature PoissonGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("poisson_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
-}
+namespace paddle {
+namespace framework {
+namespace ir {
 
-}  // namespace phi
+class Graph;
+/*
+ * Quantize parameters of ops
+ */
+class ParamsQuantizationMkldnnPass : public FusePassBase {
+ public:
+  ParamsQuantizationMkldnnPass();
+  virtual ~ParamsQuantizationMkldnnPass() {}
 
-PD_REGISTER_ARG_MAPPING_FN(poisson_grad, phi::PoissonGradOpArgumentMapping);
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+
+  void QuantizeConv(Graph* graph, bool with_residual_connection) const;
+
+ private:
+  const std::string name_scope_ = "params_quantization_mkldnn_pass";
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

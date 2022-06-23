@@ -637,8 +637,9 @@ int32_t SSDSparseTable::Load(size_t start_idx, size_t end_idx,
   size_t mf_value_size =
       _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
 
-  end_idx =
-      end_idx < _sparse_table_shard_num ? end_idx : _sparse_table_shard_num;
+  end_idx = static_cast<int>(end_idx) < _sparse_table_shard_num
+                ? end_idx
+                : _sparse_table_shard_num;
   int thread_num = (end_idx - start_idx) < 20 ? (end_idx - start_idx) : 20;
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
