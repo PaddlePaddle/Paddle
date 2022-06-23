@@ -378,7 +378,7 @@ void DotSdd(const platform::CUDADeviceContext& ctx, const Tensor* a,
                                          const_cast<T*>(b_data), gpu_type,
                                          CUSPARSE_ORDER_ROW);
   // Create sparse matrix C in CSR format
-  int c_nnz = c_columns->dims()[1];
+  int c_nnz = c_columns->numel();
   platform::dynload::cusparseCreateCsr(
       &mat_c, num_rows, num_rows, c_nnz, const_cast<int*>(c_offset_data),
       const_cast<int*>(c_columns_data), c_value_data, CUSPARSE_INDEX_32I,
@@ -427,7 +427,7 @@ void DotDsd(const platform::CUDADeviceContext& ctx, const Tensor* a_offset,
   platform::dynload::cusparseCreate(&handle);
 
   // Create sparse matrix A in CSR format
-  int a_nnz = a_columns->dims()[1];
+  int a_nnz = a_columns->numel();
   platform::dynload::cusparseCreateCsr(
       &mat_a, num_rows, num_rows, a_nnz, const_cast<int*>(a_offset_data),
       const_cast<int*>(a_columns_data), const_cast<T*>(a_value_data),
@@ -600,7 +600,7 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
                                &dvalue_lists[i], M, N, true, false);
 
       // dSoftmax = dOut * transpose(Value)
-      int nnz_num = columns.dims()[0];
+      int nnz_num = columns_lists[i].numel();
       Tensor dsoftmax;
       dsoftmax.Resize({nnz_num});
       dsoftmax.mutable_data<T>(ctx.GetPlace());
