@@ -101,9 +101,9 @@ def to_input_name(s):
     x -> dx
     x -> d2x
     x -> d3x
-    
+
     NOTE: for first order backward api
-    x -> x_grad 
+    x -> x_grad
     is more common.
     """
     match = re.match(r"(d\d*)(\w+)", s)
