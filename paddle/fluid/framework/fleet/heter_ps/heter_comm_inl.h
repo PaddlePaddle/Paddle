@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
@@ -153,9 +154,9 @@ void HeterComm<KeyType, ValType, GradType>::memory_copy(
     DstPlace dst_place, void* dst, SrcPlace src_place, const void* src,
     size_t count, StreamType stream) {
 #if defined(PADDLE_WITH_CUDA)
-  cudaMemcpyAsync(dst, src, count, cudaMemcpyDefault, stream);
+  CUDA_CHECK(cudaMemcpyAsync(dst, src, count, cudaMemcpyDefault, stream));
   if (stream == 0) {
-    cudaStreamSynchronize(0);
+    CUDA_CHECK(cudaStreamSynchronize(0));
   }
 #elif defined(PADDLE_WITH_XPU_KP)
   memory::Copy(dst_place, dst, src_place, src, count);
@@ -304,36 +305,36 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(
     auto& node = path_[start_index][i].nodes_[0];
     CopyTask t(&path_[start_index][i], 0);
     que.push(t);
-    cudaMemcpyAsync(node.key_storage,
+    CUDA_CHECK(cudaMemcpyAsync(node.key_storage,
                     reinterpret_cast<char*>(src_key + h_left[i]),
-                    node.key_bytes_len, cudaMemcpyDefault, node.in_stream);
+                    node.key_bytes_len, cudaMemcpyDefault, node.in_stream));
     if (need_copy_val) {
-      cudaMemcpyAsync(node.val_storage,
+      CUDA_CHECK(cudaMemcpyAsync(node.val_storage,
                       src_val + uint64_t(h_left[i]) * uint64_t(val_size),
-                      node.val_bytes_len, cudaMemcpyDefault, node.in_stream);
+                      node.val_bytes_len, cudaMemcpyDefault, node.in_stream));
     }
   }
   while (!que.empty()) {
     CopyTask& cur_task = que.front();
     que.pop();
     if (cur_task.path->nodes_[cur_task.step].sync) {
-      cudaStreamSynchronize(cur_task.path->nodes_[cur_task.step].in_stream);
+      CUDA_CHECK(cudaStreamSynchronize(cur_task.path->nodes_[cur_task.step].in_stream));
     }
     if (cur_task.step != cur_task.path->nodes_.size() - 1) {
       int cur_step = cur_task.step;
       CopyTask c(cur_task.path, cur_step + 1);
       que.push(c);
-      cudaMemcpyAsync(cur_task.path->nodes_[cur_step + 1].key_storage,
+      CUDA_CHECK(cudaMemcpyAsync(cur_task.path->nodes_[cur_step + 1].key_storage,
                       cur_task.path->nodes_[cur_step].key_storage,
                       cur_task.path->nodes_[cur_step + 1].key_bytes_len,
                       cudaMemcpyDefault,
-                      cur_task.path->nodes_[cur_step + 1].in_stream);
+                      cur_task.path->nodes_[cur_step + 1].in_stream));
       if (need_copy_val) {
-        cudaMemcpyAsync(cur_task.path->nodes_[cur_step + 1].val_storage,
+        CUDA_CHECK(cudaMemcpyAsync(cur_task.path->nodes_[cur_step + 1].val_storage,
                         cur_task.path->nodes_[cur_step].val_storage,
                         cur_task.path->nodes_[cur_step + 1].val_bytes_len,
                         cudaMemcpyDefault,
-                        cur_task.path->nodes_[cur_step + 1].in_stream);
+                        cur_task.path->nodes_[cur_step + 1].in_stream));
       }
     }
   }
@@ -351,17 +352,17 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_src(
     int cur_step = path_[start_index][i].nodes_.size() - 1;
     auto& node = path_[start_index][i].nodes_[cur_step];
     if (cur_step == 0) {
-      cudaMemcpyAsync(src_val + uint64_t(h_left[i]) * val_size,
+      CUDA_CHECK(cudaMemcpyAsync(src_val + uint64_t(h_left[i]) * val_size,
                       node.val_storage, node.val_bytes_len, cudaMemcpyDefault,
-                      node.out_stream);
+                      node.out_stream));
     } else {
       CopyTask t(&path_[start_index][i], cur_step - 1);
       que.push(t);
-      cudaMemcpyAsync(path_[start_index][i].nodes_[cur_step - 1].val_storage,
+      CUDA_CHECK(cudaMemcpyAsync(path_[start_index][i].nodes_[cur_step - 1].val_storage,
                       node.val_storage,
                       path_[start_index][i].nodes_[cur_step - 1].val_bytes_len,
                       cudaMemcpyDefault,
-                      path_[start_index][i].nodes_[cur_step - 1].out_stream);
+                      path_[start_index][i].nodes_[cur_step - 1].out_stream));
     }
   }
   while (!que.empty()) {
@@ -374,18 +375,18 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_src(
     if (cur_step > 0) {
       CopyTask c(cur_task.path, cur_step - 1);
       que.push(c);
-      cudaMemcpyAsync(cur_task.path->nodes_[cur_step - 1].val_storage,
+      CUDA_CHECK(cudaMemcpyAsync(cur_task.path->nodes_[cur_step - 1].val_storage,
                       cur_task.path->nodes_[cur_step].val_storage,
                       cur_task.path->nodes_[cur_step - 1].val_bytes_len,
                       cudaMemcpyDefault,
-                      cur_task.path->nodes_[cur_step - 1].out_stream);
+                      cur_task.path->nodes_[cur_step - 1].out_stream));
     } else if (cur_step == 0) {
       int end_index = cur_task.path->nodes_.back().dev_num;
-      cudaMemcpyAsync(src_val + uint64_t(h_left[end_index]) * val_size,
+      CUDA_CHECK(cudaMemcpyAsync(src_val + uint64_t(h_left[end_index]) * val_size,
                       cur_task.path->nodes_[cur_step].val_storage,
                       cur_task.path->nodes_[cur_step].val_bytes_len,
                       cudaMemcpyDefault,
-                      cur_task.path->nodes_[cur_step].out_stream);
+                      cur_task.path->nodes_[cur_step].out_stream));
     }
   }
 }
@@ -511,7 +512,7 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(
     if (offset == -1) offset = dev_num;
     tables_[offset]->insert(
         reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
-        reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()), tmp_len,
+        reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()), (size_t)tmp_len,
         cur_use_stream);
 
     cur_stream += 1;

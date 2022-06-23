@@ -141,6 +141,12 @@ void GraphGpuWrapper::load_node_file(std::string name, std::string filepath) {
   }
 }
 
+void GraphGpuWrapper::load_node_and_edge(std::string etype, std::string ntype, std::string epath,
+                                         std::string npath, int part_num, bool reverse) {
+  ((GpuPsGraphTable *)graph_table)
+      ->cpu_graph_table_->load_node_and_edge_file(etype, ntype, epath, npath, part_num, reverse);
+}
+
 void GraphGpuWrapper::add_table_feat_conf(std::string table_name,
                                           std::string feat_name,
                                           std::string feat_dtype,

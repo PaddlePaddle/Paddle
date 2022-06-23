@@ -100,7 +100,8 @@ class AllInGpuGraphSampler : public GraphSampler {
  protected:
   paddle::distributed::GraphTable *graph_table;
   GpuPsGraphTable *gpu_table;
-  std::vector<std::vector<paddle::framework::GpuPsGraphNode>> sample_nodes;
+  std::vector<std::vector<uint64_t>> sample_node_ids;
+  std::vector<std::vector<paddle::framework::GpuPsNodeInfo>> sample_node_infos;
   std::vector<std::vector<uint64_t>> sample_neighbors;
   std::vector<GpuPsCommGraph> sample_res;
   // std::shared_ptr<std::mt19937_64> random;
