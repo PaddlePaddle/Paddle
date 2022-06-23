@@ -232,14 +232,6 @@ class HeterComm {
   int multi_node_{0};
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
-  std::vector<double> mg_time_1;
-  std::vector<double> mg_time_2;
-  std::vector<double> mg_time_3;
-  std::vector<double> mg_time_4;
-  std::vector<double> mg_time_5;
-  std::vector<double> mg_time_6;
-  std::vector<double> mg_time_7;
-  std::vector<double> mg_time_8;
   int node_size_;
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
   int multi_mf_dim_{8};
