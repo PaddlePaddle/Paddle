@@ -34,15 +34,6 @@ int64_t RegisterGradientHookForTensor(
                                          std::move(hook));
 }
 
-int64_t RegisterGradientHookForTensor(
-    const paddle::experimental::Tensor& tensor,
-    std::shared_ptr<egr::TensorHook>&& hook, egr::GradNodeBase* target_node) {
-  auto rank_info = EagerUtils::unsafe_autograd_meta(tensor)->OutRankInfo();
-
-  return target_node->RegisterGradientHook(rank_info.first, rank_info.second,
-                                           std::move(hook));
-}
-
 void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
                                  std::shared_ptr<egr::TensorVoidHook>&& hook) {
   if (IsLeafTensor(tensor)) {
@@ -60,34 +51,6 @@ void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Only can register reduce hook for leaf Tensor."));
   }
-}
-
-// For grad
-std::shared_ptr<paddle::experimental::Tensor> FetchGradForTensor(
-    const paddle::experimental::Tensor& tensor,
-    egr::GradNodeBase* target_node) {
-  std::shared_ptr<paddle::experimental::Tensor> tmp{
-      std::make_shared<paddle::experimental::Tensor>()};
-  VLOG(6)
-      << "Running in FetchGradForTensor, prepare FetchGrad Hook for tensor: "
-      << tensor.name();
-  auto hook = [tmp](const paddle::experimental::Tensor& t) {
-    auto tmp_grad = tmp.get();
-    if (t.defined()) {
-      VLOG(6) << "Set impl for FetchGrad Hook for tensor: " << t.name();
-      tmp_grad->set_impl(t.impl());
-      tmp_grad->set_autograd_meta(t.mutable_autograd_meta());
-      return t;
-    } else {
-      VLOG(6) << "Retain NULL paddle::experimental::Tensor in FetchGrad Hook";
-      return paddle::experimental::Tensor();
-    }
-  };
-
-  // Append to GradientHooks
-  RegisterGradientHookForTensor(
-      tensor, std::make_shared<egr::CppTensorHook>(hook), target_node);
-  return tmp;
 }
 
 void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
