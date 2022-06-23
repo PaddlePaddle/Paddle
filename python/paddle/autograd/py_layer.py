@@ -151,8 +151,6 @@ class CPyLayer(object):
         Examples:
             .. code-block:: python
 
-                import os
-                os.environ['FLAGS_enable_eager_mode'] = '0'
                 import paddle
                 from paddle.autograd import PyLayer
 
@@ -225,8 +223,6 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
     Examples:
         .. code-block:: python
 
-            import os
-            os.environ['FLAGS_enable_eager_mode'] = '0'
             import paddle
             from paddle.autograd import PyLayer
 
@@ -277,8 +273,6 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
         Examples:
             .. code-block:: python
 
-                import os
-                os.environ['FLAGS_enable_eager_mode'] = '0'
                 import paddle
                 from paddle.autograd import PyLayer
 
@@ -318,8 +312,6 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
         Examples:
             .. code-block:: python
 
-                import os
-                os.environ['FLAGS_enable_eager_mode'] = '0'
                 import paddle
                 from paddle.autograd import PyLayer
 
