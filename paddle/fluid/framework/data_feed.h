@@ -806,6 +806,11 @@ class DataFeed {
   virtual const std::vector<std::string>& GetUseSlotAlias() {
     return use_slots_;
   }
+  // Get used slots' is_dense info (slot is dense if contain no lod info) 
+  virtual const std::vector<bool>& GetUseSlotIsDense() {
+    return use_slots_is_dense_;
+  }
+
   // This function is used for binding feed_vec memory
   virtual void AddFeedVar(Variable* var, const std::string& name);
 

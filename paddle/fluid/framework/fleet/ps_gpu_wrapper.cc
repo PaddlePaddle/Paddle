@@ -775,24 +775,30 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   }
   VLOG(0) << "BuildGPUTask: get inputchannel from dataset";
   // convert feasign to fid in dataset
-  //SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
   MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
   CHECK(dataset != nullptr) << "only support MultiSlotDataset";
   auto input_channel = dataset->GetInputChannel();
 
   VLOG(0) << "BuildGPUTask: query sign2fid for dataset";
-  // dangerous, the return value of GetData is unmutable in general
-  //std::deque<SlotRecord>& vec_data = const_cast<std::deque<SlotRecord>&>(input_channel->GetData());
+  auto & slot_is_dense = data_readers[0]->GetUseSlotIsDense();
+  auto & used_slots = data_readers[0]->GetUseSlotAlias();
+  CHECK(slot_is_dense.size() == used_slots.size()) 
+    << "slot_is_dense size:" << slot_is_dense.size()
+    << ", used_slots size:" << used_slots.size();
   std::deque<Record>& vec_data = const_cast<std::deque<Record>&>(input_channel->GetData());
   VLOG(0) << "BuildGPUTask: input_channel size:" << vec_data.size();
   for (auto it = vec_data.begin(); it != vec_data.end(); it++) {
-    //auto& feasign = ((*it)->slot_uint64_feasigns_).slot_values;
-    //for (unsigned int j = 0; j < feasign.size(); j++) {
-    //  feasign[j] = cache_manager->query_sign2fid(feasign[j]);
-    //}
     auto & feasigns = it->uint64_feasigns_;
     for (unsigned int j = 0; j < feasigns.size(); j++) {
-      feasigns[j].sign().uint64_feasign_ = cache_manager->query_sign2fid(feasigns[j].sign().uint64_feasign_);
+      auto slot_idx = feasigns[j].slot();
+      CHECK(slot_idx < slot_is_dense.size()) 
+          << "error slot_idx:" << slot_idx 
+          << ", used_slots size:" << used_slots.size();
+      if (!slot_is_dense[slot_idx]) { // slot with lod info
+        feasigns[j].sign().uint64_feasign_ = cache_manager->query_sign2fid(feasigns[j].sign().uint64_feasign_);
+      } else {
+        VLOG(0) << "BuildGPUTask: slot is dense:" << used_slots[slot_idx];
+      }
     }
   }
   VLOG(0) << "BuildGPUTask: query sign2fid for device keys";
@@ -949,6 +955,7 @@ void PSGPUWrapper::build_batch_fid_seq(std::vector<std::deque<Record> *> & all_c
   VLOG(0) << "PSGPUWrapper::build_batch_fid_seq called"; 
   auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
   cache_manager->build_batch_fid_seq(all_chan_recs); 
+  //cache_manager->dump_to_file();
 }
 #endif
 
@@ -1053,6 +1060,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     this->CopyForPull(place, xpu_keys, values, total_values_gpu, xpu_len,
                       static_cast<int>(slot_lengths.size()), hidden_size,
                       total_length);
+
 #endif
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
