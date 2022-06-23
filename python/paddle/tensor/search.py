@@ -577,7 +577,7 @@ def where(condition, x=None, y=None, name=None):
         \end{cases}.
 
     Notes:
-        ``numpy.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``, please refer to :ref:`api_tensor_search_nonzero`.
+        ``numpy.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``, please refer to :ref:`_api_paddle_nonzero`.
 
     Args:
         condition (Tensor): The condition to choose x or y. When True (nonzero), yield x, otherwise yield y.
@@ -589,6 +589,7 @@ def where(condition, x=None, y=None, name=None):
         Tensor: A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`.
 
     Examples:
+
         .. code-block:: python
             :name:where-example
 
