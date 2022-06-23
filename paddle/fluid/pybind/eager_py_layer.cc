@@ -140,7 +140,7 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
     args_size = PyTuple_GET_SIZE(args);
   }
   inputs_size = kwargs_size + args_size;
-  forward_args = PyTuple_New(inputs_size + 1);
+  forward_args = PyTuple_New(args_size + 1);
   Py_INCREF(ctx);
   PyTuple_SET_ITEM(forward_args, 0, reinterpret_cast<PyObject*>(ctx));
 
