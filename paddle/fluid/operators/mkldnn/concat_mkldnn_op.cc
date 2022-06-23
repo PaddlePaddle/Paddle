@@ -85,7 +85,7 @@ class ConcatMKLDNNHandler
     // formats are being set in inputs. In that scenario we are enforcing using
     // a dense format, because it is the most common one and should be the best
     // in terms of the performance
-    if (dst_dims[concat_axis] == srcs_md.size()) {
+    if (dst_dims[concat_axis] == static_cast<int64_t>(srcs_md.size())) {
       dst_md = memory::desc(dst_dims, dt,
                             platform::GetPlainMKLDNNFormat(dst_dims.size()));
     } else {
