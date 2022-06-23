@@ -22,8 +22,8 @@ limitations under the License. */
 namespace phi {
 namespace dtype {
 class pstring;
-}
-};  // namespace phi
+}  // namespace dtype
+}  // namespace phi
 
 namespace paddle {
 namespace experimental {

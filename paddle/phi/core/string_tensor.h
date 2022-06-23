@@ -22,7 +22,7 @@ namespace phi {
 
 namespace dtype {
 class pstring;
-};
+}  // namespace dtype
 
 /// \brief In Paddle 2.3, we add a new type of Tensor, StringTensor,
 /// which is designed for string data management.
