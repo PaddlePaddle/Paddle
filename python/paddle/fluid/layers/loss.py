@@ -1242,9 +1242,9 @@ def identity_loss(x, reduction="none"):
         x (Variable): The calculated loss ``Tensor``.
         reduction(str|int): Reduce the loss output. The default value is "none". Supported values are:
 
-            * ``"sum"``: Sum the losses.
-            * ``"mean"``: Take the mean of the losses.
-            * ``"none"``: Don't reduce the losses.
+            * ``"mean"`` or ``0``: Take the mean of the losses.
+            * ``"sum"`` or ``1``: Sum the losses.
+            * ``"none"`` or ``2``: Don't reduce the losses.
 
     Returns:
         Variable: The loss ``Tensor`` with the specified reduction applied.
