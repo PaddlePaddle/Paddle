@@ -13,45 +13,38 @@
 // limitations under the License.
 
 #pragma once
-#include <memory>
+
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/phi/common/place.h"
-
-#include "paddle/fluid/jit/compilation_unit.h"
-#include "paddle/fluid/jit/function_schema.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace jit {
+
 using Variable = paddle::framework::Variable;
 using Name2VariableMap = std::unordered_map<std::string, Variable>;
+using DenseTensor = phi::DenseTensor;
 
-class Layer {
- public:
-  // TODO(dev): Make vector<string>, num_slot as in argument
-  // Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
-  // {}
-  Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
-        const Name2VariableMap& params_dict,
-        const phi::Place& place);
+void FetchVarsByNames(const std::vector<std::string> &names,
+                      const framework::Scope &scope,
+                      std::vector<Variable> *outs);
 
-  std::shared_ptr<BaseFunction> GetFunction(const std::string& name) const;
+void ShareInputsIntoScope(const std::vector<std::string> &ordered_input_names,
+                          const std::vector<Variable> &vars,
+                          framework::Scope *scope);
 
-  Variable GetAttribute(const std::string& name) const;
+void ShareParamsIntoScope(const std::vector<std::string> &param_names,
+                          const Name2VariableMap &params_dict,
+                          framework::Scope *scope);
 
-  std::vector<Variable> forward(const std::vector<Variable>& inputs);
-
-  void to(const phi::Place& place);
-
- private:
-  // internal::Object obj_;
-  Name2VariableMap params_dict_;
-  Name2VariableMap attrs_dict_;
-  CompilationUnit unit_;
-};
+void RemoveFeedFetch(framework::ProgramDesc *program_desc);
 
 }  // namespace jit
 }  // namespace paddle
