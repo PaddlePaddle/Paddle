@@ -312,6 +312,7 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_parallelizer)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mp_layers)
   list(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
+  list(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision_for_eager)
   list(REMOVE_ITEM TEST_OPS test_mixed_precision)
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_dygraph_recompute)
@@ -1625,6 +1626,8 @@ endif()
 if(WITH_GPU OR WITH_ROCM)
   set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT
                                                                        300)
+  set_tests_properties(test_imperative_auto_mixed_precision_for_test
+                       PROPERTIES TIMEOUT 300)
   set_tests_properties(test_parallel_dygraph_sync_batch_norm PROPERTIES TIMEOUT
                                                                         120)
   set_tests_properties(test_rank_attention_op PROPERTIES TIMEOUT 120)
