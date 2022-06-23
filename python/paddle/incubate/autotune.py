@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -49,7 +49,7 @@ def set_config(config=None):
             dictionary, the key is the tuning type, and the value is a dictionary
             of the corresponding tuning parameters. If it is a string, the path of
             a json file will be specified and the tuning configuration will be set
-            by the the json file. Default: None, auto-tuning for kernel, layout and
+            by the json file. Default: None, auto-tuning for kernel, layout and
             dataloader will be enabled.
 
     Examples:

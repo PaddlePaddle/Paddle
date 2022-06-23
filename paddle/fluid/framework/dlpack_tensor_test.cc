@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/dlpack_tensor.h"
+
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -39,7 +40,7 @@ constexpr uint8_t GetDLDataTypeCode() {
                     : (std::is_integral<T>::value ? static_cast<uint8_t>(kDLInt)
                                                   : static_cast<uint8_t>(-1)));
 }
-}  // NOLINT
+}  // namespace
 
 template <typename T>
 void TestMain(const platform::Place &place, uint16_t lanes) {

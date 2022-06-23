@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/crop_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -97,7 +98,7 @@ Crop Operator.
 Crop input into output, as specified by offsets and shape.
 
 There are two ways to set the offsets:
-1. In runtime: Using the input 'Offsets', which is a Vairbale and can be 
+1. In runtime: Using the input 'Offsets', which is a Variable and can be 
                output of other operators. This way is suitable for 
                dynamic offsets.
 2. In network configuration: Using the attribute 'offsets', which will be 

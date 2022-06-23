@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/benchmark/op_tester.h"
+
 #include <fstream>
+
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_info.h"

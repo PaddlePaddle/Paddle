@@ -14,8 +14,10 @@
 
 #pragma once
 #include <math.h>
+
 #include <thread>
 #include <vector>
+
 #include "glog/logging.h"                                  // for CHECK
 #include "paddle/fluid/distributed/common/local_random.h"  // for local_uniform_real_distribution
 #include "paddle/fluid/distributed/common/registerer.h"

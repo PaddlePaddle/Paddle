@@ -10,9 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/rank_attention_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {

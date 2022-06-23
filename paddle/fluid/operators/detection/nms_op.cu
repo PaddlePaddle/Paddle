@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
+
 #include "paddle/fluid/operators/detection/nms_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 

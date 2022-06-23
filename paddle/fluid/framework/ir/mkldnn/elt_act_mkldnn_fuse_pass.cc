@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/elt_act_mkldnn_fuse_pass.h"
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -26,7 +27,7 @@ using string::PrettyLogDetail;
 
 void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
   std::vector<std::string> act_types = {
-      "relu", "tanh", "leaky_relu", "swish", "hardswish", "sqrt",
+      "relu", "tanh", "leaky_relu", "swish", "hard_swish", "sqrt",
       "abs",  "clip", "gelu",       "relu6", "sigmoid"};
   std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub",
                                         "elementwise_mul"};
@@ -55,7 +56,7 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     const std::unordered_map<std::string, std::string> &attr_map) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("elementwise_act", graph);
+  FusePassBase::Init(elt_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
   auto *elementwise_input = gpd.mutable_pattern()

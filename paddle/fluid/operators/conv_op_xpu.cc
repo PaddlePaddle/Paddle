@@ -8,10 +8,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/conv_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #ifdef PADDLE_WITH_XPU
 namespace paddle {
@@ -172,12 +173,8 @@ REGISTER_OP_XPU_KERNEL(
                                paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
     depthwise_conv2d,
-    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext,
-                           paddle::platform::float16>);
+    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>);
 REGISTER_OP_XPU_KERNEL(
     depthwise_conv2d_grad,
-    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext,
-                               paddle::platform::float16>);
+    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 #endif

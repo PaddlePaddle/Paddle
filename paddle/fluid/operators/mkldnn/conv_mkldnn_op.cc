@@ -144,12 +144,6 @@ class ConvMKLDNNHandlerT
                               bias->dims().size()));
       }
 
-      const std::string fuse_activation =
-          ctx.Attr<std::string>("fuse_activation");
-      const float fuse_alpha = ctx.Attr<float>("fuse_alpha");
-      const float fuse_beta = ctx.Attr<float>("fuse_beta");
-      const bool fuse_residual_conn =
-          ctx.Attr<bool>("fuse_residual_connection");
       const int groups = ctx.Attr<int>("groups");
       const std::string padding_algorithm =
           ctx.Attr<std::string>("padding_algorithm");
@@ -203,8 +197,9 @@ class ConvMKLDNNHandlerT
       dnnl::memory::desc src_md, weights_md;
       if (platform::is_int8<T>()) {
         src_md = platform::MKLDNNMemDesc(
-            src_tz, framework::ToMKLDNNDataType(
-                        framework::TransToProtoVarType(input->dtype())),
+            src_tz,
+            framework::ToMKLDNNDataType(
+                framework::TransToProtoVarType(input->dtype())),
             chosen_memory_format);
         weights_md = platform::MKLDNNMemDesc(
             weights_tz, dnnl::memory::data_type::s8, chosen_memory_format);
@@ -220,16 +215,7 @@ class ConvMKLDNNHandlerT
       const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                          : dnnl::prop_kind::forward_training;
 
-      float sum_scale = 1.0f;
-      float activation_scale = 1.0f;
-      std::vector<float> output_shift_scale;
-      if (platform::is_int8<T>())
-        std::tie(sum_scale, output_shift_scale, activation_scale) =
-            get_int8_scales(ctx);
-
-      const dnnl::primitive_attr conv_attr = CreatePostOps(
-          fuse_activation, fuse_alpha, fuse_beta, fuse_residual_conn,
-          output_shift_scale, sum_scale, activation_scale);  // for INT8 only!
+      const dnnl::primitive_attr conv_attr = CreateConvAttrs(ctx);
 
       if (bias) {
         auto bias_tz = phi::vectorize(bias->dims());
@@ -451,13 +437,13 @@ class ConvMKLDNNHandlerT
     auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
     bool is_multi_channel = scale_weights_data.size() > 1;
     bool has_activation = !ctx.Attr<std::string>("fuse_activation").empty();
-    float activation_scale =
-        force_fp32_output ? 1.0f : has_activation ? ctx.Attr<float>("Scale_out")
-                                                  : 1.0f;
-    auto scale_out_data =
-        force_fp32_output ? 1.0f : has_activation
-                                       ? 1.0f
-                                       : ctx.Attr<float>("Scale_out");
+    float activation_scale = (!force_fp32_output && has_activation)
+                                 ? ctx.Attr<float>("Scale_out")
+                                 : 1.0f;
+
+    float scale_out_data = (force_fp32_output || has_activation)
+                               ? 1.0f
+                               : ctx.Attr<float>("Scale_out");
     float sum_scale =
         fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
     int count =
@@ -482,15 +468,33 @@ class ConvMKLDNNHandlerT
     return std::make_tuple(sum_scale, output_shift_scale, activation_scale);
   }
 
-  dnnl::primitive_attr CreatePostOps(
-      std::string fuse_activation, float fuse_alpha, float fuse_beta,
-      bool fuse_residual_conn, const std::vector<float> output_shift_scale = {},
-      float sum_scale = 1.0f, float activation_scale = 1.0f) {
+  dnnl::primitive_attr CreateConvAttrs(const framework::ExecutionContext& ctx) {
     dnnl::primitive_attr conv_attr;
     dnnl::post_ops post_operations;
-    if (output_shift_scale.size() > 0) {
-      int mask = output_shift_scale.size() > 1 ? 1 << 1 : 0;
-      conv_attr.set_output_scales(mask, output_shift_scale);
+
+    const std::string fuse_activation =
+        ctx.Attr<std::string>("fuse_activation");
+    const float fuse_alpha = ctx.Attr<float>("fuse_alpha");
+    const float fuse_beta = ctx.Attr<float>("fuse_beta");
+    const bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
+
+    float sum_scale = 1.0f;
+    float activation_scale = 1.0f;
+    std::vector<float> output_shift_scale;
+    if (platform::is_int8<T>()) {
+      if (ctx.HasAttr("Sum_scale")) {
+        sum_scale = ctx.Attr<float>("Sum_scale");
+        activation_scale = ctx.Attr<float>("Activation_scale");
+        output_shift_scale = ctx.Attr<std::vector<float>>("Output_shift_scale");
+      } else {
+        std::tie(sum_scale, output_shift_scale, activation_scale) =
+            get_int8_scales(ctx);
+      }
+
+      if (output_shift_scale.size() > 0) {
+        int mask = output_shift_scale.size() > 1 ? 1 << 1 : 0;
+        conv_attr.set_output_scales(mask, output_shift_scale);
+      }
     }
 
     // Fusion with Elementwise layer relies on adding a sum post-operation with
@@ -501,41 +505,20 @@ class ConvMKLDNNHandlerT
     if (fuse_residual_conn) {
       post_operations.append_sum(sum_scale);
     }
-    // Fusion with ReLU layer is executed through the PostOps feature. Create a
-    // PostOps object and configure it to execute an eltwise relu operation.
-    if (fuse_activation == "relu" || fuse_activation == "leaky_relu") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_relu, fuse_alpha,
-                                     fuse_beta);
-    } else if (fuse_activation == "relu6") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_bounded_relu,
-                                     fuse_alpha, fuse_beta);
-    } else if (fuse_activation == "swish") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_swish, fuse_alpha,
-                                     fuse_beta);
-    } else if (fuse_activation == "hard_swish") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_hardswish,
-                                     fuse_alpha, fuse_beta);
-    } else if (fuse_activation == "mish") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_mish, fuse_alpha,
-                                     fuse_beta);
-    } else if (fuse_activation == "hard_sigmoid") {
+
+    if (fuse_activation == "hard_sigmoid") {
       post_operations.append_eltwise(activation_scale,
                                      dnnl::algorithm::eltwise_linear,
                                      fuse_alpha, fuse_beta);
       post_operations.append_eltwise(activation_scale,
                                      dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
-    } else if (fuse_activation == "gelu_tanh") {
-      post_operations.append_eltwise(
-          activation_scale, dnnl::algorithm::eltwise_gelu_tanh, 0.0f, 0.0f);
-    } else if (fuse_activation == "gelu_erf") {
-      post_operations.append_eltwise(
-          activation_scale, dnnl::algorithm::eltwise_gelu_erf, 0.0f, 0.0f);
+    } else if (fuse_activation != "") {
+      const auto activation_algorithm =
+          platform::AcquireActivationAlgorithm(fuse_activation);
+      post_operations.append_eltwise(activation_scale, activation_algorithm,
+                                     fuse_alpha, fuse_beta);
     }
+
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
   }
@@ -656,14 +639,21 @@ class ConvMKLDNNHandlerT
     if (is_test && bias_mem_p) {
       return bias_mem_p;
     } else {
-      const K* bias_data = bias->data<K>();
+      // if K is int8 (weights are int8) then biases are int32
+      using K_Bias = typename std::conditional<std::is_same<K, int8_t>::value,
+                                               int32_t, K>::type;
+      if (std::is_same<K_Bias, int32_t>::value &&
+          bias->dtype() != phi::DataType::INT32) {
+        LOG(ERROR) << "Bias should be of type int32 but is " << bias->dtype();
+      }
+      const K_Bias* bias_data = bias->data<K_Bias>();
       auto user_bias_md = platform::MKLDNNMemDesc(
-          phi::vectorize(bias->dims()), platform::MKLDNNGetDataType<K>(),
+          phi::vectorize(bias->dims()), platform::MKLDNNGetDataType<K_Bias>(),
           MKLDNNMemoryFormat::x);
 
       return this->AcquireMemoryWithReorder(
           user_bias_md, this->fwd_pd_->bias_desc(),
-          platform::to_void_cast<K>(bias_data), "@bias_mem_p", is_test, {},
+          platform::to_void_cast<K_Bias>(bias_data), "@bias_mem_p", is_test, {},
           scale_data, mask);
     }
   }
@@ -872,8 +862,18 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         {DNNL_ARG_DST, *dst_memory_p}};
 
     if (bias) {
-      auto p_scales_tuple = handler.get_int8_bias_scales(ctx);
-
+      std::vector<float> bias_scales;
+      auto p_scales_tuple =
+          std::make_shared<std::tuple<float, std::vector<float>>>(
+              std::make_tuple(static_cast<float>(mask_reorder), bias_scales));
+      if (ctx.HasAttr("Bias_scales")) {
+        bias_scales = ctx.Attr<std::vector<float>>("Bias_scales");
+        p_scales_tuple =
+            std::make_shared<std::tuple<float, std::vector<float>>>(
+                std::make_tuple(static_cast<float>(mask_reorder), bias_scales));
+      } else {
+        p_scales_tuple = handler.get_int8_bias_scales(ctx);
+      }
       auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(
           bias, true, std::get<1>(*p_scales_tuple),
           std::get<0>(*p_scales_tuple));
@@ -1039,9 +1039,19 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ops::ConvMKLDNNOpKernel<uint8_t, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
+                                    ::paddle::platform::CPUPlace, U8WS8,
+                                    ops::kConvMKLDNNINT8WS8,
+                                    ops::ConvMKLDNNOpKernel<uint8_t, int8_t>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, S8,
                                     ops::kConvMKLDNNINT8,
                                     ops::ConvMKLDNNOpKernel<int8_t, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
+                                    ::paddle::platform::CPUPlace, S8WS8,
+                                    ops::kConvMKLDNNINT8WS8,
+                                    ops::ConvMKLDNNOpKernel<int8_t, int8_t>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,

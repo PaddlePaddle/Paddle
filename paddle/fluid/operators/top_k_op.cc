@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/top_k_op.h"
+
 #include <memory>
 
 namespace paddle {
@@ -39,8 +40,9 @@ class TopkOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(k, 1,
                       platform::errors::InvalidArgument(
                           "Attribute k must be >= 1, but got k is %d.", k));
-    PADDLE_ENFORCE_GE(input_dims.size(), 1, platform::errors::InvalidArgument(
-                                                "input must have >= 1d shape"));
+    PADDLE_ENFORCE_GE(
+        input_dims.size(), 1,
+        platform::errors::InvalidArgument("input must have >= 1d shape"));
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_GE(

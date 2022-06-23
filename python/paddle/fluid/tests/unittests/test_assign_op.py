@@ -26,6 +26,7 @@ from paddle.fluid.backward import append_backward
 
 
 class TestAssignOp(op_test.OpTest):
+
     def setUp(self):
         self.python_api = paddle.assign
         self.op_type = "assign"
@@ -34,13 +35,18 @@ class TestAssignOp(op_test.OpTest):
         self.outputs = {'Out': x}
 
     def test_forward(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.check_output(check_eager=True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_backward(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.check_grad(['X'], 'Out', check_eager=True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestAssignFP16Op(op_test.OpTest):
+
     def setUp(self):
         self.python_api = paddle.assign
         self.op_type = "assign"
@@ -49,21 +55,28 @@ class TestAssignFP16Op(op_test.OpTest):
         self.outputs = {'Out': x}
 
     def test_forward(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.check_output(check_eager=True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_backward(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.check_grad(['X'], 'Out', check_eager=True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestAssignOpWithLoDTensorArray(unittest.TestCase):
+
     def test_assign_LoDTensorArray(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program):
             x = fluid.data(name='x', shape=[100, 10], dtype='float32')
             x.stop_gradient = False
-            y = fluid.layers.fill_constant(
-                shape=[100, 10], dtype='float32', value=1)
+            y = fluid.layers.fill_constant(shape=[100, 10],
+                                           dtype='float32',
+                                           value=1)
             z = fluid.layers.elementwise_add(x=x, y=y)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = fluid.layers.array_write(x=z, i=i)
@@ -71,9 +84,10 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
             sums = fluid.layers.array_read(array=init_array, i=i)
             mean = fluid.layers.mean(sums)
             append_backward(mean)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
         feed_x = np.random.random(size=(100, 10)).astype('float32')
         ones = np.ones((100, 10)).astype('float32')
@@ -86,11 +100,12 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
 
 
 class TestAssignOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The type of input must be Variable or numpy.ndarray.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.assign, x1)
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
             x2 = np.array([[2.5, 2.5]], dtype='uint8')
@@ -98,14 +113,16 @@ class TestAssignOpError(unittest.TestCase):
 
 
 class TestAssignOApi(unittest.TestCase):
+
     def test_assign_LoDTensorArray(self):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program):
             x = fluid.data(name='x', shape=[100, 10], dtype='float32')
             x.stop_gradient = False
-            y = fluid.layers.fill_constant(
-                shape=[100, 10], dtype='float32', value=1)
+            y = fluid.layers.fill_constant(shape=[100, 10],
+                                           dtype='float32',
+                                           value=1)
             z = fluid.layers.elementwise_add(x=x, y=y)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = fluid.layers.array_write(x=z, i=i)
@@ -114,8 +131,8 @@ class TestAssignOApi(unittest.TestCase):
             mean = fluid.layers.mean(sums)
             append_backward(mean)
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
         feed_x = np.random.random(size=(100, 10)).astype('float32')
         ones = np.ones((100, 10)).astype('float32')
@@ -128,7 +145,7 @@ class TestAssignOApi(unittest.TestCase):
 
     def test_assign_NumpyArray(self):
         with fluid.dygraph.guard():
-            array = np.random.random(size=(100, 10)).astype(np.bool)
+            array = np.random.random(size=(100, 10)).astype(np.bool_)
             result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             paddle.assign(array, result1)
         self.assertTrue(np.allclose(result1.numpy(), array))
@@ -173,6 +190,7 @@ class TestAssignOApi(unittest.TestCase):
 
     def test_clone(self):
         paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.python_api = paddle.clone
 
         x = paddle.ones([2])
@@ -185,6 +203,7 @@ class TestAssignOApi(unittest.TestCase):
         self.assertTrue(np.array_equal(x, [1, 1]), True)
         self.assertTrue(np.array_equal(clone_x.grad.numpy(), [3, 3]), True)
         self.assertTrue(np.array_equal(x.grad.numpy(), [3, 3]), True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.enable_static()
 
         with program_guard(Program(), Program()):
@@ -200,15 +219,18 @@ class TestAssignOApi(unittest.TestCase):
 
 
 class TestAssignOpErrorApi(unittest.TestCase):
+
     def test_errors(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with program_guard(Program(), Program()):
             # The type of input must be Variable or numpy.ndarray.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.CPUPlace())
             self.assertRaises(TypeError, paddle.assign, x1)
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
             x2 = np.array([[2.5, 2.5]], dtype='uint8')
             self.assertRaises(TypeError, paddle.assign, x2)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_type_error(self):
         paddle.enable_static()

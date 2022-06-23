@@ -109,7 +109,12 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     }
   }
 
-  void operator()(const Tensor& x) { AssignKernelKeySet(*x.impl()); }
+  void operator()(const Tensor& x) {
+    const auto* tensor = x.impl().get();
+    if (tensor) {
+      AssignKernelKeySet(*tensor);
+    }
+  }
 
   void operator()(const std::vector<Tensor>& x) {
     const phi::TensorBase& tensor = *x.at(0).impl();
@@ -120,8 +125,8 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     key_set.dtype = tensor.dtype();
   }
 
-  void operator()(const paddle::optional<const Tensor&> x) {
-    if (x.get_ptr() != nullptr) {
+  void operator()(const paddle::optional<Tensor>& x) {
+    if (x) {
       const phi::TensorBase& tensor = *(x.get_ptr()->impl());
       AssignKernelKeySet(tensor);
     }

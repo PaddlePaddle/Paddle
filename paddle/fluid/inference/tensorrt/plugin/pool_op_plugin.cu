@@ -240,10 +240,11 @@ bool PoolPluginDynamic::supportsFormatCombination(
 nvinfer1::DataType PoolPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The Pool Plugin only has one input, so the "
-                                  "index value should be 0, but get %d.",
-                                  index));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The Pool Plugin only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
   PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT), true,
                     platform::errors::InvalidArgument(
                         "The input type should be half or float"));

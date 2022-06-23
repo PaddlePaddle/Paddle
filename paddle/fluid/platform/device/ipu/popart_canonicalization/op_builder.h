@@ -17,28 +17,12 @@
 #include "paddle/fluid/platform/device/ipu/ipu_names.h"
 #include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
 
-using paddle::framework::AttributeMap;
-using paddle::framework::Attribute;
+using AttributeMap = paddle::framework::AttributeMap;
+using Attribute = paddle::framework::Attribute;
 
 namespace paddle {
 namespace platform {
 namespace ipu {
-
-template <typename T>
-AttributeMap MakeConstAttrMap(std::vector<T> value, std::vector<int64_t> dims,
-                              int dtype) {
-  return AttributeMap{{"value", value}, {"dims", dims}, {"dtype", dtype}};
-}
-
-template <typename T>
-AttributeMap MakeConstAttrMapFromValue(T v, std::vector<int64_t> dims,
-                                       int dtype) {
-  size_t size = 1;
-  for (auto &dim : dims) {
-    size *= dim;
-  }
-  return MakeConstAttrMap<T>(std::vector<T>(size, v), dims, dtype);
-}
 
 const std::string GenerateVarName();
 const std::string CreateOpIdentifyId(Node *node);
@@ -57,9 +41,16 @@ Node *CreateConst(Graph *graph, Node *node, const std::vector<Node *> &inputs,
                   const std::vector<Node *> &outputs,
                   const AttributeMap &attrs);
 
-// otype is framework::proto::VarType::Type
+template <typename T>
+Node *CreateConst(Graph *graph, Node *node, const std::vector<T> &value,
+                  const std::vector<int64_t> &dims, ONNXDataType dtype) {
+  return CreateConst(
+      graph, node, {}, {},
+      AttributeMap{{"value", value}, {"dims", dims}, {"dtype", dtype}});
+}
+
 Node *CreateCast(Graph *graph, Node *node, const std::vector<Node *> &inputs,
-                 const std::vector<Node *> &outputs, const int otype);
+                 const std::vector<Node *> &outputs, const VarType::Type otype);
 
 Node *CreateGemm(Graph *graph, Node *node, const std::vector<Node *> &inputs,
                  const std::vector<Node *> &outputs, int64_t transA = 0,

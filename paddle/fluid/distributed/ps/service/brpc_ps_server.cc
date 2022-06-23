@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
+
 #include <thread>  // NOLINT
+
 #include "butil/object_pool.h"
 #include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/ps/table/depends/sparse_utils.h"
@@ -134,7 +136,7 @@ std::future<int32_t> BrpcPsServer::SendPServer2PServerMsg(
     int msg_type, int to_pserver_id, const std::string &msg) {
   auto promise = std::make_shared<std::promise<int32_t>>();
   std::future<int> fut = promise->get_future();
-  if (to_pserver_id >= _pserver_channels.size()) {
+  if (static_cast<size_t>(to_pserver_id) >= _pserver_channels.size()) {
     LOG(FATAL) << "to_pserver_id is out of range pservers, which size is "
                << _pserver_channels.size();
     promise->set_value(-1);
@@ -301,11 +303,6 @@ int32_t BrpcPsService::PullDense(Table *table, const PsRequestMessage &request,
   }
   CostTimer timer("pserver_server_pull_dense");
   uint32_t num = *(const uint32_t *)request.params(0).c_str();
-  if (num < 0) {
-    set_response_code(response, -1,
-                      "PsRequestMessage.datas[0] is invalid, num must >= 0");
-    return 0;
-  }
 
   auto res_data = butil::get_object<std::vector<float>>();
   res_data->resize(num * table->ValueAccesor()->GetAccessorInfo().select_size /
@@ -716,7 +713,7 @@ int32_t BrpcPsService::CacheShuffle(Table *table,
   };
 
   std::vector<Table *> table_ptrs;
-  for (size_t i = 3; i < request.params_size(); ++i) {
+  for (int i = 3; i < request.params_size(); ++i) {
     int table_id = std::stoi(request.params(i));
     Table *table_ptr = _server->GetTable(table_id);
     table_ptrs.push_back(table_ptr);

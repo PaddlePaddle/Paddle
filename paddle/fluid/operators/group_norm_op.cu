@@ -322,9 +322,9 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
         ScalarGetMeanAndVarNCHW<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
             x_data, mean_data, temp_var_data, size);
       } else {
-        VectorizedGetMeanAndVarNCHW<
-            T, AccT, vec_size><<<grids, blocks, 0, dev_ctx.stream()>>>(
-            x_data, mean_data, temp_var_data, size);
+        VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
+            <<<grids, blocks, 0, dev_ctx.stream()>>>(x_data, mean_data,
+                                                     temp_var_data, size);
       }
     } else {
       set_zero(dev_ctx, mean, static_cast<T>(0));
@@ -613,16 +613,16 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
       }
       block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
       dim3 blocks(block_size_nchw);
-      ScalarGetDsDbCUDAKernel<
-          T><<<x_dims[0] * C, blocks, 0, dev_ctx.stream()>>>(
-          imsize, x_data, dy_data, ds_data, db_data);
+      ScalarGetDsDbCUDAKernel<T>
+          <<<x_dims[0] * C, blocks, 0, dev_ctx.stream()>>>(
+              imsize, x_data, dy_data, ds_data, db_data);
 
       if (d_scale || d_bias) {
         const int block = 256;
-        GetScaleBiasGradientCUDAKernel<
-            T><<<(C + block - 1) / block, block, 0, dev_ctx.stream()>>>(
-            x_dims[0], C, groups, epsilon, mean_data, var_data, ds_data,
-            db_data, d_scale_data, d_bias_data);
+        GetScaleBiasGradientCUDAKernel<T>
+            <<<(C + block - 1) / block, block, 0, dev_ctx.stream()>>>(
+                x_dims[0], C, groups, epsilon, mean_data, var_data, ds_data,
+                db_data, d_scale_data, d_bias_data);
       }
 
       if (d_x_data != nullptr) {
@@ -639,10 +639,10 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
         T* p2_data = p2.data<T>();
         T* p3_data = p3.data<T>();
 
-        GetBackwardParamsCUDAKernel<T, block_dims><<<
-            dim3(x_dims[0], groups), block_dims, 0, dev_ctx.stream()>>>(
-            imsize, groups, group_size, epsilon, mean_data, var_data,
-            scale_data, ds_data, db_data, p1_data, p2_data, p3_data);
+        GetBackwardParamsCUDAKernel<T, block_dims>
+            <<<dim3(x_dims[0], groups), block_dims, 0, dev_ctx.stream()>>>(
+                imsize, groups, group_size, epsilon, mean_data, var_data,
+                scale_data, ds_data, db_data, p1_data, p2_data, p3_data);
         GetXGradientCUDAKernel<T><<<grid, threads, 0, dev_ctx.stream()>>>(
             imsize, C, group_size, groups, p1_data, p2_data, p3_data, x_data,
             dy_data, d_x_data);

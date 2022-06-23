@@ -23,6 +23,7 @@ __all__ = []
 
 
 class Image(unittest.TestCase):
+
     def test_resize_flip_chw(self):
         # resize
         im = image.load_image('cat.jpg')

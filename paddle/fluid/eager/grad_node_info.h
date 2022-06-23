@@ -30,32 +30,23 @@ namespace egr {
  * The GradNodeBase will be held in autograd_meta, and it is also a member of
  * Edge, which indicates the edge of backward graph.
  *
- * TODO:(yangzhanlue) GradNodeBase will also in charge of get the correct input
+ * TODO(yangzhanlue): GradNodeBase will also in charge of get the correct input
  * from GradOpDescMaker to GradNodeBase.
  *
- * NOTE:GradNodeBase has a method named run, this method should be overrided by
- * the
- * specific derived class, it will prepare backward inputs and double backward's
- * depends. Then, it will call C++ API of backward kernel functions to finish
- * backward computation.
+ * NOTE: GradNodeBase has a method named run, this method should be overrided by
+ * the specific derived class, it will prepare backward inputs and double
+ * backward's depends. Then, it will call C++ API of backward kernel functions
+ * to finish backward computation.
  *
- * NOTE:GradNodeBase holds its own inputs and Outputs
+ * NOTE: GradNodeBase holds its own inputs and Outputs
  *
  * Edge is defined to descripe depend of backward, an Edge is what linked
- * between two
- * node, it should contain a Node and rank of this Node (this is used to
- * indicate which
- * input of grad this edge belong).
- * */
+ * between two node, it should contain a Node and rank of this Node (this is
+ * used to indicate which input of grad this edge belong).
+ **/
 class AutogradMeta;
 class GradNodeBase;
-/**
- * GradSlotMeta is used to Record Forward Tensor info to backward, since paddle
- * has lots of operators
- * whose backward logic is depends on if it has some specific inputs or outputs.
- * So, we need a meta info
- * to record it's needs.
- * **/
+
 class Edge {
  public:
   // Default constructor for Edges in order to construct it for AutogradMeta
@@ -64,8 +55,7 @@ class Edge {
   // In real use cases we should create Edge from grad node and input rank which
   // indicate which edge it is.
   // Since we have slot design in operators we will have to locate an edge with
-  // slot
-  // and rank.
+  // slot and rank.
   Edge(const std::shared_ptr<GradNodeBase>& grad_node, size_t in_slot_id,
        size_t in_rank)
       : in_slot_id_(in_slot_id), in_rank_(in_rank), grad_node_(grad_node) {}
@@ -120,6 +110,12 @@ class Edge {
   size_t in_rank_;
   std::shared_ptr<GradNodeBase> grad_node_{nullptr};
 };
+
+/**
+ * GradSlotMeta is used to Record Forward Tensor info to backward, since paddle
+ * has lots of operators whose backward logic is depends on if it has some
+ * specific inputs or outputs. So, we need a meta info to record it's needs.
+ **/
 class GradSlotMeta {
  public:
   GradSlotMeta() = default;
@@ -171,29 +167,25 @@ class GradNodeBase {
 
   /**
    * operator() designed to contian the real backward execution logic, it should
-   * be
-   * overrided by derived class defined for each operator. It accepts a vector
-   * of
-   * Tensor which contains grads input of current operator
+   * be overrided by derived class defined for each operator. It accepts a
+   * vector of Tensor which contains grads input of current operator
    *
    * Note: why we need backward inputs and outputs construct as vector of vector
    * of paddle::experimental::Tensor?
    * Since all of paddle op composite in form of {"Slot name ", vector<Var>},
-   * so, vector of vector
-   * is better choice to fit this format.
+   * so, vector of vector is better choice to fit this format.
    * **/
   virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>
   operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                   kSlotSmallVectorSize>& grads,  // NOLINT
-             bool create_graph = false,
-             bool is_new_grad = false) = 0;
+             bool create_graph = false, bool is_new_grad = false) = 0;
 
   virtual void ClearTensorWrappers() = 0;
 
   /**
-       * Self-Copy interface designed for use in DoubleGrad
-       * **/
+   * Self-Copy interface designed for use in DoubleGrad
+   * **/
   virtual std::shared_ptr<GradNodeBase> Copy() const = 0;
 
   // adj_edges were moved inside OutputMeta(), so no available direct access
@@ -237,8 +229,8 @@ class GradNodeBase {
                                std::shared_ptr<egr::TensorHook>&& hook);
 
   /**
-  * Remove GradientHook
-  * **/
+   * Remove GradientHook
+   * **/
   bool RemoveGradientHook(const int64_t& hook_id) {
     auto remove_cnt = gradient_hooks_.erase(hook_id);
     if (remove_cnt == 0) {
@@ -259,8 +251,8 @@ class GradNodeBase {
                                  kSlotSmallVectorSize>& tensors);
 
   /**
-    * Handle Complex - Real Type Promotion
-    * **/
+   * Handle Complex - Real Type Promotion
+   * **/
   void HandleComplexGradToRealGrad(
       paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                            kSlotSmallVectorSize>* out_grads);
@@ -269,8 +261,8 @@ class GradNodeBase {
   virtual std::string name() { return "GradNodeBase"; }
 
   /**
-       * The following interfaces are designed for no_need_buffer
-       * **/
+   * The following interfaces are designed for no_need_buffer
+   * **/
   bool IsTensorWrappersCleared() { return is_tensor_wrappers_cleared_; }
 
   void SetIsTensorWrappersCleared(bool is_tensor_wrappers_cleared) {
@@ -294,36 +286,12 @@ class GradNodeBase {
                         /* slot id */ size_t, /* rank */ size_t,
                         /* hook */ std::shared_ptr<TensorHook>>>
       gradient_hooks_;
+  int64_t next_hook_id_{0};
 
   // We handle complex to real conversion only if any complex GradIn is involved
   bool need_complex_to_real_ = false;
-  int64_t next_hook_id_{0};
+
   bool is_tensor_wrappers_cleared_ = false;
 };
-
-inline void CheckTensor(const paddle::experimental::Tensor& pre,
-                        const paddle::experimental::Tensor& post) {
-  if (!pre.initialized() && post.initialized()) {
-    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
-        "The tensor in before and after hook are not consistent"));
-  }
-  if (pre.initialized() && post.initialized()) {
-    VLOG(4) << paddle::framework::DataType2String(pre.dtype()) << " "
-            << paddle::framework::DataType2String(post.dtype());
-    PADDLE_ENFORCE_EQ(
-        pre.dtype(), post.dtype(),
-        paddle::platform::errors::PermissionDenied(
-            "The dtype of tensor before(%s) and after(%s) hook are not "
-            "consistent",
-            paddle::framework::DataType2String(pre.dtype()),
-            paddle::framework::DataType2String(post.dtype())));
-    PADDLE_ENFORCE_EQ(
-        pre.place(), post.place(),
-        paddle::platform::errors::PermissionDenied(
-            "The place of tensor before(%s) and after(%s) "
-            "hook are not consistent",
-            pre.place().DebugString(), post.place().DebugString()));
-  }
-}
 
 }  // namespace egr

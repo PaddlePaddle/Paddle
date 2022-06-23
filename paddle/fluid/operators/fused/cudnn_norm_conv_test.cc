@@ -51,7 +51,7 @@ void InitRandomTensor(const std::vector<int64_t> &dims,
 template <typename T>
 void TransposeNchwToNhwc(const framework::Tensor &cpu_in,
                          framework::Tensor *cpu_out) {
-  auto in_dims = cpu_in.dims();
+  const auto &in_dims = cpu_in.dims();
   EXPECT_EQ(cpu_in.dims().size(), 4);
 
   const T *cpu_in_ptr = cpu_in.data<T>();
@@ -164,11 +164,13 @@ void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
   attrs.insert({"groups", groups});
   attrs.insert({"exhaustive_search", exhaustive_search});
   attrs.insert({"use_addto", use_addto});
+  attrs.insert({"workspace_size_MB", 512});
 
   auto op = framework::OpRegistry::CreateOp(
-      "conv2d_grad", {{"Input", {"Input"}},
-                      {"Filter", {"Filter"}},
-                      {"Output@GRAD", {"Output@GRAD"}}},
+      "conv2d_grad",
+      {{"Input", {"Input"}},
+       {"Filter", {"Filter"}},
+       {"Output@GRAD", {"Output@GRAD"}}},
       {{"Input@GRAD", {"Input@GRAD"}}, {"Filter@GRAD", {"Filter@GRAD"}}},
       attrs);
   op->Run(scope, ctx.GetPlace());
@@ -183,7 +185,7 @@ template <typename T>
 void ComputeSumAndSquareSum(const framework::Tensor &cpu_out,
                             framework::Tensor *cpu_sum,
                             framework::Tensor *cpu_sum_of_square) {
-  auto dims = cpu_out.dims();
+  const auto &dims = cpu_out.dims();
   int64_t c = dims[3];
 
   const T *cpu_out_ptr = cpu_out.data<T>();
@@ -408,7 +410,7 @@ TEST(CudnnNormConvFp16, K1S1) {
   platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() <= 70) {
+  if (ctx->GetComputeCapability() < 70) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
@@ -434,7 +436,7 @@ TEST(CudnnNormConvFp16, K3S1) {
   platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() <= 70) {
+  if (ctx->GetComputeCapability() < 70) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
@@ -460,7 +462,7 @@ TEST(CudnnNormConvFp16, K1S1O4) {
   platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() <= 70) {
+  if (ctx->GetComputeCapability() < 70) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),

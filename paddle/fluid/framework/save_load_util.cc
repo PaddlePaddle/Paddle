@@ -342,8 +342,9 @@ bool LoadTensorFromDisk(
     uint32_t version;
     fin.read(reinterpret_cast<char*>(&version), sizeof(version));
     CheckInStreamState(fin, sizeof(version));
-    PADDLE_ENFORCE_EQ(version, 0U, platform::errors::InvalidArgument(
-                                       "Only version 0 tensor is supported."));
+    PADDLE_ENFORCE_EQ(version, 0U,
+                      platform::errors::InvalidArgument(
+                          "Only version 0 tensor is supported."));
     proto::VarType::TensorDesc desc;
     {
       // int32_t size

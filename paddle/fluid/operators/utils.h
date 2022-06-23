@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <paddle/fluid/framework/operator.h>
+
 #include <string>
 #include <vector>
 

@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 namespace paddle {
@@ -22,7 +24,13 @@ namespace framework {
 #ifdef PADDLE_WITH_HETERPS
 class GraphGpuWrapper {
  public:
-  char* graph_table;
+  static std::shared_ptr<GraphGpuWrapper> GetInstance() {
+    if (NULL == s_instance_) {
+      s_instance_.reset(new paddle::framework::GraphGpuWrapper());
+    }
+    return s_instance_;
+  }
+  static std::shared_ptr<GraphGpuWrapper> s_instance_;
   void initialize();
   void test();
   void set_device(std::vector<int> ids);
@@ -34,6 +42,15 @@ class GraphGpuWrapper {
                            std::string feat_dtype, int feat_shape);
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
+  int32_t load_next_partition(int idx);
+  int32_t get_partition_num(int idx);
+  void load_node_weight(int type_id, int idx, std::string path);
+  void export_partition_files(int idx, std::string file_path);
+  std::vector<int64_t> get_partition(int idx, int num);
+  void make_partitions(int idx, int64_t byte_size, int device_len);
+  void make_complementary_graph(int idx, int64_t byte_size);
+  void set_search_level(int level);
+  void init_search_level(int level);
   std::vector<std::vector<int64_t>> get_all_id(int type, int idx,
                                                int slice_num);
   NodeQueryResult query_node_list(int gpu_id, int start, int query_size);
@@ -42,6 +59,9 @@ class GraphGpuWrapper {
   std::vector<int64_t> graph_neighbor_sample(int gpu_id,
                                              std::vector<int64_t>& key,
                                              int sample_size);
+
+  void init_sample_status();
+  void free_sample_status();
   std::unordered_map<std::string, int> edge_to_id, feature_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
   std::vector<std::unordered_map<std::string, int>> table_feat_mapping;
@@ -50,7 +70,9 @@ class GraphGpuWrapper {
   std::vector<std::vector<int>> table_feat_conf_feat_shape;
   ::paddle::distributed::GraphParameter table_proto;
   std::vector<int> device_id_mapping;
+  int search_level = 1;
+  void* graph_table;
 };
 #endif
-}
-};
+}  // namespace framework
+};  // namespace paddle

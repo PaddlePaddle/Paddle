@@ -23,11 +23,11 @@
  * **/
 
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/scale.h"
+
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/utils.h"
-
 #include "paddle/phi/api/all.h"
 
 namespace egr {

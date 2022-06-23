@@ -20,6 +20,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/init.h"
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+DECLARE_bool(enable_gpu_memory_usage_log);
+#endif
+
 int main(int argc, char** argv) {
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
@@ -80,6 +84,13 @@ int main(int argc, char** argv) {
     new_argv.push_back(undefok_str);
     VLOG(1) << "gtest undefok_string:" << undefok_string;
   }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (strstr(undefok_str, "enable_gpu_memory_usage_log")) {
+    VLOG(1) << "Set FLAGS_enable_gpu_memory_usage_log to true";
+    FLAGS_enable_gpu_memory_usage_log = true;
+  }
+#endif
 
   int new_argc = static_cast<int>(new_argv.size());
   char** new_argv_address = new_argv.data();

@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -25,6 +26,7 @@ paddle.enable_static()
 
 
 class TestFillZerosLikeOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -44,26 +46,31 @@ class TestFillZerosLikeOp(OpTest):
 
 
 class TestFillZerosLikeOpBool(TestFillZerosLikeOp):
+
     def init_dtype(self):
-        self.dtype = np.bool
+        self.dtype = np.bool_
 
 
 class TestFillZerosLikeOpFp16(TestFillZerosLikeOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestFillZerosLikeOpFp64(TestFillZerosLikeOp):
+
     def init_dtype(self):
         self.dtype = np.float64
 
 
 class TestFillZerosLikeOpInt32(TestFillZerosLikeOp):
+
     def init_dtype(self):
         self.dtype = np.int32
 
 
 class TestFillZerosLikeOpInt64(TestFillZerosLikeOp):
+
     def init_dtype(self):
         self.dtype = np.int64
 

@@ -61,27 +61,10 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
                              ? ctx.Attr<float>("activation_beta")
                              : 0.0f;
 
-      static std::unordered_map<std::string, dnnl::algorithm> algo_map = {
-          {"relu", dnnl::algorithm::eltwise_relu},
-          {"tanh", dnnl::algorithm::eltwise_tanh},
-          {"leaky_relu", dnnl::algorithm::eltwise_relu},
-          {"swish", dnnl::algorithm::eltwise_swish},
-          {"hardswish", dnnl::algorithm::eltwise_hardswish},
-          {"sqrt", dnnl::algorithm::eltwise_sqrt},
-          {"abs", dnnl::algorithm::eltwise_abs},
-          {"clip", dnnl::algorithm::eltwise_clip},
-          {"gelu", dnnl::algorithm::eltwise_gelu_erf},
-          {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-          {"relu6", dnnl::algorithm::eltwise_bounded_relu},
-          {"sigmoid", dnnl::algorithm::eltwise_logistic}};
+      const auto activation_algorithm = platform::AcquireActivationAlgorithm(
+          ctx.Attr<std::string>("activation_type"));
 
-      const auto& activation_type =
-          algo_map.find(ctx.Attr<std::string>("activation_type"));
-
-      if (activation_type != algo_map.end()) {
-        post_operations.append_eltwise(scale, activation_type->second, alpha,
-                                       beta);
-      }
+      post_operations.append_eltwise(scale, activation_algorithm, alpha, beta);
     }
     return post_operations;
   }
@@ -145,8 +128,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     binary_prim->execute(astream, args);
     astream.wait();
 
-    z->set_layout(DataLayout::kMKLDNN);
-    z->set_format(platform::GetMKLDNNFormat(*dst_memory));
+    z->set_mem_desc(dst_memory->get_desc());
   }
 };
 
@@ -179,7 +161,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        dout->format(), platform::to_void_cast(dout->data<T>()));
+        dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
@@ -189,7 +171,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       // elementwise_add & elementwise_sub
       if (BINARY_OP == dnnl::algorithm::binary_add ||
           BINARY_OP == dnnl::algorithm::binary_sub) {
-        dst_memory = reorder_handler.AcquireDstMemory(dx, dout->format(),
+        dst_memory = reorder_handler.AcquireDstMemory(dx, dout->mem_desc(),
                                                       ctx.GetPlace());
         auto reorder_p =
             reorder_handler.AcquireReorder(dst_memory, reorder_src_memory_p);
@@ -218,8 +200,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       }
       astream.wait();
 
-      dx->set_layout(framework::DataLayout::kMKLDNN);
-      dx->set_format(platform::GetMKLDNNFormat(*dst_memory));
+      dx->set_mem_desc(dst_memory->get_desc());
     }
 
     if (dy) {
@@ -232,7 +213,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
           BINARY_OP == dnnl::algorithm::binary_sub) {
         if (dout->dims() == dy->dims()) {
           auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-              dy, dout->format(), ctx.GetPlace());
+              dy, dout->mem_desc(), ctx.GetPlace());
 
           dnnl::primitive_attr reorder_attr;
           std::vector<float> scales(1);
@@ -301,7 +282,6 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         dst_memory = dst_dy_memory;
       }
       astream.wait();
-      dy->set_layout(DataLayout::kMKLDNN);
 
       if (dout->dims() != dy->dims()) {
         // Broadcasting
@@ -324,10 +304,10 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
                                           {DNNL_ARG_DST, *dst_memory},
                                       });
         astream.wait();
-        dy->set_format(platform::GetMKLDNNFormat(dst_memory->get_desc().reshape(
-            phi::vectorize<int64_t>(dy->dims()))));
+        dy->set_mem_desc(dst_memory->get_desc().reshape(
+            phi::vectorize<int64_t>(dy->dims())));
       } else {
-        dy->set_format(platform::GetMKLDNNFormat(*dst_memory));
+        dy->set_mem_desc(dst_memory->get_desc());
       }
     }
   }
