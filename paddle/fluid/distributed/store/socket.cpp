@@ -36,7 +36,7 @@ static int _get_sockname(int sock, char *out, int out_len) {
   struct sockaddr_in addr;
   socklen_t s_len = sizeof(addr);
 
-  if (::getsockname(sock, reinterpret_cast<sockaddr *>(&addr), &s_len)) {
+  if (::getpeername(sock, reinterpret_cast<sockaddr *>(&addr), &s_len)) {
     ::snprintf(
         out, out_len, "can't getsocketname of %d, errno:%d", sock, errno);
     return -1;

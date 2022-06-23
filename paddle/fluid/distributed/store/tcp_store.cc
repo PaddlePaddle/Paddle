@@ -346,11 +346,13 @@ void TCPStore::waitWorkers() {
   }
   add(_init_key, 1);
 
+  VLOG(3) << paddle::string::Sprintf("_timeout:%d", _timeout.count());
   auto begin = std::chrono::steady_clock::now();
   do {
     auto value = get(_init_key);
     int completed = std::stoi(std::string(value.begin(), value.end()));
-    VLOG(3) << completed << " worker ready, total " << _num_workers;
+    VLOG(3) << completed << " worker ready, total " << _num_workers
+            << ", _timeout:" << _timeout.count();
     if (completed >= _num_workers) {
       break;
     }
@@ -359,6 +361,14 @@ void TCPStore::waitWorkers() {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if (_timeout != tcputils::kNoTimeout && elapsed > _timeout) {
+      LOG(FATAL) << paddle::string::Sprintf(
+          "tcputils::kNoTimeout:%d _timeout:%d elapsed:%d (elapsed > "
+          "_timeout)=%d (_timeout != tcputils::kNoTimeout)=%d",
+          tcputils::kNoTimeout.count(),
+          _timeout.count(),
+          elapsed.count(),
+          elapsed > _timeout,
+          _timeout != tcputils::kNoTimeout);
       PADDLE_ENFORCE_EQ(
           completed,
           _num_workers,
