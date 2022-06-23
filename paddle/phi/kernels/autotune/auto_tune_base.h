@@ -65,8 +65,8 @@ class AutoTuneBase {
 
   template <typename Context, typename... Args>
   void Run(const Context& ctx,
-           const size_t key,
            const AlgorithmType& algo,
+           const size_t key,
            Args&&... args) {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
