@@ -21,8 +21,6 @@ import paddle
 import config
 import utils
 
-paddle.enable_static()
-
 
 @utils.place(config.DEVICES)
 @utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'args', 'dtype'), (
@@ -36,12 +34,20 @@ paddle.enable_static()
 class TestJacobianPrim(unittest.TestCase):
 
     @classmethod
-    def setUpClass(self):
-        self.args = [arg.astype(self.dtype) for arg in self.args]
-        self.rtol = config.TOLERANCE.get(
-            self.dtype).get('first_order_grad').get('rtol')
-        self.atol = config.TOLERANCE.get(
-            self.dtype).get('first_order_grad').get('atol')
+    def setUpClass(cls):
+        cls.args = [arg.astype(cls.dtype) for arg in cls.args]
+        cls._rtol = config.TOLERANCE.get(
+            cls.dtype).get('first_order_grad').get('rtol')
+        cls._atol = config.TOLERANCE.get(
+            cls.dtype).get('first_order_grad').get('atol')
+
+    def setUp(self):
+        paddle.enable_static()
+        paddle.incubate.autograd.enable_prim()
+
+    def tearDown(self):
+        paddle.incubate.autograd.disable_prim()
+        paddle.disable_static()
 
     def test_jacobian_prim(self):
 
@@ -73,8 +79,8 @@ class TestJacobianPrim(unittest.TestCase):
 
         np.testing.assert_allclose(orig_jac,
                                    prim_jac,
-                                   rtol=self.rtol,
-                                   atol=self.atol)
+                                   rtol=self._rtol,
+                                   atol=self._atol)
 
 
 @utils.place(config.DEVICES)
@@ -89,12 +95,20 @@ class TestJacobianPrim(unittest.TestCase):
 class TestHessianPrim(unittest.TestCase):
 
     @classmethod
-    def setUpClass(self):
-        self.args = [arg.astype(self.dtype) for arg in self.args]
-        self.rtol = config.TOLERANCE.get(
-            self.dtype).get('second_order_grad').get('rtol')
-        self.atol = config.TOLERANCE.get(
-            self.dtype).get('second_order_grad').get('atol')
+    def setUpClass(cls):
+        cls.args = [arg.astype(cls.dtype) for arg in cls.args]
+        cls._rtol = config.TOLERANCE.get(
+            cls.dtype).get('second_order_grad').get('rtol')
+        cls._atol = config.TOLERANCE.get(
+            cls.dtype).get('second_order_grad').get('atol')
+
+    def setUp(self):
+        paddle.enable_static()
+        paddle.incubate.autograd.enable_prim()
+
+    def tearDown(self):
+        paddle.incubate.autograd.disable_prim()
+        paddle.disable_static()
 
     def test_jacobian_prim(self):
 
@@ -127,8 +141,8 @@ class TestHessianPrim(unittest.TestCase):
 
         np.testing.assert_allclose(orig_jac,
                                    prim_jac,
-                                   rtol=self.rtol,
-                                   atol=self.atol)
+                                   rtol=self._rtol,
+                                   atol=self._atol)
 
 
 if __name__ == "__main__":

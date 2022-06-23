@@ -21,35 +21,45 @@ from paddle.incubate.autograd import primx, utils
 @framework.static_only
 def forward_gradients(targets, inputs, input_gradients=None):
     """Forward mode of automatic differentiation.
+
     .. note::
         **ONLY available in the static mode and primitive operators.**
+
     Args:
         targets: The target tensor or tensors
         inputs: The input tensor or tensors
-        target_gradients: The gradient Tensor or Tensors of targets which has 
-            the same shape with targets, Defaults to None, in this case is 
+        input_gradients: The gradient Tensor or Tensors of inputs which has 
+            the same shape with inputs, Defaults to None, in this case is 
             equivalent to all ones .
+
     Returns:
         target_gradients (Tensor|Sequence[Tensor]): The gradients for targets.
+
     Examples:
+
         .. code-block:: python
+
             import numpy as np
             import paddle
+
             paddle.enable_static()
             paddle.incubate.autograd.enable_prim()
+
             startup_program = paddle.static.Program()
             main_program = paddle.static.Program()
+
             with paddle.static.program_guard(main_program, startup_program):
                 x = paddle.static.data('x', shape=[1], dtype='float32')
-                x.stop_gradients = False
                 y = x * x 
                 y_grad = paddle.incubate.autograd.forward_gradients(y, x)
                 paddle.incubate.autograd.prim2orig()
+
             exe = paddle.static.Executor()
             exe.run(startup_program)
             y_grad = exe.run(main_program, feed={'x': np.array([2.]).astype('float32')}, fetch_list=[y_grad])
             print(y_grad)
             # [array([4.], dtype=float32)]
+
             paddle.incubate.autograd.disable_prim()
             paddle.disable_static()
     """
@@ -68,11 +78,11 @@ def forward_gradients(targets, inputs, input_gradients=None):
     ys, xs, xs_dot = utils.to_tensors(targets), utils.to_tensors(
         inputs), utils.to_tensors(input_gradients)
 
-    block = default_main_program().current_block()
+    block = framework.default_main_program().current_block()
     if any(x.block != block for x in xs + ys):
         raise RuntimeError(
-            'Variable in inputs and targets should in current block of main program'
-        )
+            'Variable in inputs and targets should exist in current block of '
+            'main program.')
 
     primx.orig2prim(block)
     ad = primx.Transform(ys[0].block)

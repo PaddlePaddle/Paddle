@@ -25,27 +25,31 @@ import utils
 
 @utils.place(config.DEVICES)
 @utils.parameterize(
-    (utils.TEST_CASE_NAME, 'fun', 'xs', 'v'),
+    (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'),
     (('matmul', paddle.matmul,
-      (np.random.rand(2, 3), np.random.rand(3, 2)), None),
+      (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
      ('multiply', paddle.multiply,
-      (np.random.rand(2, 3), np.random.rand(2, 3)), None),
-     ('add', paddle.add, (np.random.rand(2, 3), np.random.rand(2, 3)), None),
-     ('input_not_sequence', paddle.tanh, np.random.rand(5, 5), None),
+      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
+     ('add', paddle.add,
+      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+     ('input_not_sequence', paddle.tanh,
+      (np.random.rand(5, 5), ), None, 'float64'),
      ('input_gradients_not_none', paddle.matmul,
       (np.random.rand(3, 3), np.random.rand(3, 3)),
-      (np.random.rand(3, 3), np.random.rand(3, 3)))))
+      (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64')))
 class TestForwardGradients(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.xs = tuple(x.astype(cls.dtype) for x in cls.xs)
+        cls._rtol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("rtol")
+        cls._atol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("atol")
 
     def setUp(self):
         paddle.enable_static()
         paddle.incubate.autograd.enable_prim()
-        self.dtype = str(self.xs[0].dtype) if isinstance(
-            self.xs, typing.Sequence) else str(self.xs.dtype)
-        self._rtol = config.TOLERANCE.get(str(
-            self.dtype)).get("first_order_grad").get("rtol")
-        self._atol = config.TOLERANCE.get(str(
-            self.dtype)).get("first_order_grad").get("atol")
 
     def tearDown(self):
         paddle.incubate.autograd.disable_prim()
@@ -68,6 +72,7 @@ class TestForwardGradients(unittest.TestCase):
             return out
 
         def actual():
+            paddle.incubate.autograd.enable_prim()
             sp = paddle.static.Program()
             mp = paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
@@ -79,15 +84,17 @@ class TestForwardGradients(unittest.TestCase):
                 paddle.incubate.autograd.prim2orig(mp.block(0))
             exe = paddle.static.Executor()
             exe.run(sp)
-            return exe.run(mp, feed=feed, fetch_list=ys_grad)
+            out = exe.run(mp, feed=feed, fetch_list=ys_grad)
+            paddle.incubate.autograd.disable_prim()
+            return out
 
         actual = actual()
         expected = expected()
         self.assertEqual(type(actual), type(expected))
         np.testing.assert_allclose(np.concatenate(actual),
-                                   np.concatenate(expected))
-
-        paddle.incubate.autograd.disable_prim()
+                                   np.concatenate(expected),
+                                   rtol=self._rtol,
+                                   atol=self._atol)
 
     def test_prim_disabled(self):
         paddle.incubate.autograd.disable_prim()
