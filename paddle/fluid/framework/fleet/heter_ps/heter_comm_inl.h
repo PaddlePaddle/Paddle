@@ -639,7 +639,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   auto d_shard_vals = memory::Alloc(place, h_fid_seq->size() * sizeof(ValType));
   VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
   ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
-  
+
   // local search
   tables_[num]->get(place, reinterpret_cast<KeyType*>(d_fid_seq_ptr),
                        reinterpret_cast<ValType*>(d_shard_vals_ptr),
@@ -668,6 +668,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   // fill to d_val
   heter_comm_kernel_->fill_dvals_with_bfid(d_all_vals_ptr, d_vals, d_bfids_ptr, len, stream);
   VLOG(0) << "heter comm inl pull sparse fill d_all_vals to d_vals";
+
 #else
   int total_device = resource_->total_device();
   int h_left[total_device];   // NOLINT
@@ -684,8 +685,9 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
 #elif defined(PADDLE_WITH_XPU_KP)
   // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
-  auto xpu_context = xpu_dev_ctx.x_context();
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto xpu_context =
+          static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
@@ -891,8 +893,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 
 static void reset_xpu_memory(DevPlace & place, void* in_ptr, int len, int8_t value) {
   int8_t * in_int8_ptr = reinterpret_cast<int8_t*>(in_ptr);
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
-  auto xpu_context = xpu_dev_ctx.x_context();
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto xpu_context = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
   int r = xpu::constant<int8_t>(xpu_context, in_int8_ptr, len, value);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
@@ -999,8 +1001,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
 
   // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
-  auto xpu_context = xpu_dev_ctx.x_context();
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto xpu_context =
+          static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
