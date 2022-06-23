@@ -1529,20 +1529,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       // Do data transform before building KernelContext
       // TODO(zhiqiu): support TransferInplaceVarsBack
       PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_, runtime_ctx);
-      if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
-          !need_prepare_data_) {
-        impl_ =
-            new CacheImpl(new phi::KernelContext(),
-                          new RuntimeInferShapeContext(*this, *runtime_ctx));
-        BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
-        (*pt_kernel_)(impl_->getKernelContext());
-      } else {
-        phi::KernelContext pt_kernel_context;
-        // Do data transform before building KernelContext
-        // TODO(zhiqiu): support TransferInplaceVarsBack
-        BuildPhiKernelContext(*runtime_ctx, dev_ctx, &pt_kernel_context);
-        (*pt_kernel_)(&pt_kernel_context);
-      }
+      BuildPhiKernelContext(*runtime_ctx, dev_ctx, &pt_kernel_context);
+      (*pt_kernel_)(&pt_kernel_context);
     } else {
       (*kernel_func_)(
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
