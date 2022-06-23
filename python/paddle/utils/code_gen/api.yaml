@@ -1,6 +1,3 @@
-# erf
-
-# bernoulli
 - api : bernoulli
   args : (Tensor x)
   output : Tensor
@@ -27,7 +24,6 @@
     func : mv
   backward : mv_grad
 
-# poisson
 - api : poisson
   args : (Tensor x)
   output : Tensor
@@ -36,6 +32,15 @@
   kernel :
     func : poisson
   backward : poisson_grad
+
+- api : trace
+  args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)
+  output : Tensor
+  infer_meta :
+    func : TraceInferMeta
+  kernel :
+    func : trace
+  backward : trace_grad
 
 - api : trunc
   args : (Tensor x)

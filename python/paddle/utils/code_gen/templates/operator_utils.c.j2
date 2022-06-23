@@ -6,9 +6,7 @@ class {{api_name | to_pascal_case}}OpMaker : public framework::OpProtoAndChecker
   void Make() override {
   {% filter indent(4, True) %}
     {% for input in api["inputs"] %}
-      {% if input["name"] in api["kernel"]["param"] %}
 {{add_input(loop.index0, input, api_name)}};
-      {% endif %}
     {% endfor %}
     {% for output in api["outputs"] %}
 {{add_output(loop.index0, output, api_name)}};
@@ -130,9 +128,7 @@ PD_REGISTER_ARG_MAPPING_FN({{api["name"]}}, phi::{{api["name"] | to_pascal_case}
 {% macro get_input_list(inputs, kernel_args) %}{# inline #}
 paddle::small_vector<const char*> inputs {
 {%- for input in inputs %}
-{%- if input["name"] in kernel_args %}
 {{input["name"] | to_opmaker_name_cstr}}{{", " if not loop.last}}
-{%- endif %}
 {%- endfor %}
 }
 {%- endmacro %}
@@ -188,8 +184,7 @@ framework::OpKernelType GetExpectedKernelType(
   }
   {% endif %}
 {% endif %}
-  platform::Place place = ctx.GetPlace();
-  return framework::OpKernelType(data_type, place);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 {% endmacro %}
 
@@ -251,6 +246,47 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
                   ops::{{name | to_pascal_case}}InferShapeFunctor);
 {% endmacro %}
 
+{% macro register_op_version(api) %}
+{% if "version" in api %}
+{% set name = api["name"] %}
+REGISTER_OP_VERSION({{name}})
+  {% for checkpoint in api["version"]%}
+  .AddCheckpoint(
+    R"ROC({{checkpoint["checkpoint"]}})ROC",
+      paddle::framework::compatible::OpVersionDesc()
+    {% for action in checkpoint["action"]%}
+      {% if "add_input" in action %}
+        .NewInput("{{action["add_input"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "delete_input" in action %}
+        .DeleteInput("{{action["delete_input"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "modify_input" in action %}
+        .ModifyInput("{{action["modify_input"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "add_output" in action %}
+        .NewOutput("{{action["add_output"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "delete_output" in action %}
+        .DeleteOutput("{{action["delete_output"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "modify_output" in action %}
+        .ModifyOutput("{{action["modify_output"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "add_attr" in action %}
+        .NewAttr("{{action["add_attr"]}}", "{{action["comment"]}}", {{action["default"]}}){{")" if loop.last}}
+      {% endif %}
+      {% if "delete_attr" in action %}
+        .DeleteAttr("{{action["delete_attr"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "fix_bug" in action %}
+        .BugfixWithBehaviorChanged("{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+    {% endfor %}
+  {% endfor %};
+{% endif %}
+{% endmacro %}
+
 
 {# --------------------------------------- backward op maker ---------------------------------------------- #}
 {% macro backward_op_maker(api, forward_api) %}
@@ -272,8 +308,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
 
   {% for input in api["inputs"] %}
     grad_op->SetInput({{input["name"] | to_opmaker_name}}, this->{{extract_input_from_forward(
-      input["name"], 
-      forward_input_names, 
+      input["name"],
+      forward_input_names,
       forward_output_names,
       forward_input_orig_names,
       forward_output_orig_names)}});
@@ -281,8 +317,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
 
   {% for output in api["outputs"] %}
     grad_op->SetOutput({{output["name"] | to_opmaker_name}}, this->{{extract_output_from_forward(
-      output["name"], 
-      forward_input_names, 
+      output["name"],
+      forward_input_names,
       forward_output_names,
       forward_input_orig_names,
       forward_output_orig_names)}});
@@ -308,8 +344,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
 {% endmacro %}
 
 
-{% macro extract_input_from_forward(name, 
-  input_names, output_names, 
+{% macro extract_input_from_forward(name,
+  input_names, output_names,
   input_orig_names, output_orig_names) %}{# inline #}
   {% if name in input_names %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name)]%}

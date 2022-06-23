@@ -173,7 +173,9 @@ def pure_fp16_initialize(models):
                             paddle.nn.BatchNorm2D, paddle.nn.BatchNorm3D,
                             paddle.nn.LayerNorm, paddle.nn.SyncBatchNorm)):
                 continue
-            layer._to_impl(dtype='float16', include_sublayers=False)
+            layer._to_impl(dtype='float16',
+                           include_sublayers=False,
+                           floating_only=True)
     return models
 
 

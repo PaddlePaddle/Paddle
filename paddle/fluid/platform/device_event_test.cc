@@ -44,8 +44,6 @@ TEST(DeviceEvent, CUDA) {
   ASSERT_EQ(status, true);
   // case 2. test for event_recorder
   event.Record(context);
-  status = event.Query();
-  ASSERT_EQ(status, false);
   // case 3. test for event_finisher
   event.Finish();
   status = event.Query();

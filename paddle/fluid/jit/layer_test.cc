@@ -12,25 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/jit/layer.h"
-
-#include <algorithm>
-#include <fstream>
-#include <iterator>
 #include <string>
-#include <unordered_map>
 
 #include "gtest/gtest.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/jit/serializer.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+
+#include "paddle/fluid/jit/layer.h"
+#include "paddle/fluid/jit/serializer.h"
 
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(matmul_v2);
@@ -76,7 +71,7 @@ TEST(CpuLayerTest, Construct) {
   paddle::imperative::SetCurrentTracer(tracer);
   imperative::GetCurrentTracer()->SetExpectedPlace(phi::CPUPlace());
 
-  std::string path = "./";
+  std::string path = "./Testing/";
   auto layer = jit::Load(path);
   auto inputs = PrepareInputs();
 
@@ -105,7 +100,7 @@ TEST(GpuLayerTest, Construct) {
   const auto* dev_ctx_gpu = static_cast<const phi::GPUContext*>(&dev_ctx);
   DenseTensor cpu_dense_tensor;
 
-  std::string path = "./";
+  std::string path = "./Testing/";
   auto layer = jit::Load(path);
   auto inputs = PrepareInputs();
 
