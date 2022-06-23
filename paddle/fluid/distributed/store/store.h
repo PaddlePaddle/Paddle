@@ -25,7 +25,8 @@ namespace distributed {
 
 class Store {
  public:
-  explicit Store(const int& timeout) : _timeout(timeout) {}
+  Store() : _timeout(900) {}
+  explicit Store(const int timeout) : _timeout(timeout) {}
   virtual ~Store() = default;
 
   virtual int64_t add(const std::string& key, int64_t value) {

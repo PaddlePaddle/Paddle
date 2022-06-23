@@ -72,13 +72,13 @@ void BindTCPStore(py::module *m) {
                        size_t world_size,
                        int timeout) {
              return std::make_shared<TCPStore>(
-                 hostname, port, is_master, world_size, timeout)
+                 hostname, port, is_master, world_size, timeout);
            }),
            py::arg("hostname"),
            py::arg("port"),
            py::arg("is_master"),
            py::arg("world_size"),
-           py::arg("timeout") = timeout,
+           py::arg("timeout") = 900,
            py::call_guard<py::gil_scoped_release>());
 }
 
