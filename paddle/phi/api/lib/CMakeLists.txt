@@ -102,9 +102,10 @@ endif()
 # install extra dependencies
 if(${PYTHON_VERSION_STRING} VERSION_LESS "3.6.2")
   execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml
-                          jinja2==3.0.0)
+                          typing-extensions>=4.1.1 jinja2==2.11.3)
 else()
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml jinja2)
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml jinja2
+                          typing-extensions)
 endif()
 
 # parse apis
