@@ -480,7 +480,8 @@ class ReduceOp : public framework::OperatorWithKernel {
     }
     sort(reduce_dims.begin(), reduce_dims.end());
     for (size_t i = 0; i < reduce_dims.size(); ++i) {
-      if (reduce_dims[reduce_dims.size() - i - 1] != ndims - i - 1) {
+      if (reduce_dims[reduce_dims.size() - i - 1] !=
+          static_cast<int>(ndims - i - 1)) {
         return false;
       }
     }
