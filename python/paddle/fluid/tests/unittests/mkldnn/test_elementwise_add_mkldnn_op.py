@@ -68,6 +68,14 @@ class TestMKLDNNElementwiseAddOp5(TestMKLDNNElementwiseAddOp):
         self.out = np.add(self.x, self.y)
 
 
+class TestMKLDNNElementwiseAddOpBroadcastXintoY(TestMKLDNNElementwiseAddOp):
+
+    def init_input_output(self):
+        self.x = np.random.uniform(1, 2, [2, 50, 1]).astype(self.dtype)
+        self.y = np.random.uniform(1, 2, [2, 50, 160]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
 class TestMKLDNNElementwiseAddOp_broadcast_3(TestMKLDNNElementwiseAddOp):
 
     def init_input_output(self):

@@ -88,6 +88,8 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
         BINARY_OP, axis, mkldnn_engine, ctx.GetPlace(), x, y, z, scale_x,
         scale_y, scale_o, get_post_ops(ctx));
 
+    // oneDNN's binary is optimized for broadcasting y into x, so in other case
+    // we have to swap tensors to achieve optimal performance
     if (x->numel() < y->numel()) {
       std::swap(x, y);
     }
@@ -154,6 +156,13 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+
+    // oneDNN's binary is optimized for broadcasting y into x, so in other case
+    // we have to swap tensors to achieve optimal performance
+    if (x->numel() < y->numel()) {
+      std::swap(x, y);
+      std::swap(dx, dy);
+    }
 
     int axis = ctx.Attr<int>("axis");
 
