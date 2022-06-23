@@ -639,14 +639,14 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   auto d_shard_vals = memory::Alloc(place, h_fid_seq->size() * sizeof(ValType));
   VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
   ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
-
+  xpu_wait(stream);
   // local search
   tables_[num]->get(place, reinterpret_cast<KeyType*>(d_fid_seq_ptr),
                        reinterpret_cast<ValType*>(d_shard_vals_ptr),
                        h_fid_seq->size(),
                        stream);
   VLOG(0) << "heter comm inl pull sparse fill d_shard_val by table->get";
-
+  xpu_wait(stream);
   // allreduce
   auto d_all_vals = memory::Alloc(place, h_fid_seq->size() * sizeof(ValType));
   VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
@@ -664,10 +664,11 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     VLOG(0) << "heter comm inl pull unnecessary all reduce";
     d_all_vals_ptr = d_shard_vals_ptr;
   }
-
+  xpu_wait();
   // fill to d_val
   heter_comm_kernel_->fill_dvals_with_bfid(d_all_vals_ptr, d_vals, d_bfids_ptr, len, stream);
   VLOG(0) << "heter comm inl pull sparse fill d_all_vals to d_vals";
+  xpu_wait();
 
 #else
   int total_device = resource_->total_device();
@@ -955,7 +956,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   FidType* d_fid_seq_ptr = reinterpret_cast<FidType*>(d_fid_seq->ptr());
   memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(), h_fid_seq -> size() * sizeof(FidType), stream);
   VLOG(0) << "heter comm inl push sparse memory copy d_fid_seq from cpu to xpu";
-
+  xpu_wait();
   // merge grad
   int d_fgrad_len = h_fid_seq->size() * sizeof(GradType);
   auto d_shard_grads = memory::Alloc(place, d_fgrad_len);
@@ -964,9 +965,10 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 
   VLOG(0) << "heter comm inl push sparse start merge grad";
   reset_xpu_memory(place, d_shard_grads_ptr, d_fgrad_len, 0);
+  xpu_wait();
   heter_comm_kernel_->merge_grad(d_bfids_ptr, d_grads, len, d_shard_grads_ptr);
   VLOG(0) << "heter comm inl push sparse finish merge grad";
-
+  xpu_wait();
   // allreduce
   auto d_all_grads = memory::Alloc(place, h_fid_seq -> size() * sizeof(GradType));
   VLOG(0) << "heter comm inl push sparse alloc xpu memory for d_all_grads " << h_fid_seq->size() * sizeof(GradType);
@@ -988,6 +990,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   // update
   tables_[dev_num]->update(place, d_fid_seq_ptr, d_all_grads_ptr, h_fid_seq -> size(), stream);
   VLOG(0) << "heter comm inl push sparse update finish";
+  xpu_wait();
 
 #else
   int total_device = resource_->total_device();
