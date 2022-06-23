@@ -76,6 +76,31 @@ void PrintLodTensorType(Tensor* tensor, int64_t start, int64_t end,
   }
 }
 
+#define FLOAT_EPS 1e-8
+#define MAX_FLOAT_BUFF_SIZE 40
+template <>
+void PrintLodTensorType<float>(Tensor* tensor, int64_t start, int64_t end,
+                               std::string& out_val, char separator,
+                               bool need_leading_separator) {
+  char buf[MAX_FLOAT_BUFF_SIZE];
+  auto count = tensor->numel();
+  if (start < 0 || end > count) {
+    VLOG(3) << "access violation";
+    out_val += "access violation";
+    return;
+  }
+  if (start >= end) return;
+  for (int64_t i = start; i < end; i++) {
+    if (i != start || need_leading_separator) out_val += separator;
+    if (tensor->data<float>()[i] > -FLOAT_EPS &&
+        tensor->data<float>()[i] < FLOAT_EPS)
+      out_val += "0";
+    else {
+      sprintf(buf, "%.9f", tensor->data<float>()[i]);
+      out_val += buf;
+    }
+  }
+}
 std::string PrintLodTensorIntType(Tensor* tensor, int64_t start, int64_t end,
                                   char separator = ':',
                                   bool need_leading_separator = true) {
@@ -251,7 +276,11 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
       for (size_t i = begin; i < end; ++i) {
         auto bound = GetTensorBound(tensor, i);
         if (ars[i].size() > 0) ars[i] += "\t";
+        // ars[i] += '[';
         PrintLodTensor(tensor, bound.first, bound.second, ars[i], ' ', false);
+        // ars[i] += ']';
+        // ars[i] += "<" + PrintLodTensor(tensor, bound.first, bound.second, '
+        // ', false) + ">";
       }
     };
     std::thread threads[tensor_iterator_thread_num];
@@ -306,9 +335,10 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
       size_t end =
           begin + average_size + (i < batch_size % acutal_thread_num ? 1 : 0);
       for (size_t j = begin + 1; j < end; j++) {
-        ars[begin] += "\n" + ars[j];
+        if (ars[begin].size() > 0 && ars[j].size() > 0) ars[begin] += "\n";
+        ars[begin] += ars[j];
       }
-      writer_ << ars[begin];
+      if (ars[begin].size() > 0) writer_ << ars[begin];
     }
     return;
   }
@@ -332,7 +362,7 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
       continue;
     }
     ars[i] += ins_id_vec[i];
-    ars[i] = ars[i] + "\t" + ins_content_vec[i];
+    ars[i] += "\t" + ins_content_vec[i];
   }
   for (auto& field : *dump_fields_) {
     Variable* var = scope.FindVar(field);
@@ -364,8 +394,7 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
         continue;
       }
       auto bound = GetTensorBound(tensor, i);
-      ars[i] = ars[i] + "\t" + field + ":" +
-               std::to_string(bound.second - bound.first);
+      ars[i] += "\t" + field + ":" + std::to_string(bound.second - bound.first);
       ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
     }
   }
