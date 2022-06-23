@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
@@ -214,10 +215,8 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
                                       const Dims4D paddings,
                                       const Dims4D dilations,
                                       const Dims4D strides,
-                                      const bool subm,
                                       T* rulebook,
-                                      int* counter,
-                                      T* in_indexs) {
+                                      int* counter) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   extern __shared__ int counter_buf[];  // kernel_size
   const int kernel_size = kernel_dims[3] * kernel_dims[2] * kernel_dims[1];
@@ -233,9 +232,6 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
     T in_z = x_indices[i + non_zero_num];
     T in_y = x_indices[i + 2 * non_zero_num];
     T in_x = x_indices[i + 3 * non_zero_num];
-    if (subm) {
-      in_indexs[i] = PointToIndex(batch, in_x, in_y, in_z, x_dims);
-    }
     for (int kz = 0; kz < kernel_dims[1]; kz++) {
       for (int ky = 0; ky < kernel_dims[2]; ky++) {
         for (int kx = 0; kx < kernel_dims[3]; kx++) {
@@ -333,11 +329,9 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
                                           const Dims4D paddings,
                                           const Dims4D dilations,
                                           const Dims4D strides,
-                                          const bool subm,
                                           const T* out_index_table,
                                           T* rulebook,
-                                          int* counter,
-                                          T* in_indexs) {
+                                          int* counter) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const int kernel_size = kernel_dims[3] * kernel_dims[2] * kernel_dims[1];
   extern __shared__ int counter_buf[];  // kernel_size
@@ -357,9 +351,6 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
     T in_z = x_indices[i + non_zero_num];
     T in_y = x_indices[i + 2 * non_zero_num];
     T in_x = x_indices[i + 3 * non_zero_num];
-    if (subm) {
-      in_indexs[i] = PointToIndex(batch, in_x, in_y, in_z, x_dims);
-    }
     for (int kz = 0; kz < kernel_dims[1]; kz++) {
       for (int ky = 0; ky < kernel_dims[2]; ky++) {
         for (int kx = 0; kx < kernel_dims[3]; kx++) {
@@ -447,8 +438,6 @@ int ProductRuleBook(const Context& dev_ctx,
   const int64_t non_zero_num = x.nnz();
   const auto& non_zero_indices = x.non_zero_indices();
   const IntT* indices_ptr = non_zero_indices.data<IntT>();
-  DenseTensor in_indexs = phi::Empty<Context>(
-      dev_ctx, DenseTensorMeta(indices_dtype, {x.nnz()}, DataLayout::NCHW));
   int* counter_ptr = counter_per_kernel->data<int>();
   int* offsets_ptr = offsets_per_kernel->data<int>();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
@@ -503,30 +492,33 @@ int ProductRuleBook(const Context& dev_ctx,
                              dev_ctx.stream()>>>(
         out_indices.data<IntT>(), non_zero_num, d_x_dims, out_index_table_ptr);
 
-    if (config.thread_per_block.x > 128) {
-      config.block_per_grid.x *= config.thread_per_block.x / 128;
-      config.thread_per_block.x = 128;
-    }
     size_t cache_size = kernel_size * 2 + kernel_size *
                                               config.thread_per_block.x * 2 *
                                               sizeof(int);
-    ProductSubmRuleBookKernel<IntT>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           cache_size,
-           dev_ctx.stream()>>>(indices_ptr,
-                               d_x_dims,
-                               d_kernel_dims,
-                               d_out_dims,
-                               non_zero_num,
-                               d_paddings,
-                               d_dilations,
-                               d_strides,
-                               subm,
-                               out_index_table_ptr,
-                               rulebook_ptr,
-                               counter_ptr,
-                               in_indexs.data<IntT>());
+    const int MAX_CACHE_SIZE = 48 * 1024;
+    while (cache_size >= MAX_CACHE_SIZE) {
+      config.thread_per_block.x /= 2;
+      config.block_per_grid.x *= 2;
+      PADDLE_ENFORCE_GE(config.thread_per_block.x,
+                        32,
+                        phi::errors::Fatal("the shared memory is not enough"));
+      cache_size = kernel_size * 2 +
+                   kernel_size * config.thread_per_block.x * 2 * sizeof(int);
+    }
+    ProductSubmRuleBookKernel<IntT><<<config.block_per_grid.x,
+                                      config.thread_per_block.x,
+                                      cache_size,
+                                      dev_ctx.stream()>>>(indices_ptr,
+                                                          d_x_dims,
+                                                          d_kernel_dims,
+                                                          d_out_dims,
+                                                          non_zero_num,
+                                                          d_paddings,
+                                                          d_dilations,
+                                                          d_strides,
+                                                          out_index_table_ptr,
+                                                          rulebook_ptr,
+                                                          counter_ptr);
 
     out->SetMember(out_indices, out_values, out_dims, true);
 
@@ -584,10 +576,8 @@ int ProductRuleBook(const Context& dev_ctx,
                                                       d_paddings,
                                                       d_dilations,
                                                       d_strides,
-                                                      subm,
                                                       rulebook_ptr,
-                                                      counter_ptr,
-                                                      in_indexs.data<IntT>());
+                                                      counter_ptr);
 
     // 2. remove -1
 #ifdef PADDLE_WITH_HIP
