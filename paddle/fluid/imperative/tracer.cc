@@ -267,8 +267,8 @@ void Tracer::TraceOpImpl(const std::string& type,
     const auto& new_tmp = ins_amp == nullptr ? ins : *ins_amp;
     const auto& tracer = imperative::GetCurrentTracer();
     ins_amp = std::make_unique<NameVarMap<VarType>>(
-        imperative::AutoTuneLayout<VarType>(type, new_tmp, outs, &attrs,
-                                            tracer));
+        imperative::AutoTuneLayout<VarType>(
+            type, new_tmp, outs, &attrs, tracer));
   }
 
   const auto& new_ins = ins_amp == nullptr ? ins : *ins_amp;
