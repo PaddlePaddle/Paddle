@@ -2013,7 +2013,6 @@ PDNode *patterns::ConvResidual::operator()(bool with_residual_data) {
 
   if (!with_residual_data) {
     conv_op->assert_more([&](Node *x) {
-      auto node_names = x->Op()->InputNames();
       if (!HasInput(x, "ResidualData") ||
           x->Op()->Input("ResidualData").size() == 0)
         return true;
