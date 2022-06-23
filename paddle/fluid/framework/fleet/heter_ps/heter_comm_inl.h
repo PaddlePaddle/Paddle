@@ -72,11 +72,10 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
     } else {
       max_mf_dim_ = resource_->max_mf_dim();
       feature_value_accessor_ = feature_value_accessor;
-      feature_value_accessor_.DynamicChangeDim(max_mf_dim_);
-      VLOG(0) << " HeterComm init, max feature_value_size:" << feature_value_accessor_.GetAccessorInfo().size 
-            << ", feature_value_push_size:" << feature_value_accessor_.GetAccessorInfo().update_size;
-      size_t val_type_size = TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().size);
-      size_t grad_type_size = TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().update_size);
+      size_t val_type_size = TYPEALIGN(8, feature_value_accessor_.common_feature_value.Size(max_mf_dim_));
+      size_t grad_type_size = TYPEALIGN(8, feature_value_accessor_.common_push_value.Size(max_mf_dim_));
+      VLOG(0) << " HeterComm init, max feature_value_size:" << val_type_size 
+              << ", feature_value_push_size:" << grad_type_size;
       auto ptr_table = new PtrTable(capacity / load_factor_);
       ptr_table->set_accessor(feature_value_accessor_);
       ptr_table->set_feature_value_size(val_type_size, grad_type_size);
@@ -693,7 +692,7 @@ void HeterComm<KeyType, ValType, GradType>::dynamic_merge_grad(
 
   size_t temp_storage_bytes;
 
-  size_t grad_value_size = TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().update_size);
+  size_t grad_value_size = TYPEALIGN(8, feature_value_accessor_.common_push_value.Size(max_mf_dim_));
 
   auto d_merge_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_merge_keys_ptr = reinterpret_cast<KeyType*>(d_merge_keys->ptr());
@@ -916,7 +915,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   auto d_idx = memory::Alloc(place, len * sizeof(int));
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
-  size_t val_type_size = TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().size);
+
+  size_t val_type_size = TYPEALIGN(8, feature_value_accessor_.common_feature_value.Size(max_mf_dim_));
   VLOG(3) << "pull_sparse len:" << len << "  val_type_size: " << val_type_size;
   auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
@@ -1017,7 +1017,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   int dev_id = resource_->dev_id(dev_num);
 
   size_t grad_value_size =
-        TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().update_size);
+        TYPEALIGN(8, feature_value_accessor_.common_push_value.Size(max_mf_dim_));
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(dev_num, 0);
