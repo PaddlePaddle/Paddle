@@ -159,7 +159,7 @@ __global__ void dy_mf_update_kernel(Table* table,
       float* cur = (float*)(grads + i * grad_value_size);
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, cur);
     } else {
-      printf("warning: push miss key: %d", keys[i]);
+      printf("warning: push miss key: %lu", keys[i]);
     }
   }
 }
