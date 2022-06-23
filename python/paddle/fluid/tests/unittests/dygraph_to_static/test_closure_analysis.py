@@ -51,7 +51,7 @@ def test_normal_0(x):
 
     def func():
         if True:
-            i = i + 1
+            i = 1
 
     func()
     return i
@@ -63,7 +63,7 @@ def test_normal_argument(x):
     def func():
         if True:
             print(x)
-            i = i + 1
+            i = 1
 
     func()
     return x
@@ -76,7 +76,7 @@ def test_global(x):
     def func():
         if True:
             print(x)
-            i = i + 1
+            i = 1
 
     func()
     return x
@@ -90,7 +90,7 @@ def test_nonlocal(x, *args, **kargs):
         k = 10
         if True:
             print(x)
-            i = i + 1
+            i = 1
 
     func(*args, **kargs)
     return x
@@ -127,6 +127,22 @@ class TestClosureAnalysis(unittest.TestCase):
             gast_root = gast.parse(test_func)
             name_visitor = FunctionNameLivenessAnalysis(gast_root)
             JudgeVisitor(ans).visit(gast_root)
+
+
+class TestClosureAnalysis_Attribute(unittest.TestCase):
+
+    def setUp(self):
+        self.init_dygraph_func()
+
+    def init_dygraph_func(self):
+
+        def func():
+            i = 0
+            self.current.function = 12
+            # in this function, only self is a Name, self.current is a Attribute. self is read and self.current.function is store()
+
+        self.all_dygraph_funcs = [func]
+        self.ans = [{"func": set({'i'})}]
 
 
 if __name__ == '__main__':
