@@ -22,7 +22,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from filters import to_op_attr_type, to_opmaker_name, to_opmaker_name_cstr, to_pascal_case
 from tests import is_base_api, is_vec, is_scalar, is_initializer_list, supports_inplace, supports_no_need_buffer
-from filters import to_input_name
+from filters import to_input_name, cartesian_prod_mapping
 from parse_utils import to_named_dict
 
 file_loader = FileSystemLoader(Path(__file__).parent / "templates")
@@ -37,6 +37,7 @@ env.filters["to_opmaker_name"] = to_opmaker_name
 env.filters["to_pascal_case"] = to_pascal_case
 env.filters["to_input_name"] = to_input_name
 env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
+env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.tests["base_api"] = is_base_api
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
@@ -45,14 +46,23 @@ env.tests["supports_inplace"] = supports_inplace
 env.tests["supports_no_need_buffer"] = supports_no_need_buffer
 
 
+def restruct_io(api):
+    api["input_dict"] = to_named_dict(api["inputs"])
+    api["attr_dict"] = to_named_dict(api["attrs"])
+    api["output_dict"] = to_named_dict(api["outputs"])
+    return api
+
+
 def main(api_yaml_path, backward_yaml_path, output_op_path,
          output_arg_map_path):
     with open(api_yaml_path, "rt") as f:
         apis = yaml.safe_load(f)
+        apis = [restruct_io(api) for api in apis]
     forward_api_dict = to_named_dict(apis)
 
     with open(backward_yaml_path, "rt") as f:
         backward_apis = yaml.safe_load(f)
+        backward_apis = [restruct_io(api) for api in backward_apis]
     backward_api_dict = to_named_dict(backward_apis)
 
     # fill backward field for an api if another api claims it as forward

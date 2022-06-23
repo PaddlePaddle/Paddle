@@ -178,6 +178,8 @@ class FCPrimitiveFactory {
     } else {
       out->set_format(in_format);
     }
+    out->set_mem_desc({phi::vectorize(out->dims()),
+                       platform::MKLDNNGetDataType<T_out>(), out->format()});
   }
 
   void UpdateDataPointers(const ExecutionContext& ctx, Tensor* out,

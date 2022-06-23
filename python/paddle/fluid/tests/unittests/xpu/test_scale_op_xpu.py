@@ -46,9 +46,7 @@ class XPUTestScaleOp(XPUOpTestWrapper):
             self.place = paddle.XPUPlace(0)
             self.set_inputs()
             self.set_attrs()
-            self.outputs = {
-                'Out': self.inputs['X'] * self.dtype(self.attrs['scale'])
-            }
+            self.set_output()
 
         def set_xpu(self):
             self.__class__.use_xpu = True
@@ -57,6 +55,16 @@ class XPUTestScaleOp(XPUOpTestWrapper):
 
         def set_inputs(self):
             self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
+
+        def set_output(self):
+            if "float16" == self.in_type:
+                output = self.inputs['X'] * np.float16(self.attrs['scale'])
+            elif "int64" == self.in_type:
+                output = self.inputs['X'] * np.int64(self.attrs['scale'])
+            else:
+                output = self.inputs['X'] * np.float32(self.attrs['scale'])
+
+            self.outputs = {'Out': output}
 
         def init_dtype(self):
             if "float16" == self.in_type:

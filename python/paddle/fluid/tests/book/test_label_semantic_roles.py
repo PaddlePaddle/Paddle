@@ -20,6 +20,7 @@ import numpy as np
 import os
 import time
 import unittest
+import tempfile
 
 import paddle
 import paddle.dataset.conll05 as conll05
@@ -354,11 +355,15 @@ def main(use_cuda, is_local=True):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
+    temp_dir = tempfile.TemporaryDirectory()
     # Directory for saving the trained model
-    save_dirname = "label_semantic_roles.inference.model"
+    save_dirname = os.path.join(temp_dir.name,
+                                "label_semantic_roles.inference.model")
 
     train(use_cuda, save_dirname, is_local)
     infer(use_cuda, save_dirname)
+
+    temp_dir.cleanup()
 
 
 class TestLabelSemanticRoles(unittest.TestCase):

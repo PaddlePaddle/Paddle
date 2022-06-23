@@ -79,7 +79,7 @@ class SSDSparseTable : public MemorySparseTable {
   virtual int32_t Load(const std::string& path,
                        const std::string& param) override;
   //加载path目录下数据[start_idx, end_idx)
-  virtual int32_t Load(size_t start_idx, int end_idx,
+  virtual int32_t Load(size_t start_idx, size_t end_idx,
                        const std::vector<std::string>& file_list,
                        const std::string& param);
   int64_t LocalSize();
