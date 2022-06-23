@@ -83,7 +83,7 @@ type_dict_str_to_numpy = {
 }
 
 xpu_test_op_white_list = []
-xpu_test_type_white_list = []
+xpu_test_type_white_list = ['float64']
 xpu_test_op_type_white_list = []
 xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []
@@ -106,7 +106,9 @@ def get_op_white_list():
 
 
 def get_type_white_list():
-    type_white_list = xpu_test_type_white_list
+    xpu_version = core.get_xpu_device_version(0)
+    version_str = "xpu2" if xpu_version == core.XPUVersion.XPU2 else "xpu1"
+    type_white_list = xpu_test_type_white_list if version_str == "xpu1" else []
     if os.getenv('XPU_TEST_TYPE_WHITE_LIST') is not None:
         type_white_list.extend(
             os.getenv('XPU_TEST_TYPE_WHITE_LIST').strip().split(','))
