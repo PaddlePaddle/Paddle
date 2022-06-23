@@ -46,7 +46,7 @@ class Store {
         "Implement the add method in the subclass."));
   }
 
-  virtual const int timeout() const { return _timeout; }
+  virtual int timeout() { return _timeout; }
 
  protected:
   int _timeout;
