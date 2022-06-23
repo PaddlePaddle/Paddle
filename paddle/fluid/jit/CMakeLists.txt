@@ -13,7 +13,9 @@ cc_library(
   SRCS base_function.cc
   DEPS scope proto_desc)
 
-if(WITH_TESTING AND NOT WIN32)
+if(WITH_TESTING
+   AND NOT WIN32
+   AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
   add_custom_target(
     jit_download_program
     COMMAND wget -nc https://paddle-ci.gz.bcebos.com/dy2st/Testing.tar.gz

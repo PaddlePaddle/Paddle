@@ -49,6 +49,10 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .End()
       .AddAttr("bit_length")
       .IsIntIn({8, 16})
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
+      .IsIntIn({0, 1})
       .End();
   AddOpCompat(OpCompat("fake_quantize_moving_average_abs_max"))
       .AddInput("X")
@@ -85,6 +89,10 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .End()
       .AddAttr("bit_length")
       .IsIntIn({8, 16})
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
+      .IsIntIn({0, 1})
       .End();
   AddOpCompat(OpCompat("fake_dequantize_max_abs"))
       .AddInput("X")
