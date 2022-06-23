@@ -1023,7 +1023,6 @@ struct Conv : public PatternBase {
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_input);
   PATTERN_DECL_NODE(conv_filter);
-  PATTERN_DECL_NODE(conv_residual_data);
   PATTERN_DECL_NODE(conv_output);
 };
 
@@ -1069,6 +1068,19 @@ struct Elementwise : public PatternBase {
   PATTERN_DECL_NODE(elementwise_op);
   PATTERN_DECL_NODE(elementwise_x);
   PATTERN_DECL_NODE(elementwise_y);
+  PATTERN_DECL_NODE(elementwise_out);
+};
+
+// Elementwise ops
+// Forward pass for element-wise operators
+// elementwise_out is the result of the operator
+struct ElementwiseOp : public PatternBase {
+  ElementwiseOp(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elementwise") {}
+
+  PDNode* operator()(const std::string elementwise_type);
+
+  PATTERN_DECL_NODE(elementwise_op);
   PATTERN_DECL_NODE(elementwise_out);
 };
 

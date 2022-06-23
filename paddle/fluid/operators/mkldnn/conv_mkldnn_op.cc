@@ -505,41 +505,20 @@ class ConvMKLDNNHandlerT
     if (fuse_residual_conn) {
       post_operations.append_sum(sum_scale);
     }
-    // Fusion with ReLU layer is executed through the PostOps feature. Create a
-    // PostOps object and configure it to execute an eltwise relu operation.
-    if (fuse_activation == "relu" || fuse_activation == "leaky_relu") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_relu, fuse_alpha,
-                                     fuse_beta);
-    } else if (fuse_activation == "relu6") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_bounded_relu,
-                                     fuse_alpha, fuse_beta);
-    } else if (fuse_activation == "swish") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_swish, fuse_alpha,
-                                     fuse_beta);
-    } else if (fuse_activation == "hard_swish") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_hardswish,
-                                     fuse_alpha, fuse_beta);
-    } else if (fuse_activation == "mish") {
-      post_operations.append_eltwise(activation_scale,
-                                     dnnl::algorithm::eltwise_mish, fuse_alpha,
-                                     fuse_beta);
-    } else if (fuse_activation == "hard_sigmoid") {
+
+    if (fuse_activation == "hard_sigmoid") {
       post_operations.append_eltwise(activation_scale,
                                      dnnl::algorithm::eltwise_linear,
                                      fuse_alpha, fuse_beta);
       post_operations.append_eltwise(activation_scale,
                                      dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
-    } else if (fuse_activation == "gelu_tanh") {
-      post_operations.append_eltwise(
-          activation_scale, dnnl::algorithm::eltwise_gelu_tanh, 0.0f, 0.0f);
-    } else if (fuse_activation == "gelu_erf") {
-      post_operations.append_eltwise(
-          activation_scale, dnnl::algorithm::eltwise_gelu_erf, 0.0f, 0.0f);
+    } else if (fuse_activation != "") {
+      const auto activation_algorithm =
+          platform::AcquireActivationAlgorithm(fuse_activation);
+      post_operations.append_eltwise(activation_scale, activation_algorithm,
+                                     fuse_alpha, fuse_beta);
     }
+
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
   }
@@ -660,14 +639,21 @@ class ConvMKLDNNHandlerT
     if (is_test && bias_mem_p) {
       return bias_mem_p;
     } else {
-      const K* bias_data = bias->data<K>();
+      // if K is int8 (weights are int8) then biases are int32
+      using K_Bias = typename std::conditional<std::is_same<K, int8_t>::value,
+                                               int32_t, K>::type;
+      if (std::is_same<K_Bias, int32_t>::value &&
+          bias->dtype() != phi::DataType::INT32) {
+        LOG(ERROR) << "Bias should be of type int32 but is " << bias->dtype();
+      }
+      const K_Bias* bias_data = bias->data<K_Bias>();
       auto user_bias_md = platform::MKLDNNMemDesc(
-          phi::vectorize(bias->dims()), platform::MKLDNNGetDataType<K>(),
+          phi::vectorize(bias->dims()), platform::MKLDNNGetDataType<K_Bias>(),
           MKLDNNMemoryFormat::x);
 
       return this->AcquireMemoryWithReorder(
           user_bias_md, this->fwd_pd_->bias_desc(),
-          platform::to_void_cast<K>(bias_data), "@bias_mem_p", is_test, {},
+          platform::to_void_cast<K_Bias>(bias_data), "@bias_mem_p", is_test, {},
           scale_data, mask);
     }
   }
@@ -1053,9 +1039,19 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ops::ConvMKLDNNOpKernel<uint8_t, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
+                                    ::paddle::platform::CPUPlace, U8WS8,
+                                    ops::kConvMKLDNNINT8WS8,
+                                    ops::ConvMKLDNNOpKernel<uint8_t, int8_t>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, S8,
                                     ops::kConvMKLDNNINT8,
                                     ops::ConvMKLDNNOpKernel<int8_t, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
+                                    ::paddle::platform::CPUPlace, S8WS8,
+                                    ops::kConvMKLDNNINT8WS8,
+                                    ops::ConvMKLDNNOpKernel<int8_t, int8_t>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,

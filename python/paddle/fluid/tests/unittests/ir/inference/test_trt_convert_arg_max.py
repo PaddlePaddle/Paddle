@@ -45,6 +45,7 @@ class TrtConvertArgMaxTest(TrtLayerAutoScanTest):
             for batch in [1, 4]:
                 for axis in [-1, 0, 1, 2, 3]:
                     for keepdims in [True, False]:
+                        self.rank = rank
                         flatten = False
                         dtype = 2
                         ops_config = [{
@@ -76,9 +77,59 @@ class TrtConvertArgMaxTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+
+        def generate_dynamic_shape(attrs):
+            if self.rank == 3:
+                self.dynamic_shape.min_input_shape = {
+                    "arg_max_input": [1, 8, 16]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "arg_max_input": [4, 8, 16]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "arg_max_input": [3, 8, 16]
+                }
+            else:
+                self.dynamic_shape.min_input_shape = {
+                    "arg_max_input": [1, 8, 16, 24]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "arg_max_input": [4, 8, 16, 24]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "arg_max_input": [1, 8, 16, 24]
+                }
+
+        def clear_dynamic_shape():
+            self.dynamic_shape.min_input_shape = {}
+            self.dynamic_shape.max_input_shape = {}
+            self.dynamic_shape.opt_input_shape = {}
+
+        def generate_trt_nodes_num(attrs, dynamic_shape):
+            return 1, 2
+
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
+
         self.trt_param.workspace_size = 1024000
-        yield self.create_inference_config(), [1, 2], 1e-5
+        # for static_shape
+        clear_dynamic_shape()
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
+
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
 
     def test(self):
         self.run_test()
