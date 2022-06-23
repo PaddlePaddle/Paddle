@@ -177,6 +177,10 @@ bool Tensor::is_gpu_pinned() const {
   return paddle::platform::is_cuda_pinned_place(place());
 }
 
+bool Tensor::is_custom_device() const {
+  return paddle::platform::is_custom_place(place());
+}
+
 /* Part 4: Data Access methods */
 
 template <typename T>
