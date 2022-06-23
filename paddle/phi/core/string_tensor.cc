@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/core/string_tensor.h"
 
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/common/pstring.h"
 
 namespace phi {
 
