@@ -25,8 +25,10 @@ np.random.seed(0)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_cuda()
-                 or paddle.get_cudnn_version() < 8000,
-                 "only support with cuda and cudnn version is at least 8.0.")
+                 or paddle.get_cudnn_version() < 8000
+                 or paddle.device.cuda.get_device_capability()[0] < 7,
+                 "only support with cuda and cudnn version is at least 8.0 "
+                 "and device's compute capability is at least 7.0")
 class TestFuseResNetUnit(unittest.TestCase):
 
     def test_fuse_resenet_unit(self):
