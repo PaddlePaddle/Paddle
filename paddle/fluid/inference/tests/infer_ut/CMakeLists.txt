@@ -22,8 +22,8 @@ macro(safe_set_static_flag)
           CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
     if(${flag_var} MATCHES "/MD")
       string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-    endif(${flag_var} MATCHES "/MD")
-  endforeach(flag_var)
+    endif()
+  endforeach()
 endmacro()
 
 if(NOT DEFINED PADDLE_LIB)
@@ -106,7 +106,7 @@ if(WITH_GPU)
       endif()
     endif()
     message(STATUS "Current CUDA lib path: ${CUDA_LIB}")
-  endif(NOT WIN32)
+  endif()
 endif()
 
 if(USE_TENSORRT AND WITH_GPU)
@@ -182,9 +182,9 @@ if(WITH_MKL)
     include_directories("${MKLDNN_PATH}/include")
     if(WIN32)
       set(MKLDNN_LIB ${MKLDNN_PATH}/lib/mkldnn.lib)
-    else(WIN32)
+    else()
       set(MKLDNN_LIB ${MKLDNN_PATH}/lib/libmkldnn.so.0)
-    endif(WIN32)
+    endif()
   endif()
 else()
   set(OPENBLAS_LIB_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}openblas")
@@ -214,21 +214,7 @@ else()
 endif()
 
 if(WITH_ONNXRUNTIME)
-  if(WIN32)
-    set(DEPS
-        ${DEPS} ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/onnxruntime.lib
-        paddle2onnx)
-  elseif(APPLE)
-    set(DEPS
-        ${DEPS}
-        ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/libonnxruntime.1.10.0.dylib
-        paddle2onnx)
-  else()
-    set(DEPS
-        ${DEPS}
-        ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/libonnxruntime.so.1.10.0
-        paddle2onnx)
-  endif()
+  set(DEPS ${DEPS} onnxruntime paddle2onnx)
 endif()
 
 if(NOT WIN32)
@@ -255,7 +241,7 @@ else()
       cryptopp-static
       ${EXTERNAL_LIB})
   set(DEPS ${DEPS} shlwapi.lib)
-endif(NOT WIN32)
+endif()
 
 if(WITH_GPU)
   if(NOT WIN32)
@@ -302,7 +288,7 @@ if(WITH_GTEST)
       ${DEMO_NAME}
       ${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgtest${CMAKE_STATIC_LIBRARY_SUFFIX}
     )
-  endif(WIN32)
+  endif()
 endif()
 if(WIN32)
   if("${CMAKE_GENERATOR}" MATCHES "Ninja")

@@ -83,7 +83,8 @@ float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
 #endif
 
 const char* StringTracerMemEventType(TracerMemEventType type) {
-  static const char* categary_name_[] = {"Allocate", "Free"};
+  static const char* categary_name_[] = {"Allocate", "Free", "ReservedAllocate",
+                                         "ReservedFree"};
   return categary_name_[static_cast<int>(type)];
 }
 

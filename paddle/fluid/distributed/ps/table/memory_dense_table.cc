@@ -81,8 +81,8 @@ int32_t MemoryDenseTable::InitializeValue() {
 
   fixed_len_params_dim_ = 0;
   for (int x = 0; x < size; ++x) {
-    int dim = common.dims()[x];
-    if (dim != param_dim_) {
+    auto& dim = common.dims()[x];
+    if (static_cast<int>(dim) != param_dim_) {
       fixed_len_params_dim_ += dim;
     } else {
       param_col_ids_.push_back(x);
@@ -276,7 +276,7 @@ int32_t MemoryDenseTable::Load(const std::string& path,
           CHECK(str_len == param_col_ids_.size())
               << "expect " << param_col_ids_.size() << " float, but got "
               << str_len;
-          for (int col_idx = 0; col_idx < str_len; ++col_idx) {
+          for (size_t col_idx = 0; col_idx < str_len; ++col_idx) {
             if (param_col_ids_[col_idx] < 0) {
               continue;
             }
