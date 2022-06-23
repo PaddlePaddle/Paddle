@@ -183,24 +183,10 @@ class HeavilyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
 
     // Step 2: Transpose the specified input for Op and set the transposed var's
     // layout.
-    bool not_in_set = true;
     for (auto& name : this->Inputs()) {
       if (new_ins.find(name) != new_ins.end()) {
         auto& in_vars = new_ins[name];
         for (auto& var : in_vars) {
-          if (var != nullptr &&
-              paddle::imperative::GetDataLayout(var) != desired_layout) {
-            var = TraceTransposeOp(var, desired_layout, tracer);
-          }
-        }
-        not_in_set = false;
-      }
-    }
-
-    if (not_in_set) {
-      for (auto& pair : new_ins) {
-        for (auto& var : pair.second) {
-          VLOG(4) << "Origin input attr was not in init set: " << pair.first;
           if (var != nullptr &&
               paddle::imperative::GetDataLayout(var) != desired_layout) {
             var = TraceTransposeOp(var, desired_layout, tracer);
@@ -259,8 +245,6 @@ class LightlyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
         }
       }
     }
-    VLOG(4) << "Optimze lightly layout sensitive op no transpose "
-            << this->Type();
     return new_ins;
   }
 };
@@ -401,8 +385,6 @@ class ArgmaxOpTransformer
           case paddle::framework::proto::AttrType::LONG: {
             auto axis = BOOST_GET_CONST(int64_t, (*attrs)["axis"]);
             (*attrs)["axis"] = static_cast<int64_t>(perm[axis]);
-            this->SetVarsLayout(outs, var_layout);
-            return ins;
           }
           default:
             VLOG(4) << "The data_type of axis is Error, axis must be int or "
