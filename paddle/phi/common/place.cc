@@ -24,16 +24,6 @@ limitations under the License. */
 
 namespace phi {
 
-GPUPlace::GPUPlace()
-    : Place(AllocationType::GPU,
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-            phi::backends::gpu::GetCurrentDeviceId()
-#else
-            0
-#endif
-      ) {
-}
-
 const char *AllocationTypeStr(AllocationType type) {
   switch (type) {
     case AllocationType::UNDEFINED:
@@ -145,7 +135,7 @@ Place::Place(paddle::PlaceType type)
   LOG_FIRST_N(WARNING, 1)
       << "The `paddle::PlaceType::kCPU/kGPU` is deprecated since version "
          "2.3, and will be removed in version 2.4! Please use "
-         "`paddle::CPUPlace()/GPUPlace()` to represent the place type.";
+         "`paddle::CPUPlace()/DefaultGPUPlace()` to represent the place type.";
 }
 
 }  // namespace phi
@@ -166,6 +156,15 @@ bool operator==(PlaceType place_type, const Place &place) {
          "2.3, and will be removed in version 2.4! Please use "
          "`Tensor::is_cpu()/is_gpu()` method to determine the type of place.";
   return static_cast<AllocationType>(place_type) == place.GetType();
+}
+
+GPUPlace DefaultGPUPlace() {
+  return GPUPlace(
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      phi::backends::gpu::GetCurrentDeviceId());
+#else
+      0);
+#endif
 }
 
 }  // namespace paddle

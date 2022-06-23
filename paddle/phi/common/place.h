@@ -123,7 +123,7 @@ class CPUPlace : public Place {
 
 class GPUPlace : public Place {
  public:
-  GPUPlace();
+  GPUPlace() : Place(AllocationType::GPU, 0) {}
   explicit GPUPlace(int device_id) : Place(AllocationType::GPU, device_id) {}
 
   GPUPlace(const GPUPlace&) = default;
@@ -255,5 +255,7 @@ enum class PlaceType {
 
 PADDLE_API bool operator==(const Place& place, PlaceType place_type);
 PADDLE_API bool operator==(PlaceType place_type, const Place& place);
+
+PADDLE_API GPUPlace DefaultGPUPlace();
 
 }  // namespace paddle
