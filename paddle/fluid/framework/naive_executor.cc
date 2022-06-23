@@ -45,17 +45,19 @@ void NaiveExecutor::Run() {
   platform::AttachPointerHashToMKLDNNKey(this, place_);
   platform::RegisterModelLayout(ops_, place_);
 #endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::ScopedFlushDenormal flush;
   platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
   auto stream = ctx->stream();
 
   for (auto &op : ops_) {
-    if(std::count(graphed_ops.begin(), graphed_ops.end(), op->Type())) {
-      if(graph_instances_.count(op.get())){
-         cudaGraphLaunch(graph_instances_[op.get()], stream);
-         cudaStreamSynchronize(stream);
-      } else {   
+    if (std::count(graphed_ops.begin(), graphed_ops.end(), op->Type())) {
+      if (graph_instances_.count(op.get())) {
+        cudaGraphLaunch(graph_instances_[op.get()], stream);
+        cudaStreamSynchronize(stream);
+      } else {
         cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
         VLOG(4) << std::this_thread::get_id() << " run "
                 << op->DebugStringEx(scope_) << " on scope " << scope_;
@@ -67,13 +69,21 @@ void NaiveExecutor::Run() {
         cudaGraphInstantiate(&instance_, graph_, NULL, NULL, 0);
         graph_instances_[op.get()] = instance_;
       }
-    } else {   
+    } else {
       VLOG(4) << std::this_thread::get_id() << " run "
               << op->DebugStringEx(scope_) << " on scope " << scope_;
       op->SetIsCalledByExecutor(false);
       op->Run(*scope_, place_);
     }
   }
+#else
+  for (auto &op : ops_) {
+    VLOG(4) << std::this_thread::get_id() << " run "
+            << op->DebugStringEx(scope_) << " on scope " << scope_;
+    op->SetIsCalledByExecutor(false);
+    op->Run(*scope_, place_);
+  }
+#endif
 }
 
 void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
