@@ -187,7 +187,10 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
     customized_type_value =
         (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
          input_data_type == framework::DataTypeTrait<uint8_t>::DataType())
-            ? kConvMKLDNNINT8
+            ? OperatorWithKernel::IndicateVarDataType(ctx, "Filter") ==
+                      framework::DataTypeTrait<int8_t>::DataType()
+                  ? kConvMKLDNNINT8WS8
+                  : kConvMKLDNNINT8
             : kConvMKLDNNFP32;
   }
 #endif

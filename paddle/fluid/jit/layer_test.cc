@@ -76,7 +76,7 @@ TEST(CpuLayerTest, Construct) {
   paddle::imperative::SetCurrentTracer(tracer);
   imperative::GetCurrentTracer()->SetExpectedPlace(phi::CPUPlace());
 
-  std::string path = "./";
+  std::string path = "./Testing/";
   auto layer = jit::Load(path);
   auto inputs = PrepareInputs();
 
@@ -105,7 +105,7 @@ TEST(GpuLayerTest, Construct) {
   const auto* dev_ctx_gpu = static_cast<const phi::GPUContext*>(&dev_ctx);
   DenseTensor cpu_dense_tensor;
 
-  std::string path = "./";
+  std::string path = "./Testing/";
   auto layer = jit::Load(path);
   auto inputs = PrepareInputs();
 
