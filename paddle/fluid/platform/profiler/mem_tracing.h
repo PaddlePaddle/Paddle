@@ -16,29 +16,27 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/framework/shape_inference.h"
-#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
 
 namespace paddle {
-
-namespace framework {
-class RuntimeContext;
-}
 namespace platform {
-
-class RecordOpInfoSupplement {
+// Memory event tracing. A trace marks memory manipulation such as allocation
+// and free.
+// The events can be used to draw memory variation curve.
+class RecordMemEvent {
  public:
   /**
-   * @param type:  Operator type name.
-   * @param attrs: Attribute map of op.
-   * @param shape_ctx: Infershape context object.
-   * @param ctx: Runtime context object.
+   * @param ptr:  Pointer address allocated or free.
+   * @param place: Device for this memory event.
+   * @param size: Memory size allocated or free.
+   * @param type: Denote manipulation type for this memory event.
    */
-  explicit RecordOpInfoSupplement(const std::string& type,
-                                  const framework::AttributeMap& attrs,
-                                  const framework::InferShapeContext& shape_ctx,
-                                  const framework::RuntimeContext& ctx);
+  explicit RecordMemEvent(
+      const void* ptr,
+      const Place& place,
+      size_t size,
+      const TracerMemEventType type = TracerMemEventType::Allocate);
 };
 
 }  // namespace platform

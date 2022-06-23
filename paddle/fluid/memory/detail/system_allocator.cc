@@ -41,7 +41,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/fluid/platform/profiler/mem_tracing.h"
 
 DECLARE_bool(use_pinned_memory);
 DECLARE_double(fraction_of_gpu_memory_to_use);

@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/stats.h"
-#include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/fluid/platform/profiler/mem_tracing.h"
 
 namespace paddle {
 namespace memory {

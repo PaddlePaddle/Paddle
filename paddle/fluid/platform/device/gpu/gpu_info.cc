@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
