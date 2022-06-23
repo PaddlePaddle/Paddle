@@ -61,7 +61,7 @@ class OptimizationTuner:
 
         self._build_program_without_optimization()
         self._backup_context()
-        self._select_tuning_algor()
+        self._select_tuning_algorithm()
 
     # TODO this func may be intergated into parallelizer
     def _build_program_without_optimization(self):
@@ -113,24 +113,14 @@ class OptimizationTuner:
         new_completer = Completer(new_dist_context)
         return new_dist_context, new_main_program, new_startup_program, new_optimizer, pass_context, new_completer
 
-    def _select_tuning_algor(self):
+    def _select_tuning_algorithm(self):
 
         # TODO select tuning based on user setting
 
         self.algorithm = ShardingStageTuner(self._dist_context._strategy, self._tuning_config)
 
-    # FIXME reorder all the auto parallel pass and then reuse code in parallelizer
-    # TODO tuner self maintain loss / params_grads
-    # def _apply_pass(self, new_strategy , time = 0):
-    #     startup_prog = paddle.static.Program()
-    #     main_prog = paddle.static.Program()    
-    #     with paddle.static.program_guard(main_prog, startup_prog):
-    #         x = paddle.static.data(name='X', shape=[1000, 784], dtype='float32')
-    #         y = paddle.static.data(name='Y', shape=[784, 100], dtype='float32')
-    #         z = paddle.matmul(x=x, y=y)
-    #     return main_prog, main_prog
 
-    def _apply_pass(self, new_strategy , time = 0):
+    def _apply_optimization(self, new_strategy , time = 0):
 
         dist_context, main_program, startup_program, optimizer, pass_context, completer = self._get_new_env()
 
@@ -285,7 +275,7 @@ class OptimizationTuner:
 
         # step1: baseline trial
         new_strategy = self.algorithm.get_baseline_trial()
-        new_main_program, new_startup_program = self._apply_pass(new_strategy,  time = 0)
+        new_main_program, new_startup_program = self._apply_optimization(new_strategy,  time = 0)
         last_trial_result = self._evaluate_trial(new_main_program, new_startup_program)
         debug_program(new_main_program, "./", "baseline_main")
         debug_program(new_startup_program, "./", "baseline_startup")
@@ -300,7 +290,7 @@ class OptimizationTuner:
             
             print("loooooop : ", time)
             new_strategy = self.algorithm.get_next_trial()
-            new_main_program, new_startup_program = self._apply_pass(new_strategy)
+            new_main_program, new_startup_program = self._apply_optimization(new_strategy)
             last_trial_result = self._evaluate_trial(new_main_program, new_startup_program)
             debug_program(new_main_program, "./", "trial_{}_main".format(time))
             debug_program(new_startup_program, "./", "trial_{}_startup".format(time))
