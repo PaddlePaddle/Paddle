@@ -48,7 +48,7 @@ class Store {
 
   virtual const std::chrono::seconds& timeout() const { return _timeout; }
 
- private:
+ protected:
   std::chrono::seconds _timeout;
 };
 
