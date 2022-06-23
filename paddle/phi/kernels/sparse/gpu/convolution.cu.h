@@ -469,7 +469,11 @@ int ProductRuleBook(const Context& dev_ctx,
     IntT* rulebook_ptr = tmp_rulebook.data<IntT>();
     DenseTensor out_indices =
         phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-    DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+    DenseTensor out_values =
+        phi::Empty(dev_ctx,
+                   DenseTensorMeta(x.dtype(),
+                                   {x.nnz(), kernel_sizes[4]},
+                                   x.non_zero_elements().layout()));
     phi::Copy(
         dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
 
