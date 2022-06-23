@@ -755,7 +755,9 @@ def fused_multi_transformer(x,
 
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
-        trans_qkvw (bool, optional): Whether to transpose for weights of qkv.  If true, the shape eights of qkv should be [3, num_head, dim_head, dim_embed]. Otherwise the shape of weights of qkv should be [dim_embed, 3, num_head, dim_head]. Default True.
+        trans_qkvw (bool, optional): Whether to transpose for weights of qkv.
+            If true, the shape eights of qkv should be [3, num_head, dim_head, dim_embed].
+            Otherwise the shape of weights of qkv should be [dim_embed, 3, num_head, dim_head]. Default True.
         ring_id (int, optional): For distributed forward in tensor model parallel, only support NCCL. Default is -1, means not using mp.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
