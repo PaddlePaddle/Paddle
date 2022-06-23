@@ -33,6 +33,7 @@ class AutoTuneStatus {
   // EnableAutoTune and DisableAutoTune should be used for debug only.
   void EnableAutoTune();
   void DisableAutoTune();
+  void DebugForUnittest();
 
   void Update();
 

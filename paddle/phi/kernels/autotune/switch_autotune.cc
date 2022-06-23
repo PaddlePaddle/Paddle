@@ -29,8 +29,11 @@ void AutoTuneStatus::EnableAutoTune() {
 
 void AutoTuneStatus::DisableAutoTune() {
   FLAGS_use_autotune = false;
+  use_autotune_ = false;
   Init();
 }
+
+void AutoTuneStatus::DebugForUnittest() { use_autotune_ = true; }
 
 void AutoTuneStatus::Update() {
   current_steps_id_ += 1;

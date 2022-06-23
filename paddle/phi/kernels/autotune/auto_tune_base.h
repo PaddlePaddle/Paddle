@@ -73,6 +73,7 @@ class AutoTuneBase {
         0,
         paddle::platform::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
+    is_init_ = true;
 
     bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
     if (!use_autotune) {
@@ -85,7 +86,7 @@ class AutoTuneBase {
       } else {
         // All avaliable kernels have ran while picking the best kernel,
         // so there may be no need for another kernel run.
-        auto best_idx = GetBestIndex(ctx, args...);
+        auto best_idx = PickBestKernel(ctx, args...);
         cache.Set(key, best_idx);
       }
     }
@@ -110,12 +111,10 @@ class AutoTuneBase {
       auto time = RunAndMeasureKernel<Context>(ctx, i, args...);
       if (time < min_time) {
         min_time = time;
-        best_idx = static_cast<size_t>(i);
+        best_idx = i;
       }
     }
     VLOG(3) << "best kernel idx is " << best_idx;
-    is_init_ = true;
-
     return best_idx;
   }
 

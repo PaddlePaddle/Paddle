@@ -4553,6 +4553,10 @@ All parameter, weight, gradient are variables in Paddle.
     return phi::autotune::AutoTuneStatus::Instance().DisableAutoTune();
   });
 
+  m.def("unitest_debug", []() {
+    return phi::autotune::AutoTuneStatus::Instance().DebugForUnittest();
+  });
+
   m.def("set_autotune_range", [](int64_t start, int64_t stop) {
     return phi::autotune::AutoTuneStatus::Instance().SetAutoTuneRange(start,
                                                                       stop);
