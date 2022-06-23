@@ -64,7 +64,7 @@ class MasterDaemon {
   void _do_stop(SocketType socket);
   SocketType _listen_socket;
   std::vector<SocketType> _sockets;
-  std::unordered_map<std::string, std::vector<uint8_t>> _store;
+  std::unordered_map<std::string, std::vector<int>> _store;
   std::thread _background_thread{};
   int _nranks;
   int _stop_check_timeout;
@@ -131,9 +131,9 @@ class TCPStore : public Store {
   ~TCPStore();
 
   int64_t add(const std::string& key, int64_t value) override;
-  std::vector<uint8_t> get(const std::string& key) override;
+  std::vector<int> get(const std::string& key) override;
   void wait(const std::string& key) override;
-  void set(const std::string& key, const std::vector<uint8_t>& value) override;
+  void set(const std::string& key, const std::vector<int>& value) override;
 
  private:
   void waitWorkers();

@@ -37,5 +37,14 @@ TEST(MasterDaemon, init) {
   d.reset();
 }
 
+TEST(TCPStore, init) {
+  TCPStore store("127.0.0.1", 6170, true, 1);
+  store.add("my", 3);
+  auto ret1 = store.get("my");
+  store.add("my", 3);
+  auto ret2 = store.get("my");
+  PADDLE_ENFORCE_EQ(ret1[0] + 3, ret2[0], "test in test_cp_store");
+}
+
 };  // namespace distributed
 };  // namespace paddle

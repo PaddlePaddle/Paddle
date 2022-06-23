@@ -33,7 +33,7 @@ class Store {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Implement the add method in the subclass."));
   }
-  virtual std::vector<uint8_t> get(const std::string& key) {
+  virtual std::vector<int> get(const std::string& key) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Implement the add method in the subclass."));
   }
@@ -41,7 +41,7 @@ class Store {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Implement the add method in the subclass."));
   }
-  virtual void set(const std::string& key, const std::vector<uint8_t>& value) {
+  virtual void set(const std::string& key, const std::vector<int>& value) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Implement the add method in the subclass."));
   }
