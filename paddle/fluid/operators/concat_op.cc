@@ -96,6 +96,45 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
              "It has higher priority than Attr(axis). "
              "The shape of AxisTensor must be [1].")
         .AsDispensable();
+
+    AddComment(R"DOC(
+Concat Operator.
+
+Concatenate the input tensors along dimension axis.
+Examples:
+  Input[0] = [[1,2],[3,4]]
+  Input[1] = [[5,6]]
+  axis = 0
+  Output = [[1,2],
+            [3,4],
+            [5,6]]
+
+)DOC");
+  }
+};
+
+class MkldnnConcatOpMaker : public ConcatOpMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input tensors of concat operator.").AsDuplicable();
+    AddOutput("Out", "Output tensor of concat operator.");
+    AddAttr<bool>(
+        "use_mkldnn",
+        "(bool, default false) Indicates if MKL-DNN kernel will be used")
+        .SetDefault(false)
+        .AsExtra();
+    AddAttr<int>("axis",
+                 "The axis along which the input tensors will be concatenated."
+                 "The axis could also be negative numbers. Negative axis is "
+                 "interpreted as counting from the end of the rank."
+                 "i.e., axis + rank(X) th dimension.")
+        .SetDefault(0);
+    AddInput("AxisTensor",
+             "(Tensor) The axis along which the input tensors will be "
+             "concatenated.  "
+             "It has higher priority than Attr(axis). "
+             "The shape of AxisTensor must be [1].")
+        .AsDispensable();
     AddAttr<bool>(
         "use_quantizer",
         "(bool, default false) "
@@ -108,6 +147,7 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("float32")
         .InEnum({"float32", "int8", "bfloat16"})
         .AsExtra();
+
     AddComment(R"DOC(
 Concat Operator.
 
@@ -213,6 +253,12 @@ REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
                   ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatGradOpMaker<paddle::imperative::OpBase>,
                   ConcatInferShapeFunctor);
+
+REGISTER_OPERATOR(concat_mkldnn, ops::ConcatOp, ops::MkldnnConcatOpMaker,
+                  ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ConcatGradOpMaker<paddle::imperative::OpBase>,
+                  ConcatInferShapeFunctor);
+
 REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
                   ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
