@@ -163,8 +163,6 @@ int32_t MemorySparseTable::LoadLocalFS(const std::string& path,
                                        const std::string& param) {
   std::string table_path = TableDir(path);
   auto file_list = paddle::framework::localfs_list(table_path);
-
-  int load_param = atoi(param.c_str());
   size_t expect_shard_num = _sparse_table_shard_num;
   if (file_list.size() != expect_shard_num) {
     LOG(WARNING) << "MemorySparseTable file_size:" << file_list.size()

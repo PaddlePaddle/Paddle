@@ -648,7 +648,6 @@ int32_t BrpcPsService::SaveAllTable(Table *table,
                                     PsResponseMessage &response,
                                     brpc::Controller *cntl) {
   auto &table_map = *(_server->GetTable());
-  int32_t all_feasign_size = 0;
   int32_t feasign_size = 0;
 
   for (auto &itr : table_map) {
@@ -827,7 +826,6 @@ int32_t BrpcPsService::PushGlobalStep(Table *table,
     set_response_code(response, 0, "run_program data is empty");
     return 0;
   }
-  uint32_t num = *(const uint32_t *)(request.data().data());
   const int64_t *values =
       (const int64_t *)(request.data().data() + sizeof(uint32_t));
   auto trainer_id = request.client_id();

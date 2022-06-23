@@ -491,7 +491,6 @@ std::future<int32_t> GraphBrpcClient::random_sample_nodes(
       butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
       size_t bytes_size = io_buffer_itr.bytes_left();
       char *buffer = new char[bytes_size];
-      auto size = io_buffer_itr.copy_and_forward((void *)(buffer), bytes_size);
       size_t index = 0;
       while (index < bytes_size) {
         ids.push_back(*(int64_t *)(buffer + index));
