@@ -276,9 +276,9 @@ class FusedMultiTransformerOpOpMaker
     AddAttr<bool>(
         "trans_qkvw",
         "Whether the weights of qkv should be transposed. If true,"
-        "the shape eights of qkv is [3, num_head, dim_head, dim_embed]."
-        "Otherwise the shape of weights of qkv is [dim_embed, 3, num_head, "
-        "dim_head]")
+        "the shape eights of qkv should be [3, num_head, dim_head, dim_embed]."
+        "Otherwise the shape of weights of qkv should be"
+        "[dim_embed, 3, num_head, dim_head]")
         .SetDefault(true);
 
     AddAttr<int>(
