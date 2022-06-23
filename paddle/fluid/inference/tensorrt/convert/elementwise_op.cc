@@ -23,7 +23,8 @@ class ElementwiseTensorOpConverter : public OpConverter {
  public:
   ElementwiseTensorOpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "Convert a fluid elementwise op to TensorRT IElementWiseLayer";
     framework::OpDesc op_desc(op, nullptr);
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
@@ -103,8 +104,6 @@ class ElementwiseTensorOpConverter : public OpConverter {
       } else {
         nvinfer1::Dims new_y_dims;
         new_y_dims.nbDims = left_one_num + dims_y.nbDims + right_one_num;
-        std::cout << left_one_num << dims_y.nbDims << right_one_num
-                  << std::endl;
         for (int i = 0; i < new_y_dims.nbDims; i++) new_y_dims.d[i] = 1;
         for (int i = 0; i < dims_y.nbDims; i++)
           new_y_dims.d[left_one_num + i] = dims_y.d[i];
@@ -119,14 +118,15 @@ class ElementwiseTensorOpConverter : public OpConverter {
     }
 
     auto op_pair = ops.find(op_type_);
-    PADDLE_ENFORCE_NE(op_pair, ops.end(),
+    PADDLE_ENFORCE_NE(op_pair,
+                      ops.end(),
                       platform::errors::InvalidArgument(
                           "Elementwise op's type(%s) is not supported. Please "
                           "check if the op_type is correct.",
                           op_type_));
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *X,
-                                       *reshape_y_tensor, op_pair->second);
+    auto* layer = TRT_ENGINE_ADD_LAYER(
+        engine_, ElementWise, *X, *reshape_y_tensor, op_pair->second);
     RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
   }
 
