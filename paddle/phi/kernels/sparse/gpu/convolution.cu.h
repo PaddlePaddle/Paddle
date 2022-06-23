@@ -469,7 +469,11 @@ int ProductRuleBook(const Context& dev_ctx,
     IntT* rulebook_ptr = tmp_rulebook.data<IntT>();
     DenseTensor out_indices =
         phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-    DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+    DenseTensor out_values =
+        phi::Empty(dev_ctx,
+                   DenseTensorMeta(x.dtype(),
+                                   {x.nnz(), kernel_sizes[4]},
+                                   x.non_zero_elements().layout()));
     phi::Copy(
         dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
 
@@ -502,9 +506,8 @@ int ProductRuleBook(const Context& dev_ctx,
       PADDLE_ENFORCE_GE(config.thread_per_block.x,
                         32,
                         phi::errors::Fatal("the shared memory is not enough"));
-      size_t cache_size = kernel_size * 2 + kernel_size *
-                                                config.thread_per_block.x * 2 *
-                                                sizeof(int);
+      cache_size = kernel_size * 2 +
+                   kernel_size * config.thread_per_block.x * 2 * sizeof(int);
     }
     ProductSubmRuleBookKernel<IntT><<<config.block_per_grid.x,
                                       config.thread_per_block.x,
