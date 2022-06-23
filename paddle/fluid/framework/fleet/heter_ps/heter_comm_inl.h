@@ -998,7 +998,6 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     }
     destroy_storage(num, i);
   }
-  VLOG(0) << "pull sparse done";
 }
 
 #if defined(PADDLE_WITH_CUDA)
@@ -1148,12 +1147,10 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   for (int i = 0; i < total_device; ++i) {
     if (h_left[i] == -1 || h_right[i] == -1) {
       continue;
+  
     }
     destroy_storage(dev_num, i);
   }
-
-  VLOG(0) << " PUSHSPARSE destroy_storage done";
-
 }
 
 #elif defined(PADDLE_WITH_XPU_KP)
