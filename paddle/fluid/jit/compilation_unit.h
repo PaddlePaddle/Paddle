@@ -17,6 +17,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/phi/core/enforce.h"
+
 #include "paddle/fluid/jit/executor_function.h"
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/pe_function.h"
@@ -40,6 +42,9 @@ class CompilationUnit {
                      const phi::Place &place);
 
   std::shared_ptr<BaseFunction> GetFunction(const std::string &name) const;
+
+  void SetFunction(const std::string &name,
+                   const std::shared_ptr<BaseFunction> &function);
 
  private:
   std::unordered_map<std::string, std::shared_ptr<BaseFunction>> function_dict_;

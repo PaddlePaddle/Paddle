@@ -24,12 +24,6 @@ Layer::Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
              const phi::Place& place)
     : params_dict_(params_dict) {
   VLOG(3) << "infos size: " << infos.size();
-  // Layer manage the life time of all parameter.
-  for (size_t i = 0; i < infos.size(); ++i) {
-    // TODO(dev): choose exector or pe by flag
-    unit_.AddExecutorFunction(
-        infos[i]->GetFunctionName(), infos[i], params_dict_, place);
-  }
 }
 
 std::shared_ptr<BaseFunction> Layer::GetFunction(
@@ -40,6 +34,13 @@ std::shared_ptr<BaseFunction> Layer::GetFunction(
 std::vector<Variable> Layer::forward(const std::vector<Variable>& inputs) {
   auto func = GetFunction("forward");
   return (*func)(inputs);
+}
+
+void Layer::to(const phi::Place& place) {}
+
+void Layer::SetFunction(const std::string& name,
+                        const std::shared_ptr<BaseFunction>& function) {
+  unit_.SetFunction(name, function);
 }
 
 }  // namespace jit

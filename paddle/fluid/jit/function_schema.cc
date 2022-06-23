@@ -60,7 +60,7 @@ FunctionInfo::FunctionInfo(const std::string& func_name,
     schema_.AddOutputArg(out_name);
   }
   // remove feed fetch op
-  RemoveFeedFetch(&program_desc_);
+  RemoveFeedFetch();
 }
 
 const std::string& FunctionInfo::GetFunctionName() const { return func_name_; }
@@ -79,6 +79,29 @@ const std::vector<std::string> FunctionInfo::GetInputArgNames() const {
 
 const std::vector<std::string> FunctionInfo::GetOutputArgNames() const {
   return schema_.GetOutputArgNames();
+}
+
+void FunctionInfo::RemoveFeedFetch() {
+  for (size_t i = 0; i < program_desc_.Size(); ++i) {
+    auto* block = program_desc_.MutableBlock(i);
+    const auto& all_ops = block->AllOps();
+    size_t op_size = all_ops.size();
+    VLOG(3) << "op_size: " << op_size;
+    for (int i = op_size - 1; i >= 0; i--) {
+      auto op = all_ops[i];
+      if (op->Type() == "feed") {
+        VLOG(3) << "remove op type: " << op->Type() << ", index: " << i
+                << ", var name: " << op->Input("X")[0];
+        block->RemoveVar(op->Input("X")[0]);
+        block->RemoveOp(i, i + 1);
+      } else if (op->Type() == "fetch") {
+        VLOG(3) << "remove op type: " << op->Type() << ", index: " << i
+                << ", var name: " << op->Output("Out")[0];
+        block->RemoveVar(op->Output("Out")[0]);
+        block->RemoveOp(i, i + 1);
+      }
+    }
+  }
 }
 
 }  // namespace jit

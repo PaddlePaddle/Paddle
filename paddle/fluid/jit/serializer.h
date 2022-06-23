@@ -24,6 +24,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 
+#include "paddle/fluid/jit/executor_function.h"
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/layer.h"
 
@@ -48,7 +49,7 @@ class Serializer {
 
 class Deserializer {
  public:
-  Layer operator()(const std::string& dir_path);
+  Layer operator()(const std::string& dir_path, const phi::Place& place);
 
  private:
   bool IsPersistable(framework::VarDesc* desc_ptr);
@@ -71,7 +72,7 @@ class Deserializer {
 
 void Export(const Layer& layer, const std::string& file_path);
 
-Layer Load(const std::string& file_path);
+Layer Load(const std::string& file_path, const phi::Place& place);
 
 }  // namespace jit
 }  // namespace paddle

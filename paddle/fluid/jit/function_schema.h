@@ -16,15 +16,16 @@
 
 #include <ostream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/core/enforce.h"
-
-#include "paddle/fluid/jit/layer_utils.h"
 
 namespace paddle {
 namespace jit {
+using Variable = paddle::framework::Variable;
 
 class Argument {
  public:
@@ -71,6 +72,8 @@ class FunctionInfo {
   const std::vector<std::string> GetInputArgNames() const;
 
   const std::vector<std::string> GetOutputArgNames() const;
+
+  void RemoveFeedFetch();
 
  private:
   std::string func_name_;

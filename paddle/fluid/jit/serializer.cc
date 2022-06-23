@@ -17,7 +17,8 @@
 namespace paddle {
 namespace jit {
 
-Layer Deserializer::operator()(const std::string& dir_path) {
+Layer Deserializer::operator()(const std::string& dir_path,
+                               const phi::Place& place) {
   const auto& file_name_prefixs = GetPdmodelFileNamePrefix(dir_path);
   // set is ordered
   std::set<std::string> param_names_set;
@@ -41,14 +42,20 @@ Layer Deserializer::operator()(const std::string& dir_path) {
         func_name, persist_var_names, program_desc));
   }
 
-  auto default_place = imperative::GetCurrentTracer()->ExpectedPlace();
   // Read from one pdiparams file, refine here
   ReadTensorData(dir_path + "export.forward.pdiparams",
                  param_names_set,
-                 default_place,
+                 place,
                  &params_dict);
 
-  return Layer(infos, params_dict, default_place);
+  Layer layer = Layer(infos, params_dict, place);
+
+  for (auto& info : infos) {
+    layer.SetFunction(info->GetFunctionName(),
+                      MakeFunction<ExecutorFunction>(info, params_dict, place));
+  }
+
+  return layer;
 }
 
 bool Deserializer::IsPersistable(framework::VarDesc* desc_ptr) {
@@ -118,9 +125,9 @@ framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
   return framework::ProgramDesc(buffer);
 }
 
-Layer Load(const std::string& file_path) {
+Layer Load(const std::string& file_path, const phi::Place& place) {
   auto deserializer = Deserializer();
-  return deserializer(file_path);
+  return deserializer(file_path, place);
 }
 
 }  // namespace jit

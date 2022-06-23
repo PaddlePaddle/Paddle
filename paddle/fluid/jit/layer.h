@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/common/place.h"
 
+#include "paddle/fluid/jit/base_function.h"
 #include "paddle/fluid/jit/compilation_unit.h"
 #include "paddle/fluid/jit/function_schema.h"
 
@@ -45,6 +46,9 @@ class Layer {
   std::vector<Variable> forward(const std::vector<Variable>& inputs);
 
   void to(const phi::Place& place);
+
+  void SetFunction(const std::string& name,
+                   const std::shared_ptr<BaseFunction>& function);
 
  private:
   // internal::Object obj_;

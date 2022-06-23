@@ -62,7 +62,6 @@ class PEFunction : public BaseFunction {
     std::vector<std::string> output_var_names = info_->GetOutputArgNames();
     std::vector<std::string> dout_var_names;
     if (end_op_index > start_op_index) {
-      // TODO(dev): support other devices
       auto cache_info = framework::GetExecutorInfoFromCache(program_desc,
                                                             place_,
                                                             start_op_index,
