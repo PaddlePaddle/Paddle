@@ -15,8 +15,12 @@
 import unittest
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import numpy as np
 import six
+import cv2
+import os
+import tempfile
 from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_parameters, optimizer_setting
 import paddle.nn as nn
 from paddle.static import InputSpec
@@ -704,7 +708,44 @@ class TestAmpDecorator(unittest.TestCase):
             self.assertEqual((param.dtype == paddle.float32), True)
 
 
+class TestStateDictHookForAMP(unittest.TestCase):
+
+    def test_state_dict_hook(self):
+
+        def func_isinstance():
+            paddle.seed(100)
+            model = paddle.nn.Linear(2, 4)
+            model = paddle.amp.decorate(models=model,
+                                        level='O2',
+                                        save_dtype='float32')
+            param_value_ori = {}
+            for param in model.parameters():
+                param_value_ori[param.name] = param.numpy()
+
+            state_dict = model.state_dict()
+            for key, value in state_dict.items():
+                state_dict[key] = value.cast("float16")
+            model.set_state_dict(state_dict)
+
+            param_value_now = {}
+            for param in model.parameters():
+                param_value_now[param.name] = param.numpy()
+
+            for key in param_value_ori.keys():
+                print(np.equal(param_value_ori[key], param_value_now[key]))
+
+        with _test_eager_guard():
+            func_isinstance()
+        func_isinstance()
+
+
 class TestPureFp16SaveLoad(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_save_dtype_exception(self):
 
@@ -817,7 +858,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                     'opt': optimizer.state_dict(),
                     'scaler': scaler.state_dict()
                 }
-                path = 'model.pdparams'
+                path = os.path.join(self.temp_dir.name, 'model.pdparams')
                 paddle.save(obj, path)
                 # paddle.load
                 obj_load = paddle.load(path)
@@ -856,6 +897,12 @@ class TestPureFp16SaveLoad(unittest.TestCase):
 
 
 class TestPureFp16InferenceSaveLoad(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def inference_save_load(self):
         BATCH_SIZE = 16
@@ -920,7 +967,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
         train(layer, loader, loss_fn, adam)
 
         # save
-        path = "example_model/linear"
+        path = os.path.join(self.temp_dir.name, 'example_model/linear')
         paddle.jit.save(layer,
                         path,
                         input_spec=[InputSpec(shape=[IMAGE_SIZE], name='x')])
@@ -1258,6 +1305,10 @@ class TestLayerNormFp16(unittest.TestCase):
         func_isinstance()
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_cuda()
+    and not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "skip bf16 test if cuda is in use but bf16 is not supported by gpu arch.")
 class TestBf16(unittest.TestCase):
     '''
     test amp for BF16 
@@ -1277,15 +1328,13 @@ class TestBf16(unittest.TestCase):
     def test_bf16(self):
 
         def func_isinstance():
-            if fluid.core.is_compiled_with_cuda(
-            ) and fluid.core.is_bfloat16_supported(paddle.CUDAPlace(0)):
-                out_fp32 = self.train(enable_amp=False)
-                out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
-                out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
-                self.assertTrue(
-                    np.allclose(out_fp32, out_bf16_O1, rtol=1.e-3, atol=1.e-1))
-                self.assertTrue(
-                    np.allclose(out_fp32, out_bf16_O2, rtol=1.e-3, atol=1.e-1))
+            out_fp32 = self.train(enable_amp=False)
+            out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
+            out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
+            self.assertTrue(
+                np.allclose(out_fp32, out_bf16_O1, rtol=1.e-3, atol=1.e-1))
+            self.assertTrue(
+                np.allclose(out_fp32, out_bf16_O2, rtol=1.e-3, atol=1.e-1))
 
         with _test_eager_guard():
             func_isinstance()

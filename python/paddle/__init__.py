@@ -370,7 +370,7 @@ if is_compiled_with_cinn():
     runtime_include_dir = os.path.join(package_dir, "libs")
     cuh_file = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
     if os.path.exists(cuh_file):
-        os.environ['runtime_include_dir'] = runtime_include_dir
+        os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
 disable_static()
 

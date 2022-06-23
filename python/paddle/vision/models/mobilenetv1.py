@@ -58,14 +58,14 @@ class MobileNetV1(nn.Layer):
     `"MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications" <https://arxiv.org/abs/1704.04861>`_.
 
     Args:
-        scale (float): scale of channels in each layer. Default: 1.0.
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+        scale (float, optional): scale of channels in each layer. Default: 1.0.
+        num_classes (int, optional): output dim of last fc layer. If num_classes <=0, last fc layer 
                             will not be defined. Default: 1000.
-        with_pool (bool): use pool before the last fc layer or not. Default: True.
+        with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
             from paddle.vision.models import MobileNetV1
 
@@ -75,6 +75,7 @@ class MobileNetV1(nn.Layer):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):

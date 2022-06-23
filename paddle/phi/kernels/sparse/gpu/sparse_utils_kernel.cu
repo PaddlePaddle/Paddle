@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
+
 #include <thrust/execution_policy.h>
 #include <thrust/remove.h>
 
@@ -21,8 +23,8 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/common_shape.h"
-#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -283,19 +285,24 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
 
 template <typename IntT>
 __global__ void GetBatchsOffset(const IntT* batchs_ptr,
+                                const int batchs,
                                 const int non_zero_num,
-                                IntT* batchs_offset) {
+                                int* batchs_offset) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
     if (i == non_zero_num - 1 || batchs_ptr[i] != batchs_ptr[i + 1]) {
-      batchs_offset[batchs_ptr[i]] = i + 1;
+      const int start = batchs_ptr[i];
+      const int end = i == non_zero_num - 1 ? batchs : batchs_ptr[i + 1];
+      for (int j = start; j < end; j++) {
+        batchs_offset[j] = i + 1;
+      }
     }
   }
 }
 
 template <typename IntT>
 __global__ void ConvertCooRowsToCsrCrows(
-    const IntT* batchs_offset,  // can be null if batchs = 1
+    const int* batchs_offset,  // can be null if batchs = 1
     const IntT* coo_rows_data,
     IntT* csr_crows_data,
     const int rows,
@@ -303,12 +310,12 @@ __global__ void ConvertCooRowsToCsrCrows(
   const int b = blockIdx.y;
   int batch_non_zero_num =
       batchs_offset == nullptr ? non_zero_num : batchs_offset[b];
-  if (batch_non_zero_num == 0) return;
   IntT batch_start = 0;
   if (b > 0) {
     batch_start = batchs_offset[b - 1];
     batch_non_zero_num -= batch_start;
   }
+
   const IntT* coo_rows_ptr = coo_rows_data + batch_start;
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int i = tid; i < batch_non_zero_num; i += gridDim.x * blockDim.x) {
@@ -326,6 +333,11 @@ __global__ void ConvertCooRowsToCsrCrows(
            i++) {
         csr_crows_data[b * (rows + 1) + i] = batch_non_zero_num;
       }
+    }
+  }
+  if (batch_non_zero_num == 0) {
+    for (int i = tid; i < rows + 1; i += gridDim.x * blockDim.x) {
+      csr_crows_data[b * (rows + 1) + i] = 0;
     }
   }
 }
@@ -359,19 +371,25 @@ void SparseCooToCsrGPUKernel(const GPUContext& dev_ctx,
   const auto& coo_values = x.non_zero_elements();
   const IntT* batchs_ptr = coo_indices.data<IntT>();
   const IntT* coo_rows_data =
-      batchs == 1 ? batchs_ptr : batchs_ptr + non_zero_num;
+      x_dims.size() == 2 ? batchs_ptr : batchs_ptr + non_zero_num;
   const IntT* coo_cols_data = coo_rows_data + non_zero_num;
   const T* coo_values_data = coo_values.data<T>();
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batchs, 1);
   if (batchs > 1) {
-    phi::DenseTensor batchs_offset = phi::Empty<IntT>(dev_ctx, {batchs});
-    IntT* batchs_offset_ptr = batchs_offset.data<IntT>();
-    GetBatchsOffset<IntT>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(batchs_ptr, non_zero_num, batchs_offset_ptr);
+    auto config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
+    phi::DenseTensor batchs_offset = phi::Empty<int>(dev_ctx, {batchs});
+    int* batchs_offset_ptr = batchs_offset.data<int>();
+    phi::funcs::SetConstant<GPUContext, int> set_zero;
+    // set zero if the nnz=0 of batchs[0]
+    set_zero(dev_ctx, &batchs_offset, static_cast<IntT>(0));
+    GetBatchsOffset<IntT><<<config.block_per_grid.x,
+                            config.thread_per_block.x,
+                            0,
+                            dev_ctx.stream()>>>(
+        batchs_ptr, batchs, non_zero_num, batchs_offset_ptr);
+
     config.block_per_grid.y = batchs;
     ConvertCooRowsToCsrCrows<IntT><<<config.block_per_grid,
                                      config.thread_per_block.x,
