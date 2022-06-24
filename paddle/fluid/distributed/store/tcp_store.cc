@@ -110,10 +110,10 @@ void MasterDaemon::_do_stop(SocketType socket) {
 
 #ifndef _WIN32
 void MasterDaemon::InitControlFd() {
-  PADDLE_ENFORCE_NE(pipe(_control_fd.data()),
-                    -1,
-                    "failed to cread control pipe errno:%d",
-                    errno);
+  PADDLE_ENFORCE_NE(
+      pipe(_control_fd.data()),
+      -1,
+      platform::errors::Fatal("failed to cread control pipe errno:%d", errno));
 }
 void MasterDaemon::CloseControlFd() {
   for (int fd : _control_fd) {
@@ -328,7 +328,10 @@ TCPStore::TCPStore(std::string host,
                    int timeout)
     : Store(timeout), _is_master(is_master), _num_workers(num_workers) {
   _timeout = timeout;
-  PADDLE_ENFORCE_GT(timeout, 0, "timeout must >= %d", timeout);
+  PADDLE_ENFORCE_GT(
+      timeout,
+      0,
+      platform::errors::InvalidArgument("timeout must >= %d", timeout));
 
   VLOG(3) << "input timeout" << timeout << ", member timeout:" << _timeout;
   if (_is_master) {

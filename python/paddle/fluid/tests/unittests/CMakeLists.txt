@@ -897,6 +897,21 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_se_resnext_dgc")
   endif()
+
+  # port range (20000, 23000) is reserved for dist-ops
+  set(dist_ut_port 20001)
+  if(NOT WIN32)
+    bash_test_modules(
+      test_tcp_store
+      START_BASH
+      dist_test.sh
+      LABELS
+      "RUN_TYPE=EXCLUSIVE"
+      ENVS
+      "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+    math(EXPR dist_ut_port "${dist_ut_port}+1")
+  endif()
+
   if(NOT APPLE)
     if(WITH_GPU OR WITH_ROCM)
       bash_test_modules(test_c_comm_init_op START_BASH test_c_comm_init_op.sh
@@ -932,19 +947,6 @@ if(WITH_DISTRIBUTE)
     endif()
 
     # port range (20000, 23000) is reserved for dist-ops
-    set(dist_ut_port 20001)
-    if(NOT WIN32)
-      bash_test_modules(
-        test_tcp_store
-        START_BASH
-        dist_test.sh
-        LABELS
-        "RUN_TYPE=EXCLUSIVE"
-        ENVS
-        "PADDLE_DIST_UT_PORT=${dist_ut_port}")
-      math(EXPR dist_ut_port "${dist_ut_port}+1")
-    endif()
-
     foreach(TEST_OP ${DIST_TEST_OPS})
       bash_test_modules(
         ${TEST_OP}

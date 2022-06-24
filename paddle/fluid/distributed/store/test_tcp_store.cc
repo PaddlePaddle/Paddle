@@ -44,7 +44,8 @@ TEST(TCPStore, init) {
   auto ret1 = store.get("my");
   store.add("my", 3);
   auto ret2 = store.get("my");
-  PADDLE_ENFORCE_EQ(ret1[0] + 3, ret2[0], "test in test_cp_store");
+  PADDLE_ENFORCE_EQ(ret1[0] + 3, ret2[0],
+    paddle::errors::Fatal("result of add is not right"));
 }
 */
 
