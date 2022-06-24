@@ -106,10 +106,14 @@ class GeneralGrad {
          input_target_nodes_inputmeta_map_) {
       queue.push_back(target_nodes_inputmeta_pair.first);
     }
-
+    std::unordered_set<GradNodeBase*> visited;
     while (!queue.empty()) {
       auto* target_node = queue.front();
       queue.pop_front();
+      if (visited.count(target_node)) {
+        continue;
+      }
+      visited.insert(target_node);
       if (IsPotentialStopNodes(target_node)) {
         potential_stop_nodes_.erase(target_node);
       }
