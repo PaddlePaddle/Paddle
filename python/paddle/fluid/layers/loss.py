@@ -1235,16 +1235,24 @@ def identity_loss(x, reduction="none"):
     r"""Marks a tensor as being part of the loss calculation for IPU.
 
     This function should be called on the (final) loss of a model so that
-    it is used as the start of backpropagation. This is equivalent to calling
-    ``x.backward()`` on a tensor ``x`` when running on the CPU.
+    it is used as the start of backpropagation.
+
+    When `reduction` is `none`, return raw `Out`.
+    
+    When `reduction` is `mean`, return
+
+    .. math::
+        Out = MEAN(Out)
+
+    When `reduction` is `sum`, return
+
+    .. math::
+        Out = SUM(Out)
 
     Parameters:
         x (Variable): The calculated loss ``Tensor``.
-        reduction(str|int): Reduce the loss output. The default value is "none". Supported values are:
-
-            * ``"mean"`` or ``0``: Take the mean of the losses.
-            * ``"sum"`` or ``1``: Sum the losses.
-            * ``"none"`` or ``2``: Don't reduce the losses.
+        reduction(str|int): Reduce the loss output. Supported string values are: 'mean', 'sum', 'none'
+                            the corresponding int values are 0, 1, 2 respectively. The default value is "none".
 
     Returns:
         Variable: The loss ``Tensor`` with the specified reduction applied.
