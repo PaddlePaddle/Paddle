@@ -1001,7 +1001,7 @@ set_tests_properties(test_matmul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_gather_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_gather_op PROPERTIES TIMEOUT 180)
 set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pylayer_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)
@@ -1203,6 +1203,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
             test_collective_alltoall_api
             test_collective_global_gather
             test_collective_global_scatter
+            test_collective_sendrecv_api
             PROPERTIES LABELS "RUN_TYPE=DIST")
     endif()
     set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)

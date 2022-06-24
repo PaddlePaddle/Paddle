@@ -15,6 +15,7 @@
 import unittest
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import numpy as np
 import six
 import cv2
@@ -1283,6 +1284,10 @@ class TestLayerNormFp16(unittest.TestCase):
         func_isinstance()
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_cuda()
+    and not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "skip bf16 test if cuda is in use but bf16 is not supported by gpu arch.")
 class TestBf16(unittest.TestCase):
     '''
     test amp for BF16 
@@ -1300,17 +1305,13 @@ class TestBf16(unittest.TestCase):
 
     def test_bf16(self):
         def func_isinstance():
-            if fluid.core.is_compiled_with_cuda(
-            ) and fluid.core.is_bfloat16_supported(paddle.CUDAPlace(0)):
-                out_fp32 = self.train(enable_amp=False)
-                out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
-                out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
-                self.assertTrue(
-                    np.allclose(
-                        out_fp32, out_bf16_O1, rtol=1.e-3, atol=1.e-1))
-                self.assertTrue(
-                    np.allclose(
-                        out_fp32, out_bf16_O2, rtol=1.e-3, atol=1.e-1))
+            out_fp32 = self.train(enable_amp=False)
+            out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
+            out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
+            self.assertTrue(
+                np.allclose(out_fp32, out_bf16_O1, rtol=1.e-3, atol=1.e-1))
+            self.assertTrue(
+                np.allclose(out_fp32, out_bf16_O2, rtol=1.e-3, atol=1.e-1))
 
         with _test_eager_guard():
             func_isinstance()
