@@ -1203,6 +1203,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
             test_collective_alltoall_api
             test_collective_global_gather
             test_collective_global_scatter
+            test_collective_sendrecv_api
             PROPERTIES LABELS "RUN_TYPE=DIST")
     endif()
     set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)
