@@ -924,6 +924,13 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_mutable_data",
            [](framework::Tensor &self,
+              paddle::platform::CustomPlace &place,
+              paddle::framework::proto::VarType::Type type) {
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
+           })
+      .def("_mutable_data",
+           [](framework::Tensor &self,
               paddle::platform::XPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
@@ -964,6 +971,11 @@ PYBIND11_MODULE(core_noavx, m) {
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
+           &TensorCopyFrom<paddle::platform::CustomPlace>,
+           py::arg("tensor"),
+           py::arg("place"),
+           py::arg("batch_size") = -1)
+      .def("_copy_from",
            &TensorCopyFrom<paddle::platform::XPUPlace>,
            py::arg("tensor"),
            py::arg("place"),
@@ -995,6 +1007,11 @@ PYBIND11_MODULE(core_noavx, m) {
            py::arg("batch_size") = -1)
       .def("set",
            SetTensorFromPyArray<paddle::platform::CPUPlace>,
+           py::arg("array"),
+           py::arg("place"),
+           py::arg("zero_copy") = false)
+      .def("set",
+           SetTensorFromPyArray<paddle::platform::CustomPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
@@ -2200,9 +2217,9 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
     return devices;
   });
-  py::class_<platform::CustomPlace>(m,
-                                    "CustomPlace",
-                                    R"DOC(
+  py::class_<platform::CustomPlace> customplace(m,
+                                                "CustomPlace",
+                                                R"DOC(
     CustomPlace is a descriptor of a device.
     It represents a custom device on which a tensor will be allocated and a model will run.
 
@@ -2852,6 +2869,13 @@ All parameter, weight, gradient are variables in Paddle.
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
+      .def("run",
+           [](OperatorBase &self,
+              const Scope &scope,
+              const platform::CustomPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",
@@ -3493,6 +3517,26 @@ All parameter, weight, gradient are variables in Paddle.
       .def("save", &paddle::platform::ProfilerResult::Save)
       .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo);
 
+  py::class_<paddle::platform::MemPythonNode>(m, "MemPythonNode")
+      .def(py::init<>())
+      .def_readwrite("timestamp_ns",
+                     &paddle::platform::MemPythonNode::timestamp_ns)
+      .def_readwrite("addr", &paddle::platform::MemPythonNode::addr)
+      .def_readwrite("type", &paddle::platform::MemPythonNode::type)
+      .def_readwrite("process_id", &paddle::platform::MemPythonNode::process_id)
+      .def_readwrite("thread_id", &paddle::platform::MemPythonNode::thread_id)
+      .def_readwrite("increase_bytes",
+                     &paddle::platform::MemPythonNode::increase_bytes)
+      .def_readwrite("place", &paddle::platform::MemPythonNode::place)
+      .def_readwrite("current_allocated",
+                     &paddle::platform::MemPythonNode::current_allocated)
+      .def_readwrite("current_reserved",
+                     &paddle::platform::MemPythonNode::current_reserved)
+      .def_readwrite("peak_allocated",
+                     &paddle::platform::MemPythonNode::peak_allocated)
+      .def_readwrite("peak_reserved",
+                     &paddle::platform::MemPythonNode::peak_reserved);
+
   py::class_<paddle::platform::DevicePythonNode>(m, "DevicePythonNode")
       .def(py::init<>())
       .def_readwrite("name", &paddle::platform::DevicePythonNode::name)
@@ -3515,12 +3559,18 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("process_id",
                      &paddle::platform::HostPythonNode::process_id)
       .def_readwrite("thread_id", &paddle::platform::HostPythonNode::thread_id)
+      .def_readwrite("input_shapes",
+                     &paddle::platform::HostPythonNode::input_shapes)
+      .def_readwrite("dtypes", &paddle::platform::HostPythonNode::dtypes)
+      .def_readwrite("callstack", &paddle::platform::HostPythonNode::callstack)
       .def_readwrite("children_node",
                      &paddle::platform::HostPythonNode::children_node_ptrs)
       .def_readwrite("runtime_node",
                      &paddle::platform::HostPythonNode::runtime_node_ptrs)
       .def_readwrite("device_node",
-                     &paddle::platform::HostPythonNode::device_node_ptrs);
+                     &paddle::platform::HostPythonNode::device_node_ptrs)
+      .def_readwrite("mem_node",
+                     &paddle::platform::HostPythonNode::mem_node_ptrs);
 
   py::class_<paddle::platform::Profiler>(m, "_Profiler")
       .def("create",
@@ -3554,6 +3604,14 @@ All parameter, weight, gradient are variables in Paddle.
             name, type, 1, paddle::platform::EventRole::kOrdinary);
       }))
       .def("end", [](platform::RecordEvent *event) { event->End(); });
+
+  py::enum_<paddle::platform::TracerMemEventType>(m, "TracerMemEventType")
+      .value("Allocate", paddle::platform::TracerMemEventType::Allocate)
+      .value("Free", paddle::platform::TracerMemEventType::Free)
+      .value("ReservedAllocate",
+             paddle::platform::TracerMemEventType::ReservedAllocate)
+      .value("ReservedFree",
+             paddle::platform::TracerMemEventType::ReservedFree);
 
   py::enum_<paddle::platform::TracerEventType>(m, "TracerEventType")
       .value("Operator", paddle::platform::TracerEventType::Operator)
@@ -4563,6 +4621,12 @@ All parameter, weight, gradient are variables in Paddle.
                    for (auto option : element.second.cast<py::dict>()) {
                      self.SetTensorLocation(
                          option_name,
+                         option.first.cast<std::string>(),
+                         option.second.cast<std::uint64_t>());
+                   }
+                 } else if (option_name == "replicated_collectives_settings") {
+                   for (auto option : element.second.cast<py::dict>()) {
+                     self.SetReplicatedCollectivesSettings(
                          option.first.cast<std::string>(),
                          option.second.cast<std::uint64_t>());
                    }
