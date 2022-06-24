@@ -26,13 +26,12 @@ Layer::Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
   VLOG(3) << "infos size: " << infos.size();
 }
 
-std::shared_ptr<BaseFunction> Layer::GetFunction(
-    const std::string& name) const {
-  return unit_.GetFunction(name);
+std::shared_ptr<BaseFunction> Layer::Function(const std::string& name) const {
+  return unit_.Function(name);
 }
 
 std::vector<Variable> Layer::forward(const std::vector<Variable>& inputs) {
-  auto func = GetFunction("forward");
+  auto func = Function("forward");
   return (*func)(inputs);
 }
 

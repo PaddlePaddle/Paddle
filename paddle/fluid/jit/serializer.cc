@@ -48,10 +48,12 @@ Layer Deserializer::operator()(const std::string& dir_path,
                  place,
                  &params_dict);
 
+  // ReadAttributeData();
+
   Layer layer = Layer(infos, params_dict, place);
 
   for (auto& info : infos) {
-    layer.SetFunction(info->GetFunctionName(),
+    layer.SetFunction(info->FunctionName(),
                       MakeFunction<ExecutorFunction>(info, params_dict, place));
   }
 
@@ -113,6 +115,9 @@ void Deserializer::ReadTensorData(const std::string& file_name,
     (*params_dict)[*it] = v;
   }
 }
+
+void Deserializer::ReadAttributeData(const std::string& file_path,
+                                     Name2VariableMap* attrs_dict) const {}
 
 framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
   VLOG(3) << "LoadProgram " << file_name;

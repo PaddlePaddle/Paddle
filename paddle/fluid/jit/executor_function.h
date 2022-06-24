@@ -36,23 +36,23 @@ class ExecutorFunction : public BaseFunction {
                    const Name2VariableMap &params_dict,
                    const phi::Place &place)
       : info_(info), place_(place), inner_exe_(place_) {
-    ShareParamsIntoScope(info_->GetParamNames(), params_dict, &scope_);
+    ShareParamsIntoScope(info_->ParamNames(), params_dict, &scope_);
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
   }
 
   ~ExecutorFunction() noexcept {}
 
   std::vector<Variable> operator()(const std::vector<Variable> &inputs) {
-    ShareInputsIntoScope(info_->GetInputArgNames(), inputs, &scope_);
-    inner_exe_.Run(info_->GetProgramDesc(),
+    ShareInputsIntoScope(info_->InputArgNames(), inputs, &scope_);
+    inner_exe_.Run(info_->ProgramDesc(),
                    &scope_,
                    /*blockID=*/0,
                    false,
                    true,
-                   info_->GetOutputArgNames());
+                   info_->OutputArgNames());
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
     std::vector<Variable> res;
-    FetchVarsByNames(info_->GetOutputArgNames(), scope_, &res);
+    FetchVarsByNames(info_->OutputArgNames(), scope_, &res);
     return res;
   }
 

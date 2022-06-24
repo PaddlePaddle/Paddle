@@ -39,9 +39,9 @@ class Layer {
         const Name2VariableMap& params_dict,
         const phi::Place& place);
 
-  std::shared_ptr<BaseFunction> GetFunction(const std::string& name) const;
+  std::shared_ptr<BaseFunction> Function(const std::string& name) const;
 
-  Variable GetAttribute(const std::string& name) const;
+  Variable Attribute(const std::string& name) const;
 
   std::vector<Variable> forward(const std::vector<Variable>& inputs);
 

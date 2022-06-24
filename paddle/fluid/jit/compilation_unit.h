@@ -31,17 +31,7 @@ class CompilationUnit {
   CompilationUnit() = default;
   ~CompilationUnit() {}
 
-  void AddExecutorFunction(const std::string &func_name,
-                           const std::shared_ptr<FunctionInfo> &info,
-                           const Name2VariableMap &params_dict,
-                           const phi::Place &place);
-
-  void AddPEFunction(const std::string &func_name,
-                     const std::shared_ptr<FunctionInfo> &info,
-                     const Name2VariableMap &params_dict,
-                     const phi::Place &place);
-
-  std::shared_ptr<BaseFunction> GetFunction(const std::string &name) const;
+  std::shared_ptr<BaseFunction> Function(const std::string &name) const;
 
   void SetFunction(const std::string &name,
                    const std::shared_ptr<BaseFunction> &function);

@@ -77,7 +77,7 @@ TEST(CpuLayerTest, Construct) {
   auto out_data = out_dense_tensor.data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
-  auto func = layer.GetFunction("infer");
+  auto func = layer.Function("infer");
   outs = (*func)(inputs);
   out_vars = outs[0];
   out_dense_tensor = out_vars.Get<DenseTensor>();
@@ -105,7 +105,7 @@ TEST(GpuLayerTest, Construct) {
   auto out_data = cpu_dense_tensor.data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
-  auto func = layer.GetFunction("infer");
+  auto func = layer.Function("infer");
   outs = (*func)(inputs);
   out_vars = outs[0];
   out_dense_tensor = out_vars.Get<DenseTensor>();
