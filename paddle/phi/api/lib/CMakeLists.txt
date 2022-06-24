@@ -141,8 +141,8 @@ endforeach()
 
 # validation of api yamls
 message("validate api yaml:
-- ${parsed_api_dir}/new_api.parsed.yaml
-- ${parsed_api_dir}/new_backward_api.parsed.yaml")
+- ${parsed_api_dir}/api.parsed.yaml
+- ${parsed_api_dir}/backward_api.parsed.yaml")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
   COMMAND

@@ -18,6 +18,12 @@
 
 namespace phi {
 
+/**
+ * @brief Returns a new tensor with the truncated integer values  of input.
+ * @param  ctx   device context
+ * @param  x     The input tensor of trunc kernel
+ * @param  out   The output tensor of trunc kernel
+ */
 template <typename T, typename Context>
 void TruncKernel(const Context& dev_ctx,
                  const DenseTensor& x,
