@@ -33,9 +33,6 @@ import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.engine import Engine
 
 paddle.enable_static()
-global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
-PP_MESH_0 = auto.ProcessMesh([0])
-PP_MESH_1 = auto.ProcessMesh([1])
 batch_size = 1
 batch_num = 10
 hidden_size = 1024
@@ -88,12 +85,10 @@ class MLPLayer(nn.Layer):
         self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
 
     def forward(self, input):
-        out = auto.shard_op(self.norm, dist_attr={"process_mesh":
-                                                  PP_MESH_0})(input)[0]
+        out = self.norm(input)
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
-        out = auto.shard_op(self.linear1, dist_attr={"process_mesh":
-                                                     PP_MESH_1})(out)[0]
+        out = self.linear1(out)
         out = self.dropout(out)
         out = self.linear2(out)
         self.out = out
@@ -119,6 +114,7 @@ def train(fetch):
     dist_strategy.amp = False
     dist_strategy.pipeline = False
     dist_strategy.recompute = False
+    # init parallel optimizer
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
 
@@ -158,5 +154,4 @@ def train(fetch):
 
 
 if __name__ == "__main__":
-    train(fetch=True)
-    train(fetch=False)
+    train(True)
