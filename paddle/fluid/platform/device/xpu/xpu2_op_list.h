@@ -270,6 +270,8 @@ XPUOpMap& get_kl2_ops() {
       {"mean", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                              pOpKernelType(vartype::FP16, XPUPlace())})},
       {"momentum", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"merged_momentum", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                            pOpKernelType(vartype::FP16, XPUPlace())})},
       {"mul", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                             pOpKernelType(vartype::FP16, XPUPlace())})},
       {"mul_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),

@@ -475,8 +475,27 @@ static void PreparedOpRunImpl(
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
 
+    struct timeval t1;
+    struct timeval t2;
+    if(std::getenv("XPU_PADDLE_DEBUG")!=nullptr){
+      gettimeofday(&t1,NULL);
+      std::cout<<"op_name:"<<op.Type()<<"  start"<<std::endl;
+    }
+
     func(DygraphExecutionContext<VarType>(op, empty_scope, *dev_ctx, ctx, ins,
                                           outs, attrs, default_attrs));
+  
+    if(std::getenv("XPU_PADDLE_DEBUG")!=nullptr){
+      if(platform::is_xpu_place(dev_ctx->GetPlace())){
+         int r = xpu_wait();
+         PADDLE_ENFORCE_EQ(r,0,platform::errors::InvalidArgument("not initialized.[",op.Type()));
+         }
+  
+      gettimeofday(&t2,NULL);
+      uint32_t diff = 1000000 *(t2.tv_sec-t1.tv_sec)+t2.tv_usec-t1.tv_usec;
+      std::cout<<"op_name: "<<op.Type()<<" "<<diff<<" "<<dev_ctx->GetPlace()<<" "<<kernel_type.data_type_<<std::endl;  
+      }
+  
   }
 
   if (FLAGS_check_nan_inf) {

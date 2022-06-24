@@ -28,7 +28,7 @@ paddle.enable_static()
 
 class XPUTestTransposeOp(XPUOpTestWrapper):
     def __init__(self):
-        self.op_name = "transpose"
+        self.op_name = "transpose2"
         self.use_dynamic_create_class = False
 
     class TestTransposeOp(XPUOpTest):
@@ -46,11 +46,14 @@ class XPUTestTransposeOp(XPUOpTestWrapper):
                 'use_mkldnn': False,
                 'use_xpu': True
             }
-            self.outputs = {'Out': self.inputs['X'].transpose(self.axis)}
+            self.outputs = {
+                'XShape': np.random.random(self.shape).astype(self.dtype),
+                'Out': self.inputs['X'].transpose(self.axis)
+            }
 
         def init_op_type(self):
             # mention! the op_type is 'transpose2' not 'transpose'
-            self.op_type = "transpose"
+            self.op_type = "transpose2"
             self.use_mkldnn = False
 
         #it is important of transpose that shape and axis of input or output data
@@ -121,7 +124,7 @@ class XPUTestTransposeOp(XPUOpTestWrapper):
             self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
-support_types = get_xpu_op_support_types("transpose")
+support_types = get_xpu_op_support_types("transpose2")
 for stype in support_types:
     create_test_class(globals(), XPUTestTransposeOp, stype)
 

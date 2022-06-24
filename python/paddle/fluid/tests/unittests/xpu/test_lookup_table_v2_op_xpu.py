@@ -19,199 +19,102 @@ import numpy as np
 import sys
 
 sys.path.append("..")
-from op_test import OpTest, skip_check_grad_ci
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid.op import Operator
-import paddle.compat as cpt
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
+SEED = 2022
+
+class XPUTestLookupTableV2Op(XPUOpTestWrapper):
+    def __init__(self):
+      self.op_name = "lookup_table_v2" 
 
 
-class TestLookupTableOp(OpTest):
+    class TestLookupTableV2Op(XPUOpTest):
+        def setUp(self):
+            self.op_type = "lookup_table_v2"
+            self.set_shape()
+            self.init_dtype()
+            self.init_data()
+    
+        def set_shape(self):
+            self.table_shape = (17,31)
+            self.ids_shape = (0,17,4)
+   
+        def init_data(self):
+            table = np.random.random(self.table_shape).astype(self.dtype)
+            ids = np.random.randint(0, 17, 4).astype(np.int32)
+            self.inputs = {'W': table, 'Ids': ids}
+            self.outputs = {'Out': table[ids]}
 
-    def setUp(self):
-        self.op_type = "lookup_table_v2"
-        table = np.random.random((17, 31)).astype("float64")
-        ids = np.random.randint(0, 17, 4).astype("int64")
-        self.inputs = {'W': table, 'Ids': ids}
-        self.outputs = {'Out': table[ids]}
+        def init_dtype(self):
+            self.dtype = self.in_type  
 
-    def test_check_output_with_place(self):
-        self.check_output_with_place(place=paddle.XPUPlace(0))
+        def test_check_output_with_place(self):
+            self.check_output_with_place(place=paddle.XPUPlace(0))
 
-    def test_check_grad(self):
+        def test_check_grad(self):
+            if self.dtype == np.float16:
+              self.check_grad_with_place(self.place, ['W'], 'Out', max_relative_error=0.01)
+            else:
+              self.check_grad_with_place(self.place, ['W'], 'Out')
 
-        self.check_grad_with_place(inputs_to_check=['W'],
-                                   output_names='Out',
-                                   no_grad_set=set('Ids'),
-                                   place=paddle.XPUPlace(0),
-                                   in_place=True)
+    class TestLookupTableV2FP16(TestLookupTableV2Op):
+        no_need_check_grad = True
 
+        def init_dtype(self):
+          self.dtype = np.float16
+          self.ids_dtype = np.int32
 
-class TestLookupTableOpWithTensorIds(OpTest):
-
-    def setUp(self):
-        self.op_type = "lookup_table_v2"
-        table = np.random.random((17, 31)).astype("float64")
-        ids = np.random.randint(low=0, high=17, size=(2, 4, 5)).astype("int32")
-        self.inputs = {'W': table, 'Ids': ids}
-        self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
-
-    def test_check_output(self):
-        self.check_output_with_place(place=paddle.XPUPlace(0))
-
-    def test_check_grad(self):
-        self.check_grad_with_place(inputs_to_check=['W'],
-                                   output_names='Out',
-                                   no_grad_set=set('Ids'),
-                                   place=paddle.XPUPlace(0),
-                                   in_place=True)
-
-
-@skip_check_grad_ci(
-    reason="Since paddings are not trainable and fixed in forward,"
-    "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
-class TestLookupTableOpWithPadding(TestLookupTableOp):
-
-    def test_check_output(self):
-        ids = np.squeeze(self.inputs['Ids'])
-        padding_idx = np.random.choice(ids, 1)[0]
-        self.outputs['Out'][ids == padding_idx] = np.zeros(31)
-        self.attrs = {'padding_idx': int(padding_idx)}
-        self.check_output_with_place(place=paddle.XPUPlace(0))
+        def set_xpu(self):
+          self.__class__.use_xpu = True
+          self.__class__.no_need_check_grad = True
 
 
-@skip_check_grad_ci(
-    reason="Since paddings are not trainable and fixed in forward,"
-    "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
-class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
-
-    def test_check_output(self):
-        ids = self.inputs['Ids']
-        flatten_idx = ids.flatten()
-        padding_idx = np.random.choice(flatten_idx, 1)[0]
-        self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
-        self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
-        self.check_output_with_place(place=paddle.XPUPlace(0))
+    class TestLookupTableV2Dim32(TestLookupTableV2Op):
+        def init_dims(self):
+            self.bsz = 6
+            self.seqlen = 8
+            self.vocab = 10
+            # embedding_dim is multiple of 32
+            self.dim = 64
 
 
-class TestLookupTableWIsSelectedRows(unittest.TestCase):
+    class TestLookupTableV2Dim32FP16(TestLookupTableV2Op):
+        no_need_check_grad = True
 
-    def prepare_ids(self, scope, place):
-        ids_tensor = scope.var('Ids').get_tensor()
-        ids_array = np.array([0, 4, 3, 5]).astype("int64")
-        ids_tensor.set(ids_array, place)
-        return ids_array
+        def init_dtype(self):
+            self.dtype = np.float16
+            self.ids_dtype = np.int64
 
-    def prepare_w(self, scope, place):
-        rows = [0, 1, 2, 3, 4, 5, 6]
-        row_numel = 12
-        w_selected_rows = scope.var('W')
-        w_array = np.ones((len(rows), row_numel)).astype("float32")
-        for i in range(len(rows)):
-            w_array[i] *= i
-        w_tensor = w_selected_rows.get_tensor()
-        w_tensor.set(w_array, place)
+        def init_dims(self):
+            self.bsz = 6
+            self.seqlen = 8
+            self.vocab = 10
+            self.dim = 64
 
-    def create_out_tensor(self, scope, place):
-        return scope.var('Out').get_tensor()
-
-    def check_result(self, ids_array, result_array):
-        # all(): return True if all elements of the iterable are true (or if the iterable is empty)
-        for idx, row in enumerate(ids_array):
-            assert (row == result_array[idx]).all()
-
-    def check_with_place(self, place):
-        scope = core.Scope()
-        ids_array = self.prepare_ids(scope, place)
-
-        self.prepare_w(scope, place)
-
-        out_tensor = self.create_out_tensor(scope, place)
-
-        # create and run lookup_table_v2 operator
-        lookup_table = Operator("lookup_table_v2", W='W', Ids='Ids', Out='Out')
-        lookup_table.run(scope, place)
-
-        # get result from Out
-        result_array = np.array(out_tensor)
-
-        self.check_result(ids_array, result_array)
-
-    def test_w_is_selected_rows(self):
-        places = [paddle.XPUPlace(0)]
-        for place in places:
-            self.check_with_place(place)
+        def set_xpu(self):
+            self.__class__.use_xpu = True
+            self.__class__.no_need_check_grad = True
 
 
-class TestLookupTableWithTensorIdsWIsSelectedRows(TestLookupTableWIsSelectedRows
-                                                  ):
-
-    def prepare_ids(self, scope, place):
-        ids_tensor = scope.var('Ids').get_tensor()
-        ids_array = np.random.randint(low=0, high=6,
-                                      size=(2, 4, 3)).astype("int64")
-        ids_tensor.set(ids_array, place)
-        return ids_array
-
-    def check_result(self, ids_array, result_array):
-        for idx, row in np.ndenumerate(ids_array):
-            assert (row == result_array[idx]).all()
+    class TestLookupTableV2WithPadding(TestLookupTableV2Op):
+        def init_padding_idx(self):
+            self.padding_idx = np.random.randint(0, self.vocab)
 
 
-class TestLookupTableApi(unittest.TestCase):
+    class TestLookupTableV2WithPadding1(TestLookupTableV2Op):
+        def init_padding_idx(self):
+            self.padding_idx = np.random.randint(0, self.vocab)
 
-    def test_api(self):
-        x = fluid.layers.data(name='x', shape=[20], dtype='int64')
-        emb = fluid.embedding(input=x, size=[128, 64])
+        def init_dtype(self):
+            self.dtype = np.float32
+            self.ids_dtype = np.int64
 
-        place = paddle.XPUPlace(0)
-        x_data = np.random.randint(0, 127, [2, 20]).astype("int64")
-
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        ret = exe.run(feed={
-            'x': x_data,
-        },
-                      fetch_list=[emb],
-                      return_numpy=False)
-
-
-class TestEmbedOpError(unittest.TestCase):
-
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            input_data = np.random.randint(0, 10, (4, 6)).astype("int64")
-
-            def test_Variable():
-                # the input type must be Variable
-                fluid.embedding(input=input_data, size=(10, 64))
-
-            self.assertRaises(TypeError, test_Variable)
-
-            def test_input_dtype():
-                # the input dtype must be int64
-                input = fluid.data(name='x1', shape=[4, 6], dtype='float32')
-                fluid.embedding(input=input, size=(10, 64))
-
-            self.assertRaises(TypeError, test_input_dtype)
-
-            def test_param_dtype():
-                # dtype must be float32 or float64
-                input2 = fluid.data(name='x2', shape=[4, 6], dtype='int64')
-                fluid.embedding(input=input2, size=(10, 64), dtype='int64')
-
-            self.assertRaises(TypeError, test_param_dtype)
-            input3 = fluid.data(name='x3', shape=[4, 6], dtype='int64')
-            fluid.embedding(input=input3, size=(10, 64), dtype='float16')
-
+support_types = get_xpu_op_support_types("lookup_table_v2")
+for stype in support_types:
+    create_test_class(globals(), XPUTestLookupTableV2Op, stype)
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

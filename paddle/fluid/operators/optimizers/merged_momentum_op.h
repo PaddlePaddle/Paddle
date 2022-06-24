@@ -219,6 +219,8 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
     VLOG(5) << "use_nesterov: " << use_nesterov
             << ",  regularization_methods.size(): "
             << regularization_methods.size()
+            << ",  lrs.size(): "
+            << lrs.size() << " lr[0]->numel():" << lrs[0]->numel()
             << ",  regularization_coeffs.size(): "
             << regularization_coeffs.size();
 
