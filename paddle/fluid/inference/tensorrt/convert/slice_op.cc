@@ -98,10 +98,6 @@ class SliceOpConverter : public OpConverter {
       }
 
       std::vector<nvinfer1::ITensor*> end_vec_tensor;
-<<<<<<< HEAD
-
-=======
->>>>>>> develop
       for (int i = 0; i < trt_end_dims.nbDims; i++) {
         end_vec_tensor.push_back(GetEleTensorOfShape(shape_tensor, i));
       }
@@ -116,11 +112,7 @@ class SliceOpConverter : public OpConverter {
         }
       }
 
-<<<<<<< HEAD
-// CI failed in trt 6015, may be a trt bug
-=======
 // CI failed in trt 6015 but success in 7134, may be a trt bug
->>>>>>> develop
 #if IS_TRT_VERSION_GE(7134)
       auto* size_tensor =
           Sub(Min(Concat(end_vec_tensor), shape_tensor), start_tensor);
@@ -128,13 +120,8 @@ class SliceOpConverter : public OpConverter {
       auto* size_tensor = Sub(Concat(end_vec_tensor), start_tensor);
 #endif
 
-<<<<<<< HEAD
-      layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
-                                   trt_size_dims, trt_step_dims);
-=======
       layer = TRT_ENGINE_ADD_LAYER(
           engine_, Slice, *input, trt_start_dims, trt_size_dims, trt_step_dims);
->>>>>>> develop
       layer->setInput(1, *start_tensor);
       layer->setInput(2, *size_tensor);
 
@@ -177,13 +164,8 @@ class SliceOpConverter : public OpConverter {
         trt_start_dims.d[trt_axis] = starts[i];
         trt_size_dims.d[trt_axis] = ends[i] - starts[i];
       }
-<<<<<<< HEAD
-      layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
-                                   trt_size_dims, trt_step_dims);
-=======
       layer = TRT_ENGINE_ADD_LAYER(
           engine_, Slice, *input, trt_start_dims, trt_size_dims, trt_step_dims);
->>>>>>> develop
 #else
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();

@@ -52,11 +52,6 @@ class FcOpConverter : public OpConverter {
         if (i < x_num_col_dims) {
           reshape_before_fc_dim.d[i] = 0;
         } else {
-<<<<<<< HEAD
-          if (x_dim.d[i] < 0) {
-            reshape_before_fc_dim.d[x_num_col_dims] = -1;
-            break;
-          }
           reshape_before_fc_dim.d[x_num_col_dims] *= x_dim.d[i];
         }
       }
@@ -77,28 +72,6 @@ class FcOpConverter : public OpConverter {
                    reshape_before_fc_shape_tensor[x_num_col_dims]);
         }
       }
-=======
-          reshape_before_fc_dim.d[x_num_col_dims] *= x_dim.d[i];
-        }
-      }
-    } else {
-      std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
-      nvinfer1::ITensor* input_shape_tensor = Shape(before_fc);
-
-      for (int i = 0; i < reshape_before_fc_dim.nbDims; i++) {
-        reshape_before_fc_shape_tensor.push_back(Add1DConstantLayer(1));
-      }
-      for (int i = 0; i < x_dim.nbDims; i++) {
-        if (i < x_num_col_dims) {
-          reshape_before_fc_shape_tensor[i] =
-              GetEleTensorOfShape(input_shape_tensor, i);
-        } else {
-          reshape_before_fc_shape_tensor[x_num_col_dims] =
-              Prod(GetEleTensorOfShape(input_shape_tensor, i),
-                   reshape_before_fc_shape_tensor[x_num_col_dims]);
-        }
-      }
->>>>>>> develop
       filal_reshape_before_fc_shape_tensor =
           Concat(reshape_before_fc_shape_tensor);
     }
