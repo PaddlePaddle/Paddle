@@ -796,8 +796,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
           << ", used_slots size:" << used_slots.size();
       if (!slot_is_dense[slot_idx]) { // slot with lod info
         feasigns[j].sign().uint64_feasign_ = cache_manager->query_sign2fid(feasigns[j].sign().uint64_feasign_);
-      } else {
-        VLOG(0) << "BuildGPUTask: slot is dense:" << used_slots[slot_idx];
       }
     }
   }

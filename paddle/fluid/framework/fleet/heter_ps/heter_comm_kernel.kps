@@ -560,12 +560,14 @@ __global__ void merge_grad_kernel(
     int hash_key = 0;
     for (int i = 0; i < len; ) {
         int read_len = min(local_key_size, len - i);
+        mfence();
         GM2LM(in_keys + i, local_keys, read_len * sizeof(int));
         for (int j = 0; j < read_len; j++) {
-            hash_key = local_keys[j] % nthreads;
+            int local_bfid = local_keys[j];
+            hash_key = local_bfid % nthreads;
             if (hash_key == thread_id) {
                 GM2LM(&(in_vals[i + j]), &local_push_value, sizeof(FeaturePushValue));
-                GM2LM(&(out_vals[local_keys[j]]), &local_merge_value, sizeof(FeaturePushValue));
+                GM2LM(&(out_vals[local_bfid]), &local_merge_value, sizeof(FeaturePushValue));
                 local_merge_value.slot = local_push_value.slot;
                 local_merge_value.show += local_push_value.show;
                 local_merge_value.clk += local_push_value.clk;
@@ -574,7 +576,7 @@ __global__ void merge_grad_kernel(
                     local_merge_value.mf_g[k] += local_push_value.mf_g[k];
                 }
                 mfence();
-                LM2GM(&local_merge_value, &(out_vals[local_keys[j]]), sizeof(FeaturePushValue));
+                LM2GM(&local_merge_value, &(out_vals[local_bfid]), sizeof(FeaturePushValue));
             }
         }
         i += read_len;
