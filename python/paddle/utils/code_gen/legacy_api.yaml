@@ -152,6 +152,15 @@
   kernel :
     func : arg_min
 
+- api : argsort
+  args : (Tensor x, int axis=-1, bool descending=false)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : ArgsortInferMeta
+  kernel :
+    func : argsort
+  backward : argsort_grad
+
 # asin
 - api : asin
   args : (Tensor x)

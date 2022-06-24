@@ -1,12 +1,3 @@
-- api : argsort
-  args : (Tensor x, int axis=-1, bool descending=false)
-  output : Tensor(out), Tensor(indices)
-  infer_meta :
-    func : ArgsortInferMeta
-  kernel :
-    func : argsort
-  backward : argsort_grad
-
 - api : atan2
   args : (Tensor x, Tensor y)
   output : Tensor
