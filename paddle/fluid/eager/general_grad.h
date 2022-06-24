@@ -34,7 +34,6 @@ namespace egr {
  * GeneralGrad is Helpper class to implement custom grad operation between
  * outputs and inputs.
  *
- *
  * **/
 class GeneralGrad {
  public:
@@ -66,7 +65,8 @@ class GeneralGrad {
                                 paddle::platform::errors::Fatal(
                                     "There is no grad op for %s:[%d] or it's"
                                     "stop_gradient=True.",
-                                    msg, i));
+                                    msg,
+                                    i));
         if (is_no_grad_vars) {
           (no_grad_var_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
         } else {  // normal input
@@ -239,8 +239,7 @@ class GeneralGrad {
 
   void SetResultForEnddingNodes(
       paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                           kSlotSmallVectorSize>
-          grad_output,
+                           kSlotSmallVectorSize> grad_output,
       GradNodeBase* node) {
     if (IsEnddingNodes(node)) {
       VLOG(6) << "Set result for endding_nodes_ with grad_output_tensors";
@@ -273,12 +272,17 @@ class GeneralGrad {
     // Append to GradientHooks
     auto rank_info = EagerUtils::unsafe_autograd_meta(tensor)->OutRankInfo();
     target_node->RegisterGradientHook(
-        rank_info.first, rank_info.second,
+        rank_info.first,
+        rank_info.second,
         std::move(std::make_shared<egr::CppTensorHook>(hook)));
     return tmp;
   }
 
-  // Fetch grad for tensor in target_node passing by, not endding_nodes
+  // Register Hook to fetch input's gradients, when input's grad node is not an
+  // endding node in backward graph. If input's grad node is an endding node in
+  // backward graph, use grad node's output as inputs' gradients and no need to
+  // register Hook. Please note that endding node must be GradNodeAccumulation
+  // after ReConstructBackwardGraph function.
   void RegisterFetchGradHook(
       const std::vector<paddle::experimental::Tensor>& inputs) {
     VLOG(6) << "Running in RegisterFetchGradHook.";
@@ -301,17 +305,14 @@ class GeneralGrad {
             VLOG(6) << "No need to call FetchGradForTensor for endding_nodes";
             continue;
           }
-        } else {
-          VLOG(6) << "Unable to find target node in "
-                     "orig_to_copied_node_map_, likely indicating an "
-                     "unused input";
         }
 
         PADDLE_ENFORCE_NOT_NULL(
-            target_node, paddle::platform::errors::Fatal(
-                             "There is no grad op for inputs:[%d] or it's"
-                             "stop_gradient=True.",
-                             i));
+            target_node,
+            paddle::platform::errors::Fatal(
+                "There is no grad op for inputs:[%d] or it's"
+                "stop_gradient=True.",
+                i));
 
         if (!IsEnddingNodes(target_node)) {
           // Fetch grad for tensor in target_node passing by.
@@ -420,7 +421,8 @@ class GeneralGrad {
 
   std::vector<paddle::experimental::Tensor> GetResults(
       const std::vector<paddle::experimental::Tensor>& inputs,
-      bool allow_unused, bool create_graph) {
+      bool allow_unused,
+      bool create_graph) {
     VLOG(6) << "Running in GetResults";
     if (inputs.empty()) return {};
 
@@ -450,7 +452,8 @@ class GeneralGrad {
         tensor_auto_grad_meta->SetStopGradient(!create_graph);
         results.emplace_back(*(iter->second.get()));
       } else {
-        PADDLE_ENFORCE_EQ(allow_unused, true,
+        PADDLE_ENFORCE_EQ(allow_unused,
+                          true,
                           paddle::platform::errors::InvalidArgument(
                               "The %d-th input does not appear in the backward "
                               "graph. Please check the input tensor or set "
