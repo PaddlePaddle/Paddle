@@ -60,8 +60,8 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     }
 
     auto in_dim = input->getDimensions();
-    float scale_h = 1.f;
-    float scale_w = 1.f;
+    float scale_h = -1.f;
+    float scale_w = -1.f;
 
     // Scales Priority: Scale(tensor) > scale(attr) > out_d/out_h/out_w(attr)
     bool has_scale_input_attr =

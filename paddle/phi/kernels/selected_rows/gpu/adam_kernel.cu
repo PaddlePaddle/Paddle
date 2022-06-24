@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/selected_rows/adam_kernel.h"
+
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -21,7 +23,6 @@
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
 namespace phi {
 namespace sr {

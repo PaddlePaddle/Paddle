@@ -2024,6 +2024,26 @@ function get_failedUts_precise_map_file {
     fi
 }
 
+function parallel_test_base_gpups() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit GpuPS tests ...
+    ========================================
+EOF
+        ut_startTime_s=`date +%s`
+        ctest -L "RUN_TYPE=GPUPS" --timeout 120
+        ut_endTime_s=`date +%s`
+        echo "GPUPS testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi
+}
+
 function parallel_test_base_xpu() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -2720,6 +2740,8 @@ function parallel_test() {
     ut_total_startTime_s=`date +%s`
     if [ "$WITH_CINN" == "ON" ];then
         parallel_test_base_cinn
+    elif [ "$WITH_GPU" == "ON" ] && [ "$WITH_HETERPS" == "ON" ];then
+        parallel_test_base_gpups
     elif [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu_test
     elif [ "$WITH_XPU" == "ON" ];then
@@ -3117,6 +3139,7 @@ EOF
 function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
 }
+
 
 # origin name: example
 function exec_samplecode_test() {

@@ -1,11 +1,8 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
 http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,7 +19,8 @@ namespace tensorrt {
 class SliceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     // This OP is implemented by trt dynamic shpae plugin.
     // Dynamic shape plugin requires TRT version greater than 6.0.
     VLOG(4) << "convert slice op to tensorrt layer";
@@ -63,11 +61,13 @@ class SliceOpConverter : public OpConverter {
         }
         ends[i] = std::min(ends[i], input_dims.d[axes[i]]);
         PADDLE_ENFORCE_GT(
-            ends[i], starts[i],
+            ends[i],
+            starts[i],
             platform::errors::InvalidArgument(
                 "Attr(ends) should be greater than attr(starts) in "
                 "slice op. But received ends = %d, starts = %d.",
-                ends[i], starts[i]));
+                ends[i],
+                starts[i]));
       }
     }
 
@@ -98,7 +98,10 @@ class SliceOpConverter : public OpConverter {
       }
 
       std::vector<nvinfer1::ITensor*> end_vec_tensor;
+<<<<<<< HEAD
 
+=======
+>>>>>>> develop
       for (int i = 0; i < trt_end_dims.nbDims; i++) {
         end_vec_tensor.push_back(GetEleTensorOfShape(shape_tensor, i));
       }
@@ -113,7 +116,11 @@ class SliceOpConverter : public OpConverter {
         }
       }
 
+<<<<<<< HEAD
 // CI failed in trt 6015, may be a trt bug
+=======
+// CI failed in trt 6015 but success in 7134, may be a trt bug
+>>>>>>> develop
 #if IS_TRT_VERSION_GE(7134)
       auto* size_tensor =
           Sub(Min(Concat(end_vec_tensor), shape_tensor), start_tensor);
@@ -121,8 +128,13 @@ class SliceOpConverter : public OpConverter {
       auto* size_tensor = Sub(Concat(end_vec_tensor), start_tensor);
 #endif
 
+<<<<<<< HEAD
       layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                    trt_size_dims, trt_step_dims);
+=======
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Slice, *input, trt_start_dims, trt_size_dims, trt_step_dims);
+>>>>>>> develop
       layer->setInput(1, *start_tensor);
       layer->setInput(2, *size_tensor);
 
@@ -165,8 +177,13 @@ class SliceOpConverter : public OpConverter {
         trt_start_dims.d[trt_axis] = starts[i];
         trt_size_dims.d[trt_axis] = ends[i] - starts[i];
       }
+<<<<<<< HEAD
       layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                    trt_size_dims, trt_step_dims);
+=======
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Slice, *input, trt_start_dims, trt_size_dims, trt_step_dims);
+>>>>>>> develop
 #else
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
