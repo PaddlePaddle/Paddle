@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/utils/model_utils.h"
-#include <unordered_set>
+#include <set>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/phi/common/data_type.h"
@@ -25,7 +25,7 @@ using paddle::framework::proto::VarType;
 
 // Get all model's weights and return the data_type, e.g., fp16/bf16 or fp32.
 phi::DataType GetModelPrecision(const framework::ProgramDesc& program) {
-  std::unordered_set<VarType::Type> model_types{
+  std::set<VarType::Type> model_types{
       VarType::FP32,
       VarType::FP16,
       VarType::BF16,
