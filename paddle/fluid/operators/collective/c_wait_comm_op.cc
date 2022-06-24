@@ -35,8 +35,6 @@ class CWaitCommOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    LOG(INFO) << "======+AAAAAAAA=========";
-    LOG(INFO) << "==================place=============" << place;
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(place), true,
         platform::errors::PreconditionNotMet(
@@ -45,7 +43,6 @@ class CWaitCommOp : public framework::OperatorBase {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     int ring_id = Attr<int>("ring_id");
-    LOG(INFO) << "=============ring_id=========" << ring_id;
     auto compute_stream =
         static_cast<platform::CUDADeviceContext*>(
             platform::DeviceContextPool::Instance().Get(place))
