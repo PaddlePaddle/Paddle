@@ -1,3 +1,21 @@
+- api : argsort
+  args : (Tensor x, int axis=-1, bool descending=false)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : ArgsortInferMeta
+  kernel :
+    func : argsort
+  backward : argsort_grad
+
+- api : atan2
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : Atan2InferMeta
+  kernel :
+    func : atan2
+  backward : atan2_grad
+
 - api : bernoulli
   args : (Tensor x)
   output : Tensor
@@ -5,6 +23,24 @@
     func : UnchangedInferMeta
   kernel :
     func : bernoulli
+
+- api : cholesky
+  args : (Tensor x, bool upper=false)
+  output : Tensor
+  infer_meta :
+    func : CholeskyInferMeta
+  kernel :
+    func : cholesky
+  backward : cholesky_grad
+
+- api : cholesky_solve
+  args : (Tensor x, Tensor y, bool upper=false)
+  output : Tensor
+  infer_meta :
+    func : CholeskySolveInferMeta
+  kernel :
+    func : cholesky_solve
+  backward : cholesky_solve_grad
 
 - api : erf
   args : (Tensor x)
@@ -41,6 +77,12 @@
   kernel :
     func : trace
   backward : trace_grad
+  # version :
+  #   - checkpoint :
+  #       - add_attr : float[] axis1 = {0.0}
+  #       - add_attr : float[] axis1 = {1.0}
+  #       - delete_attr : dim1
+  #       - delete_attr : dim2
 
 - api : trunc
   args : (Tensor x)
