@@ -498,8 +498,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
   }
 
   int idx_ = *(int *)(request.params(0).c_str());
-  size_t node_num = request.params(1).size() / sizeof(int64_t),
-         size_of_size_t = sizeof(size_t);
+  size_t node_num = request.params(1).size() / sizeof(int64_t);
   int64_t *node_data = (int64_t *)(request.params(1).c_str());
   int sample_size = *(int64_t *)(request.params(2).c_str());
   bool need_weight = *(int64_t *)(request.params(3).c_str());
@@ -572,7 +571,6 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
         failed[request2server[request_idx]] = true;
       } else {
         auto &res_io_buffer = closure->cntl(request_idx)->response_attachment();
-        size_t node_size;
         res[request_idx].reset(new butil::IOBufBytesIterator(res_io_buffer));
         size_t num;
         res[request_idx]->copy_and_forward(&num, sizeof(size_t));
