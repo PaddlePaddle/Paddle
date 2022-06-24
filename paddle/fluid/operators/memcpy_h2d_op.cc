@@ -98,7 +98,8 @@ class MemcpyH2DOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         "By Now it ONLY support CUDAPinnedPlace/CPU <-> NPUPlace/CUDAPlace "
         "Other place type is Unimplemented and will cause ERROR."
         "0: dst is on CUDAPlace. "
-        "1: dst is on NPUPlace. ");
+        "1: dst is on NPUPlace. "
+        "2: dst is on XPUPlace. ");
     AddComment(R"DOC(
     MemcpyD2H Operator.
     By now, it ONLY supports the memcopy between CUDAPinnedPlace/CPU <-> NPUPlace/CUDAPlace.
@@ -131,6 +132,17 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(
+    memcpy_h2d, float, ops::MemcpyH2DKernel, double, ops::MemcpyH2DKernel,
+    int8_t, ops::MemcpyH2DKernel, uint8_t, ops::MemcpyH2DKernel, int,
+    ops::MemcpyH2DKernel, int64_t, ops::MemcpyH2DKernel, bool,
+    ops::MemcpyH2DKernel, paddle::platform::bfloat16, ops::MemcpyH2DKernel,
+    paddle::platform::complex<float>, ops::MemcpyH2DKernel,
+    paddle::platform::complex<double>, ops::MemcpyH2DKernel, plat::float16,
+    ops::MemcpyH2DKernel, int16_t, ops::MemcpyH2DKernel);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+REGISTER_OP_XPU_KERNEL_FUNCTOR(
     memcpy_h2d, float, ops::MemcpyH2DKernel, double, ops::MemcpyH2DKernel,
     int8_t, ops::MemcpyH2DKernel, uint8_t, ops::MemcpyH2DKernel, int,
     ops::MemcpyH2DKernel, int64_t, ops::MemcpyH2DKernel, bool,
