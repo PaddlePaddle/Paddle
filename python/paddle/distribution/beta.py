@@ -28,6 +28,10 @@ class Beta(exponential_family.ExponentialFamily):
     the distribution. The generalization to multiple variables is called a 
     Dirichlet distribution.
 
+    Note: This Code is Test For Paddle-CI Doc-Review. Don't Merge
+    Test for Paddle-CI Doc-Reciew
+    Hi, how is it today
+
     The probability density function (pdf) is
 
     .. math::
@@ -40,6 +44,10 @@ class Beta(exponential_family.ExponentialFamily):
 
         B(\alpha, \beta) = \int_{0}^{1} t^{\alpha - 1} (1-t)^{\beta - 1}\mathrm{d}t 
 
+    .. math::
+
+        f_{F}(x; \theta) = \exp(\langle t(x), \theta\rangle - F(\theta) + k(x))
+
 
     Args:
         alpha (float|Tensor): Alpha parameter. It supports broadcast semantics. 
@@ -50,6 +58,7 @@ class Beta(exponential_family.ExponentialFamily):
             The value of beta must be positive(>0). When the parameter is tensor, 
             it represent multiple independent distribution with 
             a batch_shape(refer to ``Distribution`` ). 
+        gamma（int|Tensor）: Gamma parameter. It supports broadcast semantics.
 
     Examples:
 
@@ -58,7 +67,7 @@ class Beta(exponential_family.ExponentialFamily):
             import paddle
 
             # scale input
-            beta = paddle.distribution.Beta(alpha=0.5, beta=0.5)
+            beta = paddle.distribution.Beta(alpha=0.5, beta=0.5, gamma=1)
             print(beta.mean)
             # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [0.50000000])
