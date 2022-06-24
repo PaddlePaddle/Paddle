@@ -36,9 +36,11 @@
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/infer_context.h"
+#include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
@@ -50,6 +52,8 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/utils/string/split.h"
 
@@ -101,6 +105,43 @@ bool IsPersistable(const framework::VarDesc *var) {
     return true;
   }
   return false;
+}
+
+phi::DataType ConvertPrecision(AnalysisConfig::Precision precision) {
+  switch (precision) {
+    case AnalysisConfig::Precision::kFloat32:
+      return phi::DataType::FLOAT32;
+    case AnalysisConfig::Precision::kHalf:
+      return phi::DataType::FLOAT16;
+    case AnalysisConfig::Precision::kBf16:
+      return phi::DataType::BFLOAT16;
+    case AnalysisConfig::Precision::kInt8:
+      return phi::DataType::INT8;
+    default:
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Paddle Inference not support precision. We now only support "
+          "Float32, Half, Bfloat16 and Int8"));
+      return phi::DataType::FLOAT32;
+  }
+}
+
+phi::Backend ConvertBackend(AnalysisConfig::Backend backend) {
+  switch (backend) {
+    case AnalysisConfig::Backend::kGPU:
+      // NOTE: phi also support phi::Backend::GPUDNN.
+      return phi::Backend::GPU;
+    case AnalysisConfig::Backend::kNPU:
+      return phi::Backend::NPU;
+    case AnalysisConfig::Backend::kXPU:
+      return phi::Backend::XPU;
+    case AnalysisConfig::Backend::kCPU:
+      return phi::Backend::CPU;
+    default:
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Paddle Inference not support backend, we now only support GPU, XPU, "
+          "NPU and CPU."));
+      return phi::Backend::CPU;
+  }
 }
 }  // namespace
 
@@ -2115,6 +2156,26 @@ std::tuple<int, int, int> GetTrtRuntimeVersion() {
 
 std::string UpdateDllFlag(const char *name, const char *value) {
   return paddle::UpdateDllFlag(name, value);
+}
+
+void ConvertToMixedPrecision(const std::string &model_file,
+                             const std::string &params_file,
+                             const std::string &mixed_model_file,
+                             const std::string &mixed_params_file,
+                             PrecisionType mixed_precision,
+                             BackendType backend,
+                             bool keep_io_types,
+                             std::unordered_set<std::string> black_list) {
+  auto phi_backend = paddle::ConvertBackend(backend);
+  auto phi_precision = paddle::ConvertPrecision(mixed_precision);
+  paddle::inference::analysis::ConvertToMixedPrecision(model_file,
+                                                       params_file,
+                                                       mixed_model_file,
+                                                       mixed_params_file,
+                                                       phi_precision,
+                                                       phi_backend,
+                                                       keep_io_types,
+                                                       black_list);
 }
 
 }  // namespace paddle_infer
