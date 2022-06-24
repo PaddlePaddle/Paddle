@@ -841,12 +841,14 @@ x.second );
 
   __host__ void print_collision(int id) {
     if (m_enable_collision_stat) {
-      printf("collision stat for hbm table %d, insert(%lu:%lu), query(%lu:%lu)\n",
+      printf("collision stat for hbm table %d, insert(%lu:%lu:%.2f), query(%lu:%lu:%.2f)\n",
         id,
         m_insert_times,
         m_insert_collisions,
+        m_insert_collisions / (double)m_insert_times,
         m_query_times,
-        m_query_collisions);
+        m_query_collisions,
+        m_query_collisions / (double)m_query_times);
     }
   }
 

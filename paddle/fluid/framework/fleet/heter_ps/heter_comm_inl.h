@@ -629,6 +629,7 @@ void HeterComm<KeyType, ValType, GradType>::dynamic_merge_grad(
 
   size_t temp_storage_bytes;
 
+  size_t grad_dim = feature_value_accessor_.GetAccessorInfo().embedx_dim;
   size_t grad_value_size = TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().update_size);
 
   auto d_merge_keys = memory::Alloc(place, len * sizeof(KeyType));
@@ -687,7 +688,7 @@ void HeterComm<KeyType, ValType, GradType>::dynamic_merge_grad(
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   heter_comm_kernel_->merge_gradient(
       d_keys, d_offset, d_fea_num_info_ptr, d_index, (char*)d_grads,
-      (char*)d_merge_grads_ptr, uniq_len, grad_value_size, merger_, stream);
+      (char*)d_merge_grads_ptr, uniq_len, grad_dim, grad_value_size, merger_, stream);
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(d_grads, d_merge_grads_ptr,
                                              grad_value_size * uniq_len,

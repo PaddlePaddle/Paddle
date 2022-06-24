@@ -247,7 +247,6 @@ class HeterComm {
   std::vector<std::vector<Path>> path_;
   float load_factor_{0.75};
   int block_size_{256};
-  int direct_access_ = 1;
   std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
 
  private:

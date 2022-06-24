@@ -859,7 +859,7 @@ PADDLE_DEFINE_EXPORTED_double(
     "the load factor of hbm table, default 0.75");
 PADDLE_DEFINE_EXPORTED_bool(
     gpugraph_enable_gpu_direct_access, false,
-    "enable hash collisions stat for hbm table, default false");
+    "enable direct access bwtween multi gpu cards, default false");
 
 /**
  * ProcessGroupNCCL related FLAG
