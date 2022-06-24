@@ -77,9 +77,7 @@ RECORD_EVENT_TEMPLATE = \
 
 RETURN_INPLACE_PYOBJECT_TEMPLATE = \
 """
-    ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_final_state_args_info, \"final_state_{}\", \"{}\");
-    ssize_t return_id = GetIdxFromCoreOpsInfoMap(core_ops_final_state_returns_info, \"final_state_{}\", \"{}\");
-    inplace_var_idx_map[return_id] = arg_id;
+    inplace_var_idx_map[{}] = {};
 """
 
 
@@ -284,9 +282,13 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         optional_inputs = self.optional_inputs
         is_forward_only = self.is_forward_only
 
+        inplace_args_pos_map = {}
+        inplace_returns_pos_map = {}
         # Generate Python-C Tensors Parsing Logic
         get_eager_tensor_str = ""
         for name, (ttype, pos) in forward_inputs_position_map.items():
+            if forward_inplace_map and name in forward_inplace_map.keys():
+                inplace_args_pos_map[name] = pos
             is_optional = (name in optional_inputs)
             if IsVectorTensorType(ttype):
                 get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
@@ -301,6 +303,11 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
                         name, "GetTensorFromArgs", forward_api_name, name, pos,
                         "false")
+
+        if forward_inplace_map:
+            for name, (ttype, pos) in forward_outputs_position_map.items():
+                if name in forward_inplace_map.values():
+                    inplace_returns_pos_map[name] = pos
 
         parse_attributes_str = ""
         expected_place_str = "    auto place = egr::Controller::Instance().GetExpectedPlace();\n"
@@ -375,8 +382,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             return_str = "    std::map<ssize_t, ssize_t> inplace_var_idx_map;"
             for inplace_input, inplace_output in forward_inplace_map.items():
                 return_str += RETURN_INPLACE_PYOBJECT_TEMPLATE.format(
-                    inplaced_forward_api_name, inplace_input,
-                    inplaced_forward_api_name, inplace_output)
+                    inplace_returns_pos_map[inplace_output],
+                    inplace_args_pos_map[inplace_input])
             return_str += "    return ToPyObject(out, args, inplace_var_idx_map);"
 
             # Generate Python-C Function Definetion
