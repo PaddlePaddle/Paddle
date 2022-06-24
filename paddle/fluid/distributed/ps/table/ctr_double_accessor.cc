@@ -59,8 +59,6 @@ bool CtrDoubleAccessor::Shrink(float* value) {
   // auto base_threshold = _config.ctr_accessor_param().base_threshold();
   // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   // auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
-  auto base_threshold = _config.ctr_accessor_param().base_threshold();
-  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delete_after_unseen_days =
       _config.ctr_accessor_param().delete_after_unseen_days();
   auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
@@ -139,7 +137,7 @@ bool CtrDoubleAccessor::Save(float* value, int param) {
     }
     default:
       return true;
-  };
+  }
 }
 
 void CtrDoubleAccessor::UpdateStatAfterSave(float* value, int param) {
@@ -166,16 +164,15 @@ void CtrDoubleAccessor::UpdateStatAfterSave(float* value, int param) {
       return;
     default:
       return;
-  };
+  }
 }
 
 int32_t CtrDoubleAccessor::Create(float** values, size_t num) {
-  auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
     value[CtrDoubleFeatureValue::UnseenDaysIndex()] = 0;
     value[CtrDoubleFeatureValue::DeltaScoreIndex()] = 0;
-    *(double*)(value + CtrDoubleFeatureValue::ShowIndex()) = 0;
+    *reinterpret_cast<double*>(value + CtrDoubleFeatureValue::ShowIndex()) = 0;
     *(double*)(value + CtrDoubleFeatureValue::ClickIndex()) = 0;
     value[CtrDoubleFeatureValue::SlotIndex()] = -1;
     _embed_sgd_rule->InitValue(
@@ -233,8 +230,8 @@ int32_t CtrDoubleAccessor::Merge(float** update_values,
     for (auto i = 3u; i < total_dim; ++i) {
         update_value[i] += other_update_value[i];
     }*/
-    for (auto i = 0u; i < total_dim; ++i) {
-      if (i != CtrDoublePushValue::SlotIndex()) {
+    for (size_t i = 0; i < total_dim; ++i) {
+      if (static_cast<int>(i) != CtrDoublePushValue::SlotIndex()) {
         update_value[i] += other_update_value[i];
       }
     }
@@ -246,7 +243,6 @@ int32_t CtrDoubleAccessor::Merge(float** update_values,
 // second dim: field num
 int32_t CtrDoubleAccessor::Update(float** update_values,
                                   const float** push_values, size_t num) {
-  auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* push_value = push_values[value_item];
@@ -320,7 +316,7 @@ std::string CtrDoubleAccessor::ParseToString(const float* v, int param_size) {
   auto score = ShowClickScore(show, click);
   if (score >= _config.embedx_threshold() && param_size > 9) {
     os << " " << v[9];
-    for (auto i = 0; i < _config.embedx_dim(); ++i) {
+    for (size_t i = 0; i < _config.embedx_dim(); ++i) {
       os << " " << v[10 + i];
     }
   }

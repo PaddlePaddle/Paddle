@@ -20,6 +20,7 @@ import math
 import functools
 import contextlib
 import struct
+import tempfile
 import numpy as np
 import paddle
 import paddle.fluid as fluid
@@ -38,9 +39,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.download_path = 'int8/download'
         self.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
                                                self.download_path)
-        self.timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-        self.int8_model_path = os.path.join(os.getcwd(),
-                                            "post_training_" + self.timestamp)
+        self.root_path = tempfile.TemporaryDirectory()
+        self.int8_model_path = os.path.join(self.root_path.name,
+                                            "post_training_quantization")
         try:
             os.system("mkdir -p " + self.int8_model_path)
         except Exception as e:
@@ -49,11 +50,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             sys.exit(-1)
 
     def tearDown(self):
-        try:
-            os.system("rm -rf {}".format(self.int8_model_path))
-        except Exception as e:
-            print("Failed to delete {} due to {}".format(
-                self.int8_model_path, str(e)))
+        self.root_path.cleanup()
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
@@ -168,7 +165,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                  model_path,
                                  data_path,
                                  algo="KL",
-                                 round_type="round",
+                                 weight_round_algo="round",
                                  quantizable_op_type=["conv2d"],
                                  is_full_quantize=False,
                                  is_use_cache_file=False,
@@ -188,7 +185,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                        batch_nums=batch_nums,
                                        algo=algo,
                                        quantizable_op_type=quantizable_op_type,
-                                       round_type=round_type,
+                                       weight_round_algo=weight_round_algo,
                                        is_full_quantize=is_full_quantize,
                                        optimize_model=is_optimize_model,
                                        onnx_format=onnx_format,
@@ -204,7 +201,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                  data_url,
                  data_md5,
                  algo,
-                 round_type,
+                 weight_round_algo,
                  quantizable_op_type,
                  is_full_quantize,
                  is_use_cache_file,
@@ -227,7 +224,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         print("Start post training quantization for {0} on {1} samples ...".
               format(model_name, quant_iterations))
         self.generate_quantized_model(fp32_model_path, data_path, algo,
-                                      round_type, quantizable_op_type,
+                                      weight_round_algo, quantizable_op_type,
                                       is_full_quantize, is_use_cache_file,
                                       is_optimize_model, quant_iterations,
                                       onnx_format)
@@ -258,7 +255,7 @@ class TestPostTrainingAvgForLSTM(TestPostTrainingQuantization):
         data_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/quant_lstm_input_data.tar.gz"
         data_md5 = "add84c754e9b792fea1fbd728d134ab7"
         algo = "avg"
-        round_type = "round"
+        weight_round_algo = "round"
         quantizable_op_type = ["mul", "lstm"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -267,7 +264,7 @@ class TestPostTrainingAvgForLSTM(TestPostTrainingQuantization):
         infer_iterations = 100
         quant_iterations = 10
         self.run_test(model_name, model_url, model_md5, data_name, data_url,
-                      data_md5, algo, round_type, quantizable_op_type,
+                      data_md5, algo, weight_round_algo, quantizable_op_type,
                       is_full_quantize, is_use_cache_file, is_optimize_model,
                       diff_threshold, infer_iterations, quant_iterations)
 
@@ -282,7 +279,7 @@ class TestPostTrainingAvgForLSTMONNXFormat(TestPostTrainingQuantization):
         data_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/quant_lstm_input_data.tar.gz"
         data_md5 = "add84c754e9b792fea1fbd728d134ab7"
         algo = "avg"
-        round_type = "round"
+        weight_round_algo = "round"
         quantizable_op_type = ["mul", "lstm"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -298,7 +295,7 @@ class TestPostTrainingAvgForLSTMONNXFormat(TestPostTrainingQuantization):
                       data_url,
                       data_md5,
                       algo,
-                      round_type,
+                      weight_round_algo,
                       quantizable_op_type,
                       is_full_quantize,
                       is_use_cache_file,

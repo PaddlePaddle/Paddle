@@ -658,8 +658,6 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   // TODO(zhaocaibei123): check type of show/clk is int? float? uint64?
   // const long int* show_tensor = shows->data<int64_t>();
   // const long int* clk_tensor = clks->data<int64_t>();
-  const int64_t *show_tensor = shows->data<int64_t>();
-  const int64_t *clk_tensor = clks->data<int64_t>();
 
   for (size_t index = 0; index < inputs->size(); ++index) {
     framework::LoDTensor *g_tensor = outputs->at(index);
@@ -681,7 +679,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
 
     if (tensor->lod().size() > 0) {
       for (size_t i = 0; i < tensor->lod()[0].size() - 1; ++i) {
-        for (int j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
+        for (size_t j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
              ++j, output_len += fea_dim) {
           uint64_t real_id = static_cast<uint64_t>(ids[j]);
           if (real_id == padding_id) {
@@ -727,7 +725,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
         ++input_idx;
       }
     }
-    CHECK(output_len == g_tensor->numel());
+    CHECK(static_cast<int64_t>(output_len) == g_tensor->numel());
   }
 
   std::vector<float *> push_g_vec(input_idx, nullptr);

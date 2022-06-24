@@ -23,7 +23,7 @@ namespace distributed {
 int32_t PsLocalClient::Initialize() {
   const auto& downpour_param = _config.server_param().downpour_server_param();
   TableManager::Instance().Initialize();
-  for (size_t i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
+  for (int i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
     auto* table = CREATE_PSCORE_CLASS(
         Table, downpour_param.downpour_table_param(i).table_class());
     table->SetShard(0, 1);
@@ -283,7 +283,6 @@ int32_t PsLocalClient::Initialize() {
     size_t table_id, const uint64_t* keys, const float** update_values,
     size_t num, void* callback) {
   PSClientClosure* closure = reinterpret_cast<PSClientClosure*>(callback);
-  auto* accessor = GetTableAccessor(table_id);
   auto* table_ptr = GetTable(table_id);
 
   TableContext table_context;
@@ -303,7 +302,6 @@ int32_t PsLocalClient::Initialize() {
                                                  const uint64_t* keys,
                                                  const float** update_values,
                                                  size_t num) {
-  auto* accessor = GetTableAccessor(table_id);
   auto* table_ptr = GetTable(table_id);
 
   TableContext table_context;

@@ -62,8 +62,6 @@ void CtrDymfAccessor::InitAccessorInfo() {
 }
 
 bool CtrDymfAccessor::Shrink(float* value) {
-  auto base_threshold = _config.ctr_accessor_param().base_threshold();
-  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delete_after_unseen_days =
       _config.ctr_accessor_param().delete_after_unseen_days();
   auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
@@ -172,7 +170,6 @@ void CtrDymfAccessor::UpdateStatAfterSave(float* value, int param) {
 }
 
 int32_t CtrDymfAccessor::Create(float** values, size_t num) {
-  auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
     value[common_feature_value.UnseenDaysIndex()] = 0;
@@ -198,7 +195,7 @@ bool CtrDymfAccessor::NeedExtendMF(float* value) {
   return score >= _config.embedx_threshold();
 }
 
-bool CtrDymfAccessor::HasMF(size_t size) {
+bool CtrDymfAccessor::HasMF(int size) {
   return size > common_feature_value.EmbedxG2SumIndex();
 }
 
@@ -288,20 +285,26 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
   os << v[0] << " " << v[1] << " " << v[2] << " " << v[3] << " " << v[4];
   //    << v[5] << " " << v[6];
   for (int i = common_feature_value.EmbedG2SumIndex();
-       i < common_feature_value.EmbedxWIndex(); i++) {
+       i < common_feature_value.EmbedxG2SumIndex(); i++) {
     os << " " << v[i];
   }
-  os << " " << common_feature_value.Slot(const_cast<float*>(v)) << " "
-     << common_feature_value.MfDim(const_cast<float*>(v));
+  // os << " " << common_feature_value.Slot(const_cast<float*>(v)) << " "
+  //    << common_feature_value.MfDim(const_cast<float*>(v));
   auto show = common_feature_value.Show(const_cast<float*>(v));
   auto click = common_feature_value.Click(const_cast<float*>(v));
   auto score = ShowClickScore(show, click);
   if (score >= _config.embedx_threshold() &&
       param > common_feature_value.EmbedxG2SumIndex()) {
-    VLOG(0) << "common_feature_value.EmbedxG2SumIndex():"
-            << common_feature_value.EmbedxG2SumIndex();
+    // VLOG(1) << "common_feature_value.EmbedxG2SumIndex():"
+    //         << common_feature_value.EmbedxG2SumIndex();
+    // VLOG(1) << "common_feature_value.EmbedxWIndex():"
+    //         << common_feature_value.EmbedxWIndex();
+    // VLOG(1) << "common_feature_value.MfDim():"
+    //         << common_feature_value.MfDim(const_cast<float*>(v));
     for (auto i = common_feature_value.EmbedxG2SumIndex();
-         i < common_feature_value.Dim(); ++i) {
+         i < common_feature_value.EmbedxWIndex() +
+                 common_feature_value.MfDim(const_cast<float*>(v));
+         ++i) {
       os << " " << v[i];
     }
   }

@@ -892,25 +892,6 @@ class TestGPTPartitioner(unittest.TestCase):
         auto_parallel_main_prog, auto_parallel_startup_prog, params_grads = partitioner.partition(
             complete_train_program, startup_program, params_grads)
 
-        with open("./test_auto_parallel_partitioner_serial_main_new.txt",
-                  "w") as fw:
-            fw.write(str(train_program))
-        with open("./test_auto_parallel_partitioner_serial_startup_new.txt",
-                  "w") as fw:
-            fw.write(str(startup_program))
-
-        from paddle.distributed.auto_parallel.dist_context import set_default_distributed_context
-        set_default_distributed_context(dist_context)
-        with open("./test_auto_parallel_partitioner_main_new.txt1", "w") as fw:
-            fw.write(str(auto_parallel_main_prog))
-        with open("./test_auto_parallel_partitioner_startup_new.txt1",
-                  "w") as fw:
-            fw.write(str(auto_parallel_startup_prog))
-        # with open("./test_auto_parallel_partitioner_main_completed.txt", "w") as fw:
-        #     from paddle.distributed.auto_parallel.completion import Completer
-        #     completer = Completer()
-        #     completer.complete_forward_annotation(auto_parallel_main_prog)
-        #     fw.write(str(auto_parallel_main_prog))
         nrank = 4
         # col parallel
         weights = [

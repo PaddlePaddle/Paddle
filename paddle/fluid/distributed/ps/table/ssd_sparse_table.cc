@@ -58,7 +58,7 @@ int32_t SSDSparseTable::PullSparse(float* pull_values, const uint64_t* keys,
     }
 
     std::atomic<uint32_t> missed_keys{0};
-    for (size_t shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
+    for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
       tasks[shard_id] =
           _shards_task_pool[shard_id % _shards_task_pool.size()]->enqueue(
               [this, shard_id, &task_keys, value_size, mf_value_size,
@@ -67,7 +67,7 @@ int32_t SSDSparseTable::PullSparse(float* pull_values, const uint64_t* keys,
                 auto& local_shard = _local_shards[shard_id];
                 float data_buffer[value_size];
                 float* data_buffer_ptr = data_buffer;
-                for (int i = 0; i < keys.size(); ++i) {
+                for (size_t i = 0; i < keys.size(); ++i) {
                   uint64_t key = keys[i].first;
                   auto itr = local_shard.find(key);
                   size_t data_size = value_size - mf_value_size;
@@ -105,7 +105,8 @@ int32_t SSDSparseTable::PullSparse(float* pull_values, const uint64_t* keys,
                     memcpy(data_buffer_ptr, itr.value().data(),
                            data_size * sizeof(float));
                   }
-                  for (int mf_idx = data_size; mf_idx < value_size; ++mf_idx) {
+                  for (size_t mf_idx = data_size; mf_idx < value_size;
+                       ++mf_idx) {
                     data_buffer[mf_idx] = 0.0;
                   }
                   int pull_data_idx = keys[i].second;
@@ -117,7 +118,7 @@ int32_t SSDSparseTable::PullSparse(float* pull_values, const uint64_t* keys,
                 return 0;
               });
     }
-    for (size_t i = 0; i < _real_local_shard_num; ++i) {
+    for (int i = 0; i < _real_local_shard_num; ++i) {
       tasks[i].wait();
     }
     if (FLAGS_pserver_print_missed_key_num_every_push) {
@@ -145,7 +146,7 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys, const float* values,
       int shard_id = (keys[i] % _sparse_table_shard_num) % _avg_local_shard_num;
       task_keys[shard_id].push_back({keys[i], i});
     }
-    for (size_t shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
+    for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
       tasks[shard_id] =
           _shards_task_pool[shard_id % _shards_task_pool.size()]->enqueue(
               [this, shard_id, value_col, mf_value_col, update_value_col,
@@ -154,7 +155,7 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys, const float* values,
                 auto& local_shard = _local_shards[shard_id];
                 float data_buffer[value_col];
                 float* data_buffer_ptr = data_buffer;
-                for (int i = 0; i < keys.size(); ++i) {
+                for (size_t i = 0; i < keys.size(); ++i) {
                   uint64_t key = keys[i].first;
                   uint64_t push_data_idx = keys[i].second;
                   const float* update_data =
@@ -196,7 +197,7 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys, const float* values,
                 return 0;
               });
     }
-    for (size_t i = 0; i < _real_local_shard_num; ++i) {
+    for (int i = 0; i < _real_local_shard_num; ++i) {
       tasks[i].wait();
     }
   }
@@ -228,7 +229,7 @@ int32_t SSDSparseTable::Shrink(const std::string& param) {
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+  for (int i = 0; i < _real_local_shard_num; ++i) {
     uint64_t mem_count = 0;
     uint64_t ssd_count = 0;
 
@@ -264,7 +265,7 @@ int32_t SSDSparseTable::Shrink(const std::string& param) {
 int32_t SSDSparseTable::UpdateTable() {
   // TODO implement with multi-thread
   int count = 0;
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+  for (int i = 0; i < _real_local_shard_num; ++i) {
     auto& shard = _local_shards[i];
     // from mem to ssd
     for (auto it = shard.begin(); it != shard.end();) {
@@ -285,13 +286,10 @@ int32_t SSDSparseTable::UpdateTable() {
 
 int64_t SSDSparseTable::LocalSize() {
   int64_t local_size = 0;
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+  for (int i = 0; i < _real_local_shard_num; ++i) {
     local_size += _local_shards[i].size();
   }
   // TODO rocksdb size
-  uint64_t ssd_size = 0;
-  // _db->get_estimate_key_num(ssd_size);
-  // return local_size + ssd_size;
   return local_size;
 }
 
@@ -328,7 +326,7 @@ int32_t SSDSparseTable::Save(const std::string& path,
 
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+  for (int i = 0; i < _real_local_shard_num; ++i) {
     FsChannelConfig channel_config;
     if (_config.compress_in_save() && (save_param == 0 || save_param == 3)) {
       channel_config.path = paddle::string::format_string(
@@ -472,7 +470,6 @@ int64_t SSDSparseTable::CacheShuffle(
   }
   int shuffle_node_num = _config.sparse_table_cache_file_num();
   LOG(INFO) << "Table>> shuffle node num is: " << shuffle_node_num;
-  size_t file_start_idx = _avg_local_shard_num * _shard_idx;
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
 
   std::vector<
@@ -484,14 +481,14 @@ int64_t SSDSparseTable::CacheShuffle(
   int feasign_size = 0;
   std::vector<paddle::framework::Channel<std::pair<uint64_t, std::string>>>
       tmp_channels;
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+  for (int i = 0; i < _real_local_shard_num; ++i) {
     tmp_channels.push_back(
         paddle::framework::MakeChannel<std::pair<uint64_t, std::string>>());
   }
 
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+  for (int i = 0; i < _real_local_shard_num; ++i) {
     paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>>& writer =
         writers[i];
     //    std::shared_ptr<paddle::framework::ChannelObject<std::pair<uint64_t,
@@ -520,7 +517,7 @@ int64_t SSDSparseTable::CacheShuffle(
             << " and start sparse cache data shuffle real local shard num: "
             << _real_local_shard_num;
   std::vector<std::pair<uint64_t, std::string>> local_datas;
-  for (size_t idx_shard = 0; idx_shard < _real_local_shard_num; ++idx_shard) {
+  for (int idx_shard = 0; idx_shard < _real_local_shard_num; ++idx_shard) {
     paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>>& writer =
         writers[idx_shard];
     auto channel = writer.channel();
@@ -543,8 +540,8 @@ int64_t SSDSparseTable::CacheShuffle(
         send_index[i] = i;
       }
       std::random_shuffle(send_index.begin(), send_index.end());
-      for (auto index = 0u; index < shuffle_node_num; ++index) {
-        int i = send_index[index];
+      for (int index = 0; index < shuffle_node_num; ++index) {
+        size_t i = send_index[index];
         if (i == _shard_idx) {
           continue;
         }
@@ -577,7 +574,6 @@ int32_t SSDSparseTable::SaveCache(
     return 0;
   }
   int save_param = atoi(param.c_str());  // batch_model:0  xbox:1
-  size_t file_start_idx = _avg_local_shard_num * _shard_idx;
   std::string table_path = paddle::string::format_string(
       "%s/%03d_cache/", path.c_str(), _config.table_id());
   _afs_client.remove(paddle::string::format_string(
@@ -636,8 +632,9 @@ int32_t SSDSparseTable::Load(size_t start_idx, size_t end_idx,
   size_t mf_value_size =
       _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
 
-  end_idx =
-      end_idx < _sparse_table_shard_num ? end_idx : _sparse_table_shard_num;
+  end_idx = static_cast<int>(end_idx) < _sparse_table_shard_num
+                ? end_idx
+                : _sparse_table_shard_num;
   int thread_num = (end_idx - start_idx) < 20 ? (end_idx - start_idx) : 20;
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
@@ -688,7 +685,7 @@ int32_t SSDSparseTable::Load(size_t start_idx, size_t end_idx,
               continue;
             }
           }
-          int value_size =
+          size_t value_size =
               _value_accesor->ParseFromString(++end, data_buffer_ptr);
           // ssd or mem
           if (_value_accesor->SaveSSD(data_buffer_ptr)) {
@@ -698,7 +695,8 @@ int32_t SSDSparseTable::Load(size_t start_idx, size_t end_idx,
             ssd_values.emplace_back(std::make_pair((char*)data_buffer_ptr,
                                                    value_size * sizeof(float)));
             data_buffer_ptr += feature_value_size;
-            if (ssd_keys.size() == FLAGS_pserver_load_batch_size) {
+            if (static_cast<int>(ssd_keys.size()) ==
+                FLAGS_pserver_load_batch_size) {
               _db->put_batch(local_shard_id, ssd_keys, ssd_values,
                              ssd_keys.size());
               ssd_keys.clear();
