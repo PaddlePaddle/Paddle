@@ -41,7 +41,6 @@ bool IsKernelSupportPrecision(
     phi::DataType data_type,
     phi::DataLayout layout = phi::DataLayout::ALL_LAYOUT) {
   auto kernels = phi::KernelFactory::Instance().kernels();
-  auto it = kernels.find(op_type);
   if (kernels.find(op_type) == kernels.end()) {
     return false;
   }
@@ -177,7 +176,6 @@ void ConvertTensorDtype(framework::ir::Graph* graph,
           std::unordered_map<framework::ir::Node*, framework::ir::Node*>* map) {
         if (map->count(node) == 0) {
           // insert cast op before node.
-          auto* before_op_node = node->inputs[0];
           std::string cast_input_name = node->Var()->Name();
           std::string cast_output_name =
               node->Var()->Name() + "_cast.tmp_" + std::to_string(suffix++);
