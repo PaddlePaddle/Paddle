@@ -62,8 +62,6 @@ void CtrDymfAccessor::InitAccessorInfo() {
 }
 
 bool CtrDymfAccessor::Shrink(float* value) {
-  auto base_threshold = _config.ctr_accessor_param().base_threshold();
-  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delete_after_unseen_days =
       _config.ctr_accessor_param().delete_after_unseen_days();
   auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
@@ -172,7 +170,6 @@ void CtrDymfAccessor::UpdateStatAfterSave(float* value, int param) {
 }
 
 int32_t CtrDymfAccessor::Create(float** values, size_t num) {
-  auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
     value[common_feature_value.UnseenDaysIndex()] = 0;

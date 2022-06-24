@@ -128,7 +128,9 @@ PD_REGISTER_ARG_MAPPING_FN({{api["name"]}}, phi::{{api["name"] | to_pascal_case}
 {% macro get_input_list(inputs, kernel_args) %}{# inline #}
 paddle::small_vector<const char*> inputs {
 {%- for input in inputs %}
+{%- if input["name"] in kernel_args %}
 {{input["name"] | to_opmaker_name_cstr}}{{", " if not loop.last}}
+{%- endif %}
 {%- endfor %}
 }
 {%- endmacro %}

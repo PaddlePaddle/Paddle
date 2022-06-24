@@ -658,8 +658,6 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   // TODO(zhaocaibei123): check type of show/clk is int? float? uint64?
   // const long int* show_tensor = shows->data<int64_t>();
   // const long int* clk_tensor = clks->data<int64_t>();
-  const int64_t *show_tensor = shows->data<int64_t>();
-  const int64_t *clk_tensor = clks->data<int64_t>();
 
   for (size_t index = 0; index < inputs->size(); ++index) {
     framework::LoDTensor *g_tensor = outputs->at(index);

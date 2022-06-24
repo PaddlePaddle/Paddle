@@ -283,7 +283,6 @@ int32_t PsLocalClient::Initialize() {
     size_t table_id, const uint64_t* keys, const float** update_values,
     size_t num, void* callback) {
   PSClientClosure* closure = reinterpret_cast<PSClientClosure*>(callback);
-  auto* accessor = GetTableAccessor(table_id);
   auto* table_ptr = GetTable(table_id);
 
   TableContext table_context;
@@ -303,7 +302,6 @@ int32_t PsLocalClient::Initialize() {
                                                  const uint64_t* keys,
                                                  const float** update_values,
                                                  size_t num) {
-  auto* accessor = GetTableAccessor(table_id);
   auto* table_ptr = GetTable(table_id);
 
   TableContext table_context;

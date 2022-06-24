@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 template <typename T, typename Context>

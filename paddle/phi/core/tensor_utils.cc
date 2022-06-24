@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
@@ -43,14 +43,32 @@ void Copy(const Context& dev_ctx,
   void* dst_ptr = nullptr;
   if (paddle::platform::is_cpu_place(dst_place)) {
     dst_ptr = dev_ctx.HostAlloc(dst, src.dtype());
-  } else if (paddle::platform::is_cuda_pinned_place(dst_place)) {
-    // now we only can use mutable_data to Alloc pinned memory here,
-    // dev_ctx can not alloc pinned memory now
-    dst_ptr = dst->mutable_data(dst_place, src.dtype());
-  } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else if (paddle::platform::is_gpu_place(dst_place) ||
+             paddle::platform::is_cuda_pinned_place(dst_place)) {
     dst_ptr = dev_ctx.Alloc(
         dst, src.dtype(), 0, paddle::platform::is_cuda_pinned_place(dst_place));
+#endif
+
+#ifdef PADDLE_WITH_XPU
+  } else if (paddle::platform::is_xpu_place(dst_place)) {
+    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+#endif
   }
+
+  auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
+  if (UNLIKELY(size) == 0) {
+    return;
+  }
+
+  PADDLE_ENFORCE_EQ(
+      dst->place(),
+      dst_place,
+      phi::errors::Unavailable(
+          "The Dst Tensor's place and dst_place do not match, Tensor's place "
+          "place is %s, dst_place is %s.",
+          dst->place(),
+          dst_place));
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
@@ -58,15 +76,16 @@ void Copy(const Context& dev_ctx,
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
-
   CHECK(dst->layout() == src.layout());
 
-  auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
-
-  if ((paddle::platform::is_cpu_place(src_place) ||
-       paddle::platform::is_cuda_pinned_place(src_place)) &&  // NOLINT
-      (paddle::platform::is_cpu_place(dst_place) ||
-       paddle::platform::is_cuda_pinned_place(dst_place))) {
+  if (paddle::platform::is_cpu_place(src_place) &&
+      paddle::platform::is_cpu_place(dst_place)) {
+    paddle::memory::Copy(src_place, dst_ptr, src_place, src_ptr, size);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else if ((paddle::platform::is_cpu_place(src_place) ||
+              paddle::platform::is_cuda_pinned_place(src_place)) &&  // NOLINT
+             (paddle::platform::is_cpu_place(dst_place) ||
+              paddle::platform::is_cuda_pinned_place(dst_place))) {
     paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
              paddle::platform::is_cpu_place(dst_place)) {
@@ -176,13 +195,87 @@ void Copy(const Context& dev_ctx,
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Place type error. Please check the place of src and dst Tensor."));
+#endif
   }
+#ifdef PADDLE_WITH_XPU
+  else if (paddle::platform::is_xpu_place(src_place) &&  // NOLINT
+           paddle::platform::is_cpu_place(dst_place)) {
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  } else if (paddle::platform::is_cpu_place(src_place) &&
+             paddle::platform::is_xpu_place(dst_place)) {
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  } else if (paddle::platform::is_xpu_place(src_place) &&
+             paddle::platform::is_xpu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+              << dst_place;
+      return;
+    }
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
+  }
+#endif
 }
 
-}  // namespace phi
+template <typename Context>
+void Copy(const Context& dev_ctx,
+          const SelectedRows& src,
+          Place dst_place,
+          bool blocking,
+          SelectedRows* dst) {
+  if (src.value().Holder() != dst->value().Holder() ||
+      src.value().data() != dst->value().data()) {
+    dst->set_rows(src.rows());
+    dst->set_height(src.height());
+  }
+  Copy<Context>(
+      dev_ctx, src.value(), dst_place, blocking, dst->mutable_value());
+}
 
-PD_REGISTER_GENERAL_KERNEL(
-    copy, GPU, ALL_LAYOUT, phi::Copy<phi::GPUContext>, ALL_DTYPE) {}
+template void Copy(const CPUContext& dev_ctx,
+                   const DenseTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   DenseTensor* dst);
+
+template void Copy(const DeviceContext& dev_ctx,
+                   const DenseTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   DenseTensor* dst);
+
+template void Copy(const CPUContext& dev_ctx,
+                   const SelectedRows& src,
+                   Place dst_place,
+                   bool blocking,
+                   SelectedRows* dst);
+template void Copy(const DeviceContext& dev_ctx,
+                   const SelectedRows& src,
+                   Place dst_place,
+                   bool blocking,
+                   SelectedRows* dst);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template void Copy(const GPUContext& dev_ctx,
+                   const DenseTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   DenseTensor* dst);
+template void Copy(const GPUContext& dev_ctx,
+                   const SelectedRows& src,
+                   Place dst_place,
+                   bool blocking,
+                   SelectedRows* dst);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+template void Copy(const XPUContext& dev_ctx,
+                   const DenseTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   DenseTensor* dst);
+#endif
+
+}  // namespace phi

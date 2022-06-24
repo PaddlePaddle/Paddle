@@ -38,7 +38,7 @@ class IrParamsSyncAmongDevicesPass : public AnalysisPass {
 #ifdef PADDLE_WITH_ASCEND_CL
   void CopyParamsToNpu(Argument *argument);
 #else
-  void CopyParamsToGpu(Argument* argument);
+  void CopyParamsToGpu(Argument *argument);
 #endif
 };
 
