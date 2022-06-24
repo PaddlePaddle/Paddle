@@ -104,7 +104,8 @@ bool IsPersistable(const framework::VarDesc *var) {
 }
 }  // namespace
 
-bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
+bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
+                             framework::LoDTensor *t,
                              const platform::Place &place) {
   framework::DDim ddim = phi::make_ddim(pt.shape);
   void *input_ptr;
@@ -132,18 +133,19 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
 
   if (platform::is_cpu_place(place)) {
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(static_cast<void *>(input_ptr), pt.data.data(),
-                pt.data.length());
+    std::memcpy(
+        static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
   } else if (platform::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
-    std::memcpy(static_cast<void *>(input_ptr), pt.data.data(),
-                pt.data.length());
+    std::memcpy(
+        static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
 #else
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Not compile with WITH_IPU, should not reach here."));
 #endif
   } else if (platform::is_gpu_place(place)) {
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place), false,
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place),
+                      false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -151,8 +153,11 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     auto *dev_ctx =
         static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
     auto dst_gpu_place = place;
-    memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
-                 platform::CPUPlace(), pt.data.data(), pt.data.length(),
+    memory::Copy(dst_gpu_place,
+                 static_cast<void *>(input_ptr),
+                 platform::CPUPlace(),
+                 pt.data.data(),
+                 pt.data.length(),
                  dev_ctx->stream());
 #else
     PADDLE_THROW(paddle::platform::errors::Fatal(
@@ -161,8 +166,11 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
     auto dst_xpu_place = place;
-    memory::Copy(dst_xpu_place, static_cast<void *>(input_ptr),
-                 platform::CPUPlace(), pt.data.data(), pt.data.length());
+    memory::Copy(dst_xpu_place,
+                 static_cast<void *>(input_ptr),
+                 platform::CPUPlace(),
+                 pt.data.data(),
+                 pt.data.length());
 #else
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Not compile with XPU, should not reach here."));
@@ -245,7 +253,8 @@ bool AnalysisPredictor::Init(
 
 void AnalysisPredictor::InitPlace() {
   if (config_.use_gpu()) {
-    PADDLE_ENFORCE_EQ(config_.use_xpu(), false,
+    PADDLE_ENFORCE_EQ(config_.use_xpu(),
+                      false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
     place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
@@ -502,7 +511,8 @@ static bool IsPrepareDataOptTargetOp(framework::OpDesc *op) {
 }
 
 static void DisablePrepareDataOpt(
-    std::shared_ptr<framework::ProgramDesc> inference_program, int block,
+    std::shared_ptr<framework::ProgramDesc> inference_program,
+    int block,
     bool pre_disable_opt) {
   bool disable_opt = false;
   auto &infer_block = inference_program->Block(block);
@@ -512,8 +522,8 @@ static void DisablePrepareDataOpt(
     }
     if (op->HasAttr("sub_block")) {
       int blockID = op->GetBlockAttrId("sub_block");
-      DisablePrepareDataOpt(inference_program, blockID,
-                            disable_opt || pre_disable_opt);
+      DisablePrepareDataOpt(
+          inference_program, blockID, disable_opt || pre_disable_opt);
     }
     // disable prepare data if unfriendly op is found
     if (!disable_opt) {
@@ -531,8 +541,8 @@ bool AnalysisPredictor::PrepareExecutor() {
 #endif
   DisablePrepareDataOpt(inference_program_, 0, false);
 
-  executor_->Prepare(sub_scope_, *inference_program_, 0,
-                     config_.use_feed_fetch_ops_);
+  executor_->Prepare(
+      sub_scope_, *inference_program_, 0, config_.use_feed_fetch_ops_);
 
   PADDLE_ENFORCE_NOT_NULL(sub_scope_,
                           platform::errors::PreconditionNotMet(
@@ -578,8 +588,13 @@ bool AnalysisPredictor::PrepareFleetExecutor() {
     feed_fetch_vars.emplace_back(pair.second);
   }
   fleet_exe_->Init(config_.dist_config().carrier_id(),
-                   *(inference_program_.get()), scope_.get(), place_, 1,
-                   {task_node_.get()}, id_to_rank, feed_fetch_vars);
+                   *(inference_program_.get()),
+                   scope_.get(),
+                   place_,
+                   1,
+                   {task_node_.get()},
+                   id_to_rank,
+                   feed_fetch_vars);
   return true;
 }
 
@@ -616,8 +631,12 @@ bool AnalysisPredictor::CommInit() {
       peer_endpoints.emplace_back(
           config_.dist_config().trainer_endpoints()[rank]);
     }
-    InsertCommOp(var_name_base + std::to_string(order), ranks_in_group,
-                 rank_in_group, peer_endpoints, comm_init_block, ring_id);
+    InsertCommOp(var_name_base + std::to_string(order),
+                 ranks_in_group,
+                 rank_in_group,
+                 peer_endpoints,
+                 comm_init_block,
+                 ring_id);
     order += 1;
   }
   framework::NaiveExecutor e(place_);
@@ -629,8 +648,11 @@ bool AnalysisPredictor::CommInit() {
 }
 
 void AnalysisPredictor::InsertCommOp(
-    std::string tmp_var_name, int nranks, int rank,
-    const std::vector<std::string> &peer_endpoints, framework::BlockDesc *block,
+    std::string tmp_var_name,
+    int nranks,
+    int rank,
+    const std::vector<std::string> &peer_endpoints,
+    framework::BlockDesc *block,
     int ring_id) {
   /*
    * tmp_var_name: the var name for var comm_id
@@ -687,7 +709,8 @@ bool AnalysisPredictor::LoadConverterConfig(
           << config_.dist_config().comm_init_config() << "\n";
   std::ifstream fin(config_.dist_config().comm_init_config(), std::ios::in);
   PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fin.is_open()), true,
+      static_cast<bool>(fin.is_open()),
+      true,
       platform::errors::NotFound(
           "Cannot open file %s, please confirm whether the file is normal.",
           config_.dist_config().comm_init_config()));
@@ -831,8 +854,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   timer.tic();
   // set feed variable
   framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
-  PADDLE_ENFORCE_NOT_NULL(scope, platform::errors::PreconditionNotMet(
-                                     "The scope should not be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      scope,
+      platform::errors::PreconditionNotMet("The scope should not be nullptr."));
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
     return false;
@@ -935,9 +959,11 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   for (size_t i = 0; i < fetches_.size(); ++i) {
     int idx = BOOST_GET_CONST(int, fetches_[i]->GetAttr("col"));
     PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(idx), i,
+        static_cast<size_t>(idx),
+        i,
         platform::errors::InvalidArgument(
-            "Fetch op's col attr(%d) should be equal to the index(%d)", idx,
+            "Fetch op's col attr(%d) should be equal to the index(%d)",
+            idx,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
@@ -978,7 +1004,8 @@ void AnalysisPredictor::PrepareArgument() {
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
-    PADDLE_ENFORCE_EQ(config_.prog_file().empty(), false,
+    PADDLE_ENFORCE_EQ(config_.prog_file().empty(),
+                      false,
                       platform::errors::PreconditionNotMet(
                           "Either model_dir or prog_file should be set."));
     std::string dir = inference::analysis::GetDirRoot(config_.prog_file());
@@ -1123,7 +1150,8 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   Analyzer().Run(&argument_);
 
   PADDLE_ENFORCE_EQ(
-      argument_.scope_valid(), true,
+      argument_.scope_valid(),
+      true,
       platform::errors::InvalidArgument("The argument scope should be valid."));
   VLOG(5) << "to prepare executor";
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
@@ -1173,7 +1201,8 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
   }
   VLOG(3) << "create AnalysisConfig";
   PADDLE_ENFORCE_EQ(
-      config.is_valid(), true,
+      config.is_valid(),
+      true,
       platform::errors::InvalidArgument(
           "Note: Each config can only be used for one predictor."));
 
@@ -1190,11 +1219,13 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
     std::call_once(gflags_initialized, [&]() {
       std::vector<std::string> gflags;
       PADDLE_ENFORCE_GE(
-          config.memory_pool_init_size_mb(), 0.f,
+          config.memory_pool_init_size_mb(),
+          0.f,
           platform::errors::InvalidArgument(
               "The size of memory pool should be greater than 0."));
       PADDLE_ENFORCE_GE(
-          config.gpu_device_id(), 0,
+          config.gpu_device_id(),
+          0,
           platform::errors::InvalidArgument(
               "Invalid device id (%d). The device id should be greater than 0.",
               config.gpu_device_id()));
@@ -1303,8 +1334,9 @@ void AnalysisPredictor::PrepareFeedFetch() {
 }
 
 void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
-  PADDLE_ENFORCE_NOT_NULL(scope, platform::errors::InvalidArgument(
-                                     "The scope should not be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      scope,
+      platform::errors::InvalidArgument("The scope should not be nullptr."));
   auto *var = scope->Var("feed");
   var->GetMutable<framework::FeedList>();
   var = scope->Var("fetch");
@@ -1325,8 +1357,9 @@ AnalysisPredictor::GetInputTensorShape() {
   std::vector<std::string> names = GetInputNames();
   for (std::string name : names) {
     auto *var = inference_program_->Block(0).FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::PreconditionNotMet(
-                                     "Input %s does not exist.", name));
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::PreconditionNotMet("Input %s does not exist.", name));
     input_shapes[name] = var->GetShape();
   }
   return input_shapes;
@@ -1565,7 +1598,8 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
       std::vector<std::pair<int32_t, int32_t>> counter;
       for (auto &it : m) counter.push_back(it);
       std::sort(
-          counter.begin(), counter.end(),
+          counter.begin(),
+          counter.end(),
           [](std::pair<int32_t, int32_t> &a, std::pair<int32_t, int32_t> &b) {
             return a.second > b.second;
           });
@@ -1587,8 +1621,8 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
     opt_shapes[name] = opt_shape;
   }
 
-  inference::SerializeShapeRangeInfo(config_.shape_range_info_path(),
-                                     min_shapes, max_shapes, opt_shapes);
+  inference::SerializeShapeRangeInfo(
+      config_.shape_range_info_path(), min_shapes, max_shapes, opt_shapes);
 }
 
 bool AnalysisPredictor::LoadProgramDesc() {
@@ -1608,7 +1642,8 @@ bool AnalysisPredictor::LoadProgramDesc() {
       return false;
     }
     LOG(ERROR) << string::Sprintf(
-        "not valid model path '%s' or program path '%s'.", config_.model_dir(),
+        "not valid model path '%s' or program path '%s'.",
+        config_.model_dir(),
         config_.params_file());
     return false;
   }
@@ -1620,7 +1655,8 @@ bool AnalysisPredictor::LoadProgramDesc() {
     // Read binary
     std::ifstream fin(filename, std::ios::in | std::ios::binary);
     PADDLE_ENFORCE_EQ(
-        static_cast<bool>(fin.is_open()), true,
+        static_cast<bool>(fin.is_open()),
+        true,
         platform::errors::NotFound(
             "Cannot open file %s, please confirm whether the file is normal.",
             filename));
@@ -1722,7 +1758,8 @@ void AnalysisPredictor::ClearIntermediateTensor() {
 
 #if PADDLE_WITH_TENSORRT
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
-  PADDLE_ENFORCE_EQ(config_.tensorrt_engine_enabled(), true,
+  PADDLE_ENFORCE_EQ(config_.tensorrt_engine_enabled(),
+                    true,
                     platform::errors::PreconditionNotMet(
                         "This func can be invoked only in trt mode"));
   auto &block = inference_program_->Block(0);
@@ -1897,6 +1934,7 @@ USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
 USE_TRT_CONVERTER(transpose);
+USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
 USE_TRT_CONVERTER(flatten_contiguous_range);
 USE_TRT_CONVERTER(matmul);
@@ -1943,7 +1981,9 @@ USE_TRT_CONVERTER(multiclass_nms);
 USE_TRT_CONVERTER(multiclass_nms3);
 USE_TRT_CONVERTER(nearest_interp);
 USE_TRT_CONVERTER(nearest_interp_v2);
+USE_TRT_CONVERTER(bilinear_interp_v2);
 USE_TRT_CONVERTER(reshape);
+USE_TRT_CONVERTER(reshape2);
 USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(gather_nd);
 USE_TRT_CONVERTER(reduce_mean);
@@ -1955,9 +1995,12 @@ USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(preln_skip_layernorm)
+USE_TRT_CONVERTER(preln_residual_bias)
+USE_TRT_CONVERTER(c_allreduce_sum)
 USE_TRT_CONVERTER(roll)
 USE_TRT_CONVERTER(strided_slice)
 USE_TRT_CONVERTER(transformer_input_convert)
+USE_TRT_CONVERTER(cast)
 USE_TRT_CONVERTER(recover_padding)
 USE_TRT_CONVERTER(remove_padding)
 USE_TRT_CONVERTER(equal);
@@ -1988,8 +2031,10 @@ Predictor::Predictor(const Config &config) {
           << "Paddle2ONNX do't support convert the Model， fall back to using "
              "Paddle Inference.";
     } else {
-      predictor_ = paddle::CreatePaddlePredictor<
-          Config, paddle::PaddleEngineKind::kONNXRuntime>(config);
+      predictor_ =
+          paddle::CreatePaddlePredictor<Config,
+                                        paddle::PaddleEngineKind::kONNXRuntime>(
+              config);
       return;
     }
 #else
@@ -1999,8 +2044,10 @@ Predictor::Predictor(const Config &config) {
            "fall back to using Paddle Inference.";
 #endif
   }
-  predictor_ = paddle::CreatePaddlePredictor<
-      Config, paddle::PaddleEngineKind::kAnalysis>(config);
+  predictor_ =
+      paddle::CreatePaddlePredictor<Config,
+                                    paddle::PaddleEngineKind::kAnalysis>(
+          config);
 }
 
 std::vector<std::string> Predictor::GetInputNames() {
@@ -2084,7 +2131,8 @@ std::shared_ptr<Predictor> CreatePredictor(const Config &config) {  // NOLINT
 namespace services {
 PredictorPool::PredictorPool(const Config &config, size_t size) {
   PADDLE_ENFORCE_GE(
-      size, 1UL,
+      size,
+      1UL,
       paddle::platform::errors::InvalidArgument(
           "The predictor pool size should be greater than 1, but it's (%d)",
           size));
@@ -2103,9 +2151,11 @@ PredictorPool::PredictorPool(const Config &config, size_t size) {
 
 Predictor *PredictorPool::Retrive(size_t idx) {
   PADDLE_ENFORCE_LT(
-      idx, preds_.size() + 1,
+      idx,
+      preds_.size() + 1,
       paddle::platform::errors::InvalidArgument(
-          "There are (%d) predictors in the pool, but the idx is (%d)", idx,
+          "There are (%d) predictors in the pool, but the idx is (%d)",
+          idx,
           preds_.size() + 1));
   if (idx == 0) {
     return main_pred_.get();
