@@ -338,6 +338,7 @@ void PSGPUTrainer::Run() {
           << "readers_num should equal channel_num:"
           << readers.size() << "!=" << ds_chans.size();
 #ifdef PADDLE_WITH_XPU_CACHE_BFID
+  auto & slot_is_dense = readers[0]->GetUseSlotIsDense();
   // move reader->Start from worker to Trainer
   for (auto & reader : readers) {
       reader->Start(); 
@@ -349,7 +350,7 @@ void PSGPUTrainer::Run() {
     all_chan_data[i] = &vec_data;
     VLOG(0) << "PSGPUTrainer Run: dataset multi_chan:" << i << ", size:" << vec_data.size();
   }
-  ps_gpu_wrapper->build_batch_fid_seq(all_chan_data);
+  ps_gpu_wrapper->build_batch_fid_seq(all_chan_data, slot_is_dense);
 #endif
 #endif
 

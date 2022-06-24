@@ -50,7 +50,9 @@ class CacheManager {
   uint32_t query_sign2fid(const FeatureKey & key);
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
-  void build_batch_fid_seq(std::vector<std::deque<Record> *> & all_chan_recs);
+  void build_batch_fid_seq(
+      std::vector<std::deque<Record> *> & all_chan_recs, 
+                const std::vector<bool> & slot_is_dense);
   void prepare_current_batch_fid_seq();
   std::shared_ptr<std::vector<uint32_t>>  get_current_batch_fid_seq();
   void convert_fid2bfid(const uint32_t * fids, int * out_bfids, int size);

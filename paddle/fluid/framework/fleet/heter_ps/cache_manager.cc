@@ -51,8 +51,10 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
   VLOG(0) << "build_sign2fids: keylen:" << len;
   // pre-build the sign2fid_, in order not to use mutex
   if (sign2fid_.find(0) == sign2fid_.end()) {
-    // feasign == 0 is invalid, fid set 0, to be processed specially later in pull/push
+    // padding feasign 0, set fid 0, to be processed specially later in pull/push
     sign2fid_[0] = feasign_cnt_++;
+    fid2meta_.resize(1);
+    fid2meta_[0] = {0};
   }
   for (size_t i = 0; i < len; ++i) {
     if (d_keys[i] == 0) {
@@ -63,7 +65,7 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
     sign2fid_[d_keys[i]] = 0;
   }
   size_t origin_size = fid2meta_.size();
-  fid2meta_.resize(origin_size + len);
+  fid2meta_.resize(sign2fid_.size());
   VLOG(0) << "build_sign2fids: resize fid2meta from " << origin_size << " to " << fid2meta_.size();
   // build sign 2 fids
   std::vector<std::thread> threads(thread_num_);
@@ -124,7 +126,9 @@ void CacheManager::dump_to_file() {
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
 
-void CacheManager::build_batch_fid_seq(std::vector<std::deque<Record> *> & all_chan_recs) {
+void CacheManager::build_batch_fid_seq(
+    std::vector<std::deque<Record> *> & all_chan_recs, 
+               const std::vector<bool> & slot_is_dense) {
   CHECK(all_chan_recs.size() > 0);
   size_t expected_chan_size = all_chan_recs[0]->size();
   for (auto & chan_recs : all_chan_recs) {
@@ -153,15 +157,24 @@ void CacheManager::build_batch_fid_seq(std::vector<std::deque<Record> *> & all_c
         // process batch data for every chan_recs
         std::shared_ptr<std::vector<uint32_t>> current_bfid_seq = std::make_shared<std::vector<uint32_t>>();
         std::set<uint32_t> current_bfid_set;
+        std::set<int> slot_has_val;
         for (auto & recs : all_chan_recs) {
           auto it = recs->begin() + batch_first;
           for (int j = 0; j < current_batch_sz; ++j) {
             const Record & cur_rec = *(it + j);
             for (auto & fea : cur_rec.uint64_feasigns_) {
+              slot_has_val.insert(fea.slot());
+              CHECK(fea.slot() < slot_is_dense.size());
+              if (slot_is_dense[fea.slot()]) {
+                continue;
+              }
               current_bfid_set.insert((uint32_t)fea.sign().uint64_feasign_); // feasign already converted to fid(uint32_t)
             }
           }
         } // process finished
+        if (slot_has_val.size() < slot_is_dense.size()) {
+          current_bfid_set.insert(0); // add 0 as padding feasign
+        }
         current_bfid_seq->assign(current_bfid_set.begin(), current_bfid_set.end());
         n_batch_bfidseq[my_group * thread_num_ + i] = current_bfid_seq;
         ++my_group;
@@ -209,6 +222,8 @@ std::shared_ptr<std::vector<uint32_t>>  CacheManager::get_current_batch_fid_seq(
 void CacheManager::convert_fid2bfid(const uint32_t * fids, int * out_bfids, int size) {
   std::lock_guard<std::mutex> lock(*current_batch_fid_seq_lock);
   for (int i = 0; i < size; ++i) {
+    CHECK(current_batch_fid2bfid_.find(fids[i]) != current_batch_fid2bfid_.end()) 
+      << "fid not found while convert_fid2bfid:" << fids[i];
     out_bfids[i] = current_batch_fid2bfid_[fids[i]];
   }
 }

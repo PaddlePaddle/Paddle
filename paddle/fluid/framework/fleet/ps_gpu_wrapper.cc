@@ -217,25 +217,43 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
     CHECK(data_set_name.find("MultiSlotDataset") != std::string::npos);
     VLOG(0) << "ps_gpu_wrapper use MultiSlotDataset";
     MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
+#ifdef PADDLE_WITH_XPU_KP 
+    auto data_readers = dataset_->GetReaders();
+    CHECK(data_readers.size() > 0);
+    auto & slot_is_dense = data_readers[0]->GetUseSlotIsDense();
+#endif
     auto input_channel = dataset->GetInputChannel();
-
     const std::deque<Record>& vec_data = input_channel->GetData();
     total_len = vec_data.size();
     len_per_thread = total_len / thread_keys_thread_num_;
     remain = total_len % thread_keys_thread_num_;
-    auto gen_func = [this](const std::deque<Record>& total_data,
+    auto gen_func = [this, &slot_is_dense](const std::deque<Record>& total_data,
                            int begin_index, int end_index, int i) {
       for (auto iter = total_data.begin() + begin_index;
            iter != total_data.begin() + end_index; iter++) {
         const auto& ins = *iter;
         const auto& feasign_v = ins.uint64_feasigns_;
         for (const auto feasign : feasign_v) {
+#ifdef PADDLE_WITH_XPU_KP
+          auto slot_idx = feasign.slot();
+          CHECK(slot_idx < slot_is_dense.size())
+              << "error slot_idx:" << slot_idx
+              << ", slot_is_dense size:" << slot_is_dense.size();
+          if (slot_is_dense[slot_idx]) { // slot without lod info
+            continue;
+          }
+#endif
           uint64_t cur_key = feasign.sign().uint64_feasign_;
           int shard_id = cur_key % thread_keys_shard_num_;
           this->thread_keys_[i][shard_id].insert(cur_key);
         }
       }
     };
+
+#ifdef PADDLE_WITH_XPU_KP
+    this->thread_keys_[0][0].insert(0); // add 0 for padding feasign 
+#endif
+
     for (int i = 0; i < thread_keys_thread_num_; i++) {
       threads.push_back(
           std::thread(gen_func, std::ref(vec_data), begin,
@@ -949,10 +967,11 @@ void PSGPUWrapper::EndPass() {
 }
 
 #if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU_CACHE_BFID)
-void PSGPUWrapper::build_batch_fid_seq(std::vector<std::deque<Record> *> & all_chan_recs) {
+void PSGPUWrapper::build_batch_fid_seq(
+  std::vector<std::deque<Record> *> & all_chan_recs, const std::vector<bool> & slot_is_dense) {
   VLOG(0) << "PSGPUWrapper::build_batch_fid_seq called"; 
   auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
-  cache_manager->build_batch_fid_seq(all_chan_recs); 
+  cache_manager->build_batch_fid_seq(all_chan_recs, slot_is_dense); 
   //cache_manager->dump_to_file();
 }
 #endif
