@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/sparse_accessor.h"
+
 #include <gflags/gflags.h>
+
 #include "glog/logging.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -53,8 +55,6 @@ void SparseAccessor::InitAccessorInfo() {
 }
 
 bool SparseAccessor::Shrink(float* value) {
-  auto base_threshold = _config.ctr_accessor_param().base_threshold();
-  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delete_after_unseen_days =
       _config.ctr_accessor_param().delete_after_unseen_days();
   auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
@@ -144,7 +144,6 @@ void SparseAccessor::UpdateStatAfterSave(float* value, int param) {
 }
 
 int32_t SparseAccessor::Create(float** values, size_t num) {
-  auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
     value[sparse_feature_value.UnseenDaysIndex()] = 0;
@@ -169,7 +168,7 @@ bool SparseAccessor::NeedExtendMF(float* value) {
   return score >= _config.embedx_threshold();
 }
 
-bool SparseAccessor::HasMF(size_t size) {
+bool SparseAccessor::HasMF(int size) {
   return size > sparse_feature_value.EmbedxG2SumIndex();
 }
 
@@ -199,8 +198,8 @@ int32_t SparseAccessor::Merge(float** update_values,
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* other_update_value = other_update_values[value_item];
-    for (auto i = 0u; i < total_dim; ++i) {
-      if (i != SparsePushValue::SlotIndex()) {
+    for (size_t i = 0; i < total_dim; ++i) {
+      if (static_cast<int>(i) != SparsePushValue::SlotIndex()) {
         update_value[i] += other_update_value[i];
       }
     }
@@ -213,7 +212,6 @@ int32_t SparseAccessor::Merge(float** update_values,
 // second dim: field num
 int32_t SparseAccessor::Update(float** update_values, const float** push_values,
                                size_t num) {
-  auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* push_value = push_values[value_item];
@@ -292,8 +290,6 @@ std::string SparseAccessor::ParseToString(const float* v, int param) {
 }
 
 int SparseAccessor::ParseFromString(const std::string& str, float* value) {
-  int embedx_dim = _config.embedx_dim();
-
   _embedx_sgd_rule->InitValue(value + sparse_feature_value.EmbedxWIndex(),
                               value + sparse_feature_value.EmbedxG2SumIndex());
   auto ret = paddle::string::str_to_float(str.data(), value);

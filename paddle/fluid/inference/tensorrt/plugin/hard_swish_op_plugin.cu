@@ -14,6 +14,7 @@
 
 #include <cassert>
 #include <cstring>
+
 #include "paddle/fluid/inference/tensorrt/plugin/hard_swish_op_plugin.h"
 
 namespace paddle {

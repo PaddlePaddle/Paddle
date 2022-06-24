@@ -35,10 +35,11 @@ static void DataCopy(const framework::LoDTensor &src_item,
       // as params are not a subject to paddle's data_format
       VLOG(4) << "innerTransDataLayoutFromMKLDNN";
       framework::innerTransDataLayoutFromMKLDNN(
-          src_item.layout(), fetch_var_name == framework::GradVarName("Filter")
-                                 ? framework::DataLayout::kNCHW
-                                 : paddle::platform::MKLDNNDeviceContext::tls()
-                                       .get_cur_paddle_data_layout(),
+          src_item.layout(),
+          fetch_var_name == framework::GradVarName("Filter")
+              ? framework::DataLayout::kNCHW
+              : paddle::platform::MKLDNNDeviceContext::tls()
+                    .get_cur_paddle_data_layout(),
           src_item, &out, platform::CPUPlace());
       paddle::framework::TensorCopySync(out, platform::CPUPlace(), dst_item);
     } else {
@@ -92,11 +93,12 @@ class FetchOp : public framework::OperatorBase {
 
     int col = Attr<int>("col");
     PADDLE_ENFORCE_GE(
-        col, 0, platform::errors::InvalidArgument(
-                    "Expected the column index (the attribute 'col' of "
-                    "operator 'Fetch') of current fetching variable to be "
-                    "no less than 0. But received column index = %d.",
-                    col));
+        col, 0,
+        platform::errors::InvalidArgument(
+            "Expected the column index (the attribute 'col' of "
+            "operator 'Fetch') of current fetching variable to be "
+            "no less than 0. But received column index = %d.",
+            col));
 
     VLOG(3) << "Fetch variable " << fetch_var_name << " to variable "
             << out_name << "'s " << col << " column.";

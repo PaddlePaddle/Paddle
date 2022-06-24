@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/tensorrt/trt_kernels.h"
+
 #include <string>
 #include <unordered_set>
+
 #include "NvInfer.h"
 #include "NvInferRuntime.h"
 #include "NvInferRuntimeCommon.h"
@@ -26,14 +28,12 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/Value.h"
-
-#include "paddle/infrt/kernel/tensorrt/trt_helper.h"
-#include "paddle/infrt/kernel/tensorrt/trt_layers.h"
-
 #include "paddle/infrt/backends/tensorrt/trt_engine.h"
 #include "paddle/infrt/backends/tensorrt/trt_options.h"
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 #include "paddle/infrt/host_context/symbol_table.h"
+#include "paddle/infrt/kernel/tensorrt/trt_helper.h"
+#include "paddle/infrt/kernel/tensorrt/trt_layers.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 

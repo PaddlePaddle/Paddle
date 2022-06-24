@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// clang-format off
 #include "paddle/phi/api/include/tensor.h"
 
 #include <memory>
@@ -34,27 +35,10 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 
 #include "paddle/fluid/platform/stream/cuda_stream.h"
+// clang-format off
 
 namespace paddle {
 namespace experimental {
-namespace detail {
-static Place GetCorrectPlaceByPlaceType(const Place &place_type) {
-  auto alloc_type = place_type.GetType();
-  switch (alloc_type) {
-    case AllocationType::CPU:
-      return place_type;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case AllocationType::GPU:
-      return phi::Place(AllocationType::GPU,
-                        phi::backends::gpu::GetCurrentDeviceId());
-#endif
-    default:
-      PADDLE_THROW(phi::errors::Unavailable(
-          "The PlaceType is a legacy design, only supports CPU and GPU, "
-          "and will not support other place types in the future."));
-  }
-}
-}  // namespace detail
 
 /////// Tensor Methods ////////
 
@@ -76,7 +60,7 @@ Tensor::Tensor(const Place &place) {
          "Reason: A legal tensor cannot be constructed only based on "
          "the `place`, and datatype, shape, layout, etc. is also "
          "required.";
-  DefaultAllocator alloc(detail::GetCorrectPlaceByPlaceType(place));
+  DefaultAllocator alloc(place);
   impl_ = std::move(std::make_shared<phi::DenseTensor>(
       &alloc,
       std::move(phi::DenseTensorMeta(
@@ -92,7 +76,7 @@ Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
          "Reason: A legal tensor cannot be constructed only based on "
          "the `place` and `shape`, and datatype, layout, etc. is also "
          "required.";
-  DefaultAllocator alloc(detail::GetCorrectPlaceByPlaceType(place));
+  DefaultAllocator alloc(place);
   impl_ = std::move(std::make_shared<phi::DenseTensor>(
       &alloc,
       std::move(phi::DenseTensorMeta(phi::DataType::FLOAT32,
@@ -173,6 +157,10 @@ bool Tensor::is_gpu() const { return paddle::platform::is_gpu_place(place()); }
 
 bool Tensor::is_gpu_pinned() const {
   return paddle::platform::is_cuda_pinned_place(place());
+}
+
+bool Tensor::is_custom_device() const {
+  return paddle::platform::is_custom_place(place());
 }
 
 /* Part 4: Data Access methods */
@@ -394,8 +382,8 @@ uint32_t Tensor::current_inplace_version() {
         static_cast<phi::DenseTensor *>(impl_.get())->InplaceVersionCounter();
     return inplace_version_counter.CurrentVersion();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "current_inplace_version is only supported on DenseTensor now."));
+    LOG_FIRST_N(WARNING, 1)
+        << "current_inplace_version is only supported on DenseTensor now.";
   }
   return 0;
 }

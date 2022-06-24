@@ -15,19 +15,17 @@
 // Eager Dygraph
 
 #include <paddle/fluid/framework/op_registry.h>
+
 #include <chrono>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/flags.h"
-
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
-
-#include "paddle/fluid/imperative/tracer.h"
-
 #include "paddle/fluid/eager/tests/performance_tests/benchmark_utils.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
+#include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/platform/flags.h"
 
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"

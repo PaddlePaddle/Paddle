@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/operator.h"
@@ -70,8 +71,9 @@ void PDPattern::AddEdge(PDNode *a, PDNode *b) {
       a, platform::errors::NotFound("PDNode %s is not found.", a->name()));
   PADDLE_ENFORCE_NOT_NULL(
       b, platform::errors::NotFound("PDNode %s is not found.", b->name()));
-  PADDLE_ENFORCE_NE(a, b, platform::errors::PermissionDenied(
-                              "Cannot connect the same node in the graph."));
+  PADDLE_ENFORCE_NE(a, b,
+                    platform::errors::PermissionDenied(
+                        "Cannot connect the same node in the graph."));
   edges_.emplace_back(a, b);
 }
 
@@ -408,6 +410,13 @@ PDNode *PDNode::assert_is_op(const std::string &op_type) {
   return this;
 }
 
+PDNode *PDNode::assert_is_not_op_type(const std::string &op_type) {
+  asserts_.emplace_back([op_type](Node *x) {
+    return x && x->IsOp() && x->Op()->Type() != op_type;
+  });
+  return this;
+}
+
 PDNode *PDNode::assert_is_var() {
   asserts_.emplace_back([](Node *x) { return x && x->IsVar(); });
   return this;
@@ -720,7 +729,7 @@ bool HasOutput(Node *op, const std::string &argument) {
   PADDLE_ENFORCE_EQ(
       op->IsOp(), true,
       platform::errors::InvalidArgument(
-          "First parameter of function HasOuput must be Node::Op"));
+          "First parameter of function HasOutput must be Node::Op"));
   auto const &names = op->Op()->OutputNames();
   if (std::find(names.begin(), names.end(), argument) == names.end())
     return false;
@@ -2004,7 +2013,6 @@ PDNode *patterns::ConvResidual::operator()(bool with_residual_data) {
 
   if (!with_residual_data) {
     conv_op->assert_more([&](Node *x) {
-      auto node_names = x->Op()->InputNames();
       if (!HasInput(x, "ResidualData") ||
           x->Op()->Input("ResidualData").size() == 0)
         return true;
@@ -2064,6 +2072,20 @@ PDNode *patterns::Elementwise::operator()(PDNode *x_var, PDNode *y_var,
                      ->assert_is_op_output(elementwise_type, "Out");
 
   elementwise_op->LinksFrom({x_var, y_var});
+  elementwise_op->LinksTo({out_var});
+
+  return out_var;
+}
+
+PDNode *patterns::ElementwiseOp::operator()(
+    const std::string elementwise_type) {
+  auto elementwise_op =
+      pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
+
+  auto out_var = pattern->NewNode(elementwise_out_repr())
+                     ->AsOutput()
+                     ->assert_is_op_output(elementwise_type, "Out");
+
   elementwise_op->LinksTo({out_var});
 
   return out_var;
@@ -2624,8 +2646,10 @@ PDNode *patterns::Bfloat16Placement::operator()(
 PDNode *patterns::OrphanedBfloat16::operator()() {
   auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
   prev_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "float32";
+    bool data_type_is_missing = !node->Op()->HasAttr("mkldnn_data_type");
+    bool data_type_is_fp32 = node->Op()->GetAttrIfExists<std::string>(
+                                 "mkldnn_data_type") == "float32";
+    return data_type_is_missing || data_type_is_fp32;
   });
   auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
 
@@ -2638,8 +2662,10 @@ PDNode *patterns::OrphanedBfloat16::operator()() {
 
   auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
   next_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "float32";
+    bool data_type_is_missing = !node->Op()->HasAttr("mkldnn_data_type");
+    bool data_type_is_fp32 = node->Op()->GetAttrIfExists<std::string>(
+                                 "mkldnn_data_type") == "float32";
+    return data_type_is_missing || data_type_is_fp32;
   });
 
   prev_op->LinksTo({prev_out});
@@ -3051,11 +3077,10 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
     transpose_out->assert_is_only_output_of_op("transpose2");
 
   auto transpose_xshape =
-      with_transpose_xshape
-          ? pattern->NewNode(transpose_xshape_repr())
-                ->AsIntermediate()
-                ->assert_is_op_output("transpose2", "XShape")
-          : nullptr;
+      with_transpose_xshape ? pattern->NewNode(transpose_xshape_repr())
+                                  ->AsIntermediate()
+                                  ->assert_is_op_output("transpose2", "XShape")
+                            : nullptr;
 
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()

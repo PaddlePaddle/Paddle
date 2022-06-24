@@ -17,6 +17,7 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include <queue>
+
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -421,7 +422,7 @@ void PruneBackwardImpl(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
   for (const auto& name : var_names) {
     if (var_map.count(name)) {
       // NOTE(zhiqiu): For operator in a conditional block, the related vars
-      // may not exist in current block, but in its futher block.
+      // may not exist in current block, but in its further block.
       *pruned_vars->Add() = var_map[name];
     }
   }

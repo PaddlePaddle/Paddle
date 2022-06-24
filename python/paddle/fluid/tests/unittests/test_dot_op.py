@@ -24,6 +24,7 @@ from paddle.fluid import compiler, Program, program_guard
 
 
 class DotOp(OpTest):
+
     def setUp(self):
         self.op_type = "dot"
         self.init_dtype()
@@ -50,21 +51,19 @@ class DotOp(OpTest):
 
     def test_check_grad_ingore_x(self):
         if core.is_compiled_with_rocm():
-            self.check_grad(
-                ['Y'],
-                'Out',
-                no_grad_set=set("X"),
-                user_defined_grads=[self.inputs['X']])
+            self.check_grad(['Y'],
+                            'Out',
+                            no_grad_set=set("X"),
+                            user_defined_grads=[self.inputs['X']])
         else:
             self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
         if core.is_compiled_with_rocm():
-            self.check_grad(
-                ['X'],
-                'Out',
-                no_grad_set=set('Y'),
-                user_defined_grads=[self.inputs['Y']])
+            self.check_grad(['X'],
+                            'Out',
+                            no_grad_set=set('Y'),
+                            user_defined_grads=[self.inputs['Y']])
         else:
             self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
@@ -78,11 +77,12 @@ class DotOp(OpTest):
 
 
 class DotOpBatch(DotOp):
+
     def init_input_output(self):
-        self.x = np.random.uniform(0.1, 1, [132]).astype(self.dtype).reshape(
-            [11, 12])
-        self.y = np.random.uniform(1, 3, [132]).astype(self.dtype).reshape(
-            [11, 12])
+        self.x = np.random.uniform(0.1, 1,
+                                   [132]).astype(self.dtype).reshape([11, 12])
+        self.y = np.random.uniform(1, 3,
+                                   [132]).astype(self.dtype).reshape([11, 12])
         self.out = np.sum(self.x * self.y, axis=1).reshape([11, 1])
 
     def test_check_grad_normal(self):
@@ -96,6 +96,7 @@ class DotOpBatch(DotOp):
 
 
 class TestDotOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
 
@@ -115,6 +116,7 @@ class TestDotOpError(unittest.TestCase):
 
 
 class TestDygraph(unittest.TestCase):
+
     def test_dygraph(self):
         with fluid.dygraph.guard():
             x1 = fluid.dygraph.to_variable(np.array([1, 3]).astype(np.float32))
@@ -132,6 +134,7 @@ class TestDygraph(unittest.TestCase):
 
 
 class TestComplexDotOp(OpTest):
+
     def setUp(self):
         self.op_type = "dot"
         self.init_base_dtype()
@@ -164,30 +167,28 @@ class TestComplexDotOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=[self.grad_x, self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['Y'],
+                        'Out',
+                        no_grad_set=set("X"),
+                        user_defined_grads=[self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['X'],
+                        'Out',
+                        no_grad_set=set('Y'),
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out])
 
 
 class TestComplexDotOp2D(OpTest):
+
     def setUp(self):
         self.op_type = "dot"
         self.init_base_dtype()
@@ -229,27 +230,24 @@ class TestComplexDotOp2D(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=[self.grad_x, self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['Y'],
+                        'Out',
+                        no_grad_set=set("X"),
+                        user_defined_grads=[self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['X'],
+                        'Out',
+                        no_grad_set=set('Y'),
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out])
 
 
 if __name__ == '__main__':

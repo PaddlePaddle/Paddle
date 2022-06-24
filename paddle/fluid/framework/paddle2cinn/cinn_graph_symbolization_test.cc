@@ -12,18 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "gtest/gtest.h"
-
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
+
+#include "gtest/gtest.h"
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
+using ::cinn::frontend::NetBuilder;
 using ir::Graph;
 using ir::Node;
-using ::cinn::frontend::NetBuilder;
 using CinnTensor = ::cinn::hlir::framework::Tensor;
 using OpMapperContext = CinnGraphSymbolization::OpMapperContext;
 using CinnOpDesc = CinnGraphSymbolization::CinnOpDesc;

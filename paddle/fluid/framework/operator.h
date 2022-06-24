@@ -27,6 +27,7 @@ limitations under the License. */
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
@@ -38,12 +39,10 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
-#include "paddle/utils/flat_hash_map.h"
-
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace paddle {
 namespace framework {
@@ -194,6 +193,8 @@ class OperatorBase {
 
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
+  VariableNameMap& Inputs() { return inputs_; }
+  VariableNameMap& Outputs() { return outputs_; }
 
   const OpInfo& Info() const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -580,6 +581,8 @@ class OperatorWithKernel : public OperatorBase {
   }
   bool SupportsMKLDNN(proto::VarType::Type data_type) const;
 
+  bool SupportsKernelType(const OpKernelType& kernel_type) const;
+
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
 
@@ -610,18 +613,19 @@ class OperatorWithKernel : public OperatorBase {
 
   /* member functions for adapting to phi lib */
   /** In the Tensor calculation library, the new Kernel adopts a clearer and
-    * more streamlined design. The arguments of the Kernel and the input and
-    * output arguments registered in the original OpMaker do not match in some
-    * cases, so we use map to record the arguments required by the kernel.
-    * When selecting Kernel during Op execution, select the arguments of the
-    * original Op according to the GetExpectedPhiKernelArgs returned arguments.
-    */
+   * more streamlined design. The arguments of the Kernel and the input and
+   * output arguments registered in the original OpMaker do not match in some
+   * cases, so we use map to record the arguments required by the kernel.
+   * When selecting Kernel during Op execution, select the arguments of the
+   * original Op according to the GetExpectedPhiKernelArgs returned arguments.
+   */
   phi::KernelSignature GetExpectedPhiKernelArgs(
       const ExecutionContext& ctx) const;
 
   /* member functions for adapting to phi lib */
   phi::KernelKey ChoosePhiKernel(const ExecutionContext& ctx) const;
 
+  void ChooseKernel(const ExecutionContext& ctx) const;
   /**
    * Transfer data place for phi kernel
    * Is this really needed?
@@ -645,6 +649,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   const OpKernelType* kernel_type() const { return kernel_type_.get(); }
+  const OpKernelFunc* kernel_func() const { return kernel_func_.get(); }
 
   void ResetKernelType(OpKernelType* kernel_type) {
     kernel_type_.reset(kernel_type);
@@ -673,8 +678,6 @@ class OperatorWithKernel : public OperatorBase {
 
   OpKernelType InnerGetExpectedKernelType(const ExecutionContext& ctx) const;
 
-  void ChooseKernel(const ExecutionContext& ctx) const;
-
   void HandleComplexGradToRealGrad(const Scope& scope,
                                    RuntimeContext* ctx) const;
 
@@ -698,6 +701,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
   mutable const Scope* pre_scope_ = nullptr;
   mutable bool need_prepare_data_ = true;
+  mutable bool need_prepare_phi_data_ = false;
   mutable bool enable_cache_runtime_context_ = false;
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
@@ -710,6 +714,9 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<phi::KernelSignature> kernel_signature_;
   mutable std::unique_ptr<phi::Kernel> pt_kernel_;
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
+
+  struct CacheImpl;
+  mutable CacheImpl* impl_{nullptr};
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

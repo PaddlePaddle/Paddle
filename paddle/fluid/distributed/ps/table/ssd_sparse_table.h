@@ -55,7 +55,7 @@ class SSDSparseTable : public MemorySparseTable {
   int32_t Flush() override { return 0; }
   virtual int32_t Shrink(const std::string& param) override;
   virtual void Clear() override {
-    for (size_t i = 0; i < _real_local_shard_num; ++i) {
+    for (int i = 0; i < _real_local_shard_num; ++i) {
       _local_shards[i].clear();
     }
   }

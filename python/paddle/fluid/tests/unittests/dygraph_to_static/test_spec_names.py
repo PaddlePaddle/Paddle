@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,11 +16,10 @@ import paddle
 from paddle.nn import Layer
 import numpy as np
 import unittest
-from paddle.fluid.framework import _enable_legacy_dygraph
-_enable_legacy_dygraph()
 
 
 class Net(Layer):
+
     def __init__(self):
         super(Net, self).__init__()
         self.fc = paddle.nn.Linear(16, 3)
@@ -38,6 +37,7 @@ class Net(Layer):
 
 
 class TestArgsSpecName(unittest.TestCase):
+
     def read_from_dataset(self):
         self.x = paddle.randn([4, 2, 8])
         self.y = paddle.randn([4, 2, 8])

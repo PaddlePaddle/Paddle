@@ -15,13 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/storage.h"
 #include "paddle/phi/core/stream.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 
 /* @jim19930609: Move to MKLDNN_Tensor in the future
-    */
+ */
 #ifdef PADDLE_WITH_MKLDNN
 #include "dnnl.hpp"
 #endif

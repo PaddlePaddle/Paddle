@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
+
 #include <functional>
 #include <vector>
+
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/runtime/cinn_runtime.h"
 #include "cinn/runtime/flags.h"
@@ -136,7 +138,7 @@ class CinnLaunchOpMaker : public framework::OpProtoAndCheckerMaker {
               "(vector<LoDTensor>)"
               "which are the output of graph inside the CinnLaunchOp.")
         .AsDuplicable();
-    AddAttr<std::string>(
+    AddAttr<int64_t>(
         kCompilationKey,
         "(string)"
         "a hash key used to get the graph object or its computation result.");

@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/nan_inf_utils.h"
-#include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
-
 #include <algorithm>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
+#include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {

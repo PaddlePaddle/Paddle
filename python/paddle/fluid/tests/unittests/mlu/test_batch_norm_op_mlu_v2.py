@@ -19,6 +19,7 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import sys
+
 sys.path.append("..")
 from op_test import OpTest, _set_use_system_allocator
 from paddle.fluid.framework import grad_var_name
@@ -30,6 +31,7 @@ paddle.enable_static()
 
 
 class TestBatchNorm(unittest.TestCase):
+
     def test_name(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_mlu():
@@ -124,8 +126,9 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v4(x):
                 with fluid.dygraph.guard(p):
-                    bn = paddle.nn.BatchNorm2D(
-                        shape[1], weight_attr=False, bias_attr=False)
+                    bn = paddle.nn.BatchNorm2D(shape[1],
+                                               weight_attr=False,
+                                               bias_attr=False)
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
@@ -173,6 +176,7 @@ class TestBatchNorm(unittest.TestCase):
 
 
 class TestBatchNormChannelLast(unittest.TestCase):
+
     def setUp(self):
         self.original_dtyep = paddle.get_default_dtype()
         paddle.set_default_dtype("float32")
@@ -196,8 +200,7 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 1])
                 self.assertEqual(
-                    np.allclose(
-                        y1.numpy(), y2.numpy(), atol=1e-07), True)
+                    np.allclose(y1.numpy(), y2.numpy(), atol=1e-07), True)
 
     def test_2d(self):
         for p in self.places:
@@ -212,8 +215,7 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 3, 1])
                 self.assertEqual(
-                    np.allclose(
-                        y1.numpy(), y2.numpy(), atol=1e-07), True)
+                    np.allclose(y1.numpy(), y2.numpy(), atol=1e-07), True)
 
     def test_3d(self):
         for p in self.places:
@@ -228,8 +230,7 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 3, 4, 1])
                 self.assertEqual(
-                    np.allclose(
-                        y1.numpy(), y2.numpy(), atol=1e-07), True)
+                    np.allclose(y1.numpy(), y2.numpy(), atol=1e-07), True)
                 # res = np.allclose(y1.numpy(), y2.numpy())
                 # if res == False:
                 #   np.savetxt("./y1.txt", y1.numpy().flatten(), fmt='%.10f', delimiter='\n')
@@ -238,6 +239,7 @@ class TestBatchNormChannelLast(unittest.TestCase):
 
 
 class TestBatchNormUseGlobalStats(unittest.TestCase):
+
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_mlu():

@@ -16,7 +16,6 @@
 
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/convert_utils.h"
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/infer_var_type_context.h"
 #include "paddle/fluid/imperative/op_base.h"
@@ -186,7 +185,7 @@ template <typename VarType>
 static void SetForwardDataTypeOfGradVars(const NameVarMap<VarType>& outs) {
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
-      // NOTE(zhiqu): The ouput may be NULL because of pruning.
+      // NOTE(zhiqu): The output may be NULL because of pruning.
       if (var) {
         SetForwardDataTypeOfGradVar(var);
       }
@@ -284,9 +283,10 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
   PADDLE_ENFORCE_EQ(
       Var().IsInitialized() && (Var().IsType<framework::LoDTensor>() ||
                                 Var().IsType<phi::SelectedRows>()),
-      true, platform::errors::InvalidArgument(
-                "Variable is not initialized or Variable's type is not "
-                "LoDTensor or SelectedRows when getting numpy tensor"));
+      true,
+      platform::errors::InvalidArgument(
+          "Variable is not initialized or Variable's type is not "
+          "LoDTensor or SelectedRows when getting numpy tensor"));
 
   if (Var().IsType<framework::LoDTensor>()) {
     auto& src_tensor = Var().Get<framework::LoDTensor>();

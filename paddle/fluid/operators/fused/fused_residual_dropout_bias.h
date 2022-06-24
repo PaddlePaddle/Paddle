@@ -140,9 +140,12 @@ void LaunchResidualDropoutBias(const uint32_t rows, const uint32_t cols,
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     if (residual == dst) return;
-    auto cuda_place = ctx.GetPlace();
-    memory::Copy(cuda_place, dst, cuda_place, residual, rows * cols * sizeof(T),
-                 ctx.stream());
+    if (residual) {
+      memory::Copy(ctx.GetPlace(), dst, ctx.GetPlace(), residual,
+                   rows * cols * sizeof(T), ctx.stream());
+    } else {
+      SetZero<T>(ctx, dst, rows * cols);
+    }
     if (!is_test) {
       SetZero<MaskType>(ctx, mask_data, rows * cols);
     }
@@ -153,16 +156,15 @@ void LaunchResidualDropoutBias(const uint32_t rows, const uint32_t cols,
   const int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
   auto config = Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
   if (cols % VecSize == 0) {
-    FusedResidualDropoutBias<T, uint8_t, VecSize><<<
-        config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
-        rows, cols, seed, dropout_prob, is_upscale_in_train, src, residual,
-        bias, mask_data, dst, increment, is_test);
+    FusedResidualDropoutBias<T, uint8_t, VecSize>
+        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+            rows, cols, seed, dropout_prob, is_upscale_in_train, src, residual,
+            bias, mask_data, dst, increment, is_test);
   } else {
-    FusedResidualDropoutBias<
-        T, uint8_t,
-        1><<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
-        rows, cols, seed, dropout_prob, is_upscale_in_train, src, residual,
-        bias, mask_data, dst, increment, is_test);
+    FusedResidualDropoutBias<T, uint8_t, 1>
+        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+            rows, cols, seed, dropout_prob, is_upscale_in_train, src, residual,
+            bias, mask_data, dst, increment, is_test);
   }
 }
 
@@ -263,27 +265,26 @@ void LaunchResidualDropoutBiasGrad(const T *dout, const MaskType *mask,
     dim3 block_dim(threads, 128, 1);
     dim3 grid_dim(blocks, 1, 1);
     if (cols % VecSize == 0) {
-      FusedResidualDropoutBiasGrad<
-          T, MaskType, 8, 128,
-          VecSize><<<grid_dim, block_dim, 0, ctx.stream()>>>(
-          dout, mask, factor, rows, cols, dx, dbias);
+      FusedResidualDropoutBiasGrad<T, MaskType, 8, 128, VecSize>
+          <<<grid_dim, block_dim, 0, ctx.stream()>>>(dout, mask, factor, rows,
+                                                     cols, dx, dbias);
     } else {
-      FusedResidualDropoutBiasGrad<T, MaskType, 8, 128,
-                                   1><<<grid_dim, block_dim, 0, ctx.stream()>>>(
-          dout, mask, factor, rows, cols, dx, dbias);
+      FusedResidualDropoutBiasGrad<T, MaskType, 8, 128, 1>
+          <<<grid_dim, block_dim, 0, ctx.stream()>>>(dout, mask, factor, rows,
+                                                     cols, dx, dbias);
     }
   } else {
     const uint64_t n = rows * cols;
     platform::GpuLaunchConfig config =
         platform::GetGpuLaunchConfig1D(ctx, n / real_vec_size);
     if (n % VecSize == 0) {
-      FusedResidualDropoutGrad<T, MaskType, VecSize><<<
-          config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
-          dout, mask, factor, n, dx);
+      FusedResidualDropoutGrad<T, MaskType, VecSize>
+          <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+              dout, mask, factor, n, dx);
     } else {
-      FusedResidualDropoutGrad<T, MaskType, 1><<<
-          config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
-          dout, mask, factor, n, dx);
+      FusedResidualDropoutGrad<T, MaskType, 1>
+          <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+              dout, mask, factor, n, dx);
     }
   }
 }

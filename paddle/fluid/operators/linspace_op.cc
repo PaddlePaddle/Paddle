@@ -38,8 +38,11 @@ class LinspaceOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    if (platform::is_xpu_place(tensor.place())) {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
+    return expected_kernel_type;
   }
 };
 
@@ -74,10 +77,9 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     LinspaceInferShapeFunctor);
 
-REGISTER_OP_VERSION(linspace)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(linspace).AddCheckpoint(
+    R"ROC(
       Upgrade linspace to add a new attribute [dtype].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "dtype", "In order to change output data type ", 5));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "dtype", "In order to change output data type ", 5));

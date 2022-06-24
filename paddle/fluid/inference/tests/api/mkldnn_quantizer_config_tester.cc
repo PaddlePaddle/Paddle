@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/api/paddle_mkldnn_quantizer_config.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -90,9 +91,10 @@ TEST(Mkldnn_quantizer_config, configuration) {
 
   PADDLE_ENFORCE_EQ(
       cfg.mkldnn_quantizer_config()->scale_algo("conv2d", "Input"),
-      conv2d_scale_algo, platform::errors::InvalidArgument(
-                             "Scale algorithm got from config differs with the "
-                             "one set previously."));
+      conv2d_scale_algo,
+      platform::errors::InvalidArgument(
+          "Scale algorithm got from config differs with the "
+          "one set previously."));
 
   PADDLE_ENFORCE_EQ(
       cfg.mkldnn_quantizer_config()->scale_algo("unknown", "unknown"),

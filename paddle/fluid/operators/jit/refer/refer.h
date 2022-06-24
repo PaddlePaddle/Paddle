@@ -481,10 +481,11 @@ void EmbSeqPool(const T* table, const int64_t* idx, T* out,
             "The idx shoud be lower than the attribute table_height of "
             "EmbSeqPool. But %dth of idx is %d and table_height is %d.",
             i, idx[i], attr->table_height));
-    PADDLE_ENFORCE_GE(idx[i], 0, platform::errors::InvalidArgument(
-                                     "The idx shoud be equal to or larger than "
-                                     "the 0. But %dth of idx is %d.",
-                                     i, idx[i]));
+    PADDLE_ENFORCE_GE(idx[i], 0,
+                      platform::errors::InvalidArgument(
+                          "The idx shoud be equal to or larger than "
+                          "the 0. But %dth of idx is %d.",
+                          i, idx[i]));
   };
 
   for (int64_t w = 0; w != attr->index_width; ++w) {
@@ -539,11 +540,12 @@ void Sgd(const T* lr, const T* param, const T* grad, const int64_t* rows,
                           "less than the attribute. But %dth of rows "
                           "is %d and grad_width is %d.",
                           i, h_idx, attr->param_height));
-    PADDLE_ENFORCE_GE(h_idx, 0, platform::errors::InvalidArgument(
-                                    "The rows of Sgd should be "
-                                    "larger than 0. But %dth of rows "
-                                    "is %d.",
-                                    i, h_idx));
+    PADDLE_ENFORCE_GE(
+        h_idx, 0,
+        platform::errors::InvalidArgument("The rows of Sgd should be "
+                                          "larger than 0. But %dth of rows "
+                                          "is %d.",
+                                          i, h_idx));
     for (int64_t j = 0; j < attr->grad_width; ++j) {
       out[h_idx * attr->grad_width + j] =
           param[h_idx * attr->grad_width + j] -
@@ -562,6 +564,21 @@ void Adam(T beta1, T beta2, T lr, T eps, int64_t numel, const T* grad_ptr,
         beta2 * mom2_ptr[i] + (1 - beta2) * grad_ptr[i] * grad_ptr[i];
     param_out_ptr[i] =
         param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2_out_ptr[i]) + eps));
+  }
+}
+
+template <typename T>
+void AdamW(T beta1, T beta2, T lr, T eps, T old_lr, T lr_ratio, T coeff,
+           int64_t numel, const T* grad_ptr, const T* mom1_ptr,
+           const T* mom2_ptr, const T* param_ptr, T* mom1_out_ptr,
+           T* mom2_out_ptr, T* param_out_ptr) {
+  for (int i = 0; i < numel; ++i) {
+    auto param_tmp = param_ptr[i] - old_lr * lr_ratio * coeff * param_ptr[i];
+    mom1_out_ptr[i] = beta1 * mom1_ptr[i] + (1 - beta1) * grad_ptr[i];
+    mom2_out_ptr[i] =
+        beta2 * mom2_ptr[i] + (1 - beta2) * grad_ptr[i] * grad_ptr[i];
+    param_out_ptr[i] =
+        param_tmp + lr * (mom1_out_ptr[i] / (sqrt(mom2_out_ptr[i]) + eps));
   }
 }
 
@@ -617,6 +634,7 @@ DECLARE_REFER_KERNEL(MatMul);
 DECLARE_REFER_KERNEL(Softmax);
 DECLARE_REFER_KERNEL(EmbSeqPool);
 DECLARE_REFER_KERNEL(Adam);
+DECLARE_REFER_KERNEL(AdamW);
 DECLARE_REFER_KERNEL(Sgd);
 DECLARE_REFER_KERNEL(VBroadcast);
 

@@ -14,13 +14,13 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-
 DECLARE_bool(enable_cublas_tensor_op_math);
+DECLARE_bool(gemm_use_half_precision_compute_type);
 
 namespace phi {
 namespace funcs {
@@ -2255,8 +2255,25 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedGEMM(
     }
     VLOG(5) << "use_tensor_op_math: "
             << (use_tensor_op_math ? "True" : "False");
+    VLOG(4) << "use_half_precision_compute_type: "
+            << FLAGS_gemm_use_half_precision_compute_type;
 
     auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
+    cudaDataType_t compute_type = fp;
+
+    float h_alpha = static_cast<float>(alpha);
+    float h_beta = static_cast<float>(beta);
+    void *a = static_cast<void *>(&h_alpha);
+    void *b = static_cast<void *>(&h_beta);
+    // set ComputeType as CUDA_R_32F for fp16, for better accuracy
+    if (FLAGS_gemm_use_half_precision_compute_type == true &&
+        std::is_same<T, phi::dtype::float16>::value) {
+      a = static_cast<void *>(&alpha);
+      b = static_cast<void *>(&beta);
+      compute_type = CUDA_R_16F;
+    }
+
+    // set ComputeType as CUDA_R_32F for fp16 and fp32, for better accuracy
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cublasGemmStridedBatchedEx(handle,
@@ -2265,7 +2282,7 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedGEMM(
                                                                 N,
                                                                 M,
                                                                 K,
-                                                                &alpha,
+                                                                a,
                                                                 B,
                                                                 fp,
                                                                 ldb,
@@ -2274,13 +2291,13 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedGEMM(
                                                                 fp,
                                                                 lda,
                                                                 strideA,
-                                                                &beta,
+                                                                b,
                                                                 C,
                                                                 fp,
                                                                 ldc,
                                                                 strideC,
                                                                 batchCount,
-                                                                fp,
+                                                                compute_type,
                                                                 algo));
     });
   } else {
@@ -2348,8 +2365,24 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     }
     VLOG(5) << "use_tensor_op_math: "
             << (use_tensor_op_math ? "True" : "False");
+    VLOG(4) << "use_half_precision_compute_type: "
+            << FLAGS_gemm_use_half_precision_compute_type;
 
     auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
+    cudaDataType_t compute_type = CUDA_R_32F;
+
+    float h_alpha = static_cast<float>(alpha);
+    float h_beta = static_cast<float>(beta);
+    void *a = static_cast<void *>(&h_alpha);
+    void *b = static_cast<void *>(&h_beta);
+    // set ComputeType as CUDA_R_32F for fp16, for better accuracy
+    if (FLAGS_gemm_use_half_precision_compute_type == true &&
+        std::is_same<T, phi::dtype::float16>::value) {
+      a = static_cast<void *>(&alpha);
+      b = static_cast<void *>(&beta);
+      compute_type = CUDA_R_16F;
+    }
+
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cublasGemmStridedBatchedEx(handle,
@@ -2358,7 +2391,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                                 N,
                                                                 M,
                                                                 K,
-                                                                &alpha,
+                                                                a,
                                                                 B,
                                                                 fp,
                                                                 ldb,
@@ -2367,13 +2400,13 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                                 fp,
                                                                 lda,
                                                                 strideA,
-                                                                &beta,
+                                                                b,
                                                                 C,
                                                                 fp,
                                                                 ldc,
                                                                 strideC,
                                                                 batchCount,
-                                                                fp,
+                                                                compute_type,
                                                                 algo));
     });
   } else {
