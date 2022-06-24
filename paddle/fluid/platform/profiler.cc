@@ -296,6 +296,16 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
       dtypes[input_name] = shape_ctx.GetInputsVarType(input_name);
     }
   }
+  const std::vector<std::string> *callstack_ptr = nullptr;
+  std::vector<std::string> callstack;
+  auto iter = attrs.find(
+      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  if (iter != attrs.end()) {
+    callstack_ptr = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+    callstack = *callstack_ptr;
+  }
+  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
+      PosixInNsec(), type, input_shapes, dtypes, callstack);
 }
 
 RecordMemEvent::RecordMemEvent(const void *ptr,
