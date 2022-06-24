@@ -149,29 +149,30 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
 }
 
 template <typename DeviceContext, typename T>
-static void ConcatTensorsForAllReduce(
-    const DeviceContext &context,
-    const std::vector<phi::DenseTensor> &dense_tensors_,
-    Tensor *p_dense_contents) {
-  operators::math::ConcatFunctor<DeviceContext, T> concat_functor_;
-  concat_functor_(
-      context,
-      dense_tensors_,
-      0,
-      std::dynamic_pointer_cast<phi::DenseTensor>(p_dense_contents->impl())
-          .get());
-}
+struct ConcatTensorsForAllReduce {
+  void operator()(const DeviceContext &context,
+                  const std::vector<phi::DenseTensor> &dense_tensors_,
+                  Tensor *p_dense_contents) {
+    operators::math::ConcatFunctor<DeviceContext, T> concat_functor_;
+    concat_functor_(
+        context,
+        dense_tensors_,
+        0,
+        std::dynamic_pointer_cast<phi::DenseTensor>(p_dense_contents->impl())
+            .get());
+  }
+};
 
 template <typename DeviceContext, typename T>
-static void SplitTensorsForAllReduce(
-    const DeviceContext &context,
-    Tensor *p_dense_contents,
-    std::vector<phi::DenseTensor> *p_dense_tensors) {
-  auto *in =
-      std::dynamic_pointer_cast<phi::DenseTensor>(p_dense_contents->impl())
-          .get();
-  std::vector<phi::DenseTensor *> outs;
-  std::vector<const phi::DenseTensor *> shape_refer;
+struct SplitTensorsForAllReduce {
+  void operator()(const DeviceContext &context,
+                  Tensor *p_dense_contents,
+                  std::vector<phi::DenseTensor> *p_dense_tensors) {
+    auto *in =
+        std::dynamic_pointer_cast<phi::DenseTensor>(p_dense_contents->impl())
+            .get();
+    std::vector<phi::DenseTensor *> outs;
+    std::vector<const phi::DenseTensor *> shape_refer;
 
     outs.reserve(p_dense_tensors->size());
     shape_refer.reserve(p_dense_tensors->size());

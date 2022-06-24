@@ -123,7 +123,9 @@ class ParallelEnv(object):
 
         # imperative only support one gpu or xpu
         if self._device_type is not None:
-            selected_custom_devices = os.getenv("FLAGS_selected_custom_devices",
+            FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
+                self._device_type)
+            selected_custom_devices = os.getenv(FLAGS_selected_custom_devices,
                                                 "0").split(",")
             self._device_id = int(selected_custom_devices[0])
         else:

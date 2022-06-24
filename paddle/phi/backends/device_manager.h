@@ -160,6 +160,9 @@ class DeviceManager {
 
   static std::vector<size_t> GetDeviceList(const std::string& device_type);
 
+  static std::vector<size_t> GetSelectedDeviceList(
+      const std::string& device_type);
+
   // CCL
   static void CCLDestroyComm(const std::string& device_type,
                              ccl::CCLComm ccl_comm);

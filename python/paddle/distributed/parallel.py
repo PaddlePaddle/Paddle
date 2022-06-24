@@ -173,7 +173,9 @@ def init_parallel_env():
             "If you want to use CPU-only version, please use 'gloo' as backend")
 
     if backend == "xccl":
-        _check_var_exists("FLAGS_selected_custom_devices")
+        FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
+            parallel_env.device_type)
+        _check_var_exists(FLAGS_selected_custom_devices)
     else:
         if not is_cpu_only and core.is_compiled_with_cuda():
             _check_var_exists("FLAGS_selected_gpus")

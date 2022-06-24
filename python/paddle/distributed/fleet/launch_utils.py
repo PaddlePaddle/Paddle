@@ -549,7 +549,9 @@ def start_local_trainers(cluster,
                 [str(g) for g in t.accelerators])
         elif len(t.accelerators
                  ) > 0 and pod.device_mode == DeviceMode.CUSTOM_DEVICE:
-            proc_env["FLAGS_selected_custom_devices"] = "%s" % ",".join(
+            FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
+                current_env["PADDLE_DISTRI_CUSTOM_DEVICE_TYPE"])
+            proc_env[FLAGS_selected_custom_devices] = "%s" % ",".join(
                 [str(g) for g in t.accelerators])
 
         if len(t.accelerators) > 0:

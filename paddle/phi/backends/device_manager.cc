@@ -390,6 +390,25 @@ std::vector<size_t> DeviceManager::GetDeviceList(
   return dev_impl->GetDeviceList();
 }
 
+std::vector<size_t> DeviceManager::GetSelectedDeviceList(
+    const std::string& device_type) {
+  std::vector<size_t> devices;
+  std::string FLAGS = "FLAGS_selected_" + device_type + "s";
+  auto FLAGS_selected_devices = getenv(FLAGS.c_str());
+  if (FLAGS_selected_devices) {
+    auto devices_str = paddle::string::Split(FLAGS_selected_devices, ',');
+    for (auto id : devices_str) {
+      devices.push_back(atoi(id.c_str()));
+    }
+  } else {
+    int count = DeviceManager::GetDeviceCount(device_type);
+    for (int i = 0; i < count; ++i) {
+      devices.push_back(i);
+    }
+  }
+  return devices;
+}
+
 void DeviceManager::CCLDestroyComm(const std::string& device_type,
                                    ccl::CCLComm ccl_comm) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
