@@ -319,6 +319,7 @@ if(WITH_TESTING OR WITH_DISTRIBUTE)
   list(APPEND third_party_deps extern_gtest)
 endif()
 
+message("xxxxxxx-----------test---")
 if(WITH_ONNXRUNTIME)
   include(external/onnxruntime
   )# download, build, install onnxruntime、paddle2onnx
