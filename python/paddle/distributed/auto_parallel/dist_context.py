@@ -110,6 +110,7 @@ class DistributedContext:
         # self._tensor_id_to_tensor_node_ids = {}
 
         self._is_initialized = False
+        #TODO: need a better way to remove the following flag
         self._need_copy_dist_attr_to_graph = False
         self._backup_pass_context_stack = []
         self._backup_block_state_stack = []
@@ -120,6 +121,9 @@ class DistributedContext:
 
         # flag whether scale gradient with dp size
         self._gradient_scale = True
+
+        # A flag indicates whether the used parallelism is data parallel
+        self._data_parallel = False
 
     @property
     def serial_main_program(self):
@@ -197,6 +201,14 @@ class DistributedContext:
     @gradient_scale.setter
     def gradient_scale(self, gs):
         self._gradient_scale = gs
+
+    @property
+    def data_parallel(self):
+        return self._data_parallel
+
+    @data_parallel.setter
+    def data_parallel(self, dp):
+        self._data_parallel = dp
 
     def _backup_serial_info(self, mode):
         self._backup_serial_main_program_stack.append(
@@ -335,7 +347,7 @@ class DistributedContext:
         if dist:
             self._restore_dist_info(dist_mode)
 
-    def initialize(self):
+    def initialize(self, with_graph=True):
         if not self._is_initialized:
             if not self._serial_main_program:
                 self._serial_main_program = self._original_serial_main_program
@@ -366,13 +378,16 @@ class DistributedContext:
                 self._dist_ops_for_program)
             self._tensors_ids = list(self._dist_tensors_for_program.keys())
             self._ops_ids = list(self._dist_ops_for_program.keys())
-            set_flags({"FLAGS_convert_all_blocks": True})
-            self._serial_graph = framework.IrGraph(
-                core.Graph(self._serial_main_program.desc))
-            self._init_dist_attr_for_graph()
             self._is_initialized = True
-            self._need_copy_dist_attr_to_graph = False
-        if self._need_copy_dist_attr_to_graph:
+
+            if with_graph:
+                set_flags({"FLAGS_convert_all_blocks": True})
+                self._serial_graph = framework.IrGraph(
+                    core.Graph(self._serial_main_program.desc))
+                self._init_dist_attr_for_graph()
+                self._need_copy_dist_attr_to_graph = False
+
+        if self._need_copy_dist_attr_to_graph and with_graph:
             self.copy_dist_attr_from_program_to_graph()
 
     def add_process_mesh(self, process_mesh):
@@ -522,6 +537,8 @@ class DistributedContext:
             self._process_meshes = copy.deepcopy(default_ctx.process_meshes)
         else:
             default_ctx = self
+        # Copy the data parallel flag from the default context
+        self._data_parallel = default_ctx.data_parallel
         for block in self._serial_main_program.blocks:
             for tensor in block.vars.values():
                 # Copy the distributed tensors in the default context

@@ -32,6 +32,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 constexpr int kConvMKLDNNFP32 = 1;
 constexpr int kConvMKLDNNINT8 = 2;
+constexpr int kConvMKLDNNINT8WS8 = 3;
 constexpr int MaxKeyLength = 256;
 
 // Base convolution operator definations for other conv
