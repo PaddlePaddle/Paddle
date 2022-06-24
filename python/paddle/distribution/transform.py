@@ -319,6 +319,10 @@ class AbsTransform(Transform):
     r"""Absolute transformation with formula :math:`y = f(x) = abs(x)`, 
     element-wise.
 
+    This is a test code for paddle doc review...
+
+    Hi, have a nice day !
+
     This non-injective transformation allows for transformations of scalar 
     distributions with the absolute value function, which maps ``(-inf, inf)`` 
     to ``[0, inf)`` .
