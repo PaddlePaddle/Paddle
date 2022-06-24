@@ -136,7 +136,7 @@ std::future<int32_t> BrpcPsServer::SendPServer2PServerMsg(
     int msg_type, int to_pserver_id, const std::string &msg) {
   auto promise = std::make_shared<std::promise<int32_t>>();
   std::future<int> fut = promise->get_future();
-  if (to_pserver_id >= _pserver_channels.size()) {
+  if (static_cast<size_t>(to_pserver_id) >= _pserver_channels.size()) {
     LOG(FATAL) << "to_pserver_id is out of range pservers, which size is "
                << _pserver_channels.size();
     promise->set_value(-1);
@@ -648,7 +648,6 @@ int32_t BrpcPsService::SaveAllTable(Table *table,
                                     PsResponseMessage &response,
                                     brpc::Controller *cntl) {
   auto &table_map = *(_server->GetTable());
-  int32_t all_feasign_size = 0;
   int32_t feasign_size = 0;
 
   for (auto &itr : table_map) {
@@ -827,7 +826,6 @@ int32_t BrpcPsService::PushGlobalStep(Table *table,
     set_response_code(response, 0, "run_program data is empty");
     return 0;
   }
-  uint32_t num = *(const uint32_t *)(request.data().data());
   const int64_t *values =
       (const int64_t *)(request.data().data() + sizeof(uint32_t));
   auto trainer_id = request.client_id();

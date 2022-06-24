@@ -61,27 +61,10 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
                              ? ctx.Attr<float>("activation_beta")
                              : 0.0f;
 
-      static std::unordered_map<std::string, dnnl::algorithm> algo_map = {
-          {"relu", dnnl::algorithm::eltwise_relu},
-          {"tanh", dnnl::algorithm::eltwise_tanh},
-          {"leaky_relu", dnnl::algorithm::eltwise_relu},
-          {"swish", dnnl::algorithm::eltwise_swish},
-          {"hardswish", dnnl::algorithm::eltwise_hardswish},
-          {"sqrt", dnnl::algorithm::eltwise_sqrt},
-          {"abs", dnnl::algorithm::eltwise_abs},
-          {"clip", dnnl::algorithm::eltwise_clip},
-          {"gelu", dnnl::algorithm::eltwise_gelu_erf},
-          {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-          {"relu6", dnnl::algorithm::eltwise_bounded_relu},
-          {"sigmoid", dnnl::algorithm::eltwise_logistic}};
+      const auto activation_algorithm = platform::AcquireActivationAlgorithm(
+          ctx.Attr<std::string>("activation_type"));
 
-      const auto& activation_type =
-          algo_map.find(ctx.Attr<std::string>("activation_type"));
-
-      if (activation_type != algo_map.end()) {
-        post_operations.append_eltwise(scale, activation_type->second, alpha,
-                                       beta);
-      }
+      post_operations.append_eltwise(scale, activation_algorithm, alpha, beta);
     }
     return post_operations;
   }

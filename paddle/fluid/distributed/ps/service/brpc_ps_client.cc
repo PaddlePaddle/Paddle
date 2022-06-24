@@ -1494,8 +1494,6 @@ void BrpcPsClient::PushSparseTaskConsume() {
         merge_status.clear();
         std::vector<std::future<int>>().swap(merge_status);
         _push_sparse_merge_count_map[table_id] = 0;
-
-        auto queue_size = task_queue->Size();
       } else {  // 未达到阈值 只做多路归并
         std::vector<std::future<int>> merge_status(request_call_num);
         for (size_t shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
@@ -1542,7 +1540,6 @@ int BrpcPsClient::PushSparseAsyncShardMerge(
     std::vector<int> &request_kv_num, int table_id, int shard_idx,
     ValueAccessor *accessor) {
   size_t merged_kv_count = 0;
-  uint64_t min_key = UINT64_MAX;
   uint32_t value_size = accessor->GetAccessorInfo().update_size;
 
   thread_local std::vector<std::pair<uint64_t, const float *>> sorted_kv_list;
@@ -1771,8 +1768,6 @@ void BrpcPsClient::PushDenseTaskConsume() {
                 accessor->Merge(&total_send_data, &merge_data,
                                 total_send_data_size);
 #pragma optimize("", off)
-                auto *debug_closure = closure;
-                auto *debug_task = async_task;
                 delete async_task;
 #pragma optimize("", on)
                 return 0;

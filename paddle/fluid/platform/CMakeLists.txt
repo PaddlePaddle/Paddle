@@ -270,6 +270,15 @@ cc_library(
 set(DEVICE_EVENT_LIBS
     device_event_base
     CACHE INTERNAL "device event libs")
+if(WITH_XPU)
+  cc_library(
+    device_event_xpu
+    SRCS device_event_xpu.cc
+    DEPS device_event_base xpu_info)
+  set(DEVICE_EVENT_LIBS
+      device_event_xpu
+      CACHE INTERNAL "device event libs")
+endif()
 
 if(WITH_GPU)
   nv_library(

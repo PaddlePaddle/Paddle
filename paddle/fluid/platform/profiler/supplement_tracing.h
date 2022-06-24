@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
-#include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 
@@ -28,21 +27,6 @@ namespace framework {
 class RuntimeContext;
 }
 namespace platform {
-// Memory event tracing. A trace marks memory manipulation such as allocation
-// and free.
-// The events can be used to draw memory variation curve.
-class RecordMemEvent {
- public:
-  /**
-   * @param ptr:  Pointer address allocated or free.
-   * @param place: Device for this memory event.
-   * @param size: Memory size allocated or free.
-   * @param type: Denote manipulation type for this memory event.
-   */
-  explicit RecordMemEvent(
-      const void* ptr, const Place& place, size_t size,
-      const TracerMemEventType type = TracerMemEventType::Allocate);
-};
 
 class RecordOpInfoSupplement {
  public:

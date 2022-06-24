@@ -19,27 +19,25 @@ namespace jit {
 // TODO(dev): Make vector<string>, num_slot as in argument
 // Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
 // {}
-Layer::Layer(
-    const std::vector<std::string>& func_names,
-    const std::vector<framework::ProgramDesc>& program_descs,
-    const std::vector<std::vector<std::string>>& param_names_for_each_program,
-    const VariableNameMap& params_dict) {
-  VLOG(3) << "program size: " << program_descs.size();
+Layer::Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
+             const Name2VariableMap& params_dict,
+             const phi::Place& place)
+    : params_dict_(params_dict) {
+  VLOG(3) << "infos size: " << infos.size();
   // Layer manage the life time of all parameter.
-  for (size_t i = 0; i < func_names.size(); ++i) {
+  for (size_t i = 0; i < infos.size(); ++i) {
     // TODO(dev): choose exector or pe by flag
-    function_dict[func_names[i]] = std::make_shared<ExectorFunction>(
-        program_descs[i], param_names_for_each_program[i], params_dict);
+    unit_.AddExecutorFunction(
+        infos[i]->GetFunctionName(), infos[i], params_dict_, place);
   }
 }
 
-// TODO(dev): make it as const function
-std::shared_ptr<BaseFunction> Layer::GetFunction(const std::string& name) {
-  VLOG(3) << "funcs_ size: " << function_dict.size();
-  return function_dict[name];
+std::shared_ptr<BaseFunction> Layer::GetFunction(
+    const std::string& name) const {
+  return unit_.GetFunction(name);
 }
 
-std::vector<Variable> Layer::forward(const VariableNameMap& inputs) {
+std::vector<Variable> Layer::forward(const std::vector<Variable>& inputs) {
   auto func = GetFunction("forward");
   return (*func)(inputs);
 }
