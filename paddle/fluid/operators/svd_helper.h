@@ -30,6 +30,7 @@
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -44,41 +45,43 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename T>
-void EigenSvd(const T* X, T* U, T* VH, T* S, int rows, int cols,
-              int full = false) {
-  auto flag = Eigen::DecompositionOptions::ComputeThinU |
-              Eigen::DecompositionOptions::ComputeThinV;
-  if (full) {
-    flag = Eigen::DecompositionOptions::ComputeFullU |
-           Eigen::DecompositionOptions::ComputeFullV;
+void LapackSvd(const T* X, T* U, T* VH, T* S, int rows, int cols,
+               int full = false) {
+  char jobz = full ? 'A' : 'S';
+  int mx = std::max(rows, cols);
+  int mn = std::min(rows, cols);
+  T* a = const_cast<T*>(X);
+  int lda = rows;
+  int ldu = rows;
+  int ldvt = full ? cols : mn;
+  int lwork = full ? (4 * mn * mn + 6 * mn + mx) : (4 * mn * mn + 7 * mn);
+  std::vector<T> work(lwork);
+  std::vector<int> iwork(8 * mn);
+  int info;
+  phi::funcs::lapackSvd<T>(jobz, rows, cols, a, lda, S, U, ldu, VH, ldvt,
+                           work.data(), lwork, iwork.data(), &info);
+  if (info < 0) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "This %s-th argument has an illegal value", info));
   }
-  Eigen::BDCSVD<
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-      svd(2, 2, flag);
-  /*NOTE(xiongkun03) Eigen::Matrix API need non-const pointer.*/
-  T* input = const_cast<T*>(X);
-  auto m = Eigen::Map<
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      input, rows, cols);
-  svd.compute(m);
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> V_trans =
-      svd.matrixV().transpose();
-  memcpy(U, svd.matrixU().data(), svd.matrixU().size() * sizeof(T));
-  memcpy(VH, V_trans.data(), V_trans.size() * sizeof(T));
-  memcpy(S, svd.singularValues().data(),
-         svd.singularValues().size() * sizeof(T));
+  if (info > 0) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "DBDSDC/SBDSDC did not converge, updating process failed. May be you "
+        "passes a invalid matrix."));
+  }
 }
 
 template <typename T>
 void BatchSvd(const T* X, T* U, T* VH, T* S, int rows, int cols, int batches,
               int full = false) {
+  // NOTE: this function is row major, because this function called the lapack.
   int stride = rows * cols;
   int k = std::min(rows, cols);
   int stride_u = full ? rows * rows : k * rows;
   int stride_v = full ? cols * cols : k * cols;
   for (int i = 0; i < batches; ++i) {
-    EigenSvd<T>(X + i * stride, U + i * stride_u, VH + i * stride_v, S + i * k,
-                rows, cols, full);
+    LapackSvd<T>(X + i * stride, U + i * stride_u, VH + i * stride_v, S + i * k,
+                 rows, cols, full);
   }
   return;
 }

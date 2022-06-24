@@ -1,3 +1,6 @@
+# The apis in this file are unstandardized that may caused by a variety of reasons,
+# we are trying to fix these apis and will move standardized apis into api.yaml.
+
 - api : abs
   args : (Tensor x)
   output : Tensor
@@ -1741,7 +1744,7 @@
 
 - api : relu
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
@@ -2152,15 +2155,6 @@
   kernel :
     func : top_k
   backward : top_k_grad
-
-- api : trace
-  args : (Tensor x, int offset, int axis1, int axis2)
-  output : Tensor
-  infer_meta :
-    func : TraceInferMeta
-  kernel :
-    func : trace
-  backward : trace_grad
 
 - api : transpose
   args : (Tensor x, int[] axis)

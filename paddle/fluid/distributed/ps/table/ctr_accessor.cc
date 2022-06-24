@@ -61,8 +61,6 @@ void CtrCommonAccessor::InitAccessorInfo() {
 }
 
 bool CtrCommonAccessor::Shrink(float* value) {
-  auto base_threshold = _config.ctr_accessor_param().base_threshold();
-  auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delete_after_unseen_days =
       _config.ctr_accessor_param().delete_after_unseen_days();
   auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
@@ -171,7 +169,6 @@ void CtrCommonAccessor::UpdateStatAfterSave(float* value, int param) {
 }
 
 int32_t CtrCommonAccessor::Create(float** values, size_t num) {
-  auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
     value[common_feature_value.UnseenDaysIndex()] = 0;
@@ -245,7 +242,6 @@ int32_t CtrCommonAccessor::Merge(float** update_values,
 // second dim: field num
 int32_t CtrCommonAccessor::Update(float** update_values,
                                   const float** push_values, size_t num) {
-  auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* push_value = push_values[value_item];
@@ -330,8 +326,6 @@ std::string CtrCommonAccessor::ParseToString(const float* v, int param) {
 }
 
 int CtrCommonAccessor::ParseFromString(const std::string& str, float* value) {
-  int embedx_dim = _config.embedx_dim();
-
   _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
                               value + common_feature_value.EmbedxG2SumIndex());
   auto ret = paddle::string::str_to_float(str.data(), value);
