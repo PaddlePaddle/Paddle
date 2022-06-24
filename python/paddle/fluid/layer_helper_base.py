@@ -333,13 +333,14 @@ class LayerHelperBase(object):
                 if dtype != core.VarDesc.VarType.FP32 and \
                         dtype != core.VarDesc.VarType.FP64 and \
                         dtype != core.VarDesc.VarType.FP16 and \
-                        dtype != core.VarDesc.VarType.BF16:
+                        dtype != core.VarDesc.VarType.BF16 and \
+                        dtype != core.VarDesc.VarType.INT32:
                     raise TypeError(
                         "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
                     )
             else:
                 if not (dtype.startswith("float")
-                        or dtype in ["double", "uint16"]):
+                        or dtype in ["double", "uint16", "int32"]):
                     raise TypeError(
                         "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
                     )
