@@ -24,6 +24,14 @@ from typing import Optional, List, Callable, Dict, Any, Set
 class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
+        if attrs[0]['axis'] == 0:
+            return false
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 7000:
+            return False
         return True
 
     def sample_program_configs(self):
@@ -31,16 +39,12 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        def generate_input2():
-            return np.random.randn(32).astype(np.float32)
-
         for batch in [1, 2, 4]:
-            for shape in [[32], [batch, 32], [batch, 32, 32],
-                          [batch, 32, 16, 32]]:
+            for shape in [[batch, 1], [batch, 1, 32], [batch, 1, 16, 32]]:
                 for op_type in ["equal", "greater", "less"]:
                     for axis in [-1 if len(shape) == 1 else 1]:
                         self.dims = len(shape)
-                        dics = [{"axis": axis}]
+                        dics = [{"axis": axis}, {"in_dtype": 0, "out_dtype": 5}]
                         ops_config = [{
                             "op_type": op_type,
                             "op_inputs": {
@@ -48,9 +52,18 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                                 "Y": ["input_data2"]
                             },
                             "op_outputs": {
-                                "Out": ["output_data"]
+                                "Out": ["compare_output_data"]
                             },
                             "op_attrs": dics[0]
+                        }, {
+                            "op_type": "cast",
+                            "op_inputs": {
+                                "X": ["compare_output_data"]
+                            },
+                            "op_outputs": {
+                                "Out": ["output_data"]
+                            },
+                            "op_attrs": dics[1]
                         }]
                         ops = self.generate_op_config(ops_config)
 
@@ -62,7 +75,8 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                                 TensorConfig(
                                     data_gen=partial(generate_input, shape)),
                                 "input_data2":
-                                TensorConfig(data_gen=generate_input2)
+                                TensorConfig(
+                                    data_gen=partial(generate_input, shape))
                             },
                             outputs=["output_data"])
 
@@ -72,29 +86,45 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
         def generate_dynamic_shape(attrs):
-            if self.dims == 1:
-                self.dynamic_shape.min_input_shape = {"input_data": [4]}
-                self.dynamic_shape.max_input_shape = {"input_data": [256]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [16]}
-            elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {"input_data": [1, 32]}
-                self.dynamic_shape.max_input_shape = {"input_data": [4, 32]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [2, 32]}
-            elif self.dims == 3:
-                self.dynamic_shape.min_input_shape = {"input_data": [1, 32, 4]}
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 32, 256]
-                }
-                self.dynamic_shape.opt_input_shape = {"input_data": [2, 32, 16]}
-            elif self.dims == 4:
+            # The input.dims[1] must be equal to the weight's length.
+            if self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 32, 4, 4]
+                    "input_data1": [1, 1],
+                    "input_data2": [1, 1]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 32, 128, 256]
+                    "input_data1": [4, 1],
+                    "input_data2": [4, 1]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data": [2, 32, 32, 16]
+                    "input_data1": [2, 1],
+                    "input_data2": [2, 1]
+                }
+            elif self.dims == 3:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data1": [1, 1, 4],
+                    "input_data2": [1, 1, 4]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data1": [4, 1, 256],
+                    "input_data2": [1, 1, 256]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data1": [2, 1, 16],
+                    "input_data2": [2, 1, 16]
+                }
+            elif self.dims == 4:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data1": [1, 1, 4, 4],
+                    "input_data2": [1, 1, 4, 4]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data1": [4, 1, 128, 256],
+                    "input_data2": [4, 1, 128, 256]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data1": [2, 1, 32, 16],
+                    "input_data2": [2, 1, 32, 16]
                 }
 
         def clear_dynamic_shape():
