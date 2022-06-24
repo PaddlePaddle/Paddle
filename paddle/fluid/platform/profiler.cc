@@ -296,17 +296,6 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
       dtypes[input_name] = shape_ctx.GetInputsVarType(input_name);
     }
   }
-
-  const std::vector<std::string> *callstack_ptr = nullptr;
-  std::vector<std::string> callstack;
-  auto iter = attrs.find(
-      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
-  if (iter != attrs.end()) {
-    callstack_ptr = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
-    callstack = *callstack_ptr;
-  }
-  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
-      PosixInNsec(), type, input_shapes, dtypes, callstack);
 }
 
 RecordMemEvent::RecordMemEvent(const void *ptr,
@@ -483,24 +472,6 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
     return;
   }
   std::lock_guard<std::mutex> guard(mtx_);
-  if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
-    HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
-        PosixInNsec(),
-        reinterpret_cast<uint64_t>(ptr),
-        type,
-        -size,
-        place,
-        current_allocated,
-        current_reserved,
-        peak_allocated,
-        peak_reserved);
-    return;
-  }
-  if (type == TracerMemEventType::ReservedFree) {
-    // old profiler only analyse memory managed by paddle.
-    return;
-  }
-  if (g_state == ProfilerState::kDisabled) return;
   auto &events = address_memevent_[place];
   auto iter = events.find(ptr);
   // The ptr maybe not in address_memevent
