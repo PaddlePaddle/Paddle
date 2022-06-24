@@ -591,9 +591,9 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
 
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
                      PyObject* args,
-                     std::map<ssize_t, ssize_t> inplace_var_idx_map) {
+                     const std::map<ssize_t, ssize_t>& inplace_var_idx_map) {
   if (!inplace_var_idx_map.empty() && inplace_var_idx_map.count(0)) {
-    return ToPyObject(args, inplace_var_idx_map[0]);
+    return ToPyObject(args, inplace_var_idx_map.at(0));
   } else {
     return ToPyObject(value);
   }
