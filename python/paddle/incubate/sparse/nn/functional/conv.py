@@ -84,6 +84,7 @@ def conv3d(x,
            padding=0,
            dilation=1,
            groups=1,
+           key=None,
            data_format="NDHWC",
            name=None):
     r"""
@@ -188,7 +189,7 @@ def conv3d(x,
               # (1, 1, 1, 2, 1)
     """
     return _conv3d(x, weight, bias, stride, padding, dilation, groups, False,
-                   None, data_format, name)
+                   key, data_format, name)
 
 
 def subm_conv3d(x,

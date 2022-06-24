@@ -67,9 +67,7 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
   // 1. product rulebook
-  DenseTensorMeta counter_meta(
-      DataType::INT32, {kernel_size}, DataLayout::NCHW);
-  DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
+  std::vector<int> counter_per_kernel(kernel_size, 0);
 
   // DenseTensor* rulebook = nullptr;
   const IntT* rulebook_ptr = nullptr;
@@ -80,11 +78,7 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
   if (subm && table != nullptr) {
     const DenseTensor& rulebook = table->first;
     rulebook_ptr = rulebook.data<IntT>();
-    // DenseTensor out_rulebook = phi::EmptyLike<IntT>(dev_ctx, x.rulebook());
-    // phi::Copy(dev_ctx, x.rulebook(), dev_ctx.GetPlace(), false,
-    // &out_rulebook); out->SetRulebook(out_rulebook);
     out->SetTablePtr(x.GetTablePtr());
-    // rulebook = out->mutable_rulebook();
     n = rulebook.dims()[1];
 
     DenseTensor out_indices =
@@ -93,7 +87,9 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
     phi::Copy(
         dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
     out->SetMember(out_indices, out_values, out_dims, true);
-    // out->SetSubm(subm);
+    memcpy(counter_per_kernel.data(),
+           table->second.data(),
+           kernel_size * sizeof(int));
   } else {
     DenseTensor rulebook;
     ProductRuleBook<T, CPUContext, IntT>(dev_ctx,
@@ -110,9 +106,12 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
     UpdateRulebookAndOutIndex<T, CPUContext, IntT>(
         dev_ctx, x, kernel_size, out_channels, out_dims, &rulebook, out);
     n = rulebook.dims()[1];
+    out->SetTablePtr(x.GetTablePtr());
+    out->SetTable(key, std::make_pair(rulebook, counter_per_kernel));
+    rulebook_ptr = rulebook.data<IntT>();
   }
   // int n = rulebook->dims()[1];
-  const int* counter_ptr = counter_per_kernel.data<int>();
+  const int* counter_ptr = counter_per_kernel.data();
 
   // 2. gather
   DenseTensorMeta in_features_meta(

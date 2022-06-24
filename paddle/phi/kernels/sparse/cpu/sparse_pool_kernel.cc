@@ -47,9 +47,11 @@ void MaxPoolCPUKernel(const CPUContext& dev_ctx,
       x_dims, real_kernel_sizes, paddings, dilations, strides, &out_dims);
   const int in_channels = real_kernel_sizes[3];
 
-  DenseTensorMeta counter_meta(
-      DataType::INT32, {kernel_size}, DataLayout::NCHW);
-  DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
+  // DenseTensorMeta counter_meta(
+  //     DataType::INT32, {kernel_size}, DataLayout::NCHW);
+  // DenseTensor counter_per_kernel = phi::Empty(dev_ctx,
+  // std::move(counter_meta));
+  std::vector<int> counter_per_kernel(kernel_size, 0);
 
   const T* in_features_ptr = x.non_zero_elements().data<T>();
   // 1. product rule book
@@ -69,7 +71,7 @@ void MaxPoolCPUKernel(const CPUContext& dev_ctx,
 
   int rulebook_len = rulebook->dims()[1];
   const IntT* rulebook_ptr = rulebook->data<IntT>();
-  const int* counter_ptr = counter_per_kernel.data<int>();
+  const int* counter_ptr = counter_per_kernel.data();
 
   std::vector<int> offsets(kernel_size + 1);
   phi::funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);

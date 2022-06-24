@@ -100,20 +100,10 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
                         &x_grad_indices);
   x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
 
-  std::vector<IntT> offsets(kernel_size + 1), counter(kernel_size, 0),
-      h_counter(rulebook_len, 0);
-  // phi::backends::gpu::GpuMemcpyAsync(&h_counter[0],
-  //                                    rulebook_ptr,
-  //                                    rulebook_len * sizeof(IntT),
-  //                                    gpuMemcpyDeviceToHost,
-  //                                    dev_ctx.stream());
-  // dev_ctx.Wait();
+  std::vector<int> offsets(kernel_size + 1);
+  const auto& counter = table->second;
 
-  // for (int i = 0; i < rulebook_len; i++) {
-  //   counter[h_counter[i]] += 1;
-  // }
-  memcpy(counter.data(), table->second.data(), kernel_size * sizeof(int));
-  IntT offset = 0, max_count = 0;
+  int offset = 0, max_count = 0;
   for (int i = 0; i < kernel_size; i++) {
     offsets[i] = offset;
     offset += counter[i];

@@ -77,7 +77,6 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
 
   int n = 0;
-  // DenseTensor* rulebook = nullptr;
   const IntT* rulebook_ptr = nullptr;
   PADDLE_ENFORCE_EQ(
       key.empty(),
@@ -90,11 +89,6 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
     memcpy(h_counter.data(), table->second.data(), kernel_size * sizeof(int));
     out->SetTablePtr(x.GetTablePtr());
 
-    clock_t t0 = clock();
-    // DenseTensor out_rulebook = phi::EmptyLike<IntT>(dev_ctx, x.rulebook());
-    // phi::Copy(dev_ctx, x.rulebook(), dev_ctx.GetPlace(), false,
-    // &out_rulebook); out->SetRulebook(out_rulebook); rulebook =
-    // out->mutable_rulebook();
     n = rulebook.dims()[1];
 
     DenseTensor out_indices =
@@ -103,39 +97,14 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
     phi::Copy(
         dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
     out->SetMember(out_indices, out_values, out_dims, true);
-    // out->SetSubm(subm);
-    // const IntT* rulebook_ptr = rulebook->data<IntT>();
-    // std::vector<IntT> counter(n, 0);
-    // clock_t t1 = clock();
-    // phi::backends::gpu::GpuMemcpyAsync(&counter[0],
-    //                                    rulebook_ptr,
-    //                                    n * sizeof(IntT),
-    //                                    gpuMemcpyDeviceToHost,
-    //                                    dev_ctx.stream());
-    // dev_ctx.Wait();
-    // clock_t t2 = clock();
-    // for (int i = 0; i < n; i++) {
-    //   PADDLE_ENFORCE_LT(counter[i],
-    //                     kernel_size,
-    //                     phi::errors::Fatal("the kernel index must less than
-    //                     kernel_size"));
-    //   h_counter[counter[i]] += 1;
-    // }
     IntT offset = 0;
     for (int i = 0; i < kernel_size; i++) {
       offsets[i] = offset;
       offset += h_counter[i];
     }
     offsets[kernel_size] = offset;
-    // clock_t t3 = clock();
-    // auto f = [](clock_t start, clock_t end) -> float{
-    //     return (float)(end-start)/CLOCKS_PER_SEC;
-    // };
-    // printf("%f %f %f\n",  f(t0, t1), f(t1, t2), f(t2, t3));
   } else {
     DenseTensor rulebook;
-    // rulebook = &empty_rulebook;
-    // rulebook = out->mutable_rulebook();
     n = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,
                                              x,
                                              kernel_sizes,
@@ -152,15 +121,10 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
                                              out,
                                              &h_counter,
                                              &offsets);
-    // out->SetSubm(subm);
     out->SetTablePtr(x.GetTablePtr());
     out->SetTable(key, std::make_pair(rulebook, h_counter));
     rulebook_ptr = rulebook.data<IntT>();
   }
-
-  // const int* counter_ptr = counter_per_kernel.data<int>();
-  // const int* offsets_ptr = counter_per_kernel.data<int>();
-  /// const IntT* rulebook_ptr = rulebook->data<IntT>();
 
   // 2. gather
   DenseTensorMeta in_features_meta(
