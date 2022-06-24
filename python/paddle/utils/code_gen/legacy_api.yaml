@@ -1779,7 +1779,7 @@
 
 - api : relu
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
@@ -1852,7 +1852,7 @@
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
