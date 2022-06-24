@@ -2941,8 +2941,7 @@ def batch_norm(input,
     assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('batch_norm', **locals())
 
-    check_variable_and_dtype(input, 'input',
-                             ['float16', 'float32', 'float64', 'int32'],
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'batch_norm')
     dtype = helper.input_dtype()
 

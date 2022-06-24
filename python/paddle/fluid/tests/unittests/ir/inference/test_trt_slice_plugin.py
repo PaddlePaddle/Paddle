@@ -122,7 +122,8 @@ class SlicePluginTRTTestInt32(SlicePluginTRTTest):
                                            axes=axes,
                                            starts=starts,
                                            ends=ends)
-            out = fluid.layers.batch_norm(slice_out, is_test=True)
+            cast_out = fluid.layers.cast(slice_out, 'float32')
+            out = fluid.layers.batch_norm(cast_out, is_test=True)
 
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("int32"),
@@ -149,7 +150,8 @@ class StaticSlicePluginTRTTestInt32(SlicePluginTRTTest):
                                            axes=axes,
                                            starts=starts,
                                            ends=ends)
-            out = fluid.layers.batch_norm(slice_out, is_test=True)
+            cast_out = fluid.layers.cast(slice_out, 'float32')
+            out = fluid.layers.batch_norm(cast_out, is_test=True)
 
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("int32"),
