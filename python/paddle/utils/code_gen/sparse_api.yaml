@@ -168,3 +168,12 @@
     layout : x
   intermediate : rulebook
   backward : sparse_maxpool_grad
+
+- api: mv
+  args : (Tensor x, Tensor vec)
+  output : Tensor(out)
+  kernel :
+    func : mv_coo{sparse_coo, dense -> dense},
+           mv_csr{sparse_csr, dense -> dense}
+    layout : x
+  backward: mv_grad
