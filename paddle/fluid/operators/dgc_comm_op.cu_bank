@@ -26,14 +26,16 @@ class DGCCommOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto x = ctx.Input<phi::DenseTensor>("X");
+    auto grad = ctx.Input<phi::DenseTensor>("Grad");
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    auto gather_out = ctx.Output<phi::DenseTensor>("Gather_Out");
-
+    out->mutable_data<T>(grad->dims(), ctx.GetPlace());
+    
     auto place = ctx.GetPlace();
+
     const int ring_id = ctx.Attr<int>("ring_id");
     const int nranks = ctx.Attr<int>("nranks");
     const int k = ctx.Attr<int>("k_var");
-    const int out_numel = static_cast<int>(out->numel());
+    const int out_numel = static_cast<int>(grad->numel());
 
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
     auto& dev_ctx =
@@ -42,18 +44,27 @@ class DGCCommOpCUDAKernel : public framework::OpKernel<T> {
     ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
-    const T* x_buff = x->data<T>();
-    T* gather_buff = gather_out->data<T>();
+    framework::Tensor gather_res;
+    gather_res.mutable_data<T>({2 * k * nranks}, place);
 
+    const T* x_buff = x->data<T>();
+    T* gather_buff = gather_res.data<T>();
+    
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
         x_buff, gather_buff, static_cast<int64_t>(2 * k),
         static_cast<ncclDataType_t>(dtype), comm->comm(), stream));
 
+    LOG(INFO) << "=========gagagagagaga=============" << gather_res;
+    LOG(INFO) << "=========ooooooooooo==============" << *out;
     PADDLE_ENFORCE_EQ(
         paddle::communication::dgc::sparseReduce(
-            static_cast<void*>(gather_buff), k, out->data<T>(), out_numel,
-            nranks, stream),
+            static_cast<void*>(gather_buff), k, out->data<T>(), out_numel, nranks,
+            stream),
         true, platform::errors::Unavailable("Calling sparseReduce() failed."));
+
+    //memory::Copy(ctx.GetPlace(), rawgrad_out->data<T>(),
+    //             ctx.GetPlace(),  grad_out->data<T>(),
+    //             grad_out->numel(), stream);
   }
 };
 

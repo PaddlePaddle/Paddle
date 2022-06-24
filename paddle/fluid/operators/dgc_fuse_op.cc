@@ -27,17 +27,21 @@ class DGCFuseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("U"), "Input", "U", "DGCOp");
-    OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "DGCOp");
-    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "DGCOp");
-    // OP_INOUT_CHECK(ctx->HasInput("RawGrad"), "Input", "RawGrad", "DGCOp");
-    OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasInput("U"), "Input", "U", "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "DGCFuseOp");
     OP_INOUT_CHECK(ctx->HasInput("current_step"), "Input", "current_step",
-                   "DGCOp");
-    OP_INOUT_CHECK(ctx->HasInput("nranks"), "Input", "nranks", "DGCOp");
+                   "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasInput("nranks"), "Input", "nranks", "DGCFuseOp");
 
-    OP_INOUT_CHECK(ctx->HasOutput("U_out"), "Output", "U_out", "DGCOp");
-    OP_INOUT_CHECK(ctx->HasOutput("V_out"), "Output", "V_out", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasOutput("U_out"), "Output", "U_out", "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasOutput("V_out"), "Output", "V_out", "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasOutput("k"), "Output", "k", "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasOutput("EncodeGrad"), "Output", "EncodeGrad",
+                   "DGCFuseOp");
+    OP_INOUT_CHECK(ctx->HasOutput("GatherBuff"), "Output", "GatherBuff",
+                   "DGCFuseOp");
   }
 
  protected:
@@ -57,17 +61,19 @@ class DGCFuseOp : public framework::OperatorWithKernel {
 class DGCFuseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("U", "(Tensor) U velocity tensor of DGC");
-    AddInput("V", "(Tensor) V velocity tensor of DGC");
+    AddInput("U", "(Tensor) U velocity tensor of DGCFuse");
+    AddInput("V", "(Tensor) V velocity tensor of DGCFuse");
     AddInput("Grad", "(Tensor) Input gradient");
-    // AddInput("RawGrad", "(Tensor) Input gradient");
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("current_step", "(Tensor) Current step.");
     AddInput("nranks", "(Tensor) nranks.");
 
-    AddOutput("U_out", "(Tensor) Output U velocity of DGC");
-    AddOutput("V_out", "(Tensor) Output V velocity of DGC");
-    AddOutput("Out", "(Tensor) Output of DGC");
+    AddOutput("U_out", "(Tensor) Output U velocity of DGCFuse");
+    AddOutput("V_out", "(Tensor) Output V velocity of DGCFuse");
+    AddOutput("EncodeGrad", "(Tensor) Output encoded gradient");
+    AddOutput("Grad_out", "(Tensor) Output grad gradient");
+    AddOutput("k", "(Tensor) Output top-k value");
+    AddOutput("GatherBuff", "(Tensor) Gather buffer");
 
     AddAttr<float>("m",
                    "(float, 0.9) "
@@ -107,6 +113,11 @@ class DGCFuseOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The group id")
         .SetDefault(0);
 
+    AddAttr<bool>("is_use_dgc",
+                  "(bool, false)"
+                  "whether use dgc.")
+        .SetDefault(false);
+
     AddComment(R"DOC(
     Original paper is https://arxiv.org/abs/1712.01887
 
@@ -133,8 +144,6 @@ class DGCFuseOpMaker : public framework::OpProtoAndCheckerMaker {
 )DOC");
   }
 };
-
-// DECLARE_INPLACE_OP_INFERER(DGCFuseOpInplaceInferer, {"Grad", "Out"});
 
 }  // namespace operators
 }  // namespace paddle

@@ -40,8 +40,8 @@ class DGCWaitCommOpCUDAKernel : public framework::OpKernel<T> {
     auto comm_stream =
         platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
 
-    auto event =
-        platform::NCCLCommContext::Instance().Get(ring_id, place)->comm_event();
+    cudaEvent_t event;
+    cudaEventCreateWithFlags(&event, cudaEventDisableTiming);
 
 // comm_stream-->event-->compute_stream
 #ifdef PADDLE_WITH_HIP
@@ -51,6 +51,7 @@ class DGCWaitCommOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, comm_stream));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(compute_stream, event, 0));
 #endif
+    cudaEventDestroy(event);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));

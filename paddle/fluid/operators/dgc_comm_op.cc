@@ -20,7 +20,9 @@ class DGCCommOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "DGCCommOp");
-    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "DGCCommOp");
+
+    OP_INOUT_CHECK(ctx->HasOutput("Gather_Out"), "Output", "Gather_Out",
+                   "DGCCommOp");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "DGCCommOp");
 
     int ring_id = ctx->Attrs().Get<int>("ring_id");
@@ -49,14 +51,13 @@ class DGCCommOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor) encoded grad with 2 * k value in dgc. ");
-    AddInput("Grad", "(Tensor) encoded grad with 2 * k value in dgc. ");
-
     AddAttr<int>("nranks",
                  "(int) the number of trainers which must be more than 1.");
     AddAttr<int>("k_var", "(int) the number of values of sparse grad. ");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
 
+    AddOutput("Gather_Out", "(Tensor) the gather result of dgc comm op.");
     AddOutput("Out", "(Tensor) the result of dgc comm op.");
     AddComment(R"DOC(
 DGC Comm Operator
@@ -65,15 +66,12 @@ use allgather comm op to compute the grad reduce in dgc.
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(DgcCommInplaceInferer, {"Grad", "Out"});
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OPERATOR(dgc_comm, ops::DGCCommOp, ops::DGCCommOpMaker,
-                  ops::DgcCommInplaceInferer)
+REGISTER_OPERATOR(dgc_comm, ops::DGCCommOp, ops::DGCCommOpMaker)
 
 REGISTER_OP_CPU_KERNEL(
     dgc_comm,
