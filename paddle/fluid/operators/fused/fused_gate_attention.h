@@ -68,7 +68,7 @@ struct GateAttentionConfig {
   int64_t seq_len_r;
   int64_t q_dim;
   int64_t kv_dim;
-  int64_t key_dim;
+  int64_t head_dim;
   int64_t m_size;
   int64_t num_heads;
 
@@ -103,15 +103,15 @@ struct GateAttentionConfig {
                                      "when merge_qkv is true."));
 
       // When q_dim == kv_dim, QKV matmul can be computed merged.
-      // qkv_weight: shape=[3, num_heads, key_dim, q_dim]
+      // qkv_weight: shape=[3, num_heads, head_dim, q_dim]
       num_heads = qkv_weight->dims()[1];
-      key_dim = qkv_weight->dims()[2];
+      head_dim = qkv_weight->dims()[2];
       m_size = seq_len_r;
       kv_dim = q_dim;
 
-      qkv_out_dims = {batch_size, seq_len_m, seq_len_r, 3, num_heads, key_dim};
+      qkv_out_dims = {batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim};
       qkv_transpose_out_dims = {3,         batch_size, seq_len_m,
-                                num_heads, seq_len_r,  key_dim};
+                                num_heads, seq_len_r,  head_dim};
     } else {
       PADDLE_ENFORCE_NOT_NULL(
           key,
@@ -124,28 +124,28 @@ struct GateAttentionConfig {
 
       // When q_dim != kv_dim, QKV matmul must be computed saparately.
       // key: shape=[batch_size, seq_len_m, m_size, kv_dim]
-      // query_w: shape=[q_dim, num_heads, key_dim]
+      // query_w: shape=[q_dim, num_heads, head_dim]
       num_heads = query_weight->dims()[1];
-      key_dim = query_weight->dims()[2];
+      head_dim = query_weight->dims()[2];
       m_size = key->dims()[2];
       kv_dim = key->dims()[3];
 
-      q_out_dims = {batch_size, seq_len_m, seq_len_r, num_heads, key_dim};
-      kv_out_dims = {batch_size, seq_len_m, m_size, num_heads, key_dim};
+      q_out_dims = {batch_size, seq_len_m, seq_len_r, num_heads, head_dim};
+      kv_out_dims = {batch_size, seq_len_m, m_size, num_heads, head_dim};
       q_transpose_out_dims = {batch_size, seq_len_m, num_heads, seq_len_r,
-                              key_dim};
+                              head_dim};
       kv_transpose_out_dims = {batch_size, seq_len_m, num_heads, m_size,
-                               key_dim};
+                               head_dim};
     }
 
     qk_out_dims = {batch_size, seq_len_m, num_heads, seq_len_r, m_size};
     softmax_out_dims = {batch_size, seq_len_m, num_heads, seq_len_r, m_size};
-    qktv_out_dims = {batch_size, seq_len_m, num_heads, seq_len_r, key_dim};
-    gate_out_dims = {batch_size, seq_len_m, seq_len_r, num_heads, key_dim};
+    qktv_out_dims = {batch_size, seq_len_m, num_heads, seq_len_r, head_dim};
+    gate_out_dims = {batch_size, seq_len_m, seq_len_r, num_heads, head_dim};
   }
 
   int64_t GetQuerySize() const {
-    return batch_size * seq_len_m * seq_len_r * num_heads * key_dim;
+    return batch_size * seq_len_m * seq_len_r * num_heads * head_dim;
   }
 
   Tensor* GetQKVOut() {
@@ -365,8 +365,8 @@ class FMHAGateRef {
     }
 
     // qk_out = BatchedGEMM(Q, K^T)
-    // [batch_size, seq_len_m, num_heads, seq_len_r, key_dim] *
-    //                [batch_size, seq_len_m, num_heads, m_size, key_dim]
+    // [batch_size, seq_len_m, num_heads, seq_len_r, head_dim] *
+    //                [batch_size, seq_len_m, num_heads, m_size, head_dim]
     // -> [batch_size, seq_len_m, num_heads, seq_len_r, m_size]
     Tensor* qk_out = config->GetQKOut(softmax_out);
     T* qk_out_ptr = qk_out->data<T>();
@@ -375,9 +375,9 @@ class FMHAGateRef {
         config->batch_size * config->seq_len_m * config->num_heads;
     int64_t gemm_m = config->seq_len_r;
     int64_t gemm_n = config->m_size;
-    int64_t gemm_k = config->key_dim;
+    int64_t gemm_k = config->head_dim;
 
-    T alpha = static_cast<T>(1.0 / sqrt(config->key_dim));
+    T alpha = static_cast<T>(1.0 / sqrt(config->head_dim));
     ComputeBatchedGEMM(q_ptr, k_ptr, qk_out_ptr, false, true, gemm_m, gemm_n,
                        gemm_k, gemm_batch_size, alpha);
 
@@ -388,13 +388,13 @@ class FMHAGateRef {
 
     // qktv_out = BatchedGEMM(softmax_out, V)
     // [batch_size, seq_len_m, num_heads, seq_len_r, m_size] *
-    //               [batch_size, seq_len_m, num_heads, m_size, key_dim]
-    // -> [batch_size, seq_len_m, num_heads, seq_len_r, key_dim]
+    //               [batch_size, seq_len_m, num_heads, m_size, head_dim]
+    // -> [batch_size, seq_len_m, num_heads, seq_len_r, head_dim]
     Tensor* qktv_out = config->GetQKTVOut(gate_out);
     T* qktv_out_ptr = qktv_out->data<T>();
 
     gemm_m = config->seq_len_r;
-    gemm_n = config->key_dim;
+    gemm_n = config->head_dim;
     gemm_k = config->m_size;
 
     T* softmax_out_ptr = softmax_out->data<T>();
@@ -490,7 +490,7 @@ class FMHAGateRef {
       // Backward:
       //  V_grad = BatchedGEMM(softmax_out^T, qktv_out_grad) (dy = x^T * dout)
       int64_t gemm_m = config->m_size;
-      int64_t gemm_n = config->key_dim;
+      int64_t gemm_n = config->head_dim;
       int64_t gemm_k = config->seq_len_r;
 
       const T* softmax_out_ptr = softmax_out->data<T>();
@@ -501,7 +501,7 @@ class FMHAGateRef {
       // Backward: softmax_out_grad = qktv_out_grad * V^T (dx = dout * y^T)
       gemm_m = config->seq_len_r;
       gemm_n = config->m_size;
-      gemm_k = config->key_dim;
+      gemm_k = config->head_dim;
 
       T* softmax_out_grad_ptr = softmax_out_grad.data<T>();
       ComputeBatchedGEMM(qktv_out_grad_ptr, v_ptr, softmax_out_grad_ptr, false,
@@ -516,9 +516,9 @@ class FMHAGateRef {
     // Forward: qk_out = BatchedGEMM(Q, K^T)
     // Backward: k_grad = BatchedGEMM(qk_out_grad^T, Q) (dy = dout^t * x)
     int64_t gemm_m = config->m_size;
-    int64_t gemm_n = config->key_dim;
+    int64_t gemm_n = config->head_dim;
     int64_t gemm_k = config->seq_len_r;
-    T alpha = static_cast<T>(1.0 / sqrt(config->key_dim));
+    T alpha = static_cast<T>(1.0 / sqrt(config->head_dim));
 
     T* qk_out_grad_ptr = qk_out_grad->data<T>();
     ComputeBatchedGEMM(qk_out_grad_ptr, q_ptr, k_grad_ptr, true, false, gemm_m,
@@ -526,7 +526,7 @@ class FMHAGateRef {
 
     // Backward: q_grad = BatchedGEMM(qk_out_grad, K) (dx = dout * y)
     gemm_m = config->seq_len_r;
-    gemm_n = config->key_dim;
+    gemm_n = config->head_dim;
     gemm_k = config->m_size;
     ComputeBatchedGEMM(qk_out_grad_ptr, k_ptr, q_grad_ptr, false, false, gemm_m,
                        gemm_n, gemm_k, gemm_batch_size, alpha);
@@ -570,8 +570,8 @@ class FMHAGateRef {
                                 v_out_grad);
   }
 
-  // [batch_size, seq_len_m, seq_len_r, 3, num_heads, key_dim] ->
-  //         [3, batch_size, seq_len_m, num_heads, seq_len_r, key_dim]
+  // [batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim] ->
+  //         [3, batch_size, seq_len_m, num_heads, seq_len_r, head_dim]
   void ComputeQKVTransposeForward(const Tensor& qkv_out,
                                   Tensor* qkv_transpose_out) {
     int ndims = 6;
@@ -610,7 +610,7 @@ class FMHAGateRef {
                                      const Tensor* src_mask, Tensor* qk_out,
                                      Tensor* softmax_out) {
     if (nonbatched_bias) {
-      std::vector<const Tensor*> ins = {qk_out, nonbatched_bias, src_mask};
+      std::vector<const Tensor*> ins = {qk_out, src_mask, nonbatched_bias};
       std::vector<Tensor*> outs = {qk_out};
       phi::funcs::BroadcastKernel<phi::ElementwiseType::kTernary, T, T>(
           dev_ctx_, ins, &outs, -1, TernaryAddFunctor<T>());

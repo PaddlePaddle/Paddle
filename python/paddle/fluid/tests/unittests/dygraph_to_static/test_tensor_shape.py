@@ -409,9 +409,9 @@ class TestTensorShapeInIf2(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_with_if_2
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 14
-        self.expected_shape_op_num = 2
-        self.expected_slice_op_num = 1
+        self.expected_op_num = 2
+        self.expected_shape_op_num = 0
+        self.expected_slice_op_num = 0
 
 
 # 3. Tests with control flow for loop
@@ -421,9 +421,9 @@ class TestTensorShapeInFor1(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_with_for_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 22
-        self.expected_shape_op_num = 3
-        self.expected_slice_op_num = 3
+        self.expected_op_num = 7
+        self.expected_shape_op_num = 0
+        self.expected_slice_op_num = 0
 
 
 class TestTensorShapeInFor2(TestTensorShapeInFor1):
@@ -443,9 +443,9 @@ class TestTensorShapeInFor3(TestTensorShapeInFor1):
         self.dygraph_func = dyfunc_with_for_3
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 25
-        self.expected_shape_op_num = 6
-        self.expected_slice_op_num = 3
+        self.expected_op_num = 3
+        self.expected_shape_op_num = 0
+        self.expected_slice_op_num = 0
 
 
 # 4. Tests with control flow while loop
@@ -453,6 +453,11 @@ class TestTensorShapeInWhile1(TestTensorShapeInFor1):
 
     def init_test_func(self):
         self.dygraph_func = dyfunc_with_while_1
+
+    def _set_expected_op_num(self):
+        self.expected_op_num = 4
+        self.expected_shape_op_num = 0
+        self.expected_slice_op_num = 0
 
 
 class TestTensorShapeInWhile2(TestTensorShapeInFor1):

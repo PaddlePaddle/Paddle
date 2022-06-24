@@ -84,7 +84,7 @@ cc_library(
 set(GRAPH_PATTERN_DETECTOR_DEPS graph graph_helper graph_traits)
 if(WITH_TESTING)
   set(GRAPH_PATTERN_DETECTOR_DEPS ${GRAPH_PATTERN_DETECTOR_DEPS} gtest)
-endif(WITH_TESTING)
+endif()
 cc_library(
   graph_pattern_detector
   SRCS graph_pattern_detector.cc
@@ -143,6 +143,8 @@ pass_library(delete_quant_dequant_filter_op_pass inference)
 pass_library(delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
+pass_library(delete_c_identity_op_pass inference)
+pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)

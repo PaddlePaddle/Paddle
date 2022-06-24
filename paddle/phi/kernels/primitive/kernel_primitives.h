@@ -87,3 +87,16 @@
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 #endif
+
+namespace phi {
+namespace kps {
+
+#ifdef PADDLE_WITH_XPU_KP
+// The type of index used in kernel
+using IndexType = int;
+#else
+using IndexType = int64_t;
+#endif
+
+}  // namespace kps
+}  // namespace phi
