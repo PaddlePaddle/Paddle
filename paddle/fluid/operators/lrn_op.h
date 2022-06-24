@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -68,18 +69,21 @@ class LRNKernel : public framework::OpKernel<T> {
     T beta = ctx.Attr<float>("beta");
     T k = ctx.Attr<float>("k");
 
-    PADDLE_ENFORCE_GE(alpha, 0UL, platform::errors::InvalidArgument(
-                                      "Argument(alpha) should >= 0.0, "
-                                      "but received alpha(%d) less than 0",
-                                      alpha));
-    PADDLE_ENFORCE_GE(beta, 0UL, platform::errors::InvalidArgument(
-                                     "Argument(beta) should >= 0.0, "
-                                     "but received beta(%d) less than 0",
-                                     beta));
-    PADDLE_ENFORCE_GE(k, 0UL, platform::errors::InvalidArgument(
-                                  "Argument(k) should >= 0.0, "
-                                  "but received k(%d) less than 0",
-                                  k));
+    PADDLE_ENFORCE_GE(
+        alpha, 0UL,
+        platform::errors::InvalidArgument("Argument(alpha) should >= 0.0, "
+                                          "but received alpha(%d) less than 0",
+                                          alpha));
+    PADDLE_ENFORCE_GE(
+        beta, 0UL,
+        platform::errors::InvalidArgument("Argument(beta) should >= 0.0, "
+                                          "but received beta(%d) less than 0",
+                                          beta));
+    PADDLE_ENFORCE_GE(
+        k, 0UL,
+        platform::errors::InvalidArgument("Argument(k) should >= 0.0, "
+                                          "but received k(%d) less than 0",
+                                          k));
 
     LRNFunctor<DeviceContext, T> f;
     f(ctx, x, out, mid, N, C, H, W, n, k, alpha, beta, data_layout);

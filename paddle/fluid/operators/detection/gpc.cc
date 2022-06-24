@@ -24,6 +24,7 @@
  **/
 
 #include "paddle/fluid/operators/detection/gpc.h"
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace gpc {

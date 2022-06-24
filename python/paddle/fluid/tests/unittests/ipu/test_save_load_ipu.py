@@ -14,9 +14,11 @@
 
 import tempfile
 import unittest
+from functools import partial
 
 import numpy as np
 import paddle
+import paddle.optimizer
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
@@ -24,11 +26,13 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_data_feed()
         self.set_feed_attr()
-        self.set_op_attrs()
+        self.set_attrs()
+        self.set_optimizer()
 
     def set_data_feed(self):
         data = np.random.uniform(size=[1, 3, 10, 10])
@@ -39,14 +43,15 @@ class TestBase(IPUOpTest):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
 
-    def set_op_attrs(self):
+    def set_attrs(self):
         self.attrs = {}
         self.attrs['steps'] = 100
         self.attrs['save_at_step'] = 20
-        self.attrs['is_training'] = True
-        self.attrs['opt_type'] = 'sgd'
         self.attrs['enable_fp16'] = False
         self.attrs['model_path'] = tempfile.TemporaryDirectory()
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.SGD, learning_rate=1e-1)
 
     def _test_base(self, save_otherwise_load):
         scope = paddle.static.Scope()
@@ -59,28 +64,18 @@ class TestBase(IPUOpTest):
         with paddle.fluid.unique_name.guard(generator):
             with paddle.static.scope_guard(scope):
                 with paddle.static.program_guard(main_prog, startup_prog):
-                    x = paddle.static.data(
-                        name=self.feed_list[0],
-                        shape=self.feed_shape[0],
-                        dtype='float32')
-                    conv1 = paddle.static.nn.conv2d(
-                        x,
-                        num_filters=3,
-                        filter_size=3,
-                        bias_attr=False,
-                        name='conv2d')
+                    x = paddle.static.data(name=self.feed_list[0],
+                                           shape=self.feed_shape[0],
+                                           dtype='float32')
+                    conv1 = paddle.static.nn.conv2d(x,
+                                                    num_filters=3,
+                                                    filter_size=3,
+                                                    bias_attr=False,
+                                                    name='conv2d')
                     loss = paddle.mean(conv1)
 
-                    if self.attrs['is_training']:
-                        if self.attrs['opt_type'] == 'sgd':
-                            sgd = paddle.optimizer.SGD(learning_rate=1e-2)
-                            sgd.minimize(loss)
-                        elif self.attrs['opt_type'] == 'adam':
-                            adam = paddle.optimizer.Adam(learning_rate=1e-2)
-                            adam.minimize(loss)
-                        elif self.attrs['opt_type'] == 'lamb':
-                            lamb = paddle.optimizer.Lamb(learning_rate=1e-2)
-                            lamb.minimize(loss)
+                    # apply optimizer
+                    self.optimizer().minimize(loss)
                     fetch_list = [loss.name]
 
                 place = paddle.IPUPlace()
@@ -91,8 +86,7 @@ class TestBase(IPUOpTest):
                     paddle.static.load(main_prog, self.attrs['model_path'].name)
 
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.set_graph_config(
-                    is_training=self.attrs['is_training'])
+                ipu_strategy.set_graph_config(is_training=True)
                 ipu_strategy.set_precision_config(
                     enable_fp16=self.attrs['enable_fp16'])
                 ipu_program = paddle.static.IpuCompiledProgram(
@@ -126,67 +120,134 @@ class TestBase(IPUOpTest):
         res1 = self._test_base(False)
 
         self.assertTrue(
-            np.allclose(
-                res0.flatten(), res1.flatten(), atol=self.atol))
+            np.allclose(res0.flatten(), res1.flatten(), atol=self.atol))
         self.attrs['model_path'].cleanup()
 
 
+class TestMomentum(TestBase):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.Momentum, learning_rate=1e-1)
+
+
 class TestAdam(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['steps'] = 100
-        self.attrs['save_at_step'] = 20
-        self.attrs['is_training'] = True
-        self.attrs['opt_type'] = 'adam'
-        self.attrs['enable_fp16'] = False
-        self.attrs['model_path'] = tempfile.TemporaryDirectory()
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.Adam, learning_rate=1e-1)
 
 
 class TestLamb(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['steps'] = 100
-        self.attrs['save_at_step'] = 20
-        self.attrs['is_training'] = True
-        self.attrs['opt_type'] = 'lamb'
-        self.attrs['enable_fp16'] = False
-        self.attrs['model_path'] = tempfile.TemporaryDirectory()
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.Lamb, learning_rate=1e-1)
+
+
+class TestAdamW(TestBase):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.AdamW, learning_rate=1e-1)
+
+
+class TestAdamax(TestBase):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.Adamax, learning_rate=1e-1)
+
+
+class TestAdagrad(TestBase):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.Adagrad, learning_rate=1e-1)
+
+
+class TestAdadelta(TestBase):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.Adagrad, learning_rate=1e-1)
+
+
+class TestRMSProp(TestBase):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.RMSProp, learning_rate=1e-1)
+
+
+class TestCenteredRMSProp(TestBase):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.RMSProp,
+                                 learning_rate=1e-1,
+                                 centered=True)
 
 
 @unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
 class TestSGDFP16(TestBase):
-    def set_op_attrs(self):
+
+    def set_attrs(self):
         self.attrs = {}
         self.attrs['steps'] = 100
         self.attrs['save_at_step'] = 20
-        self.attrs['is_training'] = True
-        self.attrs['opt_type'] = 'sgd'
         self.attrs['enable_fp16'] = True
         self.attrs['model_path'] = tempfile.TemporaryDirectory()
 
-
-@unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
-class TestAdamFP16(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['steps'] = 100
-        self.attrs['save_at_step'] = 20
-        self.attrs['is_training'] = True
-        self.attrs['opt_type'] = 'adam'
-        self.attrs['enable_fp16'] = True
-        self.attrs['model_path'] = tempfile.TemporaryDirectory()
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.SGD, learning_rate=1e-1)
 
 
-@unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
-class TestLambFP16(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['steps'] = 100
-        self.attrs['save_at_step'] = 20
-        self.attrs['is_training'] = True
-        self.attrs['opt_type'] = 'lamb'
-        self.attrs['enable_fp16'] = True
-        self.attrs['model_path'] = tempfile.TemporaryDirectory()
+class TestMomentumFp16(TestSGDFP16):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.Momentum, learning_rate=1e-1)
+
+
+class TestAdamFP16(TestSGDFP16):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.Adam, learning_rate=1e-1)
+
+
+class TestLambFP16(TestSGDFP16):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.Lamb, learning_rate=1e-1)
+
+
+class TestAdamWFP16FP16(TestSGDFP16):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.AdamW, learning_rate=1e-1)
+
+
+class TestAdamaxFP16(TestSGDFP16):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.Adamax, learning_rate=1e-1)
+
+
+class TestAdagradFP16(TestSGDFP16):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.Adagrad, learning_rate=1e-1)
+
+
+class TestAdadeltaFP16(TestSGDFP16):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.Adagrad, learning_rate=1e-1)
+
+
+class TestRMSPropFP16(TestSGDFP16):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.RMSProp, learning_rate=1e-1)
+
+
+class TestCenteredRMSPropFP16(TestSGDFP16):
+
+    def set_optimizer(self):
+        self.optimizer = partial(paddle.optimizer.RMSProp,
+                                 learning_rate=1e-1,
+                                 centered=True)
 
 
 if __name__ == "__main__":

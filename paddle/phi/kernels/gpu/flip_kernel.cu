@@ -115,15 +115,15 @@ void FlipKernel(const Context& dev_ctx,
                        bytes,
                        dev_ctx.stream());
 
-  flip_cuda_kernel<T><<<dim_grid, dim_block, 0, dev_ctx.stream()>>>(
-      N,
-      in_data,
-      out_data,
-      x_shape_array_gpu,
-      x_strides_array_gpu,
-      flip_dims_array_gpu,
-      flip_dims_size,
-      total_dims);
+  flip_cuda_kernel<T>
+      <<<dim_grid, dim_block, 0, dev_ctx.stream()>>>(N,
+                                                     in_data,
+                                                     out_data,
+                                                     x_shape_array_gpu,
+                                                     x_strides_array_gpu,
+                                                     flip_dims_array_gpu,
+                                                     flip_dims_size,
+                                                     total_dims);
 }
 }  // namespace phi
 

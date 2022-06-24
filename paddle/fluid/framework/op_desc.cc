@@ -202,10 +202,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
   GetInputVarPtrs(const std::string &name) const override {
     const std::vector<std::string> arg_names = Inputs(name);
-    paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
+    paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
     res.reserve(arg_names.size());
     std::transform(arg_names.begin(), arg_names.end(), std::back_inserter(res),
                    [this](const std::string &name) {
@@ -214,10 +214,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     return res;
   }
 
-  paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
   GetOutputVarPtrs(const std::string &name) const override {
     const std::vector<std::string> arg_names = Outputs(name);
-    paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
+    paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
     res.reserve(arg_names.size());
     std::transform(arg_names.begin(), arg_names.end(), std::back_inserter(res),
                    [this](const std::string &name) {
@@ -245,6 +245,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool IsRunMKLDNNKernel() const override;
 
+  proto::VarType::Type GetInputVarType(const std::string &name) const override {
+    return GetVarType(Inputs(name).at(0));
+  }
+
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string &name) const override {
     return GetVarTypes(Inputs(name));
@@ -269,6 +273,14 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                      const std::vector<DDim> &dims) override {
     auto names = Outputs(name);
     SetDims(names, dims);
+  }
+
+  const phi::ArgumentMappingFn *GetPhiArgumentMappingFn() const override {
+    return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+  }
+
+  const phi::KernelSignature *GetPhiDefaultKernelSignature() const override {
+    return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
   }
 
  protected:
@@ -483,8 +495,9 @@ bool OpDesc::HasProtoAttr(const std::string &name) const {
 
 proto::AttrType OpDesc::GetAttrType(const std::string &name) const {
   auto it = attrs_.find(name);
-  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
-                                          "Attribute %s is not found.", name));
+  PADDLE_ENFORCE_NE(
+      it, attrs_.end(),
+      platform::errors::NotFound("Attribute %s is not found.", name));
   return static_cast<proto::AttrType>(it->second.which() - 1);
 }
 
@@ -587,8 +600,9 @@ void OpDesc::SetAttrMap(
 
 Attribute OpDesc::GetAttr(const std::string &name) const {
   auto it = attrs_.find(name);
-  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
-                                          "Attribute %s is not found.", name));
+  PADDLE_ENFORCE_NE(
+      it, attrs_.end(),
+      platform::errors::NotFound("Attribute %s is not found.", name));
   return it->second;
 }
 
@@ -842,10 +856,11 @@ bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {
   if (length == 0) {
     return false;
   }
-  PADDLE_ENFORCE_EQ(length, 1UL, platform::errors::InvalidArgument(
-                                     "Input(%s) should have only one value, "
-                                     "but it has %d values now.",
-                                     name, length));
+  PADDLE_ENFORCE_EQ(
+      length, 1UL,
+      platform::errors::InvalidArgument("Input(%s) should have only one value, "
+                                        "but it has %d values now.",
+                                        name, length));
   return block_.HasVarRecursive(input_names[0]);
 }
 
@@ -858,10 +873,11 @@ bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
   if (length == 0) {
     return false;
   }
-  PADDLE_ENFORCE_EQ(length, 1UL, platform::errors::InvalidArgument(
-                                     "Output(%s) should have only one value, "
-                                     "but it has %d values now.",
-                                     name, length));
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    platform::errors::InvalidArgument(
+                        "Output(%s) should have only one value, "
+                        "but it has %d values now.",
+                        name, length));
   return block_.HasVarRecursive(output_names[0]);
 }
 

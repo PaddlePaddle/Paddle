@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include <paddle/fluid/platform/device_context.h>
+
 #include <algorithm>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
@@ -105,8 +107,8 @@ void TransQKVWithBias(const int batch, const int seq_len, const int head_size,
                       platform::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num, head_size, 1024 * 4));
-    TransposeQkvKernel<float4><<<grid, block, 0, stream>>>(h, input4, bias4,
-                                                           output4);
+    TransposeQkvKernel<float4>
+        <<<grid, block, 0, stream>>>(h, input4, bias4, output4);
   } else if (head_size % 2 == 0 && scratch_size % 2 == 0) {
     const int h = head_size / 2;
     const float2 *input2 = reinterpret_cast<const float2 *>(input);
@@ -118,8 +120,8 @@ void TransQKVWithBias(const int batch, const int seq_len, const int head_size,
                       platform::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num, head_size, 1024 * 2));
-    TransposeQkvKernel<float2><<<grid, block, 0, stream>>>(h, input2, bias2,
-                                                           output2);
+    TransposeQkvKernel<float2>
+        <<<grid, block, 0, stream>>>(h, input2, bias2, output2);
   } else {
     const dim3 block(head_size, head_num, 1);
     // limit head_size * head_num to max block size(1024).
@@ -127,8 +129,8 @@ void TransQKVWithBias(const int batch, const int seq_len, const int head_size,
                       platform::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num, head_size, 1024));
-    TransposeQkvKernel<float><<<grid, block, 0, stream>>>(head_size, input,
-                                                          bias, output);
+    TransposeQkvKernel<float>
+        <<<grid, block, 0, stream>>>(head_size, input, bias, output);
   }
 }
 

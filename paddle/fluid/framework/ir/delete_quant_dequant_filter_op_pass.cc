@@ -45,6 +45,10 @@ DeleteQuantDequantFilterOpPass::DeleteQuantDequantFilterOpPass() {
       .End()
       .AddAttr("bit_length")
       .IsIntIn({8, 16})
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
+      .IsIntIn({0, 1})
       .End();
   AddOpCompat(OpCompat("fake_channel_wise_quantize_dequantize_abs_max"))
       .AddInput("X")
@@ -60,6 +64,10 @@ DeleteQuantDequantFilterOpPass::DeleteQuantDequantFilterOpPass() {
       .IsIntIn({8, 16})
       .End()
       .AddAttr("quant_axis")
+      .IsIntIn({0, 1})
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
       .IsIntIn({0, 1})
       .End();
 }
@@ -102,9 +110,10 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
         break;
       }
     }
-    PADDLE_ENFORCE_GT(arg_name.size(), 0, platform::errors::InvalidArgument(
-                                              "can not find the input %s.",
-                                              quant_dequant_op_out_name));
+    PADDLE_ENFORCE_GT(
+        arg_name.size(), 0,
+        platform::errors::InvalidArgument("can not find the input %s.",
+                                          quant_dequant_op_out_name));
     // any_op2_desc->SetAttr("enable_int8", true);
     any_op2_desc->SetAttr("bit_length", bit_length);
 

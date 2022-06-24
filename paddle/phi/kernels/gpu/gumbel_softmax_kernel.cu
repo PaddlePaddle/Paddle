@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gumbel_softmax_kernel.h"
-#include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -27,12 +27,9 @@
 namespace cub = hipcub;
 #endif
 
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
-#include <thrust/random.h>
-#include <thrust/transform.h>
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -108,14 +105,14 @@ struct OneHotGenerator<GPUContext, T> {
     ctx.template Alloc<T>(&input_tensor);
     paddle::framework::TensorCopy(*out, ctx.GetPlace(), &input_tensor);
     funcs::set_constant(ctx, out, 0.0);
-    OneHotCUDAKernel<T,
-                     thread_size><<<block_size, thread_size, 0, ctx.stream()>>>(
-        height,
-        size_from_axis / size_out_axis,
-        size_out_axis,
-        std::numeric_limits<T>::lowest(),
-        input_tensor.data<T>(),
-        out->data<T>());
+    OneHotCUDAKernel<T, thread_size>
+        <<<block_size, thread_size, 0, ctx.stream()>>>(
+            height,
+            size_from_axis / size_out_axis,
+            size_out_axis,
+            std::numeric_limits<T>::lowest(),
+            input_tensor.data<T>(),
+            out->data<T>());
   }
 };
 
@@ -144,27 +141,21 @@ struct GumbleNoiseGenerator<GPUContext, T> {
     DenseTensor random_tensor;
     int64_t size = size_to_axis * size_from_axis;
     random_tensor.Resize(make_ddim({size}));
-    auto* random_data = ctx.template Alloc<T>(&random_tensor);
-    thrust::counting_iterator<int64_t> index_sequence_begin(0);
+    T* random_data = ctx.template Alloc<T>(&random_tensor);
 
     // generate gumbel noise
     int device_id = ctx.GetPlace().GetDeviceId();
-    auto gen_cuda = paddle::framework::GetDefaultCUDAGenerator(device_id);
-    if (gen_cuda->GetIsInitPy()) {
-      auto seed_offset = gen_cuda->IncrementOffset(1);
-      int64_t gen_offset = size * seed_offset.second;
-      thrust::transform(
-          index_sequence_begin,
-          index_sequence_begin + size,
-          thrust::device_ptr<T>(random_data),
-          UniformCUDAGenerator<T>(0.00001, 1, seed_offset.first, gen_offset));
-    } else {
-      const unsigned int seed = std::random_device()();
-      thrust::transform(index_sequence_begin,
-                        index_sequence_begin + size,
-                        thrust::device_ptr<T>(random_data),
-                        UniformCUDAGenerator<T>(0.00001, 1, seed));
-    }
+    auto gen_cuda = ctx.GetGenerator();
+
+    auto seed_offset = gen_cuda->IncrementOffset(1);
+    uint64_t seed = seed_offset.first;
+    uint64_t offset = seed_offset.second;
+
+    thrust::counting_iterator<int64_t> index_sequence_begin(0);
+    thrust::transform(index_sequence_begin,
+                      index_sequence_begin + size,
+                      thrust::device_ptr<T>(random_data),
+                      UniformCUDAGenerator<T>(0.00001, 1, seed, size * offset));
 
     // add gumbel noise to X
     const int thread_size = 512;

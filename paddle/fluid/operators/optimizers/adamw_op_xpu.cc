@@ -205,8 +205,9 @@ class AdamwOpXPUKernel : public framework::OpKernel<T> {
         }
       }
     } else {
-      PADDLE_ENFORCE_EQ(1, 2, platform::errors::InvalidArgument(
-                                  "Variable type not supported by adamw_op"));
+      PADDLE_ENFORCE_EQ(1, 2,
+                        platform::errors::InvalidArgument(
+                            "Variable type not supported by adamw_op"));
     }
   }
 };

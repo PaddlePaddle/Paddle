@@ -18,8 +18,10 @@ limitations under the License. */
 #include "paddle/phi/kernels/cholesky_kernel.h"
 
 #include <thrust/device_vector.h>
+
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/dynload/cusolver.h"

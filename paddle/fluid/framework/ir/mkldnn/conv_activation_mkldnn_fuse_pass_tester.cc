@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
-
 #include <gtest/gtest.h>
+
 #include <vector>
+
+#include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -103,8 +104,7 @@ void MainTest(std::string activation) {
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
-  auto pass =
-      PassRegistry::Instance().Get("conv_" + activation + "_mkldnn_fuse_pass");
+  auto pass = PassRegistry::Instance().Get("conv_activation_mkldnn_fuse_pass");
 
   int original_nodes_num = graph->Nodes().size();
 

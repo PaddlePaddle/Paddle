@@ -13,10 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/slice_op.h"
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
@@ -85,8 +87,9 @@ class SliceOp : public framework::OperatorWithKernel {
     }
     if (ctx->HasInputs("EndsTensorList")) {
       ends_size = ctx->Inputs("EndsTensorList").size();
-      PADDLE_ENFORCE_GT(ends_size, 0, platform::errors::InvalidArgument(
-                                          "EndsTensorList size can't be zero"));
+      PADDLE_ENFORCE_GT(ends_size, 0,
+                        platform::errors::InvalidArgument(
+                            "EndsTensorList size can't be zero"));
     }
 
     if (!ctx->HasInput("StartsTensor")) {
@@ -101,7 +104,11 @@ class SliceOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument(
               "The size of ends must be equal to the size of axes."));
     }
-
+    for (auto &axis : axes) {
+      if (axis < 0) {
+        axis = std::max(0, axis + in_dims.size());
+      }
+    }
     phi::funcs::CheckAndUpdateSliceAttrs<int>(in_dims, axes, &starts, &ends,
                                               nullptr, &infer_flags);
 

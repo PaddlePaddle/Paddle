@@ -101,9 +101,10 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
     for (int axis : unsqz_dims) {
       int cur = axis < 0 ? axis + cur_output_size + 1 : axis;
       // Vaildity Check: the axis bound
-      PADDLE_ENFORCE_GE(cur, 0, platform::errors::InvalidArgument(
-                                    "The insert dimension value should "
-                                    "not be less than 0"));
+      PADDLE_ENFORCE_GE(
+          cur, 0,
+          platform::errors::InvalidArgument("The insert dimension value should "
+                                            "not be less than 0"));
       PADDLE_ENFORCE_LE(cur, cur_output_size,
                         platform::errors::InvalidArgument(
                             "The insert dimension value shoud not be larger "

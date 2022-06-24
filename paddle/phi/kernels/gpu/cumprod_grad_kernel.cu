@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/cumprod_grad_kernel.h"
 
 #include <thrust/transform.h>
+
 #include "paddle/fluid/operators/math/inclusive_scan.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"

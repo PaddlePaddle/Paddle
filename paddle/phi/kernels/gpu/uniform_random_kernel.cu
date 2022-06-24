@@ -15,8 +15,8 @@
 #include "paddle/phi/kernels/uniform_random_kernel.h"
 
 #include <thrust/random.h>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
@@ -65,22 +65,15 @@ void UniformRandomRawKernel(const Context& dev_ctx,
                             float diag_val,
                             DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
-  T* data = dev_ctx.template Alloc<T>(out);
-  auto size = out->numel();
-  bool seed_flag = false;
+  dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
-    std::random_device rd;
-    seed = rd();
-    seed_flag = true;
-  }
-
-  auto generator = dev_ctx.GetGenerator();
-  if (generator->GetIsInitPy() && seed_flag) {
+    // Use global Generator seed
     using MT = typename kps::details::MPTypeTrait<T>::Type;
     funcs::uniform_distribution<MT> dist;
     funcs::uniform_real_transform<MT> trans(min, max);
     funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
   } else {
+    // Use OP seed
     auto func =
         UniformGenerator<T>(min, max, seed, diag_num, diag_step, diag_val);
     IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);

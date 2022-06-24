@@ -15,15 +15,18 @@
 from __future__ import print_function
 import unittest
 import numpy as np
-
+import tempfile
+import warnings
+import json
 import paddle
 import paddle.nn as nn
 from paddle.io import Dataset, DataLoader, BatchSampler, SequenceSampler
-from paddle.fluid.reader import set_autotune_config
 import sys
+import os
 
 
 class RandomDataset(Dataset):
+
     def __init__(self, num_samples):
         self.num_samples = num_samples
 
@@ -37,6 +40,7 @@ class RandomDataset(Dataset):
 
 
 class SimpleNet(nn.Layer):
+
     def __init__(self):
         super(SimpleNet, self).__init__()
         self.fc = nn.Linear(10, 10)
@@ -46,30 +50,60 @@ class SimpleNet(nn.Layer):
 
 
 class TestAutoTune(unittest.TestCase):
+
     def setUp(self):
         self.batch_size = 1
         self.dataset = RandomDataset(10)
 
     def test_dataloader_use_autotune(self):
-        set_autotune_config(True, 1)
-        loader = DataLoader(
-            self.dataset, batch_size=self.batch_size, num_workers=0)
+        paddle.incubate.autotune.set_config(
+            config={"dataloader": {
+                "enable": True,
+                "tuning_steps": 1,
+            }})
+        loader = DataLoader(self.dataset,
+                            batch_size=self.batch_size,
+                            num_workers=0)
 
     def test_dataloader_disable_autotune(self):
-        set_autotune_config(False)
-        loader = DataLoader(
-            self.dataset, batch_size=self.batch_size, num_workers=2)
+        config = {"dataloader": {"enable": False, "tuning_steps": 1}}
+        tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
+        json.dump(config, tfile)
+        tfile.close()
+        paddle.incubate.autotune.set_config(tfile.name)
+        os.remove(tfile.name)
+        loader = DataLoader(self.dataset,
+                            batch_size=self.batch_size,
+                            num_workers=2)
         if (sys.platform == 'darwin' or sys.platform == 'win32'):
             self.assertEqual(loader.num_workers, 0)
         else:
             self.assertEqual(loader.num_workers, 2)
 
     def test_distributer_batch_sampler_autotune(self):
-        set_autotune_config(True, 1)
+        paddle.incubate.autotune.set_config(
+            config={"dataloader": {
+                "enable": True,
+                "tuning_steps": 1,
+            }})
         batch_sampler = paddle.io.DistributedBatchSampler(
             self.dataset, batch_size=self.batch_size)
-        loader = DataLoader(
-            self.dataset, batch_sampler=batch_sampler, num_workers=2)
+        loader = DataLoader(self.dataset,
+                            batch_sampler=batch_sampler,
+                            num_workers=2)
+
+
+class TestAutoTuneAPI(unittest.TestCase):
+
+    def test_set_config_warnings(self):
+        with warnings.catch_warnings(record=True) as w:
+            config = {"kernel": {"enable": 1, "tuning_range": True}}
+            tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
+            json.dump(config, tfile)
+            tfile.close()
+            paddle.incubate.autotune.set_config(tfile.name)
+            os.remove(tfile.name)
+            self.assertTrue(len(w) == 2)
 
 
 if __name__ == '__main__':

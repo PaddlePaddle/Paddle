@@ -9,13 +9,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
+
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 #include <Python.h>
 
 #include <string>
 #include <vector>
-
-#include "pybind11/numpy.h"
-#include "pybind11/pybind11.h"
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
@@ -39,13 +42,14 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "pybind11/numpy.h"
+#include "pybind11/pybind11.h"
 
 namespace paddle {
 namespace pybind {
@@ -113,8 +117,7 @@ static PyObject* eager_api_run_backward(PyObject* self, PyObject* args,
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
   egr::Backward(tensors, grad_tensors,
                 CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2));
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -153,8 +156,7 @@ static PyObject* eager_api_tensor_copy(PyObject* self, PyObject* args,
       egr::EagerUtils::autograd_meta(&(src))->StopGradient());
   egr::EagerUtils::autograd_meta(&dst)->SetPersistable(
       egr::EagerUtils::autograd_meta(&(src))->Persistable());
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -203,7 +205,8 @@ static void ConstructFwdAndBwdMap(
     auto grad_attrs_names =
         paddle::framework::OpMetaInfoHelper::GetAttrs(vec_map[1]);
     std::vector<std::unordered_map<int, int>> res(5);
-    in_out_map.insert({op_type, res});
+
+    in_out_map.insert({op_type, {res}});
     // Prepare pos map for grad_outputs
     VLOG(7) << "Prepare pos map for grad_outputs";
     PADDLE_ENFORCE_LE(
@@ -223,7 +226,7 @@ static void ConstructFwdAndBwdMap(
           VLOG(7) << " ==== Custom Operator: " << op_type << "'s No." << j
                   << " inputs: " << inputs_names[j] << " related to No." << i
                   << " grad_outputs: " << grad_outputs_names[i];
-          in_out_map[op_type][0][j] = i;
+          in_out_map[op_type][0][0][j] = i;
         }
       }
     }
@@ -236,7 +239,7 @@ static void ConstructFwdAndBwdMap(
             VLOG(7) << " ==== Custom Operator: " << op_type << "'s No." << j
                     << " outputs: " << outputs_names[j] << " related to No."
                     << i << " grad_inputs's grad: " << grad_inputs_names[i];
-            in_out_map[op_type][1][j] = i;
+            in_out_map[op_type][0][1][j] = i;
           }
         }
       } else {
@@ -248,7 +251,7 @@ static void ConstructFwdAndBwdMap(
                       << " outputs: " << outputs_names[j] << " related to No."
                       << i
                       << " grad_inputs fwd outputs: " << grad_inputs_names[i];
-              in_out_map[op_type][2][j] = i;
+              in_out_map[op_type][0][2][j] = i;
             }
           }
         } else {
@@ -258,7 +261,7 @@ static void ConstructFwdAndBwdMap(
                       << " inputs: " << inputs_names[j] << " related to No."
                       << i
                       << " grad_inputs fwd inputs: " << grad_inputs_names[i];
-              in_out_map[op_type][3][j] = i;
+              in_out_map[op_type][0][3][j] = i;
             }
           }
         }
@@ -280,7 +283,7 @@ static void ConstructFwdAndBwdMap(
           VLOG(7) << " ==== Custom Operator: " << op_type << "'s No." << j
                   << " attrs: " << attrs_names[j] << " related to No." << i
                   << " grad_attrs: " << grad_attrs_names[i];
-          in_out_map[op_type][4][j] = i;
+          in_out_map[op_type][0][4][j] = i;
         }
       }
     }
@@ -381,7 +384,7 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
         require_any_grad || egr::EagerUtils::ComputeRequireGrad(
                                 trace_backward, &(ins_auto_grad_metas[i]));
   }
-  if (require_any_grad) {
+  if (require_any_grad && (vec_map.size() > 1)) {
     VLOG(6) << " Construct Grad for Custom Op: " << op_type;
     ConstructFwdAndBwdMap(vec_map, op_type);
     for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
@@ -398,14 +401,11 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
           ctx.InputsBetween(ctx.InputRangeAt(i).first,
                             ctx.InputRangeAt(i).second);
 
-      if (slot_map[0].find(i) != slot_map[0].end()) {
-        grad_node->SetGradOutMeta(in_tensors, slot_map[0][i]);
-        grad_node->AddEdges(&ins_auto_grad_metas[i], slot_map[0][i]);
+      if (slot_map[0][0].find(i) != slot_map[0][0].end()) {
+        grad_node->SetGradOutMeta(in_tensors, slot_map[0][0][i]);
       } else {
         grad_node->SetGradOutMeta(in_tensors,
                                   ins_auto_grad_metas.size() - 1 - no_grad_cnt);
-        grad_node->AddEdges(&ins_auto_grad_metas[i],
-                            ins_auto_grad_metas.size() - 1 - no_grad_cnt);
         no_grad_cnt++;
       }
     }
@@ -422,7 +422,7 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
     }
 
     // Prepare Grad inputs with fwd outputs
-    for (auto it = slot_map[2].begin(); it != slot_map[2].end(); it++) {
+    for (auto it = slot_map[0][2].begin(); it != slot_map[0][2].end(); it++) {
       VLOG(7) << "Prepare fwd_outs: " << it->first
               << " to grad_inputs: " << it->second;
       grad_node->fwd_outs[it->second] =
@@ -432,7 +432,7 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
     }
 
     // Prepare Grad inputs with fwd inputs
-    for (auto it = slot_map[3].begin(); it != slot_map[3].end(); it++) {
+    for (auto it = slot_map[0][3].begin(); it != slot_map[0][3].end(); it++) {
       VLOG(7) << "Prepare fwd_ins: " << it->first
               << " to grad_inputs: " << it->second;
       grad_node->fwd_ins[it->second] =
@@ -445,15 +445,14 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
         meta_info_map.at(op_type)[1]);
     std::vector<paddle::any> attrs(attrs_names.size());
     // Prepare attrs for Grad node
-    for (auto it = slot_map[4].begin(); it != slot_map[4].end(); it++) {
+    for (auto it = slot_map[0][4].begin(); it != slot_map[0][4].end(); it++) {
       VLOG(7) << "Prepare fwd attrs: " << it->first
               << " to grad_attrs: " << it->second;
       attrs[it->second] = res_attrs[it->first];
     }
     grad_node->SetAttrs(attrs);
   }
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -685,8 +684,7 @@ static PyObject* eager_api_async_read(PyObject* self, PyObject* args,
   cudaMemcpyAsync(dst_data + (numel * size), buffer_tensor->data<float>(),
                   index_tensor.numel() * size * sizeof(float),
                   cudaMemcpyHostToDevice, stream);
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -768,8 +766,7 @@ static PyObject* eager_api_async_write(PyObject* self, PyObject* args,
                     cudaMemcpyDeviceToHost, stream);
     src_offset += c;
   }
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

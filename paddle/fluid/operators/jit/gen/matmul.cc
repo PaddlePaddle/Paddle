@@ -122,20 +122,23 @@ class MatMulCreator : public JitCodeCreator<matmul_attr_t> {
   std::unique_ptr<GenBase> CreateJitCode(
       const matmul_attr_t& attr) const override {
     PADDLE_ENFORCE_GT(
-        attr.m, 0, platform::errors::InvalidArgument(
-                       "The attribute m (first matrix's row) of MatMul should "
-                       "be larger than 0. But it is %d.",
-                       attr.m));
+        attr.m, 0,
+        platform::errors::InvalidArgument(
+            "The attribute m (first matrix's row) of MatMul should "
+            "be larger than 0. But it is %d.",
+            attr.m));
     PADDLE_ENFORCE_GT(
-        attr.n, 0, platform::errors::InvalidArgument(
-                       "The attribute n (first matrix's col) of MatMul should "
-                       "be larger than 0. But it is %d.",
-                       attr.n));
+        attr.n, 0,
+        platform::errors::InvalidArgument(
+            "The attribute n (first matrix's col) of MatMul should "
+            "be larger than 0. But it is %d.",
+            attr.n));
     PADDLE_ENFORCE_GT(
-        attr.k, 0, platform::errors::InvalidArgument(
-                       "The attribute k (second matrix's col) of MatMul should "
-                       "be larger than 0. But it is %d.",
-                       attr.k));
+        attr.k, 0,
+        platform::errors::InvalidArgument(
+            "The attribute k (second matrix's col) of MatMul should "
+            "be larger than 0. But it is %d.",
+            attr.k));
     return make_unique<MatMulJitCode>(attr, CodeSize(attr));
   }
 };

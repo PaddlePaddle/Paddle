@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -175,7 +176,7 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
         num_rois, out->dims()[0],
         platform::errors::InvalidArgument(
             "The number of Input(ROIs) should be same with the number of "
-            "Ouput(Output), but received ROIs number is:%d, Output number "
+            "Output(Output), but received ROIs number is:%d, Output number "
             "is:%d.",
             num_rois, out->dims()[0]));
     framework::Tensor roi_batch_id_list;

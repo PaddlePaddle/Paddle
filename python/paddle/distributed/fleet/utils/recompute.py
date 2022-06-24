@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,9 +21,10 @@ import contextlib
 from paddle.fluid.framework import in_dygraph_mode
 
 import logging
+
 logger = logging.getLogger(__name__)
-formatter = logging.Formatter(
-    fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s',
+                              datefmt='%Y-%m-%d %H:%M:%S')
 ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
@@ -53,22 +54,27 @@ def check_recompute_necessary(inputs):
 
 
 @contextlib.contextmanager
-def swith_rng_state(rng_state):
+def swith_rng_state_tracker(rng_state, tracker):
+    from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
     orig_cuda_rng_state = paddle.get_cuda_rng_state()
+    orig_cuda_rng_tracker = get_rng_state_tracker().get_states_tracker()
+
     paddle.set_cuda_rng_state(rng_state)
+    get_rng_state_tracker().set_states_tracker(tracker)
     try:
         yield
     finally:
         paddle.set_cuda_rng_state(orig_cuda_rng_state)
+        get_rng_state_tracker().set_states_tracker(orig_cuda_rng_tracker)
 
 
 class EagerRecomputeFunction(EagerPyLayer):
+
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args):
-        if framework._dygraph_tracer()._has_grad:
-            check_recompute_necessary(args)
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
 
-        # store for recomputing 
+        # store for recomputing
         ctx.run_function = run_function
         ctx.preserve_rng_state = preserve_rng_state
 
@@ -95,9 +101,11 @@ class EagerRecomputeFunction(EagerPyLayer):
             cur_device = paddle.get_device()
             if 'gpu:' not in cur_device:
                 raise RuntimeError(
-                    "Recompute with RNG perserve is not support current device: {}.".
-                    format(cur_device))
+                    "Recompute with RNG perserve is not support current device: {}."
+                    .format(cur_device))
             ctx.fw_cuda_rng_state = paddle.get_cuda_rng_state()
+            ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
+            ).get_states_tracker()
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
@@ -126,6 +134,7 @@ class EagerRecomputeFunction(EagerPyLayer):
 
     @staticmethod
     def backward(ctx, *args):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         with paddle.fluid.dygraph.guard():
             # TODO need to check the recompute calling is vaild or not
 
@@ -143,7 +152,8 @@ class EagerRecomputeFunction(EagerPyLayer):
             # NOTE support AMP
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
-                with swith_rng_state(ctx.fw_cuda_rng_state):
+                with swith_rng_state_tracker(ctx.fw_cuda_rng_state,
+                                             ctx.fwd_cuda_rng_state_tracker):
                     with paddle.amp.auto_cast(
                             enable=ctx.is_fw_autocast,
                             custom_white_list=ctx.amp_white_list,
@@ -153,12 +163,11 @@ class EagerRecomputeFunction(EagerPyLayer):
                         detached_inputs = detach_variable(tuple(inputs))
                         outputs = ctx.run_function(*detached_inputs)
             else:
-                with paddle.amp.auto_cast(
-                        enable=ctx.is_fw_autocast,
-                        custom_white_list=ctx.amp_white_list,
-                        custom_black_list=ctx.amp_black_list,
-                        level=ctx.amp_level,
-                        dtype=ctx.amp_dtype):
+                with paddle.amp.auto_cast(enable=ctx.is_fw_autocast,
+                                          custom_white_list=ctx.amp_white_list,
+                                          custom_black_list=ctx.amp_black_list,
+                                          level=ctx.amp_level,
+                                          dtype=ctx.amp_dtype):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
 
@@ -169,7 +178,7 @@ class EagerRecomputeFunction(EagerPyLayer):
             # run backward() with only tensor that requires grad
             forward_outputs_with_grad = []
             # NOTE In Transformer-like network, if user put the attention mask into the recompute segment output,
-            # pylayer will force the stop_gradient of attention mask to be False, which will make the number of 
+            # pylayer will force the stop_gradient of attention mask to be False, which will make the number of
             # tensor that need grad does not match.
             # the following backward_inputs_with_grad is used to avoid this case.
             backward_inputs_with_grad = []
@@ -190,19 +199,18 @@ class EagerRecomputeFunction(EagerPyLayer):
                 paddle.autograd.backward(forward_outputs_with_grad,
                                          backward_inputs_with_grad)
 
-            grads = tuple(
-                inp.grad for inp in detached_inputs
-                if isinstance(inp, core.eager.Tensor))
+            grads = tuple(inp.grad for inp in detached_inputs
+                          if isinstance(inp, core.eager.Tensor))
             return grads
 
 
 class RecomputeFunction(PyLayer):
+
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args):
-        if framework._dygraph_tracer()._has_grad:
-            check_recompute_necessary(args)
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
 
-        # store for recomputing 
+        # store for recomputing
         ctx.run_function = run_function
         ctx.preserve_rng_state = preserve_rng_state
 
@@ -229,9 +237,11 @@ class RecomputeFunction(PyLayer):
             cur_device = paddle.get_device()
             if 'gpu:' not in cur_device:
                 raise RuntimeError(
-                    "Recompute with RNG perserve is not support current device: {}.".
-                    format(cur_device))
+                    "Recompute with RNG perserve is not support current device: {}."
+                    .format(cur_device))
             ctx.fw_cuda_rng_state = paddle.get_cuda_rng_state()
+            ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
+            ).get_states_tracker()
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
@@ -260,6 +270,7 @@ class RecomputeFunction(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         with paddle.fluid.dygraph.guard():
             # TODO need to check the recompute calling is vaild or not
 
@@ -277,7 +288,8 @@ class RecomputeFunction(PyLayer):
             # NOTE support AMP
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
-                with swith_rng_state(ctx.fw_cuda_rng_state):
+                with swith_rng_state_tracker(ctx.fw_cuda_rng_state,
+                                             ctx.fwd_cuda_rng_state_tracker):
                     with paddle.amp.auto_cast(
                             enable=ctx.is_fw_autocast,
                             custom_white_list=ctx.amp_white_list,
@@ -287,12 +299,11 @@ class RecomputeFunction(PyLayer):
                         detached_inputs = detach_variable(tuple(inputs))
                         outputs = ctx.run_function(*detached_inputs)
             else:
-                with paddle.amp.auto_cast(
-                        enable=ctx.is_fw_autocast,
-                        custom_white_list=ctx.amp_white_list,
-                        custom_black_list=ctx.amp_black_list,
-                        level=ctx.amp_level,
-                        dtype=ctx.amp_dtype):
+                with paddle.amp.auto_cast(enable=ctx.is_fw_autocast,
+                                          custom_white_list=ctx.amp_white_list,
+                                          custom_black_list=ctx.amp_black_list,
+                                          level=ctx.amp_level,
+                                          dtype=ctx.amp_dtype):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
 
@@ -303,7 +314,7 @@ class RecomputeFunction(PyLayer):
             # run backward() with only tensor that requires grad
             forward_outputs_with_grad = []
             # NOTE In Transformer-like network, if user put the attention mask into the recompute segment output,
-            # pylayer will force the stop_gradient of attention mask to be False, which will make the number of 
+            # pylayer will force the stop_gradient of attention mask to be False, which will make the number of
             # tensor that need grad does not match.
             # the following backward_inputs_with_grad is used to avoid this case.
             backward_inputs_with_grad = []
@@ -448,8 +459,11 @@ def recompute(function, *args, **kwargs):
     # Hack to mix *args with **kwargs in a python 2.7-compliant way
     preserve = kwargs.pop('preserve_rng_state', True)
     if kwargs:
-        raise ValueError("Unexpected keyword arguments: " + ",".join(
-            arg for arg in kwargs))
+        raise ValueError("Unexpected keyword arguments: " +
+                         ",".join(arg for arg in kwargs))
+
+    if framework._dygraph_tracer()._has_grad:
+        check_recompute_necessary(args)
 
     if in_dygraph_mode():
         return EagerRecomputeFunction.apply(function, preserve, *args)

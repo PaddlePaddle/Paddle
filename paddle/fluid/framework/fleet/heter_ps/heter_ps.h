@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #if defined(PADDLE_WITH_CUDA)
@@ -37,17 +38,18 @@ class HeterPs : public HeterPsBase {
                    size_t len) override;
   void build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals, size_t len,
                 size_t chunk_size, int stream_num) override;
-
+  void build_ps(int num, FeatureKey* h_keys, char* pool, size_t len,
+                size_t feature_value_size, size_t chunk_size,
+                int stream_num) override;
 #if defined(PADDLE_WITH_CUDA)
   void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                               const std::vector<ncclComm_t>& inter_comms,
                               int comm_size) override;
+  void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) override;
 #endif
 
-#if defined(PADDLE_WITH_XPU_KP)
   void set_sparse_sgd(const OptimizerConfig& optimizer_config) override;
   void set_embedx_sgd(const OptimizerConfig& optimizer_config) override;
-#endif
 
   void end_pass() override;
   int get_index_by_devid(int devid) override;

@@ -58,9 +58,9 @@ void MvGradKernel(const Context &dev_ctx,
   if (dx) {
     T *dx_data = dev_ctx.template Alloc<T>(dx);
 
-    MVGradDxCUDAKernel<
-        T><<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-        m, n, dout_data, vec_data, dx_data);
+    MVGradDxCUDAKernel<T>
+        <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
+            m, n, dout_data, vec_data, dx_data);
   }
 
   if (dvec) {

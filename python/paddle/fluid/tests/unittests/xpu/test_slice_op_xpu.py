@@ -16,6 +16,7 @@ import paddle
 import numpy as np
 import sys
 import unittest
+
 sys.path.append("..")
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
@@ -27,11 +28,13 @@ paddle.enable_static()
 # Situation 1: starts(list, no tensor), ends(list, no tensor)
 # 1.1 without attr(decrease)
 class XPUTestSliceOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'slice'
         self.use_dynamic_create_class = False
 
     class TestSliceOp(XPUOpTest):
+
         def setUp(self):
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
@@ -67,6 +70,7 @@ class XPUTestSliceOp(XPUOpTestWrapper):
                     user_defined_grad_outputs=user_defined_grad_outputs)
 
     class TestCase1(TestSliceOp):
+
         def config(self):
             self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
             self.starts = [-3, 0, 2]
@@ -76,6 +80,7 @@ class XPUTestSliceOp(XPUOpTestWrapper):
             self.out = self.input[-3:3, 0:100, 2:-1, :]
 
     class TestCase2(TestSliceOp):
+
         def config(self):
             self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
             self.starts = [-3, 0, 2]
@@ -87,11 +92,13 @@ class XPUTestSliceOp(XPUOpTestWrapper):
 
 # 1.2 with attr(decrease)
 class XPUTestSliceOp_decs_dim(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'slice'
         self.use_dynamic_create_class = False
 
     class TestSliceOp_decs_dim(XPUOpTest):
+
         def setUp(self):
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
@@ -132,6 +139,7 @@ class XPUTestSliceOp_decs_dim(XPUOpTestWrapper):
                     user_defined_grad_outputs=user_defined_grad_outputs)
 
     class TestSliceOp_decs_dim_2(TestSliceOp_decs_dim):
+
         def config(self):
             self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
             self.starts = [1, 0, 2]
@@ -142,6 +150,7 @@ class XPUTestSliceOp_decs_dim(XPUOpTestWrapper):
             self.out = self.input[1, 0, 2:4, :]
 
     class TestSliceOp_decs_dim_3(TestSliceOp_decs_dim):
+
         def config(self):
             self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
             self.starts = [-1, 0, 2]
@@ -152,6 +161,7 @@ class XPUTestSliceOp_decs_dim(XPUOpTestWrapper):
             self.out = self.input[-1, 0, 2:4, :]
 
     class TestSliceOp_decs_dim_4(TestSliceOp_decs_dim):
+
         def config(self):
             self.input = np.random.random([3, 4, 5, 7]).astype(self.dtype)
             self.starts = [0, 1, 2, 3]
@@ -162,6 +172,7 @@ class XPUTestSliceOp_decs_dim(XPUOpTestWrapper):
             self.out = self.input[0, 1, 2, 3:4]
 
     class TestSliceOp_decs_dim_5(TestSliceOp_decs_dim):
+
         def config(self):
             self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
             self.starts = [-1]
@@ -172,6 +183,7 @@ class XPUTestSliceOp_decs_dim(XPUOpTestWrapper):
             self.out = self.input[:, :, :, -1]
 
     class TestSliceOp_decs_dim_6(TestSliceOp_decs_dim):
+
         def config(self):
             self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
             self.starts = [0, 1, 2, 3]

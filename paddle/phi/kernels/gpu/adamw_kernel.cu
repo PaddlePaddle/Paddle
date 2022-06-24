@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/adamw_kernel.h"
 
 #include <math.h>  // for sqrt in CPU and CUDA
+
 #include <vector>
 
 #include "paddle/fluid/framework/tensor_util.h"
@@ -146,8 +147,8 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       const DenseTensor& moment2,
                       const DenseTensor& beta1_pow,
                       const DenseTensor& beta2_pow,
-                      paddle::optional<const DenseTensor&> master_param,
-                      paddle::optional<const DenseTensor&> skip_update,
+                      const paddle::optional<DenseTensor>& master_param,
+                      const paddle::optional<DenseTensor>& skip_update,
                       const Scalar& beta1,
                       const Scalar& beta2,
                       const Scalar& epsilon,

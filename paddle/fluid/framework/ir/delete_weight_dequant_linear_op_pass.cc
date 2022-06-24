@@ -52,6 +52,10 @@ DeleteWeightQuantDequantLinearOpPass::DeleteWeightQuantDequantLinearOpPass() {
       .End()
       .AddAttr("quant_axis")
       .IsType<int>()
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
+      .IsType<int>()
       .End();
   AddOpCompat(OpCompat("dequantize_linear"))
       .AddInput("X")
@@ -71,6 +75,10 @@ DeleteWeightQuantDequantLinearOpPass::DeleteWeightQuantDequantLinearOpPass() {
       .IsType<int>()
       .End()
       .AddAttr("quant_axis")
+      .IsType<int>()
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
       .IsType<int>()
       .End();
   AddOpCompat(OpCompat("conv2d"))

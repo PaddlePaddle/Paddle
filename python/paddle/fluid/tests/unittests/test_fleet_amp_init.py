@@ -26,8 +26,7 @@ paddle.enable_static()
 def gen_data():
     return {
         "x": np.random.random(size=(128, 32)).astype('float32'),
-        "y": np.random.randint(
-            2, size=(128, 1)).astype('int64')
+        "y": np.random.randint(2, size=(128, 1)).astype('int64')
     }
 
 
@@ -43,6 +42,7 @@ def mlp(input_x, input_y, hid_dim=128, label_dim=2):
 
 
 class TestFleetAMPInit(unittest.TestCase):
+
     def test_fleet_amp_init(self):
         if not fluid.core.is_compiled_with_cuda():
             return
@@ -54,10 +54,12 @@ class TestFleetAMPInit(unittest.TestCase):
         fleet.init(role)
 
         with paddle.static.program_guard(main_program, startup_program):
-            input_x = paddle.static.data(
-                name="x", shape=[None, 32], dtype='float32')
-            input_y = paddle.static.data(
-                name="y", shape=[None, 1], dtype='int64')
+            input_x = paddle.static.data(name="x",
+                                         shape=[None, 32],
+                                         dtype='float32')
+            input_y = paddle.static.data(name="y",
+                                         shape=[None, 1],
+                                         dtype='int64')
 
             cost = mlp(input_x, input_y)
             optimizer = paddle.optimizer.Momentum(
@@ -95,10 +97,12 @@ class TestFleetAMPInit(unittest.TestCase):
         fleet.init(role)
 
         with paddle.static.program_guard(main_program, startup_program):
-            input_x = paddle.static.data(
-                name="x", shape=[None, 32], dtype='float32')
-            input_y = paddle.static.data(
-                name="y", shape=[None, 1], dtype='int64')
+            input_x = paddle.static.data(name="x",
+                                         shape=[None, 32],
+                                         dtype='float32')
+            input_y = paddle.static.data(name="y",
+                                         shape=[None, 1],
+                                         dtype='int64')
 
             cost = mlp(input_x, input_y)
             optimizer = paddle.optimizer.Momentum(

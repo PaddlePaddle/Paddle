@@ -55,7 +55,9 @@ namespace phi {
                        int axis,                                     \
                        DenseTensor* out) {                           \
     std::vector<const DenseTensor*> inputs;                          \
+    inputs.reserve(2);                                               \
     std::vector<DenseTensor*> outputs;                               \
+    outputs.reserve(1);                                              \
     inputs.emplace_back(&x);                                         \
     inputs.emplace_back(&y);                                         \
     outputs.emplace_back(out);                                       \

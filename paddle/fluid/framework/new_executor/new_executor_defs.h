@@ -90,15 +90,17 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
   bool IsRunMKLDNNKernel() const override;
 
   // TODO(paddle-dev): Can this be template?
-  paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
   GetInputVarPtrs(const std::string& name) const override;
 
-  paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
   GetOutputVarPtrs(const std::string& name) const override;
 
   DDim GetInputDim(const std::string& name) const override;
 
   std::vector<DDim> GetInputsDim(const std::string& name) const override;
+
+  proto::VarType::Type GetInputVarType(const std::string& name) const override;
 
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string& name) const override;
@@ -110,6 +112,10 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   void SetOutputsDim(const std::string& name,
                      const std::vector<DDim>& dims) override;
+
+  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override;
+
+  const phi::KernelSignature* GetPhiDefaultKernelSignature() const override;
 
   void SetSkipLoD(bool skip);
 
@@ -291,7 +297,7 @@ struct InstructionInfo {
 
 enum class OpFuncType {
   kQueueSync = 0,   // CPU kernel, block host
-  kQueueAsync = 1,  // GPU Kernel or d2h, h2d, send, recv, broadcast
+  kQueueAsync = 1,  // GPU、XPU Kernel or d2h, h2d, send, recv, broadcast
 };
 class RuntimeInferShapeContext;
 
@@ -409,6 +415,11 @@ static bool IsMemcpyD2H(const Instruction& instr) {
 
 static bool IsCpuOp(const Instruction& instr) {
   return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+}
+
+// is supported heterogeneous place
+static bool IsSupportedHetePlace(const phi::Place& place) {
+  return platform::is_gpu_place(place) || platform::is_xpu_place(place);
 }
 
 }  // namespace interpreter

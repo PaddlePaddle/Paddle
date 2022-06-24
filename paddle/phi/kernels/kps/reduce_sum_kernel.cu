@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/reduce_sum_kernel.h"
-
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -27,6 +26,9 @@ void SumRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out) {
+  if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
+    out_dtype = out->dtype();
+  }
   phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }

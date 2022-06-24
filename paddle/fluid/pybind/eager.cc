@@ -9,6 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
+#include "paddle/fluid/pybind/eager.h"
+
 #include <Python.h>
 
 #include <string>
@@ -22,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -34,7 +35,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/pybind/eager_op_function_impl.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/string_tensor.h"
 namespace paddle {
@@ -84,7 +84,7 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
     } else {
       // TODO(dev): we need enhance check for ddims.
       dense_tensor = std::make_shared<phi::DenseTensor>(
-          phi::make_intrusive<paddle::experimental::SharedStorage>(place),
+          std::make_shared<phi::Allocation>(),
           phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
                                ddims));
     }
@@ -111,11 +111,10 @@ void EmptyStringTensorInitializer(TensorObject* self, const std::string& name,
   // Note(zhoushunjie): Only support CPUPlace when create StringTensor
   auto actual_place = platform::CPUPlace();
   // Allocate memory
-  const auto string_allocator =
-      std::make_unique<paddle::experimental::DefaultAllocator>(actual_place);
-  const auto alloc = string_allocator.get();
+  paddle::experimental::DefaultAllocator string_allocator(actual_place);
   std::shared_ptr<phi::StringTensor> string_tensor =
-      std::make_shared<phi::StringTensor>(alloc, phi::StringTensorMeta{ddims});
+      std::make_shared<phi::StringTensor>(&string_allocator,
+                                          phi::StringTensorMeta{ddims});
   if (phi::product(ddims) > 0) {
     string_tensor->mutable_data(actual_place);
   }
@@ -146,10 +145,13 @@ void InitTensorWithNumpyValue(TensorObject* self, const py::object& array,
                                                     zero_copy);
   } else if (platform::is_npu_place(place)) {
     SetTensorFromPyArray<platform::NPUPlace>(impl_ptr, array, place, zero_copy);
+  } else if (platform::is_custom_place(place)) {
+    SetTensorFromPyArray<platform::CustomPlace>(impl_ptr, array, place,
+                                                zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace"));
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/CustomPlace"));
   }
 }
 
@@ -181,8 +183,7 @@ void InitTensorWithTensor(TensorObject* self,
                           const std::string& name) {
   self->tensor.set_name(name);
   if (place == src.place()) {
-    auto impl = std::static_pointer_cast<phi::DenseTensor>(src.impl());
-    self->tensor.set_impl(impl);
+    self->tensor.set_impl(src.impl());
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
     self->tensor.set_impl(src.copy_to(place, true).impl());
@@ -488,45 +489,45 @@ void AutoInitStringTensorByStringTensor(
 }
 
 /** We should have init function with signature:
-   * 1.
-   * def __init__ ()
-   * 2.
-   * def __init__ (
-   * ** dtype: paddle::framework::proto::VarType::Type,
-   * ** dims: vector<int>,
-   * ** name: std::string,
-   * ** type: paddle::framework::proto::VarType::LodTensor,
-   * ** persistable: bool)
-   * 3. (multi-place)
-   * (should have at least one parameter, one parameter equals to case 4, zero
-   * parameter equals to case 1)
-   * def __init__ (
-   * ** value: ndarray,
-   * ** place: paddle::platform::Place,
-   * ** persistable: bool,
-   * ** zero_copy: bool,
-   * ** name: std::string,
-   * ** stop_gradient: bool)
-   * 4.
-   * def __init__ (
-   * ** value: ndarray)
-   * 5.
-   * def __init__ (
-   * ** tensor: Tensor)
-   * 6. (multi-place)
-   * (should have at least one parameter, one parameter equals to case 5, zero
-   * parameter equals to case 1.)
-   * def __init__ (
-   * ** tensor: Tensor,
-   * ** place: paddle::platform::Place,
-   * ** name: std::string)
-   * 7. (multi-place) (should have at least one parameter, one parameter similar
-   * to case 5, zero parameter equals to case 1.)
-   * def __init__ (
-   * ** tensor: FrameworkTensor,
-   * ** place: paddle::platform::Place,
-   * ** name: std::string)
-   *  **/
+ * 1.
+ * def __init__ ()
+ * 2.
+ * def __init__ (
+ * ** dtype: paddle::framework::proto::VarType::Type,
+ * ** dims: vector<int>,
+ * ** name: std::string,
+ * ** type: paddle::framework::proto::VarType::LodTensor,
+ * ** persistable: bool)
+ * 3. (multi-place)
+ * (should have at least one parameter, one parameter equals to case 4, zero
+ * parameter equals to case 1)
+ * def __init__ (
+ * ** value: ndarray,
+ * ** place: paddle::platform::Place,
+ * ** persistable: bool,
+ * ** zero_copy: bool,
+ * ** name: std::string,
+ * ** stop_gradient: bool)
+ * 4.
+ * def __init__ (
+ * ** value: ndarray)
+ * 5.
+ * def __init__ (
+ * ** tensor: Tensor)
+ * 6. (multi-place)
+ * (should have at least one parameter, one parameter equals to case 5, zero
+ * parameter equals to case 1.)
+ * def __init__ (
+ * ** tensor: Tensor,
+ * ** place: paddle::platform::Place,
+ * ** name: std::string)
+ * 7. (multi-place) (should have at least one parameter, one parameter similar
+ * to case 5, zero parameter equals to case 1.)
+ * def __init__ (
+ * ** tensor: FrameworkTensor,
+ * ** place: paddle::platform::Place,
+ * ** name: std::string)
+ *  **/
 int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
   // set a flag to record use kwargs or not
@@ -828,37 +829,37 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
 }
 
 /** We should have init function with signature:
-   * 1.
-   * def __init__ ()
-   *
-   * 2.
-   * def __init__ (
-   * ** dims: vector<int>,
-   * ** name: std::string)
-   *
-   * 3.
-   * (should have at least one parameter, one parameter equals to case 4, zero
-   * parameter equals to case 1)
-   * def __init__ (
-   * ** value: ndarray,
-   * ** zero_copy: bool,
-   * ** name: std::string)
-   *
-   * 4.
-   * def __init__ (
-   * ** value: ndarray)
-   *
-   * 5.
-   * def __init__ (
-   * ** tensor: Tensor)
-   *
-   * 6.
-   * (should have at least one parameter, one parameter equals to case 5, zero
-   * parameter equals to case 1.)
-   * def __init__ (
-   * ** tensor: Tensor,
-   * ** name: std::string)
-   * **/
+ * 1.
+ * def __init__ ()
+ *
+ * 2.
+ * def __init__ (
+ * ** dims: vector<int>,
+ * ** name: std::string)
+ *
+ * 3.
+ * (should have at least one parameter, one parameter equals to case 4, zero
+ * parameter equals to case 1)
+ * def __init__ (
+ * ** value: ndarray,
+ * ** zero_copy: bool,
+ * ** name: std::string)
+ *
+ * 4.
+ * def __init__ (
+ * ** value: ndarray)
+ *
+ * 5.
+ * def __init__ (
+ * ** tensor: Tensor)
+ *
+ * 6.
+ * (should have at least one parameter, one parameter equals to case 5, zero
+ * parameter equals to case 1.)
+ * def __init__ (
+ * ** tensor: Tensor,
+ * ** name: std::string)
+ * **/
 int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   // set a flag to record use kwargs or not
   bool flag_kwargs = false;
@@ -916,8 +917,9 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       // case 1
       VLOG(6) << "Calling case1's string initializer.";
       EmptyStringTensorInitializer(
-          py_tensor_ptr, egr::Controller::Instance().GenerateUniqueName(
-                             "generated_string_tensor"),
+          py_tensor_ptr,
+          egr::Controller::Instance().GenerateUniqueName(
+              "generated_string_tensor"),
           egr::Controller::Instance().GetExpectedPlace());
       return 0;
     } else {

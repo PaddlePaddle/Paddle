@@ -17,10 +17,14 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DEFINE_int32(heter_world_size, 100, "group size");  // group max size
+DEFINE_int32(switch_send_recv_timeout_s, 600, "switch_send_recv_timeout_s");
+
 namespace paddle {
 namespace distributed {
-
 std::shared_ptr<HeterClient> HeterClient::s_instance_ = nullptr;
+std::mutex HeterClient::mtx_;
+std::shared_ptr<HeterClient> HeterClient::switch_s_instance_ = nullptr;
 
 int GetMicroId(const platform::DeviceContext& ctx,
                const framework::Scope* scope) {
@@ -135,8 +139,9 @@ void HeterClient::SendAndRecvAsync(
       message_name, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
       &request, &request_io_buffer);
 
-  int micro_id = GetMicroId(ctx, p_scope);
+  int micro_id = GetMicroId(ctx, p_scope);  // global
   auto minibatch_id = micro_id / 10;
+  VLOG(4) << "micro_id: " << micro_id;
   // select channel according to micro id
   if (mode == "forward") {
     int num = minibatch_id % xpu_channels_.size();
@@ -222,6 +227,7 @@ int HeterClient::Send(const platform::DeviceContext& ctx,
   distributed::MultiVarMsg request;
   // 1. set req message_name(string)
   request.set_message_name(message_name);
+  request.set_group_id(0);
 
   // 2. set req send_var_names(<string>)
   for (auto& send_var_name : send_var_names) {
@@ -263,7 +269,7 @@ int HeterClient::Send(const platform::DeviceContext& ctx,
 }
 
 int HeterClient::Send(int group_id, const std::vector<std::string>& var_names,
-                      const std::vector<int>& vars_len, void* data_ptr,
+                      const std::vector<int64_t>& vars_size, void* data_ptr,
                       int64_t data_size) {
   OnHeterRpcDone* closure = new OnHeterRpcDone([](void* done) {
     auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
@@ -282,7 +288,7 @@ int HeterClient::Send(int group_id, const std::vector<std::string>& var_names,
   for (auto& send_var_name : var_names) {
     request.add_send_var_names(send_var_name);
   }
-  for (auto var_len : vars_len) {
+  for (auto var_len : vars_size) {
     request.add_vars_len(var_len);
   }
   auto& request_buffer = closure->cntl.request_attachment();
@@ -301,6 +307,7 @@ int HeterClient::Send(int group_id, const std::vector<std::string>& var_names,
   ::paddle::distributed::PsService_Stub stub(channel);
   stub.SendToSwitch(&closure->cntl, &request, &closure->ps_response, closure);
   fut.wait();
+  delete closure;
   return 0;
 }
 
@@ -325,6 +332,7 @@ int HeterClient::Recv(const platform::DeviceContext& ctx,
   distributed::MultiVarMsg request;
   // 1. set req message_name(string)
   request.set_message_name(message_name);
+  request.set_group_id(0);
 
   // 2. set req recv_var_names(<string>)
   for (auto& recv_var_name : recv_var_names) {
@@ -396,8 +404,8 @@ int HeterClient::Recv(int group_id, const std::vector<std::string>& var_names,
   // save in worker
   auto& res_io_buffer = closure->cntl.response_attachment();
   butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
-  io_buffer_itr.copy_and_forward(reinterpret_cast<void*>(data_ptr),
-                                 data_size * sizeof(float));
+  io_buffer_itr.copy_and_forward(reinterpret_cast<void*>(data_ptr), data_size);
+  delete closure;
   VLOG(4) << "Recv done";
   return 0;
 }
