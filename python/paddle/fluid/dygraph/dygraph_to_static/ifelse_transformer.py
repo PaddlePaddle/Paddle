@@ -32,6 +32,7 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysi
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_nonlocal_stmt_node
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_get_args_node, create_set_args_node
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
@@ -511,11 +512,11 @@ def transform_if_else(node, root):
         if any([not isinstance(ctx, gast.Load) for ctx in ctxs]):
             parent_ids_set.add(k)
 
-    trun_args = parse_cond_args(parent_ids_set, body_name_ids,
+    true_args = parse_cond_args(parent_ids_set, body_name_ids,
                                 modified_name_ids_from_parent)
     false_args = parse_cond_args(parent_ids_set, orelse_name_ids,
                                  modified_name_ids_from_parent)
-    nonlocal_names = list(trun_args | false_args | new_vars_to_create)
+    nonlocal_names = list(true_args | false_args | new_vars_to_create)
     nonlocal_names.sort()
     # NOTE: All var in return_name_ids should be in nonlocal_names.
     nonlocal_names = _valid_nonlocal_names(return_name_ids, nonlocal_names)
@@ -549,46 +550,6 @@ def transform_if_else(node, root):
     set_args_node = create_set_args_node(nonlocal_names)
 
     return create_new_vars_in_parent_stmts, true_func_node, false_func_node, get_args_node, set_args_node, return_name_ids
-
-
-def create_get_args_node(names):
-    """
-    Create get_args function as follows:
-
-        def get_args_0():
-            nonlocal x, y
-    """
-    assert isinstance(names, (list, tuple))
-    template = """
-    def {func_name}():
-        nonlocal {vars}
-        return {vars}
-    """
-    func_def = template.format(
-        func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
-        vars=",".join(names))
-    return gast.parse(textwrap.dedent(func_def)).body[0]
-
-
-def create_set_args_node(names):
-    """
-    Create set_args function as follows:
-
-        def set_args_0(__args):
-            nonlocal x, y
-            x, y = __args
-    """
-    assert isinstance(names, (list, tuple))
-    template = """
-    def {func_name}({args}):
-        nonlocal {vars}
-        {vars} = {args}
-    """
-    func_def = template.format(
-        func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
-        args=ARGS_NAME,
-        vars=",".join(names))
-    return gast.parse(textwrap.dedent(func_def)).body[0]
 
 
 def create_convert_ifelse_node(return_name_ids,

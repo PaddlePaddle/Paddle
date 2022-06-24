@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import six
 import paddle
+import textwrap
 from paddle.utils import gast
 from paddle.fluid import core
 from paddle.fluid import unique_name
@@ -23,9 +24,15 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = [
-    'create_bool_as_type', 'create_fill_constant_node',
-    'create_static_variable_gast_node', 'data_layer_not_check',
-    'to_static_variable', 'to_static_variable_gast_node', 'create_undefined_var'
+    'create_bool_as_type',
+    'create_fill_constant_node',
+    'create_static_variable_gast_node',
+    'data_layer_not_check',
+    'to_static_variable',
+    'to_static_variable_gast_node',
+    'create_undefined_var',
+    'create_get_args_node',
+    'create_set_args_node',
 ]
 
 
@@ -136,3 +143,48 @@ def create_bool_as_type(x, value=True):
         return paddle.full(shape=[1], fill_value=value, dtype="bool")
     else:
         return value
+
+
+def create_get_args_node(names):
+    """
+    Create get_args function as follows:
+
+        def get_args_0():
+            nonlocal x, y
+    """
+    assert isinstance(names, (list, tuple))
+    template = """
+    def {func_name}():
+        nonlocal {vars}
+        return {vars}
+    """
+    func_def = template.format(
+        func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
+        vars=",".join(names))
+    return gast.parse(textwrap.dedent(func_def)).body[0]
+
+
+GET_ARGS_FUNC_PREFIX = 'get_args'
+SET_ARGS_FUNC_PREFIX = 'set_args'
+ARGS_NAME = '__args'
+
+
+def create_set_args_node(names):
+    """
+    Create set_args function as follows:
+
+        def set_args_0(__args):
+            nonlocal x, y
+            x, y = __args
+    """
+    assert isinstance(names, (list, tuple))
+    template = """
+    def {func_name}({args}):
+        nonlocal {vars}
+        {vars} = {args}
+    """
+    func_def = template.format(
+        func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
+        args=ARGS_NAME,
+        vars=",".join(names))
+    return gast.parse(textwrap.dedent(func_def)).body[0]
