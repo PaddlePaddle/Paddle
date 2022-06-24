@@ -1681,6 +1681,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "shuffle_channel") {
+      return false;
 #if !IS_TRT_VERSION_GE(8000)
       if (with_dynamic_shape) {
         VLOG(3) << "You are running the TRT Dynamic Shape mode, "
@@ -1811,32 +1812,33 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 
     if (op_type == "reshape" || op_type == "reshape2") {
       if (with_dynamic_shape) {
-        auto reshape_inputs = desc.Inputs();
-        if (reshape_inputs.find("ShapeTensor") != reshape_inputs.end()) {
-          if (desc.Input("ShapeTensor").size() >= 1) {
-            return true;
-          }
-        }
-        if (reshape_inputs.find("Shape") != reshape_inputs.end()) {
-          if (desc.Input("Shape").size() >= 1) {
-            return false;
-          }
-        }
-        std::vector<int> shape =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
-        auto* block = desc.Block();
-        auto x_var_name = desc.Input("X")[0];
-        auto* x_var_desc = block->FindVar(x_var_name);
-        const auto x_shape = x_var_desc->GetShape();
-        int input_num = std::accumulate(x_shape.begin() + 1, x_shape.end(), 1,
-                                        std::multiplies<int>());
-        int shape_num = std::accumulate(shape.begin() + 1, shape.end(), 1,
-                                        std::multiplies<int>());
-        if (input_num != shape_num || shape_num <= 0) {
-          return false;
-        } else {
-          return true;
-        }
+        return true;
+        // auto reshape_inputs = desc.Inputs();
+        // if (reshape_inputs.find("ShapeTensor") != reshape_inputs.end()) {
+        //   if (desc.Input("ShapeTensor").size() >= 1) {
+        //     return true;
+        //   }
+        // }
+        // if (reshape_inputs.find("Shape") != reshape_inputs.end()) {
+        //   if (desc.Input("Shape").size() >= 1) {
+        //     return false;
+        //   }
+        // }
+        // std::vector<int> shape =
+        //     BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
+        // auto* block = desc.Block();
+        // auto x_var_name = desc.Input("X")[0];
+        // auto* x_var_desc = block->FindVar(x_var_name);
+        // const auto x_shape = x_var_desc->GetShape();
+        // int input_num = std::accumulate(x_shape.begin() + 1, x_shape.end(), 1,
+        //                                 std::multiplies<int>());
+        // int shape_num = std::accumulate(shape.begin() + 1, shape.end(), 1,
+        //                                 std::multiplies<int>());
+        // if (input_num != shape_num || shape_num <= 0) {
+        //   return false;
+        // } else {
+        //   return true;
+        // }
       }
 
       if (!desc.HasAttr("shape")) {

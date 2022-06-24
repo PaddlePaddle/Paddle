@@ -463,13 +463,13 @@ class OpConverter {
     }
     engine_->SetWeights(weight_name, std::move(tmp_tensor));
 
-    nvinfer1::DataType dtype = nvinfer1::DataType::kFLOAT;
+    nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
     if (std::is_integral<T>::value) {
-      dtype = nvinfer1::DataType::kINT32;
+      trt_dtype = nvinfer1::DataType::kINT32;
     }
 
     TensorRTEngine::Weight weight{
-        dtype, static_cast<void*>(tmp_data), static_cast<size_t>(data_size)};
+        trt_dtype, static_cast<void*>(tmp_data), static_cast<size_t>(data_size)};
     nvinfer1::Dims input_shape;
     input_shape.nbDims = scalar ? 0 : 1;
     input_shape.d[0] = data_size;

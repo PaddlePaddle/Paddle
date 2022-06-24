@@ -30,7 +30,8 @@ namespace tensorrt {
 class ReshapeOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -44,35 +45,40 @@ class ReshapeOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       if (op_desc.Inputs().find("ShapeTensor") != op_desc.Inputs().end() &&
           op_desc.Input("ShapeTensor").size() > 0) {
-        for (size_t i = 0; i < op_desc.Input("ShapeTensor").size(); i++)
-          concat_inputs.push_back(
-              engine_->GetITensor(op_desc.Input("ShapeTensor")[i]));
-        real_shape_tensor =
-            TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs.data(),
-                                 concat_inputs.size())
-                ->getOutput(0);
+        for (auto name : op_desc.Input("ShapeTensor"))
+          concat_inputs.push_back(engine_->GetITensor(name));
+        real_shape_tensor = Concat(concat_inputs);
       } else {
         std::vector<int> shape =
             BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
-        std::vector<int> del_batch_shape(shape.begin() + 1, shape.end());
-        auto input_shape_tensor =
-            TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
-        std::vector<int32_t> gather_indices(1, 0);
-        std::string name = "_add_reshape_op_";
-        auto gather_indices_tensor =
-            Add1DConstantLayer(gather_indices, name + "gather_indices");
-        auto batch_tensor =
-            TRT_ENGINE_ADD_LAYER(engine_, Gather, *input_shape_tensor,
-                                 *gather_indices_tensor, 0)
-                ->getOutput(0);
-        auto del_batch_shape_tensor =
-            Add1DConstantLayer(del_batch_shape, name + "del_batch_shape");
-        concat_inputs.push_back(batch_tensor);
-        concat_inputs.push_back(del_batch_shape_tensor);
-        real_shape_tensor =
-            TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs.data(),
-                                 concat_inputs.size())
-                ->getOutput(0);
+        auto* input_shape_tensor = Shape(input);
+        int minus_index = -1;
+        for (size_t i = 0; i < shape.size(); i++) {
+          if (shape[i] == 0) {
+            concat_inputs.push_back(GetEleTensorOfShape(input_shape_tensor, i));
+          } else if (shape[i] > 0) {
+            concat_inputs.push_back(Add1DConstantLayer(shape[i]));
+          } else if (shape[i] == -1) {
+            minus_index = i;
+            concat_inputs.push_back(nullptr);
+          }
+        }
+        if (minus_index > 0) {
+          auto input_numel = Add1DConstantLayer(1);
+          for (int i = 0; i < input->getDimensions().nbDims; i++) {
+            input_numel =
+                Prod(input_numel, GetEleTensorOfShape(input_shape_tensor, i));
+          }
+          auto output_numel = Add1DConstantLayer(1);
+          for (size_t i = 0; i < shape.size(); i++) {
+            if (shape[i] != -1) {
+              output_numel =
+                  Prod(input_numel, GetEleTensorOfShape(input_shape_tensor, i));
+            }
+          }
+          concat_inputs[minus_index] = Div(input_numel, output_numel);
+        }
+        real_shape_tensor = Concat(concat_inputs);
       }
     } else {  // running the TRT Static Shape mode
       reshape_dim.nbDims = nbDims_num - 1;
