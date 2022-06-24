@@ -44,6 +44,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+#include "paddle/fluid/inference/utils/model_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -517,6 +518,8 @@ bool AnalysisPredictor::PrepareProgram(
     // if enable_ir_optim_ is false,
     // the analysis pass(op fuse, graph analysis, trt subgraph, mkldnn etc) will
     // not be executed.
+    model_precision_ =
+        paddle::inference::GetModelPrecision(*inference_program_);
     OptimizeInferenceProgram();
   } else {
     // If the program is passed from external, no need to optimize it, this
@@ -1170,6 +1173,29 @@ void AnalysisPredictor::PrepareArgument() {
 #endif
 
   auto passes = config_.pass_builder()->AllPasses();
+  if (model_precision_ != phi::DataType::FLOAT32) {
+    LOG(INFO) << "Model is mixed precision type with " << model_precision_
+              << ", we will use a new PassStrategy. Note that only the GPU "
+                 "backend is supported for now.";
+    passes.clear();
+    if (config_.tensorrt_engine_enabled()) {
+      for (const auto &pass : kTrtLowerPrecisionPasses) {
+        passes.push_back(pass);
+      }
+    } else if (config_.use_gpu()) {
+      for (const auto &pass : kGpuLowerPrecisionPasses) {
+        passes.push_back(pass);
+      }
+    }
+
+    const auto &deleted_passes = config_.pass_builder()->GetAllDeletedPasses();
+    for (const auto &it : deleted_passes) {
+      auto iterator = std::find(passes.begin(), passes.end(), it);
+      if (iterator != passes.end()) {
+        passes.erase(iterator);
+      }
+    }
+  }
   if (!config_.ir_optim()) {
     passes.clear();
     LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";

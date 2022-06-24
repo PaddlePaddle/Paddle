@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/mixed_precision_configure_pass.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/io.h"
