@@ -467,6 +467,12 @@ class ReduceOp : public framework::OperatorWithKernel {
   // most outer dims, so in case of another type of reduction, it would be
   // better to fallback to native implementation
   static bool HasOptimizedOneDNNKernel(const framework::ExecutionContext& ctx) {
+    // native reduce kernels don't support bf16
+    // so oneDNN kernel is enforced in that case
+    if (ctx.Input<framework::LoDTensor>("X")->dtype() ==
+        experimental::DataType::BFLOAT16)
+      return true;
+
     auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
     const bool reduce_all = ctx.Attr<bool>("reduce_all");
     int ndims = ctx.Input<framework::LoDTensor>("X")->dims().size();
