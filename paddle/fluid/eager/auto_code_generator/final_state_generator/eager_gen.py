@@ -204,8 +204,6 @@ FORWARD_FUNCTION_TEMPLATE = \
 FORWARD_BODY_TEMPLATE = \
 """  if(require_any_grad) {{
 {}
-    egr::EagerUtils::PassStopGradient({});
-
     // Node Construction
 {}
     // SetAttributes if needed
@@ -215,6 +213,7 @@ FORWARD_BODY_TEMPLATE = \
     // SetGradOutMeta & SetEdges
 {}
     // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
+{}
 {}
 {}
 {}
@@ -657,31 +656,44 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                 backward_output_pos
             ]
 
-    def GenerateNodeCreationCodes(self):
+    def GenerateNodeCreationCodes(self, is_inplaced=False):
         forward_api_name = self.forward_api_name
         forward_inputs_position_map = self.forward_inputs_position_map
         forward_outputs_position_map = self.forward_outputs_position_map
         forward_attrs_list = self.forward_attrs_list
+        forward_inplace_map = self.forward_inplace_map if is_inplaced else {}
         backward_forward_inputs_map = self.backward_forward_inputs_map
         backward_grad_inputs_map = self.backward_grad_inputs_map
         backward_grad_outputs_map = self.backward_grad_outputs_map
         backward_attrs_list = self.backward_attrs_list
         optional_inputs = self.optional_inputs
 
+        # Helper
+        indent = GetIndent(2)
         # Pass Stop Gradient Args
+        pass_stop_gradient_str = ""
         pass_stop_gradient_args_list = ["false"]
         for name, (_, _) in forward_outputs_position_map.items():
             output_autograd_meta_name = GetAutoGradMetaName(name)
-            pass_stop_gradient_args_list.append(output_autograd_meta_name)
+            if is_inplaced and forward_inplace_map and name in forward_inplace_map.values():
+                pass_stop_gradient_str += f"""{indent}if ({output_autograd_meta_name}) {{
+{indent}  {output_autograd_meta_name}->SetStopGradient(false);
+{indent}  VLOG(3) << "Set stop_gradient to false for inplace tensor ({name}).";
+{indent}}}"""
+            else:
+                pass_stop_gradient_args_list.append(output_autograd_meta_name)
         pass_stop_gradient_args_str = ",".join(pass_stop_gradient_args_list)
+        if len(pass_stop_gradient_args_list) > 1:
+            if pass_stop_gradient_str:
+                pass_stop_gradient_str += "\n"
+            pass_stop_gradient_str += f"{indent}egr::EagerUtils::PassStopGradient({pass_stop_gradient_args_str});"
+
 
         # Node Construction
         num_backward_inputs = len(forward_outputs_position_map.keys())
         num_backward_outputs = len(forward_inputs_position_map.keys())
         grad_node_name = GetGradNodeName(forward_api_name)
 
-        # Helper
-        indent = GetIndent(2)
         # NOTE(Aurelius74): DO NOT use make_shared here. Because some Node contains experimental::Scalar
         # which contains "complex128" as data. "complex128" is memory-aligned manually. But make_shared
         # request MEMALIGN for allocation (Maybe).
@@ -790,9 +802,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::OperatorInner, 1);\n"
 
         self.node_creation_str = FORWARD_BODY_TEMPLATE.format(
-            node_creation_event_str, pass_stop_gradient_args_str,
-            node_construction_str, set_attributes_str,
-            set_input_tensor_wrappers_str, set_grad_out_meta_str,
+            node_creation_event_str, node_construction_str,
+            set_attributes_str, set_input_tensor_wrappers_str,
+            set_grad_out_meta_str, pass_stop_gradient_str,
             set_out_rank_str, set_history_str, set_grad_in_meta_str,
             set_retain_grad_str, set_output_tensor_wrappers_str)
         self.grad_node_out_list = grad_node_out_list
@@ -1062,7 +1074,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     inplace_name, inplace_name)
 
         # Node Creation
-        self.GenerateNodeCreationCodes()
+        self.GenerateNodeCreationCodes(is_inplaced)
         node_creation_str = self.node_creation_str
 
         dygraph_event_str = f"{indent}paddle::platform::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);\n"
