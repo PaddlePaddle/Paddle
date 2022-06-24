@@ -78,7 +78,7 @@ done
 #step 2:get simple general inferMeta function wrap info
 temp_path=`mktemp -d`
 python3 ${PADDLE_ROOT}/python/paddle/utils/code_gen/wrapped_infermeta_gen.py \
-  --api_yaml_path ${PADDLE_ROOT}/python/paddle/utils/code_gen/api.yaml \
+  --api_yaml_path ${PADDLE_ROOT}/python/paddle/utils/code_gen/api.yaml ${PADDLE_ROOT}/python/paddle/utils/code_gen/legacy_api.yaml \
   --wrapped_infermeta_header_path ${temp_path}/generate.h \
   --wrapped_infermeta_source_path ${temp_path}/generate.cc
 

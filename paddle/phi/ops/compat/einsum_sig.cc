@@ -18,7 +18,7 @@ namespace phi {
 
 KernelSignature EinsumOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "einsum", {"Operands"}, {"equation"}, {"Out", "InnerCache"});
+      "einsum", {"Operands"}, {"equation"}, {"Out", "InnerCache", "XShape"});
 }
 
 KernelSignature EinsumGradOpArgumentMapping(const ArgumentMappingContext& ctx) {

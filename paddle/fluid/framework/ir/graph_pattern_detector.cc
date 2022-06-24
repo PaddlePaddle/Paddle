@@ -2013,7 +2013,6 @@ PDNode *patterns::ConvResidual::operator()(bool with_residual_data) {
 
   if (!with_residual_data) {
     conv_op->assert_more([&](Node *x) {
-      auto node_names = x->Op()->InputNames();
       if (!HasInput(x, "ResidualData") ||
           x->Op()->Input("ResidualData").size() == 0)
         return true;
@@ -2073,6 +2072,20 @@ PDNode *patterns::Elementwise::operator()(PDNode *x_var, PDNode *y_var,
                      ->assert_is_op_output(elementwise_type, "Out");
 
   elementwise_op->LinksFrom({x_var, y_var});
+  elementwise_op->LinksTo({out_var});
+
+  return out_var;
+}
+
+PDNode *patterns::ElementwiseOp::operator()(
+    const std::string elementwise_type) {
+  auto elementwise_op =
+      pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
+
+  auto out_var = pattern->NewNode(elementwise_out_repr())
+                     ->AsOutput()
+                     ->assert_is_op_output(elementwise_type, "Out");
+
   elementwise_op->LinksTo({out_var});
 
   return out_var;

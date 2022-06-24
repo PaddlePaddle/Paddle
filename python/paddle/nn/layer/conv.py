@@ -76,7 +76,7 @@ class _ConvNd(Layer):
                 format(valid_padding_modes, padding_mode))
 
         if padding_mode in {'reflect', 'replicate', 'circular'
-                            } and not isinstance(padding, np.int):
+                            } and not isinstance(padding, int):
             raise TypeError(
                 "when padding_mode in ['reflect', 'replicate', 'circular'], type of padding must be int"
             )
