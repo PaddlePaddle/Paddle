@@ -28,9 +28,11 @@ namespace platform {
 template <typename HeadType, typename... RestTypes>
 struct ContainsStdString
     : std::conditional_t<
-          std::is_same<std::string, std::remove_cv_t<std::remove_reference_t<
-                                        HeadType>>>::value,
-          std::true_type, ContainsStdString<RestTypes...>> {};
+          std::is_same<
+              std::string,
+              std::remove_cv_t<std::remove_reference_t<HeadType>>>::value,
+          std::true_type,
+          ContainsStdString<RestTypes...>> {};
 
 template <typename TailType>
 struct ContainsStdString<TailType>

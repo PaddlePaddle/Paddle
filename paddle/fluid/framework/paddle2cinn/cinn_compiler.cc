@@ -68,10 +68,11 @@ CinnCompiler* CinnCompiler::GetInstance() {
 const CinnCompiledObject& CinnCompiler::Compile(
     const Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const Target& target, void* stream) {
+    const Target& target,
+    void* stream) {
   VLOG(4) << "-- The graph to be compiled is:\n" << VizGraph(graph);
-  CinnCacheKeyByAddress cur_key_by_address(graph, input_tensors,
-                                           target.arch_str());
+  CinnCacheKeyByAddress cur_key_by_address(
+      graph, input_tensors, target.arch_str());
   CinnCacheKeyByStructure cur_key_by_struct;
 
   bool exist = false;
@@ -112,7 +113,8 @@ const CinnCompiledObject& CinnCompiler::Compile(
 const CinnCompiledObject& CinnCompiler::Compile(
     int64_t compilation_key,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const Target& target, void* stream) {
+    const Target& target,
+    void* stream) {
   const auto& graph = FindGraph(compilation_key);
   return Compile(graph, input_tensors, target, stream);
 }
@@ -120,7 +122,8 @@ const CinnCompiledObject& CinnCompiler::Compile(
 const CinnCompiledObject& CinnCompiler::GetCompiledObject(
     int64_t cached_index) const {
   auto res = index2cache_.find(cached_index);
-  PADDLE_ENFORCE_NE(res, index2cache_.end(),
+  PADDLE_ENFORCE_NE(res,
+                    index2cache_.end(),
                     platform::errors::InvalidArgument(
                         "Index(%ld) not found in cache", cached_index));
   return *res->second;
@@ -129,7 +132,8 @@ const CinnCompiledObject& CinnCompiler::GetCompiledObject(
 int64_t CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
   int64_t graph_key = std::hash<Graph*>()((&(*graph)));
   PADDLE_ENFORCE_EQ(
-      graphs_.count(graph_key), 0,
+      graphs_.count(graph_key),
+      0,
       platform::errors::PreconditionNotMet(
           "The graph to be added is already in CinnCompiler, which is:\n",
           VizGraph(graph_key).c_str()));
@@ -142,7 +146,8 @@ int64_t CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
 const Graph& CinnCompiler::FindGraph(int64_t graph_key) const {
   auto it = graphs_.find(graph_key);
   PADDLE_ENFORCE_NE(
-      it, graphs_.end(),
+      it,
+      graphs_.end(),
       platform::errors::PreconditionNotMet(
           "Can not find the target graph, of which the key is: %lld",
           graph_key));
@@ -162,27 +167,33 @@ std::string CinnCompiler::VizGraph(const Graph& graph) const {
   for (const Node* n : graph.Nodes()) {
     std::string node_id = "Node" + std::to_string(id++);
     if (n->IsOp()) {
-      dot.AddNode(
-          node_id,
-          {Dot::Attr("shape", "box"), Dot::Attr("style", "rounded,filled,bold"),
-           Dot::Attr("color", "#303A3A"), Dot::Attr("fontcolor", "#ffffff")},
-          n->Name(), true);
+      dot.AddNode(node_id,
+                  {Dot::Attr("shape", "box"),
+                   Dot::Attr("style", "rounded,filled,bold"),
+                   Dot::Attr("color", "#303A3A"),
+                   Dot::Attr("fontcolor", "#ffffff")},
+                  n->Name(),
+                  true);
     } else if (n->IsVar()) {
       auto label = n->Name();
       if (n->Var() && n->Var()->GetType() == proto::VarType::LOD_TENSOR) {
         auto shape = n->Var()->GetShape();
         std::vector<std::string> shape_str(shape.size());
-        std::transform(shape.begin(), shape.end(), shape_str.begin(),
-                       [](const auto& val) { return std::to_string(val); });
+        std::transform(
+            shape.begin(), shape.end(), shape_str.begin(), [](const auto& val) {
+              return std::to_string(val);
+            });
         label += "\n" + string::join_strings(shape_str, ',');
       }
       dot.AddNode(
           node_id,
-          {Dot::Attr("shape", "box"), Dot::Attr("style", "rounded,filled,bold"),
+          {Dot::Attr("shape", "box"),
+           Dot::Attr("style", "rounded,filled,bold"),
            Dot::Attr("color", n->Var()->IsParameter() ? "#148b97" : "#dddddd"),
            Dot::Attr("fontcolor",
                      n->Var()->IsParameter() ? "#ffffff" : "#000000")},
-          label, true);
+          label,
+          true);
     }
     node2dot[n] = node_id;
   }
@@ -238,7 +249,8 @@ void CinnCompiler::CheckCompiledValid(
   auto* launch_context = compiled_obj.launch_context.get();
   // 1. check all of the output variables will be assigned by compiled program
   for (auto&& var_name : output_var_names) {
-    PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(var_name), true,
+    PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(var_name),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "Variable(%s) not applied in CINN", var_name));
   }
@@ -258,7 +270,9 @@ void CinnCompiler::CheckCompiledValid(
 std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     const ir::Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
-    const Target& target, std::int64_t compiled_num, void* stream) const {
+    const Target& target,
+    std::int64_t compiled_num,
+    void* stream) const {
   CinnGraphSymbolization symbol{compiled_num, graph, target, input_tensors};
   auto frontend_program = symbol();
   auto fetch_ids = symbol.GetFetchIds();
@@ -291,8 +305,10 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   auto compiled_res =
       graph_compiler->Build(options, std::move(fetch_ids), stream);
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
-  *compiled_obj = {std::move(graph_compiler), std::move(auto_tuner),
-                   std::move(compiled_res.runtime_program), scope,
+  *compiled_obj = {std::move(graph_compiler),
+                   std::move(auto_tuner),
+                   std::move(compiled_res.runtime_program),
+                   scope,
                    symbol.var_model_to_program_map()};
   compiled_obj->cached_index = compiled_num;
   compiled_obj->launch_context =

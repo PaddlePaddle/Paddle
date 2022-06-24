@@ -29,9 +29,12 @@ namespace inference {
 namespace tensorrt {
 
 inline void DealCeilMode(const nvinfer1::Dims &input_shape,
-                         std::vector<int> ksize, std::vector<int> strides,
-                         std::vector<int> paddings, nvinfer1::Dims3 *pre_pad,
-                         nvinfer1::Dims3 *post_pad, int input_dims) {
+                         std::vector<int> ksize,
+                         std::vector<int> strides,
+                         std::vector<int> paddings,
+                         nvinfer1::Dims3 *pre_pad,
+                         nvinfer1::Dims3 *post_pad,
+                         int input_dims) {
   int input_depth = input_shape.d[input_dims - 3];
   int input_height = input_shape.d[input_dims - 2];
   int input_width = input_shape.d[input_dims - 1];
@@ -71,7 +74,8 @@ inline void DealCeilMode(const nvinfer1::Dims &input_shape,
 class Pool3dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc &op,
-                  const framework::Scope &scope, bool test_mode) override {
+                  const framework::Scope &scope,
+                  bool test_mode) override {
     VLOG(4)
         << "convert a fluid pool3d op to tensorrt pool3d layer without bias";
     framework::OpDesc op_desc(op, nullptr);
@@ -131,20 +135,25 @@ class Pool3dOpConverter : public OpConverter {
 
     if (engine_->with_dynamic_shape()) {
       if (!adaptive && !global_pooling && !ceil_mode) {
-        auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, PoolingNd, *input1,
-                                                nv_pool_type, nv_ksize);
+        auto *pool_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
         pool_layer->setStrideNd(nv_strides);
         pool_layer->setPaddingNd(nv_paddings);
         pool_layer->setAverageCountExcludesPadding(exclusive);
         layer = pool_layer;
       } else if (global_pooling) {
-        auto *reduce_layer = TRT_ENGINE_ADD_LAYER(engine_, Reduce, *input1,
-                                                  reduce_operation, 28, true);
+        auto *reduce_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Reduce, *input1, reduce_operation, 28, true);
         layer = reduce_layer;
       } else {
-        plugin::Pool3DPluginDynamic *plugin = new plugin::Pool3DPluginDynamic(
-            ceil_mode, pool_type, adaptive, ksize, strides, paddings,
-            global_pooling);
+        plugin::Pool3DPluginDynamic *plugin =
+            new plugin::Pool3DPluginDynamic(ceil_mode,
+                                            pool_type,
+                                            adaptive,
+                                            ksize,
+                                            strides,
+                                            paddings,
+                                            global_pooling);
         layer = engine_->AddDynamicPlugin(&input1, 1, plugin);
       }
       auto output_name = op_desc.Output("Out")[0];
@@ -158,8 +167,8 @@ class Pool3dOpConverter : public OpConverter {
     }
 
     if (global_pooling == true) {
-      auto *reduce_layer = TRT_ENGINE_ADD_LAYER(engine_, Reduce, *input1,
-                                                reduce_operation, 14, true);
+      auto *reduce_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Reduce, *input1, reduce_operation, 14, true);
       layer = reduce_layer;
       auto output_name = op_desc.Output("Out")[0];
       layer->setName(("pool3d (Output: " + output_name + ")").c_str());
@@ -173,8 +182,8 @@ class Pool3dOpConverter : public OpConverter {
 
     if (!adaptive) {
       if (!ceil_mode) {
-        auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, PoolingNd, *input1,
-                                                nv_pool_type, nv_ksize);
+        auto *pool_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
         PADDLE_ENFORCE_NOT_NULL(
             pool_layer,
             platform::errors::Fatal(
@@ -189,8 +198,13 @@ class Pool3dOpConverter : public OpConverter {
           input_shape_v.push_back(input_shape.d[i]);
         }
         plugin::Pool3DPlugin *plugin =
-            new plugin::Pool3DPlugin(ceil_mode, plugin_pool_type, adaptive,
-                                     ksize, strides, paddings, input_shape_v);
+            new plugin::Pool3DPlugin(ceil_mode,
+                                     plugin_pool_type,
+                                     adaptive,
+                                     ksize,
+                                     strides,
+                                     paddings,
+                                     input_shape_v);
         auto *pool_layer = engine_->AddPluginV2Ext(&input1, 1, plugin);
         PADDLE_ENFORCE_NOT_NULL(
             pool_layer,
@@ -206,9 +220,13 @@ class Pool3dOpConverter : public OpConverter {
       for (int i = 0; i < input_dims; i++) {
         input_shape_v.push_back(input_shape.d[i]);
       }
-      plugin::Pool3DPlugin *plugin =
-          new plugin::Pool3DPlugin(ceil_mode, plugin_pool_type, adaptive, ksize,
-                                   strides, paddings, input_shape_v);
+      plugin::Pool3DPlugin *plugin = new plugin::Pool3DPlugin(ceil_mode,
+                                                              plugin_pool_type,
+                                                              adaptive,
+                                                              ksize,
+                                                              strides,
+                                                              paddings,
+                                                              input_shape_v);
       auto *pool_layer = engine_->AddPluginV2Ext(&input1, 1, plugin);
       PADDLE_ENFORCE_NOT_NULL(
           pool_layer,

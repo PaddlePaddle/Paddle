@@ -20,12 +20,19 @@ namespace paddle {
 namespace memory {
 namespace detail {
 
-void MemoryBlock::Init(MetadataCache* cache, Type t, size_t index, size_t size,
-                       void* left_buddy, void* right_buddy) {
-  cache->Save(
-      this, MemoryBlock::Desc(t, index, size - sizeof(MemoryBlock::Desc), size,
-                              static_cast<MemoryBlock*>(left_buddy),
-                              static_cast<MemoryBlock*>(right_buddy)));
+void MemoryBlock::Init(MetadataCache* cache,
+                       Type t,
+                       size_t index,
+                       size_t size,
+                       void* left_buddy,
+                       void* right_buddy) {
+  cache->Save(this,
+              MemoryBlock::Desc(t,
+                                index,
+                                size - sizeof(MemoryBlock::Desc),
+                                size,
+                                static_cast<MemoryBlock*>(left_buddy),
+                                static_cast<MemoryBlock*>(right_buddy)));
 }
 
 MemoryBlock* MemoryBlock::GetLeftBuddy(MetadataCache* cache) {
@@ -39,11 +46,13 @@ MemoryBlock* MemoryBlock::GetRightBuddy(MetadataCache* cache) {
 void MemoryBlock::Split(MetadataCache* cache, size_t size) {
   auto desc = cache->LoadDesc(this);
   // make sure the split fits
-  PADDLE_ENFORCE_GE(desc->total_size, size,
+  PADDLE_ENFORCE_GE(desc->total_size,
+                    size,
                     platform::errors::InvalidArgument(
                         "The size of memory block (%d) to split is "
                         "not larger than size of request memory (%d)",
-                        desc->total_size, size));
+                        desc->total_size,
+                        size));
 
   // bail out if there is no room for another partition
   if (desc->total_size - size <= sizeof(MemoryBlock::Desc)) {
@@ -60,9 +69,12 @@ void MemoryBlock::Split(MetadataCache* cache, size_t size) {
   auto new_block_right_buddy = desc->right_buddy;
 
   cache->Save(static_cast<MemoryBlock*>(right_partition),
-              MemoryBlock::Desc(FREE_CHUNK, desc->index,
+              MemoryBlock::Desc(FREE_CHUNK,
+                                desc->index,
                                 remaining_size - sizeof(MemoryBlock::Desc),
-                                remaining_size, this, new_block_right_buddy));
+                                remaining_size,
+                                this,
+                                new_block_right_buddy));
 
   desc->right_buddy = static_cast<MemoryBlock*>(right_partition);
   desc->size = size - sizeof(MemoryBlock::Desc);
@@ -83,10 +95,12 @@ void MemoryBlock::Merge(MetadataCache* cache, MemoryBlock* right_buddy) {
   // only free blocks can be merged
   auto desc = cache->LoadDesc(this);
   auto rb_desc = cache->LoadDesc(right_buddy);
-  PADDLE_ENFORCE_EQ(desc->type, FREE_CHUNK,
+  PADDLE_ENFORCE_EQ(desc->type,
+                    FREE_CHUNK,
                     platform::errors::PreconditionNotMet(
                         "The destination chunk to merge is not free"));
-  PADDLE_ENFORCE_EQ(rb_desc->type, FREE_CHUNK,
+  PADDLE_ENFORCE_EQ(rb_desc->type,
+                    FREE_CHUNK,
                     platform::errors::PreconditionNotMet(
                         "The source chunk to merge is not free"));
 
@@ -113,10 +127,12 @@ void MemoryBlock::Merge(MetadataCache* cache, MemoryBlock* right_buddy) {
 void MemoryBlock::MarkAsFree(MetadataCache* cache) {
   // check for double free or corruption
   auto desc = cache->LoadDesc(this);
-  PADDLE_ENFORCE_NE(desc->type, FREE_CHUNK,
+  PADDLE_ENFORCE_NE(desc->type,
+                    FREE_CHUNK,
                     platform::errors::PreconditionNotMet(
                         "The chunk to mark as free is free already"));
-  PADDLE_ENFORCE_NE(desc->type, INVALID_CHUNK,
+  PADDLE_ENFORCE_NE(desc->type,
+                    INVALID_CHUNK,
                     platform::errors::PreconditionNotMet(
                         "The chunk to mark as free is invalid"));
   desc->type = FREE_CHUNK;

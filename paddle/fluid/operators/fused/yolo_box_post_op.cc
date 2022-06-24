@@ -25,13 +25,13 @@ class YoloBoxPostOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Boxes0"), "Input", "Boxes0", "yolo_box_post");
     OP_INOUT_CHECK(ctx->HasInput("Boxes1"), "Input", "Boxes1", "yolo_box_post");
     OP_INOUT_CHECK(ctx->HasInput("Boxes2"), "Input", "Boxes2", "yolo_box_post");
-    OP_INOUT_CHECK(ctx->HasInput("ImageShape"), "Input", "ImageShape",
-                   "yolo_box_post");
-    OP_INOUT_CHECK(ctx->HasInput("ImageScale"), "Input", "ImageScale",
-                   "yolo_box_post");
+    OP_INOUT_CHECK(
+        ctx->HasInput("ImageShape"), "Input", "ImageShape", "yolo_box_post");
+    OP_INOUT_CHECK(
+        ctx->HasInput("ImageScale"), "Input", "ImageScale", "yolo_box_post");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "yolo_box_post");
-    OP_INOUT_CHECK(ctx->HasOutput("NmsRoisNum"), "Output", "NmsRoisNum",
-                   "yolo_box_post");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("NmsRoisNum"), "Output", "NmsRoisNum", "yolo_box_post");
   }
 };
 

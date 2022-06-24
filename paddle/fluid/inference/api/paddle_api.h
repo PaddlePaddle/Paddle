@@ -453,10 +453,12 @@ class PD_INFER_DECL InternalUtils {
   static void SyncStream(paddle_infer::Predictor* pred);
   static void SyncStream(cudaStream_t stream);
   template <typename T>
-  static void CopyFromCpuWithIoStream(paddle_infer::Tensor* t, const T* data,
+  static void CopyFromCpuWithIoStream(paddle_infer::Tensor* t,
+                                      const T* data,
                                       cudaStream_t stream);
   template <typename T>
-  static void CopyToCpuWithIoStream(paddle_infer::Tensor* t, T* data,
+  static void CopyToCpuWithIoStream(paddle_infer::Tensor* t,
+                                    T* data,
                                     cudaStream_t stream);
 };
 }  // namespace experimental

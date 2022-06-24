@@ -34,7 +34,8 @@ namespace tensorrt {
 class ConcatOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a paddle concat op to tensorrt concat layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -53,8 +54,8 @@ class ConcatOpConverter : public OpConverter {
         axis = axis - 1;  // Remove batch dim
       }
     }
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, itensors.data(),
-                                       itensors.size());
+    auto* layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Concatenation, itensors.data(), itensors.size());
     layer->setAxis(axis);
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "concat", {output_name}, test_mode);

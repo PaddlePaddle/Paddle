@@ -33,7 +33,8 @@ namespace operators {
 
 class MemcpyOp : public framework::OperatorWithKernel {
  public:
-  MemcpyOp(const std::string &type, const framework::VariableNameMap &inputs,
+  MemcpyOp(const std::string &type,
+           const framework::VariableNameMap &inputs,
            const framework::VariableNameMap &outputs,
            const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
@@ -51,7 +52,8 @@ class MemcpyOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -81,7 +83,8 @@ class MemcpyKernel {
       return;
     }
     PADDLE_ENFORCE_EQ(
-        ctx.HasOutput("Out"), true,
+        ctx.HasOutput("Out"),
+        true,
         platform::errors::NotFound("Output(Out) of memcpy_op is not found."));
     auto *out = ctx.OutputVar("Out");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -126,28 +129,55 @@ raise error if the type is not listed above.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OPERATOR(
-    memcpy, ops::MemcpyOp, ops::MemcpyOpProtoMaker, ops::MemcpyInferVarType,
+    memcpy,
+    ops::MemcpyOp,
+    ops::MemcpyOpProtoMaker,
+    ops::MemcpyInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(memcpy, float, ops::MemcpyKernel, double,
-                               ops::MemcpyKernel, int, ops::MemcpyKernel,
-                               int64_t, ops::MemcpyKernel, bool,
-                               ops::MemcpyKernel, plat::float16,
+REGISTER_OP_CPU_KERNEL_FUNCTOR(memcpy,
+                               float,
+                               ops::MemcpyKernel,
+                               double,
+                               ops::MemcpyKernel,
+                               int,
+                               ops::MemcpyKernel,
+                               int64_t,
+                               ops::MemcpyKernel,
+                               bool,
+                               ops::MemcpyKernel,
+                               plat::float16,
                                ops::MemcpyKernel);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(memcpy, float, ops::MemcpyKernel, double,
-                                ops::MemcpyKernel, int, ops::MemcpyKernel,
-                                int64_t, ops::MemcpyKernel, bool,
-                                ops::MemcpyKernel, plat::float16,
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(memcpy,
+                                float,
+                                ops::MemcpyKernel,
+                                double,
+                                ops::MemcpyKernel,
+                                int,
+                                ops::MemcpyKernel,
+                                int64_t,
+                                ops::MemcpyKernel,
+                                bool,
+                                ops::MemcpyKernel,
+                                plat::float16,
                                 ops::MemcpyKernel);
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
-REGISTER_OP_NPU_KERNEL_FUNCTOR(memcpy, float, ops::MemcpyKernel, double,
-                               ops::MemcpyKernel, int, ops::MemcpyKernel,
-                               int64_t, ops::MemcpyKernel, bool,
-                               ops::MemcpyKernel, plat::float16,
+REGISTER_OP_NPU_KERNEL_FUNCTOR(memcpy,
+                               float,
+                               ops::MemcpyKernel,
+                               double,
+                               ops::MemcpyKernel,
+                               int,
+                               ops::MemcpyKernel,
+                               int64_t,
+                               ops::MemcpyKernel,
+                               bool,
+                               ops::MemcpyKernel,
+                               plat::float16,
                                ops::MemcpyKernel);
 #endif

@@ -76,12 +76,14 @@ class CinnCompiler {
   const CinnCompiledObject& Compile(
       const ir::Graph& graph,
       const std::map<std::string, const LoDTensor*>& input_tensors,
-      const ::cinn::common::Target& target, void* stream = nullptr);
+      const ::cinn::common::Target& target,
+      void* stream = nullptr);
 
   const CinnCompiledObject& Compile(
       int64_t compilation_key,
       const std::map<std::string, const LoDTensor*>& input_tensors,
-      const ::cinn::common::Target& target, void* stream = nullptr);
+      const ::cinn::common::Target& target,
+      void* stream = nullptr);
 
   const CinnCompiledObject& GetCompiledObject(int64_t cached_index) const;
 
@@ -108,7 +110,8 @@ class CinnCompiler {
   std::unique_ptr<CinnCompiledObject> CompileGraph(
       const ir::Graph& graph,
       const std::map<std::string, const LoDTensor*>& input_tensors,
-      const ::cinn::common::Target& target, std::int64_t compiled_num,
+      const ::cinn::common::Target& target,
+      std::int64_t compiled_num,
       void* stream = nullptr) const;
 
   // check whether a compiled result is valid by comparing

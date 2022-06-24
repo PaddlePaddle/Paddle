@@ -73,15 +73,16 @@ TEST(float16, conversion_cpu) {
 TEST(float16, arithmetic_cpu) {
   EXPECT_EQ(static_cast<float>(float16(1) + float16(1)), 2);
   EXPECT_EQ(static_cast<float>(float16(5) + float16(-5)), 0);
-  EXPECT_NEAR(static_cast<float>(float16(0.33333f) + float16(0.66667f)), 1.0f,
-              0.001);
+  EXPECT_NEAR(
+      static_cast<float>(float16(0.33333f) + float16(0.66667f)), 1.0f, 0.001);
   EXPECT_EQ(static_cast<float>(float16(3) - float16(5)), -2);
   EXPECT_NEAR(static_cast<float>(float16(0.66667f) - float16(0.33333f)),
-              0.33334f, 0.001);
+              0.33334f,
+              0.001);
   EXPECT_NEAR(static_cast<float>(float16(3.3f) * float16(2.0f)), 6.6f, 0.01);
   EXPECT_NEAR(static_cast<float>(float16(-2.1f) * float16(-3.0f)), 6.3f, 0.01);
-  EXPECT_NEAR(static_cast<float>(float16(2.0f) / float16(3.0f)), 0.66667f,
-              0.001);
+  EXPECT_NEAR(
+      static_cast<float>(float16(2.0f) / float16(3.0f)), 0.66667f, 0.001);
   EXPECT_EQ(static_cast<float>(float16(1.0f) / float16(2.0f)), 0.5f);
   EXPECT_EQ(static_cast<float>(-float16(512.0f)), -512.0f);
   EXPECT_EQ(static_cast<float>(-float16(-512.0f)), 512.0f);
@@ -111,8 +112,8 @@ TEST(float16, comparison_cpu) {
 TEST(float16, lod_tensor_cpu) {
   framework::LoDTensor lod_tensor;
 
-  std::vector<float16> input_data = {float16(1.0f), float16(0.5f),
-                                     float16(0.33333f), float16(0.0f)};
+  std::vector<float16> input_data = {
+      float16(1.0f), float16(0.5f), float16(0.33333f), float16(0.0f)};
   EXPECT_EQ(input_data[0].x, 0x3c00);
   EXPECT_EQ(input_data[1].x, 0x3800);
   EXPECT_EQ(input_data[2].x, 0x3555);
@@ -133,7 +134,8 @@ TEST(float16, lod_tensor_cpu) {
 TEST(float16, floating) {
   // compile time assert.
   PADDLE_ENFORCE_EQ(
-      std::is_floating_point<float16>::value, true,
+      std::is_floating_point<float16>::value,
+      true,
       platform::errors::Unavailable("The float16 support in CPU failed."));
 }
 

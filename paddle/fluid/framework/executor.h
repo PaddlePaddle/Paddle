@@ -82,22 +82,29 @@ class Executor {
    *  force_disable_gc
    *  keep_kid_scopes
    */
-  void Run(const ProgramDesc& prog, Scope* scope, int block_id,
-           bool create_local_scope = true, bool create_vars = true,
+  void Run(const ProgramDesc& prog,
+           Scope* scope,
+           int block_id,
+           bool create_local_scope = true,
+           bool create_vars = true,
            const std::vector<std::string>& skip_ref_cnt_vars =
                std::vector<std::string>(),
-           bool force_disable_gc = false, bool keep_kid_scopes = false);
+           bool force_disable_gc = false,
+           bool keep_kid_scopes = false);
 
   // This API is very slow.
-  void Run(const ProgramDesc& program, Scope* scope,
+  void Run(const ProgramDesc& program,
+           Scope* scope,
            std::map<std::string, const LoDTensor*>* feed_targets,
            std::map<std::string, FetchType*>* fetch_targets,
-           bool create_local_scope = true, bool create_vars = true,
+           bool create_local_scope = true,
+           bool create_vars = true,
            const std::string& feed_holder_name = "feed",
            const std::string& fetch_holder_name = "fetch");
 
   // This API is very slow.
-  void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
+  void RunPreparedContext(ExecutorPrepareContext* ctx,
+                          Scope* scope,
                           std::map<std::string, const LoDTensor*>* feed_targets,
                           std::map<std::string, FetchType*>* fetch_targets,
                           bool create_local_scope = true,
@@ -106,34 +113,42 @@ class Executor {
                           const std::string& fetch_holder_name = "fetch");
 
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
-      const ProgramDesc& program, int block_id,
+      const ProgramDesc& program,
+      int block_id,
       const std::vector<std::string>& skip_ref_cnt_vars =
           std::vector<std::string>(),
       bool force_disable_gc = false);
 
   static std::vector<std::shared_ptr<ExecutorPrepareContext>> Prepare(
-      const ProgramDesc& program, const std::vector<int>& block_ids,
+      const ProgramDesc& program,
+      const std::vector<int>& block_ids,
       const std::vector<std::vector<std::string>>& skip_ref_cnt_vars =
           std::vector<std::vector<std::string>>(),
       bool force_disable_gc = false);
 
   void CreateVariables(const ProgramDesc& pdesc, Scope* scope, int block_id);
 
-  void RunPartialPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                                 int64_t start_op_index, int64_t end_op_index,
+  void RunPartialPreparedContext(ExecutorPrepareContext* ctx,
+                                 Scope* scope,
+                                 int64_t start_op_index,
+                                 int64_t end_op_index,
                                  bool create_local_scope = true,
                                  bool create_vars = true,
                                  bool keep_kids = false);
 
-  void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
+  void RunPreparedContext(ExecutorPrepareContext* ctx,
+                          Scope* scope,
                           bool create_local_scope = true,
-                          bool create_vars = true, bool keep_kids = false);
+                          bool create_vars = true,
+                          bool keep_kids = false);
 
   void EnableMKLDNN(const ProgramDesc& program);
 
   std::shared_ptr<TrainerBase> InitForDataset(
-      const ProgramDesc& main_program, const std::string& trainer_desc_str,
-      Scope* scope, Dataset* dataset);
+      const ProgramDesc& main_program,
+      const std::string& trainer_desc_str,
+      Scope* scope,
+      Dataset* dataset);
   void RunFromDataset(std::shared_ptr<TrainerBase> trainer);
 
   void ReleaseTrainer(std::shared_ptr<TrainerBase> trainer);

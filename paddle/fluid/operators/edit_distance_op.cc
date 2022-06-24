@@ -25,8 +25,8 @@ class EditDistanceOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Hyps"), "Input", "Hyps", "EditDistance");
     OP_INOUT_CHECK(ctx->HasInput("Refs"), "Input", "Refs", "EditDistance");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "EditDistance");
-    OP_INOUT_CHECK(ctx->HasOutput("SequenceNum"), "Output", "SequenceNum",
-                   "EditDistance");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("SequenceNum"), "Output", "SequenceNum", "EditDistance");
     auto hyp_dims = ctx->GetInputDim("Hyps");
     auto ref_dims = ctx->GetInputDim("Refs");
 
@@ -43,7 +43,10 @@ class EditDistanceOp : public framework::OperatorWithKernel {
               "identical first dimension. But received Input(Hyps): "
               "input rank %u, input shape [%s]; received Input(Refs): "
               "input rank %u, input shape [%s]",
-              hyp_dims.size(), hyp_dims, ref_dims.size(), ref_dims));
+              hyp_dims.size(),
+              hyp_dims,
+              ref_dims.size(),
+              ref_dims));
       PADDLE_ENFORCE_EQ(
           hyp_length_dims[0] == ref_length_dims[0] &&
               hyp_length_dims[0] == hyp_dims[0],
@@ -55,21 +58,29 @@ class EditDistanceOp : public framework::OperatorWithKernel {
               "received Input(RefsLength): input rank %u, input shape "
               "[%s]; received Input(Hyps): input rank %u, input shape "
               "[%s].",
-              hyp_length_dims.size(), hyp_length_dims, ref_length_dims.size(),
-              ref_length_dims, hyp_dims.size(), hyp_dims));
+              hyp_length_dims.size(),
+              hyp_length_dims,
+              ref_length_dims.size(),
+              ref_length_dims,
+              hyp_dims.size(),
+              hyp_dims));
     } else {
       PADDLE_ENFORCE_EQ(
-          hyp_dims.size() == 2 && hyp_dims[1] == 1, true,
+          hyp_dims.size() == 2 && hyp_dims[1] == 1,
+          true,
           platform::errors::InvalidArgument(
               "Input(Hyps) must be a 2-D LoDTensor with the 2nd dimension "
               "equal to 1. But received: input rank %u, input shape [%s].",
-              hyp_dims.size(), hyp_dims));
+              hyp_dims.size(),
+              hyp_dims));
       PADDLE_ENFORCE_EQ(
-          ref_dims.size() == 2 && ref_dims[1] == 1, true,
+          ref_dims.size() == 2 && ref_dims[1] == 1,
+          true,
           platform::errors::InvalidArgument(
               "Input(Refs) must be a 2-D LoDTensor with the 2nd dimension "
               "equal to 1. But received: input rank %u, input shape [%s].",
-              ref_dims.size(), ref_dims));
+              ref_dims.size(),
+              ref_dims));
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("Refs"));
@@ -145,7 +156,9 @@ will be divided by the length of reference string.
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    edit_distance, ops::EditDistanceOp, ops::EditDistanceOpMaker,
+    edit_distance,
+    ops::EditDistanceOp,
+    ops::EditDistanceOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(

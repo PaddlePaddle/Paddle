@@ -462,8 +462,8 @@ void build_op_func_list(const platform::Place& place,
 
       auto& pool = platform::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(place);
-      auto exec_ctx = ExecutionContext(*op_with_kernel, *runtime_scope,
-                                       *dev_ctx, runtime_context);
+      auto exec_ctx = ExecutionContext(
+          *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
       auto expected_kernel_key =
           op_with_kernel->GetExpectedKernelType(exec_ctx);
       // change device by the device_guard()
@@ -523,8 +523,13 @@ void build_op_func_list(const platform::Place& place,
       // step 3. data transform
       VariableValueMap& ins_map_temp = runtime_context.inputs;
       VariableValueMap& outs_map_temp = runtime_context.outputs;
-      ApplyDataTransform(kernel_type, place, &ins_map_temp, &outs_map_temp,
-                         var_scope, &op_func_node, vec_func_list,
+      ApplyDataTransform(kernel_type,
+                         place,
+                         &ins_map_temp,
+                         &outs_map_temp,
+                         var_scope,
+                         &op_func_node,
+                         vec_func_list,
                          use_local_scope);
 
       // step 4. infershape, see OperatorWithKernel::RunImpl in operator.cc for
@@ -540,8 +545,8 @@ void build_op_func_list(const platform::Place& place,
       // step 5. run kernel
       if (run_phi_kernel) {
         phi::KernelContext pt_kernel_context;
-        op_with_kernel->BuildPhiKernelContext(runtime_context, dev_ctx,
-                                              &pt_kernel_context);
+        op_with_kernel->BuildPhiKernelContext(
+            runtime_context, dev_ctx, &pt_kernel_context);
         (*op_func_node.pt_kernel_)(&pt_kernel_context);
       } else {
         // the place of exec_ctx maybe has changed.
@@ -553,9 +558,13 @@ void build_op_func_list(const platform::Place& place,
       // grad.
       // NOTE(Aurelius84): insert a transfer_dtype_op inplacely to cast it.
       if (framework::IsComplexType(kernel_type.data_type_)) {
-        interpreter::HandleComplexGradToRealGrad(
-            op_func_node, place, outputs_names, &runtime_context.outputs,
-            var_scope, vec_func_list, local_scope);
+        interpreter::HandleComplexGradToRealGrad(op_func_node,
+                                                 place,
+                                                 outputs_names,
+                                                 &runtime_context.outputs,
+                                                 var_scope,
+                                                 vec_func_list,
+                                                 local_scope);
       }
       if (!op_func_node.inplace_back_map.empty()) {
         auto& m = op_func_node.inplace_back_map;

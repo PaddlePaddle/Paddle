@@ -93,7 +93,9 @@ struct ConstantOpAttrVisitor : public boost::static_visitor<void> {
   void operator()(const std::vector<float>& vec) const {
     if (dtype_ == VarType::FP16) {
       std::vector<float16> vec_fp16;
-      std::transform(vec.begin(), vec.end(), std::back_inserter(vec_fp16),
+      std::transform(vec.begin(),
+                     vec.end(),
+                     std::back_inserter(vec_fp16),
                      [](float f) -> float16 { return float16(f); });
       framework::TensorFromVector<float16>(vec_fp16, tensor_);
     } else {
@@ -358,7 +360,8 @@ void Compiler::InitOutputs(const std::vector<std::string>& fetch_list) {
   for (const auto& fetch_name : fetch_list) {
     auto tensor = resources_->tensors.find(fetch_name);
     PADDLE_ENFORCE_NE(
-        tensor, resources_->tensors.end(),
+        tensor,
+        resources_->tensors.end(),
         platform::errors::NotFound(
             "Output tensor %s is not found, please check the model.",
             fetch_name));
@@ -425,8 +428,9 @@ void Compiler::LowerWeights(const Scope* scope) {
       VLOG(10) << "lowering weight: " << var_name;
       auto var = scope->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(
-          var, platform::errors::NotFound("Tensor %s is not found in the scope",
-                                          var_name));
+          var,
+          platform::errors::NotFound("Tensor %s is not found in the scope",
+                                     var_name));
       auto tensor = var->Get<framework::LoDTensor>();
       auto dtype = PhiDType2PopartDType(tensor.dtype());
       auto shape = std::vector<int64_t>();
@@ -478,9 +482,12 @@ void Compiler::LowerBody() {
       VLOG(10) << "Build graph from custom op: " << __op_type;
       auto it = custom_ops_.find(__op_type);
       NameScopeHelper ns_helper(op_desc, builder_.get());
-      auto output_ids =
-          builder_->customOp(it->second.popart_op, it->second.popart_op.version,
-                             inputs, outputs.size(), attributes, debug_context);
+      auto output_ids = builder_->customOp(it->second.popart_op,
+                                           it->second.popart_op.version,
+                                           inputs,
+                                           outputs.size(),
+                                           attributes,
+                                           debug_context);
       PostLower(output_ids, op_desc);
     } else if (op_type == "popart_printtensor") {
       auto inputs = GetOpInputs(op_desc);
@@ -566,14 +573,17 @@ void Compiler::LowerOptimizer(const Scope* scope) {
               popart::OptimizerValue(momentum, true),
               popart::SGD::getUnsetDampening(),
               popart::SGD::getUnsetVelocityScaling(),
-              popart::OptimizerValue(loss_scaling, true), clip_norm_settings);
+              popart::OptimizerValue(loss_scaling, true),
+              clip_norm_settings);
         };
         resources_->eval_optimizer = std::make_unique<popart::SGD>(
             popart::OptimizerValue(0.0, false),
             popart::OptimizerValue(0.0, false),
-            popart::OptimizerValue(0.0, true), popart::SGD::getUnsetDampening(),
+            popart::OptimizerValue(0.0, true),
+            popart::SGD::getUnsetDampening(),
             popart::SGD::getUnsetVelocityScaling(),
-            popart::OptimizerValue(loss_scaling, true), clip_norm_settings);
+            popart::OptimizerValue(loss_scaling, true),
+            clip_norm_settings);
       } else if (type == "adam") {
         auto weight_decay =
             BOOST_GET_CONST(float, op_desc->GetAttr("weight_decay"));
@@ -603,10 +613,15 @@ void Compiler::LowerOptimizer(const Scope* scope) {
                                    {"defaultEps", {eps, true}},
                                    {"lossScaling", {loss_scaling, true}},
                                    {"defaultMaxWeightNorm", {mwn, true}}};
-            auto optimizer_instance = std::make_unique<popart::Adam>(
-                optimizer_value, adam_mode, weight_decay_mode,
-                popart::DataType::UNDEFINED, accl1_type, accl2_type,
-                clip_norm_settings, scaled_optimizer_state_);
+            auto optimizer_instance =
+                std::make_unique<popart::Adam>(optimizer_value,
+                                               adam_mode,
+                                               weight_decay_mode,
+                                               popart::DataType::UNDEFINED,
+                                               accl1_type,
+                                               accl2_type,
+                                               clip_norm_settings,
+                                               scaled_optimizer_state_);
             for (int i = 0; i < weight_decay_vars.size(); i++) {
               optimizer_instance->insertSpecific(
                   weight_decay_vars[i],
@@ -623,9 +638,14 @@ void Compiler::LowerOptimizer(const Scope* scope) {
                 popart::OptimizerValue(beta2, false),
                 popart::OptimizerValue(eps, true),
                 popart::OptimizerValue(loss_scaling, true),
-                popart::OptimizerValue(mwn, true), adam_mode, weight_decay_mode,
-                popart::DataType::UNDEFINED, accl1_type, accl2_type,
-                clip_norm_settings, scaled_optimizer_state_);
+                popart::OptimizerValue(mwn, true),
+                adam_mode,
+                weight_decay_mode,
+                popart::DataType::UNDEFINED,
+                accl1_type,
+                accl2_type,
+                clip_norm_settings,
+                scaled_optimizer_state_);
           }
         };
         if (adam_mode == popart::AdamMode::Lamb) {
@@ -636,11 +656,15 @@ void Compiler::LowerOptimizer(const Scope* scope) {
                {"defaultEps", {eps, true}},
                {"lossScaling", {loss_scaling, true}},
                {"defaultMaxWeightNorm", {mwn, true}}};
-          auto eval_optimizer = std::make_unique<popart::Adam>(
-              optimizer_value, adam_mode, weight_decay_mode,
-              popart::DataType::UNDEFINED, popart::DataType::FLOAT,
-              popart::DataType::FLOAT, clip_norm_settings,
-              scaled_optimizer_state_);
+          auto eval_optimizer =
+              std::make_unique<popart::Adam>(optimizer_value,
+                                             adam_mode,
+                                             weight_decay_mode,
+                                             popart::DataType::UNDEFINED,
+                                             popart::DataType::FLOAT,
+                                             popart::DataType::FLOAT,
+                                             clip_norm_settings,
+                                             scaled_optimizer_state_);
           for (int i = 0; i < weight_decay_vars.size(); i++) {
             eval_optimizer->insertSpecific(weight_decay_vars[i],
                                            {{"weightDecay", {0.0, false}}});
@@ -654,11 +678,15 @@ void Compiler::LowerOptimizer(const Scope* scope) {
                {"defaultEps", {eps, true}},
                {"lossScaling", {loss_scaling, true}},
                {"defaultMaxWeightNorm", {mwn, true}}};
-          auto eval_optimizer = std::make_unique<popart::Adam>(
-              optimizer_value, adam_mode, weight_decay_mode,
-              popart::DataType::UNDEFINED, popart::DataType::FLOAT,
-              popart::DataType::FLOAT, clip_norm_settings,
-              scaled_optimizer_state_);
+          auto eval_optimizer =
+              std::make_unique<popart::Adam>(optimizer_value,
+                                             adam_mode,
+                                             weight_decay_mode,
+                                             popart::DataType::UNDEFINED,
+                                             popart::DataType::FLOAT,
+                                             popart::DataType::FLOAT,
+                                             clip_norm_settings,
+                                             scaled_optimizer_state_);
           for (int i = 0; i < weight_decay_vars.size(); i++) {
             eval_optimizer->insertSpecific(weight_decay_vars[i],
                                            {{"weightDecay", {0.0, false}}});
@@ -672,9 +700,13 @@ void Compiler::LowerOptimizer(const Scope* scope) {
               popart::OptimizerValue(beta2, false),
               popart::OptimizerValue(eps, true),
               popart::OptimizerValue(loss_scaling, true),
-              popart::OptimizerValue(mwn, true), adam_mode, weight_decay_mode,
-              popart::DataType::UNDEFINED, popart::DataType::FLOAT,
-              popart::DataType::FLOAT, clip_norm_settings,
+              popart::OptimizerValue(mwn, true),
+              adam_mode,
+              weight_decay_mode,
+              popart::DataType::UNDEFINED,
+              popart::DataType::FLOAT,
+              popart::DataType::FLOAT,
+              clip_norm_settings,
               scaled_optimizer_state_);
         }
       } else if (type == "adaptive") {
@@ -699,9 +731,13 @@ void Compiler::LowerOptimizer(const Scope* scope) {
               popart::OptimizerValue(alpha, true),
               popart::OptimizerValue(momentum, true),
               popart::OptimizerValue(eps, true),
-              popart::OptimizerValue(loss_scaling, true), adaptive_mode,
-              weight_decay_mode, popart::DataType::UNDEFINED, accl1_type,
-              accl2_type, accl3_type);
+              popart::OptimizerValue(loss_scaling, true),
+              adaptive_mode,
+              weight_decay_mode,
+              popart::DataType::UNDEFINED,
+              accl1_type,
+              accl2_type,
+              accl3_type);
         };
         resources_->eval_optimizer = std::make_unique<popart::Adaptive>(
             popart::OptimizerValue(0.0, false),
@@ -709,9 +745,12 @@ void Compiler::LowerOptimizer(const Scope* scope) {
             popart::OptimizerValue(alpha, true),
             popart::OptimizerValue(momentum, true),
             popart::OptimizerValue(eps, true),
-            popart::OptimizerValue(loss_scaling, true), adaptive_mode,
-            weight_decay_mode, popart::DataType::UNDEFINED,
-            popart::DataType::FLOAT, popart::DataType::FLOAT,
+            popart::OptimizerValue(loss_scaling, true),
+            adaptive_mode,
+            weight_decay_mode,
+            popart::DataType::UNDEFINED,
+            popart::DataType::FLOAT,
+            popart::DataType::FLOAT,
             popart::DataType::UNDEFINED);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
@@ -743,7 +782,8 @@ void Compiler::PostLower(const std::vector<std::string>& tensor_ids,
   // Record output tensors
   auto pd_outs = GetOpOutputs(op_desc);
   PADDLE_ENFORCE_EQ(
-      pd_outs.size(), tensor_ids.size(),
+      pd_outs.size(),
+      tensor_ids.size(),
       platform::errors::Fatal("paddle and popart op have different outputs"));
   for (int i = 0; i < tensor_ids.size(); ++i) {
     resources_->tensors.emplace(pd_outs[i], tensor_ids[i]);
@@ -757,13 +797,15 @@ void Compiler::PostLower(const std::string& tensor_id, const OpDesc* op_desc) {
   // Record output tensor
   auto pd_outs = GetOpOutputs(op_desc);
   PADDLE_ENFORCE_EQ(
-      pd_outs.size(), 1,
+      pd_outs.size(),
+      1,
       platform::errors::Fatal("paddle and popart op have different outputs"));
   resources_->tensors.emplace(pd_outs[0], tensor_id);
   PostLower(tensor_id, op_desc, false);
 }
 
-void Compiler::PostLower(const std::string& tensor_id, const OpDesc* op_desc,
+void Compiler::PostLower(const std::string& tensor_id,
+                         const OpDesc* op_desc,
                          bool skip_pipline) {
   // Set pipline
   if (!skip_pipline && op_desc->HasAttr(sIpuIndexAttr)) {

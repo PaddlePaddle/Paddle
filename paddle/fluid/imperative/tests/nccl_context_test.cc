@@ -67,8 +67,10 @@ TEST(BcastNCCLId, Run) {
 
   t.join();
   for (int i = 0; i < nrings; ++i) {
-    EXPECT_EQ(0, std::memcmp(nccl_ids[i].internal, recv_nccl_ids[i].internal,
-                             NCCL_UNIQUE_ID_BYTES));
+    EXPECT_EQ(0,
+              std::memcmp(nccl_ids[i].internal,
+                          recv_nccl_ids[i].internal,
+                          NCCL_UNIQUE_ID_BYTES));
   }
 }
 

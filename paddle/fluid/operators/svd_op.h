@@ -136,8 +136,9 @@ class SvdGradKernel : public framework::OpKernel<T> {
       u_term = dito.Matmul(U, u_term);
       if (m > k) {
         auto project = dito.Sub(dito.Eye(m), dito.Matmul(U, U, false, true));
-        u_term = dito.Add(u_term, dito.Mul(dito.Matmul(project, dU),
-                                           dito.Unsqueeze(s_inverse, -2)));
+        u_term = dito.Add(
+            u_term,
+            dito.Mul(dito.Matmul(project, dU), dito.Unsqueeze(s_inverse, -2)));
       }
       u_term = dito.Matmul(u_term, VH);
     }
@@ -149,8 +150,9 @@ class SvdGradKernel : public framework::OpKernel<T> {
                         dito.Unsqueeze(S, -1));
       if (n > k) {
         auto project = dito.Sub(dito.Eye(n), dito.Matmul(VH, VH, true, false));
-        v_term = dito.Add(v_term, dito.Mul(dito.Matmul(dVH, project),
-                                           dito.Unsqueeze(s_inverse, -1)));
+        v_term = dito.Add(
+            v_term,
+            dito.Mul(dito.Matmul(dVH, project), dito.Unsqueeze(s_inverse, -1)));
       }
       v_term = dito.Matmul(U, v_term);
     }
