@@ -244,6 +244,12 @@ class HostEventRecorder {
   // It will cause deep-copy to harm performance.
   template <typename... Args>
   void RecordEvent(Args &&...args) {
+    // Get thread local ThreadEventRecorder
+    // If not exists, we create a new one.
+    // Both HostEventRecorder and thread-local varibale in
+    // ThreadEventRecorderRegistry keep the shared pointer. We add this to
+    // prevent ThreadEventRecorder being destroyed by thread-local variable in
+    // ThreadEventRecorderRegistry and lose data.
     if (GetThreadLocalRecorder()->get() == nullptr) {
       std::shared_ptr<ThreadEventRecorder<EventType>>
           thread_event_recorder_ptr =
@@ -277,6 +283,10 @@ class HostEventRecorder {
     return ThreadEventRecorderRegistry::GetInstance()
         .GetMutableCurrentThreadData();
   }
+  // Hold all thread-local ThreadEventRecorders
+  // ThreadEventRecorderRegistry and HostEventRecorder both take care of this
+  // shared pointer. We add this to prevent ThreadEventRecorder being destroyed
+  // by thread-local variable in ThreadEventRecorderRegistry and lose data.
   std::vector<std::shared_ptr<ThreadEventRecorder<EventType>>> thr_recorders_;
 };
 
