@@ -297,7 +297,7 @@ struct InstructionInfo {
 
 enum class OpFuncType {
   kQueueSync = 0,   // CPU kernel, block host
-  kQueueAsync = 1,  // GPU Kernel or d2h, h2d, send, recv, broadcast
+  kQueueAsync = 1,  // GPU、XPU Kernel or d2h, h2d, send, recv, broadcast
 };
 class RuntimeInferShapeContext;
 
@@ -415,6 +415,11 @@ static bool IsMemcpyD2H(const Instruction& instr) {
 
 static bool IsCpuOp(const Instruction& instr) {
   return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+}
+
+// is supported heterogeneous place
+static bool IsSupportedHetePlace(const phi::Place& place) {
+  return platform::is_gpu_place(place) || platform::is_xpu_place(place);
 }
 
 }  // namespace interpreter

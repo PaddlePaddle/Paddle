@@ -193,6 +193,8 @@ class OperatorBase {
 
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
+  VariableNameMap& Inputs() { return inputs_; }
+  VariableNameMap& Outputs() { return outputs_; }
 
   const OpInfo& Info() const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -579,6 +581,8 @@ class OperatorWithKernel : public OperatorBase {
   }
   bool SupportsMKLDNN(proto::VarType::Type data_type) const;
 
+  bool SupportsKernelType(const OpKernelType& kernel_type) const;
+
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
 
@@ -621,6 +625,7 @@ class OperatorWithKernel : public OperatorBase {
   /* member functions for adapting to phi lib */
   phi::KernelKey ChoosePhiKernel(const ExecutionContext& ctx) const;
 
+  void ChooseKernel(const ExecutionContext& ctx) const;
   /**
    * Transfer data place for phi kernel
    * Is this really needed?
@@ -644,6 +649,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   const OpKernelType* kernel_type() const { return kernel_type_.get(); }
+  const OpKernelFunc* kernel_func() const { return kernel_func_.get(); }
 
   void ResetKernelType(OpKernelType* kernel_type) {
     kernel_type_.reset(kernel_type);
@@ -671,8 +677,6 @@ class OperatorWithKernel : public OperatorBase {
                                const Scope& exec_scope) const;
 
   OpKernelType InnerGetExpectedKernelType(const ExecutionContext& ctx) const;
-
-  void ChooseKernel(const ExecutionContext& ctx) const;
 
   void HandleComplexGradToRealGrad(const Scope& scope,
                                    RuntimeContext* ctx) const;

@@ -704,7 +704,8 @@ class AllocatorFacadePrivate {
       if (platform::is_gpu_place(place)) {
         std::shared_ptr<StreamSafeCUDAAllocator>&& allocator =
             std::make_shared<StreamSafeCUDAAllocator>(
-                pair.second, place, /* default_stream = */ nullptr,
+                pair.second, place,
+                /* default_stream = */ nullptr,
                 /* in_cuda_graph_capturing = */ !allow_free_idle_chunk_);
         pair.second = allocator;
 
@@ -1044,8 +1045,11 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
   } else {
     return m->GetAllocator(p, size)->Allocate(size);
   }
+#elif defined PADDLE_WITH_XPU
+  return GetAllocator(place)->Allocate(size);
 #else
-  PADDLE_THROW(platform::errors::PreconditionNotMet("Not compiled with GPU."));
+  PADDLE_THROW(
+      platform::errors::PreconditionNotMet("Not compiled with GPU or XPU."));
 #endif
 }
 
