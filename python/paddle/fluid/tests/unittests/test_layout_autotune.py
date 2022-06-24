@@ -146,7 +146,7 @@ class LayoutAutoTune(unittest.TestCase):
             out = paddle.argmax(conv_out, axis=1, keepdim=True)
 
         self.assertEqual(conv_out.shape, [1, 14, 12, 8])
-        self.assertEqual(out.shape, [1, 14, 1, 8])
+        self.assertEqual(out.shape, [1, 14, 12, 1])
 
     def test_argmax_op_transposer(self):
         if not self.use_autoune():
