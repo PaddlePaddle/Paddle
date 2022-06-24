@@ -413,12 +413,16 @@ class InceptionE(nn.Layer):
 
 
 class InceptionV3(nn.Layer):
-    """
-    InceptionV3
+    """Inception v3 model from
+    `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_.
+
     Args:
-        num_classes (int, optional): output dim of last fc layer. If num_classes <=0, last fc layer 
-                            will not be defined. Default: 1000. 
-        with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+                            will not be defined. Default: 1000.
+        with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of Inception v3 model.
 
     Examples:
         .. code-block:: python
@@ -432,6 +436,7 @@ class InceptionV3(nn.Layer):
             out = inception_v3(x)
 
             print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self, num_classes=1000, with_pool=True):
@@ -505,13 +510,17 @@ class InceptionV3(nn.Layer):
 
 
 def inception_v3(pretrained=False, **kwargs):
-    """
-    InceptionV3 model from
-    `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_
+    """Inception v3 model from
+    `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`InceptionV3 <api_paddle_vision_InceptionV3>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of Inception v3 model.
+
     Examples:
         .. code-block:: python
 
@@ -528,6 +537,7 @@ def inception_v3(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     model = InceptionV3(**kwargs)
     arch = "inception_v3"

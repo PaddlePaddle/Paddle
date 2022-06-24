@@ -290,9 +290,6 @@ int64_t SSDSparseTable::LocalSize() {
     local_size += _local_shards[i].size();
   }
   // TODO rocksdb size
-  uint64_t ssd_size = 0;
-  // _db->get_estimate_key_num(ssd_size);
-  // return local_size + ssd_size;
   return local_size;
 }
 
@@ -473,7 +470,6 @@ int64_t SSDSparseTable::CacheShuffle(
   }
   int shuffle_node_num = _config.sparse_table_cache_file_num();
   LOG(INFO) << "Table>> shuffle node num is: " << shuffle_node_num;
-  size_t file_start_idx = _avg_local_shard_num * _shard_idx;
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
 
   std::vector<
@@ -578,7 +574,6 @@ int32_t SSDSparseTable::SaveCache(
     return 0;
   }
   int save_param = atoi(param.c_str());  // batch_model:0  xbox:1
-  size_t file_start_idx = _avg_local_shard_num * _shard_idx;
   std::string table_path = paddle::string::format_string(
       "%s/%03d_cache/", path.c_str(), _config.table_id());
   _afs_client.remove(paddle::string::format_string(

@@ -249,7 +249,6 @@ int32_t MemoryDenseTable::Load(const std::string& path,
       float data_buffer[5];
       float* data_buff_ptr = data_buffer;
       std::string line_data;
-      int size = static_cast<int>(values_.size());
       auto common = _config.common();
 
       for (size_t i = start_file_idx; i < end_file_idx + 1; ++i) {
@@ -354,7 +353,6 @@ int32_t MemoryDenseTable::Save(const std::string& path,
   } else {
     std::ostringstream os;
     for (int x = 0; x < size; ++x) {
-      auto& varname = common.params()[x];
       int dim = common.dims()[x];
       VLOG(3) << "MemoryDenseTable::save dim " << x << " size: " << dim;
       for (int y = 0; y < dim; ++y) {

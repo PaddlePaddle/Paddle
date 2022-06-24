@@ -46,54 +46,63 @@ class Cifar10(Dataset):
     dataset, which has 10 categories.
 
     Args:
-        data_file(str): path to data file, can be set None if
+        data_file (str, optional): Path to data file, can be set None if
             :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/cifar
-        mode(str): 'train', 'test' mode. Default 'train'.
-        transform(callable): transform to perform on image, None for no transform.
-        download(bool): download dataset automatically if :attr:`data_file` is None. Default True
-        backend(str, optional): Specifies which type of image to be returned: 
-            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
-            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+        mode (str, optional): Either train or test mode. Default 'train'.
+        transform (Callable, optional): transform to perform on image, None for no transform. Default: None.
+        download (bool, optional): download dataset automatically if :attr:`data_file` is None. Default True.
+        backend (str, optional): Specifies which type of image to be returned:
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
+            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
             default backend is 'pil'. Default: None.
 
     Returns:
-        Dataset: instance of cifar-10 dataset
+        :ref:`api_paddle_io_Dataset`. An instance of Cifar10 dataset.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            import itertools
+            import paddle.vision.transforms as T
             from paddle.vision.datasets import Cifar10
-            from paddle.vision.transforms import Normalize
-
-            class SimpleNet(paddle.nn.Layer):
-                def __init__(self):
-                    super(SimpleNet, self).__init__()
-                    self.fc = nn.Sequential(
-                        nn.Linear(3072, 10),
-                        nn.Softmax())
-
-                def forward(self, image, label):
-                    image = paddle.reshape(image, (1, -1))
-                    return self.fc(image), label
 
 
-            normalize = Normalize(mean=[0.5, 0.5, 0.5],
-                                  std=[0.5, 0.5, 0.5],
-                                  data_format='HWC')
-            cifar10 = Cifar10(mode='train', transform=normalize)
+            cifar10 = Cifar10()
+            print(len(cifar10))
+            # 50000
 
-            for i in range(10):
-                image, label = cifar10[i]
-                image = paddle.to_tensor(image)
-                label = paddle.to_tensor(label)
+            for i in range(5):  # only show first 5 images
+                img, label = cifar10[i]
+                # do something with img and label
+                print(type(img), img.size, label)
+                # <class 'PIL.Image.Image'> (32, 32) 6
 
-                model = SimpleNet()
-                image, label = model(image, label)
-                print(image.numpy().shape, label.numpy().shape)
 
+            transform = T.Compose(
+                [
+                    T.Resize(64),
+                    T.ToTensor(),
+                    T.Normalize(
+                        mean=[0.5, 0.5, 0.5],
+                        std=[0.5, 0.5, 0.5],
+                        to_rgb=True,
+                    ),
+                ]
+            )
+
+            cifar10_test = Cifar10(
+                mode="test",
+                transform=transform,  # apply transform to every image
+                backend="cv2",  # use OpenCV as image transform backend
+            )
+            print(len(cifar10_test))
+            # 10000
+
+            for img, label in itertools.islice(iter(cifar10_test), 5):  # only show first 5 images
+                # do something with img and label
+                print(type(img), img.shape, label)
+                # <class 'paddle.Tensor'> [3, 64, 64] 3
     """
 
     def __init__(self,
@@ -179,54 +188,63 @@ class Cifar100(Cifar10):
     dataset, which has 100 categories.
 
     Args:
-        data_file(str): path to data file, can be set None if
-            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/cifar
-        mode(str): 'train', 'test' mode. Default 'train'.
-        transform(callable): transform to perform on image, None for no transform.
-        download(bool): download dataset automatically if :attr:`data_file` is None. Default True
-        backend(str, optional): Specifies which type of image to be returned: 
-            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
-            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+        data_file (str, optional): path to data file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/cifar
+        mode (str, optional): Either train or test mode. Default 'train'.
+        transform (Callable, optional): transform to perform on image, None for no transform. Default: None.
+        download (bool, optional): download dataset automatically if :attr:`data_file` is None. Default True.
+        backend (str, optional): Specifies which type of image to be returned:
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
+            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
             default backend is 'pil'. Default: None.
 
     Returns:
-        Dataset: instance of cifar-100 dataset
+        :ref:`api_paddle_io_Dataset`. An instance of Cifar100 dataset.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            import itertools
+            import paddle.vision.transforms as T
             from paddle.vision.datasets import Cifar100
-            from paddle.vision.transforms import Normalize
-
-            class SimpleNet(paddle.nn.Layer):
-                def __init__(self):
-                    super(SimpleNet, self).__init__()
-                    self.fc = nn.Sequential(
-                        nn.Linear(3072, 10),
-                        nn.Softmax())
-
-                def forward(self, image, label):
-                    image = paddle.reshape(image, (1, -1))
-                    return self.fc(image), label
 
 
-            normalize = Normalize(mean=[0.5, 0.5, 0.5],
-                                  std=[0.5, 0.5, 0.5],
-                                  data_format='HWC')
-            cifar100 = Cifar100(mode='train', transform=normalize)
+            cifar100 = Cifar100()
+            print(len(cifar100))
+            # 50000
 
-            for i in range(10):
-                image, label = cifar100[i]
-                image = paddle.to_tensor(image)
-                label = paddle.to_tensor(label)
+            for i in range(5):  # only show first 5 images
+                img, label = cifar100[i]
+                # do something with img and label
+                print(type(img), img.size, label)
+                # <class 'PIL.Image.Image'> (32, 32) 19
 
-                model = SimpleNet()
-                image, label = model(image, label)
-                print(image.numpy().shape, label.numpy().shape)
 
+            transform = T.Compose(
+                [
+                    T.Resize(64),
+                    T.ToTensor(),
+                    T.Normalize(
+                        mean=[0.5, 0.5, 0.5],
+                        std=[0.5, 0.5, 0.5],
+                        to_rgb=True,
+                    ),
+                ]
+            )
+
+            cifar100_test = Cifar100(
+                mode="test",
+                transform=transform,  # apply transform to every image
+                backend="cv2",  # use OpenCV as image transform backend
+            )
+            print(len(cifar100_test))
+            # 10000
+
+            for img, label in itertools.islice(iter(cifar100_test), 5):  # only show first 5 images
+                # do something with img and label
+                print(type(img), img.shape, label)
+                # <class 'paddle.Tensor'> [3, 64, 64] 49
     """
 
     def __init__(self,
