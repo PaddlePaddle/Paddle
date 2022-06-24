@@ -111,7 +111,7 @@ def create_while_nodes(condition_name, body_name, loop_var_names):
 class NameScope:
 
     def __init__(self):
-        """ we don't analysis the read only variable
+        """ we don't analyze the read only variable
             because they keep the same in control flow.
         """
         self.globals = set()
@@ -130,7 +130,7 @@ class NameScope:
 
 
 class FunctionNameLivenessAnalysis(gast.NodeVisitor):
-    """ analysis the liveness of a function.
+    """ analyze the liveness of a function.
 
         every variables stored in this scope will be collected,
         in addition with global/nonlocal information.
@@ -139,7 +139,8 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
         2. nonlocal variable is stored in node.var_nonlocals.
         3. arguments is stored in node.var_args.
 
-        for example:
+        For example:
+
         def func(*args, **kargs):
             a = 12
             global i,j
@@ -151,7 +152,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
         
         After this visitor we have: 
         # node is the FunctionDef node with name: "func"
-        node.pd_scope = NameInFunction(
+        node.pd_scope = NameScope(
             globals = ['i', 'j'],
             nonlocals = ['x', 'y'],
             args = ['args', 'kargs'], 
@@ -166,19 +167,10 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
     def _current_funcdef_scope(self):
         return self.funcdef_stack[-1].pd_scope
 
-    def get_funcion_create_var_names(self, node):
-        assert isinstance(
-            node, gast.FunctionDef), "Input node is not function define node"
-        return self.func_to_created_variables[node]
-
     def visit_Name(self, node):
         self.generic_visit(node)
-        write_context = {
-            type(gast.Store()),
-            type(gast.AugStore()),
-            type(gast.Del())
-        }
-        if type(node.ctx) in write_context:
+        write_context = (gast.Store, gast.AugStore, gast.Del)
+        if isinstance(node.ctx, write_context):
             self._current_funcdef_scope().w_vars.add(node.id)
 
     def visit_FunctionDef(self, node):
@@ -188,12 +180,6 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             self._get_argument_names(node))
         self.generic_visit(node)
         self.funcdef_stack.pop()
-
-    def visit(self, node):
-        method = 'visit_' + node.__class__.__name__
-        visitor = getattr(self, method, self.generic_visit)
-        ret = visitor(node)
-        return ret
 
     def visit_Global(self, node):
         self._current_funcdef_scope().globals |= set(node.names)

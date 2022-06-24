@@ -17,28 +17,15 @@ from __future__ import print_function
 import unittest
 
 import paddle
-import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.layers.utils import map_structure
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import FunctionNameLivenessAnalysis
 from paddle.utils import gast
 import inspect
-
-SEED = 2020
-np.random.seed(SEED)
 
 
 class JudgeVisitor(gast.NodeVisitor):
 
     def __init__(self, ans):
         self.ans = ans
-
-    def visit(self, node):
-        method = 'visit_' + node.__class__.__name__
-        visitor = getattr(self, method, self.generic_visit)
-        ret = visitor(node)
-        return ret
 
     def visit_FunctionDef(self, node):
         scope = node.pd_scope
@@ -129,20 +116,18 @@ class TestClosureAnalysis(unittest.TestCase):
             JudgeVisitor(ans).visit(gast_root)
 
 
-class TestClosureAnalysis_Attribute(unittest.TestCase):
+def TestClosureAnalysis_Attribute_func():
+    # in this function, only self is a Name, self.current is a Attribute. self is read and self.current.function is store()
+    i = 0
+    self.current.function = 12
 
-    def setUp(self):
-        self.init_dygraph_func()
+
+class TestClosureAnalysis_Attribute(TestClosureAnalysis):
 
     def init_dygraph_func(self):
 
-        def func():
-            i = 0
-            self.current.function = 12
-            # in this function, only self is a Name, self.current is a Attribute. self is read and self.current.function is store()
-
-        self.all_dygraph_funcs = [func]
-        self.ans = [{"func": set({'i'})}]
+        self.all_dygraph_funcs = [TestClosureAnalysis_Attribute_func]
+        self.answer = [{"TestClosureAnalysis_Attribute_func": set({'i'})}]
 
 
 if __name__ == '__main__':
