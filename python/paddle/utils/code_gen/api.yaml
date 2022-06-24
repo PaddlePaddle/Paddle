@@ -77,12 +77,6 @@
   kernel :
     func : trace
   backward : trace_grad
-  # version :
-  #   - checkpoint :
-  #       - add_attr : float[] axis1 = {0.0}
-  #       - add_attr : float[] axis1 = {1.0}
-  #       - delete_attr : dim1
-  #       - delete_attr : dim2
 
 - api : trunc
   args : (Tensor x)
