@@ -230,69 +230,44 @@ class DGCMomentumOptimizer(paddle.optimizer.Optimizer):
             try:
                 #NOTE: 1:ready, 0: not ready
                 self._reduce_var_ready[param.name] = 1
-
                 assert grad is not None, "Parameter gradient cannot be None"
 
                 # comm after div
                 comm_grad = grad.scale(1.0 / self.new_group.nranks)
-                if self._is_use_dgc(param, comm_grad):
-                    clip_var = comm_grad
-                    # local gradient clipping
-                    if self._global_step_var[
-                            0] >= self._rampup_begin_step and self._dgc_clip_norm is not None:
-                        clip_var = self._clip_by_norm(
-                            comm_grad,
-                            max_norm=self._dgc_clip_norm,
-                            name=param.name + "_grad")
 
-                    u_var, v_var = self._accumulators[self._u_velocity_acc_str][
-                        param.name], self._accumulators[
-                            self._v_velocity_acc_str][param.name]
+                is_use_dgc = self._is_use_dgc(param, comm_grad)
 
-                    # u_var, v_var, comm_grad = _C_ops.dgc_fuse(u_var, v_var, clip_var, param, self._global_step_var, self._nranks_var,
-                    #                 "m", self._momentum,
-                    #                 "sparsity", self._sparsity,
-                    #                 "use_nesterov", self._use_nesterov,
-                    #                 "rampup_begin_step", float(self._rampup_begin_step[0]),
-                    #                 "rampup_step", float(self._rampup_step),
-                    #                 "regular_coeff", float(self.regular_coeff),
-                    #                 "regular_type", int(self.regular_type),
-                    #                 "ring_id", self.new_group.id)
-                    self._dgc_op(param, clip_var, comm_grad, u_var, v_var)
+                clip_var = comm_grad
+                # local gradient clipping
+                if self._global_step_var[
+                        0] >= self._rampup_begin_step and self._dgc_clip_norm is not None:
+                    clip_var = self._clip_by_norm(comm_grad,
+                                                  max_norm=self._dgc_clip_norm,
+                                                  name=param.name + "_grad")
 
-                    #paddle.distributed.wait(comm_grad, group=self.new_group, use_calc_stream=False)
+                u_var, v_var = self._accumulators[self._u_velocity_acc_str][
+                    param.name], self._accumulators[self._v_velocity_acc_str][
+                        param.name]
 
-                    #     k_var, encoded_var, gather_var = self._get_auxiliary_var(param)
+                k_var, encoded_var, gather_var = self._get_auxiliary_var(param)
 
-                    #     # momentum correction and local regularization
-                    #     self._dgc_op(param, clip_var, comm_grad, u_var, v_var, k_var,
-                    #                 encoded_var, gather_var)
-
-                    #     #k_var[0] = encoded_var.shape[0] // 2
-
-                    # #NOTE: dgc comm: allgather.
-                    # if self._global_step_var[
-                    #         0] >= self._rampup_begin_step[0] and self._is_use_dgc(
-                    #             param, comm_grad):
-
-                    #     paddle.distributed.wait(encoded_var, group=self.new_group, use_calc_stream=True)
-                    #     print(param.name, "=====pppppp=====", encoded_var)
-                    #     _C_ops.dgc_comm_(
-                    #         encoded_var, comm_grad, 'nranks',
-                    #         self.new_group.nranks, 'k_var',
-                    #         int(k_var[0]), 'ring_id', self.new_group.id)
-                    #     #paddle.distributed.wait(encoded_var, group=self.new_group, use_calc_stream=False)
-
-                else:
-                    _C_ops.dgc_wait_compute([comm_grad], self.new_group.id)
-                    paddle.distributed.all_reduce(comm_grad,
-                                                  group=self.new_group,
-                                                  use_calc_stream=False)
-                    #paddle.distributed.wait(comm_grad, group=self.new_group, use_calc_stream=False)
-
+                # momentum correction and local regularization
+                self._dgc_op(param, clip_var, comm_grad, u_var, v_var, k_var,
+                             encoded_var, gather_var, is_use_dgc)
+                # else:
+                #     paddle.distributed.wait(comm_grad,group=self.new_group, use_calc_stream=True)
+                #     paddle.distributed.all_reduce(
+                #                         comm_grad,
+                #                         group=self.new_group,
+                #                         use_calc_stream=False)
+                #     paddle.distributed.wait(comm_grad,group=self.new_group, use_calc_stream=False)
                 self._reduce_grad_res[param.name] = comm_grad
 
                 self.reduce_order += 1
+
+                if self.reduce_order == self.reduce_count:
+                    _C_ops.dgc_wait_comm([comm_grad], self.new_group.id)
+
             except Exception as e:
                 print("=====eeeeeeeee====", e)
 
@@ -300,16 +275,8 @@ class DGCMomentumOptimizer(paddle.optimizer.Optimizer):
 
         return reduce_grad
 
-    def _do_allreduce_comm(self):
-        for index, (param_name,
-                    comm_grad) in enumerate(self._reduce_grad_res.items()):
-            #do allreduce comm
-            _C_ops.dgc_wait_compute([comm_grad], self.new_group.id)
-            paddle.distributed.all_reduce(comm_grad,
-                                          group=self.new_group,
-                                          use_calc_stream=False)
-
-    def _dgc_op(self, param_var, clip_var, grad_var, u_var, v_var):
+    def _dgc_op(self, param_var, clip_var, grad_var, u_var, v_var, k_var,
+                encoded_var, gather_var, is_use_dgc):
 
         regular_type = self.regular_type
         regular_coeff = self.regular_coeff
@@ -318,31 +285,34 @@ class DGCMomentumOptimizer(paddle.optimizer.Optimizer):
             regular_type, regular_coeff = self._get_regularization_param(
                 param_var.regularizer)
 
-        with paddle.no_grad():
-            paddle.fluid.framework._dygraph_tracer().trace_op(
-                type="dgc_fuse",
-                inputs={
-                    "U": u_var,
-                    "V": v_var,
-                    "Grad": clip_var,
-                    "Param": param_var,
-                    "current_step": self._global_step_var,
-                    "nranks": self._nranks_var,
-                },
-                outputs={
-                    "U_out": u_var,
-                    "V_out": v_var,
-                    "Out": grad_var,
-                },
-                attrs={
-                    "m": self._momentum,
-                    "sparsity": self._sparsity,
-                    "use_nesterov": self._use_nesterov,
-                    "rampup_begin_step": float(self._rampup_begin_step),
-                    "rampup_step": float(self._rampup_step),
-                    "regular_coeff": float(regular_coeff),
-                    "regular_type": int(regular_type),
-                })
+        paddle.fluid.framework._dygraph_tracer().trace_op(
+            type="dgc_fuse",
+            inputs={
+                "U": u_var,
+                "V": v_var,
+                "Grad": clip_var,
+                "Param": param_var,
+                "current_step": self._global_step_var,
+                "nranks": self._nranks_var,
+            },
+            outputs={
+                "U_out": u_var,
+                "V_out": v_var,
+                "EncodeGrad": encoded_var,
+                "k": k_var,
+                "Grad_out": grad_var,
+                "GatherBuff": gather_var,
+            },
+            attrs={
+                "m": self._momentum,
+                "sparsity": self._sparsity,
+                "use_nesterov": self._use_nesterov,
+                "rampup_begin_step": float(self._rampup_begin_step),
+                "rampup_step": float(self._rampup_step),
+                "regular_coeff": float(regular_coeff),
+                "regular_type": int(regular_type),
+                "is_use_dgc": is_use_dgc
+            })
 
     def _clip_by_norm(self, x, max_norm, name=None):
         args = {'x': x, 'max_norm': max_norm, 'name': name}
@@ -441,6 +411,8 @@ class DGCMomentumOptimizer(paddle.optimizer.Optimizer):
             self._add_accumulator(self._u_velocity_acc_str, param_var)
 
             if not self._is_use_dgc(param_var, None):
+                self._accumulators[self._v_velocity_acc_str][
+                    param_var.name] = paddle.to_tensor([1], dtype=param.dtype)
                 continue
 
             self._add_accumulator(self._v_velocity_acc_str, param_var)
@@ -484,15 +456,27 @@ class DGCMomentumOptimizer(paddle.optimizer.Optimizer):
         return device
 
     def _get_auxiliary_var(self, param):
+        if param.name in self._dgc_vars.keys():
+            return self._dgc_vars[param.name]
         k_var = self._add_cpu_var(
             name="k", value=0
         )  #paddle.to_tensor([0], dtype=param.dtype, name="k", place=paddle.CPUPlace())
-        encoded_var = paddle.empty(shape=[1],
-                                   dtype=param.dtype,
-                                   name=param.name + core.dgc.kDGCEncodedName())
-        gather_var = paddle.empty(shape=[1],
-                                  dtype=param.dtype,
-                                  name=param.name + core.dgc.kDGCGatherName())
+        encoded_var = tensor.create_global_var(shape=[1],
+                                               dtype=param.dtype,
+                                               persistable=True,
+                                               name=param.name +
+                                               core.dgc.kDGCEncodedName(),
+                                               value=0.0,
+                                               force_cpu=False)
+
+        gather_var = tensor.create_global_var(shape=[1],
+                                              dtype=param.dtype,
+                                              persistable=True,
+                                              name=param.name +
+                                              core.dgc.kDGCGatherName(),
+                                              value=0.0,
+                                              force_cpu=False)
+        self._dgc_vars[param.name] = [k_var, encoded_var, gather_var]
 
         return k_var, encoded_var, gather_var
 
@@ -568,12 +552,12 @@ class DGCMomentumOptimizer(paddle.optimizer.Optimizer):
            execute after loss.backward.
         """
         # for param in self.trainable_params:
-        #     paddle.distributed.wait(
-        #         self._reduce_grad_res[param.name], group=self.new_group, use_calc_stream=False)
+        #     paddle.distributed.wait(self._reduce_grad_res[param.name], group=self.new_group,  use_calc_stream=False)
 
         for param in self.trainable_params:
             grad = self._reduce_grad_res[param.name]
-            _C_ops.dgc_wait_comm([grad], self.new_group.id)
+            #_C_ops.dgc_wait_comm([grad], self.new_group.id)
+            #paddle.distributed.wait(grad, group=self.new_group,  use_calc_stream=False)
             velocity_acc = self._accumulators[self._u_velocity_acc_str][
                 param.name]
 
