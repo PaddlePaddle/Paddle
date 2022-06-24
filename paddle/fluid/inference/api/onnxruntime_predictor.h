@@ -18,6 +18,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "onnxruntime_c_api.h"    // NOLINT
+#include "onnxruntime_cxx_api.h"  // NOLINT
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_compatible_info.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
@@ -27,9 +30,6 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/string/printf.h"
-
-#include "onnxruntime_c_api.h"    // NOLINT
-#include "onnxruntime_cxx_api.h"  // NOLINT
 #include "paddle2onnx/converter.h"
 
 #ifdef PADDLE_WITH_TESTING
@@ -174,7 +174,10 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   /// \return get a new predictor
   ///
-  std::unique_ptr<PaddlePredictor> Clone() override;
+  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
+
+ protected:
+  const void *GetDeviceContexts() const override;
 
  private:
   ///
@@ -199,6 +202,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   platform::Place place_;
   std::vector<ONNXDesc> input_desc_;
   std::vector<ONNXDesc> output_desc_;
+  std::map<std::string, std::shared_ptr<std::vector<int8_t>>> input_buffers_;
   int predictor_id_;
 
 // Some more detailed tests, they are made the friends of the predictor, so that

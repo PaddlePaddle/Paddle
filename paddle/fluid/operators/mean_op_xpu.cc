@@ -56,8 +56,9 @@ class MeanGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto OG = context.Input<Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(OG->numel(), 1, platform::errors::InvalidArgument(
-                                          "Mean Gradient should be scalar"));
+    PADDLE_ENFORCE_EQ(
+        OG->numel(), 1,
+        platform::errors::InvalidArgument("Mean Gradient should be scalar"));
     auto IG = context.Output<Tensor>(framework::GradVarName("X"));
     IG->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();

@@ -24,4 +24,12 @@ void EinsumKernel(const Context& dev_ctx,
                   const std::string& equation,
                   DenseTensor* out);
 
+template <typename T, typename Context>
+void EinsumKernelRaw(const Context& dev_ctx,
+                     const std::vector<const DenseTensor*>& inputs,
+                     const std::string& equation,
+                     DenseTensor* out,
+                     std::vector<DenseTensor*> inner_cache,
+                     std::vector<DenseTensor*> xshape);
+
 }  // namespace phi

@@ -27,10 +27,10 @@ import hypothesis.strategies as st
 
 # the two inputs of elementwise_add are tensor
 class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         if attrs[1]['data_format'] == "NHWC" and attrs[3]['axis'] == 0:
             return False
@@ -50,56 +50,58 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
 
         def generate_input():
             if data_format == "NCHW":
-                return np.random.random(
-                    [batch_size, 48, 64, 64]).astype(np.float32)
+                return np.random.random([batch_size, 48, 64,
+                                         64]).astype(np.float32)
             else:
-                return np.random.random(
-                    [batch_size, 64, 64, 48]).astype(np.float32)
+                return np.random.random([batch_size, 64, 64,
+                                         48]).astype(np.float32)
 
         def generate_weight():
-            return np.random.random(
-                [48, int(48 / groups), 3, 3]).astype(np.float32)
+            return np.random.random([48, int(48 / groups), 3,
+                                     3]).astype(np.float32)
 
-        relu_op = OpConfig(
-            type="relu",
-            inputs={"X": ["input_data"]},
-            outputs={"Out": ["relu_out"]},
-            attrs={})
+        relu_op = OpConfig(type="relu",
+                           inputs={"X": ["input_data"]},
+                           outputs={"Out": ["relu_out"]},
+                           attrs={})
 
-        conv2d_op1 = OpConfig(
-            type="conv2d",
-            inputs={"Input": ["relu_out"],
-                    "Filter": ["conv_weight1"]},
-            outputs={"Output": ["conv_output1"]},
-            attrs={
-                "data_format": data_format,
-                "dilations": dilations,
-                "padding_algorithm": padding_algorithm,
-                "groups": groups,
-                "paddings": paddings,
-                "strides": strides
-            })
+        conv2d_op1 = OpConfig(type="conv2d",
+                              inputs={
+                                  "Input": ["relu_out"],
+                                  "Filter": ["conv_weight1"]
+                              },
+                              outputs={"Output": ["conv_output1"]},
+                              attrs={
+                                  "data_format": data_format,
+                                  "dilations": dilations,
+                                  "padding_algorithm": padding_algorithm,
+                                  "groups": groups,
+                                  "paddings": paddings,
+                                  "strides": strides
+                              })
 
-        conv2d_op2 = OpConfig(
-            type="conv2d",
-            inputs={"Input": ["input_data"],
-                    "Filter": ["conv_weight2"]},
-            outputs={"Output": ["conv_output2"]},
-            attrs={
-                "data_format": data_format,
-                "dilations": dilations,
-                "padding_algorithm": padding_algorithm,
-                "groups": groups,
-                "paddings": paddings,
-                "strides": strides
-            })
+        conv2d_op2 = OpConfig(type="conv2d",
+                              inputs={
+                                  "Input": ["input_data"],
+                                  "Filter": ["conv_weight2"]
+                              },
+                              outputs={"Output": ["conv_output2"]},
+                              attrs={
+                                  "data_format": data_format,
+                                  "dilations": dilations,
+                                  "padding_algorithm": padding_algorithm,
+                                  "groups": groups,
+                                  "paddings": paddings,
+                                  "strides": strides
+                              })
 
-        elt_op = OpConfig(
-            type="elementwise_add",
-            inputs={"X": ["conv_output1"],
-                    "Y": ["conv_output2"]},
-            outputs={"Out": ["elementwise_output"]},
-            attrs={'axis': axis})
+        elt_op = OpConfig(type="elementwise_add",
+                          inputs={
+                              "X": ["conv_output1"],
+                              "Y": ["conv_output2"]
+                          },
+                          outputs={"Out": ["elementwise_output"]},
+                          attrs={'axis': axis})
 
         model_net = [relu_op, conv2d_op1, conv2d_op2, elt_op]
 
@@ -121,8 +123,8 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
         yield config, ["relu", "conv2d", "conv2d"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
-            quant=False, passes=["conv_elementwise_add_mkldnn_fuse_pass"])
+        self.run_and_statis(quant=False,
+                            passes=["conv_elementwise_add_mkldnn_fuse_pass"])
 
 
 if __name__ == "__main__":

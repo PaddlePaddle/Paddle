@@ -17,6 +17,7 @@ limitations under the License. */
 #include <popart/patterns/patterns.hpp>
 #include <popart/sessionoptions.hpp>
 #include <popart/tensorlocation.hpp>
+
 #include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -118,6 +119,7 @@ class IpuStrategy {
                               const std::string &value);
   void SetTensorLocation(const std::string &tensor, const std::string &option,
                          std::uint64_t value);
+  void SetReplicatedCollectivesSettings(const std::string &opt, bool value);
   void SetAccumulateOuterFragmentSettings(const std::uint64_t &schedule,
                                           const std::vector<int> &values);
   void AddCustomOp(const std::string &paddle_op, const std::string &popart_op,
@@ -142,10 +144,11 @@ class IpuStrategy {
       std::map<std::string, std::function<void(ValueType)>> &options,  // NOLINT
       const std::string &type_str) {
     auto it = options.find(key);
-    PADDLE_ENFORCE_NE(it, options.end(), platform::errors::InvalidArgument(
-                                             "Cannot find option: %s, type: %s "
-                                             "when setting IpuStrategy options",
-                                             key, type_str));
+    PADDLE_ENFORCE_NE(
+        it, options.end(),
+        platform::errors::InvalidArgument("Cannot find option: %s, type: %s "
+                                          "when setting IpuStrategy options",
+                                          key, type_str));
     it->second(value);
   }
 

@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
+
 #include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -23,7 +25,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
-#include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
 namespace phi {
@@ -150,15 +151,15 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
 
   config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, rulebook_len * out_channels, 1);
-  GatherKernel<T, IntT><<<config.block_per_grid.x,
-                          config.thread_per_block.x,
-                          0,
-                          dev_ctx.stream()>>>(
-      out_grad.non_zero_elements().data<T>(),
-      rulebook_ptr + rulebook_len * 2,
-      out_grad_features_ptr,
-      rulebook_len,
-      out_channels);
+  GatherKernel<T, IntT>
+      <<<config.block_per_grid.x,
+         config.thread_per_block.x,
+         0,
+         dev_ctx.stream()>>>(out_grad.non_zero_elements().data<T>(),
+                             rulebook_ptr + rulebook_len * 2,
+                             out_grad_features_ptr,
+                             rulebook_len,
+                             out_channels);
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {

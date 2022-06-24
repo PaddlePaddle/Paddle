@@ -31,8 +31,8 @@ namespace paddle {
 namespace operators {
 
 using paddle::framework::LoDTensor;
-using platform::to_void_cast;
 using platform::GetMKLDNNFormat;
+using platform::to_void_cast;
 
 static std::vector<int> extract_shape(
     const std::vector<const Tensor*>& list_new_shape_tensor) {

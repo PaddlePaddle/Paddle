@@ -51,11 +51,12 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](
-      Node* input0, Node* mul0, Node* mul1, Node* mul2, Node* mul0_out,
-      Node* mul1_out, Node* mul2_out, Node* eltadd0_b, Node* eltadd1_b,
-      Node* eltadd2_b, Node* eltadd_qk_b, Node* reshape2,
-      Node* reshape2_qkv_out, Node* scale, Node* scale_out) {
+  auto fuse_creater = [&](Node* input0, Node* mul0, Node* mul1, Node* mul2,
+                          Node* mul0_out, Node* mul1_out, Node* mul2_out,
+                          Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b,
+                          Node* eltadd_qk_b, Node* reshape2,
+                          Node* reshape2_qkv_out, Node* scale,
+                          Node* scale_out) {
     auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
     // auto scale_bias = BOOST_GET_CONST(float, scale->Op()->GetAttr("bias"));
     // bool after_scale =
@@ -423,7 +424,8 @@ PDNode* MultiHeadMatmulPattern::operator()() {
 }
 
 PDNode* MultiHeadMatmulV3Pattern::operator()() {
-  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
+  // Add mul op to support huggingface onnx model convertsion by x2paddle
+  std::unordered_set<std::string> matmul_ops{"mul", "matmul", "matmul_v2"};
   auto* input0 = pattern->NewNode(input0_repr());
   input0->assert_is_ops_input(matmul_ops);
 
@@ -756,13 +758,14 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](
-      Node* input0, Node* mul0, Node* mul1, Node* mul2, Node* mul0_out,
-      Node* mul1_out, Node* mul2_out, Node* mul0_w, Node* mul1_w, Node* mul2_w,
-      Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b, Node* eltadd_qk_b,
-      Node* reshape2, Node* reshape2_qkv_out, Node* scale, Node* scale_out,
-      Node* softmax_qk, Node* eltadd0, Node* eltadd1, Node* eltadd2,
-      Node* matmul_qk, Node* reshape2_qkv) {
+  auto fuse_creater = [&](Node* input0, Node* mul0, Node* mul1, Node* mul2,
+                          Node* mul0_out, Node* mul1_out, Node* mul2_out,
+                          Node* mul0_w, Node* mul1_w, Node* mul2_w,
+                          Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b,
+                          Node* eltadd_qk_b, Node* reshape2,
+                          Node* reshape2_qkv_out, Node* scale, Node* scale_out,
+                          Node* softmax_qk, Node* eltadd0, Node* eltadd1,
+                          Node* eltadd2, Node* matmul_qk, Node* reshape2_qkv) {
     auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
@@ -864,7 +867,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto* mul0_op_desc = mul0->Op();
 
     // all mul op has same input.
-    if (multihead_op_desc.HasAttr("Input_scale")) {
+    if (mul0_op_desc->HasAttr("Input_scale")) {
       multihead_op_desc.SetAttr("Input_scale",
                                 mul0_op_desc->GetAttr("Input_scale"));
     }
@@ -1207,11 +1210,12 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](
-      Node* input0, Node* mul0, Node* mul1, Node* mul2, Node* mul0_out,
-      Node* mul1_out, Node* mul2_out, Node* mul0_w, Node* mul1_w, Node* mul2_w,
-      Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b, Node* eltadd_qk_b,
-      Node* reshape2, Node* reshape2_qkv_out, Node* matmul_qk) {
+  auto fuse_creater = [&](Node* input0, Node* mul0, Node* mul1, Node* mul2,
+                          Node* mul0_out, Node* mul1_out, Node* mul2_out,
+                          Node* mul0_w, Node* mul1_w, Node* mul2_w,
+                          Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b,
+                          Node* eltadd_qk_b, Node* reshape2,
+                          Node* reshape2_qkv_out, Node* matmul_qk) {
     auto scale_attr = BOOST_GET_CONST(float, matmul_qk->Op()->GetAttr("alpha"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)

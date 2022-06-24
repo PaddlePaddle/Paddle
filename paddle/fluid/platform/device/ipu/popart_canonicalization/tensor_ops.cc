@@ -61,7 +61,9 @@ Node *fill_constant_handler(Graph *graph, Node *node) {
   }
   return CreateConst(graph, node, node->inputs, node->outputs,
                      AttributeMap{
-                         {"value", value}, {"dims", dims}, {"dtype", dtype},
+                         {"value", value},
+                         {"dims", dims},
+                         {"dtype", dtype},
                      });
 }
 
@@ -76,13 +78,14 @@ Node *gaussian_random_handler(Graph *graph, Node *node) {
   auto seed_ = BOOST_GET_CONST(int, op->GetAttr("seed"));
   auto seed = static_cast<float>(seed_);
   return CreateBaseOp(graph, node, "popart_randomnormal", node->inputs,
-                      node->outputs, {
-                                         {"shape", shape},
-                                         {"dtype", dtype},
-                                         {"mean", mean},
-                                         {"scale", scale},
-                                         {"seed", seed},
-                                     });
+                      node->outputs,
+                      {
+                          {"shape", shape},
+                          {"dtype", dtype},
+                          {"mean", mean},
+                          {"scale", scale},
+                          {"seed", seed},
+                      });
 }
 
 Node *uniform_random_handler(Graph *graph, Node *node) {
@@ -96,13 +99,14 @@ Node *uniform_random_handler(Graph *graph, Node *node) {
   auto seed_ = BOOST_GET_CONST(int, op->GetAttr("seed"));
   auto seed = static_cast<float>(seed_);
   return CreateBaseOp(graph, node, "popart_randomuniform", node->inputs,
-                      node->outputs, {
-                                         {"shape", shape},
-                                         {"dtype", dtype},
-                                         {"high", high},
-                                         {"low", low},
-                                         {"seed", seed},
-                                     });
+                      node->outputs,
+                      {
+                          {"shape", shape},
+                          {"dtype", dtype},
+                          {"high", high},
+                          {"low", low},
+                          {"seed", seed},
+                      });
 }
 
 Node *transpose_handler(Graph *graph, Node *node) {
@@ -175,7 +179,8 @@ Node *squeeze_handler(Graph *graph, Node *node) {
 Node *cast_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto otype = BOOST_GET_CONST(int, op->GetAttr("out_dtype"));
-  auto new_node = CreateCast(graph, node, node->inputs, node->outputs, otype);
+  auto new_node = CreateCast(graph, node, node->inputs, node->outputs,
+                             static_cast<VarType::Type>(otype));
   // Cast op created in mixed-precison has no pipline attrs
   auto &prev_nodes = node->inputs.front()->inputs;
   if (!prev_nodes.empty()) {
@@ -204,32 +209,33 @@ Node *lookup_table_op_handler(Graph *graph, Node *node,
   if (padding_idx_ >= 0 && padding_idx_ < table_size_) {
     std::vector<float> const_value_(emb_size_, 0);
     std::vector<int64_t> const_shape_{1, emb_size_};
-    auto concat_const =
-        CreateConst(graph, node, {}, {}, {{"value", const_value_},
-                                          {"dims", const_shape_},
-                                          {"dtype", GetOutputVarDType(node)}});
-    auto axes =
-        CreateConst(graph, node, {}, {}, {{"value", std::vector<int64_t>{0}},
-                                          {"dims", std::vector<int64_t>{1}},
-                                          {"dtype", ONNXDataType::INT64}});
-    auto step =
-        CreateConst(graph, node, {}, {}, {{"value", std::vector<int64_t>{1}},
-                                          {"dims", std::vector<int64_t>{1}},
-                                          {"dtype", ONNXDataType::INT64}});
+    auto concat_const = CreateConst(graph, node, {}, {},
+                                    {{"value", const_value_},
+                                     {"dims", const_shape_},
+                                     {"dtype", GetOutputVarDType(node)}});
+    auto axes = CreateConst(graph, node, {}, {},
+                            {{"value", std::vector<int64_t>{0}},
+                             {"dims", std::vector<int64_t>{1}},
+                             {"dtype", ONNXDataType::INT64}});
+    auto step = CreateConst(graph, node, {}, {},
+                            {{"value", std::vector<int64_t>{1}},
+                             {"dims", std::vector<int64_t>{1}},
+                             {"dtype", ONNXDataType::INT64}});
 
-    auto left_start =
-        CreateConst(graph, node, {}, {}, {{"value", std::vector<int64_t>{0}},
-                                          {"dims", std::vector<int64_t>{1}},
-                                          {"dtype", ONNXDataType::INT64}});
+    auto left_start = CreateConst(graph, node, {}, {},
+                                  {{"value", std::vector<int64_t>{0}},
+                                   {"dims", std::vector<int64_t>{1}},
+                                   {"dtype", ONNXDataType::INT64}});
     auto left_end = CreateConst(graph, node, {}, {},
                                 {{"value", std::vector<int64_t>{padding_idx_}},
                                  {"dims", std::vector<int64_t>{1}},
                                  {"dtype", ONNXDataType::INT64}});
 
-    auto right_start = CreateConst(
-        graph, node, {}, {}, {{"value", std::vector<int64_t>{padding_idx_ + 1}},
-                              {"dims", std::vector<int64_t>{1}},
-                              {"dtype", ONNXDataType::INT64}});
+    auto right_start =
+        CreateConst(graph, node, {}, {},
+                    {{"value", std::vector<int64_t>{padding_idx_ + 1}},
+                     {"dims", std::vector<int64_t>{1}},
+                     {"dtype", ONNXDataType::INT64}});
     auto right_end = CreateConst(graph, node, {}, {},
                                  {{"value", std::vector<int64_t>{table_size_}},
                                   {"dims", std::vector<int64_t>{1}},
@@ -351,8 +357,8 @@ Node *slice_handler(Graph *graph, Node *node) {
   } else {
     auto starts_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("starts"));
     auto dim = int64_t(starts_.size());
-    auto attr = MakeConstAttrMap<int>(starts_, {dim}, ONNXDataType::INT32);
-    starts = CreateConst(graph, node, {}, {}, attr);
+    starts = CreateConst(graph, node, std::vector<int>{starts_}, {dim},
+                         ONNXDataType::INT32);
     starts = starts->outputs[0];
   }
   Node *ends = nullptr;
@@ -361,16 +367,16 @@ Node *slice_handler(Graph *graph, Node *node) {
   } else {
     auto ends_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ends"));
     auto dim = int64_t(ends_.size());
-    auto attr = MakeConstAttrMap<int>(ends_, {dim}, ONNXDataType::INT32);
-    ends = CreateConst(graph, node, {}, {}, attr);
+    ends = CreateConst(graph, node, std::vector<int>{ends_}, {dim},
+                       ONNXDataType::INT32);
     ends = ends->outputs[0];
   }
   Node *axes = nullptr;
   {
     auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
     auto dim = int64_t(axes_.size());
-    auto attr = MakeConstAttrMap<int>(axes_, {dim}, ONNXDataType::INT32);
-    axes = CreateConst(graph, node, {}, {}, attr);
+    axes = CreateConst(graph, node, std::vector<int>{axes_}, {dim},
+                       ONNXDataType::INT32);
   }
 
   auto decrease_axis_ =
@@ -419,9 +425,8 @@ Node *expand_handler(Graph *graph, Node *node) {
     auto expand_times_ =
         std::vector<int64_t>{expand_times_i32.begin(), expand_times_i32.end()};
     auto dim = int64_t(expand_times_.size());
-    auto attr =
-        MakeConstAttrMap<int64_t>(expand_times_, {dim}, ONNXDataType::INT64);
-    expand_times = CreateConst(graph, node, {}, {}, attr);
+    expand_times = CreateConst(graph, node, std::vector<int64_t>{expand_times_},
+                               {dim}, ONNXDataType::INT64);
   }
   auto new_node = CreateBaseOp(
       graph, node, "popart_tile",
@@ -471,7 +476,9 @@ Node *assign_value_handler(Graph *graph, Node *node) {
   }
   return CreateConst(graph, node, node->inputs, node->outputs,
                      AttributeMap{
-                         {"value", values}, {"dims", dims}, {"dtype", dtype},
+                         {"value", values},
+                         {"dims", dims},
+                         {"dtype", dtype},
                      });
 }
 
@@ -529,10 +536,10 @@ Node *one_hot_handler(Graph *graph, Node *node) {
                                     {{"value", std::vector<int64_t>{depth}},
                                      {"dims", std::vector<int64_t>{1}},
                                      {"dtype", ONNXDataType::INT64}});
-    auto value_tensor =
-        CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{0, 1}},
-                                          {"dims", std::vector<int64_t>{2}},
-                                          {"dtype", ONNXDataType::FLOAT}});
+    auto value_tensor = CreateConst(graph, node, {}, {},
+                                    {{"value", std::vector<float>{0, 1}},
+                                     {"dims", std::vector<int64_t>{2}},
+                                     {"dtype", ONNXDataType::FLOAT}});
     return CreateBaseOp(graph, node, "popart_onehot",
                         {GetInputVarNode("X", node), depth_tensor->outputs[0],
                          value_tensor->outputs[0]},
@@ -550,21 +557,21 @@ Node *one_hot_v2_handler(Graph *graph, Node *node) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Do not support allow_out_of_range=True"));
   } else {
-    auto depth_tensor =
-        CreateConst(graph, node, {}, {}, {{"value", std::vector<int>{depth}},
-                                          {"dims", std::vector<int64_t>{1}},
-                                          {"dtype", ONNXDataType::INT32}});
+    auto depth_tensor = CreateConst(graph, node, {}, {},
+                                    {{"value", std::vector<int>{depth}},
+                                     {"dims", std::vector<int64_t>{1}},
+                                     {"dtype", ONNXDataType::INT32}});
     Node *value_tensor = nullptr;
     if (GetOutputVarNode("Out", node)->Var()->GetDataType() == VarType::FP16) {
-      value_tensor =
-          CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{0, 1}},
-                                            {"dims", std::vector<int64_t>{2}},
-                                            {"dtype", ONNXDataType::FLOAT16}});
+      value_tensor = CreateConst(graph, node, {}, {},
+                                 {{"value", std::vector<float>{0, 1}},
+                                  {"dims", std::vector<int64_t>{2}},
+                                  {"dtype", ONNXDataType::FLOAT16}});
     } else {
-      value_tensor =
-          CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{0, 1}},
-                                            {"dims", std::vector<int64_t>{2}},
-                                            {"dtype", ONNXDataType::FLOAT}});
+      value_tensor = CreateConst(graph, node, {}, {},
+                                 {{"value", std::vector<float>{0, 1}},
+                                  {"dims", std::vector<int64_t>{2}},
+                                  {"dtype", ONNXDataType::FLOAT}});
     }
 
     return CreateBaseOp(graph, node, "popart_onehot",
@@ -584,6 +591,19 @@ Node *split_handler(Graph *graph, Node *node) {
       {{"num_outputs", int64_t(sections.size())},
        {"axis", int64_t(axis)},
        {"split", std::vector<int64_t>{sections.begin(), sections.end()}}});
+}
+
+Node *dot_handler(Graph *graph, Node *node) {
+  auto x = GetInputVarNode("X", node);
+  auto mul_node = CreateBaseOp(graph, node, "popart_mul",
+                               {x, GetInputVarNode("Y", node)}, {})
+                      ->outputs.front();
+  int64_t axes = x->Var()->GetShape().size() - 1;
+  return CreateBaseOp(graph, node, "popart_reducesum", {mul_node},
+                      {GetOutputVarNode("Out", node)},
+                      {
+                          {"axes", std::vector<int64_t>{axes}},
+                      });
 }
 
 }  // namespace
@@ -614,3 +634,4 @@ REGISTER_HANDLER(lookup_table_v2, lookup_table_v2_handler);
 REGISTER_HANDLER(split, split_handler);
 REGISTER_HANDLER(one_hot, one_hot_handler);
 REGISTER_HANDLER(one_hot_v2, one_hot_v2_handler);
+REGISTER_HANDLER(dot, dot_handler);

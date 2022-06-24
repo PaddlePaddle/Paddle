@@ -19,15 +19,13 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_version_registry.h"
-
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#include "paddle/fluid/platform/cudnn_workspace_helper.h"
-
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
@@ -189,7 +187,10 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
     customized_type_value =
         (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
          input_data_type == framework::DataTypeTrait<uint8_t>::DataType())
-            ? kConvMKLDNNINT8
+            ? OperatorWithKernel::IndicateVarDataType(ctx, "Filter") ==
+                      framework::DataTypeTrait<int8_t>::DataType()
+                  ? kConvMKLDNNINT8WS8
+                  : kConvMKLDNNINT8
             : kConvMKLDNNFP32;
   }
 #endif
@@ -347,14 +348,6 @@ void Conv2DOpMaker::Make() {
       .AsExtra();
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("fuse_brelu",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<float>("fuse_brelu_threshold",
-                 "(float, default false 6.0) Only used in mkldnn kernel")
-      .SetDefault(6.0f)
       .AsExtra();
   AddAttr<std::string>("fuse_activation",
                        "(string, default \"\") Only used in mkldnn kernel")
@@ -872,16 +865,15 @@ REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad,
                   ops::Conv3DDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv3d_grad_grad, ops::ConvOpDoubleGrad);
 
-REGISTER_OP_VERSION(conv2d)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(conv2d).AddCheckpoint(
+    R"ROC(
       Upgrade conv2d, add a new attribute [use_addto].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "use_addto",
-            "In order to support new feature (inplace addto strategy) for "
-            "gradient accumulation.",
-            false));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "use_addto",
+        "In order to support new feature (inplace addto strategy) for "
+        "gradient accumulation.",
+        false));
 
 REGISTER_OP_VERSION(depthwise_conv2d)
     .AddCheckpoint(
@@ -894,13 +886,12 @@ REGISTER_OP_VERSION(depthwise_conv2d)
             "gradient accumulation.",
             false));
 
-REGISTER_OP_VERSION(conv3d)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(conv3d).AddCheckpoint(
+    R"ROC(
       Upgrade conv3d, add a new attribute [use_addto].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "use_addto",
-            "In order to support new feature (inplace addto strategy) for "
-            "gradient accumulation.",
-            false));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "use_addto",
+        "In order to support new feature (inplace addto strategy) for "
+        "gradient accumulation.",
+        false));

@@ -18,13 +18,10 @@
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/string/string_helper.h"
-
+#include "paddle/fluid/imperative/parallel_context.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
-
-#include "paddle/fluid/imperative/parallel_context.h"
-
+#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/dense_tensor.h"
 namespace paddle {
 namespace imperative {
@@ -452,8 +449,9 @@ void Reducer::InitializeDenseGroups(
                           "Tensor %s is not initialized.", var_name));
     const auto size = lod_tensor->numel();
     PADDLE_ENFORCE_GT(
-        size, 0, platform::errors::PreconditionNotMet(
-                     "The number of tensor %s's elements is 0.", var_name));
+        size, 0,
+        platform::errors::PreconditionNotMet(
+            "The number of tensor %s's elements is 0.", var_name));
     all_length += size;
 
     p_group->length_.push_back(size);
@@ -879,7 +877,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 }
 
 // TODO(liuyuhui): If BKCL support non-blocking communication, it should be
-// fixed as same as multi gpus card trainging.
+// fixed as same as multi gpus card training.
 void Reducer::MarkGroupReady(size_t group_index) {
   PADDLE_ENFORCE_GE(
       group_index, next_group_,
@@ -957,7 +955,7 @@ void Reducer::FusedAllReduceSchedule(const int run_order, Group &group,
 // default stream for communicating, so there exist some problems in
 // synchronization. And need to add a WaitComm there.
 // TODO(liuyuhui): If BKCL support non-blocking communication, it should be
-// fixed as multi gpus card trainging.
+// fixed as multi gpus card training.
 #ifdef PADDLE_WITH_XPU_BKCL
     if (platform::is_xpu_place(group.dense_tensors_[0].place())) {
       parallel_ctx_->WaitComm(run_order);

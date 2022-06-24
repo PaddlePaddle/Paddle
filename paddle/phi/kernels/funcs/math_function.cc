@@ -25,6 +25,7 @@ limitations under the License. */
 #include <memory>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
@@ -276,6 +277,12 @@ void set_constant(const paddle::platform::DeviceContext& context,
                   paddle::framework::Tensor* tensor,
                   float value) {
   TensorSetConstantWithPlace func(context, tensor, value);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (paddle::platform::is_custom_place(context.GetPlace())) {
+    func(phi::CPUPlace());
+    return;
+  }
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // tensor->place().apply_visitor(func);
   paddle::platform::VisitPlace(tensor->place(), func);

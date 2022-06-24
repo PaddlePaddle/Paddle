@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 import math
 import paddle
@@ -41,8 +42,9 @@ def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
     pb_y = pb_y.reshape(shape)
 
     if pb_v.ndim == 2:
-        var_shape = (1, pb_v.shape[0], pb_v.shape[1]) if axis == 0 else (
-            pb_v.shape[0], 1, pb_v.shape[1])
+        var_shape = (1, pb_v.shape[0],
+                     pb_v.shape[1]) if axis == 0 else (pb_v.shape[0], 1,
+                                                       pb_v.shape[1])
         pb_v = pb_v.reshape(var_shape)
     if pb_v.ndim == 1:
         tb_x = pb_v[0] * t_box[:, :, 0] * pb_w + pb_x
@@ -112,6 +114,7 @@ def batch_box_coder(p_box, pb_v, t_box, lod, code_type, norm, axis=0):
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestBoxCoderOp(OpTest):
+
     def setUp(self):
         self.op_type = "box_coder"
         self.set_npu()
@@ -190,14 +193,15 @@ class TestBoxCoderOp(OpTest):
         }
         if self.use_variance:
             self.attrs['variance'] = self.prior_box_var.astype(
-                np.float).flatten()
+                np.float64).flatten()
         if self.axis != 0:
             self.attrs['axis'] = self.axis
 
     def set_outputs(self):
-        output_box = batch_box_coder(
-            self.prior_box, self.prior_box_var, self.target_box, self.lod[0],
-            self.code_type, self.box_normalized, self.axis)
+        output_box = batch_box_coder(self.prior_box, self.prior_box_var,
+                                     self.target_box, self.lod[0],
+                                     self.code_type, self.box_normalized,
+                                     self.axis)
         self.outputs = {'OutputBox': output_box.astype(self.dtype)}
 
     def test_check_output(self):
@@ -205,6 +209,7 @@ class TestBoxCoderOp(OpTest):
 
 
 class TestBoxCoderOpWithoutBoxVar(TestBoxCoderOp):
+
     def set_init_config(self):
         super(TestBoxCoderOpWithoutBoxVar, self).set_init_config()
         self.without_prior_box_var = True
@@ -212,6 +217,7 @@ class TestBoxCoderOpWithoutBoxVar(TestBoxCoderOp):
 
 
 class TestBoxCoderOpWithLoD(TestBoxCoderOp):
+
     def set_init_config(self):
         super(TestBoxCoderOpWithLoD, self).set_init_config()
         self.M = 20
@@ -222,24 +228,28 @@ class TestBoxCoderOpWithLoD(TestBoxCoderOp):
 
 
 class TestBoxCoderOpWithLoDWithVariance(TestBoxCoderOpWithLoD):
+
     def set_init_config(self):
         super(TestBoxCoderOpWithLoDWithVariance, self).set_init_config()
         self.use_variance = True
 
 
 class TestBoxCoderOpWithAxis(TestBoxCoderOp):
+
     def set_init_config(self):
         super(TestBoxCoderOpWithAxis, self).set_init_config()
         self.axis = 1
 
 
 class TestBoxCoderOpWithVariance(TestBoxCoderOp):
+
     def set_init_config(self):
         super(TestBoxCoderOpWithVariance, self).set_init_config()
         self.use_variance = True
 
 
 class TestBoxCoderOpFP16(TestBoxCoderOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 

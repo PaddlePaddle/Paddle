@@ -12,13 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/match_matrix_tensor_op.h"
+
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/operators/match_matrix_tensor_op.h"
 #include "paddle/fluid/operators/search_compute.h"
 
 namespace paddle {

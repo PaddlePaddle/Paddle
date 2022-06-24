@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/operators/strided_memcpy.h"

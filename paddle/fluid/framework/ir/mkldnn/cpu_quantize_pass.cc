@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"
+
 #include <sstream>
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
@@ -857,12 +858,9 @@ void CPUQuantizePass::QuantizeElementwise(
     Graph* graph, const std::string elementwise_type) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-  patterns::Elementwise elementwise_pattern{pattern, name_scope_};
+  patterns::ElementwiseOp elementwise_pattern{pattern, name_scope_};
 
-  elementwise_pattern(
-      pattern->NewNode(elementwise_pattern.elementwise_x_repr()),
-      pattern->NewNode(elementwise_pattern.elementwise_y_repr()),
-      elementwise_type);
+  elementwise_pattern(elementwise_type);
 
   int quantize_elementwise_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -877,10 +875,18 @@ void CPUQuantizePass::QuantizeElementwise(
       return;
     }
 
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_x, elementwise_x,
-                              elementwise_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_y, elementwise_y,
-                              elementwise_pattern);
+    auto x_name = elementwise_op->Op()->Input("X");
+    auto y_name = elementwise_op->Op()->Input("Y");
+    Node *elementwise_x, *elementwise_y;
+
+    for (auto& input : elementwise_op->inputs) {
+      if (input->Name() == x_name[0]) elementwise_x = input;
+      if (input->Name() == y_name[0]) elementwise_y = input;
+    }
+    if (!elementwise_x || !elementwise_y) {
+      return;
+    }
+
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
                               elementwise_pattern);
 
@@ -1188,6 +1194,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeMatmul(graph);
   QuantizeElementwise(graph, "elementwise_add");
   QuantizeElementwise(graph, "elementwise_mul");
+  QuantizeElementwise(graph, "elementwise_sub");
   QuantizeFusionGru(graph);
   QuantizeMultiGru(graph);
   QuantizeFusionLSTM(graph);

@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
+
 #include <cstring>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -105,9 +107,9 @@ class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("LossScaling", "(Tensor) 1-dim tensor, updated loss scaling.");
     AddOutput("OutGoodSteps", "(Tensor) 1-dim tensor, pdated good steps.");
     AddOutput("OutBadSteps", "(Tensor) 1-dim tensor, updated bad steps.");
-    AddOutput("StopUpdate",
-              "(Tensor) 1-dim tensor. Stop updating loss scaling, and just "
-              "zero inputs. It has higher priority than Attr(stop_update).")
+    AddInput("StopUpdate",
+             "(Tensor) 1-dim tensor. Stop updating loss scaling, and just "
+             "zero inputs. It has higher priority than Attr(stop_update).")
         .AsDispensable();
     AddAttr<int>("incr_every_n_steps",
                  "A value represents increasing loss scaling every n "

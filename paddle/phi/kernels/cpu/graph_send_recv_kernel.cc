@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/graph_send_recv_kernel.h"
-#include "paddle/phi/kernels/cpu/graph_send_recv_funcs.h"
 
 #include <algorithm>
 #include <set>
@@ -22,6 +21,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/graph_send_recv_funcs.h"
 
 namespace phi {
 

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
+#include "glog/logging.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"

@@ -105,18 +105,18 @@ void MaxPoolGradGPUKernel(const GPUContext& dev_ctx,
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, counter[i] * in_channels, 1);
-    MaxPoolGradCudaKernel<T, IntT><<<config.block_per_grid.x,
-                                     config.thread_per_block.x,
-                                     0,
-                                     dev_ctx.stream()>>>(
-        in_features_ptr,
-        out_features_ptr,
-        out_grad_ptr,
-        rulebook_ptr + offsets[i] + rulebook_len,
-        counter[i],
-        rulebook_len,
-        in_channels,
-        x_grad_ptr);
+    MaxPoolGradCudaKernel<T, IntT>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(in_features_ptr,
+                               out_features_ptr,
+                               out_grad_ptr,
+                               rulebook_ptr + offsets[i] + rulebook_len,
+                               counter[i],
+                               rulebook_len,
+                               in_channels,
+                               x_grad_ptr);
   }
 }
 

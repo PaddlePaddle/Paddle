@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -208,6 +210,9 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
+    auto trans_x = ctx->Attrs().Get<bool>("trans_x");
+    auto trans_y = ctx->Attrs().Get<bool>("trans_y");
+
     PADDLE_ENFORCE_GE(
         dout_dims.size(), 2,
         platform::errors::InvalidArgument(
@@ -242,14 +247,14 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
     auto x_mat_dims = phi::flatten_to_2d(x_dims, x_dims.size() - 1);
 
     PADDLE_ENFORCE_EQ(
-        dout_mat_dims[1], y_dims[1],
+        dout_mat_dims[1], trans_y ? y_dims[0] : y_dims[1],
         platform::errors::InvalidArgument(
             "The last dimension of DOut should be equal with Y's last"
             "dimension. But received DOut[-1] = [%d], Y[1] = [%d].",
             dout_mat_dims[1], y_dims[1]));
 
     PADDLE_ENFORCE_EQ(
-        dout_mat_dims[0], x_mat_dims[0],
+        dout_mat_dims[0], trans_x ? x_mat_dims[1] : x_mat_dims[0],
         platform::errors::InvalidArgument(
             "The first dimension of DOut should be equal with X's first"
             "dimension. But received DOut[0] = [%d], Y[0] = [%d].",
@@ -288,7 +293,7 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
 
     if (ctx->HasOutput("DBias")) {
       std::vector<int64_t> dbias_dims;
-      dbias_dims.push_back(y_dims[1]);
+      dbias_dims.push_back(trans_y ? y_dims[0] : y_dims[1]);
       ctx->SetOutputDim("DBias", phi::make_ddim(dbias_dims));
     }
   }
@@ -323,6 +328,20 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("DBias",
               "The output grad tensor to bias of Out = (Act(X) * Y) + bias.")
         .AsDispensable();
+    AddAttr<bool>(
+        "trans_x",
+        R"DOC((bool, default false), Whether to transpose input tensor X 
+    or not. The input tensor X coulbe be more than two dimension. When 
+    set trans_x=true, it would fully reverse X. For instant: X with shpae 
+    [d0, d1, d2, d3] -> [d3, d2, d1, d0].)DOC")
+        .SetDefault(false);
+    AddAttr<bool>(
+        "trans_y",
+        R"DOC((bool, default false), Whether to transpose input tensor Y 
+    or not. The input tensor Y should be two dimension. When 
+    set trans_y=true, it would transpose Y. For instant: Y with shpae 
+    [d0, d1] -> [d1, d0].)DOC")
+        .SetDefault(false);
 
     AddAttr<std::string>(
         "activation_grad",
@@ -343,11 +362,39 @@ X with shape [d0, d1, d2, d3] -> X_2D with shape [d0*d1*d2, d3]
   }
 };
 
+template <typename T>
+class FusedGemmEpilogueOpGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    const auto& act_type = this->template Attr<std::string>("activation");
+    PADDLE_ENFORCE_EQ(
+        act_type, "none",
+        phi::errors::InvalidArgument("The activation should be none."));
+
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("DOut", this->OutputGrad("Out"));
+
+    op->SetOutput("DX", this->InputGrad("X"));
+    op->SetOutput("DY", this->InputGrad("Y"));
+    op->SetOutput("DBias", this->InputGrad("Bias"));
+
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_gemm_epilogue, ops::FusedGemmEpilogueOp,
-                  ops::FusedGemmEpilogueOpMaker)
+REGISTER_OPERATOR(
+    fused_gemm_epilogue, ops::FusedGemmEpilogueOp,
+    ops::FusedGemmEpilogueOpMaker,
+    ops::FusedGemmEpilogueOpGradMaker<paddle::framework::OpDesc>,
+    ops::FusedGemmEpilogueOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_gemm_epilogue_grad, ops::FusedGemmEpilogueGradOp,
-                  ops::FusedGemmEpilogueGradOpMaker)
+                  ops::FusedGemmEpilogueGradOpMaker);

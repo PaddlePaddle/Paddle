@@ -35,7 +35,7 @@ def bipartite_match(distance, match_indices, match_dist):
 
     match_sorted = sorted(match_pair, key=lambda tup: tup[2], reverse=True)
 
-    row_indices = -1 * np.ones((row, ), dtype=np.int)
+    row_indices = -1 * np.ones((row, ), dtype=np.int_)
 
     idx = 0
     for i, j, dist in match_sorted:
@@ -69,7 +69,7 @@ def batch_bipartite_match(distance, lod, match_type=None, dist_threshold=None):
     """
     n = len(lod)
     m = distance.shape[1]
-    match_indices = -1 * np.ones((n, m), dtype=np.int)
+    match_indices = -1 * np.ones((n, m), dtype=np.int_)
     match_dist = np.zeros((n, m), dtype=np.float32)
     cur_offset = 0
     for i in range(n):
@@ -84,6 +84,7 @@ def batch_bipartite_match(distance, lod, match_type=None, dist_threshold=None):
 
 
 class TestBipartiteMatchOpWithLoD(OpTest):
+
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[5, 6, 12]]
@@ -101,6 +102,7 @@ class TestBipartiteMatchOpWithLoD(OpTest):
 
 
 class TestBipartiteMatchOpWithoutLoD(OpTest):
+
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[8]]
@@ -118,6 +120,7 @@ class TestBipartiteMatchOpWithoutLoD(OpTest):
 
 
 class TestBipartiteMatchOpWithoutLoDLargeScaleInput(OpTest):
+
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[300]]
@@ -135,12 +138,13 @@ class TestBipartiteMatchOpWithoutLoDLargeScaleInput(OpTest):
 
 
 class TestBipartiteMatchOpWithPerPredictionType(OpTest):
+
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[5, 6, 12]]
         dist = np.random.random((23, 237)).astype('float32')
-        match_indices, match_dist = batch_bipartite_match(dist, lod[0],
-                                                          'per_prediction', 0.5)
+        match_indices, match_dist = batch_bipartite_match(
+            dist, lod[0], 'per_prediction', 0.5)
 
         self.inputs = {'DistMat': (dist, lod)}
         self.outputs = {
@@ -157,6 +161,7 @@ class TestBipartiteMatchOpWithPerPredictionType(OpTest):
 
 
 class TestBipartiteMatchOpWithEmptyLoD(OpTest):
+
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[5, 6, 0, 12]]

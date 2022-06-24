@@ -25,6 +25,7 @@ import random
 import math
 import os
 import shutil
+import tempfile
 import unittest
 import paddle.fluid.incubate.data_generator as dg
 
@@ -44,10 +45,12 @@ query_schema = [
 
 
 class CTRDataset(dg.MultiSlotDataGenerator):
+
     def __init__(self, mode):
         self.test = mode
 
     def generate_sample(self, line):
+
         def reader():
             ins = line.strip().split(';')
             label_pos_num = int(ins[1].split(' ')[0])
@@ -282,7 +285,11 @@ class TestDataset(unittest.TestCase):
         """
         Testcase for InMemoryDataset of consistency insepection of use_var_list and data_generator.
         """
-        with open("test_run_with_dump_a.txt", "w") as f:
+
+        temp_dir = tempfile.TemporaryDirectory()
+        dump_a_path = os.path.join(temp_dir.name, 'test_run_with_dump_a.txt')
+
+        with open(dump_a_path, "w") as f:
             # data = "\n"
             # data += "\n"
             data = "2 1;1 9;20002001 20001240 20001860 20003611 20000723;20002001 20001240 20001860 20003611 20000723;0;40000001;20002001 20001240 20001860 20003611 20000157 20000723 20000070 20002616 20000157 20000005;20002001 20001240 20001860 20003611 20000157 20001776 20000070 20002616 20000157 20000005;20002001 20001240 20001860 20003611 20000723 20000070 20002001 20001240 20001860 20003611 20012788 20000157;20002001 20001240 20001860 20003611 20000623 20000251 20000157 20000723 20000070 20000001 20000057;20002640 20004695 20000157 20000723 20000070 20002001 20001240 20001860 20003611;20002001 20001240 20001860 20003611 20000157 20000723 20000070 20003519 20000005;20002001 20001240 20001860 20003611 20000157 20001776 20000070 20003519 20000005;20002001 20001240 20001860 20003611 20000723 20000070 20002001 20001240 20001860 20003611 20131464;20002001 20001240 20001860 20003611 20018820 20000157 20000723 20000070 20000001 20000057;20002640 20034154 20000723 20000070 20002001 20001240 20001860 20003611;10000200;10000200;10063938;10000008;10000177;20002001 20001240 20001860 20003611 20010833 20000210 20000500 20000401 20000251 20012198 20001023 20000157;20002001 20001240 20001860 20003611 20012396 20000500 20002513 20012198 20001023 20000157;10000123;30000004;0.623 0.233 0.290 0.208 0.354 49.000 0.000 0.000 0.000 -1.000 0.569 0.679 0.733 53 17 2 0;20002001 20001240 20001860 20003611 20000723;20002001 20001240 20001860 20003611 20000723;10000047;30000004;0.067 0.000 0.161 0.005 0.000 49.000 0.000 0.000 0.000 -1.000 0.000 0.378 0.043 0 6 0 0;20002001 20001240 20001860 20003611 20000157 20000723 20000070 20002616 20000157 20000005;20002001 20001240 20001860 20003611 20000157 20000723 20000070 20003519 20000005;10000200;30000001;0.407 0.111 0.196 0.095 0.181 49.000 0.000 0.000 0.000 -1.000 0.306 0.538 0.355 48 8 0 0;20002001 20001240 20001860 20003611 20000157 20001776 20000070 20002616 20000157 20000005;20002001 20001240 20001860 20003611 20000157 20001776 20000070 20003519 20000005;10000200;30000001;0.226 0.029 0.149 0.031 0.074 49.000 0.000 0.000 0.000 -1.000 0.220 0.531 0.286 26 6 0 0;20002001 20001240 20001860 20003611 20000723 20000070 20002001 20001240 20001860 20003611 20012788 20000157;20002001 20001240 20001860 20003611 20000723 20000070 20002001 20001240 20001860 20003611 20131464;10063938;30000001;0.250 0.019 0.138 0.012 0.027 49.000 0.000 0.000 0.000 -1.000 0.370 0.449 0.327 7 2 0 0;20002001 20001240 20001860 20003611 20000723;20002001 20001240 20001860 20003611 20000723;10000003;30000002;0.056 0.000 0.139 0.003 0.000 49.000 0.000 0.000 0.000 -1.000 0.000 0.346 0.059 15 3 0 0;20002001 20001240 20001860 20003611 20000623 20000251 20000157 20000723 20000070 20000001 20000057;20002001 20001240 20001860 20003611 20018820 20000157 20000723 20000070 20000001 20000057;10000008;30000001;0.166 0.004 0.127 0.001 0.004 49.000 0.000 0.000 0.000 -1.000 0.103 0.417 0.394 10 3 0 0;20002640 20004695 20000157 20000723 20000070 20002001 20001240 20001860 20003611;20002640 20034154 20000723 20000070 20002001 20001240 20001860 20003611;10000177;30000001;0.094 0.008 0.157 0.012 0.059 49.000 0.000 0.000 0.000 -1.000 0.051 0.382 0.142 21 0 0 0;20002001 20001240 20001860 20003611 20000157 20001776 20000070 20000157;20002001 20001240 20001860 20003611 20000157 20001776 20000070 20000157;10000134;30000001;0.220 0.016 0.181 0.037 0.098 49.000 0.000 0.000 0.000 -1.000 0.192 0.453 0.199 17 1 0 0;20002001 20001240 20001860 20003611 20002640 20004695 20000157 20000723 20000070 20002001 20001240 20001860 20003611;20002001 20001240 20001860 20003611 20002640 20034154 20000723 20000070 20002001 20001240 20001860 20003611;10000638;30000001;0.000 0.000 0.000 0.000 0.000 49.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0 0 0 0;\n"
@@ -291,64 +298,74 @@ class TestDataset(unittest.TestCase):
             f.write(data)
 
         slot_data = []
-        label = fluid.layers.data(
-            name="click",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=0,
-            append_batch_size=False)
+        label = fluid.layers.data(name="click",
+                                  shape=[-1, 1],
+                                  dtype="int64",
+                                  lod_level=0,
+                                  append_batch_size=False)
         slot_data.append(label)
 
         # sprase_query_feat_names
         len_sparse_query = 19
         for feat_name in range(1, len_sparse_query + 1):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='int64', lod_level=1))
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=1))
 
-        # sparse_url_feat_names 
+        # sparse_url_feat_names
         for feat_name in range(len_sparse_query + 1, len_sparse_query + 5):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='int64', lod_level=1))
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=1))
 
         # dense_feat_names
         for feat_name in range(len_sparse_query + 5, len_sparse_query + 16):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='float32'))
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='float32'))
 
         # context_feat_namess
         for feat_name in range(len_sparse_query + 16, len_sparse_query + 18):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='float32'))
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='float32'))
 
-        # neg sparse_url_feat_names 
+        # neg sparse_url_feat_names
         for feat_name in range(len_sparse_query + 18, len_sparse_query + 22):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='int64', lod_level=1))
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=1))
 
         # neg dense_feat_names
         for feat_name in range(len_sparse_query + 22, len_sparse_query + 33):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='float32'))
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='float32'))
 
         # neg context_feat_namess
         for feat_name in range(len_sparse_query + 33, len_sparse_query + 35):
             slot_data.append(
-                fluid.layers.data(
-                    name=str(feat_name), shape=[1], dtype='float32'))
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='float32'))
 
         dataset = paddle.distributed.InMemoryDataset()
 
         print("========================================")
         generator_class = CTRDataset(mode=0)
         try:
-            dataset._check_use_var_with_data_generator(
-                slot_data, generator_class, "test_run_with_dump_a.txt")
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
             print("case 1: check passed!")
         except Exception as e:
             print("warning: catch expected error")
@@ -359,8 +376,9 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=2)
         try:
-            dataset._check_use_var_with_data_generator(
-                slot_data, generator_class, "test_run_with_dump_a.txt")
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
         except Exception as e:
             print("warning: case 2 catch expected error")
             print(e)
@@ -370,8 +388,9 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=3)
         try:
-            dataset._check_use_var_with_data_generator(
-                slot_data, generator_class, "test_run_with_dump_a.txt")
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
         except Exception as e:
             print("warning: case 3 catch expected error")
             print(e)
@@ -381,8 +400,9 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=4)
         try:
-            dataset._check_use_var_with_data_generator(
-                slot_data, generator_class, "test_run_with_dump_a.txt")
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
         except Exception as e:
             print("warning: case 4 catch expected error")
             print(e)
@@ -392,14 +412,15 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=5)
         try:
-            dataset._check_use_var_with_data_generator(
-                slot_data, generator_class, "test_run_with_dump_a.txt")
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
         except Exception as e:
             print("warning: case 5 catch expected error")
             print(e)
         print("========================================")
 
-        os.remove("./test_run_with_dump_a.txt")
+        temp_dir.cleanup()
 
 
 if __name__ == '__main__':

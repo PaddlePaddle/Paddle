@@ -15,8 +15,10 @@
 #pragma once
 
 #include <math.h>
+
 #include <algorithm>
 #include <vector>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"

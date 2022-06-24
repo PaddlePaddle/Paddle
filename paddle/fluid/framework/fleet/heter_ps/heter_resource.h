@@ -24,6 +24,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU_KP
 #include <xpu/runtime.h>  // NOLINT
+
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
@@ -107,6 +108,8 @@ class HeterPsResource {
   int get_index_by_devid(int devid);
   int dev_id(int num);
   void set_multi_mf(int multi_mf_dim, int max_mf_dim);
+  int multi_mf() { return multi_mf_dim_; }
+  int max_mf_dim() { return max_mf_dim_; }
 
   ppStream local_stream(int dev_num, int stream_num);
   ppStream remote_stream(int dev_num, int stream_num);

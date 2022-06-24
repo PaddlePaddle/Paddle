@@ -22,17 +22,21 @@
 #include <vector>
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"
-
-#include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
+#endif
+
+#ifdef PADDLE_WITH_RCCL
+#include "paddle/fluid/platform/dynload/rccl.h"
+#else
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 
@@ -101,6 +105,14 @@ class ProcessGroupNCCL : public ProcessGroup {
 
   std::shared_ptr<ProcessGroup::Task> Recv(
       std::vector<phi::DenseTensor>& tensors, int src_rank) override;
+
+  std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor& tensors,
+                                                   int dst_rank, int offset,
+                                                   int length) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv_Partial(phi::DenseTensor& tensors,
+                                                   int src_rank, int offset,
+                                                   int length) override;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,
