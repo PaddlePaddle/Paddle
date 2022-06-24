@@ -35,19 +35,23 @@ template <typename T, typename IntT = int>
 void Conv3dGradCPUKernel(const CPUContext& dev_ctx,
                          const SparseCooTensor& x,
                          const DenseTensor& kernel,
-                         const DenseTensor& rulebook,
+                         const SparseCooTensor& out,
                          const SparseCooTensor& out_grad,
                          const std::vector<int>& paddings,
                          const std::vector<int>& dilations,
                          const std::vector<int>& strides,
                          const int groups,
                          const bool subm,
+                         const std::string& key,
                          SparseCooTensor* x_grad,
                          DenseTensor* kernel_grad) {
   const auto& kernel_dims = kernel.dims();
   const int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
+  // const DenseTensor& rulebook = out.rulebook();
+  const auto* table = out.table(key);
+  const DenseTensor& rulebook = table->first;
   const IntT* rulebook_ptr = rulebook.data<IntT>();
 
   const int rulebook_len = rulebook.dims()[1];
@@ -182,13 +186,14 @@ template <typename T, typename Context>
 void Conv3dGradKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
                       const DenseTensor& kernel,
-                      const DenseTensor& rulebook,
+                      const SparseCooTensor& out,
                       const SparseCooTensor& out_grad,
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
                       const int groups,
                       const bool subm,
+                      const std::string& key,
                       SparseCooTensor* x_grad,
                       DenseTensor* kernel_grad) {
   PD_VISIT_INTEGRAL_TYPES(
@@ -196,13 +201,14 @@ void Conv3dGradKernel(const Context& dev_ctx,
         Conv3dGradCPUKernel<T, data_t>(dev_ctx,
                                        x,
                                        kernel,
-                                       rulebook,
+                                       out,
                                        out_grad,
                                        paddings,
                                        dilations,
                                        strides,
                                        groups,
                                        subm,
+                                       key,
                                        x_grad,
                                        kernel_grad);
       }));

@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
-#include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
 namespace phi {
@@ -44,19 +43,23 @@ template <typename T, typename IntT>
 void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
                          const SparseCooTensor& x,
                          const DenseTensor& kernel,
-                         const DenseTensor& rulebook,
+                         const SparseCooTensor& out,
                          const SparseCooTensor& out_grad,
                          const std::vector<int>& paddings,
                          const std::vector<int>& dilations,
                          const std::vector<int>& strides,
                          const int groups,
                          const bool subm,
+                         const std::string& key,
                          SparseCooTensor* x_grad,
                          DenseTensor* kernel_grad) {
   const auto& kernel_dims = kernel.dims();
   const int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
+
+  const auto* table = out.table(key);
+  const DenseTensor& rulebook = table->first;
   const IntT* rulebook_ptr = rulebook.data<IntT>();
 
   const int rulebook_len = rulebook.dims()[1];
@@ -99,21 +102,17 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
 
   std::vector<IntT> offsets(kernel_size + 1), counter(kernel_size, 0),
       h_counter(rulebook_len, 0);
-  phi::backends::gpu::GpuMemcpyAsync(&h_counter[0],
-                                     rulebook_ptr,
-                                     rulebook_len * sizeof(IntT),
-#ifdef PADDLE_WITH_HIP
-                                     hipMemcpyDeviceToHost,
-#else
-                                     cudaMemcpyDeviceToHost,
-#endif
+  // phi::backends::gpu::GpuMemcpyAsync(&h_counter[0],
+  //                                    rulebook_ptr,
+  //                                    rulebook_len * sizeof(IntT),
+  //                                    gpuMemcpyDeviceToHost,
+  //                                    dev_ctx.stream());
+  // dev_ctx.Wait();
 
-                                     dev_ctx.stream());
-  dev_ctx.Wait();
-
-  for (int i = 0; i < rulebook_len; i++) {
-    counter[h_counter[i]] += 1;
-  }
+  // for (int i = 0; i < rulebook_len; i++) {
+  //   counter[h_counter[i]] += 1;
+  // }
+  memcpy(counter.data(), table->second.data(), kernel_size * sizeof(int));
   IntT offset = 0, max_count = 0;
   for (int i = 0; i < kernel_size; i++) {
     offsets[i] = offset;
@@ -255,13 +254,14 @@ template <typename T, typename Context>
 void Conv3dGradKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
                       const DenseTensor& kernel,
-                      const DenseTensor& rulebook,
+                      const SparseCooTensor& out,
                       const SparseCooTensor& out_grad,
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
                       const int groups,
                       const bool subm,
+                      const std::string& key,
                       SparseCooTensor* x_grad,
                       DenseTensor* kernel_grad) {
   PD_VISIT_INTEGRAL_TYPES(
@@ -269,13 +269,14 @@ void Conv3dGradKernel(const Context& dev_ctx,
         Conv3dGradGPUKernel<T, data_t>(dev_ctx,
                                        x,
                                        kernel,
-                                       rulebook,
+                                       out,
                                        out_grad,
                                        paddings,
                                        dilations,
                                        strides,
                                        groups,
                                        subm,
+                                       key,
                                        x_grad,
                                        kernel_grad);
       }));

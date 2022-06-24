@@ -156,6 +156,38 @@ class SparseCooTensor : public TensorBase,
   /// \brief get the dnese dim
   int32_t dense_dim() const;
 
+  const std::pair<DenseTensor, std::vector<int>>* table(
+      const std::string& key) const {
+    const auto& iter = table_ptr_->find(key);
+    if (iter == table_ptr_->end()) {
+      return nullptr;
+    }
+    return &iter->second;
+  }
+  // DenseTensor* mutable_rulebook() { return &rulebook_; }
+  void SetTable(const std::string& key,
+                const std::pair<DenseTensor, std::vector<int>>& table) {
+    auto ret = table_ptr_->insert({key, table});
+    if (ret.second == false) {
+      ret.first->second = table;
+    }
+  }
+
+  const std::shared_ptr<
+      std::map<std::string, std::pair<DenseTensor, std::vector<int>>>>&
+  GetTablePtr() const {
+    return table_ptr_;
+  }
+  void SetTablePtr(
+      const std::shared_ptr<
+          std::map<std::string, std::pair<DenseTensor, std::vector<int>>>>&
+          table_ptr) {
+    table_ptr_ = table_ptr;
+  }
+
+  // const bool subm() const { return subm_; }
+  // void SetSubm(const bool subm) { subm_ = subm; }
+
  private:
   // save the indices of non zero elements in original dense tensor
   DenseTensor non_zero_indices_;
@@ -165,6 +197,12 @@ class SparseCooTensor : public TensorBase,
   bool coalesced_ = false;
   // save the number of non zero elements in each batch
   DDim dims_;
+
+  // for sparse conv
+  std::shared_ptr<
+      std::map<std::string, std::pair<DenseTensor, std::vector<int>>>>
+      table_ptr_ = std::make_shared<
+          std::map<std::string, std::pair<DenseTensor, std::vector<int>>>>();
   /* --------------------------- */
   /*   example: non zero element is scalar */
   /* --------------------------- */

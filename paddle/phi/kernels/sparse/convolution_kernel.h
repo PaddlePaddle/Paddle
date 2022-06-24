@@ -31,8 +31,8 @@ void Conv3dKernel(const Context& dev_ctx,
                   const std::vector<int>& strides,
                   const int groups,
                   const bool subm,
-                  SparseCooTensor* out,
-                  DenseTensor* rulebook);
+                  const std::string& key,
+                  SparseCooTensor* out);
 
 template <typename T, typename Context>
 SparseCooTensor Conv3d(const Context& dev_ctx,
@@ -43,7 +43,7 @@ SparseCooTensor Conv3d(const Context& dev_ctx,
                        const std::vector<int>& strides,
                        const int groups,
                        const bool subm,
-                       DenseTensor* rulebook) {
+                       const std::string& key) {
   SparseCooTensor coo;
   Conv3dKernel<T, Context>(dev_ctx,
                            x,
@@ -53,8 +53,8 @@ SparseCooTensor Conv3d(const Context& dev_ctx,
                            strides,
                            groups,
                            subm,
-                           &coo,
-                           rulebook);
+                           key,
+                           &coo);
   return coo;
 }
 
