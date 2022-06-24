@@ -687,8 +687,8 @@ class MSRAInitializer(Initializer):
 
     Args:
         uniform (bool): whether to use uniform or normal distribution
-        fan_in (float32|None): fan_in (in_features) of trainable Tensor,
-            If None, it will be infered automaticly. If you don't want to use in_features of the Tensor,
+        fan_in (float32|None): fan_in (in_features) of trainable Tensor, 
+            If None, it will be infered automaticly. If you don't want to use in_features of the Tensor, 
             you can set the value of 'fan_in' smartly by yourself. default is None.
         seed (int32): random seed
         negative_slope (float, optional): negative_slope (only used with leaky_relu). default is 0.0.
