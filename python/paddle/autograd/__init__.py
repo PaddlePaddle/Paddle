@@ -24,10 +24,6 @@ if _in_eager_mode_:
 else:
     from .py_layer import LegacyPyLayer as PyLayer  # noqa: F401
     from .py_layer import LegacyPyLayerContext as PyLayerContext  # noqa: F401
-from .py_layer import EagerPyLayer as EagerPyLayer  # noqa: F401
-from .py_layer import EagerPyLayerContext as EagerPyLayerContext  # noqa: F401
-from .py_layer import LegacyPyLayer as LegacyPyLayer  # noqa: F401
-from .py_layer import LegacyPyLayerContext as LegacyPyLayerContext  # noqa: F401
 from ..framework import set_grad_enabled, is_grad_enabled  # noqa: F401
 from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
 from .functional import vjp, jvp, Jacobian, Hessian  # noqa: F401
@@ -37,8 +33,4 @@ __all__ = [  # noqa
     'backward',
     'PyLayer',
     'PyLayerContext',
-    'EagerPyLayer',
-    'EagerPyLayerContext',
-    'LegacyPyLayer',
-    'LegacyPyLayerContext',
 ]
