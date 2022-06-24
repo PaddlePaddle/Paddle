@@ -95,7 +95,7 @@ class MemcpyD2HOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>(
         "dst_place_type",
         "Determine the dst place of tensor copy. "
-        "By Now it ONLY support NPUPlace/CUDAPlace <-> CUDAPinnedPlace/CPU"
+        "By Now it ONLY support XPU/NPUPlace/CUDAPlace <-> CUDAPinnedPlace/CPU"
         "Other place type is Unimplemented and will cause ERROR."
         "0: dst is on CPUPlace. "
         "1: dst is on CUDAPinnedPlace. ");
@@ -131,6 +131,17 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(
+    memcpy_d2h, float, ops::MemcpyD2HKernel, double, ops::MemcpyD2HKernel,
+    int8_t, ops::MemcpyD2HKernel, uint8_t, ops::MemcpyD2HKernel, int,
+    ops::MemcpyD2HKernel, int64_t, ops::MemcpyD2HKernel, bool,
+    ops::MemcpyD2HKernel, paddle::platform::bfloat16, ops::MemcpyD2HKernel,
+    paddle::platform::complex<float>, ops::MemcpyD2HKernel,
+    paddle::platform::complex<double>, ops::MemcpyD2HKernel, plat::float16,
+    ops::MemcpyD2HKernel, int16_t, ops::MemcpyD2HKernel);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+REGISTER_OP_XPU_KERNEL_FUNCTOR(
     memcpy_d2h, float, ops::MemcpyD2HKernel, double, ops::MemcpyD2HKernel,
     int8_t, ops::MemcpyD2HKernel, uint8_t, ops::MemcpyD2HKernel, int,
     ops::MemcpyD2HKernel, int64_t, ops::MemcpyD2HKernel, bool,

@@ -277,13 +277,33 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
   VariableNameMap out_name_map = {{"Out", {*new_var_name}}};
-  int dst_place_type = platform::is_cpu_place(dst_place)   ? 0
-                       : platform::is_gpu_place(dst_place) ? 1
-                                                           : -1;
-  AttributeMap attr_map = {{"dst_place_type", dst_place_type}};
 
   // 3. Create memcpy_d2h_op or memcpy_h2d_op
-  std::string op_type = get_memcpy_type(src_place, dst_place);
+  std::string op_type;
+  AttributeMap attr_map;
+  PADDLE_ENFORCE_EQ(platform::is_same_place(src_place, dst_place), false,
+                    platform::errors::PreconditionNotMet(
+                        "Required src_place shall be different with dst_place, "
+                        "but received same place: %s",
+                        src_place));
+  if (IsSupportedHetePlace(dst_place)) {
+    op_type = kMemcpyH2D;
+    int dst_place_type = platform::is_gpu_place(dst_place)   ? 0
+                         : platform::is_npu_place(dst_place) ? 1
+                         : platform::is_xpu_place(dst_place) ? 2
+                                                             : -1;
+    attr_map = {{"dst_place_type", dst_place_type}};
+  } else if (IsSupportedHetePlace(src_place)) {
+    op_type = kMemcpyD2H;
+    int dst_place_type = platform::is_cpu_place(dst_place)           ? 0
+                         : platform::is_cuda_pinned_place(dst_place) ? 1
+                                                                     : -1;
+    attr_map = {{"dst_place_type", dst_place_type}};
+  } else {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Not support Memcpy typ : %s -> %s", src_place, dst_place));
+  }
+
   auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
@@ -434,29 +454,11 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
 
   if (transfered) {
     // NOTE(zhiqiu): UPDATE the corresponding OeratorBase to make it consistent
-    // with instruction. (hot fix, it is not good design here)
-    op_func_node->operator_base_ =
-        std::shared_ptr<OperatorBase>(framework::OpRegistry::CreateOp(
-            op_base->Type(), new_ins, new_outs, op_base->Attrs()));
+    // with instruction.
+    op_base->Inputs() = new_ins;
+    op_base->Outputs() = new_outs;
   }
   op_func_node->no_data_transform_index = std::move(no_data_transform_index);
-}
-
-std::string get_memcpy_type(const platform::Place& src_place,
-                            const platform::Place& dst_place) {
-  PADDLE_ENFORCE_EQ(platform::is_same_place(src_place, dst_place), false,
-                    platform::errors::PreconditionNotMet(
-                        "Required src_place shall be different with dst_place, "
-                        "but received same place: %s",
-                        src_place));
-  if (platform::is_gpu_place(dst_place)) {
-    return kMemcpyH2D;
-  } else if (platform::is_gpu_place(src_place)) {
-    return kMemcpyD2H;
-  } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Not support Memcpy typ : %s -> %s", src_place, dst_place));
-  }
 }
 
 void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
