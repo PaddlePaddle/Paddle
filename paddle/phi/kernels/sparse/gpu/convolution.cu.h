@@ -68,6 +68,52 @@ __global__ void GatherKernel(const T* params,
   }
 }
 
+template <typename IntT>
+__global__ void UniqueKernel(const IntT* in_indexs,
+                             const int rulebook_len,
+                             int* out_index_table,
+                             int* out_indexs,
+                             int* nnz) {
+  extern __shared__ int cache[];
+  __shared__ int count, start;
+  if (threadIdx.x == 0) {
+    count = 0;
+    start = 0;
+  }
+  __syncthreads();
+
+  int i = threadIdx.x + blockDim.x * blockIdx.x;
+  if (i < rulebook_len) {
+    // atomicOr only support int
+    int index = static_cast<int>(in_indexs[i]);
+    int change_index = index == 0 ? 1 : index;
+    int flag = atomicOr(out_index_table + index, change_index);
+    if (flag == 0) {
+      int j = atomicAdd(&count, 1);
+      cache[j] = index;
+    }
+  }
+  __syncthreads();
+
+  if (threadIdx.x == 0) {
+    start = atomicAdd(nnz, count);
+  }
+  __syncthreads();
+  for (int i = threadIdx.x; i < count; i += blockDim.x) {
+    out_indexs[start + i] = cache[i];
+  }
+}
+
+template <typename IntT>
+__global__ void UpdateOutIndex(const int* out_index_table,
+                               const int n,
+                               IntT* out_indexs) {
+  CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
+    IntT index = out_indexs[i];
+    out_indexs[i] = out_index_table[index];
+  }
+}
+
 template <typename Context, typename IntT = int>
 inline IntT* SortedAndUniqueIndex(const Context& dev_ctx,
                                   const IntT* rulebook_ptr,
@@ -75,42 +121,38 @@ inline IntT* SortedAndUniqueIndex(const Context& dev_ctx,
                                   DenseTensor* out_index,
                                   DenseTensor* unique_key,
                                   DenseTensor* unique_value) {
-  phi::IndexKernel<int, kps::IdentityFunctor<int>>(
-      dev_ctx, out_index, kps::IdentityFunctor<int>());
-  phi::IndexKernel<int, kps::IdentityFunctor<int>>(
-      dev_ctx, unique_value, kps::IdentityFunctor<int>());
-
-  phi::backends::gpu::GpuMemcpyAsync(unique_key->data<IntT>(),
-                                     rulebook_ptr,
-                                     sizeof(IntT) * len,
-#ifdef PADDLE_WITH_HIP
-                                     hipMemcpyDeviceToDevice,
-#else
-                                     cudaMemcpyDeviceToDevice,
-#endif
-                                     dev_ctx.stream());
-// compared with thrust::sort_by_key, thrust::merge_by_key may achieved higher
-// performance, but thrust::merge_by_key limited by data size
-#ifdef PADDLE_WITH_HIP
-  thrust::sort_by_key(thrust::hip::par.on(dev_ctx.stream()),
-#else
-  thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
-#endif
-                      unique_key->data<IntT>(),
-                      unique_key->data<IntT>() + len,
-                      out_index->data<int>());
-
-  // 4. unique
-  thrust::pair<IntT*, int*> new_end =
-#ifdef PADDLE_WITH_HIP
-      thrust::unique_by_key(thrust::hip::par.on(dev_ctx.stream()),
-#else
-      thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
-#endif
-                            unique_key->data<IntT>(),
-                            unique_key->data<IntT>() + len,
-                            unique_value->data<int>());
-  return new_end.first;
+  //  phi::IndexKernel<int, kps::IdentityFunctor<int>>(
+  //      dev_ctx, out_index, kps::IdentityFunctor<int>());
+  //  phi::IndexKernel<int, kps::IdentityFunctor<int>>(
+  //      dev_ctx, unique_value, kps::IdentityFunctor<int>());
+  //
+  //  phi::backends::gpu::GpuMemcpyAsync(unique_key->data<IntT>(),
+  //                                     rulebook_ptr,
+  //                                     sizeof(IntT) * len,
+  //                                     gpuMemcpyDeviceToDevice,
+  //                                     dev_ctx.stream());
+  //// compared with thrust::sort_by_key, thrust::merge_by_key may achieved
+  // higher / performance, but thrust::merge_by_key limited by data size
+  // #ifdef PADDLE_WITH_HIP
+  //  thrust::sort_by_key(thrust::hip::par.on(dev_ctx.stream()),
+  // #else
+  //  thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+  // #endif
+  //                      unique_key->data<IntT>(),
+  //                      unique_key->data<IntT>() + len,
+  //                      out_index->data<int>());
+  //
+  //  // 4. unique
+  //  thrust::pair<IntT*, int*> new_end =
+  // #ifdef PADDLE_WITH_HIP
+  //      thrust::unique_by_key(thrust::hip::par.on(dev_ctx.stream()),
+  // #else
+  //      thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+  // #endif
+  //                            unique_key->data<IntT>(),
+  //                            unique_key->data<IntT>() + len,
+  //                            unique_value->data<int>());
+  //  return new_end.first;
 }
 
 /**
@@ -282,6 +324,26 @@ __global__ void GetOutIndexTable(const IntT* indices,
     IntT in_x = indices[i + 3 * non_zero_num];
     IntT index = PointToIndex(batch, in_x, in_y, in_z, dims);
     out_index_table[index] = i;
+  }
+}
+
+template <typename IntT>
+__global__ void GetOutIndexTable(const int* indexs,
+                                 const int non_zero_num,
+                                 const Dims4D out_dims,
+                                 int* out_index_table,
+                                 IntT* out_indices) {
+  CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
+    IntT index = static_cast<IntT>(indexs[i]);
+    out_index_table[index] = i;
+    IntT batch, x, y, z;
+    phi::funcs::sparse::IndexToPoint<Dims4D>(
+        index, out_dims, &batch, &x, &y, &z);
+    // get out indices
+    out_indices[i] = batch;
+    out_indices[i + non_zero_num] = z;
+    out_indices[i + non_zero_num * 2] = y;
+    out_indices[i + non_zero_num * 3] = x;
   }
 }
 
@@ -649,66 +711,113 @@ int ProductRuleBook(const Context& dev_ctx,
     int* out_index_ptr = out_index->data<int>();
     int* unique_value_ptr = unique_value->data<int>();
     IntT* unique_key_ptr = unique_key.data<IntT>();
+    cudaMemsetAsync(unique_value_ptr, 0, sizeof(int), dev_ctx.stream());
 
-    IntT* new_end =
-        SortedAndUniqueIndex<Context, IntT>(dev_ctx,
-                                            rulebook_ptr + 2 * rulebook_len,
-                                            rulebook_len,
-                                            out_index,
-                                            &unique_key,
-                                            unique_value);
-    // thrust::distance doesn't support stream parameters
-    // const int out_non_zero_num = thrust::distance(unique_key_ptr,
-    // new_end.first);
-    phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
-        unique_key_ptr,
-        new_end,
-        rulebook_ptr + rulebook_rows * rulebook_cols - 1);
-    IntT out_non_zero_num = 0;
-#ifdef PADDLE_WITH_HIP
-    phi::backends::gpu::GpuMemcpyAsync(
-        &out_non_zero_num,
-        rulebook_ptr + rulebook_rows * rulebook_cols - 1,
-        sizeof(IntT),
-        hipMemcpyDeviceToHost,
-        dev_ctx.stream());
-#else
-    phi::backends::gpu::GpuMemcpyAsync(
-        &out_non_zero_num,
-        rulebook_ptr + rulebook_rows * rulebook_cols - 1,
-        sizeof(IntT),
-        cudaMemcpyDeviceToHost,
-        dev_ctx.stream());
-#endif
+    // IntT* new_end =
+    //     SortedAndUniqueIndex<Context, IntT>(dev_ctx,
+    //                                         rulebook_ptr + 2 * rulebook_len,
+    //                                         rulebook_len,
+    //                                         out_index,
+    //                                         &unique_key,
+    //                                         unique_value);
+    int64_t table_size = 1;
+    for (int i = 0; i < out_dims.size() - 1; i++) {
+      table_size *= out_dims[i];
+    }
+    DenseTensor out_index_table = phi::Empty<int>(dev_ctx, {table_size});
+    int* out_index_table_ptr = out_index_table.data<int>();
+    cudaMemsetAsync(
+        out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+    size_t cache_size = sizeof(int) * config.thread_per_block.x;
+    UniqueKernel<IntT><<<config.block_per_grid,
+                         config.thread_per_block,
+                         cache_size,
+                         dev_ctx.stream()>>>(rulebook_ptr + 2 * rulebook_len,
+                                             rulebook_len,
+                                             out_index_table_ptr,
+                                             out_index_ptr,
+                                             unique_value_ptr);
+    int out_nnz = 0;
+    cudaMemcpyAsync(&out_nnz,
+                    unique_value_ptr,
+                    sizeof(int),
+                    cudaMemcpyDeviceToHost,
+                    dev_ctx.stream());
     dev_ctx.Wait();
 
-    // 5. update out_indices and rulebook by unique_value_ptr
     const int64_t sparse_dim = 4;
     DenseTensorMeta indices_meta(
-        indices_dtype, {sparse_dim, out_non_zero_num}, DataLayout::NCHW);
-    DenseTensorMeta values_meta(x.dtype(),
-                                {out_non_zero_num, kernel_sizes[4]},
-                                x.non_zero_elements().layout());
+        indices_dtype, {sparse_dim, out_nnz}, DataLayout::NCHW);
+    DenseTensorMeta values_meta(
+        x.dtype(), {out_nnz, kernel_sizes[4]}, x.non_zero_elements().layout());
     phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
     phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
+    out->SetMember(out_indices, out_values, out_dims, true);
 
     IntT* out_indices_ptr = out_indices.data<IntT>();
 
-    config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_non_zero_num, 1);
-    UpdateIndexKernel<IntT>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(unique_key_ptr,
-                               unique_value_ptr,
-                               out_index_ptr,
-                               out_non_zero_num,
-                               rulebook_len,
-                               d_out_dims,
-                               out_indices_ptr,
-                               rulebook_ptr + 2 * rulebook_len);
-    out->SetMember(out_indices, out_values, out_dims, true);
+    thrust::sort(thrust::cuda::par.on(dev_ctx.stream()),
+                 out_index_ptr,
+                 out_index_ptr + out_nnz);
+
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
+    GetOutIndexTable<IntT><<<config.block_per_grid,
+                             config.thread_per_block,
+                             0,
+                             dev_ctx.stream()>>>(out_index_ptr,
+                                                 out_nnz,
+                                                 d_out_dims,
+                                                 out_index_table_ptr,
+                                                 out_indices_ptr);
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+    UpdateOutIndex<<<config.block_per_grid,
+                     config.thread_per_block,
+                     0,
+                     dev_ctx.stream()>>>(
+        out_index_table_ptr, rulebook_len, rulebook_ptr + 2 * rulebook_len);
+
+    // thrust::distance doesn't support stream parameters
+    // const int out_non_zero_num = thrust::distance(unique_key_ptr,
+    // new_end.first);
+    //    phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0,
+    //    dev_ctx.stream()>>>(
+    //        unique_key_ptr,
+    //        new_end,
+    //        rulebook_ptr + rulebook_rows * rulebook_cols - 1);
+    //    IntT out_non_zero_num = 0;
+    // #ifdef PADDLE_WITH_HIP
+    //    phi::backends::gpu::GpuMemcpyAsync(
+    //        &out_non_zero_num,
+    //        rulebook_ptr + rulebook_rows * rulebook_cols - 1,
+    //        sizeof(IntT),
+    //        hipMemcpyDeviceToHost,
+    //        dev_ctx.stream());
+    // #else
+    //    phi::backends::gpu::GpuMemcpyAsync(
+    //        &out_non_zero_num,
+    //        rulebook_ptr + rulebook_rows * rulebook_cols - 1,
+    //        sizeof(IntT),
+    //        cudaMemcpyDeviceToHost,
+    //        dev_ctx.stream());
+    // #endif
+
+    // 5. update out_indices and rulebook by unique_value_ptr
+    //    config =
+    //        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx,
+    //        out_non_zero_num, 1);
+    ///    UpdateIndexKernel<IntT>
+    //        <<<config.block_per_grid.x,
+    //           config.thread_per_block.x,
+    //           0,
+    //           dev_ctx.stream()>>>(unique_key_ptr,
+    //                               unique_value_ptr,
+    //                               out_index_ptr,
+    //                               out_non_zero_num,
+    //                               rulebook_len,
+    //                               d_out_dims,
+    //                               out_indices_ptr,
+    //                               rulebook_ptr + 2 * rulebook_len);
     return rulebook_len;
   }
 }

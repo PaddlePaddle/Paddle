@@ -170,7 +170,7 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   }
 
   // 4. scatter
-  if (subm) {
+  if (true) {
     set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n * out_channels, 1);
