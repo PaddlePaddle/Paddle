@@ -162,7 +162,7 @@ class BatchNormOpConverter : public OpConverter {
     engine_->SetWeights(op_desc.Input("Scale").front(),
                         std::move(combile_scale_tensor));
     if (x_dim.nbDims < 3 + dynamic_shape_offset) {
-      layer->getOutput(0)->setName("batch_norm_out");
+      layer->getOutput(0)->setName(("batch_norm_out"+output_name).c_str());
       layer->setName(("BN: ScaleNd: (Output: " + output_name + ")").c_str());
       nvinfer1::Dims squeeze_shape;
       squeeze_shape.nbDims = x_dim.nbDims;
