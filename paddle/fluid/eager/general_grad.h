@@ -409,7 +409,7 @@ class GeneralGrad {
               VLOG(6) << "Clear meta[" << i << "][" << j
                       << "] for node: " << node->name() << " (addr: " << node
                       << ")";
-              meta[i][j].Clear();
+              meta[i].clear();
             }
           }
           // Update BFS queue
