@@ -26,7 +26,7 @@ include(ExternalProject)
 add_definitions(-DPADDLE_WITH_ONNXRUNTIME)
 
 set(ONNXRUNTIME_PROJECT "extern_onnxruntime")
-set(ONNXRUNTIME_VERSION "1.10.0")
+set(ONNXRUNTIME_VERSION "1.11.1")
 set(ONNXRUNTIME_PREFIX_DIR ${THIRD_PARTY_PATH}/onnxruntime)
 set(ONNXRUNTIME_SOURCE_DIR
     ${THIRD_PARTY_PATH}/onnxruntime/src/${ONNXRUNTIME_PROJECT})
