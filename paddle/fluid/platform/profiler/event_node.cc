@@ -379,12 +379,6 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
         op_supplement_count += 1;
       } else {
         if ((*op_supplement_it)->TimeStampNs() > (*it)->EndNs()) {
-          PADDLE_ENFORCE_LE(op_supplement_count,
-                            1,
-                            platform::errors::PreconditionNotMet(
-                                "One event of TracerEventType::Operator has no "
-                                "more than 1 op supplement event, but got %d.",
-                                op_supplement_count));
           lastposition = op_supplement_it;
           break;
         }
