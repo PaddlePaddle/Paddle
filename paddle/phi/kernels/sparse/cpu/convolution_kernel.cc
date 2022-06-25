@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
 
@@ -35,8 +36,8 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
                      const std::vector<int>& strides,
                      const int groups,
                      const bool subm,
-                     SparseCooTensor* out,
-                     DenseTensor* rulebook) {
+                     const std::string& key,
+                     SparseCooTensor* out) {
   // update padding and dilation
   // Currently, only support x.layout is NDHWC, groups = 1
   // if x.layout != NDHWC then transpose(x), transpose(weight)
@@ -66,26 +67,51 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
   // 1. product rulebook
-  DenseTensorMeta counter_meta(
-      DataType::INT32, {kernel_size}, DataLayout::NCHW);
-  DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
+  std::vector<int> counter_per_kernel(kernel_size, 0);
 
-  ProductRuleBook<T, CPUContext, IntT>(dev_ctx,
-                                       x,
-                                       kernel_sizes,
-                                       subm_paddings,
-                                       dilations,
-                                       subm_strides,
-                                       out_dims,
-                                       subm,
-                                       rulebook,
-                                       &counter_per_kernel);
+  // DenseTensor* rulebook = nullptr;
+  const IntT* rulebook_ptr = nullptr;
+  PADDLE_ENFORCE(!key.empty(),
+                 phi::errors::Fatal("the key of sparse conv must be not null"));
+  int n = 0;
+  const auto* table = x.table(key);
+  if (subm && table != nullptr) {
+    const DenseTensor& rulebook = table->first;
+    rulebook_ptr = rulebook.data<IntT>();
+    out->SetTablePtr(x.GetTablePtr());
+    n = rulebook.dims()[1];
 
-  UpdateRulebookAndOutIndex<T, CPUContext, IntT>(
-      dev_ctx, x, kernel_size, out_channels, out_dims, rulebook, out);
+    DenseTensor out_indices =
+        phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+    DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+    phi::Copy(
+        dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
+    out->SetMember(out_indices, out_values, out_dims, true);
+    memcpy(counter_per_kernel.data(),
+           table->second.data(),
+           kernel_size * sizeof(int));
+  } else {
+    DenseTensor rulebook;
+    ProductRuleBook<T, CPUContext, IntT>(dev_ctx,
+                                         x,
+                                         kernel_sizes,
+                                         subm_paddings,
+                                         dilations,
+                                         subm_strides,
+                                         out_dims,
+                                         subm,
+                                         &rulebook,
+                                         &counter_per_kernel);
 
-  int n = rulebook->dims()[1];
-  const int* counter_ptr = counter_per_kernel.data<int>();
+    UpdateRulebookAndOutIndex<T, CPUContext, IntT>(
+        dev_ctx, x, kernel_size, out_channels, out_dims, &rulebook, out);
+    n = rulebook.dims()[1];
+    out->SetTablePtr(x.GetTablePtr());
+    out->SetTable(key, std::make_pair(rulebook, counter_per_kernel));
+    rulebook_ptr = rulebook.data<IntT>();
+  }
+  // int n = rulebook->dims()[1];
+  const int* counter_ptr = counter_per_kernel.data();
 
   // 2. gather
   DenseTensorMeta in_features_meta(
@@ -100,7 +126,7 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
   T* out_features_ptr = out_features.data<T>();
 
   Gather<T, IntT>(x.non_zero_elements().data<T>(),
-                  rulebook->data<IntT>() + n,
+                  rulebook_ptr + n,
                   n,
                   in_channels,
                   in_features_ptr);
@@ -143,11 +169,8 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
   // 4. scatter
   T* out_values_ptr = out->mutable_non_zero_elements()->data<T>();
   memset(out_values_ptr, 0, sizeof(T) * out->nnz() * out_channels);
-  Scatter<T, IntT>(out_features_ptr,
-                   rulebook->data<IntT>() + n * 2,
-                   n,
-                   out_channels,
-                   out_values_ptr);
+  Scatter<T, IntT>(
+      out_features_ptr, rulebook_ptr + n * 2, n, out_channels, out_values_ptr);
 }
 
 template <typename T, typename Context>
@@ -159,8 +182,8 @@ void Conv3dKernel(const Context& dev_ctx,
                   const std::vector<int>& strides,
                   const int groups,
                   const bool subm,
-                  SparseCooTensor* out,
-                  DenseTensor* rulebook) {
+                  const std::string& key,
+                  SparseCooTensor* out) {
   PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "Conv3dCPUKernel", ([&] {
         Conv3dCPUKernel<T, data_t>(dev_ctx,
@@ -171,8 +194,8 @@ void Conv3dKernel(const Context& dev_ctx,
                                    strides,
                                    groups,
                                    subm,
-                                   out,
-                                   rulebook);
+                                   key,
+                                   out);
       }));
 }
 

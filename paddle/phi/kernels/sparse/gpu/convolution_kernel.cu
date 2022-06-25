@@ -35,8 +35,8 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
                      const std::vector<int>& strides,
                      const int groups,
                      const bool subm,
-                     SparseCooTensor* out,
-                     DenseTensor* rulebook) {
+                     const std::string& key,
+                     SparseCooTensor* out) {
   // update padding and dilation
   // Currently, only support x.layout is NDHWC, groups = 1
   // if x.layout != NDHWC then transpose(x), transpose(weight)
@@ -76,26 +76,55 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
   DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
 
-  int n = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,
-                                               x,
-                                               kernel_sizes,
-                                               subm_paddings,
-                                               dilations,
-                                               subm_strides,
-                                               out_dims,
-                                               subm,
-                                               rulebook,
-                                               &counter_per_kernel,
-                                               &offsets_per_kernel,
-                                               &out_index,
-                                               &unique_value,
-                                               out,
-                                               &h_counter,
-                                               &offsets);
+  int n = 0;
+  const IntT* rulebook_ptr = nullptr;
+  PADDLE_ENFORCE_EQ(
+      key.empty(),
+      false,
+      phi::errors::Fatal("the key of sparse conv must be not null"));
+  const auto* table = x.table(key);
+  if (subm && table != nullptr) {
+    const DenseTensor& rulebook = table->first;
+    rulebook_ptr = rulebook.data<IntT>();
+    memcpy(h_counter.data(), table->second.data(), kernel_size * sizeof(int));
+    out->SetTablePtr(x.GetTablePtr());
 
-  const int* counter_ptr = counter_per_kernel.data<int>();
-  const int* offsets_ptr = counter_per_kernel.data<int>();
-  const IntT* rulebook_ptr = rulebook->data<IntT>();
+    n = rulebook.dims()[1];
+
+    DenseTensor out_indices =
+        phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+    DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+    phi::Copy(
+        dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
+    out->SetMember(out_indices, out_values, out_dims, true);
+    IntT offset = 0;
+    for (int i = 0; i < kernel_size; i++) {
+      offsets[i] = offset;
+      offset += h_counter[i];
+    }
+    offsets[kernel_size] = offset;
+  } else {
+    DenseTensor rulebook;
+    n = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,
+                                             x,
+                                             kernel_sizes,
+                                             subm_paddings,
+                                             dilations,
+                                             subm_strides,
+                                             out_dims,
+                                             subm,
+                                             &rulebook,
+                                             &counter_per_kernel,
+                                             &offsets_per_kernel,
+                                             &out_index,
+                                             &unique_value,
+                                             out,
+                                             &h_counter,
+                                             &offsets);
+    out->SetTablePtr(x.GetTablePtr());
+    out->SetTable(key, std::make_pair(rulebook, h_counter));
+    rulebook_ptr = rulebook.data<IntT>();
+  }
 
   // 2. gather
   DenseTensorMeta in_features_meta(
@@ -143,6 +172,9 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   auto* out_values = out->mutable_non_zero_elements();
   T* out_values_ptr = out_values->data<T>();
 
+  if (subm) {
+    // set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+  }
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
     if (h_counter[i] <= 0) {
@@ -167,6 +199,38 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
               tmp_kernel_ptr,
               static_cast<T>(0),
               tmp_out_ptr);
+
+    if (subm) {
+      // if(out_channels % VecSize == 0){
+      //     auto config =
+      //         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, M *
+      //         out_channels/VecSize, 1);
+      //     phi::funcs::sparse::ScatterCUDAKernel<T, IntT, VecSize>
+      //         <<<config.block_per_grid,
+      //         config.thread_per_block,
+      //         0,
+      //         dev_ctx.stream()>>>(out_features_ptr,
+      //                 rulebook_ptr + 2 * n + offsets[i],
+      //                 out_values_ptr,
+      //                 M,
+      //                 out_channels,
+      //                 false);
+      // }else{
+      //     auto config =
+      //         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, M *
+      //         out_channels, 1);
+      //     phi::funcs::sparse::ScatterCUDAKernel<T, IntT, 1>
+      //         <<<config.block_per_grid,
+      //         config.thread_per_block,
+      //         0,
+      //         dev_ctx.stream()>>>(out_features_ptr,
+      //                 rulebook_ptr + 2 * n + offsets[i],
+      //                 out_values_ptr,
+      //                 M,
+      //                 out_channels,
+      //                 false);
+      // }
+    }
   }
 
   // 4. scatter
@@ -230,8 +294,8 @@ void Conv3dKernel(const Context& dev_ctx,
                   const std::vector<int>& strides,
                   const int groups,
                   const bool subm,
-                  SparseCooTensor* out,
-                  DenseTensor* rulebook) {
+                  const std::string& key,
+                  SparseCooTensor* out) {
   PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "Conv3dGPUKernel", ([&] {
         Conv3dGPUKernel<T, data_t>(dev_ctx,
@@ -242,8 +306,8 @@ void Conv3dKernel(const Context& dev_ctx,
                                    strides,
                                    groups,
                                    subm,
-                                   out,
-                                   rulebook);
+                                   key,
+                                   out);
       }));
 }
 

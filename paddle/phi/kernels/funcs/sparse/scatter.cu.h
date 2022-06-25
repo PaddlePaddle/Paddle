@@ -68,6 +68,35 @@ __global__ void ScatterKernel(const T* input,
   }
 }
 
+template <typename T, typename IndexT = int, int VecSize>
+__global__ void ScatterCUDAKernel(const T* params,
+                                  const IndexT* indices,
+                                  T* output,
+                                  size_t index_size,
+                                  size_t slice_size,
+                                  bool overwrite) {
+  const size_t vec_slice_size = slice_size / VecSize;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using StoreT = phi::AlignedVector<T, VecSize>;
+  CUDA_KERNEL_LOOP_TYPE(i, index_size * vec_slice_size, int64_t) {
+    int64_t indices_i = i / vec_slice_size;
+    int64_t slice_i =
+        i - indices_i * vec_slice_size;  // offset inside the slice
+    IndexT scatter_i = indices[indices_i];
+
+    int64_t out_i = scatter_i * slice_size + slice_i * VecSize;
+    LoadT vec_params, vec_out;
+    phi::Load<T, VecSize>(params + i * VecSize, &vec_params);
+    phi::Load<T, VecSize>(output + out_i, &vec_out);
+#pragma unroll
+    for (int j = 0; j < VecSize; j++) {
+      vec_out[j] += vec_params[j];
+    }
+    phi::Store<T, VecSize>(vec_out, output + out_i);
+    // output[out_i] += params[i];
+  }
+}
+
 }  // namespace sparse
 }  // namespace funcs
 }  // namespace phi
