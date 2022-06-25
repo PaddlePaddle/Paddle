@@ -52,10 +52,15 @@ std::vector<std::string> ExtractParameters(
   std::vector<std::string> parameters;
   for (const auto &node : nodes) {
     if (!node->IsVar()) continue;
+    std::string op_type1 = node->Var()->Name();
+    std::string s = op_type1.substr(0, 8);
+    // std::cout<<"  op_type1   "<<s<<std::endl;
     if (node->Var()->Persistable() &&
         std::find(feed_outputs.begin(), feed_outputs.end(), node->Name()) ==
             feed_outputs.end()) {
-      parameters.push_back(node->Name());
+      if (s == "backbone") {
+      } else
+        parameters.push_back(node->Name());
     }
   }
   if (sorted) {

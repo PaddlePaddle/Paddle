@@ -1,11 +1,8 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
 http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,6 +12,7 @@ limitations under the License. */
 #pragma once
 
 #include <NvInfer.h>
+
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -151,7 +149,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
     return dims;
   }
 }
-}  // NOLINT
+}  // namespace
 
 class TRTInt8Calibrator;
 
@@ -410,14 +408,19 @@ class TensorRTEngine {
     suffix_counter += 1;
   }
 
-  void SetUseOSS(bool use_oss) { use_oss_ = use_oss; }
+  void SetUseOSS(bool use_varseqlen) { use_varseqlen_ = use_varseqlen; }
   void SetUseDLA(bool use_dla) { use_dla_ = use_dla; }
   void SetDLACore(int dla_core) { dla_core_ = dla_core; }
   void SetWithErnie(bool with_ernie) { with_ernie_ = with_ernie; }
   void SetWithInterleaved(bool with_interleaved) {
     with_interleaved_ = with_interleaved;
   }
-
+  void SetTransformerPosid(std::string tensorrt_transformer_posid) {
+    tensorrt_transformer_posid_ = tensorrt_transformer_posid;
+  }
+  void SetTransformerMaskid(std::string tensorrt_transformer_maskid) {
+    tensorrt_transformer_maskid_ = tensorrt_transformer_maskid;
+  }
   void ClearWeights() {
     for (auto& weight_pair : weight_map) {
       weight_pair.second.reset(nullptr);
@@ -488,9 +491,15 @@ class TensorRTEngine {
     return ret;
   }
 
-  bool use_oss() { return use_oss_; }
+  bool use_varseqlen() { return use_varseqlen_; }
   bool with_ernie() { return with_ernie_; }
   bool with_interleaved() { return with_interleaved_; }
+  std::string tensorrt_transformer_posid() {
+    return tensorrt_transformer_posid_;
+  }
+  std::string tensorrt_transformer_maskid() {
+    return tensorrt_transformer_maskid_;
+  }
   bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
   AnalysisConfig::Precision precision() { return precision_; }
@@ -612,11 +621,13 @@ class TensorRTEngine {
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
   bool disable_trt_plugin_fp16_{false};
-  bool use_oss_{false};
+  bool use_varseqlen_{false};
   bool use_dla_{false};
   int dla_core_{0};
   bool with_ernie_{false};
   bool with_interleaved_{false};
+  std::string tensorrt_transformer_posid_;
+  std::string tensorrt_transformer_maskid_;
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.
@@ -672,7 +683,7 @@ class TensorRTEngine {
 // them, and an macro like this is more extensible when underlying TensorRT
 // library add new layer supports.
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ...) \
-  engine__->network()->add##layer__(__VA_ARGS__);
+  engine__->network()->add##layer__(__VA_ARGS__)
 
 class TRTEngineManager {
  public:

@@ -28,13 +28,21 @@ namespace tensorrt {
 class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert fluid PrelnEmbEltwiseLayerNorm op to tensorrt layer";
 
-    if (!(engine_->use_oss() && engine_->with_interleaved())) {
+    auto pos_id_name = engine_->tensorrt_transformer_posid();
+    auto mask_id_name = engine_->tensorrt_transformer_maskid();
+    bool flag_prelayernorm = engine_->with_interleaved() &&
+                             engine_->use_varseqlen() && pos_id_name != "" &&
+                             mask_id_name != "";
+
+    if (!flag_prelayernorm) {
       PADDLE_THROW(platform::errors::Fatal(
-          "PrelnErnie: If you want to use oss, must be with interleaved"));
+          "PrelnErnie: If you want to use varseqlen, must be with interleaved, "
+          "set pos_id_name, set mask_id_name."));
     }
     framework::OpDesc op_desc(op, nullptr);
     bool enable_int8 = op_desc.HasAttr("enable_int8");
@@ -43,13 +51,16 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
           platform::errors::Fatal("use with_interleaved must be int8."));
     }
     auto word_id_name = op_desc.Input("WordId").front();
-    auto pos_id_name = op_desc.Input("PosId").front();
     engine_->Set("ernie_pos_name", new std::string(pos_id_name));
 
     auto sent_id_name = op_desc.Input("SentId").front();
     auto word_emb_name = op_desc.Input("WordEmbedding").front();
     auto pos_emb_name = op_desc.Input("PosEmbedding").front();
     auto sent_emb_name = op_desc.Input("SentEmbedding").front();
+
+    engine_->SetITensor("word_id", engine_->GetITensor(word_id_name));
+    engine_->SetITensor("pos_id", engine_->GetITensor(pos_id_name));
+    engine_->SetITensor("mask_id", engine_->GetITensor(mask_id_name));
 
     std::vector<std::string> emb_names;
     emb_names =
@@ -81,7 +92,8 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
       input_embs.push_back(emb_data);
       emb_sizes.push_back(emb_size);
       PADDLE_ENFORCE_EQ(
-          emb_dims.size(), 2,
+          emb_dims.size(),
+          2,
           platform::errors::InvalidArgument(
               "The fused PrelnEmbEltwiseLayerNorm's emb should be 2 dims."));
     }
@@ -97,23 +109,31 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     int output_int8 = 1;
 
     PADDLE_ENFORCE_EQ(
-        input_num, 3,
+        input_num,
+        3,
         platform::errors::InvalidArgument(
             "When using oss and var-len, embedding_eltwise_layernorm op"
             "should have 3 inputs only, but got %d.",
             input_num));
     const std::vector<nvinfer1::PluginField> fields{
-        {"bert_embeddings_layernorm_beta", bias,
-         nvinfer1::PluginFieldType::kFLOAT32, static_cast<int32_t>(bias_size)},
-        {"bert_embeddings_layernorm_gamma", scale,
-         nvinfer1::PluginFieldType::kFLOAT32, static_cast<int32_t>(scale_size)},
-        {"bert_embeddings_word_embeddings", input_embs[0],
+        {"bert_embeddings_layernorm_beta",
+         bias,
+         nvinfer1::PluginFieldType::kFLOAT32,
+         static_cast<int32_t>(bias_size)},
+        {"bert_embeddings_layernorm_gamma",
+         scale,
+         nvinfer1::PluginFieldType::kFLOAT32,
+         static_cast<int32_t>(scale_size)},
+        {"bert_embeddings_word_embeddings",
+         input_embs[0],
          nvinfer1::PluginFieldType::kFLOAT32,
          static_cast<int32_t>(emb_sizes[0])},
-        {"bert_embeddings_token_type_embeddings", input_embs[2],
+        {"bert_embeddings_token_type_embeddings",
+         input_embs[2],
          nvinfer1::PluginFieldType::kFLOAT32,
          static_cast<int32_t>(emb_sizes[2])},
-        {"bert_embeddings_position_embeddings", input_embs[1],
+        {"bert_embeddings_position_embeddings",
+         input_embs[1],
          nvinfer1::PluginFieldType::kFLOAT32,
          static_cast<int32_t>(emb_sizes[1])},
         {"output_fp16", &output_int8, nvinfer1::PluginFieldType::kINT32, 1},
@@ -136,8 +156,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     plugin_inputs.emplace_back(
         engine_->GetITensor(pos_id_name));  // cu_seqlens,
                                             // eval_placeholder_2
-    auto max_seqlen_tensor =
-        engine_->GetITensor(engine_->network()->getInput(3)->getName());
+    auto max_seqlen_tensor = engine_->GetITensor(mask_id_name);
     auto* shuffle_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *max_seqlen_tensor);
     nvinfer1::Dims shape_dim;

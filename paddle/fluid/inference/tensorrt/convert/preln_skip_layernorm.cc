@@ -1,11 +1,8 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
 http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,7 +21,7 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
                   const framework::Scope& scope, bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert fused preln_skip_layernorm op to tensorrt layer";
-    if (!(engine_->use_oss() && engine_->with_interleaved())) {
+    if (!(engine_->use_varseqlen() && engine_->with_interleaved())) {
       PADDLE_THROW(platform::errors::Fatal(
           "PrelnErnie: If you want to use oss, must be with interleaved"));
     }
@@ -60,7 +57,8 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
 
-    VLOG(4) << "fused preln_skip_layernorm op: use_oss and with_interleaved";
+    VLOG(4)
+        << "fused preln_skip_layernorm op: use_varseqlen and with_interleaved";
 
     auto creator = GetPluginRegistry()->getPluginCreator(
         "CustomSkipLayerNormPluginDynamic", "4");
