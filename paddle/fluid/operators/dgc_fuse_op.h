@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -60,6 +57,11 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
 
     auto grad_out = ctx.Output<framework::Tensor>("Grad_out");
     auto place = ctx.GetPlace();
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+
+    auto g_e = framework::EigenVector<T>::Flatten(*g);
+    auto grad_out_e = framework::EigenVector<T>::Flatten(*grad_out);
+    auto& eigen_ctx = *dev_ctx.eigen_device();
 
     // attrs
     float m = ctx.Attr<float>("m");
@@ -78,7 +80,6 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
     // stream
     const int ring_id = ctx.Attr<int>("ring_id");
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     gpuStream_t stream = comm->stream();
     gpuStream_t compute_stream = dev_ctx.stream();
     ncclDataType_t dtype =
@@ -90,6 +91,9 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
 
     bool is_use_dgc = ctx.Attr<bool>("is_use_dgc");
     if (!is_use_dgc) {
+      // grad div nranks.
+      grad_out_e.device(eigen_ctx) = g_e / static_cast<float>(nranks);
+
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventRecord(comm->compute_event(), dev_ctx.stream()));
@@ -106,11 +110,6 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
           grad_out->data<T>(), grad_out->data<T>(), grad_out->numel(), dtype,
           ncclSum, comm->comm(), stream));
 
-#ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(comm->comm_event(), stream));
-#else
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(comm->comm_event(), stream));
-#endif
       return;
     }
 
@@ -120,30 +119,24 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
     int regular_type = ctx.Attr<int>("regular_type");
 
     auto p_e = framework::EigenVector<T>::Flatten(*p);
-    auto g_e = framework::EigenVector<T>::Flatten(*g);
-    auto grad_out_e = framework::EigenVector<T>::Flatten(*grad_out);
 
-    auto& eigen_ctx = *dev_ctx.eigen_device();
-
-    // NOTE. In paddle, loss has divided by nranks. Because dgc_op is before
-    // allreduce, so local regular_coeff need div nranks too. But now we
-    // multi grad with nranks in dgc_op, in that case regular_coeff don't
-    // need to /nranks, can prevent precision loss. For coeff often equal
-    // with 1e-4, if nranks=32, coeff/nranks will be 3.125e-6, the numerical
-    // accuracy of coeff/nranks will be too low.
     PADDLE_ENFORCE_EQ(regular_type >= 0 && regular_type <= 2, true,
                       platform::errors::InvalidArgument(
                           "DGC only support one of None|L1Decay|L2Decay "
                           "Regularization for now."));
+
+    bool has_clip = ctx.Attr<bool>("has_clip");
+    auto factor =
+        has_clip ? (1.0f * nranks) : (1.0f / nranks) * (1.0f * nranks);
+
     if (regular_type == 0) {
-      grad_out_e.device(eigen_ctx) = (1.0 * nranks) * g_e;
+      grad_out_e.device(eigen_ctx) = g_e * factor;
     } else if (regular_type == 1) {
       // L1Decay. grad = grad + coeff * sign(param)
-      grad_out_e.device(eigen_ctx) =
-          (1.0 * nranks) * g_e + regular_coeff * p_e.sign();
+      grad_out_e.device(eigen_ctx) = g_e * factor + regular_coeff * p_e.sign();
     } else if (regular_type == 2) {
       // L2Decay. grad = grad + coeff * param
-      grad_out_e.device(eigen_ctx) = (1.0 * nranks) * g_e + regular_coeff * p_e;
+      grad_out_e.device(eigen_ctx) = g_e * factor + regular_coeff * p_e;
     }
 
     if (static_cast<int>(*current_step) < static_cast<int>(rampup_begin_step)) {
@@ -152,7 +145,6 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
                << " so does't use dgc";
 
       // sync calc stream
-      // platform::GpuStreamSync(compute_stream);
 
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -169,12 +161,6 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           grad_out->data<T>(), grad_out->data<T>(), grad_out->numel(), dtype,
           ncclSum, comm->comm(), stream));
-
-#ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(comm->comm_event(), stream));
-#else
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(comm->comm_event(), stream));
-#endif
 
       return;
     }
@@ -260,7 +246,6 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
     }
 
     // sync calc stream
-    // platform::GpuStreamSync(compute_stream);
 
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -284,12 +269,6 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
             static_cast<void*>(gather_buff->data()), k, grad_out->data<T>(),
             grad_out->numel(), nranks, stream),
         true, platform::errors::Unavailable("Calling sparseReduce() failed."));
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(comm->comm_event(), stream));
-#else
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(comm->comm_event(), stream));
-#endif
-    //    platform::GpuStreamSync(stream);
   }
 };
 }  // namespace operators

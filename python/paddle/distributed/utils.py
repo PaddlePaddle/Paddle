@@ -33,24 +33,24 @@ from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _C_ops
 
-__all__ = [     #noqa
-           'get_host_name_ip',
-           'Trainer',
-           'get_cluster',
-           'start_local_trainers',
-           'watch_local_trainers',
-           'find_free_ports',
-           'JobServer',
-           'Cluster',
-           'Pod',
-           'Hdfs',
-           'add_arguments',
-           'terminate_local_procs',
-           'TrainerProc',
-           'get_logger',
-           'pull_worker_log',
-           'global_scatter',
-           'global_gather',
+__all__ = [  #noqa
+    'get_host_name_ip',
+    'Trainer',
+    'get_cluster',
+    'start_local_trainers',
+    'watch_local_trainers',
+    'find_free_ports',
+    'JobServer',
+    'Cluster',
+    'Pod',
+    'Hdfs',
+    'add_arguments',
+    'terminate_local_procs',
+    'TrainerProc',
+    'get_logger',
+    'pull_worker_log',
+    'global_scatter',
+    'global_gather',
 ]
 
 

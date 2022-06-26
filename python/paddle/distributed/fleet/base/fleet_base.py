@@ -33,7 +33,7 @@ from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import TensorParallel, model_parallel_random_seed
 from ..meta_parallel import PipelineParallel, ShardingParallel
-from ..meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
+from ..meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer, DGCMomentumOptimizer
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
@@ -928,6 +928,20 @@ class Fleet(object):
                     "which will take effect in distributed training.")
             self._user_defined_strategy = copy.deepcopy(strategy)
 
+        if self._user_defined_strategy is not None and self._user_defined_strategy.dgc:
+            configs = self._user_defined_strategy.dgc_configs
+            dgc_optimizer = DGCMomentumOptimizer(
+                parameters=optimizer._parameter_list,
+                learning_rate=optimizer._learning_rate,
+                momentum=optimizer._momentum,
+                rampup_begin_step=configs['rampup_begin_step'],
+                rampup_step=configs['rampup_step'],
+                sparsity=configs['sparsity'],
+                use_nesterov=optimizer._use_nesterov,
+                weight_decay=optimizer._regularization_coeff,
+                grad_clip=optimizer._grad_clip)
+            return dgc_optimizer
+
         self._context = {}
 
         if paddle.fluid.framework._non_static_mode():
@@ -1005,6 +1019,9 @@ class Fleet(object):
         amp_enable = False
         recompute_enable = False
         strategy = self._user_defined_strategy
+        if strategy.dgc:
+            return model
+
         if strategy.amp == True:
             amp_enable = True
             amp_level = "O2" if strategy.amp_configs['use_pure_fp16'] else "O1"

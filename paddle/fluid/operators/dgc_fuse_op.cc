@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -118,29 +115,26 @@ class DGCFuseOpMaker : public framework::OpProtoAndCheckerMaker {
                   "whether use dgc.")
         .SetDefault(false);
 
+    AddAttr<bool>("has_clip",
+                  "(bool, false)"
+                  "whether has clipped in dgc.")
+        .SetDefault(false);
+
     AddComment(R"DOC(
     Original paper is https://arxiv.org/abs/1712.01887
-
     DGC reduce the communication bandwidth by sending only the important gradients (sparse update):\
         only gradients larger than a threshold are transmitted.
-
     To avoid losing information, DGC accumulate the rest of the gradients locally.
-
     Eventually, these gradients become large enough to be transmitted.
-
     Thus, DGC send the large gradients immediately but eventually send all of the gradients over time.
-
     To ensure no loss of accuracy, DGC employs momentum correc-tionandlocal gradient clipping on top of the gradient sparsification to maintain model performance.
-
     DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
-
     This optimizer will do two things:
         
         1. Compress the gradient by get TopK import value from tensor \
             and use it for allreduce to reduce network bandwidth.
     
         2. Call momentum to optimize on the cost.
-
 )DOC");
   }
 };
