@@ -231,6 +231,30 @@ class OpConverter {
                     TensorRTEngine* engine) {
     std::unique_lock<std::mutex> lk(mut_);
     for (int i = 0; i < block.ops_size(); i++) {
+      SetEngine(engine);
+      const auto& op = block.ops(i);
+      framework::OpDesc op_desc(op, nullptr);
+      std::vector<std::string> a = {
+          "reshape2", "unsqueeze2", "transpose2", "transpose"};
+      std::vector<std::string> b = {"slice"};
+      framework::Variable* X_v = nullptr;
+      std::string X_name;
+      if (std::find(a.begin(), a.end(), op_desc.Type()) != a.end()) {
+        X_name = op_desc.Input("X")[0];
+      }
+      if (std::find(b.begin(), b.end(), op_desc.Type()) != b.end()) {
+        X_name = op_desc.Input("Input")[0];
+      }
+      X_v = scope.FindVar(X_name);
+      // 
+      if (engine->GetITensorMap()->count(X_name)) {
+        continue;
+      }
+      if (X_v) {
+        ConvertWeight2ITensor(scope, X_name);
+      }
+    }
+    for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
       ConvertOp(op, parameters, scope, engine);
     }
@@ -422,22 +446,27 @@ class OpConverter {
             ->getOutput(0);
     return tensor;
   }
-
-  // Create and add Multi-D constant float layer
-  nvinfer1::ITensor* AddConstantLayer(const float* data,
+  template <typename T>
+  // Create and add Multi-D constant float/int32 layer
+  nvinfer1::ITensor* AddConstantLayer(const T* data,
                                       const std::vector<int32_t>& weight_dims,
                                       const std::string& weight_name) {
-    std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
     int data_size = std::accumulate(
         weight_dims.begin(), weight_dims.end(), 1, std::multiplies<int>());
+    std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
     tmp_tensor->Resize({data_size});
-    auto* tmp_data = tmp_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
     for (int i = 0; i < data_size; i++) {
       tmp_data[i] = data[i];
     }
     engine_->SetWeights(weight_name, std::move(tmp_tensor));
 
-    TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
+    nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
+    if (std::is_integral<T>::value) {
+      trt_dtype = nvinfer1::DataType::kINT32;
+    }
+
+    TensorRTEngine::Weight weight{trt_dtype,
                                   static_cast<void*>(tmp_data),
                                   static_cast<size_t>(data_size)};
     nvinfer1::Dims trt_dims;
@@ -468,8 +497,9 @@ class OpConverter {
       trt_dtype = nvinfer1::DataType::kINT32;
     }
 
-    TensorRTEngine::Weight weight{
-        trt_dtype, static_cast<void*>(tmp_data), static_cast<size_t>(data_size)};
+    TensorRTEngine::Weight weight{trt_dtype,
+                                  static_cast<void*>(tmp_data),
+                                  static_cast<size_t>(data_size)};
     nvinfer1::Dims input_shape;
     input_shape.nbDims = scalar ? 0 : 1;
     input_shape.d[0] = data_size;
@@ -492,6 +522,45 @@ class OpConverter {
     std::vector<int> tmp_data;
     tmp_data.push_back(data);
     return Add1DConstantLayer(tmp_data, weight_name, scalar);
+  }
+
+  // For cases when input is not middle-tensor , but persistable tensor
+  // you should call this.
+  nvinfer1::ITensor* ConvertWeight2ITensor(const framework::Scope& scope,
+                                           const std::string& name) {
+    auto* var_v = scope.FindVar(name);
+    auto* var_t = var_v->GetMutable<framework::LoDTensor>();
+    void* trt_ptr = nullptr;
+    size_t trt_num = static_cast<size_t>(var_t->numel());
+    nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
+    if (var_t->dtype() == phi::DataType::FLOAT32) {
+      float* data_ptr = engine_->GetWeightCPUData(name, var_t);
+      trt_ptr = static_cast<void*>(data_ptr);
+    } else if (var_t->dtype() == phi::DataType::INT32) {
+      int32_t* data_ptr = engine_->GetWeightCPUData<int32_t>(name, var_t);
+      trt_ptr = static_cast<void*>(data_ptr);
+      trt_dtype = nvinfer1::DataType::kINT32;
+    } else if (var_t->dtype() == phi::DataType::INT64) {
+      int64_t* data_ptr = engine_->GetWeightCPUData<int64_t>(name, var_t);
+      int32_t* new_data_ptr = new int32_t[trt_num];
+      for (size_t i = 0; i < trt_num; i++) {
+        new_data_ptr[i] = data_ptr[i];
+      }
+      // delete[] new_data_ptr;
+      trt_ptr = static_cast<void*>(new_data_ptr);
+      trt_dtype = nvinfer1::DataType::kINT32;
+    }
+    auto var_dims = var_t->dims();
+    nvinfer1::Dims trt_in_shape;
+    trt_in_shape.nbDims = var_t->dims().size();
+    for (int64_t i = 0; i < var_t->dims().size(); i++) {
+      trt_in_shape.d[i] = var_dims[i];
+    }
+    TensorRTEngine::Weight weight{trt_dtype, trt_ptr, trt_num};
+    nvinfer1::ILayer* layer =
+        TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_in_shape, weight.get());
+    engine_->SetITensor(name, layer->getOutput(0));
+    return layer->getOutput(0);
   }
 
   void RreplenishLayerAndOutput(

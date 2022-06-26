@@ -41,13 +41,15 @@ class ReshapeOpConverter : public OpConverter {
     nvinfer1::Dims reshape_dim;
     nvinfer1::ITensor* real_shape_tensor = nullptr;
     std::vector<nvinfer1::ITensor*> concat_inputs;
-
     if (engine_->with_dynamic_shape()) {
       if (op_desc.Inputs().find("ShapeTensor") != op_desc.Inputs().end() &&
           op_desc.Input("ShapeTensor").size() > 0) {
         for (auto name : op_desc.Input("ShapeTensor"))
           concat_inputs.push_back(engine_->GetITensor(name));
         real_shape_tensor = Concat(concat_inputs);
+      } else if (op_desc.Inputs().find("Shape") != op_desc.Inputs().end() &&
+                 op_desc.Input("Shape").size() > 0) {
+        real_shape_tensor = engine_->GetITensor(op_desc.Input("Shape")[0]);
       } else {
         std::vector<int> shape =
             BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
@@ -63,7 +65,7 @@ class ReshapeOpConverter : public OpConverter {
             concat_inputs.push_back(nullptr);
           }
         }
-        if (minus_index > 0) {
+        if (minus_index >= 0) {
           auto input_numel = Add1DConstantLayer(1);
           for (int i = 0; i < input->getDimensions().nbDims; i++) {
             input_numel =
@@ -72,8 +74,7 @@ class ReshapeOpConverter : public OpConverter {
           auto output_numel = Add1DConstantLayer(1);
           for (size_t i = 0; i < shape.size(); i++) {
             if (shape[i] != -1) {
-              output_numel =
-                  Prod(input_numel, GetEleTensorOfShape(input_shape_tensor, i));
+              output_numel = Prod(output_numel, concat_inputs[i]);
             }
           }
           concat_inputs[minus_index] = Div(input_numel, output_numel);
