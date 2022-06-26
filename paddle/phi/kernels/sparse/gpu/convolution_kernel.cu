@@ -199,42 +199,10 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
               tmp_kernel_ptr,
               static_cast<T>(0),
               tmp_out_ptr);
-
-    if (subm) {
-      // if(out_channels % VecSize == 0){
-      //     auto config =
-      //         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, M *
-      //         out_channels/VecSize, 1);
-      //     phi::funcs::sparse::ScatterCUDAKernel<T, IntT, VecSize>
-      //         <<<config.block_per_grid,
-      //         config.thread_per_block,
-      //         0,
-      //         dev_ctx.stream()>>>(out_features_ptr,
-      //                 rulebook_ptr + 2 * n + offsets[i],
-      //                 out_values_ptr,
-      //                 M,
-      //                 out_channels,
-      //                 false);
-      // }else{
-      //     auto config =
-      //         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, M *
-      //         out_channels, 1);
-      //     phi::funcs::sparse::ScatterCUDAKernel<T, IntT, 1>
-      //         <<<config.block_per_grid,
-      //         config.thread_per_block,
-      //         0,
-      //         dev_ctx.stream()>>>(out_features_ptr,
-      //                 rulebook_ptr + 2 * n + offsets[i],
-      //                 out_values_ptr,
-      //                 M,
-      //                 out_channels,
-      //                 false);
-      // }
-    }
   }
 
   // 4. scatter
-  if (true) {
+  if (subm) {
     set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n * out_channels, 1);
@@ -252,29 +220,29 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
     if (out_channels % VecSize == 0) {
       auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
           dev_ctx, out->nnz() * out_channels / VecSize, 1);
-      phi::funcs::sparse::ScatterKernel<T, VecSize>
+      phi::funcs::sparse::ScatterKernelV2<T, VecSize>
           <<<config.block_per_grid.x,
              config.thread_per_block.x,
              0,
              dev_ctx.stream()>>>(out_features_ptr,
-                                 unique_value.data<int>(),
                                  out_index.data<int>(),
+                                 unique_value.data<int>(),
                                  out->nnz(),
-                                 n,
+                                 kernel_size,
                                  out_channels,
                                  out_values_ptr);
     } else {
       auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
           dev_ctx, out->nnz() * out_channels, 1);
-      phi::funcs::sparse::ScatterKernel<T, 1>
+      phi::funcs::sparse::ScatterKernelV2<T, 1>
           <<<config.block_per_grid.x,
              config.thread_per_block.x,
              0,
              dev_ctx.stream()>>>(out_features_ptr,
-                                 unique_value.data<int>(),
                                  out_index.data<int>(),
+                                 unique_value.data<int>(),
                                  out->nnz(),
-                                 n,
+                                 kernel_size,
                                  out_channels,
                                  out_values_ptr);
     }

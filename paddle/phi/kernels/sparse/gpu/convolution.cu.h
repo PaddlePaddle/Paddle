@@ -107,10 +107,19 @@ __global__ void UniqueKernel(const IntT* in_indexs,
 template <typename IntT>
 __global__ void UpdateOutIndex(const int* out_index_table,
                                const int n,
-                               IntT* out_indexs) {
+                               const int kernel_size,
+                               IntT* out_indexs,
+                               int* out_index_counts,
+                               int* origin_out_indexs) {
   CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
     IntT index = out_indexs[i];
-    out_indexs[i] = out_index_table[index];
+    int real_index = out_index_table[index];
+    out_indexs[i] = real_index;
+
+    // kernel_size at most
+    int j = atomicAdd(out_index_counts + real_index, 1);
+    // nnz * kernel_size
+    origin_out_indexs[real_index * kernel_size + j] = i;
   }
 }
 
@@ -703,23 +712,11 @@ int ProductRuleBook(const Context& dev_ctx,
     rulebook->Resize({rulebook_rows, static_cast<int>(rulebook_len)});
     // 3. sorted or merge the out index
     out_index->ResizeAndAllocate({static_cast<int>(rulebook_len)});
-    unique_value->ResizeAndAllocate({static_cast<int>(rulebook_len)});
-    DenseTensor unique_key = phi::Empty(
-        dev_ctx,
-        DenseTensorMeta(
-            indices_dtype, {static_cast<int>(rulebook_len)}, DataLayout::NCHW));
+    DenseTensor unique_key =
+        phi::Empty<int>(dev_ctx, {static_cast<int>(rulebook_len)});
     int* out_index_ptr = out_index->data<int>();
-    int* unique_value_ptr = unique_value->data<int>();
-    IntT* unique_key_ptr = unique_key.data<IntT>();
-    cudaMemsetAsync(unique_value_ptr, 0, sizeof(int), dev_ctx.stream());
+    int* unique_key_ptr = unique_key.data<int>();
 
-    // IntT* new_end =
-    //     SortedAndUniqueIndex<Context, IntT>(dev_ctx,
-    //                                         rulebook_ptr + 2 * rulebook_len,
-    //                                         rulebook_len,
-    //                                         out_index,
-    //                                         &unique_key,
-    //                                         unique_value);
     int64_t table_size = 1;
     for (int i = 0; i < out_dims.size() - 1; i++) {
       table_size *= out_dims[i];
@@ -728,6 +725,7 @@ int ProductRuleBook(const Context& dev_ctx,
     int* out_index_table_ptr = out_index_table.data<int>();
     cudaMemsetAsync(
         out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
+    cudaMemsetAsync(unique_key_ptr, 0, sizeof(int), dev_ctx.stream());
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
     size_t cache_size = sizeof(int) * config.thread_per_block.x;
     UniqueKernel<IntT><<<config.block_per_grid,
@@ -737,10 +735,10 @@ int ProductRuleBook(const Context& dev_ctx,
                                              rulebook_len,
                                              out_index_table_ptr,
                                              out_index_ptr,
-                                             unique_value_ptr);
+                                             unique_key_ptr);
     int out_nnz = 0;
     cudaMemcpyAsync(&out_nnz,
-                    unique_value_ptr,
+                    unique_key_ptr,
                     sizeof(int),
                     cudaMemcpyDeviceToHost,
                     dev_ctx.stream());
@@ -771,53 +769,22 @@ int ProductRuleBook(const Context& dev_ctx,
                                                  out_index_table_ptr,
                                                  out_indices_ptr);
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+    cudaMemsetAsync(
+        out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
+    unique_value->ResizeAndAllocate({static_cast<int>(out_nnz * kernel_size)});
+    int* unique_value_ptr = unique_value->data<int>();
+
+    // return rulebook_len;
     UpdateOutIndex<<<config.block_per_grid,
                      config.thread_per_block,
                      0,
-                     dev_ctx.stream()>>>(
-        out_index_table_ptr, rulebook_len, rulebook_ptr + 2 * rulebook_len);
+                     dev_ctx.stream()>>>(out_index_table_ptr,
+                                         rulebook_len,
+                                         kernel_size,
+                                         rulebook_ptr + 2 * rulebook_len,
+                                         out_index_ptr,
+                                         unique_value_ptr);
 
-    // thrust::distance doesn't support stream parameters
-    // const int out_non_zero_num = thrust::distance(unique_key_ptr,
-    // new_end.first);
-    //    phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0,
-    //    dev_ctx.stream()>>>(
-    //        unique_key_ptr,
-    //        new_end,
-    //        rulebook_ptr + rulebook_rows * rulebook_cols - 1);
-    //    IntT out_non_zero_num = 0;
-    // #ifdef PADDLE_WITH_HIP
-    //    phi::backends::gpu::GpuMemcpyAsync(
-    //        &out_non_zero_num,
-    //        rulebook_ptr + rulebook_rows * rulebook_cols - 1,
-    //        sizeof(IntT),
-    //        hipMemcpyDeviceToHost,
-    //        dev_ctx.stream());
-    // #else
-    //    phi::backends::gpu::GpuMemcpyAsync(
-    //        &out_non_zero_num,
-    //        rulebook_ptr + rulebook_rows * rulebook_cols - 1,
-    //        sizeof(IntT),
-    //        cudaMemcpyDeviceToHost,
-    //        dev_ctx.stream());
-    // #endif
-
-    // 5. update out_indices and rulebook by unique_value_ptr
-    //    config =
-    //        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx,
-    //        out_non_zero_num, 1);
-    ///    UpdateIndexKernel<IntT>
-    //        <<<config.block_per_grid.x,
-    //           config.thread_per_block.x,
-    //           0,
-    //           dev_ctx.stream()>>>(unique_key_ptr,
-    //                               unique_value_ptr,
-    //                               out_index_ptr,
-    //                               out_non_zero_num,
-    //                               rulebook_len,
-    //                               d_out_dims,
-    //                               out_indices_ptr,
-    //                               rulebook_ptr + 2 * rulebook_len);
     return rulebook_len;
   }
 }
