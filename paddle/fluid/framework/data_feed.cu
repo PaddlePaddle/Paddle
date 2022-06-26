@@ -402,7 +402,7 @@ int GraphDataGenerator::GenerateBatch() {
           reinterpret_cast<uint64_t *>(d_device_keys_[cursor_]->ptr());
       d_type_keys += infer_node_type_start_[cursor_];
       infer_node_type_start_[cursor_] += total_instance;
-      VLOG(0) << "batch_size = " << batch_size_
+      VLOG(1) << "in graph_data generator:batch_size = " << batch_size_
               << " instance = " << total_instance;
       total_instance *= 2;
       id_tensor_ptr_ = feed_vec_[0]->mutable_data<int64_t>({total_instance, 1},
