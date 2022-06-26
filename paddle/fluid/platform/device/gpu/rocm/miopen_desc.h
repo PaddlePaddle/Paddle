@@ -151,7 +151,8 @@ class TensorDescriptor {
 
   void set(const Tensor& tensor, const miopenTensorFormat_t format) {
     const int groups = 1;
-    PADDLE_ENFORCE_EQ(format, MIOPEN_TENSOR_NCHW,
+    PADDLE_ENFORCE_EQ(format,
+                      MIOPEN_TENSOR_NCHW,
                       platform::errors::InvalidArgument(
                           "format should ONLY be NCHW in MIOPEN."));
     auto dims = phi::vectorize<int>(tensor.dims());
@@ -195,9 +196,11 @@ class FilterDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(const Tensor& tensor, const miopenTensorFormat_t format,
+  void set(const Tensor& tensor,
+           const miopenTensorFormat_t format,
            const int groups = 1) {
-    PADDLE_ENFORCE_EQ(format, MIOPEN_TENSOR_NCHW,
+    PADDLE_ENFORCE_EQ(format,
+                      MIOPEN_TENSOR_NCHW,
                       platform::errors::InvalidArgument(
                           "format should ONLY be NCHW in MIOPEN."));
     auto dims = phi::vectorize<int>(tensor.dims());
@@ -243,13 +246,18 @@ class ConvolutionDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(miopenDataType_t dtype, const std::vector<int>& pads,
-           const std::vector<int>& strides, const std::vector<int>& dilations,
-           bool allow_tf32, const int groups = 1) {
+  void set(miopenDataType_t dtype,
+           const std::vector<int>& pads,
+           const std::vector<int>& strides,
+           const std::vector<int>& dilations,
+           bool allow_tf32,
+           const int groups = 1) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenInitConvolutionNdDescriptor(
         (miopenConvolutionDescriptor_t)desc_.get(),
-        static_cast<int>(pads.size()), const_cast<int*>(pads.data()),
-        const_cast<int*>(strides.data()), const_cast<int*>(dilations.data()),
+        static_cast<int>(pads.size()),
+        const_cast<int*>(pads.data()),
+        const_cast<int*>(strides.data()),
+        const_cast<int*>(dilations.data()),
         miopenConvolution));
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::miopenSetConvolutionGroupCount(

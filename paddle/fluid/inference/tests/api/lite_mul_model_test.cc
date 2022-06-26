@@ -49,9 +49,16 @@ int test_predictor(const AnalysisConfig& config_in,
 
   std::vector<PaddleTensor> outputs;
   predictor->Run(inputs, &outputs);
-  const std::vector<float> truth_values = {
-      -0.00621776f, -0.00620937f, 0.00990623f,  -0.0039817f, -0.00074315f,
-      0.61229795f,  -0.00491806f, -0.00068755f, 0.18409646f, 0.30090684f};
+  const std::vector<float> truth_values = {-0.00621776f,
+                                           -0.00620937f,
+                                           0.00990623f,
+                                           -0.0039817f,
+                                           -0.00074315f,
+                                           0.61229795f,
+                                           -0.00491806f,
+                                           -0.00068755f,
+                                           0.18409646f,
+                                           0.30090684f};
   const size_t expected_size = 1;
   EXPECT_EQ(outputs.size(), expected_size);
   float* data_o = static_cast<float*>(outputs[0].data.data());
@@ -88,9 +95,16 @@ int test_predictor_zero_copy(const AnalysisConfig& config_in,
   std::vector<float> data_o(10);
   out_tensor->copy_to_cpu(data_o.data());
 
-  const std::vector<float> truth_values = {
-      -0.00621776f, -0.00620937f, 0.00990623f,  -0.0039817f, -0.00074315f,
-      0.61229795f,  -0.00491806f, -0.00068755f, 0.18409646f, 0.30090684f};
+  const std::vector<float> truth_values = {-0.00621776f,
+                                           -0.00620937f,
+                                           0.00990623f,
+                                           -0.0039817f,
+                                           -0.00074315f,
+                                           0.61229795f,
+                                           -0.00491806f,
+                                           -0.00068755f,
+                                           0.18409646f,
+                                           0.30090684f};
   const size_t expected_size = 1;
   EXPECT_EQ(predictor->GetOutputNames().size(), expected_size);
   for (size_t j = 0; j < truth_values.size(); ++j) {

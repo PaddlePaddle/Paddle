@@ -28,8 +28,10 @@ framework::OpKernelType QuantOp::GetExpectedKernelType(
   framework::DataLayout layout_ = framework::DataLayout::kMKLDNN;
 
   return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
-      layout_, library_);
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+      ctx.GetPlace(),
+      layout_,
+      library_);
 }
 
 void QuantOpMaker::Make() {

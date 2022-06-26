@@ -183,7 +183,9 @@ void Poly2Boxes(const std::vector<std::vector<std::vector<float>>>& polys,
 }
 
 void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
-                      const float* box, int M, uint8_t* mask) {
+                      const float* box,
+                      int M,
+                      uint8_t* mask) {
   float w = box[2] - box[0];
   float h = box[3] - box[1];
   w = std::max(w, static_cast<float>(1.));

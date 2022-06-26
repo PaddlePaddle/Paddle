@@ -76,7 +76,9 @@ class TopkKernel : public framework::OpKernel<T> {
       }
 
       std::partial_sort(
-          vec.begin(), vec.begin() + k, vec.end(),
+          vec.begin(),
+          vec.begin() + k,
+          vec.end(),
           [](const std::pair<T, size_t>& l, const std::pair<T, size_t>& r) {
             return l.first > r.first;
           });

@@ -149,14 +149,15 @@ int32_t MemoryDenseTable::Push(TableContext& context) {
 }
 
 int32_t MemoryDenseTable::PullDense(float* pull_values, size_t num) {
-  std::copy(values_[param_idx_].begin(), values_[param_idx_].end(),
-            pull_values);
+  std::copy(
+      values_[param_idx_].begin(), values_[param_idx_].end(), pull_values);
   return 0;
 }
 
 int32_t MemoryDenseTable::PushDenseParam(const float* values, size_t num) {
   PADDLE_ENFORCE_GE(
-      num, param_dim_,
+      num,
+      param_dim_,
       paddle::platform::errors::InvalidArgument(
           "update desne param numel expected %d, but got %d", param_dim_, num));
   std::copy_n(values, param_dim_, values_[param_idx_].begin());
@@ -186,7 +187,8 @@ int32_t MemoryDenseTable::PushDense(const float* values, size_t num) {
 
 int32_t MemoryDenseTable::_PushDense(const float* values, size_t num) {
   PADDLE_ENFORCE_GE(
-      num, param_dim_,
+      num,
+      param_dim_,
       paddle::platform::errors::InvalidArgument(
           "update desne numel expected %d, but got %d", param_dim_, num));
 

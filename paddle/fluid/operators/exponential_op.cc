@@ -88,8 +88,10 @@ class ExponentialGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out_Grad", "ExponentialGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out_Grad",
+                   "ExponentialGradOp");
 
     auto dout_dim = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dim);
@@ -121,17 +123,21 @@ DECLARE_INPLACE_OP_INFERER(ExponentialGradInferer,
                            {paddle::framework::GradVarName("Out"),
                             paddle::framework::GradVarName("X")});
 
-REGISTER_OPERATOR(exponential, ops::ExponentialOp, ops::ExponentialOpMaker,
+REGISTER_OPERATOR(exponential,
+                  ops::ExponentialOp,
+                  ops::ExponentialOpMaker,
                   ops::ExponentialOpInferVarType,
                   ops::ExponentialGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExponentialGradOpMaker<paddle::imperative::OpBase>,
                   ExponentialInferer);
-REGISTER_OPERATOR(exponential_grad, ops::ExponentialGradOp,
+REGISTER_OPERATOR(exponential_grad,
+                  ops::ExponentialGradOp,
                   ExponentialGradInferer);
 
 REGISTER_OP_CPU_KERNEL(exponential,
                        ops::ExponentialKernel<plat::CPUDeviceContext, float>,
                        ops::ExponentialKernel<plat::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    exponential_grad, ops::ExponentialGradKernel<plat::CPUDeviceContext, float>,
+    exponential_grad,
+    ops::ExponentialGradKernel<plat::CPUDeviceContext, float>,
     ops::ExponentialGradKernel<plat::CPUDeviceContext, double>);

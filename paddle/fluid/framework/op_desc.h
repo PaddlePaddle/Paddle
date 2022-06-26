@@ -34,8 +34,10 @@ class OpDesc {
  public:
   OpDesc() {}
 
-  OpDesc(const std::string &type, const VariableNameMap &inputs,
-         const VariableNameMap &outputs, const AttributeMap &attrs);
+  OpDesc(const std::string &type,
+         const VariableNameMap &inputs,
+         const VariableNameMap &outputs,
+         const AttributeMap &attrs);
 
   OpDesc(const proto::OpDesc &desc, BlockDesc *block);
 
@@ -165,7 +167,9 @@ class OpDesc {
     std::vector<typename MapType::key_type> ret_val;
     ret_val.reserve(map.size());
     std::transform(
-        map.begin(), map.end(), std::back_inserter(ret_val),
+        map.begin(),
+        map.end(),
+        std::back_inserter(ret_val),
         [](const typename MapType::value_type &pair) { return pair.first; });
     return ret_val;
   }

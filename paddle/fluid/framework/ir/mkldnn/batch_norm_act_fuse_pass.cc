@@ -82,9 +82,10 @@ FuseBatchNormActOneDNNPass::FuseBatchNormActOneDNNPass() {
 void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     Graph *graph, const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument(
-                 "The input graph of "
-                 "FuseBatchNormActOneDNNPass should not be nullptr."));
+      graph,
+      platform::errors::InvalidArgument(
+          "The input graph of "
+          "FuseBatchNormActOneDNNPass should not be nullptr."));
   FusePassBase::Init("bn_act", graph);
 
   GraphPatternDetector gpd;
