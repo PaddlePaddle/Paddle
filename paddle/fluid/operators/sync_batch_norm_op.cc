@@ -51,7 +51,9 @@ class SyncBatchNormGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(sync_batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
+REGISTER_OPERATOR(sync_batch_norm,
+                  ops::BatchNormOp,
+                  ops::BatchNormOpMaker,
                   ops::BatchNormOpInferVarType,
                   ops::SyncBatchNormGradMaker<paddle::framework::OpDesc>,
                   ops::SyncBatchNormGradMaker<paddle::imperative::OpBase>);

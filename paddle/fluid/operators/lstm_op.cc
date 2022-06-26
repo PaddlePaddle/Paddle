@@ -35,75 +35,92 @@ class LSTMOp : public framework::OperatorWithKernel {
     bool is_test = ctx->Attrs().Get<bool>("is_test");
 
     if (!is_test) {
-      OP_INOUT_CHECK(ctx->HasOutput("BatchGate"), "Output", "BatchGate",
+      OP_INOUT_CHECK(
+          ctx->HasOutput("BatchGate"), "Output", "BatchGate", "LSTM");
+      OP_INOUT_CHECK(ctx->HasOutput("BatchCellPreAct"),
+                     "Output",
+                     "BatchCellPreAct",
                      "LSTM");
-      OP_INOUT_CHECK(ctx->HasOutput("BatchCellPreAct"), "Output",
-                     "BatchCellPreAct", "LSTM");
     }
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(
-        in_dims.size(), 2,
+        in_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(X)'s rank must be 2, but received %d.", in_dims.size()));
 
     if (ctx->HasInput("H0")) {
       PADDLE_ENFORCE_EQ(
-          ctx->HasInput("C0"), true,
+          ctx->HasInput("C0"),
+          true,
           platform::errors::NotFound("Input(Cell) and Input(Hidden) of LSTM "
                                      "should not be null at the same time."));
       auto h_dims = ctx->GetInputDim("H0");
       auto c_dims = ctx->GetInputDim("C0");
-      PADDLE_ENFORCE_EQ(h_dims, c_dims,
+      PADDLE_ENFORCE_EQ(h_dims,
+                        c_dims,
                         platform::errors::InvalidArgument(
                             "The dimension of Input(H0) and Input(C0) should "
                             "be the same, but received [%s] (H0) vs [%s] (C0).",
-                            h_dims, c_dims));
+                            h_dims,
+                            c_dims));
     }
 
     int frame_size = in_dims[1] / 4;
     auto w_dims = ctx->GetInputDim("Weight");
     PADDLE_ENFORCE_EQ(
-        w_dims.size(), 2,
+        w_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The rank of Input(Weight) should be 2, but received %d.",
             w_dims.size()));
-    PADDLE_ENFORCE_EQ(w_dims[0], frame_size,
+    PADDLE_ENFORCE_EQ(w_dims[0],
+                      frame_size,
                       platform::errors::InvalidArgument(
                           "The first dimension of Input(Weight) should be %d, "
                           "but received %d.",
-                          frame_size, w_dims[0]));
-    PADDLE_ENFORCE_EQ(w_dims[1], 4 * frame_size,
+                          frame_size,
+                          w_dims[0]));
+    PADDLE_ENFORCE_EQ(w_dims[1],
+                      4 * frame_size,
                       platform::errors::InvalidArgument(
                           "The second dimension of Input(Weight) should be 4 * "
                           "%d, but received %d.",
-                          frame_size, w_dims[1]));
+                          frame_size,
+                          w_dims[1]));
 
     auto b_dims = ctx->GetInputDim("Bias");
     PADDLE_ENFORCE_EQ(
-        b_dims.size(), 2,
+        b_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The rank of Input(Bias) should be 2, but received %d.",
             b_dims.size()));
     PADDLE_ENFORCE_EQ(
-        b_dims[0], 1,
+        b_dims[0],
+        1,
         platform::errors::InvalidArgument(
             "The first dimension of Input(Bias) should be 1, but received %d.",
             b_dims[0]));
 
     if (ctx->Attrs().Get<bool>("use_peepholes")) {
       PADDLE_ENFORCE_EQ(
-          b_dims[1], 7 * frame_size,
+          b_dims[1],
+          7 * frame_size,
           platform::errors::InvalidArgument(
               "The second dimension of Input(Bias) should be 7 * %d if enable "
               "peepholes connection, but received %d.",
-              frame_size, b_dims[1]));
+              frame_size,
+              b_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
-          b_dims[1], 4 * frame_size,
+          b_dims[1],
+          4 * frame_size,
           platform::errors::InvalidArgument(
               "The second dimension of Input(Bias) should be 4 * %d if disable "
               "peepholes connection, but received %d.",
-              frame_size, b_dims[1]));
+              frame_size,
+              b_dims[1]));
     }
 
     framework::DDim out_dims({in_dims[0], frame_size});
@@ -262,9 +279,11 @@ class LSTMGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "LSTM@Grad");
     OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "LSTM@Grad");
 
-    OP_INOUT_CHECK(ctx->HasInput("BatchGate"), "Input", "BatchGate",
-                   "LSTM@Grad");
-    OP_INOUT_CHECK(ctx->HasInput("BatchCellPreAct"), "Input", "BatchCellPreAct",
+    OP_INOUT_CHECK(
+        ctx->HasInput("BatchGate"), "Input", "BatchGate", "LSTM@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("BatchCellPreAct"),
+                   "Input",
+                   "BatchCellPreAct",
                    "LSTM@Grad");
 
     auto SetOutGradDim = [&ctx](const std::string& name) {
@@ -331,13 +350,17 @@ class LSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lstm, ops::LSTMOp, ops::LSTMOpMaker,
+REGISTER_OPERATOR(lstm,
+                  ops::LSTMOp,
+                  ops::LSTMOpMaker,
                   ops::LSTMGradOpMaker<paddle::framework::OpDesc>,
                   ops::LSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstm_grad, ops::LSTMGradOp);
 REGISTER_OP_CPU_KERNEL(
-    lstm, ops::LSTMKernel<paddle::platform::CPUDeviceContext, float>,
+    lstm,
+    ops::LSTMKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LSTMKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    lstm_grad, ops::LSTMGradKernel<paddle::platform::CPUDeviceContext, float>,
+    lstm_grad,
+    ops::LSTMGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LSTMGradKernel<paddle::platform::CPUDeviceContext, double>);

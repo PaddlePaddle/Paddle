@@ -51,12 +51,12 @@ inline jstring cpp_string_to_jstring(JNIEnv *env, std::string str) {
       env->GetMethodID(strClass, "<init>", "([BLjava/lang/String;)V");
 
   jbyteArray bytes = env->NewByteArray(strlen(data));
-  env->SetByteArrayRegion(bytes, 0, strlen(data),
-                          reinterpret_cast<const jbyte *>(data));
+  env->SetByteArrayRegion(
+      bytes, 0, strlen(data), reinterpret_cast<const jbyte *>(data));
 
   jstring encoding = env->NewStringUTF("UTF-8");
-  jstring res = (jstring)(env->NewObject(strClass, strClassInitMethodID, bytes,
-                                         encoding));
+  jstring res = (jstring)(env->NewObject(
+      strClass, strClassInitMethodID, bytes, encoding));
 
   env->DeleteLocalRef(strClass);
   env->DeleteLocalRef(encoding);
@@ -73,28 +73,32 @@ inline bool jboolean_to_cpp_bool(JNIEnv *env, jboolean flag) {
   return flag == JNI_TRUE;
 }
 
-inline jfloatArray cpp_array_to_jfloatarray(JNIEnv *env, const float *buf,
+inline jfloatArray cpp_array_to_jfloatarray(JNIEnv *env,
+                                            const float *buf,
                                             int64_t len) {
   jfloatArray result = env->NewFloatArray(len);
   env->SetFloatArrayRegion(result, 0, len, buf);
   return result;
 }
 
-inline jbyteArray cpp_array_to_jbytearray(JNIEnv *env, const int8_t *buf,
+inline jbyteArray cpp_array_to_jbytearray(JNIEnv *env,
+                                          const int8_t *buf,
                                           int64_t len) {
   jbyteArray result = env->NewByteArray(len);
   env->SetByteArrayRegion(result, 0, len, buf);
   return result;
 }
 
-inline jintArray cpp_array_to_jintarray(JNIEnv *env, const int *buf,
+inline jintArray cpp_array_to_jintarray(JNIEnv *env,
+                                        const int *buf,
                                         int64_t len) {
   jintArray result = env->NewIntArray(len);
   env->SetIntArrayRegion(result, 0, len, buf);
   return result;
 }
 
-inline jlongArray cpp_array_to_jlongarray(JNIEnv *env, const int64_t *buf,
+inline jlongArray cpp_array_to_jlongarray(JNIEnv *env,
+                                          const int64_t *buf,
                                           int64_t len) {
   jlongArray result = env->NewLongArray(len);
   env->SetLongArrayRegion(result, 0, len, buf);

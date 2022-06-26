@@ -69,7 +69,10 @@ Node *topk_handler(Graph *graph, Node *node) {
     var_k = GetInputVarNode("K", node);
   } else {
     auto k = BOOST_GET_CONST(int, op->GetAttr("k"));
-    auto *op_k = CreateConst(graph, node, {}, {},
+    auto *op_k = CreateConst(graph,
+                             node,
+                             {},
+                             {},
                              {{"value", std::vector<int64_t>{k}},
                               {"dims", std::vector<int64_t>{1}},
                               {"dtype", ONNXDataType::INT64}});
@@ -77,12 +80,18 @@ Node *topk_handler(Graph *graph, Node *node) {
   }
 
   auto *var_i = MakeVarNode(graph, node);
-  CreateBaseOp(graph, node, "popart_topk", {var_x, var_k},
+  CreateBaseOp(graph,
+               node,
+               "popart_topk",
+               {var_x, var_k},
                {GetOutputVarNode("Out", node), var_i},
                {{"axis", int64_t{axis}},
                 {"largest", int64_t{largest}},
                 {"sorted", int64_t{sorted}}});
-  return CreateCast(graph, node, {var_i}, {GetOutputVarNode("Indices", node)},
+  return CreateCast(graph,
+                    node,
+                    {var_i},
+                    {GetOutputVarNode("Indices", node)},
                     VarType::INT32);
 }
 
@@ -94,13 +103,18 @@ Node *argsort_handler(Graph *graph, Node *node) {
   if (axis_ < 0) {
     axis_ = axis_ + x_shape.size();
   }
-  auto *dim_size =
-      CreateConst(graph, node, std::vector<int64_t>{x_shape[axis_]}, {1},
-                  ONNXDataType::INT64)
-          ->outputs.front();
+  auto *dim_size = CreateConst(graph,
+                               node,
+                               std::vector<int64_t>{x_shape[axis_]},
+                               {1},
+                               ONNXDataType::INT64)
+                       ->outputs.front();
   int64_t largest = descending_ ? 1 : 0;
   return CreateBaseOp(
-      graph, node, "popart_topk", {GetInputVarNode("X", node), dim_size},
+      graph,
+      node,
+      "popart_topk",
+      {GetInputVarNode("X", node), dim_size},
       {GetOutputVarNode("Out", node), GetOutputVarNode("Indices", node)},
       {
           {"axis", int64_t{axis_}},

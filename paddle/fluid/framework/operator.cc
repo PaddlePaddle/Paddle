@@ -1296,6 +1296,23 @@ bool OperatorWithKernel::SupportsMKLDNN(
                      });
 }
 
+bool OperatorWithKernel::SupportsKernelType(
+    const OpKernelType& kernel_type) const {
+  auto& all_op_kernels = AllOpKernels();
+  auto kernels_iter = all_op_kernels.find(type_);
+  bool support =
+      kernels_iter != all_op_kernels.end() &&
+      kernels_iter->second.find(kernel_type) != kernels_iter->second.end();
+#if defined(PADDLE_WITH_XPU)
+  if (paddle::platform::is_xpu_place(kernel_type.place_)) {
+    support = support &&
+              paddle::platform::is_xpu_support_op(type_, kernel_type) &&
+              !paddle::platform::is_in_xpu_black_list(type_);
+  }
+#endif
+  return support;
+}
+
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
   const auto& attrs_map = ctx.Attrs();

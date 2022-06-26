@@ -63,8 +63,8 @@ TEST(Analyzer_Resnet50_ipu, compare_results_1_batch) {
   float* data_o = static_cast<float*>(outputs[0].data.data());
 
   for (size_t j = 0; j < outputs[0].data.length() / sizeof(float); j += 10) {
-    EXPECT_NEAR((data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0.,
-                12e-5);
+    EXPECT_NEAR(
+        (data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0., 12e-5);
   }
 }
 
@@ -102,11 +102,12 @@ TEST(Analyzer_Resnet50_ipu, compare_results_2_batch) {
 
   auto num_output_per_batch = outputs[0].data.length() / sizeof(float) / 2;
   for (size_t j = 0; j < num_output_per_batch; j += 10) {
-    EXPECT_NEAR((data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0.,
-                12e-5);
+    EXPECT_NEAR(
+        (data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0., 12e-5);
     EXPECT_NEAR((data_o[j + num_output_per_batch] - truth_values[j / 10]) /
                     truth_values[j / 10],
-                0., 12e-5);
+                0.,
+                12e-5);
   }
 }
 

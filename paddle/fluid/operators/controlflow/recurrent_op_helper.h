@@ -50,7 +50,8 @@ void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
 // input all ops in the block. The function will find all recurrent and
 // recurrent_grad ops across blocks.
 void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-    const framework::ProgramDesc &program, int block_id,
+    const framework::ProgramDesc &program,
+    int block_id,
     const std::vector<std::unique_ptr<paddle::framework::OperatorBase>>
         &all_ops);
 

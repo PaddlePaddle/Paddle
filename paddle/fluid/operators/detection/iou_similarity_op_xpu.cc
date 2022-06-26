@@ -33,13 +33,20 @@ class XPUIOUSimilarityKernel : public framework::OpKernel<T> {
     T eps = static_cast<T>(1e-10);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::iou_similarity(
-        dev_ctx.x_context(), in_x->data<T>(), in_y->data<T>(),
-        out->mutable_data<T>(ctx.GetPlace()), x_n, y_n, eps, normalized);
+    int r = xpu::iou_similarity(dev_ctx.x_context(),
+                                in_x->data<T>(),
+                                in_y->data<T>(),
+                                out->mutable_data<T>(ctx.GetPlace()),
+                                x_n,
+                                y_n,
+                                eps,
+                                normalized);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External(
-            "XPU iou_similarity kernel return wrong value[%d %s].", r,
+            "XPU iou_similarity kernel return wrong value[%d %s].",
+            r,
             XPUAPIErrorMsg[r]));
   }
 };

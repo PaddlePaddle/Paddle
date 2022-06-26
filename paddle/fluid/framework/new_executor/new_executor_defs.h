@@ -71,18 +71,23 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   std::string GetOutputNameByIdx(size_t idx) const override;
 
-  void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
+  void ShareDim(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
                 size_t j = 0) override;
 
   void ShareAllLoD(const std::string& in,
                    const std::string& out) const override;
 
-  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
+  void ShareLoD(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
                 size_t j = 0) const override;
 
   int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override;
 
-  void SetLoDLevel(const std::string& out, int32_t lod_level,
+  void SetLoDLevel(const std::string& out,
+                   int32_t lod_level,
                    size_t j = 0) const override;
 
   bool IsRuntime() const override;
@@ -215,7 +220,8 @@ class VariableScope : public ScopeBase {
 
   size_t VarSize() const;
 
-  void AddVar(const std::string& name, VarDesc* var_desc,
+  void AddVar(const std::string& name,
+              VarDesc* var_desc,
               bool local_scope = false);
 
   void AddVar(const std::string& name, const Variable& var);
@@ -297,7 +303,7 @@ struct InstructionInfo {
 
 enum class OpFuncType {
   kQueueSync = 0,   // CPU kernel, block host
-  kQueueAsync = 1,  // GPU Kernel or d2h, h2d, send, recv, broadcast
+  kQueueAsync = 1,  // GPU、XPU Kernel or d2h, h2d, send, recv, broadcast
 };
 class RuntimeInferShapeContext;
 
@@ -321,7 +327,8 @@ struct OpFuncNode {
 
 class Instruction {
  public:
-  Instruction(size_t id, OpFuncNode&& op_func_node,
+  Instruction(size_t id,
+              OpFuncNode&& op_func_node,
               const platform::DeviceContext& dev_ctx);
 
   size_t Id() const;
@@ -415,6 +422,11 @@ static bool IsMemcpyD2H(const Instruction& instr) {
 
 static bool IsCpuOp(const Instruction& instr) {
   return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+}
+
+// is supported heterogeneous place
+static bool IsSupportedHetePlace(const phi::Place& place) {
+  return platform::is_gpu_place(place) || platform::is_xpu_place(place);
 }
 
 }  // namespace interpreter

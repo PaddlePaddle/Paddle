@@ -54,14 +54,17 @@ class InstanceNormPlugin : public PluginTensorRT {
     SerializeValue(&buffer, bias_);
   }
 
-  explicit InstanceNormPlugin(const float eps, const std::vector<float> scale,
+  explicit InstanceNormPlugin(const float eps,
+                              const std::vector<float> scale,
                               const std::vector<float> bias)
       : eps_(eps), scale_(scale), bias_(bias) {
-    PADDLE_ENFORCE_EQ(scale.size(), bias.size(),
+    PADDLE_ENFORCE_EQ(scale.size(),
+                      bias.size(),
                       platform::errors::InvalidArgument(
                           "The instanceNorm's scale and bias should be the "
                           "same size. Got scale size = %d, but bias size = %d",
-                          scale.size(), bias.size()));
+                          scale.size(),
+                          bias.size()));
     platform::dynload::cudnnCreate(&handle_);
     platform::dynload::cudnnCreateTensorDescriptor(&x_desc_);
     platform::dynload::cudnnCreateTensorDescriptor(&y_desc_);
@@ -99,15 +102,21 @@ class InstanceNormPlugin : public PluginTensorRT {
     return "instance_norm_plugin";
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
-  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims *inputs,
+  nvinfer1::Dims getOutputDimensions(int index,
+                                     const nvinfer1::Dims *inputs,
                                      int nbInputDims) TRT_NOEXCEPT override;
 
 #if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batchSize, const void *const *inputs, void **outputs,
+  int enqueue(int batchSize,
+              const void *const *inputs,
+              void **outputs,
 #else
-  int enqueue(int batchSize, const void *const *inputs, void *const *outputs,
+  int enqueue(int batchSize,
+              const void *const *inputs,
+              void *const *outputs,
 #endif
-              void *workspace, cudaStream_t stream) TRT_NOEXCEPT override;
+              void *workspace,
+              cudaStream_t stream) TRT_NOEXCEPT override;
 
   bool supportsFormat(nvinfer1::DataType type, nvinfer1::PluginFormat format)
       const TRT_NOEXCEPT override;
@@ -121,9 +130,10 @@ class InstanceNormPluginCreator : public TensorRTPluginCreator {
 
   const char *getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
-  nvinfer1::IPluginV2 *deserializePlugin(
-      const char *name, const void *serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2 *deserializePlugin(const char *name,
+                                         const void *serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     return new InstanceNormPlugin(serial_data, serial_length);
   }
 };

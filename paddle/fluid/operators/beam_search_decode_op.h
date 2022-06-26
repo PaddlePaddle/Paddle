@@ -63,8 +63,10 @@ struct BeamSearchDecoder {
    *  sort_by_score: whether to sort hypotheses of each sentence by scores.
    */
   void ConvertSentenceVectorToLodTensor(
-      std::vector<SentenceVector<T>> sentence_vector_list, LoDTensor* id_tensor,
-      LoDTensor* score_tensor, bool reverse = true,
+      std::vector<SentenceVector<T>> sentence_vector_list,
+      LoDTensor* id_tensor,
+      LoDTensor* score_tensor,
+      bool reverse = true,
       bool sort_by_score = true) const;
 
   /**
@@ -72,7 +74,8 @@ struct BeamSearchDecoder {
    * LoDTensorArray step_ids whose lods reserve the path in the tree.
    */
   void Backtrace(const LoDTensorArray& step_ids,
-                 const LoDTensorArray& step_scores, LoDTensor* id_tensor,
+                 const LoDTensorArray& step_scores,
+                 LoDTensor* id_tensor,
                  LoDTensor* score_tensor) const;
 
   size_t beam_size_;
@@ -81,12 +84,16 @@ struct BeamSearchDecoder {
 
 template <typename T>
 void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
-    std::vector<SentenceVector<T>> sentence_vector_list, LoDTensor* id_tensor,
-    LoDTensor* score_tensor, bool reverse, bool sort_by_score) const {
+    std::vector<SentenceVector<T>> sentence_vector_list,
+    LoDTensor* id_tensor,
+    LoDTensor* score_tensor,
+    bool reverse,
+    bool sort_by_score) const {
   size_t src_num = sentence_vector_list.size();
 
   PADDLE_ENFORCE_NE(
-      src_num, 0,
+      src_num,
+      0,
       platform::errors::InvalidArgument(
           "src_num is the sequence number of the first decoding step"
           ", indicating by Input(Ids)[0].lod[0].size."
@@ -113,15 +120,16 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
     }
     for (Sentence<T>& sentence : sentence_vector_list[src_idx]) {
       if (reverse) {
-        id_data.insert(id_data.end(), sentence.word_ids.rbegin(),
+        id_data.insert(id_data.end(),
+                       sentence.word_ids.rbegin(),
                        sentence.word_ids.rend());
-        score_data.insert(score_data.end(), sentence.scores.rbegin(),
-                          sentence.scores.rend());
+        score_data.insert(
+            score_data.end(), sentence.scores.rbegin(), sentence.scores.rend());
       } else {
-        id_data.insert(id_data.end(), sentence.word_ids.begin(),
-                       sentence.word_ids.end());
-        score_data.insert(score_data.end(), sentence.scores.begin(),
-                          sentence.scores.end());
+        id_data.insert(
+            id_data.end(), sentence.word_ids.begin(), sentence.word_ids.end());
+        score_data.insert(
+            score_data.end(), sentence.scores.begin(), sentence.scores.end());
       }
 
       sentence_level_lod.push_back(sentence_level_lod.back() +
@@ -156,11 +164,13 @@ void BeamSearchDecoder<T>::Backtrace(const LoDTensorArray& step_ids,
                                      LoDTensor* id_tensor,
                                      LoDTensor* score_tensor) const {
   PADDLE_ENFORCE_NE(
-      step_ids.empty(), true,
+      step_ids.empty(),
+      true,
       platform::errors::InvalidArgument("Input(Ids) should not be empty."
                                         "But the Input(Ids) is empty."));
   PADDLE_ENFORCE_EQ(
-      step_ids.size(), step_scores.size(),
+      step_ids.size(),
+      step_scores.size(),
       platform::errors::InvalidArgument(
           "The size of Input(Ids) and Input(Scores) should be "
           "the same. But the size of Input(Ids) and Input(Scores) "
@@ -187,7 +197,8 @@ void BeamSearchDecoder<T>::Backtrace(const LoDTensorArray& step_ids,
           size_t candidate_end =
               cur_ids.lod().at(kSentenceLevel)[prefix_idx + 1];
           for (size_t candidate_idx = candidate_start;
-               candidate_idx < candidate_end; ++candidate_idx) {
+               candidate_idx < candidate_end;
+               ++candidate_idx) {
             prefix_idx_vector.push_back(prefix_idx);
             size_t idx = prefix_idx_vector.size() - 1;
             auto cur_id = cur_ids.data<int64_t>()[candidate_idx];
@@ -225,8 +236,8 @@ void BeamSearchDecoder<T>::Backtrace(const LoDTensorArray& step_ids,
     }
   }
 
-  ConvertSentenceVectorToLodTensor(sentence_vector_list, id_tensor,
-                                   score_tensor, true, true);
+  ConvertSentenceVectorToLodTensor(
+      sentence_vector_list, id_tensor, score_tensor, true, true);
 }
 
 }  // namespace operators
