@@ -273,8 +273,12 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
     }
     auto set_output_str = [&, this](size_t begin, size_t end,
                                     LoDTensor* tensor) {
+      std::pair<int64_t, int64_t> bound;
+      auto& dims = tensor->dims();
       for (size_t i = begin; i < end; ++i) {
-        auto bound = GetTensorBound(tensor, i);
+        bound = {i * dims[1], (i + 1) * dims[1]};
+        // auto bound = GetTensorBound(tensor, i);
+
         if (ars[i].size() > 0) ars[i] += "\t";
         // ars[i] += '[';
         PrintLodTensor(tensor, bound.first, bound.second, ars[i], ' ', false);
@@ -303,10 +307,12 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
         cpu_tensor.set_lod(tensor->lod());
         tensor = &cpu_tensor;
       }
-      if (!CheckValidOutput(tensor, batch_size)) {
+      auto& dims = tensor->dims();
+      if (dims.size() != 2 || dims[0] != static_cast<int>(batch_size)) {
         VLOG(0) << "Note: field[" << field << "] cannot pass check, so it was "
                                               "skipped. Maybe the dimension is "
                                               "wrong ";
+        VLOG(0) << dims.size() << " " << dims[0] << " * " << dims[1];
         continue;
       }
       size_t acutal_thread_num =
