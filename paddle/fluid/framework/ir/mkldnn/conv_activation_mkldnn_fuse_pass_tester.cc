@@ -23,9 +23,12 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
+           const std::string& name,
            const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs, bool is_activation = false,
+           const std::vector<std::string>& outputs,
+           bool is_activation = false,
            bool use_mkldnn = false) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
@@ -65,9 +68,19 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 // (f)->activation->g
 ProgramDesc BuildProgramDesc(std::string activation) {
   ProgramDesc prog;
-  for (auto& v :
-       std::vector<std::string>({"a", "b", "c", "weights", "bias", "f", "g",
-                                 "h", "weights2", "bias2", "k", "l", "m"})) {
+  for (auto& v : std::vector<std::string>({"a",
+                                           "b",
+                                           "c",
+                                           "weights",
+                                           "bias",
+                                           "f",
+                                           "g",
+                                           "h",
+                                           "weights2",
+                                           "bias2",
+                                           "k",
+                                           "l",
+                                           "m"})) {
     auto* var = prog.MutableBlock(0)->Var(v);
     var->SetType(proto::VarType::SELECTED_ROWS);
     if (v == "weights" || v == "bias" || v == "weights2" || v == "bias2") {
@@ -75,25 +88,55 @@ ProgramDesc BuildProgramDesc(std::string activation) {
     }
   }
 
-  SetOp(&prog, "OP0", "op0", std::vector<std::string>({"a"}),
+  SetOp(&prog,
+        "OP0",
+        "op0",
+        std::vector<std::string>({"a"}),
         std::vector<std::string>({"b"}));
-  SetOp(&prog, "OP1", "op1", std::vector<std::string>({"b"}),
+  SetOp(&prog,
+        "OP1",
+        "op1",
+        std::vector<std::string>({"b"}),
         std::vector<std::string>({"c"}));
   // conv+activation, both with MKL-DNN
-  SetOp(&prog, "conv2d", "conv1",
+  SetOp(&prog,
+        "conv2d",
+        "conv1",
         std::vector<std::string>({"c", "weights", "bias"}),
-        std::vector<std::string>({"f"}), false, true);
-  SetOp(&prog, activation, "activation1", std::vector<std::string>({"f"}),
-        std::vector<std::string>({"g"}), true, true);
-  SetOp(&prog, "OP3", "op3", std::vector<std::string>({"g"}),
+        std::vector<std::string>({"f"}),
+        false,
+        true);
+  SetOp(&prog,
+        activation,
+        "activation1",
+        std::vector<std::string>({"f"}),
+        std::vector<std::string>({"g"}),
+        true,
+        true);
+  SetOp(&prog,
+        "OP3",
+        "op3",
+        std::vector<std::string>({"g"}),
         std::vector<std::string>({"h"}));
   // conv+activation, only one with MKL-DNN
-  SetOp(&prog, "conv2d", "conv2",
+  SetOp(&prog,
+        "conv2d",
+        "conv2",
         std::vector<std::string>({"h", "weights2", "bias2"}),
-        std::vector<std::string>({"k"}), false, true);
-  SetOp(&prog, "activation", "activation2", std::vector<std::string>({"k"}),
-        std::vector<std::string>({"l"}), true, false);
-  SetOp(&prog, "OP4", "op4", std::vector<std::string>({"l"}),
+        std::vector<std::string>({"k"}),
+        false,
+        true);
+  SetOp(&prog,
+        "activation",
+        "activation2",
+        std::vector<std::string>({"k"}),
+        std::vector<std::string>({"l"}),
+        true,
+        false);
+  SetOp(&prog,
+        "OP4",
+        "op4",
+        std::vector<std::string>({"l"}),
         std::vector<std::string>({"m"}));
 
   return prog;

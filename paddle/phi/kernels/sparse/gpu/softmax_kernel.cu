@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/sparse/softmax_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
@@ -19,7 +21,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
-#include "paddle/phi/kernels/sparse/softmax_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -28,13 +29,20 @@ template <typename T, typename IntT = int>
 __global__ void SoftmaxGpuKernel(const IntT* x_crows,
                                  const T* x_values,
                                  T* out_values,
-                                 int row_number) {
+                                 int row_number,
+                                 int total_row_number) {
   // out = exp(x-x_max) / sum(exp(x-x_max))
   int row = blockIdx.x * blockDim.y + threadIdx.y;
   int non_zero_idx = threadIdx.x;
-  if (row >= row_number) return;
-  int row_first = static_cast<int>(x_crows[row]);
-  int row_nnz = static_cast<int>(x_crows[row + 1] - x_crows[row]);
+  if (row >= total_row_number) return;
+  int cur_batch = row / row_number;
+  int crow_idx = cur_batch * (row_number + 1) + (row % row_number);
+  int cur_batch_offset = 0;
+  for (int i = 1; i < cur_batch + 1; ++i) {
+    cur_batch_offset += x_crows[i * (row_number + 1) - 1];
+  }
+  int row_first = cur_batch_offset + static_cast<int>(x_crows[crow_idx]);
+  int row_nnz = static_cast<int>(x_crows[crow_idx + 1] - x_crows[crow_idx]);
   if (row_nnz == 0) return;
 
   int kIteration = (row_nnz + warpSize - 1) / warpSize;
@@ -81,17 +89,20 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
                         "SparseCsrTensor only support axis=-1 for softmax, "
                         "which is faster when reading data by row (axis=-1)"));
   EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
-
   auto x_dim = x.dims();
-  int row_number = 1;
-  for (int i = 0; i < x_dim.size() - 1; ++i) {
-    row_number *= x_dim[i];
-  }
-  dim3 grid((row_number + 3) / 4);
-  dim3 block(32, 4);
+  auto x_rank = x_dim.size();
 
-  DenseTensor tmp_tensor =
-      phi::EmptyLike<T, Context>(dev_ctx, x.non_zero_elements());
+  int total_row_number = 1;
+  int row_number = 1;
+  for (int i = 0; i < x_rank - 1; ++i) {
+    total_row_number *= x_dim[i];
+    if (i == x_rank - 2) {
+      row_number = x_dim[i];
+    }
+  }
+
+  dim3 grid((total_row_number + 3) / 4);
+  dim3 block(32, 4);
 
   PD_VISIT_INTEGRAL_TYPES(x.non_zero_crows().dtype(), "CsrSoftmaxKernel", ([&] {
                             SoftmaxGpuKernel<T, data_t>
@@ -99,7 +110,8 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
                                     x.non_zero_crows().data<data_t>(),
                                     x.non_zero_elements().data<T>(),
                                     out->mutable_non_zero_elements()->data<T>(),
-                                    row_number);
+                                    row_number,
+                                    total_row_number);
                           }));
 }
 

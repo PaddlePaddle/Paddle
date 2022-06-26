@@ -69,7 +69,8 @@ void DeleteScaleOpPass::ApplyImpl(ir::Graph* graph) const {
         platform::ipu::DisConnectNodes(input_var_node, node);
         auto var_map = next_op_node->Op()->Inputs();
         for (auto& name_m : var_map) {
-          if (std::find(name_m.second.begin(), name_m.second.end(),
+          if (std::find(name_m.second.begin(),
+                        name_m.second.end(),
                         output_var_node->Name()) != name_m.second.end()) {
             std::vector<std::string> new_inputs;
             for (auto& i_n : name_m.second) {
@@ -93,7 +94,8 @@ void DeleteScaleOpPass::ApplyImpl(ir::Graph* graph) const {
         auto var_map = pre_op_node->Op()->Inputs();
         std::vector<std::string> new_outputs;
         for (auto& name_m : var_map) {
-          if (std::find(name_m.second.begin(), name_m.second.end(),
+          if (std::find(name_m.second.begin(),
+                        name_m.second.end(),
                         input_var_node->Name()) != name_m.second.end()) {
             for (auto& i_n : name_m.second) {
               if (i_n != input_var_node->Name()) {

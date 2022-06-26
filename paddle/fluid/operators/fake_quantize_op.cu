@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fake_quantize_op.cu.h"
 #include "paddle/fluid/operators/fake_quantize_op.h"
+#include "paddle/fluid/operators/fake_quantize_op.cu.h"
 
 namespace ops = paddle::operators;
 using CUDA = paddle::platform::CUDADeviceContext;

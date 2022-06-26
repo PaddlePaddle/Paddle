@@ -2180,17 +2180,6 @@
   kernel :
     func : top_k_grad
 
-- backward_api : trace_grad
-  forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int offset, int axis1, int axis2)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : trace_grad
-  no_need_buffer : x
-
 - backward_api : transpose_double_grad
   forward : transpose_grad (Tensor grad_out, int[] axis) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, int[] axis)

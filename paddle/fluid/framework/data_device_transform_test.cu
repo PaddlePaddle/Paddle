@@ -74,7 +74,10 @@ class TestKernel : public OpKernel<float> {
     output->mutable_data<T>(ctx.GetPlace());
 
     phi::funcs::TransformFunctor<AddFunctor<T>, T, DeviceContext> functor(
-        *input, *input, output, ctx.template device_context<DeviceContext>(),
+        *input,
+        *input,
+        output,
+        ctx.template device_context<DeviceContext>(),
         AddFunctor<T>());
     functor.Run();
   }
@@ -84,7 +87,8 @@ class TestKernel : public OpKernel<float> {
 }  // namespace paddle
 
 REGISTER_OP_WITHOUT_GRADIENT(
-    test_op, paddle::framework::TestOpWithKernel,
+    test_op,
+    paddle::framework::TestOpWithKernel,
     paddle::framework::OpKernelTestProtoAndCheckerMaker);
 REGISTER_OP_CPU_KERNEL(
     test_op,
@@ -158,7 +162,8 @@ TEST(Operator, CPUtoGPU) {
 
   paddle::framework::Tensor output_tensor;
   paddle::framework::TensorCopy(output2->Get<paddle::framework::LoDTensor>(),
-                                paddle::platform::CPUPlace(), *dev_ctx,
+                                paddle::platform::CPUPlace(),
+                                *dev_ctx,
                                 &output_tensor);
 
   dev_ctx->Wait();

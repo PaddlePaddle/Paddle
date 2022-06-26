@@ -35,12 +35,14 @@ class Variable;
 
 void TransformData(const OpKernelType &expected_kernel_type,
                    const OpKernelType &kernel_type_for_var,
-                   const Tensor &input_tensor, Tensor *out);
+                   const Tensor &input_tensor,
+                   Tensor *out);
 
 /**
  * Set OutVar from InVar, except the tensor is shared with `tensor`
  */
-void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
+void SetTensorToVariable(const Variable &in_var,
+                         const Tensor &tensor,
                          Variable *out_var);
 }  // namespace framework
 }  // namespace paddle

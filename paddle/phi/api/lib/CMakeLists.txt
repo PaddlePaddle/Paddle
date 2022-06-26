@@ -135,8 +135,8 @@ endforeach()
 
 # validation of api yamls
 message("validate api yaml:
-- ${parsed_api_dir}/new_api.parsed.yaml
-- ${parsed_api_dir}/new_backward_api.parsed.yaml")
+- ${parsed_api_dir}/api.parsed.yaml
+- ${parsed_api_dir}/backward_api.parsed.yaml")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
   COMMAND
@@ -159,8 +159,9 @@ execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} generate_op.py --api_yaml_path
     ./parsed_apis/api.parsed.yaml --backward_api_yaml_path
-    ./parsed_apis/backward_api.parsed.yaml --output_op_path
-    "${generated_op_path}.tmp" --output_arg_map_path
+    ./parsed_apis/backward_api.parsed.yaml --api_version_yaml_path
+    api_version.yaml --api_args_compat_yaml_path args_compat.yaml
+    --output_op_path "${generated_op_path}.tmp" --output_arg_map_path
     "${generated_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
 if(${_result})

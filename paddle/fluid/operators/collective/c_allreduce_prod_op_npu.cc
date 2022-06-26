@@ -24,7 +24,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    c_allreduce_prod, ops::CAllReduceOpASCENDKernel<ops::kRedProd, int>,
+    c_allreduce_prod,
+    ops::CAllReduceOpASCENDKernel<ops::kRedProd, int>,
     ops::CAllReduceOpASCENDKernel<ops::kRedProd, int8_t>,
     ops::CAllReduceOpASCENDKernel<ops::kRedProd, float>,
     ops::CAllReduceOpASCENDKernel<ops::kRedProd, plat::float16>)

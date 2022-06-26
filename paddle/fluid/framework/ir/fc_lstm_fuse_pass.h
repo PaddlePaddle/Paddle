@@ -36,7 +36,9 @@ class FCLstmFusePass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
-  int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
+  int BuildFusion(Graph* graph,
+                  const std::string& name_scope,
+                  Scope* scope,
                   bool with_fc_bias) const;
   const std::string name_scope_{"fc_lstm_fuse"};
 };

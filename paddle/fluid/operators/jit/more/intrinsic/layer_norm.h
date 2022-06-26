@@ -24,9 +24,15 @@ namespace jit {
 namespace more {
 namespace intrinsic {
 
-void LayerNorm(float* x, float* out, float* mean, float* var,
-               const float* scale, const float* bias, int height,
-               const float epsilon, int right);
+void LayerNorm(float* x,
+               float* out,
+               float* mean,
+               float* var,
+               const float* scale,
+               const float* bias,
+               int height,
+               const float epsilon,
+               int right);
 
 class LayerNormKernel : public KernelMore<LayerNormTuple<float>> {
  public:

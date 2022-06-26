@@ -49,6 +49,7 @@ class ArgMinNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
-    arg_min, ops::ArgMinNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    arg_min,
+    ops::ArgMinNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ArgMinNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>);
