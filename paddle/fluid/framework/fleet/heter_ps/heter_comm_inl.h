@@ -1027,7 +1027,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
 
   auto d_shard_grads = memory::Alloc(place, len * grad_value_size);
-  GradType* d_shard_grads_ptr = reinterpret_cast<GradType*>(d_shard_grads->ptr());
+  GradType* d_shard_grads_ptr = 
+      reinterpret_cast<GradType*>(d_shard_grads->ptr());
 
   int uniq_len = len;
   dynamic_merge_grad(dev_num, d_keys, d_grads, len, uniq_len);
