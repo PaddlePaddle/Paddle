@@ -147,8 +147,8 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
     merger_.update_one(out, in);
     for (int j = 1; j < num; ++j) {
       ori_index = index[start + j];
-      FeaturePushValue& ins = *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
-      merger_.merge_one(out, ins);
+      FeaturePushValue& rhs = *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
+      merger_.merge_one(out, rhs);
     }
   }
 }
