@@ -15,8 +15,8 @@ limitations under the License. */
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/lu_op.h"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 
 namespace paddle {
@@ -26,45 +26,78 @@ using Tensor = framework::Tensor;
 using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
-void cusolver_bufferSize(const cusolverDnHandle_t& cusolverH, int m, int n,
-                         T* d_A, int lda, int* lwork);
+void cusolver_bufferSize(const cusolverDnHandle_t& cusolverH,
+                         int m,
+                         int n,
+                         T* d_A,
+                         int lda,
+                         int* lwork);
 template <typename T>
-void cusolver_getrf(const cusolverDnHandle_t& cusolverH, int m, int n, T* d_A,
-                    int lda, T* d_work, int* d_Ipiv, int* d_info);
+void cusolver_getrf(const cusolverDnHandle_t& cusolverH,
+                    int m,
+                    int n,
+                    T* d_A,
+                    int lda,
+                    T* d_work,
+                    int* d_Ipiv,
+                    int* d_info);
 
 template <>
-void cusolver_bufferSize<float>(const cusolverDnHandle_t& cusolverH, int m,
-                                int n, float* d_A, int lda, int* lwork) {
+void cusolver_bufferSize<float>(const cusolverDnHandle_t& cusolverH,
+                                int m,
+                                int n,
+                                float* d_A,
+                                int lda,
+                                int* lwork) {
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSgetrf_bufferSize(
       cusolverH, m, n, d_A, lda, lwork));
 }
 
 template <>
-void cusolver_bufferSize<double>(const cusolverDnHandle_t& cusolverH, int m,
-                                 int n, double* d_A, int lda, int* lwork) {
+void cusolver_bufferSize<double>(const cusolverDnHandle_t& cusolverH,
+                                 int m,
+                                 int n,
+                                 double* d_A,
+                                 int lda,
+                                 int* lwork) {
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDgetrf_bufferSize(
       cusolverH, m, n, d_A, lda, lwork));
 }
 
 template <>
-void cusolver_getrf<float>(const cusolverDnHandle_t& cusolverH, int m, int n,
-                           float* d_A, int lda, float* d_work, int* d_Ipiv,
+void cusolver_getrf<float>(const cusolverDnHandle_t& cusolverH,
+                           int m,
+                           int n,
+                           float* d_A,
+                           int lda,
+                           float* d_work,
+                           int* d_Ipiv,
                            int* d_info) {
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSgetrf(
       cusolverH, m, n, d_A, lda, d_work, d_Ipiv, d_info));
 }
 
 template <>
-void cusolver_getrf<double>(const cusolverDnHandle_t& cusolverH, int m, int n,
-                            double* d_A, int lda, double* d_work, int* d_Ipiv,
+void cusolver_getrf<double>(const cusolverDnHandle_t& cusolverH,
+                            int m,
+                            int n,
+                            double* d_A,
+                            int lda,
+                            double* d_work,
+                            int* d_Ipiv,
                             int* d_info) {
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDgetrf(
       cusolverH, m, n, d_A, lda, d_work, d_Ipiv, d_info));
 }
 
 template <typename T>
-void lu_decomposed_kernel(int m, int n, T* d_A, int lda, int* d_Ipiv,
-                          int* d_info, const framework::ExecutionContext& ctx) {
+void lu_decomposed_kernel(int m,
+                          int n,
+                          T* d_A,
+                          int lda,
+                          int* d_Ipiv,
+                          int* d_info,
+                          const framework::ExecutionContext& ctx) {
   /* step 1: get cusolver handle*/
   auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
   auto cusolverH = dev_ctx.cusolver_dn_handle();
@@ -101,7 +134,8 @@ class LUCUDAKernel : public framework::OpKernel<T> {
     auto pivots = ctx.Attr<bool>("pivots");
 
     math::DeviceIndependenceTensorOperations<
-        paddle::platform::CUDADeviceContext, T>
+        paddle::platform::CUDADeviceContext,
+        T>
         helper(ctx);
     *out = helper.Transpose(*xin);
 
@@ -133,11 +167,11 @@ class LUCUDAKernel : public framework::OpKernel<T> {
       int* info_data_item = &info_data[b];
       if (pivots) {
         auto ipiv_data_item = &ipiv_data[b * std::min(m, n)];
-        lu_decomposed_kernel(m, n, out_data_item, lda, ipiv_data_item,
-                             info_data_item, ctx);
+        lu_decomposed_kernel(
+            m, n, out_data_item, lda, ipiv_data_item, info_data_item, ctx);
       } else {
-        lu_decomposed_kernel(m, n, out_data_item, lda, NULL, info_data_item,
-                             ctx);
+        lu_decomposed_kernel(
+            m, n, out_data_item, lda, NULL, info_data_item, ctx);
       }
     }
     *out = helper.Transpose(*out);
@@ -150,7 +184,8 @@ class LUCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(lu, ops::LUCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(lu,
+                        ops::LUCUDAKernel<float>,
                         ops::LUCUDAKernel<double>);
 REGISTER_OP_CUDA_KERNEL(lu_grad,
                         ops::LUGradKernel<plat::CUDADeviceContext, float>,

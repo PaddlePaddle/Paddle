@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/core/kernel_context.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -558,6 +559,11 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
         op_with_kernel->Info().infer_shape_(
             instr_node.InnerInferShapeContext().get());
       }
+      infershape_event.End();
+      platform::RecordOpInfoSupplement(op->Type(),
+                                       op->Attrs(),
+                                       *(instr_node.InnerInferShapeContext()),
+                                       *(instr_node.InnerRuntimeContext()));
     }
   }
 

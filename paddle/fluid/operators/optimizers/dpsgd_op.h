@@ -29,7 +29,8 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
                           "but the received is %s",
@@ -37,7 +38,8 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
 
     const auto *grad_var = ctx.InputVar("Grad");
-    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
                           "but the received is %s",
@@ -52,11 +54,13 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
 
     auto sz = param_out->numel();
-    PADDLE_ENFORCE_EQ(param->numel(), sz,
+    PADDLE_ENFORCE_EQ(param->numel(),
+                      sz,
                       platform::errors::InvalidArgument(
                           "Input parameter's number of elements is error, "
                           "expected %zu, but received %zu."));
-    PADDLE_ENFORCE_EQ(grad->numel(), sz,
+    PADDLE_ENFORCE_EQ(grad->numel(),
+                      sz,
                       platform::errors::InvalidArgument(
                           "Input gradient's number of elements is error, "
                           "expected %zu, but received %zu."));

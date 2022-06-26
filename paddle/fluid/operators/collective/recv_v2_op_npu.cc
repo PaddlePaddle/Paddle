@@ -61,7 +61,8 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
     int nranks = comm->nranks();
     int peer = ctx.Attr<int>("peer");
 
-    PADDLE_ENFORCE_EQ(nranks, 2,
+    PADDLE_ENFORCE_EQ(nranks,
+                      2,
                       platform::errors::InvalidArgument(
                           "The nranks must be 2, but (%d)", nranks));
 
@@ -89,7 +90,8 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(recv_v2, ops::CRecvOpASCENDKernel<int>,
+REGISTER_OP_NPU_KERNEL(recv_v2,
+                       ops::CRecvOpASCENDKernel<int>,
                        ops::CRecvOpASCENDKernel<int8_t>,
                        ops::CRecvOpASCENDKernel<float>,
                        ops::CRecvOpASCENDKernel<plat::float16>);

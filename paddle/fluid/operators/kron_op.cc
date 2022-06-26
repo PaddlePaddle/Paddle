@@ -37,16 +37,18 @@ class KronOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
           tensor.layout());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };
@@ -92,8 +94,10 @@ class KronGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "kron_grad");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "kron_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "kron_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "kron_grad");
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
@@ -115,16 +119,18 @@ class KronGradOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
           tensor.layout());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };
@@ -154,9 +160,12 @@ class KronGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(kron, KronInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(kron,
+                            KronInferShapeFunctor,
                             PD_INFER_META(phi::KronInferMeta));
-REGISTER_OPERATOR(kron, ops::KronOp, ops::KronOpMaker,
+REGISTER_OPERATOR(kron,
+                  ops::KronOp,
+                  ops::KronOpMaker,
                   ops::KronGradOpMaker<paddle::framework::OpDesc>,
                   ops::KronGradOpMaker<paddle::imperative::OpBase>,
                   KronInferShapeFunctor);

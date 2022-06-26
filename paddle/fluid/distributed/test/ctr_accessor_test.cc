@@ -249,10 +249,10 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     v.click += push_v.click;
     v.delta_score += acc->ShowClickScore(push_v.show, push_v.click);
 
-    acc->_embed_sgd_rule->UpdateValue(&v.embed_w, &v.embed_g2sum[0],
-                                      &push_v.embed_g, push_v.show);
-    acc->_embedx_sgd_rule->UpdateValue(&v.embedx_w[0], &v.embedx_g2sum[0],
-                                       &push_v.embedx_g[0], push_v.show);
+    acc->_embed_sgd_rule->UpdateValue(
+        &v.embed_w, &v.embed_g2sum[0], &push_v.embed_g, push_v.show);
+    acc->_embedx_sgd_rule->UpdateValue(
+        &v.embedx_w[0], &v.embedx_g2sum[0], &push_v.embedx_g[0], push_v.show);
 
     float* ptr = new float[acc->GetAccessorInfo().dim];
     v.to_array(ptr, parameter.embedx_dim());

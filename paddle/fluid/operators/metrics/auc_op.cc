@@ -84,7 +84,10 @@ There are two types of possible curves:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(auc, AucInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(auc,
+                            AucInferShapeFunctor,
                             PD_INFER_META(phi::AucInferMeta));
-REGISTER_OP_WITHOUT_GRADIENT(auc, ops::AucOp, ops::AucOpMaker,
+REGISTER_OP_WITHOUT_GRADIENT(auc,
+                             ops::AucOp,
+                             ops::AucOpMaker,
                              AucInferShapeFunctor);

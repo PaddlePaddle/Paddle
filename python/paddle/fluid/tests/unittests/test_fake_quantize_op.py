@@ -49,7 +49,7 @@ class TestFakeQuantizeAbsMaxOp(OpTest):
                                dtype,
                                input_shape,
                                distribution,
-                               round_type='TiesToEven'):
+                               round_type='TiesAwayFromZero'):
         input_data = distribution(input_shape).astype(dtype)
         compute_type = get_compute_type(dtype)
         scale = np.max(np.abs(input_data))
@@ -58,12 +58,12 @@ class TestFakeQuantizeAbsMaxOp(OpTest):
         if round_type == 'TiesToEven':
             round_out = np.round(
                 input_data.astype(compute_type) * inv_scale * bnt)
+            output_data = np.clip(round_out, -bnt - 1, bnt)
             self.attrs['round_type'] = 0
         else:
-            round_out = round_c(
+            output_data = round_c(
                 input_data.astype(compute_type) * inv_scale * bnt)
             self.attrs['round_type'] = 1
-        output_data = np.clip(round_out, -bnt - 1, bnt)
         self.inputs = {'X': input_data}
         self.outputs = {'Out': output_data, 'OutScale': scale}
         self.dtype = dtype
@@ -75,7 +75,7 @@ class TestFakeQuantizeAbsMaxOp(OpTest):
     def test_fake_quantize_abs_max_round1(self):
         self._fake_quantize_abs_max(np.float32, (124, 240),
                                     np.random.random,
-                                    round_type='TiesAwayFromZero')
+                                    round_type='TiesToEven')
 
     def test_fake_quantize_abs_max_float16(self):
         self._fake_quantize_abs_max(np.float16, (124, 240), np.random.random)
@@ -110,12 +110,12 @@ class TestFakeChannelWiseQuantizeAbsMaxOp(OpTest):
         if round_type == 'TiesToEven':
             round_out = np.round(
                 input_data.astype(compute_type) / scale_broadcast * bnt)
+            output_data = np.clip(round_out, -bnt - 1, bnt)
             self.attrs['round_type'] = 0
         else:
-            round_out = round_c(
-                input_data.astype(compute_type) / scale_broadcast * bnt)
+            output_data = round_c(bnt * input_data.astype(compute_type) /
+                                  scale_broadcast)
             self.attrs['round_type'] = 1
-        output_data = np.clip(round_out, -bnt - 1, bnt)
         if quant_axis == 1:
             scale_broadcast = np.transpose(scale_broadcast,
                                            (1, ) + compute_axis)
@@ -169,11 +169,15 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
             round_out = np.round(
                 input_data.astype(compute_type) / out_scale[0] * bnt)
             self.attrs['round_type'] = 0
+            output_data = np.clip(round_out, -bnt - 1, bnt)
         else:
-            round_out = round_c(
-                input_data.astype(compute_type) / out_scale[0] * bnt)
+            if is_test:
+                clip_data = np.clip(input_data, -in_scale, in_scale)
+            else:
+                clip_data = input_data
+            output_data = round_c(
+                clip_data.astype(compute_type) / out_scale[0] * bnt)
             self.attrs['round_type'] = 1
-        output_data = np.clip(round_out, -bnt - 1, bnt)
         self.inputs = {
             'X': input_data,
             'Iter': np.zeros(1).astype(np.int64),
@@ -250,7 +254,7 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
                                               distribution,
                                               dequantize=False,
                                               with_gradient=False,
-                                              round_type='TiesToEven'):
+                                              round_type='TiesAwayFromZero'):
         input_data = distribution(input_shape).astype(dtype)
         compute_type = get_compute_type(dtype)
         bnt = (1 << (self.attrs['bit_length'] - 1)) - 1
@@ -267,12 +271,12 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
         if round_type == 'TiesToEven':
             round_out = np.round(
                 input_data.astype(compute_type) / out_scale * bnt)
+            quant_data = np.clip(round_out, -bnt - 1, bnt)
             self.attrs['round_type'] = 0
         else:
-            round_out = round_c(
+            quant_data = round_c(
                 input_data.astype(compute_type) / out_scale * bnt)
             self.attrs['round_type'] = 1
-        quant_data = np.clip(round_out, -bnt - 1, bnt)
         if dequantize:
             output_data = (quant_data * out_scale / bnt).astype(dtype)
             self.op_type = 'fake_quantize_dequantize_moving_average_abs_max'
@@ -307,10 +311,9 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
                                                    np.random.random)
 
     def test_fake_quantize_moving_average_abs_max_round1(self):
-        self._fake_quantize_moving_average_abs_max(
-            np.float32, (8, 16, 7, 7),
-            np.random.random,
-            round_type='TiesAwayFromZero')
+        self._fake_quantize_moving_average_abs_max(np.float32, (8, 16, 7, 7),
+                                                   np.random.random,
+                                                   round_type='TiesToEven')
 
     def test_fake_quantize_dequantize_moving_average_abs_max(self):
         self._fake_quantize_moving_average_abs_max(np.float32, (8, 16, 7, 7),
@@ -329,17 +332,17 @@ class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
                                           dtype,
                                           input_shape,
                                           distribution,
-                                          round_type='TiesToEven'):
+                                          round_type='TiesAwayFromZero'):
         input_data = distribution(input_shape).astype(dtype)
         scale = np.max(np.abs(input_data)).astype(dtype)
         bnt = (1 << (self.attrs['bit_length'] - 1)) - 1
         if round_type == 'TiesToEven':
             round_out = np.round(input_data / scale * bnt)
+            output_data = np.clip(round_out, -bnt - 1, bnt) * scale / bnt
             self.attrs['round_type'] = 0
         else:
-            round_out = round_c(input_data / scale * bnt)
+            output_data = round_c(input_data / scale * bnt) * scale / bnt
             self.attrs['round_type'] = 1
-        output_data = np.clip(round_out, -bnt - 1, bnt) * scale / bnt
         self.inputs = {'X': input_data}
         self.outputs = {
             'Out': output_data,
@@ -357,7 +360,7 @@ class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
     def test_fake_quantize_dequantize_abs_max_round1(self):
         self._fake_quantize_dequantize_abs_max(np.float32, (124, 240),
                                                np.random.random,
-                                               round_type='TiesAwayFromZero')
+                                               round_type='TiesToEven')
 
 
 class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
@@ -382,11 +385,13 @@ class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
         scale_broadcast = np.amax(input_data, axis=compute_axis, keepdims=True)
         if round_type == 'TiesToEven':
             round_out = np.round(bnt * output_data / scale_broadcast)
+            output_data = np.clip(round_out, -bnt - 1,
+                                  bnt) * scale_broadcast / bnt
             self.attrs['round_type'] = 0
         else:
-            round_out = round_c(bnt * output_data / scale_broadcast)
+            output_data = round_c(
+                bnt * output_data / scale_broadcast) * scale_broadcast / bnt
             self.attrs['round_type'] = 1
-        output_data = np.clip(round_out, -bnt - 1, bnt) * scale_broadcast / bnt
         if quant_axis == 1:
             scale_broadcast = np.transpose(scale_broadcast,
                                            (1, ) + compute_axis)

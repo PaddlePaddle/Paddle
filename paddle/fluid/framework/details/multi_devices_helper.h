@@ -98,10 +98,12 @@ inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
   if (iter == attrs.end()) return {};
   auto &ret = BOOST_GET_CONST(std::vector<std::string>, iter->second);
   PADDLE_ENFORCE_EQ(
-      ret.size() % 2, 0,
+      ret.size() % 2,
+      0,
       platform::errors::InvalidArgument(
           "The size of attribute %s must be an even number, but got %d",
-          OpProtoAndCheckerMaker::OpRoleVarAttrName(), ret.size()));
+          OpProtoAndCheckerMaker::OpRoleVarAttrName(),
+          ret.size()));
   return BOOST_GET_CONST(std::vector<std::string>, iter->second);
 }
 
@@ -115,7 +117,8 @@ bool HasDropLastReadOp(const ir::Graph &graph);
 bool HasKeepLastReadOp(const ir::Graph &graph);
 
 template <typename T>
-void CopyGraphAttrIfExists(const ir::Graph &src, ir::Graph *dst,
+void CopyGraphAttrIfExists(const ir::Graph &src,
+                           ir::Graph *dst,
                            const std::string &name) {
   if (src.Has(name)) {
     auto &attr = src.Get<T>(name);

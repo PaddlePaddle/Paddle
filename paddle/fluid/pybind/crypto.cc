@@ -39,27 +39,37 @@ class PyCipher : public Cipher {
   // encrypt string
   std::string Encrypt(const std::string& plaintext,
                       const std::string& key) override {
-    PYBIND11_OVERLOAD_PURE_NAME(std::string, Cipher, "encrypt", Encrypt,
-                                plaintext, key);
+    PYBIND11_OVERLOAD_PURE_NAME(
+        std::string, Cipher, "encrypt", Encrypt, plaintext, key);
   }
   // decrypt string
   std::string Decrypt(const std::string& ciphertext,
                       const std::string& key) override {
-    PYBIND11_OVERLOAD_PURE_NAME(std::string, Cipher, "decrypt", Decrypt,
-                                ciphertext, key);
+    PYBIND11_OVERLOAD_PURE_NAME(
+        std::string, Cipher, "decrypt", Decrypt, ciphertext, key);
   }
 
   // encrypt strings and read them to file,
-  void EncryptToFile(const std::string& plaintext, const std::string& key,
+  void EncryptToFile(const std::string& plaintext,
+                     const std::string& key,
                      const std::string& filename) override {
-    PYBIND11_OVERLOAD_PURE_NAME(void, Cipher, "encrypt_to_file", EncryptToFile,
-                                plaintext, key, filename);
+    PYBIND11_OVERLOAD_PURE_NAME(void,
+                                Cipher,
+                                "encrypt_to_file",
+                                EncryptToFile,
+                                plaintext,
+                                key,
+                                filename);
   }
   // read from file and decrypt them
   std::string DecryptFromFile(const std::string& key,
                               const std::string& filename) override {
-    PYBIND11_OVERLOAD_PURE_NAME(std::string, Cipher, "decrypt_from_file",
-                                DecryptFromFile, key, filename);
+    PYBIND11_OVERLOAD_PURE_NAME(std::string,
+                                Cipher,
+                                "decrypt_from_file",
+                                DecryptFromFile,
+                                key,
+                                filename);
   }
 };
 
@@ -78,7 +88,9 @@ void BindCipher(py::module* m) {
             return py::bytes(ret);
           })
       .def("encrypt_to_file",
-           [](Cipher& c, const std::string& plaintext, const std::string& key,
+           [](Cipher& c,
+              const std::string& plaintext,
+              const std::string& key,
               const std::string& filename) {
              c.EncryptToFile(plaintext, key, filename);
            })
