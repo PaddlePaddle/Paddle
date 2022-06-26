@@ -81,7 +81,9 @@ PyObject* ToPyObject(const std::string& value);
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
-                     ssize_t value_idx, PyObject* args, ssize_t arg_idx);
+                     ssize_t value_idx,
+                     PyObject* args,
+                     ssize_t arg_idx);
 PyObject* ToPyObject(const std::vector<bool>& value);
 PyObject* ToPyObject(const std::vector<int>& value);
 PyObject* ToPyObject(const std::vector<int64_t>& value);
@@ -108,12 +110,16 @@ struct TupleTensorResult {
     PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out)));
   }
 
-  static void Run(const Tuple& out, PyObject* result, ssize_t value_idx,
-                  PyObject* args, ssize_t arg_idx) {
+  static void Run(const Tuple& out,
+                  PyObject* result,
+                  ssize_t value_idx,
+                  PyObject* args,
+                  ssize_t arg_idx) {
     TupleTensorResult<Tuple, N - 1>::Run(out, result, value_idx, args, arg_idx);
     if (N - 1 == value_idx) {
       PyTuple_SET_ITEM(
-          result, N - 1,
+          result,
+          N - 1,
           ToPyObject(std::get<N - 1>(out), value_idx, args, arg_idx));
     } else {
       PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out)));
@@ -127,11 +133,14 @@ struct TupleTensorResult<Tuple, 1> {
     PyTuple_SET_ITEM(result, 0, ToPyObject(std::get<0>(out)));
   }
 
-  static void Run(const Tuple& out, PyObject* result, ssize_t value_idx,
-                  PyObject* args, ssize_t arg_idx) {
+  static void Run(const Tuple& out,
+                  PyObject* result,
+                  ssize_t value_idx,
+                  PyObject* args,
+                  ssize_t arg_idx) {
     if (value_idx == 0) {
-      PyTuple_SET_ITEM(result, 0,
-                       ToPyObject(std::get<0>(out), value_idx, args, arg_idx));
+      PyTuple_SET_ITEM(
+          result, 0, ToPyObject(std::get<0>(out), value_idx, args, arg_idx));
     } else {
       PyTuple_SET_ITEM(result, 0, ToPyObject(std::get<0>(out)));
     }
@@ -149,8 +158,10 @@ PyObject* ToPyObject(const std::tuple<Args...>& out) {
 }
 
 template <typename... Args>
-PyObject* ToPyObject(const std::tuple<Args...>& out, ssize_t value_idx,
-                     PyObject* args, ssize_t arg_idx) {
+PyObject* ToPyObject(const std::tuple<Args...>& out,
+                     ssize_t value_idx,
+                     PyObject* args,
+                     ssize_t arg_idx) {
   // For inplace op, directly return the input PyObject of the inplace tensor.
   // [Parameter]
   // out: Outputs tuple after executing op.
@@ -162,8 +173,8 @@ PyObject* ToPyObject(const std::tuple<Args...>& out, ssize_t value_idx,
   auto len = sizeof...(Args);
   PyObject* result = PyTuple_New(len);
 
-  TupleTensorResult<decltype(out), sizeof...(Args)>::Run(out, result, value_idx,
-                                                         args, arg_idx);
+  TupleTensorResult<decltype(out), sizeof...(Args)>::Run(
+      out, result, value_idx, args, arg_idx);
 
   return result;
 }
@@ -180,24 +191,33 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos);
 
-paddle::Place CastPyArg2Place(PyObject* obj, const std::string& op_type,
+paddle::Place CastPyArg2Place(PyObject* obj,
+                              const std::string& op_type,
                               ssize_t arg_pos);
 
-paddle::DataType CastPyArg2DataType(PyObject* obj, const std::string& op_type,
+paddle::DataType CastPyArg2DataType(PyObject* obj,
+                                    const std::string& op_type,
                                     ssize_t arg_pos);
 
 paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable = false);
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable = false);
 
 paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
                                                 const std::string& arg_name,
-                                                PyObject* args, ssize_t arg_idx,
+                                                PyObject* args,
+                                                ssize_t arg_idx,
                                                 bool dispensable = false);
 
 std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable = false);
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable = false);
 
 paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
                                                    const std::string& arg_name,
@@ -206,8 +226,11 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
                                                    bool dispensable = false);
 
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable = false);
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable = false);
 
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromPyObject(
     PyObject* obj);
@@ -220,8 +243,11 @@ paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj);
 // end of Slice related methods
 
 std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable);
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable);
 
 }  // namespace pybind
 }  // namespace paddle

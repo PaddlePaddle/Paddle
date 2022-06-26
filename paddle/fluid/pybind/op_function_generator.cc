@@ -187,7 +187,8 @@ static inline std::string TempName(const std::string& name) {
 }
 
 std::string GenerateOpFunctionsBody(
-    const paddle::framework::proto::OpProto* op_proto, std::string func_name,
+    const paddle::framework::proto::OpProto* op_proto,
+    std::string func_name,
     bool use_inplace_strategy = false,
     std::map<std::string, std::string> inplace_map = {}) {
   auto& op_type = op_proto->type();
@@ -215,23 +216,27 @@ std::string GenerateOpFunctionsBody(
     const auto in_cast_type =
         input.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
     auto dispensable = input.dispensable() ? "true" : "false";
-    ins_cast_str +=
-        paddle::string::Sprintf(in_cast_type, LegalizeVarName(in_name), in_name,
-                                arg_idx++, dispensable);
+    ins_cast_str += paddle::string::Sprintf(in_cast_type,
+                                            LegalizeVarName(in_name),
+                                            in_name,
+                                            arg_idx++,
+                                            dispensable);
 
     if (input.dispensable()) {
       const auto in_template = input.duplicable()
                                    ? INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST
                                    : INPUT_INITIALIZER_TEMPLATE_WITH_NULL;
       ins_initializer_with_null +=
-          paddle::string::Sprintf(in_template, LegalizeVarName(in_name),
-                                  in_name, LegalizeVarName(in_name));
+          paddle::string::Sprintf(in_template,
+                                  LegalizeVarName(in_name),
+                                  in_name,
+                                  LegalizeVarName(in_name));
     } else {
       const auto in_template = input.duplicable()
                                    ? INPUT_LIST_INITIALIZER_TEMPLATE
                                    : INPUT_INITIALIZER_TEMPLATE;
-      ins_initializer += paddle::string::Sprintf(in_template, in_name,
-                                                 LegalizeVarName(in_name));
+      ins_initializer += paddle::string::Sprintf(
+          in_template, in_name, LegalizeVarName(in_name));
       ins_initializer += ",";
     }
   }
@@ -281,22 +286,26 @@ std::string GenerateOpFunctionsBody(
         const auto out_template = output.duplicable()
                                       ? INPUT_LIST_INITIALIZER_TEMPLATE
                                       : INPUT_INITIALIZER_TEMPLATE;
-        outs_initializer += paddle::string::Sprintf(out_template, out_name,
-                                                    LegalizeVarName(out_name));
+        outs_initializer += paddle::string::Sprintf(
+            out_template, out_name, LegalizeVarName(out_name));
         outs_initializer += ",";
       }
 
       const auto in_cast_type =
           output.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
       auto dispensable = output.dispensable() ? "true" : "false";
-      ins_cast_str +=
-          paddle::string::Sprintf(in_cast_type, LegalizeVarName(out_name),
-                                  out_name, arg_idx++, dispensable);
+      ins_cast_str += paddle::string::Sprintf(in_cast_type,
+                                              LegalizeVarName(out_name),
+                                              out_name,
+                                              arg_idx++,
+                                              dispensable);
     } else if (use_inplace_strategy && inplace_map.count(out_name)) {
       PADDLE_ENFORCE_NE(
-          inplace_map[out_name], "",
+          inplace_map[out_name],
+          "",
           paddle::platform::errors::InvalidArgument(
-              "Inplace op %s has no input corresponding to output %s.", op_type,
+              "Inplace op %s has no input corresponding to output %s.",
+              op_type,
               out_name));
 
       // TODO(pangyoki): Inplace op don't have duplicable output in temporary,
@@ -316,12 +325,14 @@ std::string GenerateOpFunctionsBody(
 
       // Leaf Var that doesn't stop gradient can't use inplace strategy.
       // Increase inplace_version.
-      inplace_strategy_str += paddle::string::Sprintf(
-          INPLACE_STRATEGY_TEMPLATE, LegalizeVarName(inplace_input_name),
-          LegalizeVarName(inplace_input_name), INPLACE_LEAF_ERROR_MESSAGE,
-          LegalizeVarName(inplace_input_name),
-          LegalizeVarName(inplace_input_name),
-          LegalizeVarName(inplace_input_name));
+      inplace_strategy_str +=
+          paddle::string::Sprintf(INPLACE_STRATEGY_TEMPLATE,
+                                  LegalizeVarName(inplace_input_name),
+                                  LegalizeVarName(inplace_input_name),
+                                  INPLACE_LEAF_ERROR_MESSAGE,
+                                  LegalizeVarName(inplace_input_name),
+                                  LegalizeVarName(inplace_input_name),
+                                  LegalizeVarName(inplace_input_name));
       outs_initializer += paddle::string::Sprintf(
           out_template, out_name, LegalizeVarName(inplace_input_name));
       outs_initializer += ",";
@@ -342,9 +353,11 @@ std::string GenerateOpFunctionsBody(
             OUT_DUPLICABLE_INITIALIZER_TEMPLATE, out_name, out_num_str);
 
         auto dispensable = output.dispensable() ? "true" : "false";
-        ins_cast_str +=
-            paddle::string::Sprintf(CAST_SIZE_T_TEMPLATE, out_num_str,
-                                    out_num_str, arg_idx++, dispensable);
+        ins_cast_str += paddle::string::Sprintf(CAST_SIZE_T_TEMPLATE,
+                                                out_num_str,
+                                                out_num_str,
+                                                arg_idx++,
+                                                dispensable);
       } else {
         outs_initializer +=
             paddle::string::Sprintf(OUT_INITIALIZER_TEMPLATE, out_name);
@@ -367,9 +380,12 @@ std::string GenerateOpFunctionsBody(
   if (!use_inplace_strategy && FindViewOpMap(op_type)) {
     std::string viwe_input_name = view_op_map[op_type].first;
     std::string viwe_output_name = view_op_map[op_type].second;
-    view_strategy_str += paddle::string::Sprintf(
-        HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
-        viwe_input_name, viwe_output_name);
+    view_strategy_str +=
+        paddle::string::Sprintf(HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT,
+                                viwe_input_name,
+                                viwe_output_name,
+                                viwe_input_name,
+                                viwe_output_name);
   }
   if (outs_num == 0) {
     return_str = "RETURN_PY_NONE";
@@ -389,11 +405,19 @@ std::string GenerateOpFunctionsBody(
 
   // generate op funtcion body
   auto op_function_str = paddle::string::Sprintf(
-      OP_FUNCTION_TEMPLATE, func_name, op_type, op_type, ins_cast_str,
-      input_args_num, inplace_strategy_str, outs_initializer, ins_initializer,
+      OP_FUNCTION_TEMPLATE,
+      func_name,
+      op_type,
+      op_type,
+      ins_cast_str,
+      input_args_num,
+      inplace_strategy_str,
+      outs_initializer,
+      ins_initializer,
       ins_initializer_with_null + outs_initializer_with_null +
           view_strategy_str,
-      inplace_mapping_str, return_str);
+      inplace_mapping_str,
+      return_str);
 
   return op_function_str;
 }
@@ -457,8 +481,10 @@ GenerateOpFunctions() {
 
       // generate pybind item
       auto inplace_bind_function_str =
-          paddle::string::Sprintf(PYBIND_ITEM_TEMPLATE, inplace_op_type,
-                                  inplace_func_name, inplace_op_type);
+          paddle::string::Sprintf(PYBIND_ITEM_TEMPLATE,
+                                  inplace_op_type,
+                                  inplace_func_name,
+                                  inplace_op_type);
 
       op_function_list.emplace_back(std::move(inplace_op_function_str));
       bind_function_list.emplace_back(std::move(inplace_bind_function_str));

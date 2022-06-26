@@ -41,22 +41,27 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
         framework::proto::VarType::Type(data_type);
 
     PADDLE_ENFORCE_GE(
-        rid, 0,
+        rid,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for partial_recv op must be non-negative.", rid));
     PADDLE_ENFORCE_GE(
-        peer, 0,
+        peer,
+        0,
         platform::errors::InvalidArgument(
             "The peer (%d) for partial_recv op must be non-negative.", peer));
-    PADDLE_ENFORCE_GE(num, 1,
+    PADDLE_ENFORCE_GE(num,
+                      1,
                       platform::errors::InvalidArgument(
                           "The num (%d) for partial_recv op must >=1", num));
     PADDLE_ENFORCE_EQ(
-        (id >= 0 && id < num), true,
+        (id >= 0 && id < num),
+        true,
         platform::errors::InvalidArgument(
             "The id (%d) for partial_recv op must >=0 and <num (%d)", id, num));
     PADDLE_ENFORCE_EQ(
-        (numel % num), 0,
+        (numel % num),
+        0,
         platform::errors::InvalidArgument(
             "The input numel (%d) must be divisible by num(%d)", numel, num));
 
@@ -70,10 +75,12 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
     PADDLE_ENFORCE_LT(
-        peer, comm->nranks(),
+        peer,
+        comm->nranks(),
         platform::errors::InvalidArgument("The value of peer (%d) you set must "
                                           "be less than comm->nranks (%d).",
-                                          peer, comm->nranks()));
+                                          peer,
+                                          comm->nranks()));
 
     out->mutable_data<T>(out_dims, place);
     ncclDataType_t dtype = platform::ToNCCLDataType(type);
@@ -81,8 +88,12 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
     int offset = recv_numel * id;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::ncclRecv(out->data<T>() + offset, recv_numel, dtype,
-                                    peer, comm->comm(), stream));
+        platform::dynload::ncclRecv(out->data<T>() + offset,
+                                    recv_numel,
+                                    dtype,
+                                    peer,
+                                    comm->comm(),
+                                    stream));
     VLOG(3) << "rank " << comm->rank() << " recv " << recv_numel
             << " from offset[" << offset << "] from " << peer;
 #else
@@ -99,7 +110,8 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(partial_recv, ops::PartialRecvOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(partial_recv,
+                        ops::PartialRecvOpCUDAKernel<float>,
                         ops::PartialRecvOpCUDAKernel<double>,
                         ops::PartialRecvOpCUDAKernel<int>,
                         ops::PartialRecvOpCUDAKernel<int64_t>,

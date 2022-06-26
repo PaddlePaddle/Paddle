@@ -43,7 +43,8 @@ void ThreadSafeNameSet::Remove(const std::string& name) {
   std::lock_guard<std::mutex> guard(mtx_);
   auto iter = set_.find(name);
   PADDLE_ENFORCE_EQ(
-      iter != set_.end(), true,
+      iter != set_.end(),
+      true,
       platform::errors::NotFound("Variable name %s does not exist", name));
   set_.erase(iter);
 }
@@ -120,8 +121,9 @@ static std::string DebugString(
            << ", ";
         ss << tensor.place() << ", ";
         ss << "height(" << selected_rows.height() << "), rows(";
-        std::for_each(rows.cbegin(), rows.cend(),
-                      [&ss](const int64_t r) { ss << r << " "; });
+        std::for_each(rows.cbegin(), rows.cend(), [&ss](const int64_t r) {
+          ss << r << " ";
+        });
         ss << "), dims(" << tensor.dims() << ")";
       } else {
         ss << "NOT_INITED";
@@ -319,7 +321,8 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     auto* dst_selected_rows =
         new_var->MutableVar()->GetMutable<phi::SelectedRows>();
 
-    framework::TensorCopy(src_selected_rows.value(), dst_place,
+    framework::TensorCopy(src_selected_rows.value(),
+                          dst_place,
                           dst_selected_rows->mutable_value());
     if (blocking) {
       platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
@@ -343,16 +346,20 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
 
   VLOG(3) << "Deep copy Tensor from " << src.Name() << " to " << Name();
   if (Var().IsInitialized()) {
-    PADDLE_ENFORCE_EQ(DataType(), src.DataType(),
+    PADDLE_ENFORCE_EQ(DataType(),
+                      src.DataType(),
                       platform::errors::PreconditionNotMet(
                           "Tensor %s has different data type with Tensor %s, "
                           "Tensor Copy cannot be performed!",
-                          Name(), src.Name()));
-    PADDLE_ENFORCE_EQ(Type(), src.Type(),
+                          Name(),
+                          src.Name()));
+    PADDLE_ENFORCE_EQ(Type(),
+                      src.Type(),
                       platform::errors::PreconditionNotMet(
                           "Tensor %s has different type with Tensor %s, Tensor "
                           "Copy cannot be performed!",
-                          Name(), src.Name()));
+                          Name(),
+                          src.Name()));
   } else {
     SetDataType(src.DataType());
     SetType(src.Type());
@@ -365,16 +372,20 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
     auto& src_tensor = src.Var().Get<framework::LoDTensor>();
     auto* dst_tensor = MutableVar()->GetMutable<framework::LoDTensor>();
     if (dst_tensor && dst_tensor->IsInitialized()) {
-      PADDLE_ENFORCE_EQ(dst_tensor->dims(), src_tensor.dims(),
+      PADDLE_ENFORCE_EQ(dst_tensor->dims(),
+                        src_tensor.dims(),
                         platform::errors::PreconditionNotMet(
                             "Tensor %s has different dims with Tensor %s, "
                             "Tensor Copy cannot be performed!",
-                            Name(), src.Name()));
-      PADDLE_ENFORCE_EQ(dst_tensor->lod(), src_tensor.lod(),
+                            Name(),
+                            src.Name()));
+      PADDLE_ENFORCE_EQ(dst_tensor->lod(),
+                        src_tensor.lod(),
                         platform::errors::PreconditionNotMet(
                             "Tensor %s has different dims with Tensor %s, "
                             "Tensor Copy cannot be performed!",
-                            Name(), src.Name()));
+                            Name(),
+                            src.Name()));
       place = Place();
     } else {
       dst_tensor->set_lod(src_tensor.lod());
@@ -390,11 +401,13 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
     auto& src_tensor = src_selected_rows.value();
     auto* dst_tensor = dst_selected_rows->mutable_value();
     if (dst_tensor && dst_tensor->IsInitialized()) {
-      PADDLE_ENFORCE_EQ(dst_tensor->dims(), src_tensor.dims(),
+      PADDLE_ENFORCE_EQ(dst_tensor->dims(),
+                        src_tensor.dims(),
                         platform::errors::PreconditionNotMet(
                             "Tensor %s has different dims with Tensor %s, "
                             "Tensor Copy cannot be performed!",
-                            Name(), src.Name()));
+                            Name(),
+                            src.Name()));
       place = Place();
     } else {
       dst_tensor->Resize(src_tensor.dims());
@@ -408,7 +421,8 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
 
 void VarBase::BumpInplaceVersion() {
   PADDLE_ENFORCE_EQ(
-      Var().IsInitialized(), true,
+      Var().IsInitialized(),
+      true,
       platform::errors::InvalidArgument(
           "Tensor %s has not been initialized, please check if it has no data.",
           Name()));
@@ -420,20 +434,25 @@ void VarBase::BumpInplaceVersion() {
 // and fill into the grad_var_ of the current varbase.
 void VarBase::_CopyGradientFrom(const VarBase& src) {
   if (Var().IsInitialized()) {
-    PADDLE_ENFORCE_EQ(DataType(), src.DataType(),
+    PADDLE_ENFORCE_EQ(DataType(),
+                      src.DataType(),
                       platform::errors::PreconditionNotMet(
                           "Tensor %s has different data type with Tensor %s",
-                          Name(), src.Name()));
-    PADDLE_ENFORCE_EQ(Type(), src.Type(),
+                          Name(),
+                          src.Name()));
+    PADDLE_ENFORCE_EQ(Type(),
+                      src.Type(),
                       platform::errors::PreconditionNotMet(
                           "Tensor %s has different type with Tensor %s, Tensor "
                           "ShareGradientDataWith cannot be performed!",
-                          Name(), src.Name()));
+                          Name(),
+                          src.Name()));
   }
   VLOG(4) << " VarBase copy gradient with " << src.Name();
   if (grad_var_) {
     auto& src_tensor = src.Var().Get<framework::LoDTensor>();
-    PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(), true,
+    PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Tensor %s has not been initialized", src.Name()));
     auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
@@ -461,12 +480,13 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const platform::Place& place) {
   auto* op_kernel = static_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
-      op_kernel, platform::errors::PermissionDenied(
-                     "Only support operator with kernel in Dygraph mode."));
+      op_kernel,
+      platform::errors::PermissionDenied(
+          "Only support operator with kernel in Dygraph mode."));
   auto& info = op.Info();
   if (info.infer_var_type_) {
-    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(ins, outs, attrs,
-                                                           default_attrs);
+    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(
+        ins, outs, attrs, default_attrs);
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
@@ -556,7 +576,8 @@ void ClearNoNeedBufferInputs(OpBase* op) {
     VLOG(2) << "Clear data buffer of " << slot << " in " << op->Type();
 
     PADDLE_ENFORCE_EQ(
-        iter->second.IsGrad(), false,
+        iter->second.IsGrad(),
+        false,
         platform::errors::InvalidArgument(
             "Only forward variable buffers can be clear, this may be a bug"));
 
@@ -564,7 +585,8 @@ void ClearNoNeedBufferInputs(OpBase* op) {
       if (!each_var) continue;
 
       auto& var = each_var->Var();
-      PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(), true,
+      PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(),
+                        true,
                         platform::errors::PermissionDenied(
                             "NoNeedBufferVars only support LoDTensor"));
       auto new_var = new VariableWrapper(each_var->Name());
@@ -581,17 +603,20 @@ void ClearNoNeedBufferInputs(OpBase* op) {
 }
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(
-    const framework::OperatorBase& op, const NameVarBaseMap& ins,
-    const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs, const platform::Place& place,
+    const framework::OperatorBase& op,
+    const NameVarBaseMap& ins,
+    const NameVarBaseMap& outs,
+    const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs,
+    const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map) {
   const auto& info = op.Info();
   if (!info.dygraph_grad_op_maker_) {
     return nullptr;
   }
 
-  auto grad_node = info.dygraph_grad_op_maker_(op.Type(), ins, outs, attrs,
-                                               default_attrs, inplace_map);
+  auto grad_node = info.dygraph_grad_op_maker_(
+      op.Type(), ins, outs, attrs, default_attrs, inplace_map);
   if (grad_node && !grad_node->empty()) {
     for (auto& grad_op : *grad_node) {
       grad_op.SetId(OpBase::GenerateUniqueId());
@@ -605,9 +630,12 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
 }
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(
-    const framework::OperatorBase& op, const NameTensorMap& ins,
-    const NameTensorMap& outs, const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs, const platform::Place& place,
+    const framework::OperatorBase& op,
+    const NameTensorMap& ins,
+    const NameTensorMap& outs,
+    const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs,
+    const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map) {
   // Do Nothing in Eager Mode.
   return nullptr;

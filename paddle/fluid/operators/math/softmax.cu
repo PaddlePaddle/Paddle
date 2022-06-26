@@ -31,7 +31,8 @@ using CudnnDataType = platform::CudnnDataType<T>;
 
 template <typename T, typename DeviceContext>
 void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
-    const DeviceContext& context, const framework::Tensor* X,
+    const DeviceContext& context,
+    const framework::Tensor* X,
     framework::Tensor* Y) {
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
@@ -52,9 +53,14 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
   miopenTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
-      context.cudnn_handle(), CudnnDataType<T>::kOne(), cudnn_x_desc,
-      X->data<T>(), CudnnDataType<T>::kZero(), cudnn_y_desc,
-      Y->mutable_data<T>(context.GetPlace()), MIOPEN_SOFTMAX_ACCURATE,
+      context.cudnn_handle(),
+      CudnnDataType<T>::kOne(),
+      cudnn_x_desc,
+      X->data<T>(),
+      CudnnDataType<T>::kZero(),
+      cudnn_y_desc,
+      Y->mutable_data<T>(context.GetPlace()),
+      MIOPEN_SOFTMAX_ACCURATE,
       MIOPEN_SOFTMAX_MODE_INSTANCE));
 #else
   cudnnTensorDescriptor_t cudnn_x_desc =
@@ -62,17 +68,24 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
   cudnnTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
-      context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
-      CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_x_desc,
-      X->data<T>(), CudnnDataType<T>::kZero(), cudnn_y_desc,
+      context.cudnn_handle(),
+      CUDNN_SOFTMAX_ACCURATE,
+      CUDNN_SOFTMAX_MODE_INSTANCE,
+      CudnnDataType<T>::kOne(),
+      cudnn_x_desc,
+      X->data<T>(),
+      CudnnDataType<T>::kZero(),
+      cudnn_y_desc,
       Y->mutable_data<T>(context.GetPlace())));
 #endif
 }
 
 template <typename T, typename DeviceContext>
 void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
-    const DeviceContext& context, const framework::Tensor* Y,
-    const framework::Tensor* YGrad, framework::Tensor* XGrad) {
+    const DeviceContext& context,
+    const framework::Tensor* Y,
+    const framework::Tensor* YGrad,
+    framework::Tensor* XGrad) {
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor yDesc;
   ScopedTensorDescriptor dyDesc;
@@ -95,10 +108,16 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
   miopenTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
-      context.cudnn_handle(), CudnnDataType<T>::kOne(), cudnn_y_desc,
-      Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),
-      CudnnDataType<T>::kZero(), cudnn_xgrad_desc,
-      XGrad->mutable_data<T>(context.GetPlace()), MIOPEN_SOFTMAX_ACCURATE,
+      context.cudnn_handle(),
+      CudnnDataType<T>::kOne(),
+      cudnn_y_desc,
+      Y->data<T>(),
+      cudnn_ygrad_desc,
+      YGrad->data<T>(),
+      CudnnDataType<T>::kZero(),
+      cudnn_xgrad_desc,
+      XGrad->mutable_data<T>(context.GetPlace()),
+      MIOPEN_SOFTMAX_ACCURATE,
       MIOPEN_SOFTMAX_MODE_INSTANCE));
 #else
   cudnnTensorDescriptor_t cudnn_y_desc =
@@ -108,10 +127,16 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
   cudnnTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
-      context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
-      CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_y_desc,
-      Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),
-      CudnnDataType<T>::kZero(), cudnn_xgrad_desc,
+      context.cudnn_handle(),
+      CUDNN_SOFTMAX_ACCURATE,
+      CUDNN_SOFTMAX_MODE_INSTANCE,
+      CudnnDataType<T>::kOne(),
+      cudnn_y_desc,
+      Y->data<T>(),
+      cudnn_ygrad_desc,
+      YGrad->data<T>(),
+      CudnnDataType<T>::kZero(),
+      cudnn_xgrad_desc,
       XGrad->mutable_data<T>(context.GetPlace())));
 #endif
 }
@@ -143,13 +168,17 @@ template class SoftmaxCUDNNFunctor<double, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<double, phi::GPUContext>;
 #endif
 
-template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16,
+template class SoftmaxFunctor<platform::CUDADeviceContext,
+                              platform::float16,
                               false>;
-template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16,
+template class SoftmaxFunctor<platform::CUDADeviceContext,
+                              platform::float16,
                               true>;
-template class SoftmaxFunctor<platform::CUDADeviceContext, platform::bfloat16,
+template class SoftmaxFunctor<platform::CUDADeviceContext,
+                              platform::bfloat16,
                               false>;
-template class SoftmaxFunctor<platform::CUDADeviceContext, platform::bfloat16,
+template class SoftmaxFunctor<platform::CUDADeviceContext,
+                              platform::bfloat16,
                               true>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, float, false>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, double, false>;

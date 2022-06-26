@@ -38,17 +38,21 @@ class MomentumOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"),
+                      true,
                       platform::errors::NotFound(
                           "Input(param) of Momentum should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"),
+                      true,
                       platform::errors::NotFound(
                           "Input(grad) of Momentum should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Velocity"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Velocity"),
+                      true,
                       platform::errors::NotFound(
                           "Input(velocity) of Momentum should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("LearningRate"), true,
+        ctx->HasInput("LearningRate"),
+        true,
         platform::errors::NotFound(
             "Input(LearningRate) of Momentum should not be null."));
     PADDLE_ENFORCE_EQ(
@@ -58,22 +62,26 @@ class MomentumOp : public framework::OperatorWithKernel {
             "The input var's type should be LoDTensor, but the received is %s",
             ctx->GetInputsVarType("Param").front()));
 
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"),
+                      true,
                       platform::errors::NotFound(
                           "Output(ParamOut) of Momentum should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("VelocityOut"), true,
+        ctx->HasOutput("VelocityOut"),
+        true,
         platform::errors::NotFound(
             "Output(VelocityOut) of Momentum should not be null."));
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_NE(phi::product(lr_dims), 0,
+    PADDLE_ENFORCE_NE(phi::product(lr_dims),
+                      0,
                       platform::errors::InvalidArgument(
                           "Maybe the Input variable LearningRate has not "
                           "been initialized. You may need to confirm "
                           "if you put exe.run(startup_program) "
                           "after optimizer.minimize function."));
-    PADDLE_ENFORCE_EQ(phi::product(lr_dims), 1,
+    PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+                      1,
                       platform::errors::InvalidArgument(
                           "Learning_rate should be a scalar. But Received "
                           "LearningRate's dim [%s]",
@@ -83,17 +91,21 @@ class MomentumOp : public framework::OperatorWithKernel {
     if (ctx->GetInputsVarType("Grad")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
       PADDLE_ENFORCE_EQ(
-          param_dim, ctx->GetInputDim("Grad"),
+          param_dim,
+          ctx->GetInputDim("Grad"),
           platform::errors::InvalidArgument(
               "Param and Grad input of MomentumOp should have the same "
               "dimension. But received Param's dim [%s] and Grad's dim [%s].",
-              param_dim, ctx->GetInputDim("Grad")));
+              param_dim,
+              ctx->GetInputDim("Grad")));
       PADDLE_ENFORCE_EQ(
-          param_dim, ctx->GetInputDim("Velocity"),
+          param_dim,
+          ctx->GetInputDim("Velocity"),
           platform::errors::InvalidArgument(
               "Param and Velocity of MomentumOp should have the same "
               "dimension. But received Param's dim [%s] and Velocity [%s].",
-              param_dim, ctx->GetInputDim("Velocity")));
+              param_dim,
+              ctx->GetInputDim("Velocity")));
     }
 
     ctx->SetOutputDim("ParamOut", param_dim);

@@ -38,8 +38,12 @@ struct MemoryBlock {
   // MemoryBlock::Desc to the beginning of the block; or, if it is a GPU memory
   // block, the MetadataCache writes the Meatadata to a std::map in
   // the CPU.
-  void Init(MetadataCache* cache, Type t, size_t index, size_t size,
-            void* left_buddy, void* right_buddy);
+  void Init(MetadataCache* cache,
+            Type t,
+            size_t index,
+            size_t size,
+            void* left_buddy,
+            void* right_buddy);
 
   MemoryBlock* GetLeftBuddy(MetadataCache* cache);
   MemoryBlock* GetRightBuddy(MetadataCache* cache);
@@ -58,7 +62,11 @@ struct MemoryBlock {
 
   // MemoryBlock::Desc describes a MemoryBlock.
   struct Desc {
-    Desc(MemoryBlock::Type t, size_t i, size_t s, size_t ts, MemoryBlock* l,
+    Desc(MemoryBlock::Type t,
+         size_t i,
+         size_t s,
+         size_t ts,
+         MemoryBlock* l,
          MemoryBlock* r);
     Desc();
 

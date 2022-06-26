@@ -18,7 +18,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    flatten, ops::FlattenKernel<paddle::platform::CUDADeviceContext, float>,
+    flatten,
+    ops::FlattenKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FlattenKernel<paddle::platform::CUDADeviceContext, double>,
     ops::FlattenKernel<paddle::platform::CUDADeviceContext, uint8_t>,
     ops::FlattenKernel<paddle::platform::CUDADeviceContext, int>,
@@ -33,7 +34,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
-    flatten2, ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, float>,
+    flatten2,
+    ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, float>,
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, double>,
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, uint8_t>,
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, int>,

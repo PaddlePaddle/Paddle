@@ -40,7 +40,8 @@ class GraphPsService_Stub : public PsService_Stub {
  public:
   GraphPsService_Stub(::google::protobuf::RpcChannel* channel,
                       ::google::protobuf::RpcChannel* local_channel = NULL,
-                      GraphBrpcService* service = NULL, int thread_num = 1)
+                      GraphBrpcService* service = NULL,
+                      int thread_num = 1)
       : PsService_Stub(channel) {
     this->local_channel = local_channel;
     this->graph_service = service;
@@ -64,34 +65,50 @@ class GraphBrpcClient : public BrpcPsClient {
   virtual ~GraphBrpcClient() {}
   // given a batch of nodes, sample graph_neighbors for each of them
   virtual std::future<int32_t> batch_sample_neighbors(
-      uint32_t table_id, int idx, std::vector<int64_t> node_ids,
-      int sample_size, std::vector<std::vector<int64_t>>& res,
-      std::vector<std::vector<float>>& res_weight, bool need_weight,
+      uint32_t table_id,
+      int idx,
+      std::vector<int64_t> node_ids,
+      int sample_size,
+      std::vector<std::vector<int64_t>>& res,
+      std::vector<std::vector<float>>& res_weight,
+      bool need_weight,
       int server_index = -1);
 
-  virtual std::future<int32_t> pull_graph_list(uint32_t table_id, int type_id,
-                                               int idx, int server_index,
-                                               int start, int size, int step,
+  virtual std::future<int32_t> pull_graph_list(uint32_t table_id,
+                                               int type_id,
+                                               int idx,
+                                               int server_index,
+                                               int start,
+                                               int size,
+                                               int step,
                                                std::vector<FeatureNode>& res);
   virtual std::future<int32_t> random_sample_nodes(uint32_t table_id,
-                                                   int type_id, int idx,
+                                                   int type_id,
+                                                   int idx,
                                                    int server_index,
                                                    int sample_size,
                                                    std::vector<int64_t>& ids);
   virtual std::future<int32_t> get_node_feat(
-      const uint32_t& table_id, int idx, const std::vector<int64_t>& node_ids,
+      const uint32_t& table_id,
+      int idx,
+      const std::vector<int64_t>& node_ids,
       const std::vector<std::string>& feature_names,
       std::vector<std::vector<std::string>>& res);
 
   virtual std::future<int32_t> set_node_feat(
-      const uint32_t& table_id, int idx, const std::vector<int64_t>& node_ids,
+      const uint32_t& table_id,
+      int idx,
+      const std::vector<int64_t>& node_ids,
       const std::vector<std::string>& feature_names,
       const std::vector<std::vector<std::string>>& features);
 
-  virtual std::future<int32_t> clear_nodes(uint32_t table_id, int type_id,
+  virtual std::future<int32_t> clear_nodes(uint32_t table_id,
+                                           int type_id,
                                            int idx);
   virtual std::future<int32_t> add_graph_node(
-      uint32_t table_id, int idx, std::vector<int64_t>& node_id_list,
+      uint32_t table_id,
+      int idx,
+      std::vector<int64_t>& node_id_list,
       std::vector<bool>& is_weighted_list);
   virtual std::future<int32_t> remove_graph_node(
       uint32_t table_id, int idx_, std::vector<int64_t>& node_id_list);
@@ -107,8 +124,8 @@ class GraphBrpcClient : public BrpcPsClient {
   }
   GraphPsService_Stub getServiceStub(::google::protobuf::RpcChannel* channel,
                                      int thread_num = 1) {
-    return GraphPsService_Stub(channel, local_channel, graph_service,
-                               thread_num);
+    return GraphPsService_Stub(
+        channel, local_channel, graph_service, thread_num);
   }
 
  private:
