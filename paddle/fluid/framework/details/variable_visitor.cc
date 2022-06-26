@@ -111,23 +111,29 @@ struct EnforceShapeAndDTypeEQVisitor {
   void operator()(const LoDTensor& src) {
     auto& tensor = dst_->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(
-        src.place().GetType(), tensor.place().GetType(),
+        src.place().GetType(),
+        tensor.place().GetType(),
         platform::errors::PreconditionNotMet(
             "The place type of the two variables is not equal. The src place "
             "is %s, but the dst place is %s",
-            src.place().DebugString(), tensor.place().DebugString()));
-    PADDLE_ENFORCE_EQ(src.dtype(), tensor.dtype(),
+            src.place().DebugString(),
+            tensor.place().DebugString()));
+    PADDLE_ENFORCE_EQ(src.dtype(),
+                      tensor.dtype(),
                       platform::errors::PreconditionNotMet(
                           "The dtype of the two variables is not equal."));
     PADDLE_ENFORCE_EQ(
-        src.dims(), tensor.dims(),
+        src.dims(),
+        tensor.dims(),
         platform::errors::PreconditionNotMet(
             "The layout of the two variables' tensors is not equal."));
-    PADDLE_ENFORCE_EQ(src.lod(), tensor.lod(),
+    PADDLE_ENFORCE_EQ(src.lod(),
+                      tensor.lod(),
                       platform::errors::PreconditionNotMet(
                           "The lod of the two variable is not equal."));
     PADDLE_ENFORCE_EQ(
-        src.layout(), tensor.layout(),
+        src.layout(),
+        tensor.layout(),
         platform::errors::PreconditionNotMet(
             "The layout of the two variables' tensors tensor is not equal."));
   }
@@ -135,22 +141,28 @@ struct EnforceShapeAndDTypeEQVisitor {
   void operator()(const phi::SelectedRows& src) {
     auto& selected_rows = dst_->Get<phi::SelectedRows>();
     PADDLE_ENFORCE_EQ(
-        src.place().GetType(), selected_rows.place().GetType(),
+        src.place().GetType(),
+        selected_rows.place().GetType(),
         platform::errors::PreconditionNotMet(
             "The place type of the two variables is not equal. The src place "
             "is %s, but the dst place is %s",
-            src.place().DebugString(), selected_rows.place().DebugString()));
-    PADDLE_ENFORCE_EQ(src.value().type(), selected_rows.value().type(),
+            src.place().DebugString(),
+            selected_rows.place().DebugString()));
+    PADDLE_ENFORCE_EQ(src.value().type(),
+                      selected_rows.value().type(),
                       platform::errors::PreconditionNotMet(
                           "The dtype of the two variables is not equal."));
     PADDLE_ENFORCE_EQ(
-        src.value().layout(), selected_rows.value().layout(),
+        src.value().layout(),
+        selected_rows.value().layout(),
         platform::errors::PreconditionNotMet(
             "The layout of the two variables' tensors is not equal."));
-    PADDLE_ENFORCE_EQ(src.height(), selected_rows.height(),
+    PADDLE_ENFORCE_EQ(src.height(),
+                      selected_rows.height(),
                       platform::errors::PreconditionNotMet(
                           "The height of the two variables is not equal."));
-    PADDLE_ENFORCE_EQ(src.GetCompleteDims(), selected_rows.GetCompleteDims(),
+    PADDLE_ENFORCE_EQ(src.GetCompleteDims(),
+                      selected_rows.GetCompleteDims(),
                       platform::errors::PreconditionNotMet(
                           "The dims of the two variables is not equal."));
   }

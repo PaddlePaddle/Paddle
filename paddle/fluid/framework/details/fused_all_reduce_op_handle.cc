@@ -32,22 +32,28 @@ typedef std::vector<std::vector<std::pair<std::string, const LoDTensor *>>>
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
-    ir::Node *node, const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places, const size_t num_of_all_reduce,
+    ir::Node *node,
+    const std::vector<Scope *> &local_scopes,
+    const std::vector<platform::Place> &places,
+    const size_t num_of_all_reduce,
     const platform::NCCLCommunicator *ctxs)
     : AllReduceOpHandle(node, local_scopes, places, ctxs),
       num_of_all_reduce_(num_of_all_reduce) {}
 #elif defined(PADDLE_WITH_XPU_BKCL)
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
-    ir::Node *node, const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places, const size_t num_of_all_reduce,
+    ir::Node *node,
+    const std::vector<Scope *> &local_scopes,
+    const std::vector<platform::Place> &places,
+    const size_t num_of_all_reduce,
     const platform::BKCLCommunicator *ctxs)
     : AllReduceOpHandle(node, local_scopes, places, ctxs),
       num_of_all_reduce_(num_of_all_reduce) {}
 #else
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
-    ir::Node *node, const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places, const size_t num_of_all_reduce)
+    ir::Node *node,
+    const std::vector<Scope *> &local_scopes,
+    const std::vector<platform::Place> &places,
+    const size_t num_of_all_reduce)
     : AllReduceOpHandle(node, local_scopes, places),
       num_of_all_reduce_(num_of_all_reduce) {}
 #endif
@@ -75,15 +81,18 @@ void FusedAllReduceOpHandle::RunImpl() {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (FLAGS_allreduce_record_one_event && start_event_ == nullptr) {
     VLOG(10) << "FLAGS_allreduce_record_one_event=true";
-    PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_, false,
+    PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
+                      false,
                       platform::errors::Unimplemented(
                           "The hierarchical allreduce does not support "
                           "FLAGS_allreduce_record_one_event=true"));
-    PADDLE_ENFORCE_EQ(places_.size(), 1,
+    PADDLE_ENFORCE_EQ(places_.size(),
+                      1,
                       platform::errors::Unimplemented(
                           "FLAGS_allreduce_record_one_event=true is only valid "
                           "when using one GPU device per process."));
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(places_[0]), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(places_[0]),
+                      true,
                       platform::errors::Unimplemented(
                           "FLAGS_allreduce_record_one_event=true is only valid "
                           "when using GPU device."));
@@ -134,21 +143,26 @@ void FusedAllReduceOpHandle::RunImpl() {
 
   size_t place_num = places_.size();
   PADDLE_ENFORCE_EQ(
-      in_var_handles.size(), place_num * num_of_all_reduce_,
+      in_var_handles.size(),
+      place_num * num_of_all_reduce_,
       platform::errors::PreconditionNotMet(
           "The number of input variable handles should be equal to the number "
           "of places plus the number of all reduce handles, "
           "but got the number of input variable handles is %d, the "
           "number of places is %d, and the number of all reduce handles "
           "is %d.",
-          in_var_handles.size(), place_num, num_of_all_reduce_));
+          in_var_handles.size(),
+          place_num,
+          num_of_all_reduce_));
   PADDLE_ENFORCE_EQ(
-      in_var_handles.size(), out_var_handles.size(),
+      in_var_handles.size(),
+      out_var_handles.size(),
       platform::errors::PreconditionNotMet(
           "The number of input variable handles should be equal to the number "
           "of output variable handles, but got the number of input variable "
           "handles is %d, and the number of  output variable handles is %d.",
-          in_var_handles.size(), out_var_handles.size()));
+          in_var_handles.size(),
+          out_var_handles.size()));
 
   // Note: some gradient op doesn't have CUDAKernel or XPUKernel, so the
   // gradients of those op are in CPUPlace, in this case, the all reduce
@@ -211,16 +225,19 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
     }
 
     PADDLE_ENFORCE_EQ(
-        ele_dtype, dtype,
+        ele_dtype,
+        dtype,
         platform::errors::InvalidArgument(
             "The DataType of grad tensors of fused_all_reduce_op_handle  "
             "must be consistent. The current dtype is %s, but the "
             "previous dtype is %s.",
-            DataTypeToString(ele_dtype), DataTypeToString(dtype)));
+            DataTypeToString(ele_dtype),
+            DataTypeToString(dtype)));
 
     // Check whether the address space is contiguous.
     std::sort(
-        g_tensor.begin(), g_tensor.end(),
+        g_tensor.begin(),
+        g_tensor.end(),
         [](const std::pair<std::string, const LoDTensor *> &grad1,
            const std::pair<std::string, const LoDTensor *> &grad2) -> bool {
           return grad1.second->data() < grad2.second->data();
@@ -238,15 +255,24 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
       VLOG(10) << string::Sprintf(
           "Input[%d](%s) address: 0X%02x, Input[%d](%s) address: 0X%02x, Infer "
           "input[%d] address: 0X%02x. The offset: %d",
-          k - 1, g_tensor.at(k - 1).first, cur_address, g_tensor.at(k).first, k,
-          next_address, k, infer_next_address, offset);
+          k - 1,
+          g_tensor.at(k - 1).first,
+          cur_address,
+          g_tensor.at(k).first,
+          k,
+          next_address,
+          k,
+          infer_next_address,
+          offset);
       PADDLE_ENFORCE_EQ(
-          infer_next_address, next_address,
+          infer_next_address,
+          next_address,
           platform::errors::InvalidArgument(
               "The infered address of the next tensor should be equal to the "
               "real address of the next tensor. But got infered address is %p "
               "and real address is %p.",
-              infer_next_address, next_address));
+              infer_next_address,
+              next_address));
     }
   }
 
@@ -291,8 +317,9 @@ bool FusedAllReduceOpHandle::InputIsInDifferentPlace(
       auto var_name = in_var_handles[j]->name();
       auto var = local_scope->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(
-          var, platform::errors::NotFound(
-                   "The variable '%s' is not found in local scope.", var_name));
+          var,
+          platform::errors::NotFound(
+              "The variable '%s' is not found in local scope.", var_name));
       auto &lod_tensor = var->Get<LoDTensor>();
       if (!platform::is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
         return true;
@@ -303,7 +330,8 @@ bool FusedAllReduceOpHandle::InputIsInDifferentPlace(
 }
 
 void FusedAllReduceOpHandle::GetGradLoDTensor(
-    const size_t &scope_idx, const std::vector<VarHandle *> &in_var_handles,
+    const size_t &scope_idx,
+    const std::vector<VarHandle *> &in_var_handles,
     const std::vector<VarHandle *> &out_var_handles,
     std::vector<std::pair<std::string, const LoDTensor *>> *grad_tensor) const {
   auto *local_scope = local_exec_scopes_[scope_idx];
@@ -311,16 +339,19 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
   for (size_t j = 0; j < in_var_handles.size(); j += place_num) {
     auto var_name = in_var_handles[j]->name();
     PADDLE_ENFORCE_EQ(
-        var_name, out_var_handles[j]->name(),
+        var_name,
+        out_var_handles[j]->name(),
         platform::errors::InvalidArgument(
             "The name of input variable should be equal "
             "to the name of output variable. But got the name of input "
             "variable is %s and the name of output variable is %s.",
-            var_name, out_var_handles[j]->name()));
+            var_name,
+            out_var_handles[j]->name()));
     auto var = local_scope->FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound(
-                 "The variable '%s' is not found in local scope.", var_name));
+        var,
+        platform::errors::NotFound(
+            "The variable '%s' is not found in local scope.", var_name));
     auto &lod_tensor = var->Get<LoDTensor>();
 
     PADDLE_ENFORCE_EQ(
@@ -328,14 +359,16 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
         true,
         platform::errors::InvalidArgument(
             "The variable '%s' at scope %d is not in the right place.",
-            var_name, scope_idx));
+            var_name,
+            scope_idx));
     grad_tensor->emplace_back(std::make_pair(var_name, &lod_tensor));
   }
 }
 
 void FusedAllReduceOpHandle::GetDTypeAndNumel(
     const std::vector<std::pair<std::string, const LoDTensor *>> &grad_tensor,
-    proto::VarType::Type *dtype, int64_t *numel) const {
+    proto::VarType::Type *dtype,
+    int64_t *numel) const {
   *numel = 0;
   size_t size_of_dtype = 0;
   for (size_t i = 0; i < grad_tensor.size(); ++i) {
@@ -347,17 +380,20 @@ void FusedAllReduceOpHandle::GetDTypeAndNumel(
       size_of_dtype = framework::SizeOfType(ele_dtype);
     }
     PADDLE_ENFORCE_EQ(
-        ele_dtype, *dtype,
+        ele_dtype,
+        *dtype,
         platform::errors::InvalidArgument(
             "The DataType of grad tensors of fused_all_reduce_op_handle  "
             "must be consistent. The current dtype is %s, but the "
             "previous dtype is %s.",
-            DataTypeToString(ele_dtype), DataTypeToString(*dtype)));
+            DataTypeToString(ele_dtype),
+            DataTypeToString(*dtype)));
 
     // Get element number
     int64_t len = grad_tensor.at(i).second->numel();
     PADDLE_ENFORCE_GT(
-        len, 0,
+        len,
+        0,
         platform::errors::InvalidArgument(
             "The size of grad tensors of fused_all_reduce_op_handle  "
             "must be > 0, but got %d.",

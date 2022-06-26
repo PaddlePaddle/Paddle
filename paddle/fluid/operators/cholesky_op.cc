@@ -61,8 +61,10 @@ class CholeskyGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "CholeskyGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "CholeskyGrad");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "CholeskyGrad");
     auto dims = ctx->GetInputDim("Out");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -90,9 +92,12 @@ class CholeskyGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(cholesky, CholeskyInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(cholesky,
+                            CholeskyInferShapeFunctor,
                             PD_INFER_META(phi::CholeskyInferMeta));
-REGISTER_OPERATOR(cholesky, ops::CholeskyOp, ops::CholeskyOpMaker,
+REGISTER_OPERATOR(cholesky,
+                  ops::CholeskyOp,
+                  ops::CholeskyOpMaker,
                   ops::CholeskyGradOpMaker<paddle::framework::OpDesc>,
                   ops::CholeskyGradOpMaker<paddle::imperative::OpBase>,
                   CholeskyInferShapeFunctor);

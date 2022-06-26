@@ -49,8 +49,10 @@ class Atan2GradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X1"), "Input", "X1", "Atan2Grad");
     OP_INOUT_CHECK(ctx->HasInput("X2"), "Input", "X2", "Atan2Grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "Atan2Grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@Grad",
+                   "Atan2Grad");
 
     auto x1_grad_name = framework::GradVarName("X1");
     auto x2_grad_name = framework::GradVarName("X2");
@@ -105,11 +107,15 @@ class Atan2OpVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(atan2, Atan2InferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(atan2,
+                            Atan2InferShapeFunctor,
                             PD_INFER_META(phi::Atan2InferMeta));
-REGISTER_OPERATOR(atan2, ops::Atan2Op, ops::Atan2OpMaker,
+REGISTER_OPERATOR(atan2,
+                  ops::Atan2Op,
+                  ops::Atan2OpMaker,
                   ops::Atan2GradMaker<paddle::framework::OpDesc>,
                   ops::Atan2GradMaker<paddle::imperative::OpBase>,
-                  ops::Atan2OpVarTypeInference, Atan2InferShapeFunctor);
+                  ops::Atan2OpVarTypeInference,
+                  Atan2InferShapeFunctor);
 
 REGISTER_OPERATOR(atan2_grad, ops::Atan2GradOp);

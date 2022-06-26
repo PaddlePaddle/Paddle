@@ -34,7 +34,8 @@ class ReshapeTransposeMatmulMkldnnFusePass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
   const std::string name_scope_{"reshape_transpose_matmul_fuse"};
 
-  void Fuse(Graph* graph, bool with_reshape_xshape,
+  void Fuse(Graph* graph,
+            bool with_reshape_xshape,
             bool with_transpose_xshape) const;
   std::string op_name_;
 };

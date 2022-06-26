@@ -32,8 +32,13 @@ class TrilTriuMLUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc out_desc(*out);
-    MLUCnnl::TrilTriu(ctx, diagonal, upper, x_desc.get(), GetBasePtr(x),
-                      out_desc.get(), GetBasePtr(out));
+    MLUCnnl::TrilTriu(ctx,
+                      diagonal,
+                      upper,
+                      x_desc.get(),
+                      GetBasePtr(x),
+                      out_desc.get(),
+                      GetBasePtr(out));
   }
 };
 
@@ -42,6 +47,7 @@ class TrilTriuMLUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_MLU_KERNEL(tril_triu, ops::TrilTriuMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(tril_triu,
+                       ops::TrilTriuMLUKernel<float>,
                        ops::TrilTriuMLUKernel<int32_t>,
                        ops::TrilTriuMLUKernel<plat::float16>);

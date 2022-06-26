@@ -33,8 +33,10 @@ namespace memory {
 namespace detail {
 
 BuddyAllocator::BuddyAllocator(
-    std::unique_ptr<SystemAllocator> system_allocator, size_t min_chunk_size,
-    size_t max_chunk_size, size_t extra_padding_size,
+    std::unique_ptr<SystemAllocator> system_allocator,
+    size_t min_chunk_size,
+    size_t max_chunk_size,
+    size_t extra_padding_size,
     const std::string dev_type)
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
@@ -165,8 +167,8 @@ void BuddyAllocator::Free(void* p) {
     auto rb_desc = cache_.LoadDesc(right_buddy);
     if (rb_desc->get_type() == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
-      pool_.erase(IndexSizeAddress(rb_desc->get_index(),
-                                   rb_desc->get_total_size(), right_buddy));
+      pool_.erase(IndexSizeAddress(
+          rb_desc->get_index(), rb_desc->get_total_size(), right_buddy));
 
       // merge its right buddy to the block
       block->Merge(&cache_, right_buddy);
@@ -183,8 +185,8 @@ void BuddyAllocator::Free(void* p) {
     auto* lb_desc = cache_.LoadDesc(left_buddy);
     if (lb_desc->get_type() == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
-      pool_.erase(IndexSizeAddress(lb_desc->get_index(),
-                                   lb_desc->get_total_size(), left_buddy));
+      pool_.erase(IndexSizeAddress(
+          lb_desc->get_index(), lb_desc->get_total_size(), left_buddy));
 
       // merge the block to its left buddy
       left_buddy->Merge(&cache_, block);
@@ -237,8 +239,8 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
 
   if (p == nullptr) return nullptr;
 
-  static_cast<MemoryBlock*>(p)->Init(&cache_, MemoryBlock::HUGE_CHUNK, index,
-                                     size, nullptr, nullptr);
+  static_cast<MemoryBlock*>(p)->Init(
+      &cache_, MemoryBlock::HUGE_CHUNK, index, size, nullptr, nullptr);
 
   return static_cast<MemoryBlock*>(p)->Data();
 }
@@ -249,18 +251,18 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
   size_t index = 0;
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  allocate_bytes = DeviceAllocateSize(init_allocate_size_func_,
-                                      re_allocate_size_func_, request_bytes);
+  allocate_bytes = DeviceAllocateSize(
+      init_allocate_size_func_, re_allocate_size_func_, request_bytes);
 #else
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  allocate_bytes = DeviceAllocateSize(&platform::GpuInitAllocSize,
-                                      &platform::GpuReallocSize, request_bytes);
+  allocate_bytes = DeviceAllocateSize(
+      &platform::GpuInitAllocSize, &platform::GpuReallocSize, request_bytes);
 #elif defined(PADDLE_WITH_ASCEND_CL)
-  allocate_bytes = DeviceAllocateSize(&platform::NPUInitAllocSize,
-                                      &platform::NPUReallocSize, request_bytes);
+  allocate_bytes = DeviceAllocateSize(
+      &platform::NPUInitAllocSize, &platform::NPUReallocSize, request_bytes);
 #elif defined(PADDLE_WITH_MLU)
-  allocate_bytes = DeviceAllocateSize(&platform::MLUInitAllocSize,
-                                      &platform::MLUReallocSize, request_bytes);
+  allocate_bytes = DeviceAllocateSize(
+      &platform::MLUInitAllocSize, &platform::MLUReallocSize, request_bytes);
 #endif
 #endif
 
@@ -272,8 +274,12 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
   VLOG(10) << "Creating and inserting new block " << p
            << " from system allocator";
 
-  static_cast<MemoryBlock*>(p)->Init(&cache_, MemoryBlock::FREE_CHUNK, index,
-                                     allocate_bytes, nullptr, nullptr);
+  static_cast<MemoryBlock*>(p)->Init(&cache_,
+                                     MemoryBlock::FREE_CHUNK,
+                                     index,
+                                     allocate_bytes,
+                                     nullptr,
+                                     nullptr);
 
   total_free_ += allocate_bytes;
 
@@ -327,8 +333,8 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
       VLOG(10) << "Insert right block (" << right_buddy << ", "
                << rb_desc->get_total_size() << ")";
 
-      pool_.insert(IndexSizeAddress(rb_desc->get_index(),
-                                    rb_desc->get_total_size(), right_buddy));
+      pool_.insert(IndexSizeAddress(
+          rb_desc->get_index(), rb_desc->get_total_size(), right_buddy));
     }
   }
 
@@ -337,7 +343,8 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
 
 size_t BuddyAllocator::DeviceAllocateSize(
     std::function<size_t()> init_allocate_size_func,
-    std::function<size_t()> re_allocate_size_func, size_t request_bytes) {
+    std::function<size_t()> re_allocate_size_func,
+    size_t request_bytes) {
   size_t allocate_bytes = max_chunk_size_;
 #if defined(USE_DEVICE)
   const bool use_gpu = system_allocator_->UseGpu();
