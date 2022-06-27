@@ -4,9 +4,14 @@ cc_library(
   DEPS lod_tensor device_context)
 
 cc_library(
-  jit_layer_utils
-  SRCS layer_utils.cc
-  DEPS scope proto_desc)
+  jit_function_utils
+  SRCS function_utils.cc
+  DEPS lod_tensor scope proto_desc)
+
+cc_library(
+  jit_serializer_utils
+  SRCS serializer_utils.cc
+  DEPS proto_desc)
 
 cc_library(
   jit_compilation_unit
@@ -14,14 +19,14 @@ cc_library(
   DEPS proto_desc executor parallel_executor executor_cache)
 
 cc_library(
+  jit_function_schema
+  SRCS function_schema.cc
+  DEPS jit_function_utils)
+
+cc_library(
   jit_layer
   SRCS layer.cc
   DEPS jit_compilation_unit)
-
-cc_library(
-  jit_function_schema
-  SRCS function_schema.cc
-  DEPS jit_layer_utils)
 
 if(WITH_TESTING
    AND NOT WIN32
@@ -42,9 +47,10 @@ if(WITH_TESTING
       scale_op
       jit_serializer
       jit_layer
-      jit_layer_utils
+      jit_function_utils
       jit_function_schema
-      jit_compilation_unit)
+      jit_compilation_unit
+      jit_serializer_utils)
   cc_test(
     layer_test
     SRCS layer_test.cc

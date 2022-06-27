@@ -27,10 +27,10 @@
 
 namespace paddle {
 namespace jit {
-
 using Variable = paddle::framework::Variable;
 using Name2VariableMap = std::unordered_map<std::string, Variable>;
 using DenseTensor = phi::DenseTensor;
+namespace utils {
 
 void FetchVarsByNames(const std::vector<std::string> &names,
                       const framework::Scope &scope,
@@ -44,6 +44,8 @@ void ShareParamsIntoScope(const std::vector<std::string> &param_names,
                           const Name2VariableMap &params_dict,
                           framework::Scope *scope);
 
+void RemoveFeedFetch(framework::ProgramDesc *program_desc);
+
 template <typename T>
 std::shared_ptr<T> MakeFunction(const std::shared_ptr<FunctionInfo> &info,
                                 const Name2VariableMap &params_dict,
@@ -51,5 +53,6 @@ std::shared_ptr<T> MakeFunction(const std::shared_ptr<FunctionInfo> &info,
   return std::make_shared<T>(info, params_dict, place);
 }
 
+}  // namespace utils
 }  // namespace jit
 }  // namespace paddle

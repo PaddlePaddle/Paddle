@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/jit/layer_utils.h"
+#include "paddle/fluid/jit/function_utils.h"
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
@@ -20,7 +20,7 @@
 
 namespace paddle {
 namespace jit {
-
+namespace utils {
 void FetchVarsByNames(const std::vector<std::string> &names,
                       const framework::Scope &scope,
                       std::vector<Variable> *outs) {
@@ -69,5 +69,29 @@ void ShareParamsIntoScope(const std::vector<std::string> &param_names,
   }
 }
 
+void RemoveFeedFetch(framework::ProgramDesc *program_desc) {
+  for (size_t i = 0; i < program_desc->Size(); ++i) {
+    auto *block = program_desc->MutableBlock(i);
+    const auto &all_ops = block->AllOps();
+    size_t op_size = all_ops.size();
+    VLOG(3) << "op_size: " << op_size;
+    for (int i = op_size - 1; i >= 0; i--) {
+      auto op = all_ops[i];
+      if (op->Type() == "feed") {
+        VLOG(3) << "remove op type: " << op->Type() << ", index: " << i
+                << ", var name: " << op->Input("X")[0];
+        block->RemoveVar(op->Input("X")[0]);
+        block->RemoveOp(i, i + 1);
+      } else if (op->Type() == "fetch") {
+        VLOG(3) << "remove op type: " << op->Type() << ", index: " << i
+                << ", var name: " << op->Output("Out")[0];
+        block->RemoveVar(op->Output("Out")[0]);
+        block->RemoveOp(i, i + 1);
+      }
+    }
+  }
+}
+
+}  // namespace utils
 }  // namespace jit
 }  // namespace paddle

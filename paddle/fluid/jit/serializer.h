@@ -23,9 +23,6 @@
 
 namespace paddle {
 namespace jit {
-static const char PDMODEL_SUFFIX[] = ".pdmodel";
-static const char PDPARAMS_SUFFIX[] = ".pdiparams";
-
 // Export Layer into local disk
 class Serializer {
  public:
@@ -45,21 +42,6 @@ class Deserializer {
   Layer operator()(const std::string& dir_path, const phi::Place& place);
 
  private:
-  bool IsPersistable(framework::VarDesc* desc_ptr);
-
-  bool StartWith(const std::string& str, const std::string& suffix);
-
-  bool EndsWith(const std::string& str, const std::string& suffix);
-
-  void ReplaceAll(std::string* str,
-                  const std::string& old_value,
-                  const std::string& new_value);
-
-  bool FileExists(const std::string& file_path);
-
-  const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
-      const std::string& path);
-
   void ReadTensorData(const std::string& file_name,
                       const std::set<std::string>& var_name,
                       const phi::Place& place,
