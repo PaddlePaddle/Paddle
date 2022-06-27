@@ -110,8 +110,8 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     GET_IR_NODE_FROM_SUBGRAPH(transpose_out, transpose_out, rtm_pattern);
     ir::Node *transpose_xshape{nullptr};
     if (with_transpose_xshape) {
-      GET_IR_NODE_FROM_SUBGRAPH(transpose_xshape1, transpose_xshape,
-                                rtm_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(
+          transpose_xshape1, transpose_xshape, rtm_pattern);
       transpose_xshape = transpose_xshape1;
     }
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, rtm_pattern);

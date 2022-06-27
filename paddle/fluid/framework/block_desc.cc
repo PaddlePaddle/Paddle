@@ -212,7 +212,8 @@ BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
   }
 }
 
-BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
+BlockDesc::BlockDesc(const BlockDesc &other,
+                     proto::BlockDesc *desc,
                      ProgramDesc *prog)
     : prog_(prog), desc_(desc) {
   need_update_ = true;
@@ -227,10 +228,13 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
 
 void BlockDesc::SetForwardBlockID(int32_t forward_block_id) {
   PADDLE_ENFORCE_EQ(
-      desc_->has_forward_block_idx(), false,
+      desc_->has_forward_block_idx(),
+      false,
       platform::errors::PreconditionNotMet(
           "Block %d's parent block ID has been set to %d, cannot be set to %d.",
-          desc_->idx(), desc_->forward_block_idx(), forward_block_id));
+          desc_->idx(),
+          desc_->forward_block_idx(),
+          forward_block_id));
   desc_->set_forward_block_idx(forward_block_id);
 }
 

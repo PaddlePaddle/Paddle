@@ -75,7 +75,8 @@ class FillConstantPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(fill_constant_p, paddle::operators::FillConstantPrimOp,
+REGISTER_OPERATOR(fill_constant_p,
+                  paddle::operators::FillConstantPrimOp,
                   paddle::operators::FillConstantPrimOpMaker,
                   paddle::operators::FillConstantPrimOpShapeInference,
                   paddle::operators::FillConstantPrimOpVarTypeInference);

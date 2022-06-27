@@ -81,7 +81,7 @@ def normalize(S, norm=np.inf, axis=0, threshold=None, fill=None):
         raise Exception("Input must be finite")
 
     # All norms only depend on magnitude, let's do that first
-    mag = np.abs(S).astype(np.float)
+    mag = np.abs(S).astype(np.float64)
 
     # For max/min norms, filling with 1 works
     fill_norm = 1
@@ -598,8 +598,8 @@ def rand_x(dims=1,
             np.random.randint(min_dim_len, max_dim_len) for i in range(dims)
         ]
     if complex:
-        return np.random.randn(*shape).astype(
-            dtype) + 1.j * np.random.randn(*shape).astype(dtype)
+        return np.random.randn(
+            *shape).astype(dtype) + 1.j * np.random.randn(*shape).astype(dtype)
     else:
         return np.random.randn(*shape).astype(dtype)
 

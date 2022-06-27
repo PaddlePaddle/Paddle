@@ -26,7 +26,8 @@ template <typename T>
 class MatrixSolveFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& dev_ctx,
-                  const framework::Tensor& a, const framework::Tensor& b,
+                  const framework::Tensor& a,
+                  const framework::Tensor& b,
                   framework::Tensor* out) {
     compute_solve_eigen<platform::CPUDeviceContext, T>(dev_ctx, a, b, out);
   }

@@ -270,6 +270,7 @@ EOF
     # docker environment is fully controlled by this script.
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
     set +e
+    PRECISION_TEST=OFF
     cmake .. \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
@@ -481,10 +482,10 @@ EOF
 }
 
 function cmake_gen_and_build() {
-    startTime_s=100
+    startTime_s=`date +%s`
     cmake_gen $1
     build $2
-    endTime_s=200
+    endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -955,6 +956,9 @@ function fetch_upstream_develop_if_not_exist() {
 }
 
 function check_whl_size() {
+    if [ ${BRANCH} != 'develop' ];then
+        return
+    fi
 
     set +x
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/*.whl|awk '{print $1}'`
@@ -1094,6 +1098,10 @@ function check_approvals_of_unittest() {
             fi
         fi
     elif [ $check_times == 3 ]; then
+        if [ ${BRANCH} != 'develop' ];then
+            return
+        fi
+
         rm -f fluidInference_so_size
         curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
         oriBuildSize=`cat fluidInference_so_size`
@@ -2017,6 +2025,26 @@ function get_failedUts_precise_map_file {
     fi
 }
 
+function parallel_test_base_gpups() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit GpuPS tests ...
+    ========================================
+EOF
+        ut_startTime_s=`date +%s`
+        ctest -L "RUN_TYPE=GPUPS" --timeout 120
+        ut_endTime_s=`date +%s`
+        echo "GPUPS testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi
+}
+
 function parallel_test_base_xpu() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -2713,6 +2741,8 @@ function parallel_test() {
     ut_total_startTime_s=`date +%s`
     if [ "$WITH_CINN" == "ON" ];then
         parallel_test_base_cinn
+    elif [ "$WITH_GPU" == "ON" ] && [ "$WITH_HETERPS" == "ON" ];then
+        parallel_test_base_gpups
     elif [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu_test
     elif [ "$WITH_XPU" == "ON" ];then
@@ -3111,6 +3141,7 @@ function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
 }
 
+
 # origin name: example
 function exec_samplecode_test() {
     if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
@@ -3143,11 +3174,11 @@ function collect_ccache_hits() {
 
 function test_op_benchmark() {
     # The PR will pass quickly when get approval from specific person.
-    # Xreki 12538138, luotao1 6836917, ZzSean 32410583
+    # Xreki 12538138, luotao1 6836917, ZzSean 32410583, JamesLim-sy 61349199
     set +x
     approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
     if [ "${approval_line}" != "" ]; then
-        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917)
+        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917 61349199)
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "TRUE" ]; then
             echo "==================================="
@@ -3276,6 +3307,10 @@ function build_develop() {
 }
 
 function check_coverage_build() {
+    if [ ${BRANCH} != 'develop' ];then
+        return
+    fi
+
     rm -f build_size
     curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
     curl -O https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/coverage_build_size
@@ -3299,7 +3334,6 @@ function check_coverage_build() {
     fi
     set -x
 }
-
 
 function main() {
     local CMD=$1 

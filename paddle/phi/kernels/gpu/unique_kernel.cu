@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/unique_kernel.h"
+
 #include <thrust/adjacent_difference.h>
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
@@ -26,9 +28,8 @@
 #include "paddle/fluid/framework/tensor_util.h"  // TensorToVector()
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/unique_functor.h"
-#include "paddle/phi/kernels/unique_kernel.h"
 
 namespace phi {
 

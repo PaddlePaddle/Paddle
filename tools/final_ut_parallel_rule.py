@@ -99,6 +99,8 @@ def classify_cases_by_mem(rootPath):
                 continue
             if case in case_always_timeout:
                 no_parallel_case = no_parallel_case + '|^' + case + '$'
+                continue
+
             if case not in new_lastest_mem:
                 continue
 

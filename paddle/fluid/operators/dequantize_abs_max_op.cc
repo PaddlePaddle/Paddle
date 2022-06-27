@@ -35,8 +35,10 @@ namespace operators {
 template <typename T>
 struct DequantizeFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& dev_ctx,
-                  const framework::Tensor* in, const framework::Tensor* scale,
-                  float max_range, framework::Tensor* out) {
+                  const framework::Tensor* in,
+                  const framework::Tensor* scale,
+                  float max_range,
+                  framework::Tensor* out) {
     const float* scale_factor = scale->data<float>();
     const T* input_data = in->data<T>();
     float* output_data = out->mutable_data<float>(dev_ctx.GetPlace());
@@ -103,7 +105,9 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(
-    dequantize_abs_max, ops::DequantizeMaxAbsOp, ops::DequantizeMaxAbsOpMaker,
+    dequantize_abs_max,
+    ops::DequantizeMaxAbsOp,
+    ops::DequantizeMaxAbsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(dequantize_abs_max,

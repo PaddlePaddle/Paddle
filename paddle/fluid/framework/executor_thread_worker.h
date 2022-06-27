@@ -77,7 +77,8 @@ class DensePullThread {
 
     for (auto& t : *param.dense_params) {
       _dense_variable_name[t.first].insert(_dense_variable_name[t.first].end(),
-                                           t.second.begin(), t.second.end());
+                                           t.second.begin(),
+                                           t.second.end());
       _training_versions[t.first].resize(_thread_num, 0);
       _last_versions[t.first] = 0;
       _current_version[t.first] = 0;
@@ -212,9 +213,11 @@ class AsyncExecutorThreadWorker : public ExecutorThreadWorker {
   void PushDense(int table_id);
 
   void check_pull_push_memory(const std::vector<uint64_t>& features,
-                              std::vector<float*>* push_g, int dim);
+                              std::vector<float*>* push_g,
+                              int dim);
   void check_pull_push_memory(const std::vector<uint64_t>& features,
-                              std::vector<std::vector<float>>* push_g, int dim);
+                              std::vector<std::vector<float>>* push_g,
+                              int dim);
   void collect_feasign_info(int table_id);
 
  private:

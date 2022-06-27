@@ -25,8 +25,10 @@ namespace framework {
 
 class NOP : public OperatorBase {
  public:
-  NOP(const std::string &type, const VariableNameMap &inputs,
-      const VariableNameMap &outputs, const AttributeMap &attrs)
+  NOP(const std::string &type,
+      const VariableNameMap &inputs,
+      const VariableNameMap &outputs,
+      const AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
@@ -72,11 +74,16 @@ class DummyOpVarTypeInference : public VarTypeInference {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OPERATOR(sum, paddle::framework::NOP, paddle::framework::SumOpMaker,
+REGISTER_OPERATOR(sum,
+                  paddle::framework::NOP,
+                  paddle::framework::SumOpMaker,
                   paddle::framework::SumOpVarTypeInference);
-REGISTER_OPERATOR(dummy, paddle::framework::NOP, paddle::framework::SumOpMaker,
+REGISTER_OPERATOR(dummy,
+                  paddle::framework::NOP,
+                  paddle::framework::SumOpMaker,
                   paddle::framework::SumOpVarTypeInference);
-REGISTER_OPERATOR(sum_without_infer_var_type, paddle::framework::NOP,
+REGISTER_OPERATOR(sum_without_infer_var_type,
+                  paddle::framework::NOP,
                   paddle::framework::SumOpMaker);
 
 namespace paddle {

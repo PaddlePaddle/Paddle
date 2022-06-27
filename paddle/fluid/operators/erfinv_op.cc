@@ -73,13 +73,17 @@ DECLARE_INPLACE_OP_INFERER(ErfinvInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(erfinv, ErfinvInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(erfinv,
+                            ErfinvInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
 REGISTER_OPERATOR(
-    erfinv, paddle::operators::ErfinvOp, paddle::operators::ErfinvOpMaker,
+    erfinv,
+    paddle::operators::ErfinvOp,
+    paddle::operators::ErfinvOpMaker,
     paddle::operators::ErfinvGradMaker<paddle::framework::OpDesc>,
     paddle::operators::ErfinvGradMaker<paddle::imperative::OpBase>,
-    paddle::operators::ErfinvInplaceInferer, ErfinvInferShapeFunctor);
+    paddle::operators::ErfinvInplaceInferer,
+    ErfinvInferShapeFunctor);
 
 REGISTER_OPERATOR(erfinv_grad, paddle::operators::ErfinvGradOp);

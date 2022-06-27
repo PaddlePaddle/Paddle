@@ -69,7 +69,8 @@ static int close_open_fds_internal() {
 
   for (;;) {
     int bytes = 0;
-    if ((bytes = syscall(SYS_getdents64, dir_fd,
+    if ((bytes = syscall(SYS_getdents64,
+                         dir_fd,
                          reinterpret_cast<linux_dirent*>(buffer),
                          sizeof(buffer))) < 0) {
       PADDLE_THROW(platform::errors::Unavailable(
@@ -104,8 +105,10 @@ static int close_open_fds_internal() {
 #endif
 }
 
-static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
-                                     int parent_end, int child_end,
+static int shell_popen_fork_internal(const char* real_cmd,
+                                     bool do_read,
+                                     int parent_end,
+                                     int child_end,
                                      bool redirect_stderr = false) {
 #if defined(_WIN32) || defined(__APPLE__) || defined(PADDLE_ARM)
   return 0;
@@ -165,8 +168,10 @@ static int read_from_pipe(FILE* fp, std::string* output) {
 }
 
 std::shared_ptr<FILE> shell_popen(const std::string& cmd,
-                                  const std::string& mode, int* err_no,
-                                  int* status, bool redirect_stderr) {
+                                  const std::string& mode,
+                                  int* err_no,
+                                  int* status,
+                                  bool redirect_stderr) {
 #if defined(_WIN32) || defined(__APPLE__) || defined(PADDLE_ARM)
   return nullptr;
 #else
@@ -232,7 +237,8 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
             if (WIFEXITED(wstatus) || wstatus == (128 + SIGPIPE) * 256) {
             } else {
               PADDLE_ENFORCE_NE(
-                  errno, ECHILD,
+                  errno,
+                  ECHILD,
                   platform::errors::Fatal("Must not be ECHILD errno here!"));
               *err_no = -1;
             }
@@ -242,7 +248,8 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 #endif
 }
 
-static int shell_p2open_fork_internal(const char* real_cmd, int pipein_fds[2],
+static int shell_p2open_fork_internal(const char* real_cmd,
+                                      int pipein_fds[2],
                                       int pipeout_fds[2]) {
 #if defined(_WIN32) || defined(__APPLE__) || defined(PADDLE_ARM)
   return 0;
@@ -355,8 +362,10 @@ static int _get_err_no(int err_no, int status) {
 }
 #endif
 
-static int _shell_execute_cmd(const std::string& cmd, std::string* output,
-                              int time_out, int sleep_inter,
+static int _shell_execute_cmd(const std::string& cmd,
+                              std::string* output,
+                              int time_out,
+                              int sleep_inter,
                               bool redirect_stderr = false) {
 #if defined(_WIN32) || defined(__APPLE__) || defined(PADDLE_ARM)
   PADDLE_THROW(platform::errors::Unimplemented(
@@ -413,7 +422,10 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
   if (time_out != 0) {
     *output += string::Sprintf(
         " _shell_execute_cmd execute cmd:%s ElapsedMS:%d, err_no:%d status:%d",
-        cmd, timer.ElapsedMS(), err_no, cmd_status);
+        cmd,
+        timer.ElapsedMS(),
+        err_no,
+        cmd_status);
     LOG(WARNING) << *output;
   }
 
@@ -422,14 +434,16 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
 #endif
 }
 
-std::string shell_get_command_output(const std::string& cmd, int time_out,
+std::string shell_get_command_output(const std::string& cmd,
+                                     int time_out,
                                      int sleep_inter) {
   std::string output;
   _shell_execute_cmd(cmd, &output, time_out, sleep_inter);
   return output;
 }
 
-std::vector<std::string> shell_execute_cmd(const std::string& cmd, int time_out,
+std::vector<std::string> shell_execute_cmd(const std::string& cmd,
+                                           int time_out,
                                            int sleep_inter,
                                            bool redirect_stderr) {
   std::string output;

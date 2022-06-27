@@ -51,7 +51,8 @@ class OpVariant {
     auto &attrs = Attrs();
     auto it = attrs.find(name);
     PADDLE_ENFORCE_NE(
-        it, attrs.end(),
+        it,
+        attrs.end(),
         platform::errors::NotFound("Cannot find attribute %s.", name));
     return BOOST_GET_CONST(AttrType, it->second);
   }

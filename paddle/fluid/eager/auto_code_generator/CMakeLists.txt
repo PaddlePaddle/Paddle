@@ -73,7 +73,7 @@ if(WIN32)
               ${eager_generator_path}
       DEPENDS mklml)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/libiomp5md.dll)
-  else(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
+  else()
     message("Copied openblas.dll for Eager AutoCodeGen")
     add_custom_command(
       OUTPUT ${eager_generator_path}/openblas.dll
@@ -103,7 +103,7 @@ if(WIN32)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/onnxruntime.dll)
     add_custom_command(
       OUTPUT ${eager_generator_path}/paddle2onnx.dll
-      COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_SHARED_LIB}
+      COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_LIB}
               ${eager_generator_path}
       DEPENDS paddle2onnx)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/paddle2onnx.dll)

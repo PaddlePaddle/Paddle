@@ -5,7 +5,7 @@ repos:
     -   id: remove-crlf
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
 -   repo: https://github.com/google/yapf
-    sha: v0.32.0
+    rev: v0.32.0
     hooks:
     -   id: yapf
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
@@ -27,12 +27,12 @@ repos:
         files: (api|backward)\.yaml$
 -   repo: local
     hooks:
-    -   id: clang-format-with-version-check
+    -   id: clang-format
         name: clang-format
         description: Format files with ClangFormat.
         entry: bash ./tools/codestyle/clang_format.hook -i
         language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps)$
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
         exclude: |
             (?x)^(
                 paddle/fluid/distributed/ps/thirdparty/round_robin.h
@@ -74,3 +74,9 @@ repos:
             (?x)^(
                 paddle/fluid/operators/CMakeLists.txt
             )$
+
+-   repo: https://github.com/cmake-lint/cmake-lint
+    rev: 1.4.2
+    hooks:
+    -   id: cmakelint
+        args: [--config=./tools/codestyle/.cmakelintrc]

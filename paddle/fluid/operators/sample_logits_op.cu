@@ -30,10 +30,13 @@ namespace operators {
 
 // UNDERSTAND: something like take_along_axis in numpy.
 template <typename T>
-__global__ void GPUTakeAlongD1(size_t size, const int batch_size,
+__global__ void GPUTakeAlongD1(size_t size,
+                               const int batch_size,
                                const int array_slice_size,
-                               const int idx_slice_size, const T* p_array,
-                               const int64_t* p_index, T* p_value) {
+                               const int idx_slice_size,
+                               const T* p_array,
+                               const int64_t* p_index,
+                               T* p_value) {
   const auto value_slice_size = idx_slice_size;
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   int step_size = blockDim.x * gridDim.x;
@@ -48,10 +51,13 @@ __global__ void GPUTakeAlongD1(size_t size, const int batch_size,
 // UNDERSTAND: something like put_along_axis in numpy but if there is duplicate
 // indices, scatter is done in += way.
 template <typename T>
-__global__ void GPUPutAlongD1(size_t size, const int batch_size,
+__global__ void GPUPutAlongD1(size_t size,
+                              const int batch_size,
                               const int array_slice_size,
-                              const int idx_slice_size, T* p_array,
-                              const int64_t* p_index, const T* p_value) {
+                              const int idx_slice_size,
+                              T* p_array,
+                              const int64_t* p_index,
+                              const T* p_value) {
   const auto value_slice_size = idx_slice_size;
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   int step_size = blockDim.x * gridDim.x;
@@ -156,12 +162,14 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
           context.Input<Tensor>("CustomizedSamples");
       const Tensor* customized_probabilities =
           context.Input<Tensor>("CustomizedProbabilities");
-      PADDLE_ENFORCE_EQ(customized_samples, samples,
+      PADDLE_ENFORCE_EQ(customized_samples,
+                        samples,
                         platform::errors::InvalidArgument(
                             "CustomizedSamples must be the same Tensor with "
                             "Samples when use_customized_samples = True"));
       PADDLE_ENFORCE_EQ(
-          customized_probabilities, probabilities,
+          customized_probabilities,
+          probabilities,
           platform::errors::InvalidArgument(
               "CustomizedProbabilities must be the same Tensor with "
               "Probabilities when use_customized_samples = True"));
@@ -171,8 +179,14 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
       // UNDERSTAND: sampling
       const auto seed = context.Attr<int>("seed");
       auto sampler_with_prob = math::GPUSampleWithProb<T>();
-      sampler_with_prob(context.cuda_device_context(), seed, num_classes, uniq,
-                        num_samples, labels, samples, probabilities);
+      sampler_with_prob(context.cuda_device_context(),
+                        seed,
+                        num_classes,
+                        uniq,
+                        num_samples,
+                        labels,
+                        samples,
+                        probabilities);
     }
 
     // UNDERSTAND: gather sampled logits and remove accidental hits if needed
@@ -193,8 +207,13 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
     grid = (size + threads - 1) / threads;
     GPUTakeAlongD1<T>
         <<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-            size, batch_size, array_slice_size, idx_slice_size, p_array,
-            p_index, p_value);
+            size,
+            batch_size,
+            array_slice_size,
+            idx_slice_size,
+            p_array,
+            p_index,
+            p_value);
 
     if (remove_accidental_hits) {
       const size_t size = batch_size * (num_true + num_samples);
@@ -249,8 +268,13 @@ class SampleLogitsGradCUDAKernel : public framework::OpKernel<T> {
 
     GPUPutAlongD1<T>
         <<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-            size, batch_size, array_slice_size, idx_slice_size, p_array,
-            p_index, p_value);
+            size,
+            batch_size,
+            array_slice_size,
+            idx_slice_size,
+            p_array,
+            p_index,
+            p_value);
   }
 };
 
@@ -258,7 +282,8 @@ class SampleLogitsGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(sample_logits, ops::SampleLogitsCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(sample_logits,
+                        ops::SampleLogitsCUDAKernel<float>,
                         ops::SampleLogitsCUDAKernel<double>);
 REGISTER_OP_CUDA_KERNEL(sample_logits_grad,
                         ops::SampleLogitsGradCUDAKernel<float>,

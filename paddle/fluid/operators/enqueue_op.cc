@@ -40,7 +40,8 @@ namespace operators {
 
 class EnqueueOp : public framework::OperatorBase {
  public:
-  EnqueueOp(const std::string& type, const framework::VariableNameMap& inputs,
+  EnqueueOp(const std::string& type,
+            const framework::VariableNameMap& inputs,
             const framework::VariableNameMap& outputs,
             const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -57,9 +58,9 @@ class EnqueueOp : public framework::OperatorBase {
             queue_name));
     const std::string& var_name = Input("X");
     auto* in_var = scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        in_var, platform::errors::NotFound("No variable with name %s found.",
-                                           var_name));
+    PADDLE_ENFORCE_NOT_NULL(in_var,
+                            platform::errors::NotFound(
+                                "No variable with name %s found.", var_name));
     auto* in_tensor = in_var->GetMutable<LoDTensor>();
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
