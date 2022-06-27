@@ -132,7 +132,9 @@ void profile(bool use_mkldnn, bool use_bfloat16) {
   std::vector<std::vector<PaddleTensor>> outputs;
   auto inputs = LoadInputData();
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
-                 inputs, &outputs, FLAGS_num_threads);
+                 inputs,
+                 &outputs,
+                 FLAGS_num_threads);
 }
 
 std::vector<std::vector<paddle::PaddleTensor>> LoadInputData() {
