@@ -156,7 +156,8 @@ void SparseCooTensorKernel(const Context& dev_ctx,
                            SparseCooTensor* out) {
   SparseCooTensor before_coalesced(
       indices, values, phi::make_ddim(dense_shape.GetData()));
-  CoalescedKernel<T, Context>(dev_ctx, before_coalesced, out);
+  // CoalescedKernel<T, Context>(dev_ctx, before_coalesced, out);
+  *out = before_coalesced;
 }
 
 }  // namespace sparse
