@@ -51,8 +51,10 @@ def convert_while_loop(cond, body, getter, setter):
 def _run_paddle_while_loop(cond, body, getter, setter):
     # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
     loop_vars = [to_static_variable(var) for var in getter()]
-    setter(loop_vars)
+    setter(loop_vars)  # change the non-local var to variable
+    # variable maybe modified to inner var. change it into
     loop_vars = control_flow.while_loop(cond, body, loop_vars)
+    setter(loop_vars)  # change the inner-scope var
     return loop_vars
 
 

@@ -88,6 +88,15 @@ def create_undefined_var(name):
 
 def create_nonlocal_stmt_node(names):
     assert isinstance(names, (list, tuple))
+
+    def remove_attribute(x):
+        if '.' in x: return x.split('.')[0]
+        else: return x
+
+    mapped = list(map(remove_attribute, names))
+    names = sorted(
+        mapped,
+        key=mapped.index)  # to keep the order, we can't use set() to unique
     func_code = "nonlocal {}".format(','.join(names))
     return gast.parse(func_code).body[0]
 
@@ -153,13 +162,23 @@ def create_get_args_node(names):
             nonlocal x, y
     """
     assert isinstance(names, (list, tuple))
+
+    def remove_attribute(x):
+        if '.' in x: return x.split('.')[0]
+        else: return x
+
+    mapped = list(map(remove_attribute, names))
+    nonlocal_names = sorted(
+        mapped,
+        key=mapped.index)  # to keep the order, we can't use set() to unique
     template = """
     def {func_name}():
-        nonlocal {vars}
+        nonlocal {nonlocal_vars}
         return {vars}
     """
     func_def = template.format(
         func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
+        nonlocal_vars=','.join(nonlocal_names),
         vars=",".join(names))
     return gast.parse(textwrap.dedent(func_def)).body[0]
 
@@ -178,13 +197,23 @@ def create_set_args_node(names):
             x, y = __args
     """
     assert isinstance(names, (list, tuple))
+
+    def remove_attribute(x):
+        if '.' in x: return x.split('.')[0]
+        else: return x
+
+    mapped = list(map(remove_attribute, names))
+    nonlocal_names = sorted(
+        mapped,
+        key=mapped.index)  # to keep the order, we can't use set() to unique
     template = """
     def {func_name}({args}):
-        nonlocal {vars}
+        nonlocal {nonlocal_vars}
         {vars} = {args}
     """
     func_def = template.format(
         func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
         args=ARGS_NAME,
+        nonlocal_vars=','.join(nonlocal_names),
         vars=",".join(names))
     return gast.parse(textwrap.dedent(func_def)).body[0]
