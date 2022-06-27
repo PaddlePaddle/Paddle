@@ -37,24 +37,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace experimental {
-namespace detail {
-static Place GetCorrectPlaceByPlaceType(const Place &place_type) {
-  auto alloc_type = place_type.GetType();
-  switch (alloc_type) {
-    case AllocationType::CPU:
-      return place_type;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case AllocationType::GPU:
-      return phi::Place(AllocationType::GPU,
-                        phi::backends::gpu::GetCurrentDeviceId());
-#endif
-    default:
-      PADDLE_THROW(phi::errors::Unavailable(
-          "The PlaceType is a legacy design, only supports CPU and GPU, "
-          "and will not support other place types in the future."));
-  }
-}
-}  // namespace detail
 
 /////// Tensor Methods ////////
 
@@ -76,7 +58,7 @@ Tensor::Tensor(const Place &place) {
          "Reason: A legal tensor cannot be constructed only based on "
          "the `place`, and datatype, shape, layout, etc. is also "
          "required.";
-  DefaultAllocator alloc(detail::GetCorrectPlaceByPlaceType(place));
+  DefaultAllocator alloc(place);
   impl_ = std::move(std::make_shared<phi::DenseTensor>(
       &alloc,
       std::move(phi::DenseTensorMeta(
@@ -92,7 +74,7 @@ Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
          "Reason: A legal tensor cannot be constructed only based on "
          "the `place` and `shape`, and datatype, layout, etc. is also "
          "required.";
-  DefaultAllocator alloc(detail::GetCorrectPlaceByPlaceType(place));
+  DefaultAllocator alloc(place);
   impl_ = std::move(std::make_shared<phi::DenseTensor>(
       &alloc,
       std::move(phi::DenseTensorMeta(phi::DataType::FLOAT32,

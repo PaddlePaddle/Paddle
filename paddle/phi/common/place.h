@@ -213,9 +213,6 @@ std::ostream& operator<<(std::ostream&, const Place&);
 namespace paddle {
 namespace experimental {
 using AllocationType = phi::AllocationType;
-using Place = phi::Place;
-using CPUPlace = phi::CPUPlace;
-using GPUPlace = phi::GPUPlace;
 using GPUPinnedPlace = phi::GPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
 using NPUPlace = phi::NPUPlace;
@@ -258,5 +255,7 @@ enum class PlaceType {
 
 PADDLE_API bool operator==(const Place& place, PlaceType place_type);
 PADDLE_API bool operator==(PlaceType place_type, const Place& place);
+
+PADDLE_API GPUPlace DefaultGPUPlace();
 
 }  // namespace paddle
