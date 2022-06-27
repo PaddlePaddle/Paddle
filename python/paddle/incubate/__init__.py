@@ -35,6 +35,8 @@ from . import sparse  #noqa: F401
 from . import nn  #noqa: F401
 from . import asp  #noqa: F401
 
+from ..fluid.incubate import fleet
+
 __all__ = [
     'LookAhead',
     'ModelAverage',
