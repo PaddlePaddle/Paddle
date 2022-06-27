@@ -599,7 +599,7 @@ static void GetGridDim(
   grid->y = grid_y;
 }
 
-static void GetBlockDim(int64_t mid_dim, int64_t low_dim, dim3* block) {
+static void GetBlockDim(int mid_dim, int low_dim, dim3* block) {
 #ifdef __HIPCC__
   constexpr int max_num_threads = 256;
 #else
@@ -612,11 +612,8 @@ static void GetBlockDim(int64_t mid_dim, int64_t low_dim, dim3* block) {
   block->x = std::min(block_x, static_cast<int>(max_num_threads / block->y));
 }
 
-static void GetLaunchConfig(int64_t high_dim,
-                            int64_t mid_dim,
-                            int64_t low_dim,
-                            dim3* grid,
-                            dim3* block) {
+static void GetLaunchConfig(
+    int high_dim, int mid_dim, int low_dim, dim3* grid, dim3* block) {
   GetBlockDim(mid_dim, low_dim, block);
   GetGridDim(high_dim, mid_dim, low_dim, *block, grid);
 }
@@ -625,19 +622,16 @@ template <typename T,
           typename AccT,
           template <typename, typename>
           class Functor>
-__global__ void NormalSoftmaxForward(T* output,
-                                     const T* input,
-                                     int64_t high_dim,
-                                     int64_t mid_dim,
-                                     int64_t low_dim) {
+__global__ void NormalSoftmaxForward(
+    T* output, const T* input, int high_dim, int mid_dim, int low_dim) {
   using ReduceMode = kps::details::ReduceMode;
 
-  int64_t high_stride = mid_dim * low_dim;
-  int64_t mid_stride = low_dim;
+  int high_stride = mid_dim * low_dim;
+  int mid_stride = low_dim;
   for (int high_id = blockIdx.y; high_id < high_dim; high_id += gridDim.y) {
     for (int low_id = blockIdx.x * blockDim.x + threadIdx.x; low_id < low_dim;
          low_id += blockDim.x * gridDim.x) {
-      int64_t input_offset = high_id * high_stride + low_id;
+      const int input_offset = high_id * high_stride + low_id;
 
       // 1. reduce max
       AccT max_value = -std::numeric_limits<AccT>::infinity();
@@ -676,7 +670,7 @@ __global__ void NormalSoftmaxForward(T* output,
       // 3. (log)softmax
       Functor<AccT, T> functor(max_value, sum);
       for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
-        int64_t data_offset = input_offset + mid_id * mid_stride;
+        int data_offset = input_offset + mid_id * mid_stride;
         output[data_offset] = functor(static_cast<AccT>(input[data_offset]));
       }
     }
@@ -691,28 +685,28 @@ template <typename T,
 __global__ void NormalSoftmaxBackward(T* input_grad,
                                       const T* output_grad,
                                       const T* output,
-                                      int64_t high_dim,
-                                      int64_t mid_dim,
-                                      int64_t low_dim) {
+                                      int high_dim,
+                                      int mid_dim,
+                                      int low_dim) {
   using ReduceMode = kps::details::ReduceMode;
 
-  int64_t high_stride = mid_dim * low_dim;
-  int64_t mid_stride = low_dim;
+  int high_stride = mid_dim * low_dim;
+  int mid_stride = low_dim;
   for (int high_id = blockIdx.y; high_id < high_dim; high_id += gridDim.y) {
     for (int low_id = blockIdx.x * blockDim.x + threadIdx.x; low_id < low_dim;
          low_id += blockDim.x * gridDim.x) {
-      int64_t grad_offset = high_id * high_stride + low_id;
+      int grad_offset = high_id * high_stride + low_id;
 
       // 1. reduce sum
       AccT sum = 0;
       if (LogMode) {
         for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
-          int64_t data_offset = grad_offset + mid_id * mid_stride;
+          int data_offset = grad_offset + mid_id * mid_stride;
           sum += static_cast<AccT>(output_grad[data_offset]);
         }
       } else {
         for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
-          int64_t data_offset = grad_offset + mid_id * mid_stride;
+          int data_offset = grad_offset + mid_id * mid_stride;
           sum += static_cast<AccT>(output_grad[data_offset]) *
                  static_cast<AccT>(output[data_offset]);
         }
@@ -730,7 +724,7 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
       // 2. (log)softmax backward
       Functor<AccT, T> functor(sum);
       for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
-        int64_t data_offset = grad_offset + mid_id * mid_stride;
+        int data_offset = grad_offset + mid_id * mid_stride;
         input_grad[data_offset] =
             functor(static_cast<AccT>(output_grad[data_offset]),
                     static_cast<AccT>(output[data_offset]));
@@ -743,9 +737,9 @@ template <typename T, bool LogMode = false>
 void LaunchNormalSoftmaxForward(const GPUContext& dev_ctx,
                                 T* output_data,
                                 const T* input_data,
-                                int64_t high_dim,
-                                int64_t mid_dim,
-                                int64_t low_dim) {
+                                int high_dim,
+                                int mid_dim,
+                                int low_dim) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   dim3 grid, block;
   GetLaunchConfig(high_dim, mid_dim, low_dim, &grid, &block);
@@ -765,9 +759,9 @@ void LaunchNormalSoftmaxBackward(const GPUContext& dev_ctx,
                                  T* input_grad_data,
                                  const T* output_grad_data,
                                  const T* output_data,
-                                 int64_t high_dim,
-                                 int64_t mid_dim,
-                                 int64_t low_dim) {
+                                 int high_dim,
+                                 int mid_dim,
+                                 int low_dim) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   dim3 grid, block;
   GetLaunchConfig(high_dim, mid_dim, low_dim, &grid, &block);
