@@ -118,7 +118,7 @@ class SparseAdagradOptimizer : public Optimizer {
                 ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) +
               optimizer_config.clk_coeff * ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) {
         ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 
-                feature_value_accessor_.common_feature_value.MfSize(mf_dim) / sizeof(float);
+                feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float);
 
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;
@@ -254,7 +254,7 @@ class SparseAdamOptimizer : public Optimizer {
                 ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) +
               optimizer_config.clk_coeff * ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) {
         ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] =
-                feature_value_accessor_.common_feature_value.MfSize(mf_dim) / sizeof(float);
+                feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float);
 
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;
@@ -263,10 +263,6 @@ class SparseAdamOptimizer : public Optimizer {
           ptr[feature_value_accessor_.common_feature_value.EmbedxWIndex() + i] = 
               (curand_uniform(&state)) * optimizer_config.mf_initial_range;
         }
-        ptr[feature_value_accessor_.common_feature_value.EmbedG2SumIndex() + Beta1PowIndex()] = 
-          optimizer_config.beta1_decay_rate;
-        ptr[feature_value_accessor_.common_feature_value.EmbedG2SumIndex() + Beta2PowIndex()] = 
-          optimizer_config.beta2_decay_rate;
         ptr[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + EmbedxBeta1PowIndex()] = 
           optimizer_config.beta1_decay_rate;
         ptr[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + EmbedxBeta2PowIndex()] = 
@@ -380,7 +376,7 @@ class SparseAdamSharedOptimizer : public Optimizer {
                 ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) +
               optimizer_config.clk_coeff * ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) {
         ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 
-                feature_value_accessor_.common_feature_value.MfSize(mf_dim) / sizeof(float);
+                feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float);
 
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;
@@ -389,10 +385,6 @@ class SparseAdamSharedOptimizer : public Optimizer {
           ptr[feature_value_accessor_.common_feature_value.EmbedxWIndex() + i] = 
               (curand_uniform(&state)) * optimizer_config.mf_initial_range;
         }
-        ptr[feature_value_accessor_.common_feature_value.EmbedG2SumIndex() + Beta1PowIndex()] = 
-          optimizer_config.beta1_decay_rate;
-        ptr[feature_value_accessor_.common_feature_value.EmbedG2SumIndex() + Beta2PowIndex()] = 
-          optimizer_config.beta2_decay_rate;
         ptr[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + EmbedxBeta1PowIndex()] = 
           optimizer_config.beta1_decay_rate;
         ptr[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + EmbedxBeta2PowIndex()] = 

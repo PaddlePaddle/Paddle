@@ -796,11 +796,12 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       if (dim > cpu_table_accessor_->GetAccessorInfo().dim - 
               cpu_table_accessor_->GetAccessorInfo().mf_size / sizeof(float)) {
         val[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 
-            feature_value_accessor_.common_feature_value.MfSize(mf_dim) / sizeof(float);
+            feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float);
 
-        for (int x = feature_value_accessor_.common_feature_value.EmbedxG2SumIndex(); 
-              x < int(feature_value_accessor_.common_feature_value.Size(mf_dim) / sizeof(float)); x++){
-          val[x] = ptr_val[x];
+        for (int x = 0; x < int(feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float));
+                x++) {
+          val[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + x]  =
+            ptr_val[cpu_table_accessor_->common_feature_value.EmbedxG2SumIndex() + x];
         }
       } else {
         val[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 0;
@@ -1035,7 +1036,7 @@ void PSGPUWrapper::EndPass() {
       size_t downpour_value_size = downpour_value->size();
       if (gpu_val[feature_value_accessor_.common_feature_value.MfSizeIndex()] > 0 &&
              downpour_value_size == (cpu_table_accessor_->GetAccessorInfo().dim - 
-              cpu_table_accessor_->GetAccessorInfo().mf_size / sizeof(float))) { // cpu_accessor 
+              int(cpu_table_accessor_->GetAccessorInfo().mf_size / sizeof(float)))) { // cpu_accessor 
         downpour_value->resize(cpu_table_accessor_->common_feature_value.Dim(mf_dim));
       }
       float* cpu_val = downpour_value->data();
@@ -1058,7 +1059,7 @@ void PSGPUWrapper::EndPass() {
 
       if (gpu_val[feature_value_accessor_.common_feature_value.MfSizeIndex()] > 0) {
         
-        for (int x = 0; x < int(feature_value_accessor_.common_feature_value.MfSize(mf_dim) / sizeof(float));
+        for (int x = 0; x < int(feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float));
                   x++) {
             cpu_val[cpu_table_accessor_->common_feature_value.EmbedxG2SumIndex() + x]  = 
               gpu_val[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + x];

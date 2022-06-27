@@ -115,7 +115,7 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
     }
 
     // 根据mf_dim 计算的 mf_size byte数
-    __host__ __device__ int MfSize(int& mf_dim) {
+    __host__ __device__ int MFSize(int& mf_dim) {
       int tmp_embedx_sgd_dim = 1;
       if (optimizer_type_ == 3) { //adam
         tmp_embedx_sgd_dim = mf_dim * 2 + 2;
