@@ -31,6 +31,7 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #endif
+#include "paddle/fluid/pybind/eager_op_function_impl_blacklist.h"
 #include "paddle/fluid/pybind/op_function_generator.h"
 
 // phi
@@ -426,6 +427,9 @@ GenerateOpFunctions() {
       continue;
     }
     auto& op_type = op_proto->type();
+    if (api_black_list.count(op_type)) {
+      continue;
+    }
     // Skip operators that will be handwriten in CUSTOM_HANDWRITE_OP_FUNC_FILE.
     if (CUSTOM_HANDWRITE_OPS_SET.count(op_type)) {
       append_custom_head_file = true;
