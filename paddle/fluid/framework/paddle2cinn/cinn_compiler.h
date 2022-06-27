@@ -20,13 +20,13 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <mutex>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace cinn {
 namespace common {
@@ -129,7 +129,7 @@ class CinnCompiler {
   std::unordered_map<std::int64_t, std::unique_ptr<CinnCompiledObject>>
       index2cache_;
   std::atomic_int64_t real_compiled_num_{0};
-  mutable phi::RWLock rwlock_;
+  mutable std::mutex lock_;
 
   DISABLE_COPY_AND_ASSIGN(CinnCompiler);
 };

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 
+#include <mutex>
 #include <cstdint>
 #include <iterator>
 #include <map>
@@ -43,7 +44,6 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/core/utils/rw_lock.h"
 
 DECLARE_bool(enable_pe_launch_cinn);
 DECLARE_bool(enable_cinn_auto_tune);
@@ -75,39 +75,32 @@ const CinnCompiledObject& CinnCompiler::Compile(
       graph, input_tensors, target.arch_str());
   CinnCacheKeyByStructure cur_key_by_struct;
 
-  bool exist = false;
-  {
-    phi::AutoRDLock r_guard{&rwlock_};
-    exist = cache_by_address_.count(cur_key_by_address) != 0;
-    // if cannot find graph by address, checkout whether the graph structure
-    // have been stored in cache.
-    if (!exist) {
-      // generate the structure cache key
-      cur_key_by_struct.SetKey(graph, input_tensors, target.arch_str());
-
-      // if the graph structure can be found, storing the graph address in
-      // cache for next query.
-      if (cache_by_struct_.count(cur_key_by_struct) != 0) {
-        exist = true;
-        cache_by_address_[cur_key_by_address] =
-            cache_by_struct_.at(cur_key_by_struct);
+  if (!cache_by_address_.count(cur_key_by_address)) {
+    // generate the structure cache key
+    cur_key_by_struct.SetKey(graph, input_tensors, target.arch_str());
+    if (!cache_by_struct_.count(cur_key_by_struct)) {
+      std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
+      auto compiled_res =
+          CompileGraph(graph, input_tensors, target, compiled_num, stream);
+      std::unique_lock<std::mutex> guard(lock_);
+      // double check cache_by_struct_
+      if (!cache_by_struct_.count(cur_key_by_struct)) {
+        cache_by_struct_[cur_key_by_struct] = compiled_num;
+        index2cache_.emplace(compiled_num, std::move(compiled_res));
+      }
+      // double check cache_by_address_
+      if (!cache_by_address_.count(cur_key_by_address)) {
+        cache_by_address_[cur_key_by_address] = cache_by_struct_.at(cur_key_by_struct);
+      }
+    } else {
+      std::unique_lock<std::mutex> guard(lock_);
+      // double check cache_by_address_
+      if (!cache_by_address_.count(cur_key_by_address)) {
+        cache_by_address_[cur_key_by_address] = cache_by_struct_.at(cur_key_by_struct);
       }
     }
   }
-  if (!exist) {
-    std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
-    auto compiled_res =
-        CompileGraph(graph, input_tensors, target, compiled_num, stream);
-    phi::AutoWRLock w_guard{&rwlock_};
-    if (!cache_by_struct_.count(cur_key_by_struct)) {
-      cache_by_address_[cur_key_by_address] = compiled_num;
-      cache_by_struct_[cur_key_by_struct] = compiled_num;
-      index2cache_.emplace(compiled_num, std::move(compiled_res));
-    }
-  }
-  phi::AutoRDLock guard{&rwlock_};
-  const auto& cached_boj = *index2cache_[cache_by_address_[cur_key_by_address]];
-  return cached_boj;
+  return *index2cache_.at(cache_by_address_.at(cur_key_by_address));
 }
 
 const CinnCompiledObject& CinnCompiler::Compile(
@@ -230,7 +223,7 @@ std::string CinnCompiler::ReadableKey(int64_t compilation_key) const {
 
 void CinnCompiler::Clear() {
   {
-    phi::AutoWRLock guard{&rwlock_};
+    std::unique_lock<std::mutex> guard(lock_);
     graphs_.clear();
     cache_by_address_.clear();
     cache_by_struct_.clear();
