@@ -657,7 +657,7 @@ class PostTrainingQuantization(object):
                 s += 0.02
                 bins = 2**(self._activation_bits - 1) - 1
                 if self._onnx_format:
-                    quant_var = np.clip(distribution(var_tensor / scale * bins),
+                    quant_var = np.clip(np.round(var_tensor / scale * bins),
                                         -bins - 1, bins)
                     quant_dequant_var = quant_var / bins * scale
                 else:
@@ -701,7 +701,7 @@ class PostTrainingQuantization(object):
                 s += 0.02
                 bins = 2**(self._activation_bits - 1) - 1
                 if self._onnx_format:
-                    quant_var = np.clip(distribution(var_tensor / scale * bins),
+                    quant_var = np.clip(np.round(var_tensor / scale * bins),
                                         -bins - 1, bins)
                     quant_dequant_var = quant_var / bins * scale
                 else:
