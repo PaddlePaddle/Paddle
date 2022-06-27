@@ -108,7 +108,8 @@ PyObject* pylayer_method_name(PyObject* self, PyObject* noargs) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
+PyObject* pylayer_method_apply(PyObject* cls,
+                               PyObject* args,
                                PyObject* kwargs) {
   EAGER_TRY
   VLOG(6) << "Begin run PyLayer apply...";
@@ -334,9 +335,10 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
               << ") uses Inplace Strategy.";
     }
 
-    auto grad_node = std::make_shared<egr::GradNodePyLayer>(
-        reinterpret_cast<PyObject*>(ctx), outputs_autograd_meta.size(),
-        inputs_autograd_meta.size());
+    auto grad_node =
+        std::make_shared<egr::GradNodePyLayer>(reinterpret_cast<PyObject*>(ctx),
+                                               outputs_autograd_meta.size(),
+                                               inputs_autograd_meta.size());
     ctx->grad_node = grad_node;
 
     if (ctx->materialize_grads) {
@@ -399,7 +401,8 @@ PyObject* tensor_properties_get_container(PyLayerObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-int tensor_properties_set_container(PyLayerObject* self, PyObject* value,
+int tensor_properties_set_container(PyLayerObject* self,
+                                    PyObject* value,
                                     void* closure) {
   EAGER_TRY
   Py_XINCREF(value);
@@ -421,7 +424,8 @@ PyObject* tensor_properties_get_non_differentiable(PyLayerObject* self,
 }
 
 int tensor_properties_set_non_differentiable(PyLayerObject* self,
-                                             PyObject* value, void* closure) {
+                                             PyObject* value,
+                                             void* closure) {
   EAGER_TRY
   Py_XINCREF(value);
   Py_XDECREF(self->non_differentiable);
@@ -441,7 +445,8 @@ PyObject* tensor_properties_get_dirty_tensors(PyLayerObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-int tensor_properties_set_dirty_tensors(PyLayerObject* self, PyObject* value,
+int tensor_properties_set_dirty_tensors(PyLayerObject* self,
+                                        PyObject* value,
                                         void* closure) {
   EAGER_TRY
   Py_XINCREF(value);
@@ -452,7 +457,8 @@ int tensor_properties_set_dirty_tensors(PyLayerObject* self, PyObject* value,
 }
 
 int tensor_properties_set_materialize_grads(PyLayerObject* self,
-                                            PyObject* value, void* closure) {
+                                            PyObject* value,
+                                            void* closure) {
   EAGER_TRY
   self->materialize_grads = CastPyArg2AttrBoolean(value, 0);
   return 0;
@@ -460,23 +466,41 @@ int tensor_properties_set_materialize_grads(PyLayerObject* self,
 }
 
 PyMethodDef pylayer_methods[] = {
-    {"name", (PyCFunction)(void (*)(void))pylayer_method_name, METH_NOARGS,
+    {"name",
+     (PyCFunction)(void (*)(void))pylayer_method_name,
+     METH_NOARGS,
      NULL},
-    {"apply", (PyCFunction)(void (*)(void))pylayer_method_apply,
-     METH_CLASS | METH_VARARGS | METH_KEYWORDS, NULL},
-    {"register_hook", (PyCFunction)(void (*)(void))pylayer_method_register_hook,
-     METH_O, NULL},
+    {"apply",
+     (PyCFunction)(void (*)(void))pylayer_method_apply,
+     METH_CLASS | METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"register_hook",
+     (PyCFunction)(void (*)(void))pylayer_method_register_hook,
+     METH_O,
+     NULL},
     {NULL, NULL, 0, NULL}};
 
 struct PyGetSetDef pylayer_properties[] {
-  {"container", (getter)tensor_properties_get_container,
-   (setter)tensor_properties_set_container, nullptr, nullptr},
-      {"non_differentiable", (getter)tensor_properties_get_non_differentiable,
-       (setter)tensor_properties_set_non_differentiable, nullptr, nullptr},
-      {"dirty_tensors", (getter)tensor_properties_get_dirty_tensors,
-       (setter)tensor_properties_set_dirty_tensors, nullptr, nullptr},
-      {"materialize_grads", nullptr,
-       (setter)tensor_properties_set_materialize_grads, nullptr, nullptr},
+  {"container",
+   (getter)tensor_properties_get_container,
+   (setter)tensor_properties_set_container,
+   nullptr,
+   nullptr},
+      {"non_differentiable",
+       (getter)tensor_properties_get_non_differentiable,
+       (setter)tensor_properties_set_non_differentiable,
+       nullptr,
+       nullptr},
+      {"dirty_tensors",
+       (getter)tensor_properties_get_dirty_tensors,
+       (setter)tensor_properties_set_dirty_tensors,
+       nullptr,
+       nullptr},
+      {"materialize_grads",
+       nullptr,
+       (setter)tensor_properties_set_materialize_grads,
+       nullptr,
+       nullptr},
   {
     nullptr, nullptr, nullptr, nullptr, nullptr
   }

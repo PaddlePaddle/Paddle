@@ -28,8 +28,8 @@ TEST(TensorRT, cascade_rcnn) {
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.SwitchUseFeedFetchOps(false);
-  config.EnableTensorRtEngine(1 << 30, batch_size, 40,
-                              AnalysisConfig::Precision::kFloat32, false);
+  config.EnableTensorRtEngine(
+      1 << 30, batch_size, 40, AnalysisConfig::Precision::kFloat32, false);
 
   auto predictor = CreatePaddlePredictor(config);
 

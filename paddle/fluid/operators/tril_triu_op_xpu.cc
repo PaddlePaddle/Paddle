@@ -60,12 +60,12 @@ class TrilTriuGradXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = 0;
     if (lower) {
-      r = xpu::tril(dev_ctx.x_context(), dout_data, dx_data, dy_shape,
-                    diagonal);
+      r = xpu::tril(
+          dev_ctx.x_context(), dout_data, dx_data, dy_shape, diagonal);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "tril_op");
     } else {
-      r = xpu::triu(dev_ctx.x_context(), dout_data, dx_data, dy_shape,
-                    diagonal);
+      r = xpu::triu(
+          dev_ctx.x_context(), dout_data, dx_data, dy_shape, diagonal);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "triu_op");
     }
   }
@@ -76,7 +76,8 @@ class TrilTriuGradXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    tril_triu, ops::TrilTriuXPUKernel<paddle::platform::XPUDeviceContext, int>,
+    tril_triu,
+    ops::TrilTriuXPUKernel<paddle::platform::XPUDeviceContext, int>,
     ops::TrilTriuXPUKernel<paddle::platform::XPUDeviceContext, float>);
 REGISTER_OP_XPU_KERNEL(
     tril_triu_grad,

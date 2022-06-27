@@ -1,3 +1,12 @@
+- api : atan2
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : Atan2InferMeta
+  kernel :
+    func : atan2
+  backward : atan2_grad
+
 - api : bernoulli
   args : (Tensor x)
   output : Tensor
@@ -5,6 +14,24 @@
     func : UnchangedInferMeta
   kernel :
     func : bernoulli
+
+- api : cholesky
+  args : (Tensor x, bool upper=false)
+  output : Tensor
+  infer_meta :
+    func : CholeskyInferMeta
+  kernel :
+    func : cholesky
+  backward : cholesky_grad
+
+- api : cholesky_solve
+  args : (Tensor x, Tensor y, bool upper=false)
+  output : Tensor
+  infer_meta :
+    func : CholeskySolveInferMeta
+  kernel :
+    func : cholesky_solve
+  backward : cholesky_solve_grad
 
 - api : erf
   args : (Tensor x)

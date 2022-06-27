@@ -25,7 +25,8 @@ class MeshgridNPUKernel : public framework::OpKernel<T> {
     auto ins = context.MultiInput<framework::Tensor>("X");
     auto outs = context.MultiOutput<framework::Tensor>("Out");
     PADDLE_ENFORCE_EQ(
-        (ins.size() > 1) && (ins.size() < 7), true,
+        (ins.size() > 1) && (ins.size() < 7),
+        true,
         platform::errors::InvalidArgument(
             "Excepted Tensor numbers between 2 and 6, but only received d% .",
             ins.size()));
@@ -79,7 +80,8 @@ class MeshgridNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_NPU_KERNEL(
-    meshgrid, paddle::operators::MeshgridNPUKernel<int>,
+    meshgrid,
+    paddle::operators::MeshgridNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
     paddle::operators::MeshgridNPUKernel<int64_t>,
 #endif

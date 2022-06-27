@@ -33,7 +33,8 @@ namespace framework {
 namespace ir {
 namespace test {
 
-OpDesc* CreateOp(ProgramDesc* prog, const std::string& op_type_name,
+OpDesc* CreateOp(ProgramDesc* prog,
+                 const std::string& op_type_name,
                  const std::vector<InOutVarNamePair>& inputs,
                  const std::vector<InOutVarNamePair>& outputs,
                  bool use_mkldnn) {
@@ -118,11 +119,11 @@ bool AssertOpsCount(const Graph& graph,
     }
 
     const std::string op_type_name = node->Op()->Type();
-    auto op_it =
-        std::find_if(std::begin(op_type_count), std::end(op_type_count),
-                     [op_type_name](const OpTypeCountPair& p) {
-                       return op_type_name == p.first;
-                     });
+    auto op_it = std::find_if(std::begin(op_type_count),
+                              std::end(op_type_count),
+                              [op_type_name](const OpTypeCountPair& p) {
+                                return op_type_name == p.first;
+                              });
     if (op_it != std::end(op_type_count)) {
       op_it->second--;
     }
@@ -158,9 +159,12 @@ ProgramDesc BuildProgramDesc(const std::vector<std::string>& transient_vars,
   return prog;
 }
 
-bool RunPassAndAssert(Graph* graph, const std::string& pass_name,
-                      const std::string& from, const std::string& to,
-                      int removed_nodes_count, int added_nodes_count) {
+bool RunPassAndAssert(Graph* graph,
+                      const std::string& pass_name,
+                      const std::string& from,
+                      const std::string& to,
+                      int removed_nodes_count,
+                      int added_nodes_count) {
   if (!TestIsReachable(*graph, from, to)) return false;
 
   int original_nodes_num = graph->Nodes().size();
@@ -179,7 +183,8 @@ template <typename T>
 void InitLoDTensorHolder(const Scope& scope,
                          const paddle::platform::Place& place,
                          const std::string& var_name,
-                         const std::vector<int64_t>& dims, const T* data) {
+                         const std::vector<int64_t>& dims,
+                         const T* data) {
   auto var = scope.FindLocalVar(var_name);
   auto tensor = var->GetMutable<LoDTensor>();
   auto* tensor_mem_ptr = tensor->mutable_data<T>(phi::make_ddim(dims), place);
@@ -199,20 +204,23 @@ template void InitLoDTensorHolder<float>(const Scope&,
 template void InitLoDTensorHolder<int>(const Scope&,
                                        const paddle::platform::Place&,
                                        const std::string&,
-                                       const std::vector<int64_t>&, const int*);
+                                       const std::vector<int64_t>&,
+                                       const int*);
 template void InitLoDTensorHolder<double>(const Scope&,
                                           const paddle::platform::Place&,
                                           const std::string&,
                                           const std::vector<int64_t>&,
                                           const double*);
 
-OpDesc* GetOp(const ProgramDesc& prog, const std::string& op_type,
+OpDesc* GetOp(const ProgramDesc& prog,
+              const std::string& op_type,
               const std::string& output_name,
               const std::string& output_arg_name) {
   return GetOp(prog.Block(0), op_type, output_name, output_arg_name);
 }
 
-OpDesc* GetOp(const BlockDesc& block_desc, const std::string& op_type,
+OpDesc* GetOp(const BlockDesc& block_desc,
+              const std::string& op_type,
               const std::string& output_name,
               const std::string& output_arg_name) {
   auto all_ops = block_desc.AllOps();

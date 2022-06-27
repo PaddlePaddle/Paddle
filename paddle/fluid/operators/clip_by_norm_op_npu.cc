@@ -56,7 +56,9 @@ class NPUClipByNormKernel : public framework::OpKernel<T> {
       axis.push_back(i);
     }
     const auto& square_sum_runner =
-        NpuOpRunner("SquareSumV1", {*input}, {square_sum},
+        NpuOpRunner("SquareSumV1",
+                    {*input},
+                    {square_sum},
                     {{"axis", axis}, {"keep_dims", false}});
     square_sum_runner.Run(stream);
 

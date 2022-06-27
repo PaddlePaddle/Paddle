@@ -25,8 +25,11 @@ namespace paddle {
 namespace operators {
 
 template <typename T, typename FCT>
-static void MatMulXPUFunction(const Tensor* x, const Tensor* y, Tensor* out,
-                              bool trans_x, bool trans_y,
+static void MatMulXPUFunction(const Tensor* x,
+                              const Tensor* y,
+                              Tensor* out,
+                              bool trans_x,
+                              bool trans_y,
                               const paddle::framework::ExecutionContext& ctx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto& x_dims = x->dims();
@@ -85,30 +88,36 @@ class BmmXPUKernel : public framework::OpKernel<T> {
     auto x_dims = x->dims();
     auto y_dims = y->dims();
 
-    PADDLE_ENFORCE_EQ(x_dims.size(), 3,
+    PADDLE_ENFORCE_EQ(x_dims.size(),
+                      3,
                       platform::errors::InvalidArgument(
                           "Input(X) of BmmOp must be 3-dimensional in BmmOp, "
                           "but received X's shape: [%s].",
                           x_dims));
-    PADDLE_ENFORCE_EQ(y_dims.size(), 3,
+    PADDLE_ENFORCE_EQ(y_dims.size(),
+                      3,
                       platform::errors::InvalidArgument(
                           "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
                           "but received Y's shape: [%s].",
                           y_dims));
     PADDLE_ENFORCE_EQ(
-        x_dims[0], y_dims[0],
+        x_dims[0],
+        y_dims[0],
         platform::errors::InvalidArgument(
             "Input(X) and Input(Y) must have the same batch size in BmmOp, "
             "but received X's batch size: [%s],"
             "Y's batch size [%s]",
-            x_dims[0], y_dims[0]));
+            x_dims[0],
+            y_dims[0]));
     PADDLE_ENFORCE_EQ(
-        x_dims[2], y_dims[1],
+        x_dims[2],
+        y_dims[1],
         platform::errors::InvalidArgument(
             "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
             "but receive X's width: [%s],"
             "Y's height: [%s].",
-            x_dims[2], y_dims[1]));
+            x_dims[2],
+            y_dims[1]));
 
     if (std::is_same<paddle::platform::float16, T>::value) {
       MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, ctx);
@@ -128,8 +137,10 @@ template <typename T>
 class BmmXPUGradKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext& ctx,
-              const framework::Tensor& a, bool trans_a,
-              const framework::Tensor& b, bool trans_b,
+              const framework::Tensor& a,
+              bool trans_a,
+              const framework::Tensor& b,
+              bool trans_b,
               framework::Tensor* out) const {
     out->mutable_data<T>(ctx.GetPlace());
     if (std::is_same<paddle::platform::float16, T>::value) {
@@ -146,8 +157,10 @@ class BmmXPUGradKernel : public framework::OpKernel<T> {
   }
 
   void CalcInputGrad(const framework::ExecutionContext& context,
-                     const framework::Tensor& a, bool trans_a,
-                     const framework::Tensor& b, bool trans_b,
+                     const framework::Tensor& a,
+                     bool trans_a,
+                     const framework::Tensor& b,
+                     bool trans_b,
                      framework::Tensor* out) const {
     if (out == nullptr) return;
     MatMul(context, a, trans_a, b, trans_b, out);
@@ -203,9 +216,11 @@ class BmmXPUGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_XPU_KERNEL(bmm, ops::BmmXPUKernel<float>,
+REGISTER_OP_XPU_KERNEL(bmm,
+                       ops::BmmXPUKernel<float>,
                        ops::BmmXPUKernel<plat::float16>);
-REGISTER_OP_XPU_KERNEL(bmm_grad, ops::BmmXPUGradKernel<float>,
+REGISTER_OP_XPU_KERNEL(bmm_grad,
+                       ops::BmmXPUGradKernel<float>,
                        ops::BmmXPUGradKernel<plat::float16>);
 
 #endif

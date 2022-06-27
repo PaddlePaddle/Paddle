@@ -45,14 +45,17 @@ class DeformableConvXPUKernel : public framework::OpKernel<T> {
     const std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
 
     PADDLE_ENFORCE_EQ(
-        deformable_groups == 1, true,
+        deformable_groups == 1,
+        true,
         platform::errors::InvalidArgument((
             "XPU only support deformable_groups == 1 in deformable_conv op.")));
     PADDLE_ENFORCE_EQ(
-        groups == 1, true,
+        groups == 1,
+        true,
         platform::errors::InvalidArgument(
             ("XPU only support groups == 1 in deformable_conv op.")));
-    PADDLE_ENFORCE_EQ(filter.dims()[2] <= 8 && filter.dims()[3] <= 8, true,
+    PADDLE_ENFORCE_EQ(filter.dims()[2] <= 8 && filter.dims()[3] <= 8,
+                      true,
                       platform::errors::InvalidArgument(
                           "Filter high and weight should less than 8 on xpu "
                           "in deformable_conv op."));
@@ -68,9 +71,10 @@ class DeformableConvXPUKernel : public framework::OpKernel<T> {
 
     // set zeros for d_table_data
     const int zero = 0;
-    int r = xpu::constant<T>(dev_ctx.x_context(), output_prt, output->numel(),
-                             zero);
-    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+    int r = xpu::constant<T>(
+        dev_ctx.x_context(), output_prt, output->numel(), zero);
+    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS,
+                      true,
                       platform::errors::External(
                           "XPU API return wrong value[%d], please check where "
                           "Baidu Kunlun Card is properly installed.",
@@ -90,14 +94,30 @@ class DeformableConvXPUKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < batch_size / im2col_step; ++i) {
       int r = xpu::deformable_conv<float, float, float, int>(
-          dev_ctx.x_context(), input_ptr + i * im2col_step * input_dim,
-          filter_ptr, offset_ptr + i * im2col_step * input_offset_dim,
+          dev_ctx.x_context(),
+          input_ptr + i * im2col_step * input_dim,
+          filter_ptr,
+          offset_ptr + i * im2col_step * input_offset_dim,
           mask_ptr + i * im2col_step * input_mask_dim,
-          output_prt + i * im2col_step * output_dim, n, c, h, w, f, ksize,
-          strides, paddings, dilations, groups, deformable_groups, nullptr,
-          nullptr, nullptr, true);
+          output_prt + i * im2col_step * output_dim,
+          n,
+          c,
+          h,
+          w,
+          f,
+          ksize,
+          strides,
+          paddings,
+          dilations,
+          groups,
+          deformable_groups,
+          nullptr,
+          nullptr,
+          nullptr,
+          true);
       PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
+          r,
+          XPU_SUCCESS,
           platform::errors::External(
               "XPU deformable_conv kernel return wrong value[%d].", r));
     }
@@ -149,14 +169,17 @@ class DeformableConvGradXPUKernel : public framework::OpKernel<T> {
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
 
     PADDLE_ENFORCE_EQ(
-        deformable_groups == 1, true,
+        deformable_groups == 1,
+        true,
         platform::errors::InvalidArgument((
             "XPU only support deformable_groups == 1 in deformable_conv op.")));
     PADDLE_ENFORCE_EQ(
-        groups == 1, true,
+        groups == 1,
+        true,
         platform::errors::InvalidArgument(
             ("XPU only support groups == 1 in deformable_conv op.")));
-    PADDLE_ENFORCE_EQ(filter.dims()[2] <= 8 && filter.dims()[3] <= 8, true,
+    PADDLE_ENFORCE_EQ(filter.dims()[2] <= 8 && filter.dims()[3] <= 8,
+                      true,
                       platform::errors::InvalidArgument(
                           "Filter high and weight should less than 8 on xpu "
                           "in deformable_conv op."));
@@ -224,37 +247,61 @@ class DeformableConvGradXPUKernel : public framework::OpKernel<T> {
         xpu::constant<T>(dev_ctx.x_context(), dx_data, input->numel(), zero);
     int r_dw =
         xpu::constant<T>(dev_ctx.x_context(), dw_data, filter.numel(), zero);
-    int r_doffset = xpu::constant<T>(dev_ctx.x_context(), doffset_data,
-                                     offset.numel(), zero);
+    int r_doffset = xpu::constant<T>(
+        dev_ctx.x_context(), doffset_data, offset.numel(), zero);
     int r_dmask =
         xpu::constant<T>(dev_ctx.x_context(), dmask_data, mask.numel(), zero);
-    int r_filter = xpu::constant<T>(dev_ctx.x_context(), filter_grad_tmp,
-                                    filter.numel(), zero);
+    int r_filter = xpu::constant<T>(
+        dev_ctx.x_context(), filter_grad_tmp, filter.numel(), zero);
     auto ret = (r_dx == xpu::Error_t::SUCCESS) && (r_dx == r_dw) &&
                (r_dx == r_doffset) && (r_dx == r_dmask) && (r_dx == r_filter);
-    PADDLE_ENFORCE_EQ(ret, true,
+    PADDLE_ENFORCE_EQ(ret,
+                      true,
                       platform::errors::External(
                           "XPU API return wrong value, please check where "
                           "Baidu Kunlun Card is properly installed."));
 
     for (int i = 0; i < batch_size / im2col_step; ++i) {
       int r = xpu::deformable_conv_grad<float, float, float, int>(
-          dev_ctx.x_context(), input_ptr + i * im2col_step * input_dim,
-          filter_ptr, offset_ptr + i * im2col_step * input_offset_dim,
+          dev_ctx.x_context(),
+          input_ptr + i * im2col_step * input_dim,
+          filter_ptr,
+          offset_ptr + i * im2col_step * input_offset_dim,
           mask_ptr + i * im2col_step * input_mask_dim,
           output_grad_ptr + i * im2col_step * output_dim,
-          dx_data + i * im2col_step * input_dim, filter_grad_tmp,
+          dx_data + i * im2col_step * input_dim,
+          filter_grad_tmp,
           doffset_data + i * im2col_step * input_offset_dim,
-          dmask_data + i * im2col_step * input_mask_dim, n, c, h, w, f, ksize,
-          strides, paddings, dilations, groups, deformable_groups, nullptr,
-          nullptr, nullptr, nullptr, nullptr, true);
+          dmask_data + i * im2col_step * input_mask_dim,
+          n,
+          c,
+          h,
+          w,
+          f,
+          ksize,
+          strides,
+          paddings,
+          dilations,
+          groups,
+          deformable_groups,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr,
+          true);
       PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
+          r,
+          XPU_SUCCESS,
           platform::errors::External(
               "XPU deformable_conv_grad kernel return wrong value[%d].", r));
-      r = baidu::xpu::api::add<T>(dev_ctx.x_context(), filter_grad_tmp, dw_data,
-                                  dw_data, filter.numel());
-      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+      r = baidu::xpu::api::add<T>(dev_ctx.x_context(),
+                                  filter_grad_tmp,
+                                  dw_data,
+                                  dw_data,
+                                  filter.numel());
+      PADDLE_ENFORCE_EQ(r,
+                        XPU_SUCCESS,
                         platform::errors::External(
                             "XPU add kernel return wrong value[%d].", r));
     }

@@ -38,18 +38,22 @@ class LookupTableOp : public framework::OperatorWithKernel {
     int ids_rank = ids_dims.size();
     VLOG(5) << "ids rank is " << ids_rank << std::endl;
     PADDLE_ENFORCE_EQ(
-        table_dims.size(), 2,
+        table_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "ShapeError: The dimensions of the 'lookup table' must be 2. "
             "But received lookup table's dimensions = %d, "
             "lookup table's shape = [%s].",
-            table_dims.size(), table_dims));
+            table_dims.size(),
+            table_dims));
     PADDLE_ENFORCE_EQ(
-        ids_dims[ids_rank - 1], 1,
+        ids_dims[ids_rank - 1],
+        1,
         platform::errors::InvalidArgument(
             "ShapeError: The last dimensions of the 'Ids' tensor must be 1. "
             "But received Ids's last dimensions = %d, Ids's shape = [%s].",
-            ids_dims[ids_rank - 1], ids_dims));
+            ids_dims[ids_rank - 1],
+            ids_dims));
 
     auto output_dims =
         phi::vectorize(phi::slice_ddim(ids_dims, 0, ids_rank - 1));
@@ -218,20 +222,25 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lookup_table, ops::LookupTableOp, ops::LookupTableOpMaker,
+REGISTER_OPERATOR(lookup_table,
+                  ops::LookupTableOp,
+                  ops::LookupTableOpMaker,
                   ops::LookupTableGradOpMaker<paddle::framework::OpDesc>,
                   ops::LookupTableGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
+REGISTER_OPERATOR(lookup_table_grad,
+                  ops::LookupTableOpGrad,
                   ops::LookupTableGradOpNoBufferVarsInferer,
                   ops::LookupTableOpGradVarTypeInference);
 
-REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>,
+REGISTER_OP_CPU_KERNEL(lookup_table,
+                       ops::LookupTableKernel<float>,
                        ops::LookupTableKernel<double>,
                        ops::LookupTableKernel<int8_t>,
                        ops::LookupTableKernel<int16_t>,
                        ops::LookupTableKernel<paddle::platform::bfloat16>);
-REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>,
+REGISTER_OP_CPU_KERNEL(lookup_table_grad,
+                       ops::LookupTableGradKernel<float>,
                        ops::LookupTableGradKernel<double>,
                        ops::LookupTableGradKernel<paddle::platform::bfloat16>);
 
@@ -244,6 +253,7 @@ REGISTER_OP_VERSION(lookup_table)
     )ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "entry_config",
-            "(std::string) embedding sparse feature entry config.", ""));
+            "(std::string) embedding sparse feature entry config.",
+            ""));
 
 /* ========================================================================== */

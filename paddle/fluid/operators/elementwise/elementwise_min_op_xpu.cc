@@ -44,9 +44,11 @@ class ElementwiseMinGradXPUKernel : public ElemwiseGradKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(elementwise_min, ops::ElementwiseMinXPUKernel<float>,
+REGISTER_OP_XPU_KERNEL(elementwise_min,
+                       ops::ElementwiseMinXPUKernel<float>,
                        ops::ElementwiseMinXPUKernel<paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
-    elementwise_min_grad, ops::ElementwiseMinGradXPUKernel<float>,
+    elementwise_min_grad,
+    ops::ElementwiseMinGradXPUKernel<float>,
     ops::ElementwiseMinGradXPUKernel<paddle::platform::float16>);
 #endif

@@ -454,9 +454,12 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[in] block: the block to insert comm ops
   /// \param[in] ring_id: the ring id to be used to init NCCL env
   ///
-  void InsertCommOp(std::string tmp_var_name, int nranks, int rank,
+  void InsertCommOp(std::string tmp_var_name,
+                    int nranks,
+                    int rank,
                     const std::vector<std::string> &peer_endpoints,
-                    framework::BlockDesc *block, int ring_id);
+                    framework::BlockDesc *block,
+                    int ring_id);
 #endif
 
  private:

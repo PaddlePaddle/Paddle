@@ -30,7 +30,8 @@ class GetFloatStatusKernel : public framework::OpKernel<T> {
     const auto* float_status = ctx.Input<framework::Tensor>("FloatStatus");
     auto* float_status_out = ctx.Output<framework::Tensor>("FloatStatusOut");
     // GetClearFloatStatus modifies the input.
-    PADDLE_ENFORCE_EQ(float_status_out, float_status,
+    PADDLE_ENFORCE_EQ(float_status_out,
+                      float_status,
                       platform::errors::PreconditionNotMet(
                           "The input(FloatStatus) and Output(FloatStatusOut) "
                           "should be the same."));
