@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,20 +16,25 @@ from __future__ import print_function
 
 import os
 
-os.environ['FLAGS_enable_eager_mode'] = '0'
+os.environ['FLAGS_enable_eager_mode'] = '1'
 
+import os
 import unittest
 import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
-class TestDygraphGroupSharded(TestMultipleGpus):
+class TestDygraphShardingStage3(TestMultipleGpus):
 
-    # check group sharded logic as well as the accuracy with single mode
-    def test_dygraph_group_sharded(self):
-        self.run_mnist_2gpu('dygraph_group_sharded_api.py', eager_mode=False)
+    # check sharding logic as well as the accuracy with single mode
+    def test_dygraph_sharding_stage3(self):
+        self.run_mnist_2gpu('dygraph_group_sharded_stage3.py')
+
+    def test_dygraph_sharding_stage3_offload(self):
+        self.run_mnist_2gpu('dygraph_group_sharded_stage3_offload.py')
 
 
 if __name__ == "__main__":
+    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()
