@@ -1964,6 +1964,13 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
+  m.def("get_all_op_names", []() {
+    std::vector<std::string> op_names;
+    for (auto &iter : OpInfoMap::Instance().map()) {
+      op_names.emplace_back(iter.first);
+    }
+    return op_names;
+  });
   m.def("get_op_attrs_default_value",
         [](py::bytes byte_name) -> paddle::framework::AttributeMap {
           std::string op_type = byte_name;
