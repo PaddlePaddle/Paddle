@@ -14,18 +14,9 @@
 
 from __future__ import print_function
 
-from paddle.utils import gast
-import inspect
-import numpy as np
 import paddle
 import paddle.fluid as fluid
 import unittest
-
-from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import NameVisitor
-from paddle.fluid.dygraph.jit import declarative
-
-SEED = 2020
-np.random.seed(SEED)
 
 
 class MyLayer(paddle.nn.Layer):
