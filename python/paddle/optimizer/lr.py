@@ -18,7 +18,6 @@ import warnings
 from paddle import Tensor
 import paddle.fluid.core as core
 from ..fluid.framework import _in_legacy_dygraph
-from ..fluid.layers import exponential_decay
 
 __all__ = [  # noqa
     'LRScheduler',
@@ -37,7 +36,6 @@ __all__ = [  # noqa
     'MultiplicativeDecay',
     'OneCycleLR',
     'CyclicLR',
-    'exponential_decay',
 ]
 
 

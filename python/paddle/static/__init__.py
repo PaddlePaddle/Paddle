@@ -70,7 +70,8 @@ from ..fluid.layers import create_parameter  # noqa: F401
 from ..fluid.layers import create_global_var  # noqa: F401
 from ..fluid.layers.metric_op import auc  # noqa: F401
 from ..fluid.layers.metric_op import accuracy  # noqa: F401
-from ..fluid.layers.contrib.layers import ctr_metric_bundle  # noqa: F401
+from ..fluid.contrib.layers import ctr_metric_bundle  # noqa: F401
+from ..fluid.layers import exponential_decay  # noqa: F401
 
 __all__ = [  #noqa
     'append_backward', 'gradients', 'Executor', 'global_scope', 'scope_guard',
