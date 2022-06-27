@@ -1040,7 +1040,8 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
   } else if (is_xpu_tensor) {
 #ifdef PADDLE_WITH_XPU
     py::array py_arr(py::dtype(tensor_pydtype), py_dims, py_strides);
-    PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
+    PADDLE_ENFORCE_EQ(py_arr.writeable(),
+                      true,
                       platform::errors::InvalidArgument(
                           "PyArray is not writable, in which case memory leak "
                           "or double free would occur"));
@@ -1090,7 +1091,8 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
   } else if (is_npu_tensor) {
 #ifdef PADDLE_WITH_ASCEND_CL
     py::array py_arr(py::dtype(tensor_pydtype), py_dims, py_strides);
-    PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
+    PADDLE_ENFORCE_EQ(py_arr.writeable(),
+                      true,
                       platform::errors::InvalidArgument(
                           "PyArray is not writable, in which case memory leak "
                           "or double free would occur"));
@@ -1106,8 +1108,8 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
         tensor_buf_ptr,
         copy_bytes,
         reinterpret_cast<const platform::NPUDeviceContext &>(ctx).stream());
-    ctx.Wait();
-    return py_arr;
+        ctx.Wait();
+        return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use NPUPlace in CPU/GPU/XPU version, "
@@ -1116,7 +1118,8 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
   } else if (is_mlu_tensor) {
 #ifdef PADDLE_WITH_MLU
     py::array py_arr(py::dtype(tensor_pydtype), py_dims, py_strides);
-    PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
+    PADDLE_ENFORCE_EQ(py_arr.writeable(),
+                      true,
                       platform::errors::InvalidArgument(
                           "PyArray is not writable, in which case memory leak "
                           "or double free would occur"));
@@ -1148,7 +1151,8 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
   } else if (is_custom_device_tensor) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     py::array py_arr(py::dtype(tensor_pydtype), py_dims, py_strides);
-    PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
+    PADDLE_ENFORCE_EQ(py_arr.writeable(),
+                      true,
                       platform::errors::InvalidArgument(
                           "PyArray is not writable, in which case memory leak "
                           "or double free would occur"));
