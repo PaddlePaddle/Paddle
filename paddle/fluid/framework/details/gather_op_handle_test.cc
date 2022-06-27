@@ -116,9 +116,11 @@ struct TestGatherOpHandle {
     // add output
     nodes_.emplace_back(
         ir::CreateNodeForTest("node3", ir::Node::Type::kVariable).release());
-    auto* out_var_handle =
-        new VarHandle(nodes_.back().get(), 2, input_scope_idx, "out",
-                      gpu_list_[input_scope_idx]);
+    auto* out_var_handle = new VarHandle(nodes_.back().get(),
+                                         2,
+                                         input_scope_idx,
+                                         "out",
+                                         gpu_list_[input_scope_idx]);
     vars_.emplace_back(out_var_handle);
     op_handle_->AddOutput(out_var_handle);
 
@@ -144,8 +146,9 @@ struct TestGatherOpHandle {
          ++input_scope_idx) {
       auto in_var = param_scopes_.at(input_scope_idx)->FindVar("input");
       PADDLE_ENFORCE_NOT_NULL(
-          in_var, platform::errors::NotFound(
-                      "The variable '%s' is not found in the scope.", "input"));
+          in_var,
+          platform::errors::NotFound(
+              "The variable '%s' is not found in the scope.", "input"));
       auto in_selected_rows = in_var->GetMutable<phi::SelectedRows>();
       auto value = in_selected_rows->mutable_value();
       value->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
@@ -160,8 +163,9 @@ struct TestGatherOpHandle {
 
     auto out_var = param_scopes_.at(output_scope_idx)->FindVar("out");
     PADDLE_ENFORCE_NOT_NULL(
-        out_var, platform::errors::NotFound(
-                     "The variable '%s' is not found in the scope.", "out"));
+        out_var,
+        platform::errors::NotFound(
+            "The variable '%s' is not found in the scope.", "out"));
     auto out_selected_rows = out_var->GetMutable<phi::SelectedRows>();
 
     auto in_var = param_scopes_.at(output_scope_idx)->FindVar("input");
@@ -180,19 +184,24 @@ struct TestGatherOpHandle {
     auto& out_select_rows = out_var->Get<phi::SelectedRows>();
     auto rt = out_select_rows.value();
 
-    PADDLE_ENFORCE_EQ(out_select_rows.height(), height,
+    PADDLE_ENFORCE_EQ(out_select_rows.height(),
+                      height,
                       platform::errors::InvalidArgument(
                           "The height of SelectedRows is not equal to "
                           "the expected, expect %d, but got %d.",
-                          height, out_select_rows.height()));
+                          height,
+                          out_select_rows.height()));
 
     for (size_t k = 0; k < out_select_rows.rows().size(); ++k) {
       PADDLE_ENFORCE_EQ(
-          out_select_rows.rows()[k], rows[k % rows.size()],
+          out_select_rows.rows()[k],
+          rows[k % rows.size()],
           platform::errors::InvalidArgument(
               "The item at position %d of rows of SelectedRows is not equal to "
               "the expected, expect %d, but got %d.",
-              k, rows[k % rows.size()], out_select_rows.rows()[k]));
+              k,
+              rows[k % rows.size()],
+              out_select_rows.rows()[k]));
     }
 
     f::Tensor result_tensor;

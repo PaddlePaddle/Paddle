@@ -28,8 +28,8 @@ class Buffer {
 
   template <typename T>
   T *Alloc(size_t size) {
-    using AllocT = typename std::conditional<std::is_same<T, void>::value,
-                                             uint8_t, T>::type;
+    using AllocT = typename std::
+        conditional<std::is_same<T, void>::value, uint8_t, T>::type;
     if (UNLIKELY(size == 0)) return nullptr;
     size *= sizeof(AllocT);
     if (allocation_ == nullptr || allocation_->size() < size) {

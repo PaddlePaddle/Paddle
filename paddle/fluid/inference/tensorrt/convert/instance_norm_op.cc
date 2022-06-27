@@ -35,7 +35,8 @@ namespace tensorrt {
 class InstanceNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert fluid prelu op to tensorrt instance norm layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -56,11 +57,13 @@ class InstanceNormOpConverter : public OpConverter {
     auto* scale_tensor = scale_var->GetMutable<framework::LoDTensor>();
     auto* bias_tensor = bias_var->GetMutable<framework::LoDTensor>();
     PADDLE_ENFORCE_EQ(
-        scale_tensor->numel(), bias_tensor->numel(),
+        scale_tensor->numel(),
+        bias_tensor->numel(),
         platform::errors::InvalidArgument(
             "Num of input [Scale] and [Bias] of instance_norm op converter "
             "should be equal. Got Scale num = %ld, but Bias num = %ld",
-            scale_tensor->numel(), bias_tensor->numel()));
+            scale_tensor->numel(),
+            bias_tensor->numel()));
     auto* scale_d = scale_tensor->data<float>();
     auto* bias_d = bias_tensor->data<float>();
 

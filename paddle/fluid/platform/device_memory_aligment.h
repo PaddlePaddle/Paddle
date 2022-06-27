@@ -27,7 +27,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
-size_t Alignment(size_t size, const platform::Place &place,
+size_t Alignment(size_t size,
+                 const platform::Place &place,
                  int align_size = -1);
 }  // namespace platform
 }  // namespace paddle

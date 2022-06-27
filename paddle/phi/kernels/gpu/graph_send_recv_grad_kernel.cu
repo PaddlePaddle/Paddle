@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/graph_send_recv_grad_kernel.h"
+
 #include <algorithm>
 #include <vector>
 
@@ -19,7 +21,6 @@
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
-#include "paddle/phi/kernels/graph_send_recv_grad_kernel.h"
 
 namespace phi {
 

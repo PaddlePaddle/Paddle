@@ -33,7 +33,8 @@ class ShapeOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -43,7 +44,8 @@ class ShapeOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -83,11 +85,14 @@ Return the shape of the input.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-DECLARE_INFER_SHAPE_FUNCTOR(shape, ShapeInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(shape,
+                            ShapeInferShapeFunctor,
                             PD_INFER_META(phi::ShapeInferMeta));
 
 REGISTER_OPERATOR(
-    shape, ops::ShapeOp, ops::ShapeOpMaker,
+    shape,
+    ops::ShapeOp,
+    ops::ShapeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ShapeInferShapeFunctor);

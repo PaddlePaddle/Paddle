@@ -20,7 +20,8 @@ limitations under the License. */
 DECLARE_bool(benchmark);
 
 PADDLE_DEFINE_EXPORTED_bool(
-    eager_delete_scope, true,
+    eager_delete_scope,
+    true,
     "Delete local scope eagerly. It will reduce GPU memory usage but "
     "slow down the destruction of variables.(around 1% performance harm)");
 
@@ -162,7 +163,8 @@ void Scope::DeleteScope(Scope* scope) const {
   {
     SCOPE_KIDS_WRITER_LOCK
     auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
-    PADDLE_ENFORCE_NE(it, this->kids_.end(),
+    PADDLE_ENFORCE_NE(it,
+                      this->kids_.end(),
                       platform::errors::NotFound(
                           "%p is not found in %p as kid scope", scope, this));
     this->kids_.erase(it);
@@ -249,13 +251,15 @@ void Scope::RenameInternal(const std::string& origin_name,
                            const std::string& new_name) const {
   auto origin_it = vars_.find(origin_name);
   PADDLE_ENFORCE_NE(
-      origin_it, vars_.end(),
+      origin_it,
+      vars_.end(),
       platform::errors::NotFound(
           "Original variable with name %s is not found in the scope.",
           origin_name));
   auto new_it = vars_.find(new_name);
   PADDLE_ENFORCE_EQ(
-      new_it, vars_.end(),
+      new_it,
+      vars_.end(),
       platform::errors::AlreadyExists(
           "The variable with name %s already exists in the scope.", new_name));
   vars_[new_name].reset(origin_it->second.release());

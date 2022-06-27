@@ -38,10 +38,11 @@ class PutAlongAxisOp : public framework::OperatorWithKernel {
         ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -78,10 +79,11 @@ class PutAlongAxisGradOp : public framework::OperatorWithKernel {
                                    ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -109,9 +111,12 @@ DECLARE_INPLACE_OP_INFERER(PutAlongAxisInplaceInferer, {"Input", "Result"});
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(put_along_axis, PutAlongAxisInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(put_along_axis,
+                            PutAlongAxisInferShapeFunctor,
                             PD_INFER_META(phi::PutAlongAxisInferMeta));
-REGISTER_OPERATOR(put_along_axis, ops::PutAlongAxisOp, ops::PutAlongAxisOpMaker,
+REGISTER_OPERATOR(put_along_axis,
+                  ops::PutAlongAxisOp,
+                  ops::PutAlongAxisOpMaker,
                   ops::PutAlongAxisGradOpMaker<paddle::framework::OpDesc>,
                   ops::PutAlongAxisGradOpMaker<paddle::imperative::OpBase>,
                   paddle::operators::PutAlongAxisInplaceInferer,

@@ -35,8 +35,8 @@ class ClipXPUKernel : public framework::OpKernel<T> {
       auto* max_t = ctx.Input<Tensor>("Max");
       auto* max_data = max_t->data<T>();
       if (platform::is_xpu_place(max_t->place())) {
-        paddle::framework::TensorCopySync(*max_t, platform::CPUPlace(),
-                                          &max_cpu);
+        paddle::framework::TensorCopySync(
+            *max_t, platform::CPUPlace(), &max_cpu);
         max_data = max_cpu.data<T>();
       }
       max = max_data[0];
@@ -48,8 +48,8 @@ class ClipXPUKernel : public framework::OpKernel<T> {
       auto* min_t = ctx.Input<Tensor>("Min");
       auto* min_data = min_t->data<T>();
       if (platform::is_xpu_place(min_t->place())) {
-        paddle::framework::TensorCopySync(*min_t, platform::CPUPlace(),
-                                          &min_cpu);
+        paddle::framework::TensorCopySync(
+            *min_t, platform::CPUPlace(), &min_cpu);
         min_data = min_cpu.data<T>();
       }
       min = min_data[0];
@@ -59,13 +59,15 @@ class ClipXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto x_data = reinterpret_cast<const XPUDataType*>(x->data<T>());
     auto out_data = reinterpret_cast<XPUDataType*>(out->data<T>());
-    int r = xpu::clip_v2(dev_ctx.x_context(), x_data, out_data, x->numel(), min,
-                         max);
+    int r = xpu::clip_v2(
+        dev_ctx.x_context(), x_data, out_data, x->numel(), min, max);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External("XPU API(clip_v2) return wrong "
                                    "value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+                                   r,
+                                   XPUAPIErrorMsg[r]));
   }
 };
 

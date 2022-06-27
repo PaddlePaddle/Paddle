@@ -60,7 +60,8 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
     int nranks = comm->nranks();
     int rank = comm->rank();
 
-    PADDLE_ENFORCE_EQ(nranks, 2,
+    PADDLE_ENFORCE_EQ(nranks,
+                      2,
                       platform::errors::InvalidArgument(
                           "The nranks must be 2, but (%d)", nranks));
 
@@ -86,7 +87,8 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(send_v2, ops::CSendOpASCENDKernel<int>,
+REGISTER_OP_NPU_KERNEL(send_v2,
+                       ops::CSendOpASCENDKernel<int>,
                        ops::CSendOpASCENDKernel<int8_t>,
                        ops::CSendOpASCENDKernel<float>,
                        ops::CSendOpASCENDKernel<plat::float16>);

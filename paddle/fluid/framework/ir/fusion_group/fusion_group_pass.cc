@@ -64,7 +64,9 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
   bool save_intermediate_out = false;
   for (auto& vec : subgraphs) {
     fusion_group::SubGraph subgraph(
-        type, "", save_intermediate_out,
+        type,
+        "",
+        save_intermediate_out,
         std::unordered_set<Node*>(vec.begin(), vec.end()));
     VLOG(3) << "subgraph: {\n" << DebugString(subgraph.SortedNodes()) << "}\n";
 

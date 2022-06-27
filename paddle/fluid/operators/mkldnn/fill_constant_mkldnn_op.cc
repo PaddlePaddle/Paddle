@@ -24,18 +24,20 @@ template <typename T>
 class FillConstantMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
-  FillConstantMKLDNNHandler(Tensor* out, dnnl::engine engine,
+  FillConstantMKLDNNHandler(Tensor* out,
+                            dnnl::engine engine,
                             platform::Place cpu_place)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
-    const auto src0_md = dnnl::memory::desc(
-        {out->numel(), sizeof(T)}, platform::MKLDNNGetDataType<uint8_t>(),
-        dnnl::memory::format_tag::ab);
+    const auto src0_md =
+        dnnl::memory::desc({out->numel(), sizeof(T)},
+                           platform::MKLDNNGetDataType<uint8_t>(),
+                           dnnl::memory::format_tag::ab);
 
     dnnl::primitive_attr attrs;
     attrs.set_scales(DNNL_ARG_SRC_0, /* mask = */ 0, {0.0f});
 
-    this->AcquireForwardPrimitiveDescriptor(attrs, dnnl::algorithm::binary_add,
-                                            src0_md, src1_md, src0_md);
+    this->AcquireForwardPrimitiveDescriptor(
+        attrs, dnnl::algorithm::binary_add, src0_md, src1_md, src0_md);
   }
 
   static const dnnl::memory::desc src1_md;
@@ -43,7 +45,8 @@ class FillConstantMKLDNNHandler
 
 template <typename T>
 const dnnl::memory::desc FillConstantMKLDNNHandler<T>::src1_md(
-    {1, sizeof(T)}, platform::MKLDNNGetDataType<uint8_t>(),
+    {1, sizeof(T)},
+    platform::MKLDNNGetDataType<uint8_t>(),
     dnnl::memory::format_tag::ab);
 
 template <typename T>
@@ -67,21 +70,24 @@ class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
     FillConstantMKLDNNHandler<T> handler(out, dnnl_engine, ctx.GetPlace());
 
     dnnl::memory constant_value_memory =
-        dnnl::memory(FillConstantMKLDNNHandler<T>::src1_md, dnnl_engine,
+        dnnl::memory(FillConstantMKLDNNHandler<T>::src1_md,
+                     dnnl_engine,
                      reinterpret_cast<uint8_t*>(&fill_value));
 
     auto src0_memory_p = handler.AcquireDstMemory(out);
     auto fill_constant_p = handler.AcquireForwardPrimitive();
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    fill_constant_p->execute(astream, {{DNNL_ARG_SRC_0, *src0_memory_p},
-                                       {DNNL_ARG_SRC_1, constant_value_memory},
-                                       {DNNL_ARG_DST, *src0_memory_p}});
+    fill_constant_p->execute(astream,
+                             {{DNNL_ARG_SRC_0, *src0_memory_p},
+                              {DNNL_ARG_SRC_1, constant_value_memory},
+                              {DNNL_ARG_DST, *src0_memory_p}});
     astream.wait();
 
     // src0_memory_p's md was just to allow the usage of a binary
     // primitive as a memset, and now we need to create a real one
-    out->set_mem_desc({phi::vectorize(shape), platform::MKLDNNGetDataType<T>(),
+    out->set_mem_desc({phi::vectorize(shape),
+                       platform::MKLDNNGetDataType<T>(),
                        platform::GetPlainMKLDNNFormat(shape.size())});
   }
 
@@ -112,7 +118,8 @@ class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("ValueTensor")) {
       const auto* value_tensor = ctx.Input<Tensor>("ValueTensor");
       PADDLE_ENFORCE_EQ(
-          value_tensor->numel(), 1,
+          value_tensor->numel(),
+          1,
           platform::errors::InvalidArgument(
               "When use Tensor as value to set Tensor value in fill_constant, "
               "value input(ValueTensor) size must be 1, but got %d",
@@ -127,5 +134,7 @@ class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(fill_constant, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(fill_constant,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::FillConstantMKLDNNKernel<float>);

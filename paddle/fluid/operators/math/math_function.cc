@@ -82,23 +82,27 @@ template struct SetConstant<platform::XPUDeviceContext,
                             platform::complex<double>>;
 #endif
 
-#define DEFINE_CPU_TRANS(RANK)                                              \
-  template struct Transpose<platform::CPUDeviceContext, platform::float16,  \
-                            RANK>;                                          \
-  template struct Transpose<platform::CPUDeviceContext, platform::bfloat16, \
-                            RANK>;                                          \
-  template struct Transpose<platform::CPUDeviceContext, float, RANK>;       \
-  template struct Transpose<platform::CPUDeviceContext, double, RANK>;      \
-  template struct Transpose<platform::CPUDeviceContext, int, RANK>;         \
-  template struct Transpose<platform::CPUDeviceContext, int64_t, RANK>;     \
-  template struct Transpose<platform::CPUDeviceContext, bool, RANK>;        \
-  template struct Transpose<platform::CPUDeviceContext, int16_t, RANK>;     \
-  template struct Transpose<platform::CPUDeviceContext, uint8_t, RANK>;     \
-  template struct Transpose<platform::CPUDeviceContext, int8_t, RANK>;      \
-  template struct Transpose<platform::CPUDeviceContext,                     \
-                            platform::complex<float>, RANK>;                \
-  template struct Transpose<platform::CPUDeviceContext,                     \
-                            platform::complex<double>, RANK>;
+#define DEFINE_CPU_TRANS(RANK)                                          \
+  template struct Transpose<platform::CPUDeviceContext,                 \
+                            platform::float16,                          \
+                            RANK>;                                      \
+  template struct Transpose<platform::CPUDeviceContext,                 \
+                            platform::bfloat16,                         \
+                            RANK>;                                      \
+  template struct Transpose<platform::CPUDeviceContext, float, RANK>;   \
+  template struct Transpose<platform::CPUDeviceContext, double, RANK>;  \
+  template struct Transpose<platform::CPUDeviceContext, int, RANK>;     \
+  template struct Transpose<platform::CPUDeviceContext, int64_t, RANK>; \
+  template struct Transpose<platform::CPUDeviceContext, bool, RANK>;    \
+  template struct Transpose<platform::CPUDeviceContext, int16_t, RANK>; \
+  template struct Transpose<platform::CPUDeviceContext, uint8_t, RANK>; \
+  template struct Transpose<platform::CPUDeviceContext, int8_t, RANK>;  \
+  template struct Transpose<platform::CPUDeviceContext,                 \
+                            platform::complex<float>,                   \
+                            RANK>;                                      \
+  template struct Transpose<platform::CPUDeviceContext,                 \
+                            platform::complex<double>,                  \
+                            RANK>;
 
 DEFINE_CPU_TRANS(1);
 DEFINE_CPU_TRANS(2);
@@ -110,7 +114,8 @@ DEFINE_CPU_TRANS(6);
 template <typename T>
 struct TransposeNormal<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& in, framework::Tensor* out,
+                  const framework::Tensor& in,
+                  framework::Tensor* out,
                   const std::vector<int>& axis) {
     const int rank = axis.size();
     auto in_stride = phi::stride(in.dims());
@@ -167,21 +172,24 @@ struct TensorSetConstantCPU {
 
 template <>
 void set_constant_with_place<platform::XPUPlace>(
-    const platform::DeviceContext& context, framework::Tensor* tensor,
+    const platform::DeviceContext& context,
+    framework::Tensor* tensor,
     float value) {
   PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
 }
 
 template <>
 void set_constant_with_place<platform::NPUPlace>(
-    const platform::DeviceContext& context, framework::Tensor* tensor,
+    const platform::DeviceContext& context,
+    framework::Tensor* tensor,
     float value) {
   PADDLE_THROW(platform::errors::Unimplemented("NPUPlace is not supported"));
 }
 
 template <>
 void set_constant_with_place<platform::NPUPinnedPlace>(
-    const platform::DeviceContext& context, framework::Tensor* tensor,
+    const platform::DeviceContext& context,
+    framework::Tensor* tensor,
     float value) {
   PADDLE_THROW(
       platform::errors::Unimplemented("NPUPinnedPlace is not supported"));
@@ -189,42 +197,48 @@ void set_constant_with_place<platform::NPUPinnedPlace>(
 
 template <>
 void set_constant_with_place<platform::IPUPlace>(
-    const platform::DeviceContext& context, framework::Tensor* tensor,
+    const platform::DeviceContext& context,
+    framework::Tensor* tensor,
     float value) {
   PADDLE_THROW(platform::errors::Unimplemented("IPUPlace is not supported"));
 }
 
 template <>
 void set_constant_with_place<platform::CPUPlace>(
-    const platform::DeviceContext& context, framework::Tensor* tensor,
+    const platform::DeviceContext& context,
+    framework::Tensor* tensor,
     float value) {
   framework::VisitDataType(tensor->type(), TensorSetConstantCPU(tensor, value));
 }
 
 template <>
 void set_constant_with_place<platform::MLUPlace>(
-    const platform::DeviceContext& context, framework::Tensor* tensor,
+    const platform::DeviceContext& context,
+    framework::Tensor* tensor,
     float value) {
   PADDLE_THROW(platform::errors::Unimplemented("MLUPlace is not supported"));
 }
 
 template <>
 void set_constant_with_place<platform::CustomPlace>(
-    const platform::DeviceContext& context, framework::Tensor* tensor,
+    const platform::DeviceContext& context,
+    framework::Tensor* tensor,
     float value) {
   PADDLE_THROW(platform::errors::Unimplemented("CustomPlace is not supported"));
 }
 
 template <>
 void set_constant_with_place<platform::CUDAPinnedPlace>(
-    const platform::DeviceContext& context, framework::Tensor* tensor,
+    const platform::DeviceContext& context,
+    framework::Tensor* tensor,
     float value) {
   framework::VisitDataType(tensor->type(), TensorSetConstantCPU(tensor, value));
 }
 
 struct TensorSetConstantWithPlace : public boost::static_visitor<void> {
   TensorSetConstantWithPlace(const platform::DeviceContext& context,
-                             framework::Tensor* tensor, float value)
+                             framework::Tensor* tensor,
+                             float value)
       : context_(context), tensor_(tensor), value_(value) {}
 
   template <typename Place>
@@ -238,7 +252,8 @@ struct TensorSetConstantWithPlace : public boost::static_visitor<void> {
 };
 
 void set_constant(const platform::DeviceContext& context,
-                  framework::Tensor* tensor, float value) {
+                  framework::Tensor* tensor,
+                  float value) {
   TensorSetConstantWithPlace func(context, tensor, value);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // tensor->place().apply_visitor(func);
@@ -252,25 +267,30 @@ template <typename T>
 struct RowwiseAdd<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input,
-                  const framework::Tensor& vector, framework::Tensor* output) {
+                  const framework::Tensor& vector,
+                  framework::Tensor* output) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto size = input.numel() / in_dims[0];
     PADDLE_ENFORCE_EQ(
-        vector.numel(), size,
+        vector.numel(),
+        size,
         platform::errors::InvalidArgument(
             "The input vector size"
             " should be equal to the size of each row of input tensor."
             " Expected vector size=%d, but received %d",
-            size, vector.numel()));
+            size,
+            vector.numel()));
     const char* in_dims_cstr = in_dims.to_str().c_str();
     const char* out_dims_cstr = out_dims.to_str().c_str();
-    PADDLE_ENFORCE_EQ(out_dims, in_dims,
+    PADDLE_ENFORCE_EQ(out_dims,
+                      in_dims,
                       platform::errors::InvalidArgument(
                           "The output tensor shape should be same as the input"
                           " tensor shape. Expected output tensor shape: %s,"
                           " but received %s",
-                          in_dims_cstr, out_dims_cstr));
+                          in_dims_cstr,
+                          out_dims_cstr));
 
     auto in = framework::EigenMatrix<T>::From(input);
     auto vec = framework::EigenVector<T>::Flatten(vector);
@@ -298,7 +318,8 @@ template struct RowwiseMean<platform::CPUDeviceContext, double>;
 
 template <typename T>
 struct ElementwiseAddTo<platform::CPUDeviceContext, T> {
-  void operator()(platform::CPUDeviceContext* ctx, const framework::Tensor& src,
+  void operator()(platform::CPUDeviceContext* ctx,
+                  const framework::Tensor& src,
                   framework::Tensor* dst) {
     auto in = framework::EigenVector<T>::Flatten(src);
     auto out = framework::EigenVector<T>::Flatten(*dst);
