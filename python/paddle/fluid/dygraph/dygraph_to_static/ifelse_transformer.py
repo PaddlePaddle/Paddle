@@ -647,7 +647,7 @@ def create_convert_ifelse_node(return_name_ids,
         false_func_source = false_func.name
 
     convert_ifelse_layer = gast.parse(
-        '_jst.convert_ifelse('
+        '_jst.IfElse('
         '{pred}, {true_fn}, {false_fn}, {get_args}, {set_args}, {return_name_ids})'
         .format(
             pred=ast_to_source_code(pred),

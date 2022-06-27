@@ -89,7 +89,7 @@ def create_while_nodes(condition_name, body_name, loop_var_names):
         else:
             assign_loop_var_names.append(name)
 
-    while_func_name = "_jst.convert_while_loop"
+    while_func_name = "_jst.While"
     while_node_str = "[{}] = {}({}, {}, [{}])".format(
         ",".join(assign_loop_var_names), while_func_name, condition_name,
         body_name, ",".join(loop_var_names))

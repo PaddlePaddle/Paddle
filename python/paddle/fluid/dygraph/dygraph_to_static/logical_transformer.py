@@ -43,7 +43,7 @@ class LogicalTransformer(gast.NodeTransformer):
         a = x > 1 and y < 1
 
     Transformed code:
-        a = paddle.jit.dy2static.convert_logical_and(lambda:x>1, lambda:y<1)
+        a = _jst.And(lambda:x>1, lambda:y<1)
     """
 
     def __init__(self, wrapper_root):
@@ -57,7 +57,7 @@ class LogicalTransformer(gast.NodeTransformer):
         self.generic_visit(node)
         if isinstance(node.op, gast.Not):
             arg = ast_to_source_code(node.operand)
-            new_node_str = "_jst.convert_logical_not({})".format(arg)
+            new_node_str = "_jst.Not({})".format(arg)
             # NOTE: gast.parse returns Module(body=[expr(value=...)])
             new_node = gast.parse(new_node_str).body[0].value
             return new_node
@@ -66,9 +66,9 @@ class LogicalTransformer(gast.NodeTransformer):
     def visit_BoolOp(self, node):
         self.generic_visit(node)
         if isinstance(node.op, gast.And):
-            new_node = self._create_bool_op_node(node.values, 'and')
+            new_node = self._create_bool_op_node(node.values, 'And')
         elif isinstance(node.op, gast.Or):
-            new_node = self._create_bool_op_node(node.values, 'or')
+            new_node = self._create_bool_op_node(node.values, 'Or')
         else:
             raise TypeError(
                 "Only supports and/or syntax in control flow if statement.")
@@ -95,7 +95,7 @@ class LogicalTransformer(gast.NodeTransformer):
             nodes = [pre_logic_node] + [post_logic_node]
 
         args = [ast_to_source_code(child) for child in nodes]
-        new_node_str = "_jst.convert_logical_{}(lambda:{}, lambda:{})".format(
+        new_node_str = "_jst.{}(lambda:{}, lambda:{})".format(
             api_type, args[0], args[1])
         # NOTE: gast.parse return Module(body=[expr(...)])
         new_node = gast.parse(new_node_str).body[0].value
