@@ -29,13 +29,13 @@ void IdentityLossKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   switch (reduction) {
     case 0:
-      // mean
-      phi::MeanAllKernel<T>(dev_ctx, x, out);
-      break;
-    case 1:
       // sum
       phi::SumRawKernel<T>(
           dev_ctx, x, std::vector<int64_t>{0}, false, true, out->dtype(), out);
+      break;
+    case 1:
+      // mean
+      phi::MeanAllKernel<T>(dev_ctx, x, out);
       break;
     case 2:
       // none

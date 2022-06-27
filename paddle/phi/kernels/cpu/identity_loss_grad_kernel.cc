@@ -30,13 +30,13 @@ void IdentityLossGradKernel(const Context& dev_ctx,
                             DenseTensor* x_grad) {
   switch (reduction) {
     case 0:
-      // mean
-      phi::MeanAllGradKernel<T>(dev_ctx, x, out_grad, x_grad);
-      break;
-    case 1:
       // sum
       phi::ReduceSumGradKernel<T>(
           dev_ctx, x, out_grad, std::vector<int64_t>{0}, false, true, x_grad);
+      break;
+    case 1:
+      // mean
+      phi::MeanAllGradKernel<T>(dev_ctx, x, out_grad, x_grad);
       break;
     case 2:
       // none
