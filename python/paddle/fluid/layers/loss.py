@@ -1234,7 +1234,7 @@ def softmax_with_cross_entropy(logits,
 def identity_loss(x, reduction="none"):
     r"""Marks a tensor as being part of the loss calculation for IPU.
 
-    This function should be called on the (final) loss of a model so that
+    This operator is used to handle on the (final) loss of a model so that
     it is used as the start of backpropagation.
 
     When `reduction` is `none`, return raw `Out`.
