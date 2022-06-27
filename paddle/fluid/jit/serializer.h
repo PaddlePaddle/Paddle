@@ -54,10 +54,14 @@ class Deserializer {
  private:
   bool IsPersistable(framework::VarDesc* desc_ptr);
 
+  bool StartWith(const std::string& str, const std::string& suffix);
+
   bool EndsWith(const std::string& str, const std::string& suffix);
 
-  const std::vector<std::pair<std::string, std::string>>
-  GetPdmodelFileNamePrefix(const std::string& path);
+  bool FileExists(const std::string& file_path);
+
+  const std::vector<std::pair<std::string, std::string>> GetPdmodelFilePaths(
+      const std::string& path);
 
   void ReadTensorData(const std::string& file_name,
                       const std::set<std::string>& var_name,
@@ -75,7 +79,8 @@ class Deserializer {
 
 void Export(const Layer& layer, const std::string& file_path);
 
-Layer Load(const std::string& file_path, const phi::Place& place);
+// path should be like 'dirname/file_prefix'
+Layer Load(const std::string& path, const phi::Place& place);
 
 }  // namespace jit
 }  // namespace paddle

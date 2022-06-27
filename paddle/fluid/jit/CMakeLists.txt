@@ -28,8 +28,9 @@ if(WITH_TESTING
    AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
   add_custom_target(
     jit_download_program
-    COMMAND wget -nc https://paddle-ci.gz.bcebos.com/dy2st/Testing.tar.gz
-    COMMAND tar zxvf Testing.tar.gz)
+    COMMAND wget -nc
+            https://paddle-ci.gz.bcebos.com/dy2st/multi_program_load.tar.gz
+    COMMAND tar zxvf multi_program_load.tar.gz)
   set(JIT_DEPS
       phi
       elementwise_add_op

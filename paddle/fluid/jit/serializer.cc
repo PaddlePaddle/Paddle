@@ -17,16 +17,16 @@
 namespace paddle {
 namespace jit {
 
-Layer Deserializer::operator()(const std::string& dir_path,
+Layer Deserializer::operator()(const std::string& path,
                                const phi::Place& place) {
-  const auto& file_name_prefixs = GetPdmodelFileNamePrefix(dir_path);
+  const auto& pdmodel_paths = GetPdmodelFilePaths(path);
   // set is ordered
   std::set<std::string> param_names_set;
   std::vector<std::shared_ptr<FunctionInfo>> infos;
   Name2VariableMap params_dict;
-  for (auto& it : file_name_prefixs) {
+  for (auto& it : pdmodel_paths) {
     auto& func_name = it.first;
-    auto program_desc = LoadProgram(dir_path + it.second + PDMODEL_SUFFIX);
+    auto program_desc = LoadProgram(it.second);
 
     // TODO(dev): load int/float attrs
     std::vector<std::string> persist_var_names;
@@ -43,16 +43,14 @@ Layer Deserializer::operator()(const std::string& dir_path,
   }
 
   // Read from one pdiparams file, refine here
-  ReadTensorData(dir_path + "export.forward.pdiparams",
-                 param_names_set,
-                 place,
-                 &params_dict);
+  ReadTensorData(path + PDPARAMS_SUFFIX, param_names_set, place, &params_dict);
 
   // ReadAttributeData();
 
   Layer layer = Layer(infos, params_dict, place);
 
   for (auto& info : infos) {
+    VLOG(3) << "info->FunctionName(): " << info->FunctionName();
     layer.SetFunction(info->FunctionName(),
                       MakeFunction<ExecutorFunction>(info, params_dict, place));
   }
@@ -71,6 +69,11 @@ bool Deserializer::IsPersistable(framework::VarDesc* desc_ptr) {
   return desc_ptr->Persistable();
 }
 
+bool Deserializer::StartWith(const std::string& str,
+                             const std::string& prefix) {
+  return str.compare(0, prefix.length(), prefix) == 0;
+}
+
 bool Deserializer::EndsWith(const std::string& str, const std::string& suffix) {
   if (str.length() < suffix.length()) {
     return false;
@@ -79,23 +82,42 @@ bool Deserializer::EndsWith(const std::string& str, const std::string& suffix) {
          0;
 }
 
-// process filename like `export.forward.pdmodel` and `export.infer.pdmodel`
+bool Deserializer::FileExists(const std::string& file_path) {
+  std::ifstream file(file_path.c_str());
+  return file.good();
+}
+
 const std::vector<std::pair<std::string, std::string>>
-Deserializer::GetPdmodelFileNamePrefix(const std::string& path) {
-  std::vector<std::pair<std::string, std::string>> file_name_prefixs;
-  DIR* dir = opendir(path.c_str());
+Deserializer::GetPdmodelFilePaths(const std::string& path) {
+  std::vector<std::pair<std::string, std::string>> pdmodel_paths;
+  std::string layer_prefix = path.substr(path.find_last_of("/") + 1);
+  std::string dir_path = path.substr(0, path.length() - layer_prefix.length());
+  VLOG(3) << "layer_prefix:" << layer_prefix << "dir_path:" << dir_path;
+  DIR* dir = opendir(dir_path.c_str());
   struct dirent* ptr;
+
   while ((ptr = readdir(dir)) != nullptr) {
     std::string file_name = ptr->d_name;
-    if (EndsWith(file_name, PDMODEL_SUFFIX)) {
+
+    if (StartWith(file_name, layer_prefix) &&
+        EndsWith(file_name, PDMODEL_SUFFIX)) {
       std::string prefix = file_name.substr(
           0, file_name.length() - std::string(PDMODEL_SUFFIX).length());
+      VLOG(3) << "prefix: " << prefix;
       std::string func_name = prefix.substr(prefix.find_first_of(".") + 1);
-      file_name_prefixs.emplace_back(std::make_pair(func_name, prefix));
+      VLOG(3) << "func_name:" << func_name << "path:" << dir_path + file_name;
+
+      if (func_name == layer_prefix) {
+        pdmodel_paths.emplace_back(
+            std::make_pair("forward", dir_path + file_name));
+      } else {
+        pdmodel_paths.emplace_back(
+            std::make_pair(func_name, dir_path + file_name));
+      }
     }
   }
   closedir(dir);
-  return file_name_prefixs;
+  return pdmodel_paths;
 }
 
 void Deserializer::ReadTensorData(const std::string& file_name,

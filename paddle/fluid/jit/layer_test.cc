@@ -67,7 +67,7 @@ std::vector<Variable> PrepareInputs(const phi::Place& place) {
 
 TEST(CpuLayerTest, Construct) {
   auto place = phi::CPUPlace();
-  std::string path = "./Testing/";
+  std::string path = "./multi_program_load/export";
   auto layer = jit::Load(path, place);
   auto inputs = PrepareInputs(place);
 
@@ -93,7 +93,7 @@ TEST(GpuLayerTest, Construct) {
   const auto* dev_ctx_gpu = static_cast<const phi::GPUContext*>(&dev_ctx);
   DenseTensor cpu_dense_tensor;
 
-  std::string path = "./Testing/";
+  std::string path = "./multi_program_load/export";
   auto layer = jit::Load(path, place);
   auto inputs = PrepareInputs(place);
 
