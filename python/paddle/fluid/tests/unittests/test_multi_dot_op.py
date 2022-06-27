@@ -278,7 +278,7 @@ class APITestMultiDot(unittest.TestCase):
         expected_result = np.linalg.multi_dot([input_array1, input_array2])
         self.assertTrue(np.allclose(expected_result, out.numpy()))
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
             self.test_dygraph_without_out()
 

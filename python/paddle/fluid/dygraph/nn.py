@@ -240,10 +240,10 @@ class Conv2D(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode() and self._l_type == "conv2d":
-            pre_bias = _C_ops.final_state_conv2d(
-                input, self.weight, self._stride, self._padding, "EXPLICIT",
-                self._groups if self._groups else 1, self._dilation, "NCHW",
-                False, -1, False)
+            pre_bias = _C_ops.conv2d(input, self.weight, self._stride,
+                                     self._padding, "EXPLICIT",
+                                     self._groups if self._groups else 1,
+                                     self._dilation, "NCHW", False, -1, False)
             if self.bias is not None:
                 pre_act = F.elementwise_add(pre_bias, self.bias, axis=1)
             else:
@@ -1144,8 +1144,8 @@ class InstanceNorm(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            out = _C_ops.final_state_instance_norm(input, self.scale, self.bias,
-                                                   self._epsilon)
+            out = _C_ops.instance_norm(input, self.scale, self.bias,
+                                       self._epsilon)
             return out
         if _in_legacy_dygraph():
             out, _, _ = _C_ops.instance_norm(input, self.scale, self.bias,
@@ -1360,7 +1360,7 @@ class BatchNorm(layers.Layer):
 
         if _non_static_mode():
             if in_dygraph_mode():
-                batch_norm_out, t1, t2, t3, t4, _ = _C_ops.final_state_batch_norm(
+                batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
                     input, self.weight, self.bias, self._mean, self._variance,
                     self._momentum, self._epsilon, self._data_layout,
                     not self.training, self._use_global_stats,
@@ -1841,9 +1841,9 @@ class LayerNorm(layers.Layer):
 
         if _non_static_mode():
             if in_dygraph_mode():
-                pre_act, _, _, = _C_ops.final_state_layer_norm(
-                    input, self.weight, self.bias, self._epsilon,
-                    self._begin_norm_axis, False)
+                pre_act, _, _, = _C_ops.layer_norm(input, self.weight,
+                                                   self.bias, self._epsilon,
+                                                   self._begin_norm_axis, False)
                 return dygraph_utils._append_activation_in_dygraph(
                     pre_act, act=self._act)
             else:
@@ -3032,9 +3032,8 @@ class GroupNorm(layers.Layer):
         variance_out = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
         if in_dygraph_mode():
-            out = _C_ops.final_state_group_norm(input, self.weight, self.bias,
-                                                self._epsilon, self._groups,
-                                                "NCHW")
+            out = _C_ops.group_norm(input, self.weight, self.bias,
+                                    self._epsilon, self._groups, "NCHW")
 
             return dygraph_utils._append_activation_in_dygraph(out, self._act)
 

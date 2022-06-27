@@ -1391,8 +1391,8 @@ def sigmoid_cross_entropy_with_logits(x,
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_sigmoid_cross_entropy_with_logits(
-            x, label, normalize, int(ignore_index))
+        return _C_ops.sigmoid_cross_entropy_with_logits(x, label, normalize,
+                                                        int(ignore_index))
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'sigmoid_cross_entropy_with_logits')
 
@@ -1521,7 +1521,7 @@ def huber_loss(input, label, delta):
         print(HuberLoss)  #[[1.5], [0.5], [0.5], [0. ]], dtype=float32
     """
     if in_dygraph_mode():
-        out, residual = _C_ops.final_state_huber_loss(input, label, delta)
+        out, residual = _C_ops.huber_loss(input, label, delta)
         return out
 
     helper = LayerHelper('huber_loss', **locals())

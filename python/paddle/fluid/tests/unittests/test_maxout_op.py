@@ -152,7 +152,7 @@ class TestMaxoutAPI(unittest.TestCase):
             x_float32 = paddle.fluid.data(name='x_float32', shape=[2, 4, 6, 8])
             self.assertRaises(ValueError, F.maxout, x_float32, 2, 2)
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
             self.test_dygraph_api()
 

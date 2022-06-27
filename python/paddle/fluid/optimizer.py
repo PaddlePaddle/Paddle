@@ -1370,8 +1370,8 @@ class SGDOptimizer(Optimizer):
 
         lr = self._create_param_lr(param_and_grad)
         if in_dygraph_mode():
-            _C_ops.final_state_sgd(param_and_grad[0], lr, param_and_grad[1],
-                                   master_weight, find_master)
+            _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1], master_weight,
+                       find_master)
             return None
         if _in_legacy_dygraph():
             _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1], master_weight,
@@ -2843,8 +2843,8 @@ class AdamaxOptimizer(Optimizer):
                                                       param)
                 if framework._non_static_mode():
                     if framework.in_dygraph_mode():
-                        tmp = _C_ops.final_state_scale(beta1_pow_acc,
-                                                       self._beta1, 0.0, True)
+                        tmp = _C_ops.scale(beta1_pow_acc, self._beta1, 0.0,
+                                           True)
                     else:
                         tmp = _C_ops.scale(beta1_pow_acc, "scale", self._beta1)
                     beta1_pow_acc.copy_(tmp, False)

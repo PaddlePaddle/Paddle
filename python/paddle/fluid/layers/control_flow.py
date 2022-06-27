@@ -1806,7 +1806,7 @@ def greater_than(x, y, cond=None, name=None):
     attrs = dict()
 
     if in_dygraph_mode():
-        return _C_ops.final_state_greater_than(x, y, -1)
+        return _C_ops.greater_than(x, y, -1)
     else:
         helper.append_op(type='greater_than',
                          inputs={
@@ -3899,7 +3899,7 @@ def is_empty(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_is_empty(x)
+        return _C_ops.is_empty(x)
     if _in_legacy_dygraph():
         return _C_ops.is_empty(x)
 

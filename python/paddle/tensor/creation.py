@@ -450,7 +450,7 @@ def full_like(x, fill_value, dtype=None, name=None):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_full_like(x, fill_value, dtype, x.place)
+        return _C_ops.full_like(x, fill_value, dtype, x.place)
 
     if _in_legacy_dygraph():
         return _C_ops.fill_any_like(x, 'value', fill_value, 'dtype', dtype)
@@ -827,8 +827,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         step = paddle.cast(step, dtype)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_arange(start, end, step, dtype,
-                                         _current_expected_place())
+        return _C_ops.arange(start, end, step, dtype, _current_expected_place())
 
     if _in_legacy_dygraph():
         out = _C_ops.range(start, end, step)
@@ -943,7 +942,7 @@ def tril(x, diagonal=0, name=None):
             #         [9 , 10, 0 , 0 ]])
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_tril_triu(x, diagonal, True)
+        return _C_ops.tril_triu(x, diagonal, True)
 
     if _in_legacy_dygraph():
         op = getattr(_C_ops, 'tril_triu')
@@ -1008,7 +1007,7 @@ def triu(x, diagonal=0, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_tril_triu(x, diagonal, False)
+        return _C_ops.tril_triu(x, diagonal, False)
 
     if _in_legacy_dygraph():
         op = getattr(_C_ops, 'tril_triu')
@@ -1056,7 +1055,7 @@ def meshgrid(*args, **kwargs):
         out = _C_ops.meshgrid(list(args), num)
         return out
     if in_dygraph_mode():
-        return _C_ops.final_state_meshgrid(list(args))
+        return _C_ops.meshgrid(list(args))
 
     name = kwargs.get("name", None)
     helper = LayerHelper('meshgrid', **locals())
@@ -1279,7 +1278,7 @@ def diag(x, offset=0, padding_value=0, name=None):
           # [4]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_diag(x, offset, padding_value)
+        return _C_ops.diag(x, offset, padding_value)
     else:
         if _in_legacy_dygraph():
             return _C_ops.diag_v2(x, "offset", offset, "padding_value",
@@ -1512,9 +1511,9 @@ def assign(x, output=None):
     if isinstance(input, (Variable, core.VarBase)):
         if in_dygraph_mode():
             if output is None:
-                output = _C_ops.final_state_assign(input)
+                output = _C_ops.assign(input)
             else:
-                _C_ops.final_state_assign_out_(input, output)
+                _C_ops.assign_out_(input, output)
         elif _in_legacy_dygraph():
             if output is None:
                 output = core.VarBase()
@@ -1780,8 +1779,8 @@ def tril_indices(row, col, offset=0, dtype='int64'):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_tril_indices(row, col, offset, dtype,
-                                              _current_expected_place())
+        out = _C_ops.tril_indices(row, col, offset, dtype,
+                                  _current_expected_place())
         return out
 
     if _in_legacy_dygraph():

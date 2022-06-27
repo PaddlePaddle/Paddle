@@ -116,7 +116,7 @@ def log(x, name=None):
             # [[0.693147, 1.09861, 1.38629], [1.94591, 2.07944, 2.19722]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_log(x)
+        return _C_ops.log(x)
     if _in_legacy_dygraph():
         return _C_ops.log(x)
 
@@ -177,7 +177,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
+        out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out)
     if _non_static_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
@@ -330,7 +330,7 @@ def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     Please refer to :ref:`api_tensor_scale`.
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_scale_(x, scale, float(bias), bias_after_scale)
+        return _C_ops.scale_(x, scale, float(bias), bias_after_scale)
     if _in_legacy_dygraph():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         return _C_ops.scale_(x, 'scale',
@@ -386,7 +386,7 @@ def pow(x, y, name=None):
     # in dynamic graph mode
     if in_dygraph_mode():
         if isinstance(y, (int, float)):
-            return _C_ops.final_state_pow(x, y)
+            return _C_ops.pow(x, y)
         elif isinstance(y, (paddle.Tensor, Variable)):
             return _elementwise_op_in_dygraph(
                 x, y, axis=-1, act=None, op_name='elementwise_pow')
@@ -419,15 +419,15 @@ def pow(x, y, name=None):
 
 
 OP_NAMEMAPPING = {
-    'elementwise_max': 'final_state_maximum',
-    'elementwise_min': 'final_state_minimum',
-    'elementwise_pow': 'final_state_elementwise_pow',
-    'elementwise_floordiv': 'final_state_floor_divide',
-    'elementwise_mod': 'final_state_modulo',
-    'elementwise_add': 'final_state_add',
-    'elementwise_sub': 'final_state_subtract',
-    'elementwise_mul': 'final_state_multiply',
-    'elementwise_div': 'final_state_divide',
+    'elementwise_max': 'maximum',
+    'elementwise_min': 'minimum',
+    'elementwise_pow': 'elementwise_pow',
+    'elementwise_floordiv': 'floor_divide',
+    'elementwise_mod': 'modulo',
+    'elementwise_add': 'add',
+    'elementwise_sub': 'subtract',
+    'elementwise_mul': 'multiply',
+    'elementwise_div': 'divide',
 }
 
 @dygraph_only
@@ -508,7 +508,7 @@ def add(x, y, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_add( x, y)
+        return _C_ops.add( x, y)
     else:
         if _in_legacy_dygraph():
             return _C_ops.elementwise_add(x, y)
@@ -592,7 +592,7 @@ def subtract(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
-        return _C_ops.final_state_subtract(x, y)
+        return _C_ops.subtract(x, y)
     else:
         if _in_legacy_dygraph():
             return _elementwise_op_in_dygraph(
@@ -653,7 +653,7 @@ def divide(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
-        return _C_ops.final_state_divide( x, y)
+        return _C_ops.divide( x, y)
     else:
         if _in_legacy_dygraph():
             return _elementwise_op_in_dygraph(
@@ -785,7 +785,7 @@ def multiply(x, y, name=None):
     axis = -1
 
     if in_dygraph_mode():
-        return _C_ops.final_state_multiply(x, y)
+        return _C_ops.multiply(x, y)
     else:
         if _in_legacy_dygraph():
             return _elementwise_op_in_dygraph(
@@ -973,7 +973,7 @@ def fmax(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
-        return _C_ops.final_state_fmax(x, y, axis)
+        return _C_ops.fmax(x, y, axis)
     if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
@@ -1036,7 +1036,7 @@ def fmin(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
-        return _C_ops.final_state_fmin(x, y, axis)
+        return _C_ops.fmin(x, y, axis)
     if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
@@ -1144,7 +1144,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         else:
             axis = axis if axis != None and axis != [] else [0]
 
-        return _C_ops.final_state_sum(x, axis, dtype, keepdim)
+        return _C_ops.sum(x, axis, dtype, keepdim)
 
     if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
@@ -1380,7 +1380,7 @@ def add_n(inputs, name=None):
         for x in inputs:
             if not x.is_dense():
                 return _C_ops.sum(inputs, 'use_mkldnn', False)
-        return _C_ops.final_state_add_n(inputs)
+        return _C_ops.add_n(inputs)
     if _in_legacy_dygraph():
         if isinstance(inputs, Variable):
             inputs = [inputs]
@@ -1438,7 +1438,7 @@ def trunc(input, name=None):
             #         [0., 0.]]))
     '''
     if in_dygraph_mode():
-        return  _C_ops.final_state_trunc(input)
+        return  _C_ops.trunc(input)
     else:
         if _in_legacy_dygraph():
             return _C_ops.trunc(input)
@@ -1524,7 +1524,7 @@ def mm(input, mat2, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_matmul(input, mat2, False, False)
+        return _C_ops.matmul(input, mat2, False, False)
     elif paddle.in_dynamic_mode():
         return _C_ops.matmul_v2(input, mat2)
 
@@ -1635,7 +1635,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
 
     if in_dygraph_mode():
-        return _C_ops.final_state_addmm( input, x, y, alpha, beta)
+        return _C_ops.addmm( input, x, y, alpha, beta)
     else:
         if _in_legacy_dygraph():
             out = _C_ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
@@ -1752,7 +1752,7 @@ def inner(x, y, name=None):
         ny = y.reshape((-1, yshape[-1]))
 
         if in_dygraph_mode():
-            return _C_ops.final_state_matmul(nx, ny.T, False, False).reshape(dstshape)
+            return _C_ops.matmul(nx, ny.T, False, False).reshape(dstshape)
         elif paddle.in_dynamic_mode():
             return _C_ops.matmul_v2(nx, ny.T).reshape(dstshape)
 
@@ -1816,7 +1816,7 @@ def outer(x, y, name=None):
     ny = y.reshape((1, -1))
 
     if in_dygraph_mode():
-        return _C_ops.final_state_matmul(nx, ny, False, False)
+        return _C_ops.matmul(nx, ny, False, False)
     elif paddle.in_dynamic_mode():
         return _C_ops.matmul_v2(nx, ny)
 
@@ -1889,7 +1889,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         if reduce_all:
             axis = range(len(x.shape))
-        return _C_ops.final_state_logsumexp(x, axis, keepdim, reduce_all)
+        return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     if _in_legacy_dygraph():
         return _C_ops.logsumexp(x, 'axis', axis, 'keepdim', keepdim, 'reduce_all', reduce_all)
 
@@ -2050,7 +2050,7 @@ def max(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         if reduce_all:
             axis = range(len(x.shape))
-        return _C_ops.final_state_max(x, axis, keepdim)
+        return _C_ops.max(x, axis, keepdim)
     if _in_legacy_dygraph():
         return _C_ops.reduce_max(x, 'dim', axis, 'keep_dim', keepdim,
                                    'reduce_all', reduce_all)
@@ -2153,7 +2153,7 @@ def min(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         if reduce_all:
             axis = range(len(x.shape))
-        return _C_ops.final_state_min(x, axis, keepdim)
+        return _C_ops.min(x, axis, keepdim)
 
     if _in_legacy_dygraph():
         return _C_ops.reduce_min(x, 'dim', axis, 'keep_dim', keepdim,
@@ -2424,7 +2424,7 @@ def log1p(x, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_log1p(x)
+        return _C_ops.log1p(x)
     if _in_legacy_dygraph():
         return _C_ops.log1p(x)
 
@@ -2475,7 +2475,7 @@ def log2(x, name=None):
             print(res) # [1.0]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_log2(x)
+        return _C_ops.log2(x)
     if _in_legacy_dygraph():
         return _C_ops.log2(x)
 
@@ -2527,7 +2527,7 @@ def log10(x, name=None):
             print(res) # [1.0]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_log10(x)
+        return _C_ops.log10(x)
     if _in_legacy_dygraph():
         return _C_ops.log10(x)
 
@@ -2594,7 +2594,7 @@ def clip(x, min=None, max=None, name=None):
             max = max.numpy().item(0)
         min = min_ if min is None else min
         max = max_ if max is None else max
-        return _C_ops.final_state_clip(x, min, max)
+        return _C_ops.clip(x, min, max)
 
     if _in_legacy_dygraph():
         if isinstance(min, Variable):
@@ -2658,7 +2658,7 @@ def clip_(x, min=None, max=None, name=None):
     max = fmax if max is None else max
 
     if in_dygraph_mode():
-        return _C_ops.final_state_clip_(x, min, max)
+        return _C_ops.clip_(x, min, max)
 
     if _in_legacy_dygraph():
         return _C_ops.clip_(x, "min", min, "max", max)
@@ -2734,7 +2734,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
 
     __check_input(input, offset, axis1, axis2)
     if in_dygraph_mode():
-        return _C_ops.final_state_trace( x, offset, axis1, axis2 )
+        return _C_ops.trace( x, offset, axis1, axis2 )
 
     if _in_legacy_dygraph():
         return _C_ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
@@ -2820,7 +2820,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_diagonal(x, offset, axis1, axis2)
+        return _C_ops.diagonal(x, offset, axis1, axis2)
     else:
         if _in_legacy_dygraph():
             return _C_ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
@@ -2897,7 +2897,7 @@ def kron(x, y, name=None):
     if _in_legacy_dygraph():
         return _C_ops.kron(x, y)
     if in_dygraph_mode():
-        return _C_ops.final_state_kron(x, y)
+        return _C_ops.kron(x, y)
     helper = LayerHelper('kron', **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
     check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
@@ -2957,7 +2957,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
 
     if in_dygraph_mode():
         if axis is None: axis = -1
-        return _C_ops.final_state_cumsum(x, axis, flatten, False, False)
+        return _C_ops.cumsum(x, axis, flatten, False, False)
     if _in_legacy_dygraph():
         if axis is None:
             return _C_ops.cumsum(x, 'flatten', flatten)
@@ -3031,7 +3031,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
 
     if in_dygraph_mode():
         if axis is None: axis = -1
-        return _C_ops.final_state_logcumsumexp(x, axis, flatten, False, False)
+        return _C_ops.logcumsumexp(x, axis, flatten, False, False)
     if _in_legacy_dygraph():
         if axis is None:
             return _C_ops.logcumsumexp(x, 'flatten', flatten)
@@ -3097,7 +3097,7 @@ def cumprod(x, dim=None, dtype=None, name=None):
         x = cast(x, dtype)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_cumprod(x, dim)
+        return _C_ops.cumprod(x, dim)
     if _in_legacy_dygraph():
         return _C_ops.cumprod(x, 'dim', dim)
 
@@ -3131,7 +3131,7 @@ def isfinite(x, name=None):
             print(out)  # [False  True  True False  True False False]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_isfinite( x )
+        return _C_ops.isfinite( x )
     if _in_legacy_dygraph():
         return _C_ops.isfinite_v2(x)
     helper = LayerHelper("isfinite_v2", **locals())
@@ -3162,7 +3162,7 @@ def isinf(x, name=None):
             print(out)  # [ True False False  True False False False]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_isinf( x )
+        return _C_ops.isinf( x )
     if _in_legacy_dygraph():
         return _C_ops.isinf_v2(x)
     helper = LayerHelper("isinf_v2", **locals())
@@ -3193,7 +3193,7 @@ def isnan(x, name=None):
             print(out)  # [False False False False False  True  True]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_isnan( x )
+        return _C_ops.isnan( x )
 
     if _in_legacy_dygraph():
         return _C_ops.isnan_v2(x)
@@ -3279,7 +3279,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
         dim = [0]
 
     if in_dygraph_mode():
-        return _C_ops.final_state_reduce_prod(x, dim, keepdim, reduce_all)
+        return _C_ops.reduce_prod(x, dim, keepdim, reduce_all)
     if _in_legacy_dygraph():
         return _C_ops.reduce_prod(
             x, 'dim', dim, 'keep_dim', keepdim, 'reduce_all', reduce_all)
@@ -3321,7 +3321,7 @@ def sign(x, name=None):
           print(out)  # [1.0, 0.0, -1.0, 1.0]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_sign(x)
+        return _C_ops.sign(x)
 
     if _in_legacy_dygraph():
         return _C_ops.sign(x)
@@ -3361,7 +3361,7 @@ def tanh(x, name=None):
             # [-0.37994896 -0.19737532  0.09966799  0.29131261]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_tanh( x )
+        return _C_ops.tanh( x )
 
     if _in_legacy_dygraph():
         return _C_ops.tanh(x)
@@ -3406,7 +3406,7 @@ def increment(x, value=1.0, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_increment( x, value)
+        return _C_ops.increment( x, value)
 
     if _in_legacy_dygraph():
         return _C_ops.increment(x, 'step', value)
@@ -3485,7 +3485,7 @@ def all(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         if reduce_all_flag:
             axis = range(len(x.shape))
-        return _C_ops.final_state_all(x, axis, keepdim)
+        return _C_ops.all(x, axis, keepdim)
 
     if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
@@ -3576,7 +3576,7 @@ def any(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         if reduce_all_flag:
             axis = range(len(x.shape))
-        return _C_ops.final_state_any(x, axis, keepdim)
+        return _C_ops.any(x, axis, keepdim)
 
     if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
@@ -3659,7 +3659,7 @@ def conj(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_conj(x)
+        return _C_ops.conj(x)
 
     if paddle.in_dynamic_mode():
         return _C_ops.conj(x)
@@ -3700,7 +3700,7 @@ def digamma(x, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_digamma(x)
+        return _C_ops.digamma(x)
     else:
         if _in_legacy_dygraph():
             return _C_ops.digamma(x)
@@ -3779,7 +3779,7 @@ def atan2(x, y, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_atan2( x, y)
+        return _C_ops.atan2( x, y)
     else:
         if _in_legacy_dygraph():
             return _C_ops.atan2(x, y)
@@ -3840,7 +3840,7 @@ def logit(x, eps=None, name=None):
     if _in_legacy_dygraph():
         return _C_ops.logit(x, 'eps', eps)
     if in_dygraph_mode():
-        return _C_ops.final_state_logit(x, eps)
+        return _C_ops.logit(x, eps)
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'logit')
     helper = LayerHelper("logit", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -3886,7 +3886,7 @@ def lerp(x, y, weight, name=None):
         if isinstance(weight, float):
             weight = paddle.to_tensor(weight, dtype=x.dtype)
 
-        return _C_ops.final_state_lerp( x, y, weight)
+        return _C_ops.lerp( x, y, weight)
     if _in_legacy_dygraph():
         if isinstance(weight, float):
             weight = paddle.to_tensor(weight, dtype=x.dtype)
@@ -3948,7 +3948,7 @@ def erfinv(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_erfinv( x )
+        return _C_ops.erfinv( x )
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
 
@@ -4014,7 +4014,7 @@ def rad2deg(x, name=None):
     if in_dygraph_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
-        return _C_ops.final_state_scale(x, rad2deg_scale, 0.0, True)
+        return _C_ops.scale(x, rad2deg_scale, 0.0, True)
     elif paddle.in_dynamic_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
@@ -4071,7 +4071,7 @@ def deg2rad(x, name=None):
     if in_dygraph_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
-        return _C_ops.final_state_scale(x, deg2rad_scale, 0.0, True)
+        return _C_ops.scale(x, deg2rad_scale, 0.0, True)
     elif paddle.in_dynamic_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
@@ -4317,7 +4317,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         ends_1 = [dim_len - 1]
         attrs_1 += ('ends', ends_1)
         if in_dygraph_mode():
-            input_front = _C_ops.final_state_slice(new_input, axes, starts_1, ends_1, infer_flags,
+            input_front = _C_ops.slice(new_input, axes, starts_1, ends_1, infer_flags,
                                             [])
         else:
             input_front = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
@@ -4327,7 +4327,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         ends_2 = [dim_len]
         attrs_2 += ('ends', ends_2)
         if in_dygraph_mode():
-            input_back = _C_ops.final_state_slice(new_input, axes, starts_2, ends_2, infer_flags,
+            input_back = _C_ops.slice(new_input, axes, starts_2, ends_2, infer_flags,
                                             [])
         else:
             input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
@@ -4335,7 +4335,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
 
         if x.dtype == paddle.bool:
             if in_dygraph_mode():
-                return _C_ops.final_state_logical_xor(input_back, input_front)
+                return _C_ops.logical_xor(input_back, input_front)
             else:
                 return _C_ops.logical_xor(input_back, input_front)
         else:
@@ -4532,8 +4532,8 @@ def frac(x, name=None):
         raise TypeError(
             "The data type of input must be one of ['int32', 'int64', 'float32', 'float64'], but got {}".format(x.dtype))
     if in_dygraph_mode():
-        y = _C_ops.final_state_trunc(x)
-        return _C_ops.final_state_subtract(x, y)
+        y = _C_ops.trunc(x)
+        return _C_ops.subtract(x, y)
     else:
         if _in_legacy_dygraph():
             y = _C_ops.trunc(x)

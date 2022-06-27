@@ -32,8 +32,7 @@ def p_norm_python_api(x,
                       keepdim=False,
                       as_vector=False):
     if in_dygraph_mode():
-        return _C_ops.final_state_p_norm(x, p, axis, epsilon, keepdim,
-                                         as_vector)
+        return _C_ops.p_norm(x, p, axis, epsilon, keepdim, as_vector)
     if _in_legacy_dygraph():
         return _C_ops.p_norm(x, 'axis', axis, 'porder', float(p), 'keepdim',
                              keepdim, 'epsilon', epsilon, 'as_vector',
@@ -86,14 +85,14 @@ def frobenius_norm(x, axis=None, keepdims=False):
     return r
 
 
-def final_state_frobenius_norm(x, dim, keep_dim, reduce_all):
+def frobenius_norm(x, dim, keep_dim, reduce_all):
     return paddle.linalg.norm(x, p='fro', axis=dim, keepdim=keep_dim)
 
 
 class TestFrobeniusNormOp(OpTest):
 
     def setUp(self):
-        self.python_api = final_state_frobenius_norm
+        self.python_api = frobenius_norm
         self.op_type = "frobenius_norm"
         self.init_test_case()
         x = (np.random.random(self.shape) + 1.0).astype(self.dtype)

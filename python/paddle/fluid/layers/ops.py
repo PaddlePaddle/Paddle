@@ -824,7 +824,7 @@ _erf_ = generate_layer_fn('erf')
 
 def erf(x, name=None):
     if in_dygraph_mode():
-        return _C_ops.final_state_erf(x)
+        return _C_ops.erf(x)
 
     locals_var = locals().copy()
     kwargs = dict()

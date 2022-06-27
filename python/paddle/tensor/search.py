@@ -93,7 +93,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             #  [0 2 1 1]]]
     """
     if in_dygraph_mode():
-        _, ids = _C_ops.final_state_argsort(x, axis, descending)
+        _, ids = _C_ops.argsort(x, axis, descending)
         return ids
 
     if _in_legacy_dygraph():
@@ -178,7 +178,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis = 0
 
     if in_dygraph_mode():
-        return _C_ops.final_state_argmax(x, axis, keepdim, flatten, var_dtype)
+        return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
     if _in_legacy_dygraph():
         out = _C_ops.arg_max(x, 'axis', axis, 'dtype', var_dtype, 'keepdims',
                              keepdim, 'flatten', flatten)
@@ -260,7 +260,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis = 0
 
     if in_dygraph_mode():
-        return _C_ops.final_state_argmin(x, axis, keepdim, flatten, var_dtype)
+        return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
     if _in_legacy_dygraph():
         out = _C_ops.arg_min(x, 'axis', axis, 'dtype', var_dtype, 'keepdims',
                              keepdim, 'flatten', flatten)
@@ -322,7 +322,7 @@ def index_select(x, index, axis=0, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_index_select(x, index, axis)
+        return _C_ops.index_select(x, index, axis)
 
     if _in_legacy_dygraph():
         return _C_ops.index_select(x, index, 'dim', axis)
@@ -402,7 +402,7 @@ def nonzero(x, as_tuple=False):
     rank = len(shape)
 
     if in_dygraph_mode():
-        outs = _C_ops.final_state_where_index(x)
+        outs = _C_ops.where_index(x)
     elif paddle.in_dynamic_mode():
         outs = _C_ops.where_index(x)
     else:
@@ -484,7 +484,7 @@ def sort(x, axis=-1, descending=False, name=None):
             #  [5. 7. 7. 9.]]]
     """
     if in_dygraph_mode():
-        outs, _ = _C_ops.final_state_argsort(x, axis, descending)
+        outs, _ = _C_ops.argsort(x, axis, descending)
         return outs
 
     if _in_legacy_dygraph():
@@ -540,7 +540,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
            
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_mode(x, axis, keepdim)
+        return _C_ops.mode(x, axis, keepdim)
     if _in_legacy_dygraph():
         return _C_ops.mode(x, "axis", axis, "keepdim", keepdim)
 
@@ -659,8 +659,7 @@ def where(condition, x=None, y=None, name=None):
         broadcast_condition = paddle.cast(broadcast_condition, 'bool')
 
     if in_dygraph_mode():
-        return _C_ops.final_state_where(broadcast_condition, broadcast_x,
-                                        broadcast_y)
+        return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
     else:
         if _in_legacy_dygraph():
             return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
@@ -753,7 +752,7 @@ def index_sample(x, index):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_index_sample(x, index)
+        return _C_ops.index_sample(x, index)
     else:
         if _in_legacy_dygraph():
             return _C_ops.index_sample(x, index)
@@ -805,7 +804,7 @@ def masked_select(x, mask, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_masked_select(x, mask)
+        return _C_ops.masked_select(x, mask)
 
     if _in_legacy_dygraph():
         return _C_ops.masked_select(x, mask)
@@ -876,7 +875,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     if in_dygraph_mode():
         if axis == None:
             axis = -1
-        out, indices = _C_ops.final_state_top_k(x, k, axis, largest, sorted)
+        out, indices = _C_ops.top_k(x, k, axis, largest, sorted)
         return out, indices
 
     if _non_static_mode():
@@ -961,8 +960,7 @@ def searchsorted(sorted_sequence,
             
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_searchsorted(sorted_sequence, values,
-                                               out_int32, right)
+        return _C_ops.searchsorted(sorted_sequence, values, out_int32, right)
 
     if _in_legacy_dygraph():
         return _C_ops.searchsorted(sorted_sequence, values, "out_int32",
@@ -1035,11 +1033,11 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
             if _in_legacy_dygraph():
                 return _C_ops.kthvalue(x, 'k', k, "axis", axis, "keepdim",
                                        keepdim)
-            return _C_ops.final_state_kthvalue(x, k, axis, keepdim)
+            return _C_ops.kthvalue(x, k, axis, keepdim)
         else:
             if _in_legacy_dygraph():
                 return _C_ops.kthvalue(x, 'k', k, "keepdim", keepdim)
-            return _C_ops.final_state_kthvalue(x, k, -1, keepdim)
+            return _C_ops.kthvalue(x, k, -1, keepdim)
 
     helper = LayerHelper("kthvalue", **locals())
     inputs = {"X": [x]}

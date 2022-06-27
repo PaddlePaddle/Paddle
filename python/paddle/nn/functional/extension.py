@@ -302,7 +302,7 @@ def gather_tree(ids, parents):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_gather_tree(ids, parents)
+        return _C_ops.gather_tree(ids, parents)
     else:
         if _in_legacy_dygraph():
             return _C_ops.gather_tree(ids, parents)

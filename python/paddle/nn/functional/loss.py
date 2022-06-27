@@ -139,7 +139,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           cost = F.log_loss(input=prob, label=label)
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_log_loss(input, label, epsilon)
+        return _C_ops.log_loss(input, label, epsilon)
 
     helper = LayerHelper('log_loss', **locals())
     check_variable_and_dtype(input, 'input', ['float32'], 'log_loss')
@@ -266,7 +266,7 @@ def fluid_softmax_with_cross_entropy(logits,
                 'axis', axis)
         else:
             if in_dygraph_mode():
-                softmax, loss = _C_ops.final_state_cross_entropy_with_softmax(
+                softmax, loss = _C_ops.cross_entropy_with_softmax(
                     logits, label, soft_label, True, numeric_stable_mode,
                     ignore_index, axis)
             if _in_legacy_dygraph():
@@ -627,15 +627,15 @@ def binary_cross_entropy(input,
             reduction)
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_bce_loss(input, label)
+        out = _C_ops.bce_loss(input, label)
         if weight is not None:
-            out = _C_ops.final_state_multiply(out, weight, 'axis', -1)
+            out = _C_ops.multiply(out, weight, 'axis', -1)
 
         if reduction == 'sum':
             return _C_ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
                                      "reduce_all", True)
         elif reduction == 'mean':
-            return _C_ops.final_state_mean_all(out)
+            return _C_ops.mean_all(out)
         else:
             return out
     else:
@@ -773,10 +773,9 @@ def binary_cross_entropy_with_logits(logit,
 
     if _non_static_mode():
         if in_dygraph_mode():
-            one = _C_ops.final_state_full([1], float(1.0),
-                                          core.VarDesc.VarType.FP32,
-                                          _current_expected_place())
-            out = _C_ops.final_state_sigmoid_cross_entropy_with_logits(
+            one = _C_ops.full([1], float(1.0), core.VarDesc.VarType.FP32,
+                              _current_expected_place())
+            out = _C_ops.sigmoid_cross_entropy_with_logits(
                 logit, label, False, -100)
         else:
             one = _varbase_creator(dtype=logit.dtype)
@@ -1035,7 +1034,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
                              'smooth_l1_loss')
 
     if in_dygraph_mode():
-        out, residual = _C_ops.final_state_huber_loss(input, label, delta)
+        out, residual = _C_ops.huber_loss(input, label, delta)
     else:
         helper = LayerHelper('huber_loss', **locals())
         residual = helper.create_variable_for_type_inference(
@@ -1117,8 +1116,8 @@ def margin_ranking_loss(input,
             "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
             "received %s, which is not allowed." % reduction)
     if in_dygraph_mode():
-        out = _C_ops.final_state_subtract(other, input)
-        out = _C_ops.final_state_multiply(out, label)
+        out = _C_ops.subtract(other, input)
+        out = _C_ops.multiply(out, label)
         if margin != 0.0:
             margin = fluid.dygraph.base.to_variable([margin], dtype=out.dtype)
             out = _C_ops.elementwise_add(out, margin)
@@ -1126,7 +1125,7 @@ def margin_ranking_loss(input,
         if reduction == 'sum':
             return _C_ops.reduce_sum(out, 'reduce_all', True)
         elif reduction == 'mean':
-            return _C_ops.final_state_mean_all(out)
+            return _C_ops.mean_all(out)
         return out
     elif _in_legacy_dygraph():
         out = _C_ops.elementwise_sub(other, input)
@@ -1250,7 +1249,7 @@ def l1_loss(input, label, reduction='mean', name=None):
                                                act='abs',
                                                op_name='elementwise_sub')
         if reduction == 'mean':
-            return _C_ops.final_state_mean_all(unreduced)
+            return _C_ops.mean_all(unreduced)
         elif reduction == 'sum':
             return _C_ops.reduce_sum(unreduced, 'dim', [0], 'keep_dim', False,
                                      'reduce_all', True)
@@ -1358,8 +1357,8 @@ def nll_loss(input,
             input, _ = _C_ops.reshape2(input, None, 'shape', [n, c, 1, -1])
             label, _ = _C_ops.reshape2(label, None, 'shape', [n, 1, -1])
             out_shape = [n] + input_shape[2:]
-        out, total_weight = _C_ops.final_state_nll_loss(input, label, weight,
-                                                        ignore_index, reduction)
+        out, total_weight = _C_ops.nll_loss(input, label, weight, ignore_index,
+                                            reduction)
         if input_dims != 2 and input_dims != 4 and reduction == 'none':
             out, _ = _C_ops.reshape2(out, None, 'shape', out_shape)
         return out
@@ -1494,7 +1493,7 @@ def kl_div(input, label, reduction='mean', name=None):
         if _in_legacy_dygraph():
             out = _C_ops.kldiv_loss(input, label, 'reduction', 'none')
         else:
-            out = _C_ops.final_state_kldiv_loss(input, label, 'none')
+            out = _C_ops.kldiv_loss(input, label, 'none')
         if reduction == 'mean':
             out = paddle.mean(out)
         elif reduction == 'sum':
@@ -2291,7 +2290,7 @@ def cross_entropy(input,
                 'use_softmax', use_softmax)
         else:
             if in_dygraph_mode():
-                _, out = _C_ops.final_state_cross_entropy_with_softmax(
+                _, out = _C_ops.cross_entropy_with_softmax(
                     input, label, soft_label, use_softmax, True, ignore_index,
                     axis)
             if _in_legacy_dygraph():
@@ -2387,7 +2386,7 @@ def cross_entropy(input,
                 return out_sum / (total_weight + (total_weight == 0.0))
             else:
                 if in_dygraph_mode():
-                    return _C_ops.final_state_mean_all(out)
+                    return _C_ops.mean_all(out)
                 else:
                     return _C_ops.mean(out)
 
@@ -2602,7 +2601,7 @@ def sigmoid_focal_loss(logit,
                              'dtype', one.dtype, 'str_value', '1.0', 'shape',
                              logit.shape)
         if in_dygraph_mode():
-            loss = _C_ops.final_state_sigmoid_cross_entropy_with_logits(
+            loss = _C_ops.sigmoid_cross_entropy_with_logits(
                 logit, label, False, -100)
         else:
             loss = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
@@ -2631,7 +2630,7 @@ def sigmoid_focal_loss(logit,
             return _C_ops.reduce_sum(loss, 'reduce_all', True)
         elif reduction == "mean":
             if in_dygraph_mode():
-                return _C_ops.final_state_mean_all(loss)
+                return _C_ops.mean_all(loss)
             return _C_ops.mean(loss)
 
         return loss

@@ -29,7 +29,9 @@ void GradTensorHolder::SetBufferSlotRankZeros(size_t slot_id, size_t rank) {
 }
 
 void GradTensorHolder::CopyValueFromTensor(
-    size_t slot_id, size_t rank, const paddle::experimental::Tensor& t,
+    size_t slot_id,
+    size_t rank,
+    const paddle::experimental::Tensor& t,
     bool fill_one) {
   // TODO(jiabin): We need to deal with empty input_buffer with slot size not
   // empty;
@@ -49,7 +51,9 @@ void GradTensorHolder::CopyValueFromTensor(
       paddle::platform::errors::Fatal(
           "Invalid rank for GradTensorHolder::add() which exceeds size "
           "of buffer slot %d, got slot size is: %d rank is: %d",
-          slot_id, buffer_[slot_id].size(), rank));
+          slot_id,
+          buffer_[slot_id].size(),
+          rank));
   if (!fill_one) {
     paddle::experimental::Tensor& buffer_tensor = buffer_[slot_id][rank];
     if ((!buffer_tensor.defined() || !buffer_tensor.initialized())) {
@@ -83,7 +87,8 @@ void GradTensorHolder::CopyValueFromTensor(
   }
 }
 
-void GradTensorHolder::add(size_t slot_id, size_t rank,
+void GradTensorHolder::add(size_t slot_id,
+                           size_t rank,
                            const paddle::experimental::Tensor& t,
                            bool create_graph) {
   PADDLE_ENFORCE(slot_id < buffer_.size(),
@@ -102,7 +107,9 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
       paddle::platform::errors::Fatal(
           "Invalid rank for GradTensorHolder::add() which exceeds size "
           "of buffer slot %d, got slot size is: %d rank is: %d",
-          slot_id, buffer_[slot_id].size(), rank));
+          slot_id,
+          buffer_[slot_id].size(),
+          rank));
 
   paddle::experimental::Tensor& buffer_tensor = buffer_[slot_id][rank];
   // TODO(jiabin): Code bellow is ugly to divide which inner var we used,
@@ -115,7 +122,8 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
     buffer_tensor = t;
   } else {
     // Accumulation
-    PADDLE_ENFORCE_EQ(t.initialized(), true,
+    PADDLE_ENFORCE_EQ(t.initialized(),
+                      true,
                       paddle::platform::errors::Fatal(
                           "We can only accumulate initialized tensor, but we "
                           "got tensor: %s is empty please check you network "
@@ -125,7 +133,7 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
     if (t.is_dense_tensor()) {
       if (buffer_tensor.is_dense_tensor()) {
         if (create_graph) {
-          buffer_tensor = add_final_state_dygraph_function(t, buffer_tensor);
+          buffer_tensor = add_dygraph_function(t, buffer_tensor);
         } else {
           paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
               t, &buffer_tensor);
@@ -136,8 +144,8 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
         // add_dygraph_function once it's supported
         paddle::experimental::Tensor new_buffer(
             std::make_shared<phi::DenseTensor>(), "tmp_accumulator");
-        paddle::imperative::SelectedRowsAddTensor(buffer_tensor, t,
-                                                  &new_buffer);
+        paddle::imperative::SelectedRowsAddTensor(
+            buffer_tensor, t, &new_buffer);
         buffer_tensor.set_impl(new_buffer.impl());
       }
     } else if (t.is_sparse_coo_tensor()) {
@@ -152,8 +160,7 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
             std::make_shared<phi::DenseTensor>(
                 buffer_sparse->non_zero_elements()));
         if (create_graph) {
-          buffer_values =
-              add_final_state_dygraph_function(t_values, buffer_values);
+          buffer_values = add_dygraph_function(t_values, buffer_values);
         } else {
           paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
               t_values, &buffer_values);

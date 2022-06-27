@@ -62,8 +62,8 @@ def _conv3d(x,
     dilation = convert_to_list(dilation, dims, 'dilation')
     op_type = "conv3d"
 
-    pre_bias = _C_ops.final_state_sparse_conv3d(x, weight, padding, dilation,
-                                                stride, groups, subm)
+    pre_bias = _C_ops.sparse_conv3d(x, weight, padding, dilation, stride,
+                                    groups, subm)
     if bias is not None:
         values = pre_bias.values()
         add_bias = elementwise_add(values, bias, axis=1)

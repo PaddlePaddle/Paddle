@@ -86,7 +86,7 @@ def transpose(x, perm, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_transpose(x, perm)
+        return _C_ops.transpose(x, perm)
     else:
         if _in_legacy_dygraph():
             out, _ = _C_ops.transpose2(x, 'axis', perm)
@@ -220,7 +220,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_matmul(x, y, transpose_x, transpose_y)
+        return _C_ops.matmul(x, y, transpose_x, transpose_y)
 
     if _in_legacy_dygraph():
         op_type = 'matmul_v2'
@@ -341,9 +341,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
         if in_dygraph_mode():
             if dim is None:
-                return _C_ops.final_state_frobenius_norm(
-                    input, [], keepdim, True)
-            return _C_ops.final_state_frobenius_norm(input, dim, keepdim, False)
+                return _C_ops.frobenius_norm(input, [], keepdim, True)
+            return _C_ops.frobenius_norm(input, dim, keepdim, False)
         if _in_legacy_dygraph():
             if dim is None:
                 return _C_ops.frobenius_norm(input, 'keep_dim', keepdim,
@@ -382,8 +381,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         """
         if in_dygraph_mode():
             if axis is None: axis = -1
-            return _C_ops.final_state_p_norm(input, porder, axis, 1e-12,
-                                             keepdim, asvector)
+            return _C_ops.p_norm(input, porder, axis, 1e-12, keepdim, asvector)
 
         if _in_legacy_dygraph():
             if axis is None: axis = -1
@@ -635,7 +633,7 @@ def dist(x, y, p=2, name=None):
             print(out) # out = [0.]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_dist(x, y, p)
+        return _C_ops.dist(x, y, p)
 
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
     check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
@@ -753,7 +751,7 @@ def cond(x, p=None, name=None):
         if _non_static_mode():
             abs_out = _C_ops.abs(input)
             if in_dygraph_mode():
-                sum_out = _C_ops.final_state_sum(abs_out, axis, None, keepdim)
+                sum_out = _C_ops.sum(abs_out, axis, None, keepdim)
             else:
                 sum_out = _C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
                                             keepdim, 'reduce_all', reduce_all)
@@ -812,8 +810,8 @@ def cond(x, p=None, name=None):
 
         if in_dygraph_mode():
             pow_out = _C_ops.pow(input, 'factor', porder)
-            sum_out_1 = _C_ops.final_state_sum(pow_out, axis, None, keepdim)
-            sum_out_2 = _C_ops.final_state_sum(sum_out_1, axis, None, keepdim)
+            sum_out_1 = _C_ops.sum(pow_out, axis, None, keepdim)
+            sum_out_2 = _C_ops.sum(sum_out_1, axis, None, keepdim)
             return _C_ops.pow(sum_out_2, 'factor', float(1. / porder))
         elif paddle.in_dynamic_mode():
             pow_out = _C_ops.pow(input, 'factor', porder)
@@ -872,7 +870,7 @@ def cond(x, p=None, name=None):
         if _non_static_mode():
             if porder == "nuc":
                 if in_dygraph_mode():
-                    return _C_ops.final_state_sum(s, axis, None, keepdim)
+                    return _C_ops.sum(s, axis, None, keepdim)
                 else:
                     return _C_ops.reduce_sum(s, 'dim', axis, 'keepdim', keepdim,
                                              'reduce_all', reduce_all)
@@ -1210,7 +1208,7 @@ def t(input, name=None):
             return input
         # 2-D tensor
         perm = [1, 0]
-        out = _C_ops.final_state_transpose(input, perm)
+        out = _C_ops.transpose(input, perm)
         return out
 
     if _in_legacy_dygraph():
@@ -1281,7 +1279,7 @@ def cross(x, y, axis=9, name=None):
     """
     if in_dygraph_mode():
         axis = K_DEFAULT_DIM if axis is None else axis
-        return _C_ops.final_state_cross(x, y, axis)
+        return _C_ops.cross(x, y, axis)
     else:
         if _in_legacy_dygraph():
             if axis is not None:
@@ -1344,7 +1342,7 @@ def cholesky(x, upper=False, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_cholesky(x, upper)
+        return _C_ops.cholesky(x, upper)
 
     if _in_legacy_dygraph():
         return _C_ops.cholesky(x, "upper", upper)
@@ -1406,9 +1404,8 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
             else:
                 tol_tensor = tol
             use_default_tol = False
-            return _C_ops.final_state_matrix_rank_tol(x, tol_tensor,
-                                                      use_default_tol,
-                                                      hermitian)
+            return _C_ops.matrix_rank_tol(x, tol_tensor, use_default_tol,
+                                          hermitian)
 
         if tol is None:
             tol_attr = 0.0
@@ -1416,8 +1413,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
         else:
             tol_attr = float(tol)
             use_default_tol = False
-        return _C_ops.final_state_matrix_rank(x, tol_attr, use_default_tol,
-                                              hermitian)
+        return _C_ops.matrix_rank(x, tol_attr, use_default_tol, hermitian)
 
     if _in_legacy_dygraph():
         if tol is None:
@@ -1555,7 +1551,7 @@ def histogram(input, bins=100, min=0, max=0, name=None):
             print(result) # [0, 2, 1, 0]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_histogram(input, bins, min, max)
+        return _C_ops.histogram(input, bins, min, max)
 
     if _in_legacy_dygraph():
         return _C_ops.histogram(input, "bins", bins, "min", min, "max", max)
@@ -1661,7 +1657,7 @@ def mv(x, vec, name=None):
             #        [14., 10.])
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_mv(x, vec)
+        return _C_ops.mv(x, vec)
     else:
         if _in_legacy_dygraph():
             out = _C_ops.mv(x, vec)
@@ -1722,7 +1718,7 @@ def det(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_det(x)
+        return _C_ops.det(x)
 
     if _in_legacy_dygraph():
         return _C_ops.determinant(x)
@@ -1933,7 +1929,7 @@ def matrix_power(x, n, name=None):
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_matrix_power(x, n)
+        return _C_ops.matrix_power(x, n)
 
     if _in_legacy_dygraph():
         return _C_ops.matrix_power(x, "n", n)
@@ -2412,7 +2408,7 @@ def multi_dot(x, name=None):
     if _in_legacy_dygraph():
         return _C_ops.multi_dot(x)
     if in_dygraph_mode():
-        return _C_ops.final_state_multi_dot(x)
+        return _C_ops.multi_dot(x)
 
     check_type(x, 'x', (list, tuple), 'multi_dot')
     for id, item in enumerate(x):
@@ -2464,7 +2460,7 @@ def eigh(x, UPLO='L', name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_eigh(x, UPLO)
+        return _C_ops.eigh(x, UPLO)
 
     if _in_legacy_dygraph():
         return _C_ops.eigh(x, 'UPLO', UPLO)
@@ -2592,7 +2588,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
 
             out_1 = v * st
             if in_dygraph_mode():
-                out_2 = _C_ops.final_state_matmul(out_1, u, False, True)
+                out_2 = _C_ops.matmul(out_1, u, False, True)
             else:
                 out_2 = _C_ops.matmul_v2(out_1, u, 'trans_x', False, 'trans_y',
                                          True)
@@ -2619,7 +2615,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             out_1 = u * st
             u_conj = _C_ops.conj(u)
             if in_dygraph_mode():
-                out_2 = _C_ops.final_state_matmul(out_1, u_conj, False, True)
+                out_2 = _C_ops.matmul(out_1, u_conj, False, True)
             else:
                 out_2 = _C_ops.matmul_v2(out_1, u_conj, 'trans_x', False,
                                          'trans_y', True)
@@ -2918,8 +2914,7 @@ def triangular_solve(x,
         # [7, -2, -5]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_triangular_solve(x, y, upper, transpose,
-                                                   unitriangular)
+        return _C_ops.triangular_solve(x, y, upper, transpose, unitriangular)
 
     if paddle.in_dynamic_mode():
         return _C_ops.triangular_solve(x, y, 'upper', upper, 'transpose',
@@ -2980,7 +2975,7 @@ def cholesky_solve(x, y, upper=False, name=None):
         # [-2.5, -7, 9.5]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_cholesky_solve(x, y, upper)
+        return _C_ops.cholesky_solve(x, y, upper)
 
     if _in_legacy_dygraph():
         return _C_ops.cholesky_solve(x, y, 'upper', upper)
@@ -3168,7 +3163,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
             minus_out = _C_ops.elementwise_sub(matmul_out, y)
             pow_out = _C_ops.pow(minus_out, 'factor', 2)
             if in_dygraph_mode():
-                residuals = _C_ops.final_state_sum(pow_out, [-2], None, False)
+                residuals = _C_ops.sum(pow_out, [-2], None, False)
             else:
                 residuals = _C_ops.reduce_sum(pow_out, 'dim', [-2], 'keepdim',
                                               False, 'reduce_all', False)

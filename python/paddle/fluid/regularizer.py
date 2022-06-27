@@ -135,9 +135,8 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
         if framework._non_static_mode():
             if framework.in_dygraph_mode():
-                return _C_ops.final_state_scale(param,
-                                                self._regularization_coeff, 0.0,
-                                                True)
+                return _C_ops.scale(param, self._regularization_coeff, 0.0,
+                                    True)
             else:
                 return _C_ops.scale(param, "scale", self._regularization_coeff)
         else:

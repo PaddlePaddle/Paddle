@@ -812,7 +812,7 @@ def monkey_patch_varbase():
     @framework.dygraph_only
     def clone(self):
         if in_dygraph_mode():
-            return _C_ops.final_state_assign(self)
+            return _C_ops.assign(self)
 
         if _in_legacy_dygraph():
             output = core.VarBase()
@@ -914,7 +914,7 @@ def monkey_patch_varbase():
         """
 
         if self.is_sparse_coo() or self.is_sparse_csr():
-            return _C_ops.final_state_sparse_values(self)
+            return _C_ops.sparse_values(self)
         else:
             raise ValueError(
                 "only SparseCooTensor and SparseCsrTensor have method values")
@@ -946,9 +946,9 @@ def monkey_patch_varbase():
         """
 
         if self.is_sparse_coo():
-            return _C_ops.final_state_sparse_coo_to_dense(self)
+            return _C_ops.sparse_coo_to_dense(self)
         elif self.is_sparse_csr():
-            return _C_ops.final_state_sparse_to_dense(self)
+            return _C_ops.sparse_to_dense(self)
         else:
             return self
 
@@ -977,7 +977,7 @@ def monkey_patch_varbase():
         """
 
         if self.is_sparse_csr():
-            return _C_ops.final_state_sparse_to_sparse_coo(self, sparse_dim)
+            return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
         elif self.is_sparse_coo():
             return self
         elif self.is_selected_rows():
@@ -985,7 +985,7 @@ def monkey_patch_varbase():
                 "SelectedRows does not support to_sparse_coo method")
         else:
             #is dense tensor
-            return _C_ops.final_state_sparse_dense_to_coo(self, sparse_dim)
+            return _C_ops.sparse_dense_to_coo(self, sparse_dim)
 
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return

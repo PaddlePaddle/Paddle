@@ -115,7 +115,7 @@ def shape(input):
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
     if in_dygraph_mode():
-        out = _C_ops.final_state_shape(input)
+        out = _C_ops.shape(input)
         out.stop_gradient = True
         return out
     if _in_legacy_dygraph():
@@ -277,7 +277,7 @@ def real(x, name=None):
             #         [4., 5., 6.]])
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_real(x)
+        return _C_ops.real(x)
     if _in_legacy_dygraph():
         return _C_ops.real(x)
 
@@ -323,7 +323,7 @@ def imag(x, name=None):
             #         [3., 2., 1.]])
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_imag(x)
+        return _C_ops.imag(x)
     if _in_legacy_dygraph():
         return _C_ops.imag(x)
 

@@ -803,7 +803,7 @@ def gen_einsum_op(equation, *operands):
     """
     assert len(operands) <= 2, "Only support two operands in EinsumOp."
     if in_dygraph_mode():
-        return _C_ops.final_state_einsum(operands, equation)[0]
+        return _C_ops.einsum(operands, equation)[0]
 
     if _in_legacy_dygraph():
         # dygraph

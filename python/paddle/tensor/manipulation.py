@@ -64,7 +64,7 @@ def cast(x, dtype):
     if in_dygraph_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        return _C_ops.final_state_cast(x, dtype)
+        return _C_ops.cast(x, dtype)
 
     if _non_static_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
@@ -381,7 +381,7 @@ def transpose(x, perm, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_transpose(x, perm)
+        return _C_ops.transpose(x, perm)
     else:
         if _in_legacy_dygraph():
             out, _ = _C_ops.transpose2(x, 'axis', perm)
@@ -529,8 +529,8 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             # [[-1], [1]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_shard_index(input, index_num, nshards,
-                                              shard_id, ignore_value)
+        return _C_ops.shard_index(input, index_num, nshards, shard_id,
+                                  ignore_value)
 
     check_variable_and_dtype(input, 'input', ['int64', 'int32'], 'shard_index')
     op_type = 'shard_index'
@@ -1030,7 +1030,7 @@ def concat(x, axis=0, name=None):
             axis = axis.item(0)
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
-        return _C_ops.final_state_concat(input, axis)
+        return _C_ops.concat(input, axis)
 
     if _in_legacy_dygraph():
         if isinstance(axis, Variable):
@@ -1227,7 +1227,7 @@ def flip(x, axis, name=None):
         axis = [axis]
 
     if in_dygraph_mode():
-        return _C_ops.final_state_flip(x, axis)
+        return _C_ops.flip(x, axis)
 
     if paddle.in_dynamic_mode():
         return _C_ops.flip(x, "axis", axis)
@@ -1446,7 +1446,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         raise ValueError("The stop_axis should be larger than stat_axis")
 
     if in_dygraph_mode():
-        return _C_ops.final_state_flatten(x, start_axis, stop_axis)
+        return _C_ops.flatten(x, start_axis, stop_axis)
 
     if _in_legacy_dygraph():
         dy_out, _ = _C_ops.flatten_contiguous_range(x, 'start_axis', start_axis,
@@ -1559,7 +1559,7 @@ def roll(x, shifts, axis=None, name=None):
         axis = []
 
     if in_dygraph_mode():
-        return _C_ops.final_state_roll(x, shifts, axis)
+        return _C_ops.roll(x, shifts, axis)
 
     if _in_legacy_dygraph():
         return _C_ops.roll(x, 'axis', axis, 'shifts', shifts)
@@ -1678,7 +1678,7 @@ def stack(x, axis=0, name=None):
     axis = 0 if axis is None else axis
 
     if in_dygraph_mode():
-        return _C_ops.final_state_stack(x, axis)
+        return _C_ops.stack(x, axis)
 
     if _in_legacy_dygraph():
         return _C_ops.stack(x, 'axis', axis)
@@ -1968,7 +1968,7 @@ def squeeze(x, axis=None, name=None):
     input = x
     axes = axis
     if in_dygraph_mode():
-        return _C_ops.final_state_squeeze(input, axes)
+        return _C_ops.squeeze(input, axes)
     if _in_legacy_dygraph():
         out, _ = _C_ops.squeeze2(input, 'axes', axes)
         return out
@@ -2172,7 +2172,7 @@ def unique(x,
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if _non_static_mode():
         if in_dygraph_mode():
-            out, indices, inverse, counts = _C_ops.final_state_unique(
+            out, indices, inverse, counts = _C_ops.unique(
                 x, return_index, return_inverse, return_counts, axis,
                 attr_dtype)
         if _in_legacy_dygraph():
@@ -2305,7 +2305,7 @@ def unsqueeze(x, axis, name=None):
         if _in_legacy_dygraph():
             out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
             return out
-        return _C_ops.final_state_unsqueeze(input, axes)
+        return _C_ops.unsqueeze(input, axes)
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
     check_variable_and_dtype(input, 'input', [
@@ -2416,7 +2416,7 @@ def gather(x, index, axis=None, name=None):
         axis = 0
 
     if in_dygraph_mode():
-        return _C_ops.final_state_gather(x, index, axis)
+        return _C_ops.gather(x, index, axis)
     if _in_legacy_dygraph():
         axis = axis.item() if isinstance(axis, paddle.Tensor) else axis
         return _C_ops.gather(x, index, None, "axis", axis, "overwrite", False)
@@ -2489,7 +2489,7 @@ def unbind(input, axis=0):
             # x3.shape [3, 5]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_unbind(input, axis)
+        return _C_ops.unbind(input, axis)
 
     if not isinstance(axis, (int)):
         raise TypeError("The type of 'axis'  must be int, but received %s." %
@@ -2593,7 +2593,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
             #  [1., 1.]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_scatter(x, index, updates, overwrite)
+        return _C_ops.scatter(x, index, updates, overwrite)
     else:
         if _in_legacy_dygraph():
             return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
@@ -2846,7 +2846,7 @@ def tile(x, repeat_times, name=None):
                     "Only support ndim == 1 while repeat_times is a Tensor.")
             repeat_times = repeat_times.numpy().tolist()
 
-        return _C_ops.final_state_tile(x, repeat_times)
+        return _C_ops.tile(x, repeat_times)
 
     if _in_legacy_dygraph():
         return _C_ops.tile(x, 'repeat_times', repeat_times)
@@ -2936,7 +2936,7 @@ def expand_as(x, y, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_expand_as(x, None, y.shape)
+        return _C_ops.expand_as(x, None, y.shape)
 
     if _non_static_mode():
         return _C_ops.expand_as_v2(x, 'target_shape', y.shape)
@@ -3081,7 +3081,7 @@ def expand(x, shape, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_expand(x, shape)
+        return _C_ops.expand(x, shape)
 
     if paddle.in_dynamic_mode():
         return _C_ops.expand_v2(x, 'shape', shape)
@@ -3218,7 +3218,7 @@ def reshape(x, shape, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in shape
             ]
-            out = _C_ops.final_state_reshape(x, shape)
+            out = _C_ops.reshape(x, shape)
         elif isinstance(shape, tmp_tensor_type):
             shape.stop_gradient = True
             out, _ = _C_ops.reshape2(x, shape)
@@ -3415,7 +3415,7 @@ def gather_nd(x, index, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_gather_nd(x, index)
+        return _C_ops.gather_nd(x, index)
     else:
         if _in_legacy_dygraph():
             return _C_ops.gather_nd(x, index)
@@ -4166,7 +4166,7 @@ def take_along_axis(arr, indices, axis):
         broadcast_shape = tuple(broadcast_shape_list)
         arr = paddle.broadcast_to(arr, broadcast_shape)
         if not _in_legacy_dygraph():
-            return _C_ops.final_state_take_along_axis(arr, indices, axis)
+            return _C_ops.take_along_axis(arr, indices, axis)
         return _C_ops.take_along_axis(arr, indices, 'Axis', axis)
     check_variable_and_dtype(
         arr, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
@@ -4232,8 +4232,7 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
             indices = paddle.broadcast_to(indices, broadcast_shape)
         values = paddle.broadcast_to(values, indices.shape)
         if in_dygraph_mode():
-            return _C_ops.final_state_put_along_axis(arr, indices, values, axis,
-                                                     reduce)
+            return _C_ops.put_along_axis(arr, indices, values, axis, reduce)
         return _C_ops.put_along_axis(arr, indices, values, "Axis", axis,
                                      "Reduce", reduce)
 

@@ -115,8 +115,8 @@ def graph_send_recv(x,
                                               'pool_type', pool_type.upper())
             return out
         if in_dygraph_mode():
-            return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
-                                                      pool_type.upper(), 0)
+            return _C_ops.graph_send_recv(x, src_index, dst_index,
+                                          pool_type.upper(), 0)
     else:
         if _in_legacy_dygraph():
             out, tmp = _C_ops.graph_send_recv(x, src_index,
@@ -131,9 +131,8 @@ def graph_send_recv(x,
                         "out_size should be long type, but received Tensor type."
                     )
                 out_size = out_size.numpy()[0]
-            return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
-                                                      pool_type.upper(),
-                                                      out_size)
+            return _C_ops.graph_send_recv(x, src_index, dst_index,
+                                          pool_type.upper(), out_size)
 
     check_variable_and_dtype(x, "X", ("float32", "float64", "int32", "int64"),
                              "graph_send_recv")

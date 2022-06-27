@@ -77,7 +77,7 @@ def matmul(x, y, name=None):
                 #         [-0.15209436 , -19.23207283, -3.35593438 ]])
 
     """
-    return _C_ops.final_state_sparse_matmul(x, y)
+    return _C_ops.sparse_matmul(x, y)
 
 
 @dygraph_only
@@ -140,4 +140,4 @@ def masked_matmul(x, y, mask, name=None):
                 #        values=[0.98986477, 0.97800624, 1.14591956, 0.68561077, 0.94714981])
 
     """
-    return _C_ops.final_state_sparse_masked_matmul(x, y, mask)
+    return _C_ops.sparse_masked_matmul(x, y, mask)

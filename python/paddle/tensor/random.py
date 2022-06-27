@@ -67,7 +67,7 @@ def bernoulli(x, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_bernoulli(x)
+        return _C_ops.bernoulli(x)
 
     if _in_legacy_dygraph():
         return _C_ops.bernoulli(x)
@@ -182,7 +182,7 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
         "multinomial op is not supported on ROCM yet.")
 
     if in_dygraph_mode():
-        return _C_ops.final_state_multinomial(x, num_samples, replacement)
+        return _C_ops.multinomial(x, num_samples, replacement)
 
     if _in_legacy_dygraph():
         return _C_ops.multinomial(x, 'num_samples', num_samples, 'replacement',
@@ -244,9 +244,8 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
         place = _current_expected_place()
-        return _C_ops.final_state_gaussian_random(shape, float(mean),
-                                                  float(std), seed, dtype,
-                                                  place)
+        return _C_ops.gaussian_random(shape, float(mean), float(std), seed,
+                                      dtype, place)
 
     if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
@@ -556,9 +555,8 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.final_state_uniform_random(shape, dtype, float(min),
-                                                 float(max), seed,
-                                                 _current_expected_place())
+        return _C_ops.uniform_random(shape, dtype, float(min), float(max), seed,
+                                     _current_expected_place())
 
     if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
@@ -704,7 +702,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
         place = _current_expected_place()
-        return _C_ops.final_state_randint(low, high, shape, dtype, place)
+        return _C_ops.randint(low, high, shape, dtype, place)
     if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
@@ -946,7 +944,7 @@ def randperm(n, dtype="int64", name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_randperm(n, dtype, _current_expected_place())
+        return _C_ops.randperm(n, dtype, _current_expected_place())
     if _in_legacy_dygraph():
         return _C_ops.randperm('n', n, 'seed', 0, 'dtype', dtype)
 

@@ -88,7 +88,7 @@ def one_hot(x, num_classes, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_one_hot(x, num_classes)
+        return _C_ops.one_hot(x, num_classes)
     else:
         if _in_legacy_dygraph():
             return _C_ops.one_hot_v2(x, 'depth', num_classes,
@@ -201,7 +201,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             weight.shape[0], weight.shape[0]))
 
     if in_dygraph_mode():
-        return _C_ops.final_state_embedding(x, weight, padding_idx, sparse)
+        return _C_ops.embedding(x, weight, padding_idx, sparse)
     elif _in_legacy_dygraph():
         return _C_ops.lookup_table_v2(weight, x, 'is_sparse', sparse,
                                       'is_distributed', False,

@@ -245,7 +245,7 @@ def cast(x, dtype):
     if in_dygraph_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        return _C_ops.final_state_cast(x, dtype)
+        return _C_ops.cast(x, dtype)
 
     if _non_static_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
@@ -636,7 +636,7 @@ def assign(input, output=None):
     if isinstance(input, (Variable, core.VarBase)):
         if _non_static_mode():
             if in_dygraph_mode() and output is None:
-                output = _C_ops.final_state_assign(input)
+                output = _C_ops.assign(input)
             else:
                 if output is None:
                     if _in_legacy_dygraph():
@@ -785,7 +785,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
 
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
-            out = _C_ops.final_state_full(shape, float(value), dtype, place)
+            out = _C_ops.full(shape, float(value), dtype, place)
             out.stop_gradient = True
             return out
 
@@ -892,9 +892,8 @@ def fill_constant_batch_size_like(input,
         place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
-        out = _C_ops.final_state_full_batch_size_like(input, shape, dtype,
-                                                      value, input_dim_idx,
-                                                      output_dim_idx, place)
+        out = _C_ops.full_batch_size_like(input, shape, dtype, value,
+                                          input_dim_idx, output_dim_idx, place)
         out.stop_gradient = True
         return out
 
@@ -1520,8 +1519,7 @@ def range(start, end, step, dtype, name=None):
         step = cast(step, dtype)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_arange(start, end, step, dtype,
-                                         _current_expected_place())
+        return _C_ops.arange(start, end, step, dtype, _current_expected_place())
 
     if _in_legacy_dygraph():
         out = _C_ops.range(start, end, step)
@@ -1596,8 +1594,7 @@ def linspace(start, stop, num, dtype=None, name=None):
         return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
                                dtype)
     if in_dygraph_mode():
-        return _C_ops.final_state_linspace(tensor_start, tensor_stop,
-                                           tensor_num, dtype)
+        return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, dtype)
     helper = LayerHelper("linspace", **locals())
 
     start_dtype = convert_dtype(tensor_start.dtype)
@@ -1787,8 +1784,8 @@ def eye(num_rows,
         num_columns = num_rows
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_eye(num_rows, num_columns, dtype,
-                                     _current_expected_place())
+        out = _C_ops.eye(num_rows, num_columns, dtype,
+                         _current_expected_place())
     elif _in_legacy_dygraph():
         out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
                          num_columns)

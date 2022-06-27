@@ -123,49 +123,48 @@ def _conv_nd(x,
 
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
     if in_dygraph_mode() and op_type == "conv2d":
-        pre_bias = _C_ops.final_state_conv2d(x, weight, stride, padding,
-                                             padding_algorithm, groups,
-                                             dilation, data_format, False, -1,
-                                             False)
+        pre_bias = _C_ops.conv2d(x, weight, stride, padding, padding_algorithm,
+                                 groups, dilation, data_format, False, -1,
+                                 False)
         if bias is not None:
             channel_dim = channel_dim + len(
                 x.shape) if channel_dim < 0 else channel_dim
             if len(bias.shape) < len(x.shape):
-                tmp_bias = _C_ops.final_state_reshape(
+                tmp_bias = _C_ops.reshape(
                     bias, bias.shape +
                     [1 for i in range(len(x.shape) - channel_dim - 1)])
-                return _C_ops.final_state_add(pre_bias, tmp_bias)
+                return _C_ops.add(pre_bias, tmp_bias)
             else:
-                return _C_ops.final_state_add(pre_bias, bias)
+                return _C_ops.add(pre_bias, bias)
         else:
             return pre_bias
 
     if in_dygraph_mode() and op_type == "depthwise_conv2d":
-        pre_bias = _C_ops.final_state_depthwise_conv2d(
-            x, weight, stride, padding, padding_algorithm, groups, dilation,
-            data_format, False, -1, False, False, use_cudnn)
+        pre_bias = _C_ops.depthwise_conv2d(x, weight, stride, padding,
+                                           padding_algorithm, groups, dilation,
+                                           data_format, False, -1, False, False,
+                                           use_cudnn)
         if bias is not None:
             channel_dim = channel_dim + len(
                 x.shape) if channel_dim < 0 else channel_dim
-            tmp_bias = _C_ops.final_state_reshape(
+            tmp_bias = _C_ops.reshape(
                 bias,
                 bias.shape + [1 for i in range(len(x.shape) - channel_dim - 1)])
-            return _C_ops.final_state_add(pre_bias, tmp_bias)
+            return _C_ops.add(pre_bias, tmp_bias)
         else:
             return pre_bias
 
     if in_dygraph_mode() and op_type == "conv3d":
-        pre_bias = _C_ops.final_state_conv3d(x, weight, stride, padding,
-                                             padding_algorithm, groups,
-                                             dilation, data_format, False, -1,
-                                             False)
+        pre_bias = _C_ops.conv3d(x, weight, stride, padding, padding_algorithm,
+                                 groups, dilation, data_format, False, -1,
+                                 False)
         if bias is not None:
             channel_dim = channel_dim + len(
                 x.shape) if channel_dim < 0 else channel_dim
-            tmp_bias = _C_ops.final_state_reshape(
+            tmp_bias = _C_ops.reshape(
                 bias,
                 bias.shape + [1 for i in range(len(x.shape) - channel_dim - 1)])
-            return _C_ops.final_state_add(pre_bias, tmp_bias)
+            return _C_ops.add(pre_bias, tmp_bias)
         else:
             return pre_bias
 
@@ -633,10 +632,9 @@ def conv2d(x,
             use_cudnn = False
     else:
         if in_dygraph_mode():
-            pre_bias = _C_ops.final_state_conv2d(x, weight, stride, padding,
-                                                 padding_algorithm, groups,
-                                                 dilation, data_format, False,
-                                                 -1, False)
+            pre_bias = _C_ops.conv2d(x, weight, stride, padding,
+                                     padding_algorithm, groups, dilation,
+                                     data_format, False, -1, False)
             if bias is not None:
                 out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
                 return out
@@ -1133,10 +1131,9 @@ def conv2d_transpose(x,
         use_cudnn = False
 
     if in_dygraph_mode():
-        final_state_op = _C_ops.final_state_conv2d_transpose if op_type == 'conv2d_transpose' else _C_ops.final_state_depthwise_conv2d_transpose
-        pre_bias = final_state_op(x, weight, stride, padding, output_padding,
-                                  output_size, padding_algorithm, groups,
-                                  dilation, data_format)
+        op = _C_ops.conv2d_transpose if op_type == 'conv2d_transpose' else _C_ops.depthwise_conv2d_transpose
+        pre_bias = op(x, weight, stride, padding, output_padding, output_size,
+                      padding_algorithm, groups, dilation, data_format)
         if bias is not None:
             return nn.elementwise_add(pre_bias, bias, axis=channel_dim)
         else:
@@ -1552,9 +1549,10 @@ def conv3d_transpose(x,
     data_format_ = "NHWC" if channel_last else "NCHW"
 
     if in_dygraph_mode():
-        pre_bias = _C_ops.final_state_conv3d_transpose(
-            x, weight, stride, padding, output_padding, output_size,
-            padding_algorithm, groups, dilation, data_format_)
+        pre_bias = _C_ops.conv3d_transpose(x, weight, stride, padding,
+                                           output_padding, output_size,
+                                           padding_algorithm, groups, dilation,
+                                           data_format_)
         if bias is not None:
             return nn.elementwise_add(pre_bias, bias, axis=channel_dim)
         else:

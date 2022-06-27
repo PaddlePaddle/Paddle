@@ -346,12 +346,12 @@ class NormalInitializer(Initializer):
 
         if in_dygraph_mode():
             place = _current_expected_place()
-            out_var = _C_ops.final_state_gaussian_random(
-                var.shape, self._mean, self._std_dev, self._seed, out_dtype,
-                place)
+            out_var = _C_ops.gaussian_random(var.shape, self._mean,
+                                             self._std_dev, self._seed,
+                                             out_dtype, place)
 
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _C_ops.final_state_cast(out_var, var.dtype)
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -454,11 +454,11 @@ class TruncatedNormalInitializer(Initializer):
             out_var = var
 
         if in_dygraph_mode():
-            out_var = _C_ops.final_state_truncated_gaussian_random(
+            out_var = _C_ops.truncated_gaussian_random(
                 var.shape, self._mean, self._std_dev, self._seed, out_dtype,
                 _current_expected_place())
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _C_ops.final_state_cast(out_var, var.dtype)
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -607,8 +607,9 @@ class XavierInitializer(Initializer):
 
                 if in_dygraph_mode():
                     place = _current_expected_place()
-                    out_var = _C_ops.final_state_gaussian_random(
-                        out_var.shape, 0.0, std, self._seed, out_dtype, place)
+                    out_var = _C_ops.gaussian_random(out_var.shape, 0.0, std,
+                                                     self._seed, out_dtype,
+                                                     place)
                 else:
                     out_var = _C_ops.gaussian_random('shape', out_var.shape,
                                                      'dtype', out_dtype, 'mean',
@@ -777,8 +778,9 @@ class MSRAInitializer(Initializer):
                 std = gain / math.sqrt(float(fan_in))
                 if in_dygraph_mode():
                     place = _current_expected_place()
-                    out_var = _C_ops.final_state_gaussian_random(
-                        out_var.shape, 0.0, std, self._seed, out_dtype, place)
+                    out_var = _C_ops.gaussian_random(out_var.shape, 0.0, std,
+                                                     self._seed, out_dtype,
+                                                     place)
                 else:
                     out_var = _C_ops.gaussian_random('shape',
                                                      out_var.shape, 'dtype',

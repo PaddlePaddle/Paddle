@@ -1024,8 +1024,8 @@ class TestDropoutBackward(unittest.TestCase):
                 with _test_eager_guard():
                     input = paddle.uniform([40, 40], dtype="float32")
                     input.stop_gradient = False
-                    out, mask = _C_ops.final_state_dropout(
-                        input, None, 0.5, False, "downgrade_in_infer", 0, False)
+                    out, mask = _C_ops.dropout(input, None, 0.5, False,
+                                               "downgrade_in_infer", 0, False)
                     out.backward()
                     self.assertTrue(
                         np.array_equal(
@@ -1057,8 +1057,8 @@ class TestDropoutBackward(unittest.TestCase):
                     prob = 0.5
                     input = paddle.uniform([40, 40], dtype="float32")
                     input.stop_gradient = False
-                    out, mask = _C_ops.final_state_dropout(
-                        input, None, 0.5, False, "upscale_in_train", 0, False)
+                    out, mask = _C_ops.dropout(input, None, 0.5, False,
+                                               "upscale_in_train", 0, False)
                     out.backward()
 
                     self.assertTrue(
@@ -1092,8 +1092,8 @@ class TestDropoutBackward(unittest.TestCase):
                     prob = 0.3
                     input = paddle.uniform([40, 40], dtype="float32")
                     input.stop_gradient = False
-                    out, mask = _C_ops.final_state_dropout(
-                        input, None, 0.3, False, "upscale_in_train", 0, False)
+                    out, mask = _C_ops.dropout(input, None, 0.3, False,
+                                               "upscale_in_train", 0, False)
 
                     out.backward()
 

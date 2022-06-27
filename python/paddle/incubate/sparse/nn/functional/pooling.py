@@ -95,5 +95,4 @@ def max_pool3d(x,
     #TODO(zkh2016): remove the dependency on dilation from the backend
     dilation = [1, 1, 1]
 
-    return _C_ops.final_state_sparse_maxpool(x, kernel_size, padding, dilation,
-                                             stride)
+    return _C_ops.sparse_maxpool(x, kernel_size, padding, dilation, stride)

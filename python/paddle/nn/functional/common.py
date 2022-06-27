@@ -153,8 +153,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "of 2 or 4 integers")
 
     if in_dygraph_mode():
-        return _C_ops.final_state_unfold(x, kernel_sizes, strides, paddings,
-                                         dilations)
+        return _C_ops.unfold(x, kernel_sizes, strides, paddings, dilations)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="unfold",
@@ -1029,7 +1028,7 @@ def dropout(x,
                 seed = default_main_program().random_seed
 
             if in_dygraph_mode():
-                out, mask = _C_ops.final_state_dropout( x, None, p, not training, mode, \
+                out, mask = _C_ops.dropout( x, None, p, not training, mode, \
                     seed if seed is not None else 0, seed is not None)
 
                 return out
@@ -1507,7 +1506,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     if in_dygraph_mode():
         if isinstance(pad, Variable):
             pad = pad.numpy().tolist()
-        out = _C_ops.final_state_pad3d(x, pad, mode, value, data_format)
+        out = _C_ops.pad3d(x, pad, mode, value, data_format)
     else:
         if _in_legacy_dygraph():
             if isinstance(pad, Variable):
@@ -1685,7 +1684,7 @@ def linear(x, weight, bias=None, name=None):
     """
     if in_dygraph_mode():
         #TODO(jiabin): using addmm for fast forward route
-        return _C_ops.final_state_linear(x, weight, bias)
+        return _C_ops.linear(x, weight, bias)
     else:
         if _in_legacy_dygraph():
             pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
@@ -1787,8 +1786,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
     if in_dygraph_mode():
-        return _C_ops.final_state_label_smooth(label, prior_dist,
-                                               float(epsilon))
+        return _C_ops.label_smooth(label, prior_dist, float(epsilon))
 
     elif paddle.in_dynamic_mode():
         return _C_ops.label_smooth(label, prior_dist, 'epsilon', float(epsilon))

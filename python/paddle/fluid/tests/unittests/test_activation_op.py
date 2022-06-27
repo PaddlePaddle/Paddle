@@ -3121,7 +3121,7 @@ class TestSwishAPI(unittest.TestCase):
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
         paddle.enable_static()
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
             self.test_dygraph_api()
 

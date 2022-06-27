@@ -46,7 +46,7 @@ def tanh(x, name=None):
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.incubate.sparse.tanh(sparse_x)
     """
-    return _C_ops.final_state_sparse_tanh(x)
+    return _C_ops.sparse_tanh(x)
 
 
 @dygraph_only
@@ -77,7 +77,7 @@ def sqrt(x, name=None):
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.incubate.sparse.sqrt(sparse_x)
     """
-    return _C_ops.final_state_sparse_sqrt(x)
+    return _C_ops.sparse_sqrt(x)
 
 
 @dygraph_only
@@ -108,4 +108,4 @@ def sin(x, name=None):
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.incubate.sparse.sin(sparse_x)
     """
-    return _C_ops.final_state_sparse_sin(x)
+    return _C_ops.sparse_sin(x)

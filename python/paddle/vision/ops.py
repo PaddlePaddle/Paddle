@@ -378,11 +378,10 @@ def yolo_box(x,
                                                    scale_x_y=1.)
     """
     if in_dygraph_mode():
-        boxes, scores = _C_ops.final_state_yolo_box(x, img_size, anchors,
-                                                    class_num, conf_thresh,
-                                                    downsample_ratio, clip_bbox,
-                                                    scale_x_y, iou_aware,
-                                                    iou_aware_factor)
+        boxes, scores = _C_ops.yolo_box(x, img_size, anchors, class_num,
+                                        conf_thresh, downsample_ratio,
+                                        clip_bbox, scale_x_y, iou_aware,
+                                        iou_aware_factor)
         return boxes, scores
 
     if _non_static_mode():
@@ -559,10 +558,9 @@ def deform_conv2d(x,
     use_deform_conv2d_v1 = True if mask is None else False
 
     if in_dygraph_mode():
-        pre_bias = _C_ops.final_state_deformable_conv(x, offset, weight, mask,
-                                                      stride, padding, dilation,
-                                                      deformable_groups, groups,
-                                                      1)
+        pre_bias = _C_ops.deformable_conv(x, offset, weight, mask, stride,
+                                          padding, dilation, deformable_groups,
+                                          groups, 1)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=1)
         else:
@@ -982,9 +980,8 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
             "Input features with shape should be (N, C, H, W)"
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
     if in_dygraph_mode():
-        return _C_ops.final_state_psroi_pool(x, boxes, boxes_num, pooled_height,
-                                             pooled_width, output_channels,
-                                             spatial_scale)
+        return _C_ops.psroi_pool(x, boxes, boxes_num, pooled_height,
+                                 pooled_width, output_channels, spatial_scale)
     if _in_legacy_dygraph():
         return _C_ops.psroi_pool(x, boxes, boxes_num, "output_channels",
                                  output_channels, "spatial_scale",
@@ -1098,8 +1095,8 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     pooled_height, pooled_width = output_size
     if in_dygraph_mode():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
-        return _C_ops.final_state_roi_pool(x, boxes, boxes_num, pooled_height,
-                                           pooled_width, spatial_scale)
+        return _C_ops.roi_pool(x, boxes, boxes_num, pooled_height, pooled_width,
+                               spatial_scale)
     if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         pool_out, argmaxes = _C_ops.roi_pool(x, boxes, boxes_num,
@@ -1258,9 +1255,9 @@ def roi_align(x,
     pooled_height, pooled_width = output_size
     if in_dygraph_mode():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
-        return _C_ops.final_state_roi_align(x, boxes, boxes_num, pooled_height,
-                                            pooled_width, spatial_scale,
-                                            sampling_ratio, aligned)
+        return _C_ops.roi_align(x, boxes, boxes_num, pooled_height,
+                                pooled_width, spatial_scale, sampling_ratio,
+                                aligned)
     if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         align_out = _C_ops.roi_align(x, boxes, boxes_num, "pooled_height",

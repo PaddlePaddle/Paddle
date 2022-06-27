@@ -46,7 +46,7 @@ def relu(x, name=None):
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.incubate.sparse.nn.functional.relu(sparse_x) 
     """
-    return _C_ops.final_state_sparse_relu(x)
+    return _C_ops.sparse_relu(x)
 
 
 @dygraph_only
@@ -105,4 +105,4 @@ def softmax(x, axis=-1, name=None):
                 #                1.        ])
     
     """
-    return _C_ops.final_state_sparse_softmax(x, axis)
+    return _C_ops.sparse_softmax(x, axis)

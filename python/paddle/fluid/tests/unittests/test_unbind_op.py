@@ -59,7 +59,7 @@ class TestUnbind(unittest.TestCase):
             out.backward()
             self.assertTrue(np.array_equal(x.grad.numpy(), np_grad))
 
-    def test_unbind_dygraph_final_state(self):
+    def test_unbind_dygraph(self):
         with _test_eager_guard():
             self.test_unbind_dygraph()
 

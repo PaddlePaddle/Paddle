@@ -1033,7 +1033,7 @@ class Optimizer(object):
 
         if framework.in_dygraph_mode():
             if grad.is_dense() and regularization_term.is_dense():
-                return _C_ops.final_state_add_n([grad, regularization_term])
+                return _C_ops.add_n([grad, regularization_term])
             return _C_ops.sum([grad, regularization_term])
         elif framework._in_legacy_dygraph():
             return _C_ops.sum([grad, regularization_term])

@@ -197,14 +197,14 @@ __all__ = [
 ]
 
 OP_NAMEMAPPING = {
-    'elementwise_max': 'final_state_maximum',
-    'elementwise_min': 'final_state_minimum',
-    'elementwise_pow': 'final_state_elementwise_pow',
-    'elementwise_floordiv': 'final_state_floor_divide',
-    'elementwise_add': 'final_state_add',
-    'elementwise_sub': 'final_state_subtract',
-    'elementwise_mul': 'final_state_multiply',
-    'elementwise_div': 'final_state_divide',
+    'elementwise_max': '_maximum',
+    'elementwise_min': '_minimum',
+    'elementwise_pow': '_elementwise_pow',
+    'elementwise_floordiv': '_floor_divide',
+    'elementwise_add': '_add',
+    'elementwise_sub': '_subtract',
+    'elementwise_mul': '_multiply',
+    'elementwise_div': '_divide',
 }
 
 
@@ -4924,7 +4924,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
                 "The type of axis must be int, list or tuple, but received {}".
                 format(type(dim)))
     if in_dygraph_mode():
-        return _C_ops.final_state_reduce_prod(
+        return _C_ops.reduce_prod(
             input, dim if dim != None and dim != [] else [0], keep_dim, True if
             dim == None or dim == [] or len(dim) == len(input.shape) else False)
 
@@ -5156,7 +5156,7 @@ def split(input, num_or_sections, dim=-1, name=None):
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
         if in_dygraph_mode():
-            return _C_ops.final_state_split(input, [num], dim)
+            return _C_ops.split(input, [num], dim)
         elif _in_legacy_dygraph():
             out = [_varbase_creator() for n in range(num)]
             _C_ops.split(input, out, *attrs)
@@ -5764,7 +5764,7 @@ def transpose(x, perm, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_transpose(x, perm)
+        return _C_ops.transpose(x, perm)
     else:
         if _in_legacy_dygraph():
             out, _ = _C_ops.transpose2(x, 'axis', perm)
@@ -6058,7 +6058,7 @@ def multiplex(inputs, index, name=None):
     if _in_legacy_dygraph():
         return _C_ops.multiplex(index, inputs)
     if in_dygraph_mode():
-        return _C_ops.final_state_multiplex(inputs, index)
+        return _C_ops.multiplex(inputs, index)
     helper = LayerHelper('multiplex', **locals())
 
     check_type(inputs, 'inputs', (list), 'multiplex')
@@ -6431,9 +6431,9 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in shape
             ]
-            out = _C_ops.final_state_reshape(x, shape)
+            out = _C_ops.reshape(x, shape)
         elif isinstance(shape, tmp_tensor_type):
-            # TODO: Tensor shape in final_state_reshape has not been tested
+            # TODO: Tensor shape in _reshape has not been tested
             shape.stop_gradient = True
             out, _ = _C_ops.reshape2(x, shape)
         else:
@@ -6591,7 +6591,7 @@ def squeeze(input, axes, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_squeeze(input, axes)
+        return _C_ops.squeeze(input, axes)
     if _in_legacy_dygraph():
         out, _ = _C_ops.squeeze2(input, 'axes', axes)
         return out
@@ -6657,7 +6657,7 @@ def unsqueeze(input, axes, name=None):
         if _in_legacy_dygraph():
             out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
             return out
-        return _C_ops.final_state_unsqueeze(input, axes)
+        return _C_ops.unsqueeze(input, axes)
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
     check_variable_and_dtype(input, 'input', [
@@ -7200,8 +7200,7 @@ def label_smooth(label,
                 label=one_hot_label, epsilon=0.1, dtype="float32")
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_label_smooth(label, prior_dist,
-                                               float(epsilon))
+        return _C_ops.label_smooth(label, prior_dist, float(epsilon))
 
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
@@ -7389,10 +7388,9 @@ def roi_align(input,
     """
     if in_dygraph_mode():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
-        return _C_ops.final_state_roi_align(input, rois, rois_num,
-                                            pooled_height, pooled_width,
-                                            spatial_scale, sampling_ratio,
-                                            False)
+        return _C_ops.roi_align(input, rois, rois_num, pooled_height,
+                                pooled_width, spatial_scale, sampling_ratio,
+                                False)
     if _in_legacy_dygraph():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
         align_out = _C_ops.roi_align(input, rois, rois_num, "pooled_height",
@@ -8789,7 +8787,7 @@ def gather_nd(input, index, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_gather_nd(input, index)
+        return _C_ops.gather_nd(input, index)
     else:
         if _in_legacy_dygraph():
             return _C_ops.gather_nd(input, index)
@@ -8970,7 +8968,7 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_scatter_nd_add(ref, index, updates)
+        return _C_ops.scatter_nd_add(ref, index, updates)
     else:
         if _in_legacy_dygraph():
             op = getattr(_C_ops, 'scatter_nd_add')
@@ -9123,7 +9121,7 @@ def log(x, name=None):
             # [[0.693147, 1.09861, 1.38629], [1.94591, 2.07944, 2.19722]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_log(x)
+        return _C_ops.log(x)
     if _in_legacy_dygraph():
         return _C_ops.log(x)
 
@@ -9166,7 +9164,7 @@ def relu(x, name=None):
 """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_relu(x)
+        return _C_ops.relu(x)
     if _in_legacy_dygraph():
         return _C_ops.relu(x)
 
@@ -10525,7 +10523,7 @@ def stack(x, axis=0, name=None):
     axis = 0 if axis is None else axis
 
     if in_dygraph_mode():
-        return _C_ops.final_state_stack(x, axis)
+        return _C_ops.stack(x, axis)
 
     if _in_legacy_dygraph():
         return _C_ops.stack(x, 'axis', axis)
@@ -11121,9 +11119,8 @@ def gaussian_random(shape,
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
         place = _current_expected_place()
-        return _C_ops.final_state_gaussian_random(shape, float(mean),
-                                                  float(std), seed, dtype,
-                                                  place)
+        return _C_ops.gaussian_random(shape, float(mean), float(std), seed,
+                                      dtype, place)
 
     if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
@@ -11451,8 +11448,7 @@ def slice(input, axes, starts, ends):
             tensor_t = ends.numpy()
             ends = [ele for ele in tensor_t]
 
-        return _C_ops.final_state_slice(input, axes, starts, ends, infer_flags,
-                                        [])
+        return _C_ops.slice(input, axes, starts, ends, infer_flags, [])
     else:
         if _in_legacy_dygraph():
             attrs = ()
@@ -11670,8 +11666,7 @@ def strided_slice(input, axes, starts, ends, strides):
             # sliced_2 is input[:, 0:3:1, 0:2:1, 2:4:2].
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_strided_slice(input, axes, starts, ends,
-                                                strides)
+        return _C_ops.strided_slice(input, axes, starts, ends, strides)
 
     helper = LayerHelper('strided_slice', **locals())
 
@@ -11840,7 +11835,7 @@ def shape(input):
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
     if in_dygraph_mode():
-        out = _C_ops.final_state_shape(input)
+        out = _C_ops.shape(input)
         out.stop_gradient = True
         return out
     if _in_legacy_dygraph():
@@ -11919,7 +11914,7 @@ def size(input):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_size(input)
+        return _C_ops.size(input)
 
     if _in_legacy_dygraph():
         return _C_ops.size(input)
@@ -12014,7 +12009,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
+        out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out)
     if _non_static_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
@@ -12822,7 +12817,7 @@ def logical_and(x, y, out=None, name=None):
             print(res) # [True False True False]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_logical_and(x, y)
+        return _C_ops.logical_and(x, y)
 
     return _logical_op(op_name="logical_and",
                        x=x,
@@ -12868,7 +12863,7 @@ def logical_or(x, y, out=None, name=None):
             print(res) # [[ True  True] [ True False]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_logical_or(x, y)
+        return _C_ops.logical_or(x, y)
     return _logical_op(op_name="logical_or",
                        x=x,
                        y=y,
@@ -12913,7 +12908,7 @@ def logical_xor(x, y, out=None, name=None):
             print(res) # [[False,  True], [ True, False]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_logical_xor(x, y)
+        return _C_ops.logical_xor(x, y)
 
     return _logical_op(op_name="logical_xor",
                        x=x,
@@ -12952,7 +12947,7 @@ def logical_not(x, out=None, name=None):
             print(res) # [False  True False  True]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_logical_not(x)
+        return _C_ops.logical_not(x)
     return _logical_op(op_name="logical_not",
                        x=x,
                        y=None,
@@ -13095,7 +13090,7 @@ def mean(x, name=None):
     if _in_legacy_dygraph():
         return _C_ops.mean(x)
     if in_dygraph_mode():
-        return _C_ops.final_state_mean_all(x)
+        return _C_ops.mean_all(x)
 
     helper = LayerHelper("mean", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mean')
@@ -14730,7 +14725,7 @@ def where(condition):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_where_index(condition)
+        return _C_ops.where_index(condition)
     if _in_legacy_dygraph():
         return _C_ops.where_index(condition)
 
@@ -15403,8 +15398,8 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             # [[-1], [1]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_shard_index(input, index_num, nshards,
-                                              shard_id, ignore_value)
+        return _C_ops.shard_index(input, index_num, nshards, shard_id,
+                                  ignore_value)
 
     check_variable_and_dtype(input, 'input', ['int64', 'int32'], 'shard_index')
     op_type = 'shard_index'
@@ -15558,7 +15553,7 @@ def mish(x, threshold=20, name=None):
         print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_mish(x, threshold)
+        return _C_ops.mish(x, threshold)
     if _in_legacy_dygraph():
         return _C_ops.mish(x, 'threshold', threshold)
 

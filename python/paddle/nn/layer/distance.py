@@ -81,8 +81,8 @@ class PairwiseDistance(Layer):
     def forward(self, x, y):
         if in_dygraph_mode():
             sub = _C_ops.elementwise_sub(x, y)
-            return _C_ops.final_state_p_norm(sub, self.p, 1, self.epsilon,
-                                             self.keepdim, False)
+            return _C_ops.p_norm(sub, self.p, 1, self.epsilon, self.keepdim,
+                                 False)
 
         if _in_legacy_dygraph():
             sub = _C_ops.elementwise_sub(x, y)

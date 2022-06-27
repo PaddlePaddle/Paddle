@@ -363,7 +363,7 @@ class API_Test_Add_n(unittest.TestCase):
 
             self.assertEqual((sum_value.numpy() == expected_result).all(), True)
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with fluid.dygraph.guard():
             with _test_eager_guard():
                 input0 = paddle.ones(shape=[2, 3], dtype='float32')

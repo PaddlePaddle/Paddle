@@ -81,7 +81,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
     if in_dygraph_mode():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
-        out = _C_ops.final_state_p_norm(x, float(p), axis, epsilon, True, False)
+        out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
         return x / _C_ops.elementwise_max(out, eps)
 
     if _in_legacy_dygraph():
@@ -189,7 +189,7 @@ def batch_norm(x,
         trainable_statistics = not use_global_stats
 
     if in_dygraph_mode():
-        batch_norm_out, _, _, _, _, _ = _C_ops.final_state_batch_norm(
+        batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
             x, weight, bias, running_mean, running_var, momentum, epsilon,
             data_format, not training, use_global_stats, trainable_statistics,
             False)
@@ -323,8 +323,8 @@ def layer_norm(x,
                          str(input_shape))
 
     if in_dygraph_mode():
-        pre_act, _, _, = _C_ops.final_state_layer_norm(x, weight, bias, epsilon,
-                                                       begin_norm_axis, False)
+        pre_act, _, _, = _C_ops.layer_norm(x, weight, bias, epsilon,
+                                           begin_norm_axis, False)
 
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
@@ -413,7 +413,7 @@ def instance_norm(x,
 
     """
     if in_dygraph_mode():
-        out = _C_ops.final_state_instance_norm(x, weight, bias, eps)
+        out = _C_ops.instance_norm(x, weight, bias, eps)
         return out
     if _in_legacy_dygraph():
         out, _, _ = _C_ops.instance_norm(x, weight, bias, "epsilon", eps,

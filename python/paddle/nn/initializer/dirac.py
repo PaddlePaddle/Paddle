@@ -234,8 +234,8 @@ class Dirac(Initializer):
 
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_out = _C_ops.final_state_scatter(out_var, index_tensor,
-                                                     value_tensor, True)
+                tmp_out = _C_ops.scatter(out_var, index_tensor, value_tensor,
+                                         True)
                 tmp_out._share_underline_tensor_to(out_var)
                 tmp_reshape_out, _ = _C_ops.reshape2(out_var, None, 'shape',
                                                      origin_shape)

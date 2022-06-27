@@ -59,8 +59,8 @@ def viterbi_decode(potentials,
             scores, path = paddle.text.viterbi_decode(emission, transition, length, False) # scores: [3.37089300, 1.56825531], path: [[1, 0, 0], [1, 1, 0]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_viterbi_decode(potentials, transition_params,
-                                                 lengths, include_bos_eos_tag)
+        return _C_ops.viterbi_decode(potentials, transition_params, lengths,
+                                     include_bos_eos_tag)
 
     if _non_static_mode():
         return _C_ops.viterbi_decode(potentials, transition_params, lengths,

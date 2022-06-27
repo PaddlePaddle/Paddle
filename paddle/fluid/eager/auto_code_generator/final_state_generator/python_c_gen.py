@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -77,15 +77,15 @@ RECORD_EVENT_TEMPLATE = \
 
 RETURN_INPLACE_PYOBJECT_TEMPLATE = \
 """
-    ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_final_state_args_info, \"final_state_{}\", \"{}\");
-    ssize_t return_id = GetIdxFromCoreOpsInfoMap(core_ops_final_state_returns_info, \"final_state_{}\", \"{}\");
+    ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_args_info, \"{}\", \"{}\");
+    ssize_t return_id = GetIdxFromCoreOpsInfoMap(core_ops_returns_info, \"{}\", \"{}\");
     return ToPyObject(out, return_id, args, arg_id);
 """
 
 
 PYTHON_C_FUNCTION_TEMPLATE = \
 """
-static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
+static PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
   {}
 
   PyThreadState *tstate = nullptr;
@@ -134,7 +134,7 @@ FUNCTION_NAME_TEMPLATE = \
 
 PYTHON_C_FUNCTION_REG_TEMPLATE = \
 """
-{{\"final_state_{}{}\", (PyCFunction)(void(*)(void)) {}eager_final_state_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}}
+{{\"{}{}\", (PyCFunction)(void(*)(void)) {}eager_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}}
 
 """
 
@@ -174,11 +174,11 @@ static PyMethodDef EagerFinalStateMethods[] = {{
 
 CORE_OPS_INFO = \
 """
-static PyObject * eager_get_final_state_core_ops_args_info(PyObject *self) {
+static PyObject * eager_get_core_ops_args_info(PyObject *self) {
     PyThreadState *tstate = nullptr;
     try
     {
-      return ToPyObject(core_ops_final_state_args_info);
+      return ToPyObject(core_ops_args_info);
     }
     catch(...) {
       if (tstate) {
@@ -189,11 +189,11 @@ static PyObject * eager_get_final_state_core_ops_args_info(PyObject *self) {
     }
 }
 
-static PyObject * eager_get_final_state_core_ops_args_type_info(PyObject *self) {
+static PyObject * eager_get_core_ops_args_type_info(PyObject *self) {
     PyThreadState *tstate = nullptr;
     try
     {
-      return ToPyObject(core_ops_final_state_args_type_info);
+      return ToPyObject(core_ops_args_type_info);
     }
     catch(...) {
       if (tstate) {
@@ -204,11 +204,11 @@ static PyObject * eager_get_final_state_core_ops_args_type_info(PyObject *self) 
     }
 }
 
-static PyObject * eager_get_final_state_core_ops_returns_info(PyObject *self) {
+static PyObject * eager_get_core_ops_returns_info(PyObject *self) {
     PyThreadState *tstate = nullptr;
     try
     {
-      return ToPyObject(core_ops_final_state_returns_info);
+      return ToPyObject(core_ops_returns_info);
     }
     catch(...) {
       if (tstate) {
@@ -223,16 +223,16 @@ static PyObject * eager_get_final_state_core_ops_returns_info(PyObject *self) {
 
 CORE_OPS_INFO_REGISTRY = \
 """
-    {\"get_final_state_core_ops_args_info\",
-    (PyCFunction)(void(*)(void))eager_get_final_state_core_ops_args_info, METH_NOARGS,
-    \"C++ interface function for eager_get_final_state_core_ops_args_info.\"},
-    {\"get_final_state_core_ops_args_type_info\",
-    (PyCFunction)(void(*)(void))eager_get_final_state_core_ops_args_type_info,
+    {\"get_core_ops_args_info\",
+    (PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS,
+    \"C++ interface function for eager_get_core_ops_args_info.\"},
+    {\"get_core_ops_args_type_info\",
+    (PyCFunction)(void(*)(void))eager_get_core_ops_args_type_info,
     METH_NOARGS,
-    \"C++ interface function for eager_get_final_state_core_ops_args_type_info.\"},
-    {\"get_final_state_core_ops_returns_info\",
-    (PyCFunction)(void(*)(void))eager_get_final_state_core_ops_returns_info,
-    METH_NOARGS, \"C++ interface function for eager_get_final_state_core_ops_returns_info.\"},
+    \"C++ interface function for eager_get_core_ops_args_type_info.\"},
+    {\"get_core_ops_returns_info\",
+    (PyCFunction)(void(*)(void))eager_get_core_ops_returns_info,
+    METH_NOARGS, \"C++ interface function for eager_get_core_ops_returns_info.\"},
 """
 
 NAMESPACE_WRAPPER_TEMPLATE = \
@@ -246,6 +246,7 @@ NAMESPACE_WRAPPER_TEMPLATE = \
 ## Generator Classes ##
 #######################
 class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
+
     def __init__(self, forward_api_contents, namespace):
         # Members from Parent:
         #self.namespace
@@ -258,7 +259,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         #self.forward_outputs_position_map
         #self.optional_inputs
         #self.no_need_buffers
-        #self.intermediate_outputs   
+        #self.intermediate_outputs
         #self.forward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
@@ -320,8 +321,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         set_device_str = FUNCTION_SET_DEVICE_TEMPLATE.format(expected_place_str)
 
         # Generate Dygraph Function Call Logic
-        num_args = len(forward_inputs_position_map.keys()) + len(
-            orig_forward_attrs_list)
+        num_args = len(
+            forward_inputs_position_map.keys()) + len(orig_forward_attrs_list)
         dygraph_function_call_list = ["" for i in range(num_args)]
         for name, (_, pos) in forward_inputs_position_map.items():
             dygraph_function_call_list[pos] = f"{name}"
@@ -429,8 +430,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
 
 class PythonCGenerator(GeneratorBase):
+
     def __init__(self, path):
-        # Parent members: 
+        # Parent members:
         # self.namespace
         # self.api_yaml_path
         # self.forward_api_list
@@ -445,8 +447,8 @@ class PythonCGenerator(GeneratorBase):
         forward_api_list = self.forward_api_list
 
         for forward_api_content in forward_api_list:
-            f_generator = PythonCSingleFunctionGenerator(forward_api_content,
-                                                         namespace)
+            f_generator = PythonCSingleFunctionGenerator(
+                forward_api_content, namespace)
             status = f_generator.run()
 
             if status == True:
