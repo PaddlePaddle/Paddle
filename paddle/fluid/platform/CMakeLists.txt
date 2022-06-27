@@ -270,6 +270,15 @@ cc_library(
 set(DEVICE_EVENT_LIBS
     device_event_base
     CACHE INTERNAL "device event libs")
+if(WITH_XPU)
+  cc_library(
+    device_event_xpu
+    SRCS device_event_xpu.cc
+    DEPS device_event_base xpu_info)
+  set(DEVICE_EVENT_LIBS
+      device_event_xpu
+      CACHE INTERNAL "device event libs")
+endif()
 
 if(WITH_GPU)
   nv_library(
@@ -354,7 +363,9 @@ if(WITH_GPU)
          enforce
          dynload_cuda
          new_profiler
-         stats)
+         stats
+         op_proto_maker
+         shape_inference)
   nv_library(
     device_memory_aligment
     SRCS device_memory_aligment.cc
@@ -363,7 +374,14 @@ elseif(WITH_ROCM)
   hip_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS os_info device_tracer gpu_info enforce new_profiler stats)
+    DEPS os_info
+         device_tracer
+         gpu_info
+         enforce
+         new_profiler
+         stats
+         op_proto_maker
+         shape_inference)
   hip_library(
     device_memory_aligment
     SRCS device_memory_aligment.cc
@@ -372,7 +390,13 @@ else()
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS os_info device_tracer enforce new_profiler stats)
+    DEPS os_info
+         device_tracer
+         enforce
+         new_profiler
+         stats
+         op_proto_maker
+         shape_inference)
   cc_library(
     device_memory_aligment
     SRCS device_memory_aligment.cc

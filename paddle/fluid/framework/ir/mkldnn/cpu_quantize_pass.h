@@ -65,19 +65,30 @@ class CPUQuantizePass : public FusePassBase {
   void QuantizeSlice(Graph* graph) const;
   void QuantizeNearestInterp(Graph* graph) const;
 
-  void QuantizeInput(Graph* g, Node* op, Node* input, std::string input_name,
-                     double scale_to_one, bool is_input_unsigned,
-                     std::string scale_attr_name = "", float shift = 0.0,
+  void QuantizeInput(Graph* g,
+                     Node* op,
+                     Node* input,
+                     std::string input_name,
+                     double scale_to_one,
+                     bool is_input_unsigned,
+                     std::string scale_attr_name = "",
+                     float shift = 0.0,
                      std::string shift_attr_name = "") const;
 
   // quantize all inputs of given name with the same (minimum) scale
-  void QuantizeInputs(Graph* g, Node* op, std::string input_name,
+  void QuantizeInputs(Graph* g,
+                      Node* op,
+                      std::string input_name,
                       bool are_inputs_unsigned,
-                      std::string scale_attr_name = "", float shift = 0.0,
+                      std::string scale_attr_name = "",
+                      float shift = 0.0,
                       std::string shift_attr_name = "") const;
 
-  void DequantizeOutput(Graph* g, Node* op, Node* output,
-                        std::string output_name, double scale_to_one,
+  void DequantizeOutput(Graph* g,
+                        Node* op,
+                        Node* output,
+                        std::string output_name,
+                        double scale_to_one,
                         bool is_unsigned,
                         std::string scale_attr_name = "") const;
 

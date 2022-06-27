@@ -144,8 +144,12 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
     matmul_desc->SetAttr("fused_transpose_Out", transpose_axis);
 
     GraphSafeRemoveNodes(graph,
-                         {matmul_out, transpose_op, transpose_out, reshape_op,
-                          transpose_out_xshape, reshape_out_xshape});
+                         {matmul_out,
+                          transpose_op,
+                          transpose_out,
+                          reshape_op,
+                          transpose_out_xshape,
+                          reshape_out_xshape});
 
     IR_OP_VAR_LINK(matmul_op, reshape_out);
 

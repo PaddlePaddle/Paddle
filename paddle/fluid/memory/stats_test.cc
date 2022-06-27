@@ -129,7 +129,8 @@ class StatsTest : public ::testing::Test {
 
 TEST_F(StatsTest, DeviceAllocatedTest) {
   SetStatType("Allocated");
-  SetFunc(DeviceMemoryStatUpdate, DeviceMemoryStatCurrentValue,
+  SetFunc(DeviceMemoryStatUpdate,
+          DeviceMemoryStatCurrentValue,
           DeviceMemoryStatPeakValue);
   RunTests();
 }
@@ -166,7 +167,8 @@ TEST_F(StatsTest, HostAllocatedMacroTest) {
 
 TEST_F(StatsTest, HostReservedTest) {
   SetStatType("Reserved");
-  SetFunc(HostMemoryStatUpdate, HostMemoryStatCurrentValue,
+  SetFunc(HostMemoryStatUpdate,
+          HostMemoryStatCurrentValue,
           HostMemoryStatPeakValue);
   RunTests();
 }

@@ -115,7 +115,6 @@ def generate_intermediate_api(api_yaml_path, sparse_api_yaml_path,
     for api in sparse_apis:
         sparse_api = SparseAPI(api)
         if sparse_api.is_dygraph_api:
-            print(sparse_api.api)
             dygraph_header_file.write(sparse_api.gene_api_declaration())
             dygraph_source_file.write(sparse_api.gene_api_code())
 

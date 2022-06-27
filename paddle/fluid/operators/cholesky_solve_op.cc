@@ -87,8 +87,10 @@ class CholeskySolveGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "cholesky_solve");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "cholesky_solve");
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "cholesky_solve");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "cholesky_solve");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "cholesky_solve");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -109,10 +111,12 @@ class CholeskySolveGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(cholesky_solve, CholeskySolveInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(cholesky_solve,
+                            CholeskySolveInferShapeFunctor,
                             PD_INFER_META(phi::CholeskySolveInferMeta));
 
-REGISTER_OPERATOR(cholesky_solve, ops::CholeskySolveOp,
+REGISTER_OPERATOR(cholesky_solve,
+                  ops::CholeskySolveOp,
                   ops::CholeskySolveOpMaker,
                   ops::CholeskySolveOpVarTypeInference,
                   ops::CholeskySolveOpGradMaker<paddle::framework::OpDesc>,

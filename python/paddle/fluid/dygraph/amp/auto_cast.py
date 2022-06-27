@@ -395,9 +395,10 @@ class StateDictHook(object):
         for key in state_dict:
             param = state_dict[key]
             with paddle.fluid.dygraph.guard():
-                param_applied = paddle.cast(param, self._save_dtype)
-                param_applied.name = param.name
-                state_dict[key] = param_applied
+                if paddle.is_floating_point(param):
+                    param_applied = paddle.cast(param, self._save_dtype)
+                    param_applied.name = param.name
+                    state_dict[key] = param_applied
 
 
 @dygraph_only

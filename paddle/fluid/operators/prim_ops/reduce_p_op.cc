@@ -101,7 +101,8 @@ class ReducePrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(reduce_p, paddle::operators::ReducePrimOp,
+REGISTER_OPERATOR(reduce_p,
+                  paddle::operators::ReducePrimOp,
                   paddle::operators::ReducePrimOpMaker,
                   paddle::operators::ReducePrimOpShapeInference,
                   paddle::operators::ReducePrimOpVarTypeInference);

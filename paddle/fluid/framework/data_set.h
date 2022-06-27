@@ -55,7 +55,8 @@ class Dataset {
                          const std::string tree_path,
                          const std::vector<uint16_t> tdm_layer_counts,
                          const uint16_t start_sample_layer,
-                         const bool with_hierachy, const uint16_t seed_,
+                         const bool with_hierachy,
+                         const uint16_t seed_,
                          const uint16_t sample_slot) {}
   // set file list
   virtual void SetFileList(const std::vector<std::string>& filelist) = 0;
@@ -143,7 +144,8 @@ class Dataset {
   virtual void PostprocessInstance() = 0;
   // only for untest
   virtual void SetCurrentPhase(int current_phase) = 0;
-  virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
+  virtual void GenerateLocalTablesUnlock(int table_id,
+                                         int feadim,
                                          int read_thread_num,
                                          int consume_thread_num,
                                          int shard_num) = 0;
@@ -164,7 +166,8 @@ class Dataset {
   virtual std::vector<std::string> GetSlots() = 0;
 
  protected:
-  virtual int ReceiveFromClient(int msg_type, int client_id,
+  virtual int ReceiveFromClient(int msg_type,
+                                int client_id,
                                 const std::string& msg) = 0;
 };
 
@@ -238,7 +241,8 @@ class DatasetImpl : public Dataset {
   virtual void PreprocessInstance() {}
   virtual void PostprocessInstance() {}
   virtual void SetCurrentPhase(int current_phase) {}
-  virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
+  virtual void GenerateLocalTablesUnlock(int table_id,
+                                         int feadim,
                                          int read_thread_num,
                                          int consume_thread_num,
                                          int shard_num) {}
@@ -272,7 +276,8 @@ class DatasetImpl : public Dataset {
   Channel<T>& GetInputChannelRef() { return input_channel_; }
 
  protected:
-  virtual int ReceiveFromClient(int msg_type, int client_id,
+  virtual int ReceiveFromClient(int msg_type,
+                                int client_id,
                                 const std::string& msg) {
     // TODO(yaoxuefeng) for SlotRecordDataset
     return -1;
@@ -338,15 +343,18 @@ class MultiSlotDataset : public DatasetImpl<Record> {
                          const std::string tree_path,
                          const std::vector<uint16_t> tdm_layer_counts,
                          const uint16_t start_sample_layer,
-                         const bool with_hierachy, const uint16_t seed_,
+                         const bool with_hierachy,
+                         const uint16_t seed_,
                          const uint16_t sample_slot);
   virtual void MergeByInsId();
   virtual void PreprocessInstance();
   virtual void PostprocessInstance();
   virtual void SetCurrentPhase(int current_phase);
-  virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
+  virtual void GenerateLocalTablesUnlock(int table_id,
+                                         int feadim,
                                          int read_thread_num,
-                                         int consume_thread_num, int shard_num);
+                                         int consume_thread_num,
+                                         int shard_num);
   virtual void ClearLocalTables() {
     for (auto& t : local_tables_) {
       t.clear();
@@ -367,7 +375,8 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   virtual void PrepareTrain();
 
  protected:
-  virtual int ReceiveFromClient(int msg_type, int client_id,
+  virtual int ReceiveFromClient(int msg_type,
+                                int client_id,
                                 const std::string& msg);
 };
 class SlotRecordDataset : public DatasetImpl<SlotRecord> {

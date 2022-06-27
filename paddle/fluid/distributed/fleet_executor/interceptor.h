@@ -129,7 +129,8 @@ class InterceptorFactory {
   static void Register(const std::string& type, CreateInterceptorFunc func);
 
   static std::unique_ptr<Interceptor> Create(const std::string& type,
-                                             int64_t id, TaskNode* node);
+                                             int64_t id,
+                                             TaskNode* node);
 };
 
 template <typename InterceptorClass>
