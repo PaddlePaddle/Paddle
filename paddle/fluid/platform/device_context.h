@@ -933,9 +933,9 @@ class DeviceContextPool {
   static DeviceContextPool* pool;
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;
-  static thread_local const std::map<
-      Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
-      external_device_contexts_;  // not owned
+  static thread_local const std::
+      map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+          external_device_contexts_;  // not owned
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

@@ -88,7 +88,8 @@ struct BKCLContextMap {
 
   explicit BKCLContextMap(const std::vector<platform::Place> &places,
                           BKCLUniqueId *bkcl_id = nullptr,
-                          size_t num_trainers = 1, size_t trainer_id = 0) {
+                          size_t num_trainers = 1,
+                          size_t trainer_id = 0) {
     places_ = places;
     bkcl_id_ = bkcl_id;
     num_trainers_ = num_trainers;
@@ -98,7 +99,8 @@ struct BKCLContextMap {
   // Synchronization is required and can only be initialized with
   // multithreading.
   int init() {
-    PADDLE_ENFORCE_EQ(!places_.empty(), true,
+    PADDLE_ENFORCE_EQ(!places_.empty(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The BKCL place should not be empty."));
     order_.reserve(places_.size());
@@ -108,7 +110,8 @@ struct BKCLContextMap {
       contexts_.emplace(dev_id, BKCLContext(dev_id));
     }
     PADDLE_ENFORCE_EQ(
-        order_.size(), contexts_.size(),
+        order_.size(),
+        contexts_.size(),
         platform::errors::Unavailable("BKCL Context Map does not support "
                                       "contain two or more same device"));
 
@@ -120,13 +123,15 @@ struct BKCLContextMap {
     // if num_trainers == 1, should create a new bkcl id for local comms.
     if (num_trainers_ == 1 && bkcl_id_ == nullptr) {
       ret = bkcl_get_unique_id(&id);
-      PADDLE_ENFORCE_EQ(BKCL_SUCCESS, ret,
+      PADDLE_ENFORCE_EQ(BKCL_SUCCESS,
+                        ret,
                         platform::errors::PreconditionNotMet(
                             "bkcl get unique id failed [%d]", ret));
       bkcl_id_ = &id;
     }
-    PADDLE_ENFORCE_NOT_NULL(bkcl_id_, platform::errors::InvalidArgument(
-                                          "The BKCL id should not be null."));
+    PADDLE_ENFORCE_NOT_NULL(
+        bkcl_id_,
+        platform::errors::InvalidArgument("The BKCL id should not be null."));
     {
       int nranks = num_trainers_ * order_.size();
       for (size_t i = 0; i < order_.size(); ++i) {
@@ -143,10 +148,12 @@ struct BKCLContextMap {
         paras[i].dev_id = order_[i];
         paras[i].bkcl_id = bkcl_id_;
         paras[i].ctx = &comms[i];
-        PADDLE_ENFORCE_EQ(
-            pthread_create(&pids[i], nullptr, init_bkcl_context_func,
-                           reinterpret_cast<void *>(&paras[i])),
-            0, platform::errors::External("pthread_create failed"));
+        PADDLE_ENFORCE_EQ(pthread_create(&pids[i],
+                                         nullptr,
+                                         init_bkcl_context_func,
+                                         reinterpret_cast<void *>(&paras[i])),
+                          0,
+                          platform::errors::External("pthread_create failed"));
       }
       for (size_t i = 0; i < order_.size(); i++) {
         pthread_join(pids[i], nullptr);
@@ -207,7 +214,8 @@ class BKCLCommunicator {
 
   BKCLContextMap *GetRunEnvBKCLCtx(size_t run_order,
                                    bool use_hierarchical_allreduce) const {
-    PADDLE_ENFORCE_EQ(use_hierarchical_allreduce, false,
+    PADDLE_ENFORCE_EQ(use_hierarchical_allreduce,
+                      false,
                       platform::errors::Unimplemented(
                           "Hierarchical all reduce is not support for XPU"));
     return GetFlatCtx(run_order);
@@ -235,7 +243,8 @@ class BKCLCommunicator {
 
   void InitFlatCtxs(const std::vector<platform::Place> &places,
                     const std::vector<BKCLUniqueId *> &bkcl_ids,
-                    size_t trainers_num, size_t trainer_id) {
+                    size_t trainers_num,
+                    size_t trainer_id) {
     if (bkcl_ids.size() == 0) {
       auto ptr = new platform::BKCLContextMap(places);
       ptr->init();
@@ -244,12 +253,13 @@ class BKCLCommunicator {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(bkcl_ids.size(), 1,
+    PADDLE_ENFORCE_EQ(bkcl_ids.size(),
+                      1,
                       platform::errors::Unimplemented(
                           "Multi-all-reduce-ring is not support for XPU"));
     for (size_t i = 0; i < bkcl_ids.size(); i++) {
-      auto ptr = new platform::BKCLContextMap(places, bkcl_ids[i], trainers_num,
-                                              trainer_id);
+      auto ptr = new platform::BKCLContextMap(
+          places, bkcl_ids[i], trainers_num, trainer_id);
       ptr->init();
       VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
       flat_ctxs_.emplace_back(ptr);

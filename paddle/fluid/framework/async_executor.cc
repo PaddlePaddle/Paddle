@@ -48,7 +48,8 @@ void AsyncExecutor::InitServer(const std::string& dist_desc, int index) {
 
 void AsyncExecutor::InitWorker(const std::string& dist_desc,
                                const std::vector<uint64_t>& host_sign_list,
-                               int node_num, int index) {
+                               int node_num,
+                               int index) {
   fleet_ptr_ = FleetWrapper::GetInstance();
   fleet_ptr_->InitWorker(dist_desc, host_sign_list, node_num, index);
 }
@@ -73,15 +74,17 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
                                 const std::vector<std::string>& filelist,
                                 const int thread_num,
                                 const std::vector<std::string>& fetch_var_names,
-                                const std::string& mode, const bool debug) {
+                                const std::string& mode,
+                                const bool debug) {
   std::vector<std::thread> threads;
 
   auto& block = main_program.Block(0);
   for (auto var_name : fetch_var_names) {
     auto var_desc = block.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        var_desc, platform::errors::NotFound(
-                      "Variable %s is not found in main program.", var_name));
+        var_desc,
+        platform::errors::NotFound("Variable %s is not found in main program.",
+                                   var_name));
     auto shapes = var_desc->GetShape();
     PADDLE_ENFORCE_EQ(shapes[shapes.size() - 1], 1,
         platform::errors::InvalidArgument(
@@ -92,15 +95,16 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
 
   DataFeedDesc data_feed_desc;
   bool success = data_feed_desc.ParseFromString(data_feed_desc_str);
-  PADDLE_ENFORCE_EQ(success, true,
+  PADDLE_ENFORCE_EQ(success,
+                    true,
                     platform::errors::InvalidArgument(
                         "Fail to parse DataFeedDesc from string: %s.",
                         data_feed_desc_str.c_str()));
 
   actual_thread_num_ = thread_num;
   int file_cnt = filelist.size();
-  PADDLE_ENFORCE_GT(file_cnt, 0,
-                    platform::errors::NotFound("Input file list is empty."));
+  PADDLE_ENFORCE_GT(
+      file_cnt, 0, platform::errors::NotFound("Input file list is empty."));
 
   if (actual_thread_num_ > file_cnt) {
     VLOG(1) << "Thread num = " << thread_num << ", file num = " << file_cnt

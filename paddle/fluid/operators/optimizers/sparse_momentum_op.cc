@@ -113,7 +113,9 @@ $$
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    sparse_momentum, ops::SparseMomentumOp, ops::SparseMomentumOpMaker,
+    sparse_momentum,
+    ops::SparseMomentumOp,
+    ops::SparseMomentumOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::SparseMomentumOpInferVarType);

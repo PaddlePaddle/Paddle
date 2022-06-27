@@ -129,17 +129,22 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(GatherNdGradNoNeedBufferVarInferer, "X");
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(gather_nd, GatherNdInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(gather_nd,
+                            GatherNdInferShapeFunctor,
                             PD_INFER_META(phi::GatherNdInferMeta));
 
-DECLARE_INFER_SHAPE_FUNCTOR(gather_nd_grad, GatherNdGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(gather_nd_grad,
+                            GatherNdGradInferShapeFunctor,
                             PD_INFER_META(phi::GatherNdGradInferMeta));
 
-REGISTER_OPERATOR(gather_nd, ops::GatherNdOp, ops::GatherNdOpMaker,
+REGISTER_OPERATOR(gather_nd,
+                  ops::GatherNdOp,
+                  ops::GatherNdOpMaker,
                   ops::GatherNdGradOpMaker<paddle::framework::OpDesc>,
                   ops::GatherNdGradOpMaker<paddle::imperative::OpBase>,
                   GatherNdInferShapeFunctor);
 
-REGISTER_OPERATOR(gather_nd_grad, ops::GatherNdGradOp,
+REGISTER_OPERATOR(gather_nd_grad,
+                  ops::GatherNdGradOp,
                   ops::GatherNdGradNoNeedBufferVarInferer,
                   GatherNdGradInferShapeFunctor);

@@ -52,7 +52,8 @@ class MemorySparseTable : public Table {
     return local_shard_num;
   }
 
-  static size_t get_sparse_shard(uint32_t shard_num, uint32_t server_num,
+  static size_t get_sparse_shard(uint32_t shard_num,
+                                 uint32_t server_num,
                                  uint64_t key) {
     return (key % shard_num) / sparse_local_shard_num(shard_num, server_num);
   }
@@ -71,7 +72,8 @@ class MemorySparseTable : public Table {
                        const std::string& param) override;
 
   int32_t LoadLocalFS(const std::string& path, const std::string& param);
-  int32_t SaveLocalFS(const std::string& path, const std::string& param,
+  int32_t SaveLocalFS(const std::string& path,
+                      const std::string& param,
                       const std::string& prefix);
 
   int64_t LocalSize();

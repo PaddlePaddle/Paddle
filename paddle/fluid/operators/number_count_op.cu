@@ -20,8 +20,8 @@
 //     Copyright 2021, Jiaao He. All rights reserved.
 //  Licensed under the Apache License, Version 2.0 (the "License").
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/number_count_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -46,8 +46,10 @@ __global__ void initialize_zero_kernel(T* data, const int length) {
 }
 
 template <typename T>
-__global__ void NumberCount(const T* numbers, T* number_count,
-                            int64_t batch_size, int upper_range) {
+__global__ void NumberCount(const T* numbers,
+                            T* number_count,
+                            int64_t batch_size,
+                            int upper_range) {
   int res_tmp[PERTHREAD_EXPERTS] = {0};
   int expert_min = blockIdx.x * PERTHREAD_EXPERTS;
   int expert_max = expert_min + PERTHREAD_EXPERTS;

@@ -48,7 +48,8 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result);
 
 // Launch cinn to execute compiled executable program and wait done
 void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
-                         const CinnLaunchContext& context, void* stream);
+                         const CinnLaunchContext& context,
+                         void* stream);
 
 // Set cinn FLAGS (such as FLAGS_cinn_cudnn_deterministic) with paddle's FLAGS.
 void SetCinnRuntimeFlags();
@@ -65,7 +66,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     platform::RecordEvent record_event_1(
         "Step 1. Find graph object and prepare input");
     // Step 1. Find graph object and prepare input
-    PADDLE_ENFORCE_EQ(ctx.HasAttr(kCompilationKey), true,
+    PADDLE_ENFORCE_EQ(ctx.HasAttr(kCompilationKey),
+                      true,
                       platform::errors::NotFound(
                           "No Attribute(%s) found for CinnLaunchOp operator.",
                           kCompilationKey));
@@ -81,7 +83,9 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         [&inputs_name2tensor](const std::vector<std::string>& variable_names,
                               const std::vector<const LoDTensor*>& tensors) {
           std::transform(
-              variable_names.begin(), variable_names.end(), tensors.begin(),
+              variable_names.begin(),
+              variable_names.end(),
+              tensors.begin(),
               std::inserter(inputs_name2tensor, inputs_name2tensor.end()),
               [](const std::string& name, const LoDTensor* tensor) {
                 return std::make_pair(name, tensor);

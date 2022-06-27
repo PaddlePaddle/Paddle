@@ -28,8 +28,10 @@ using LoDTenso = framework::LoDTensor;
 static constexpr int ImInfoSize = 3;
 
 template <typename T, int BlockSize>
-static __global__ void GPUBoxClip(const T *input, const size_t *lod,
-                                  const size_t width, const T *im_info,
+static __global__ void GPUBoxClip(const T *input,
+                                  const size_t *lod,
+                                  const size_t width,
+                                  const T *im_info,
                                   T *output) {
   T im_w = round(im_info[blockIdx.x * ImInfoSize + 1] /
                  im_info[blockIdx.x * ImInfoSize + 2]);
@@ -60,8 +62,11 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
     T *output_data = output->mutable_data<T>(dev_ctx.GetPlace());
     paddle::framework::MixVector<size_t> mix_vector(&abs_offset_lod[0]);
     GPUBoxClip<T, 512><<<batch_size, 512, 0, stream>>>(
-        input->data<T>(), mix_vector.CUDAMutableData(dev_ctx.GetPlace()),
-        bbox_width, im_info->data<T>(), output_data);
+        input->data<T>(),
+        mix_vector.CUDAMutableData(dev_ctx.GetPlace()),
+        bbox_width,
+        im_info->data<T>(),
+        output_data);
     mix_vector.CopyToCPU();
   }
 };
@@ -71,5 +76,6 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    box_clip, ops::GPUBoxClipKernel<paddle::platform::CUDADeviceContext, float>,
+    box_clip,
+    ops::GPUBoxClipKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GPUBoxClipKernel<paddle::platform::CUDADeviceContext, double>);

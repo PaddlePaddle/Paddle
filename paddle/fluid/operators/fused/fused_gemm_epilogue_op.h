@@ -43,12 +43,19 @@ class GemmEpilogueAlgoCache {
   GemmEpilogueAlgoCache(GemmEpilogueAlgoCache const &) = delete;
   void operator=(GemmEpilogueAlgoCache const &) = delete;
 
-  cublasLtMatmulAlgo_t *GetGemmAlgo(
-      cublasLtHandle_t lt_handle, cublasLtMatmulDesc_t op_desc,
-      cublasLtMatrixLayout_t a_desc, cublasLtMatrixLayout_t b_desc,
-      cublasLtMatrixLayout_t c_desc, const void *alpha, const void *beta,
-      const void *a, const void *b, void *c, cudaStream_t stream,
-      void *workspace, size_t workspace_size) {
+  cublasLtMatmulAlgo_t *GetGemmAlgo(cublasLtHandle_t lt_handle,
+                                    cublasLtMatmulDesc_t op_desc,
+                                    cublasLtMatrixLayout_t a_desc,
+                                    cublasLtMatrixLayout_t b_desc,
+                                    cublasLtMatrixLayout_t c_desc,
+                                    const void *alpha,
+                                    const void *beta,
+                                    const void *a,
+                                    const void *b,
+                                    void *c,
+                                    cudaStream_t stream,
+                                    void *workspace,
+                                    size_t workspace_size) {
     if (search_times_ <= 0) return nullptr;
 
     int64_t seed = 0;
@@ -73,20 +80,30 @@ class GemmEpilogueAlgoCache {
         platform::dynload::cublasLtMatmulPreferenceCreate(&preference));
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmulPreferenceSetAttribute(
-            preference, CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
-            &workspace_size, sizeof(workspace_size)));
+            preference,
+            CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+            &workspace_size,
+            sizeof(workspace_size)));
 
     int returned_results = 0;
     std::vector<cublasLtMatmulHeuristicResult_t> heuristic_results(
         requested_algo_count_);
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmulAlgoGetHeuristic(
-            lt_handle, op_desc, a_desc, b_desc, c_desc, c_desc, preference,
-            requested_algo_count_, heuristic_results.data(),
+            lt_handle,
+            op_desc,
+            a_desc,
+            b_desc,
+            c_desc,
+            c_desc,
+            preference,
+            requested_algo_count_,
+            heuristic_results.data(),
             &returned_results));
 
     PADDLE_ENFORCE_GT(
-        returned_results, 0,
+        returned_results,
+        0,
         platform::errors::Unavailable("No GEMM epilogue algorithm support!"));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -99,9 +116,22 @@ class GemmEpilogueAlgoCache {
     int warmup_algo_idx = 0;
     for (int t = 0; t < 100; t++) {
       cublasStatus_t status = platform::dynload::cublasLtMatmul(
-          lt_handle, op_desc, alpha, a, a_desc, b, b_desc, beta, c, c_desc, c,
-          c_desc, &heuristic_results[warmup_algo_idx].algo, workspace,
-          workspace_size, stream);
+          lt_handle,
+          op_desc,
+          alpha,
+          a,
+          a_desc,
+          b,
+          b_desc,
+          beta,
+          c,
+          c_desc,
+          c,
+          c_desc,
+          &heuristic_results[warmup_algo_idx].algo,
+          workspace,
+          workspace_size,
+          stream);
       if (status != CUBLAS_STATUS_SUCCESS) {
         t = -1;
         warmup_algo_idx += 1;
@@ -122,10 +152,23 @@ class GemmEpilogueAlgoCache {
         float time = 0;
         PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(start_event, stream));
 
-        cublasStatus_t status = platform::dynload::cublasLtMatmul(
-            lt_handle, op_desc, alpha, a, a_desc, b, b_desc, beta, c, c_desc, c,
-            c_desc, &heuristic_results[algo_idx].algo, workspace,
-            workspace_size, stream);
+        cublasStatus_t status =
+            platform::dynload::cublasLtMatmul(lt_handle,
+                                              op_desc,
+                                              alpha,
+                                              a,
+                                              a_desc,
+                                              b,
+                                              b_desc,
+                                              beta,
+                                              c,
+                                              c_desc,
+                                              c,
+                                              c_desc,
+                                              &heuristic_results[algo_idx].algo,
+                                              workspace,
+                                              workspace_size,
+                                              stream);
 
         PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(stop_event, stream));
         PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(stop_event));
@@ -174,7 +217,8 @@ class GemmEpilogueAlgoCache {
   const int requested_algo_count_ = 10;
   std::mutex cache_mutex_;
 
-  void HashMatmulDesc_(cublasLtMatmulDesc_t desc, int64_t *seed,
+  void HashMatmulDesc_(cublasLtMatmulDesc_t desc,
+                       int64_t *seed,
                        const std::hash<int64_t> &hash_fn) {
     size_t size_to_write;
     int trans_a, trans_b;
@@ -182,24 +226,34 @@ class GemmEpilogueAlgoCache {
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmulDescGetAttribute(
-            desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_a, sizeof(trans_a),
+            desc,
+            CUBLASLT_MATMUL_DESC_TRANSA,
+            &trans_a,
+            sizeof(trans_a),
             &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(trans_a));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmulDescGetAttribute(
-            desc, CUBLASLT_MATMUL_DESC_TRANSB, &trans_b, sizeof(trans_b),
+            desc,
+            CUBLASLT_MATMUL_DESC_TRANSB,
+            &trans_b,
+            sizeof(trans_b),
             &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(trans_b));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmulDescGetAttribute(
-            desc, CUBLASLT_MATMUL_DESC_EPILOGUE, &epilogue, sizeof(epilogue),
+            desc,
+            CUBLASLT_MATMUL_DESC_EPILOGUE,
+            &epilogue,
+            sizeof(epilogue),
             &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(epilogue));
   }
 
-  void HashMatrixLayoutDesc_(cublasLtMatrixLayout_t desc, int64_t *seed,
+  void HashMatrixLayoutDesc_(cublasLtMatrixLayout_t desc,
+                             int64_t *seed,
                              const std::hash<int64_t> &hash_fn) {
     size_t size_to_write;
     uint32_t dtype;
@@ -209,25 +263,37 @@ class GemmEpilogueAlgoCache {
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatrixLayoutGetAttribute(
-            desc, CUBLASLT_MATRIX_LAYOUT_TYPE, &dtype, sizeof(dtype),
+            desc,
+            CUBLASLT_MATRIX_LAYOUT_TYPE,
+            &dtype,
+            sizeof(dtype),
             &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(dtype));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatrixLayoutGetAttribute(
-            desc, CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, &batch, sizeof(batch),
+            desc,
+            CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
+            &batch,
+            sizeof(batch),
             &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(batch));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatrixLayoutGetAttribute(
-            desc, CUBLASLT_MATRIX_LAYOUT_ROWS, &row, sizeof(row),
+            desc,
+            CUBLASLT_MATRIX_LAYOUT_ROWS,
+            &row,
+            sizeof(row),
             &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(row));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatrixLayoutGetAttribute(
-            desc, CUBLASLT_MATRIX_LAYOUT_COLS, &col, sizeof(col),
+            desc,
+            CUBLASLT_MATRIX_LAYOUT_COLS,
+            &col,
+            sizeof(col),
             &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(col));
 
@@ -238,12 +304,16 @@ class GemmEpilogueAlgoCache {
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatrixLayoutGetAttribute(
-            desc, CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET, &batch_offset,
-            sizeof(batch_offset), &size_to_write));
+            desc,
+            CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+            &batch_offset,
+            sizeof(batch_offset),
+            &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(batch_offset));
   }
 
-  void HashValue_(int64_t *seed, const std::hash<int64_t> &hash_fn,
+  void HashValue_(int64_t *seed,
+                  const std::hash<int64_t> &hash_fn,
                   int64_t value) {
     *seed ^= hash_fn(value) + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
   }
