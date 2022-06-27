@@ -35,13 +35,14 @@ class Pad3dOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-// #ifdef PADDLE_WITH_MKLDNN
-//     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-//       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-//                                      framework::DataLayout::kMKLDNN,
-//                                      framework::LibraryType::kMKLDNN);
-//     }
-// #endif
+#ifdef PADDLE_WITH_MKLDNN
+    // currently only constant mode and non-blocked layouts are supported for oneDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type) && ctx.Attr<std::string>("mode") == "constant" && ctx.Input<Tensor>("X")->mem_desc().data.format_desc.blocking.inner_nblks == 0) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
