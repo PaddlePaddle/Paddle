@@ -4541,5 +4541,75 @@ MLUCnnlDCNDesc::~MLUCnnlDCNDesc() {
                                                        diff_input));
 }
 
+/* static */ void MLUCnnl::RoiAlign(const ExecutionContext& ctx,
+                                    const int pooled_height,
+                                    const int pooled_width,
+                                    const int sampling_ratio,
+                                    const float spatial_scale,
+                                    const bool aligned,
+                                    const cnnlTensorDescriptor_t input_desc,
+                                    const void* input,
+                                    const cnnlTensorDescriptor_t boxes_desc,
+                                    const void* boxes,
+                                    const cnnlTensorDescriptor_t output_desc,
+                                    void* output) {
+  cnnlRoiAlignDescriptor_t roialign_desc;
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlCreateRoiAlignDescriptor(&roialign_desc));
+  const int pool_mode = 1;  // average pooling mode
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetRoiAlignDescriptor_v2(roialign_desc,
+                                                          pooled_height,
+                                                          pooled_width,
+                                                          sampling_ratio,
+                                                          spatial_scale,
+                                                          pool_mode,
+                                                          aligned));
+
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlRoiAlign_v2(handle,
+                                             roialign_desc,
+                                             input_desc,
+                                             input,
+                                             boxes_desc,
+                                             boxes,
+                                             output_desc,
+                                             output,
+                                             nullptr,
+                                             nullptr,
+                                             nullptr,
+                                             nullptr));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlDestroyRoiAlignDescriptor(roialign_desc));
+}
+
+/* static */ void MLUCnnl::RoiAlignBackward(
+    const ExecutionContext& ctx,
+    const int sampling_ratio,
+    const float spatial_scale,
+    const bool aligned,
+    const cnnlTensorDescriptor_t grads_desc,
+    const void* grads,
+    const cnnlTensorDescriptor_t boxes_desc,
+    const void* boxes,
+    const cnnlTensorDescriptor_t grads_image_desc,
+    void* grads_image) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+  const int pool_mode = 1;  // average pooling mode
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlRoiAlignBackward_v2(handle,
+                                                     grads_desc,
+                                                     grads,
+                                                     boxes_desc,
+                                                     boxes,
+                                                     nullptr,
+                                                     nullptr,
+                                                     nullptr,
+                                                     nullptr,
+                                                     spatial_scale,
+                                                     sampling_ratio,
+                                                     aligned,
+                                                     pool_mode,
+                                                     grads_image_desc,
+                                                     grads_image));
+}
+
 }  // namespace operators
 }  // namespace paddle
