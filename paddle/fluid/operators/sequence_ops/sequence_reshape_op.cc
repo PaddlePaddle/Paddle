@@ -25,16 +25,19 @@ class SequenceReshapeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::NotFound(
                           "Input(X) of SequenceReshapeOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::NotFound(
             "Output(Out) of SequenceReshapeOp should not be null."));
     auto x_dims = ctx->GetInputDim("X");
     auto x_numel = product(x_dims);
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2U,
+    PADDLE_ENFORCE_EQ(x_dims.size(),
+                      2U,
                       platform::errors::InvalidArgument(
                           "The rank of SequenceReshapeOp Input(X) should be 2. "
                           "But the rank we received is %d",
@@ -100,11 +103,13 @@ class SequenceReshapeGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
         platform::errors::NotFound(
             "Input(Out@GRAD) of SequenceReshapeGradOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::NotFound(
             "Input(X) of SequenceReshapeGradOp should not be null."));
 
@@ -133,7 +138,8 @@ class SequenceReshapeGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_reshape, ops::SequenceReshapeOp,
+REGISTER_OPERATOR(sequence_reshape,
+                  ops::SequenceReshapeOp,
                   ops::SequenceReshapeOpMaker,
                   ops::SequenceReshapeGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequenceReshapeGradOpMaker<paddle::imperative::OpBase>);

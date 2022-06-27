@@ -57,8 +57,8 @@ static void AddSkipVars(const OpVariant &op, const Container &skip_vars) {
           << " skip var(s): " << paddle::string::join_strings(skip_vars, ' ');
   std::vector<std::string> &attr_skip_vars = BOOST_GET(
       std::vector<std::string>, attrs[RecurrentBase::kSkipEagerDeletionVars]);
-  attr_skip_vars.insert(attr_skip_vars.end(), skip_vars.cbegin(),
-                        skip_vars.cend());
+  attr_skip_vars.insert(
+      attr_skip_vars.end(), skip_vars.cbegin(), skip_vars.cend());
 }
 
 // Find all ops and grad ops with given type name. The ops and grad ops
@@ -72,11 +72,13 @@ static void FindAllOpAndGradOp(const framework::ProgramDesc &program,
   OpVariantSet &grad_ops = op_and_grad_op->second;
 
   PADDLE_ENFORCE_GE(
-      ops.size(), grad_ops.size(),
+      ops.size(),
+      grad_ops.size(),
       platform::errors::InvalidArgument(
           "There are more grad ops than forward ops in the graph or program, "
           "the number of ops is %d and the number of grad_ops is %d.",
-          ops.size(), grad_ops.size()));
+          ops.size(),
+          grad_ops.size()));
 
   for (size_t i = 1; i < program.Size(); ++i) {
     auto &block = program.Block(i);
@@ -91,11 +93,13 @@ static void FindAllOpAndGradOp(const framework::ProgramDesc &program,
   }
 
   PADDLE_ENFORCE_GE(
-      ops.size(), grad_ops.size(),
+      ops.size(),
+      grad_ops.size(),
       platform::errors::InvalidArgument(
           "There are more grad ops than forward ops in the graph or program, "
           "the number of ops is %d and the number of grad_ops is %d.",
-          ops.size(), grad_ops.size()));
+          ops.size(),
+          grad_ops.size()));
 }
 
 // Returns GradVarName of input var names
@@ -103,7 +107,9 @@ static std::vector<std::string> GradVarLists(
     const std::vector<std::string> &var_names) {
   std::vector<std::string> retv;
   retv.reserve(var_names.size());
-  std::transform(var_names.begin(), var_names.end(), std::back_inserter(retv),
+  std::transform(var_names.begin(),
+                 var_names.end(),
+                 std::back_inserter(retv),
                  framework::GradVarName);
   return retv;
 }
@@ -175,12 +181,14 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
       bwd_op.Outputs().at(framework::GradVarName(RecurrentBase::kInputs));
 
   PADDLE_ENFORCE_EQ(
-      fwd_input.size(), in_grads.size(),
+      fwd_input.size(),
+      in_grads.size(),
       platform::errors::PreconditionNotMet(
           "Backward input gradient number does not match forward "
           "input number. The number of forward input number is %d and the "
           "number of backward input gradient number is %d.",
-          fwd_input.size(), in_grads.size()));
+          fwd_input.size(),
+          in_grads.size()));
   for (size_t i = 0; i < in_grads.size(); ++i) {
     if (in_grads[i] == framework::kEmptyVarName) {
       continue;
@@ -193,12 +201,14 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
   auto &param_grads =
       bwd_op.Outputs().at(framework::GradVarName(RecurrentBase::kParameters));
   PADDLE_ENFORCE_EQ(
-      fwd_param.size(), param_grads.size(),
+      fwd_param.size(),
+      param_grads.size(),
       platform::errors::PreconditionNotMet(
           "Backward parameter gradient number does not match "
           "forward parameter number. The number of forward parameter number is "
           "%d and the number of backward parameter gradient is %d.",
-          fwd_param.size(), param_grads.size()));
+          fwd_param.size(),
+          param_grads.size()));
   for (size_t i = 0; i < fwd_param.size(); ++i) {
     if (param_grads[i] == framework::kEmptyVarName) {
       continue;
@@ -211,7 +221,8 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
 }
 
 void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-    const framework::ProgramDesc &program, int block_id,
+    const framework::ProgramDesc &program,
+    int block_id,
     const std::vector<std::unique_ptr<paddle::framework::OperatorBase>>
         &all_ops) {
   // If block_id is not 0, returns
@@ -256,7 +267,8 @@ void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
     const OpVariant *matched_fwd_op = nullptr;
     for (auto &fwd_op : recurrent_ops) {
       if (IsMatchedRecurrentOpAndRecurrentGradOp(fwd_op, bwd_op)) {
-        PADDLE_ENFORCE_EQ(matched_fwd_op, nullptr,
+        PADDLE_ENFORCE_EQ(matched_fwd_op,
+                          nullptr,
                           platform::errors::PreconditionNotMet(
                               "Found multiple recurrent forward op matches "
                               "recurrent grad op."));

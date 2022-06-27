@@ -72,13 +72,15 @@ class ShrinkDepsOpFunctor {
     std::unordered_map<details::OpHandleBase *, size_t> op_to_idx;
     for (size_t i = 0; i < ops.size(); ++i) {
       PADDLE_ENFORCE_EQ(
-          graph_.HasOp(ops[i]), true,
+          graph_.HasOp(ops[i]),
+          true,
           platform::errors::InvalidArgument("Op does not exist in graph."));
       op_to_idx[ops[i]] = i;
     }
 
     PADDLE_ENFORCE_EQ(
-        op_to_idx.size(), ops.size(),
+        op_to_idx.size(),
+        ops.size(),
         platform::errors::InvalidArgument("Graph may have duplicate ops."));
 
     std::vector<std::vector<RelationShip>> ret(ops.size());
@@ -203,7 +205,8 @@ static bool ShrinkNoNeedBufferVarOpDependency(
 enum LastLiveOpSearchStatus { kSuccess, kFailure };
 
 static std::unordered_set<details::ComputationOpHandle *>
-ExtractComputationOpFromLastLivedVar(details::VarHandle *var, size_t scope_idx,
+ExtractComputationOpFromLastLivedVar(details::VarHandle *var,
+                                     size_t scope_idx,
                                      const std::string &var_name,
                                      const ShrinkDepsOpFunctor &shrink_func,
                                      LastLiveOpSearchStatus *status) {
@@ -245,7 +248,8 @@ ExtractComputationOpFromLastLivedVar(details::VarHandle *var, size_t scope_idx,
     return {};
   }
 
-  PADDLE_ENFORCE_EQ(computation_ops.empty(), false,
+  PADDLE_ENFORCE_EQ(computation_ops.empty(),
+                    false,
                     platform::errors::InvalidArgument(
                         "Computation ops should not be empty."));
 
@@ -304,12 +308,15 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
       auto &var_handles = name_var_pair.second;
 
       PADDLE_ENFORCE_EQ(
-          var_desc->Name(), var_name,
+          var_desc->Name(),
+          var_name,
           platform::errors::InvalidArgument(
-              "A Var, it's VarName(%s) and DescName(%s) not same.", var_name,
+              "A Var, it's VarName(%s) and DescName(%s) not same.",
+              var_name,
               var_desc->Name()));
 
-      PADDLE_ENFORCE_EQ(var_handles.empty(), false,
+      PADDLE_ENFORCE_EQ(var_handles.empty(),
+                        false,
                         platform::errors::InvalidArgument(
                             "Variable %s not found.", var_name));
       auto last_ver_var = var_handles.back();
@@ -330,11 +337,13 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
         continue;
       }
 
-      PADDLE_ENFORCE_EQ(status, LastLiveOpSearchStatus::kSuccess,
+      PADDLE_ENFORCE_EQ(status,
+                        LastLiveOpSearchStatus::kSuccess,
                         platform::errors::InvalidArgument(
                             "Status(%d) must be success.", status));
       PADDLE_ENFORCE_EQ(
-          result.empty(), false,
+          result.empty(),
+          false,
           platform::errors::NotFound("Last living ops of %s cannot be empty.",
                                      var_name));
 

@@ -39,7 +39,8 @@ class CReduceMinOpMaker : public CReduceOpMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_reduce_min, ops::CReduceOp,
+REGISTER_OP_WITHOUT_GRADIENT(c_reduce_min,
+                             ops::CReduceOp,
                              ops::CReduceMinOpMaker);
 
 REGISTER_OP_CPU_KERNEL(c_reduce_min,

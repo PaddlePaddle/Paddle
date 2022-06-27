@@ -30,7 +30,8 @@ namespace tensorrt {
 class ArgMaxOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid arg_max op to tensorrt topk layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -40,7 +41,9 @@ class ArgMaxOpConverter : public OpConverter {
     int axis = op_desc.HasAttr("axis")
                    ? BOOST_GET_CONST(int64_t, op_desc.GetAttr("axis"))
                    : -1;
-    if (axis > 0) axis -= 1;
+    if (axis > 0 && !engine_->with_dynamic_shape()) {
+      axis -= 1;
+    }
     if (axis < 0) axis += rank;
     auto* topk_layer = TRT_ENGINE_ADD_LAYER(
         engine_, TopK, *input, nvinfer1::TopKOperation::kMAX, 1, 1 << axis);
@@ -48,7 +51,8 @@ class ArgMaxOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
     bool keepdims = BOOST_GET_CONST(bool, op_desc.GetAttr("keepdims"));
     if (keepdims) {
-      RreplenishLayerAndOutput(topk_layer, "arg_max",
+      RreplenishLayerAndOutput(topk_layer,
+                               "arg_max",
                                {output_name + "_value", output_name},
                                test_mode);
     } else {
@@ -60,8 +64,8 @@ class ArgMaxOpConverter : public OpConverter {
         dims.d[i] = dims.d[i + 1];
       }
       squeeze_layer->setReshapeDimensions(dims);
-      RreplenishLayerAndOutput(squeeze_layer, "arg_max", {output_name},
-                               test_mode);
+      RreplenishLayerAndOutput(
+          squeeze_layer, "arg_max", {output_name}, test_mode);
     }
   }
 };

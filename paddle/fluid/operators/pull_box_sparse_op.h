@@ -48,14 +48,14 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
 #ifdef PADDLE_WITH_BOX_PS
   auto hidden_size = ctx.Attr<int>("size");
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
-  box_ptr->PullSparse(ctx.GetPlace(), all_keys, all_values, slot_lengths,
-                      hidden_size, 0);
+  box_ptr->PullSparse(
+      ctx.GetPlace(), all_keys, all_values, slot_lengths, hidden_size, 0);
 #endif
 #ifdef PADDLE_WITH_HETERPS
   auto hidden_size = ctx.Attr<int>("size");
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
-  gpu_ps_ptr->PullSparse(ctx.GetPlace(), 0, all_keys, all_values, slot_lengths,
-                         hidden_size);
+  gpu_ps_ptr->PullSparse(
+      ctx.GetPlace(), 0, all_keys, all_values, slot_lengths, hidden_size);
 #endif
 }
 
@@ -80,7 +80,8 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
     if (batch_size == -1) {
       batch_size = cur_batch_size;
     } else {
-      PADDLE_ENFORCE_EQ(batch_size, cur_batch_size,
+      PADDLE_ENFORCE_EQ(batch_size,
+                        cur_batch_size,
                         platform::errors::PreconditionNotMet(
                             "The batch size of all input slots should be same, "
                             "please cheack"));
@@ -91,14 +92,24 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
 #ifdef PADDLE_WITH_BOX_PS
   auto hidden_size = ctx.Attr<int>("size");
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
-  box_ptr->PushSparseGrad(ctx.GetPlace(), all_keys, all_grad_values,
-                          slot_lengths, hidden_size, 0, batch_size);
+  box_ptr->PushSparseGrad(ctx.GetPlace(),
+                          all_keys,
+                          all_grad_values,
+                          slot_lengths,
+                          hidden_size,
+                          0,
+                          batch_size);
 #endif
 #ifdef PADDLE_WITH_HETERPS
   auto hidden_size = ctx.Attr<int>("size");
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
-  gpu_ps_ptr->PushSparseGrad(ctx.GetPlace(), 0, all_keys, all_grad_values,
-                             slot_lengths, hidden_size, batch_size);
+  gpu_ps_ptr->PushSparseGrad(ctx.GetPlace(),
+                             0,
+                             all_keys,
+                             all_grad_values,
+                             slot_lengths,
+                             hidden_size,
+                             batch_size);
 #endif
 }
 

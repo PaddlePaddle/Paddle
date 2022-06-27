@@ -62,14 +62,18 @@ class EighGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Eigenvalues"), "Input", "Eigenvalues",
-                   "EighGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors",
-                   "EighGrad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Eigenvalues"), "Input", "Eigenvalues", "EighGrad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors", "EighGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Eigenvalues")),
-                   "Input", "Eigenvalues@GRAD", "EighGrad");
+                   "Input",
+                   "Eigenvalues@GRAD",
+                   "EighGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Eigenvectors")),
-                   "Input", "Eigenvectors@GRAD", "EighGrad");
+                   "Input",
+                   "Eigenvectors@GRAD",
+                   "EighGrad");
     auto dims = ctx->GetInputDim("Eigenvectors");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -110,10 +114,13 @@ class EighGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(eigh, EighInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(eigh,
+                            EighInferShapeFunctor,
                             PD_INFER_META(phi::EighInferMeta));
 
-REGISTER_OPERATOR(eigh, ops::EighOp, ops::EighOpMaker,
+REGISTER_OPERATOR(eigh,
+                  ops::EighOp,
+                  ops::EighOpMaker,
                   ops::EighGradOpMaker<paddle::framework::OpDesc>,
                   ops::EighGradOpMaker<paddle::imperative::OpBase>,
                   EighInferShapeFunctor);

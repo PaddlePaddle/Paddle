@@ -25,7 +25,8 @@ namespace ir {
 
 namespace fc_lstm_test {
 
-void AddVarToScope(Scope* param_scope, const std::string& name,
+void AddVarToScope(Scope* param_scope,
+                   const std::string& name,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
   tensor->Resize(dims);
@@ -76,9 +77,20 @@ std::unique_ptr<ir::Graph> PrepareGraph(
   auto* lstm_batch_cell_pre_gate_0 =
       layers.data("lstm_batch_cell_pre_gate_0", {}, false);
   auto* lstm_hidden_0 = layers.data("lstm_hidden_0", {}, false);
-  layers.lstm(fc_0_tmp1, lstm_w, lstm_b, lstm_cell_0, lstm_batch_gate_0,
-              lstm_hidden_0, lstm_batch_cell_pre_gate_0, nullptr, nullptr, true,
-              false, gate_activation, cell_activation, candidate_activation);
+  layers.lstm(fc_0_tmp1,
+              lstm_w,
+              lstm_b,
+              lstm_cell_0,
+              lstm_batch_gate_0,
+              lstm_hidden_0,
+              lstm_batch_cell_pre_gate_0,
+              nullptr,
+              nullptr,
+              true,
+              false,
+              gate_activation,
+              cell_activation,
+              candidate_activation);
   auto* fc_1_tmp0 = layers.mul(b, fc_w);
   auto* fc_1_tmp1 = layers.elementwise_add(fc_1_tmp0, fc_b);
   auto* lstm_cell_1 = layers.data("lstm_cell_1", {}, false);
@@ -86,9 +98,20 @@ std::unique_ptr<ir::Graph> PrepareGraph(
   auto* lstm_batch_cell_pre_gate_1 =
       layers.data("lstm_batch_cell_pre_gate_1", {}, false);
   auto* lstm_hidden_1 = layers.data("lstm_hidden_1", {}, false);
-  layers.lstm(fc_1_tmp1, lstm_w, lstm_b, lstm_cell_1, lstm_batch_gate_1,
-              lstm_hidden_1, lstm_batch_cell_pre_gate_1, nullptr, nullptr, true,
-              false, gate_activation, cell_activation, candidate_activation);
+  layers.lstm(fc_1_tmp1,
+              lstm_w,
+              lstm_b,
+              lstm_cell_1,
+              lstm_batch_gate_1,
+              lstm_hidden_1,
+              lstm_batch_cell_pre_gate_1,
+              nullptr,
+              nullptr,
+              true,
+              false,
+              gate_activation,
+              cell_activation,
+              candidate_activation);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   return graph;

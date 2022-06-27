@@ -15,7 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/share_data_op.h"
 
 REGISTER_OP_CUDA_KERNEL(
-    share_data, paddle::operators::ShareDataKernel<bool>,
+    share_data,
+    paddle::operators::ShareDataKernel<bool>,
     paddle::operators::ShareDataKernel<int>,
     paddle::operators::ShareDataKernel<int8_t>,
     paddle::operators::ShareDataKernel<uint8_t>,

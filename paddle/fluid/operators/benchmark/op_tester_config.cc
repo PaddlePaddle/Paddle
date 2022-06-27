@@ -91,8 +91,8 @@ void OpInputConfig::ParseInitializer(std::istream& is) {
   is >> initializer_str;
   EraseEndSep(&initializer_str);
 
-  const std::vector<std::string> supported_initializers = {"random", "natural",
-                                                           "zeros", "file"};
+  const std::vector<std::string> supported_initializers = {
+      "random", "natural", "zeros", "file"};
   if (!Has(supported_initializers, initializer_str)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported initializer %s in OpInputConfig.",
@@ -132,7 +132,8 @@ void OpInputConfig::ParseLoD(std::istream& is) {
   }
   EraseEndSep(&lod_str);
   PADDLE_ENFORCE_GE(
-      lod_str.length(), 4U,
+      lod_str.length(),
+      4U,
       platform::errors::InvalidArgument(
           "The length of lod string should be "
           "equal to or larger than 4. But length of lod string is %zu.",
@@ -164,7 +165,8 @@ void OpInputConfig::ParseLoD(std::istream& is) {
 OpTesterConfig::OpTesterConfig(const std::string& filename) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fin), true,
+      static_cast<bool>(fin),
+      true,
       platform::errors::InvalidArgument("OpTesterConfig cannot open file %s.",
                                         filename.c_str()));
 

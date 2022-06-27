@@ -39,8 +39,10 @@ class FleetExecutor final {
   explicit FleetExecutor(const FleetExecutorDesc& exe_desc);
   ~FleetExecutor();
   void Init(const std::string& carrier_id,
-            const framework::ProgramDesc& program_desc, framework::Scope* scope,
-            const platform::Place& place, int64_t num_micro_batches,
+            const framework::ProgramDesc& program_desc,
+            framework::Scope* scope,
+            const platform::Place& place,
+            int64_t num_micro_batches,
             const std::vector<TaskNode*>& task_nodes,
             const std::unordered_map<int64_t, int64_t>& task_id_to_rank,
             const std::vector<std::string>& inference_root_scope_vars = {});
@@ -50,8 +52,11 @@ class FleetExecutor final {
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
   void InitMessageBus();
   void InitCarrier(
-      Carrier* carrier, framework::Scope* scope, const platform::Place& place,
-      int64_t num_micro_batches, const framework::ProgramDesc& program_desc,
+      Carrier* carrier,
+      framework::Scope* scope,
+      const platform::Place& place,
+      int64_t num_micro_batches,
+      const framework::ProgramDesc& program_desc,
       const std::vector<std::string>& inference_root_scope_vars = {});
   FleetExecutorDesc exe_desc_;
   std::shared_ptr<RuntimeGraph> runtime_graph_;

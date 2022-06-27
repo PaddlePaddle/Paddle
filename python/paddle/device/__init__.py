@@ -349,6 +349,10 @@ def get_device():
     elif isinstance(place, core.MLUPlace):
         device_id = place.get_device_id()
         device = 'mlu:' + str(device_id)
+    elif isinstance(place, core.CustomPlace):
+        device_id = place.get_device_id()
+        device_type = place.get_device_type()
+        device = device_type + ':' + str(device_id)
     else:
         raise ValueError("The device specification {} is invalid".format(place))
 

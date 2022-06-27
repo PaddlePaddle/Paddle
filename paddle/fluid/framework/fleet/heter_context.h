@@ -186,7 +186,8 @@ class HeterContext {
       int idx = 0;
       idx = feature_keys_[i].size();
       feature_keys_[i].resize(feature_keys_[i].size() + thread_keys[i].size());
-      std::copy(thread_keys[i].begin(), thread_keys[i].end(),
+      std::copy(thread_keys[i].begin(),
+                thread_keys[i].end(),
                 feature_keys_[i].begin() + idx);
     }
   }
@@ -196,16 +197,19 @@ class HeterContext {
     int idx = feature_keys_[shard_num].size();
     feature_keys_[shard_num].resize(feature_keys_[shard_num].size() +
                                     shard_keys.size());
-    std::copy(shard_keys.begin(), shard_keys.end(),
+    std::copy(shard_keys.begin(),
+              shard_keys.end(),
               feature_keys_[shard_num].begin() + idx);
   }
 
-  void batch_add_keys(int shard_num, int dim_id,
+  void batch_add_keys(int shard_num,
+                      int dim_id,
                       const robin_hood::unordered_set<uint64_t>& shard_keys) {
     int idx = feature_dim_keys_[shard_num][dim_id].size();
     feature_dim_keys_[shard_num][dim_id].resize(
         feature_dim_keys_[shard_num][dim_id].size() + shard_keys.size());
-    std::copy(shard_keys.begin(), shard_keys.end(),
+    std::copy(shard_keys.begin(),
+              shard_keys.end(),
               feature_dim_keys_[shard_num][dim_id].begin() + idx);
   }
 

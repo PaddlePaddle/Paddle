@@ -20,7 +20,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_MLU_KERNEL(
-    squeeze, ops::SqueezeKernel<plat::MLUDeviceContext, float>,
+    squeeze,
+    ops::SqueezeKernel<plat::MLUDeviceContext, float>,
     ops::SqueezeKernel<plat::MLUDeviceContext, double>,
     ops::SqueezeKernel<plat::MLUDeviceContext, plat::float16>,
     ops::SqueezeKernel<plat::MLUDeviceContext, bool>,
@@ -30,7 +31,8 @@ REGISTER_OP_MLU_KERNEL(
     ops::SqueezeKernel<plat::MLUDeviceContext, int64_t>);
 
 REGISTER_OP_MLU_KERNEL(
-    squeeze_grad, ops::SqueezeGradKernel<plat::MLUDeviceContext, float>,
+    squeeze_grad,
+    ops::SqueezeGradKernel<plat::MLUDeviceContext, float>,
     ops::SqueezeGradKernel<plat::MLUDeviceContext, double>,
     ops::SqueezeGradKernel<plat::MLUDeviceContext, plat::float16>,
     ops::SqueezeGradKernel<plat::MLUDeviceContext, bool>,
@@ -40,7 +42,8 @@ REGISTER_OP_MLU_KERNEL(
     ops::SqueezeGradKernel<plat::MLUDeviceContext, int64_t>);
 
 REGISTER_OP_MLU_KERNEL(
-    squeeze2, ops::SqueezeKernel<plat::MLUDeviceContext, float>,
+    squeeze2,
+    ops::SqueezeKernel<plat::MLUDeviceContext, float>,
     ops::SqueezeKernel<plat::MLUDeviceContext, double>,
     ops::SqueezeKernel<plat::MLUDeviceContext, plat::float16>,
     ops::SqueezeKernel<plat::MLUDeviceContext, bool>,
@@ -50,7 +53,8 @@ REGISTER_OP_MLU_KERNEL(
     ops::SqueezeKernel<plat::MLUDeviceContext, int64_t>);
 
 REGISTER_OP_MLU_KERNEL(
-    squeeze2_grad, ops::Squeeze2GradKernel<plat::MLUDeviceContext, float>,
+    squeeze2_grad,
+    ops::Squeeze2GradKernel<plat::MLUDeviceContext, float>,
     ops::Squeeze2GradKernel<plat::MLUDeviceContext, double>,
     ops::Squeeze2GradKernel<plat::MLUDeviceContext, plat::float16>,
     ops::Squeeze2GradKernel<plat::MLUDeviceContext, bool>,

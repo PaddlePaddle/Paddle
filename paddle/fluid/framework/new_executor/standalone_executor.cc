@@ -54,9 +54,12 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     std::vector<paddle::framework::OpFuncNode> vec_func_list;
     // No need to use_local_scope for startup_program, its variables are
     // persistable
-    paddle::framework::interpreter::build_op_func_list(
-        place_, startup_prog.Block(0), {}, &vec_func_list, &global_scope_,
-        false);
+    paddle::framework::interpreter::build_op_func_list(place_,
+                                                       startup_prog.Block(0),
+                                                       {},
+                                                       &vec_func_list,
+                                                       &global_scope_,
+                                                       false);
   }
 }
 
@@ -64,8 +67,8 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors,
     const std::vector<std::string>& fetch_names) {
-  platform::RecordEvent record_event("StandaloneExecutor::run",
-                                     platform::TracerEventType::UserDefined, 1);
+  platform::RecordEvent record_event(
+      "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
 
   auto core = GetInterpreterCore(feed_names, fetch_names, true);
 
@@ -75,8 +78,8 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<std::string>& fetch_names) {
-  platform::RecordEvent record_event("StandaloneExecutor::run",
-                                     platform::TracerEventType::UserDefined, 1);
+  platform::RecordEvent record_event(
+      "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
 
   auto core = GetInterpreterCore(feed_names, fetch_names, false);
   VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
@@ -109,7 +112,8 @@ void StandaloneExecutor::BuildVariableScope(const framework::ProgramDesc& pdesc,
 
 std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
     const std::vector<std::string>& feed_names,
-    const std::vector<std::string>& fetch_names, bool add_fetch_op) {
+    const std::vector<std::string>& fetch_names,
+    bool add_fetch_op) {
   std::ostringstream oss;
   oss << "feed:";
   for (auto& feedname : feed_names) {
@@ -129,11 +133,13 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
     std::shared_ptr<InterpreterCore> core = nullptr;
 
     if (add_fetch_op) {
-      core = CreateInterpreterCore(place_, main_prog_, &global_scope_,
-                                   fetch_names);
+      core = CreateInterpreterCore(
+          place_, main_prog_, &global_scope_, fetch_names);
     } else {
       core = std::make_shared<InterpreterCore>(
-          place_, main_prog_.Block(0), /*skip_gc_vars=*/std::set<std::string>(),
+          place_,
+          main_prog_.Block(0),
+          /*skip_gc_vars=*/std::set<std::string>(),
           &global_scope_);
     }
     interpretercores_.emplace(oss.str(), core);

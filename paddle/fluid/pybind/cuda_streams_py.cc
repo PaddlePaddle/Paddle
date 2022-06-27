@@ -236,7 +236,8 @@ void BindCudaStream(py::module *m_ptr) {
       .def(
           "__init__",
           [](paddle::platform::stream::CUDAStream &self,
-             platform::CUDAPlace *device, int priority) {
+             platform::CUDAPlace *device,
+             int priority) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
             if (priority != 1 && priority != 2) {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -252,17 +253,19 @@ void BindCudaStream(py::module *m_ptr) {
               device = &device_tmp;
             }
 
-            new (&self) paddle::platform::stream::CUDAStream(*device, prio,
-                                                             stream_flag);
+            new (&self) paddle::platform::stream::CUDAStream(
+                *device, prio, stream_flag);
 #else
             PADDLE_THROW(platform::errors::Unavailable(
         "Class CUDAStream can only be initialized on the GPU platform."));
 #endif
           },
-          py::arg("device") = nullptr, py::arg("priority") = 2)
+          py::arg("device") = nullptr,
+          py::arg("priority") = 2)
       .def(
           "__init__",
-          [](paddle::platform::stream::CUDAStream &self, int device,
+          [](paddle::platform::stream::CUDAStream &self,
+             int device,
              int priority) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
             if (priority != 1 && priority != 2) {
@@ -280,7 +283,8 @@ void BindCudaStream(py::module *m_ptr) {
             if (device >= device_count) {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "The device id  must be inside [0, %d), but input device=%d.",
-                  device_count, device));
+                  device_count,
+                  device));
             }
 
             new (&self) paddle::platform::stream::CUDAStream(
@@ -290,7 +294,8 @@ void BindCudaStream(py::module *m_ptr) {
         "Class CUDAStream can only be initialized on the GPU platform."));
 #endif
           },
-          py::arg("device") = -1, py::arg("priority") = 2)
+          py::arg("device") = -1,
+          py::arg("priority") = 2)
       .def("__init__", [](paddle::platform::stream::CUDAStream &self) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         auto prio = paddle::platform::stream::Priority::kNormal;
@@ -368,7 +373,8 @@ void BindCudaStream(py::module *m_ptr) {
            )DOC")
       .def(
           "synchronize",
-          [](paddle::platform::CudaEvent &self) { self.Synchronize(); }, R"DOC(
+          [](paddle::platform::CudaEvent &self) { self.Synchronize(); },
+          R"DOC(
             Waits for an event to complete.
 
             Examples:
@@ -383,8 +389,10 @@ void BindCudaStream(py::module *m_ptr) {
 #endif
       .def(
           "__init__",
-          [](paddle::platform::CudaEvent &self, bool enable_timing,
-             bool blocking, bool interprocess) {
+          [](paddle::platform::CudaEvent &self,
+             bool enable_timing,
+             bool blocking,
+             bool interprocess) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
             unsigned int flags = platform::GenerateDeviceEventFlag(
                 enable_timing, blocking, interprocess);
@@ -396,7 +404,8 @@ void BindCudaStream(py::module *m_ptr) {
 
 #endif
           },
-          py::arg("enable_timing") = false, py::arg("blocking") = false,
+          py::arg("enable_timing") = false,
+          py::arg("blocking") = false,
           py::arg("interprocess") = false);
 }
 
