@@ -22,8 +22,7 @@
 
 std::vector<paddle::Tensor> ContextPoolTest(const paddle::Tensor& x) {
   // 1. test cpu context
-  paddle::experimental::Place cpu_place(
-      paddle::experimental::AllocationType::CPU);
+  paddle::Place cpu_place(paddle::experimental::AllocationType::CPU);
   auto* cpu_ctx =
       paddle::experimental::DeviceContextPool::Instance()
           .Get<paddle::experimental::AllocationType::CPU>(cpu_place);
@@ -34,8 +33,7 @@ std::vector<paddle::Tensor> ContextPoolTest(const paddle::Tensor& x) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // 2. test gpu context
-  paddle::experimental::Place gpu_place(
-      paddle::experimental::AllocationType::GPU);
+  paddle::Place gpu_place(paddle::experimental::AllocationType::GPU);
   auto* gpu_ctx =
       paddle::experimental::DeviceContextPool::Instance()
           .Get<paddle::experimental::AllocationType::GPU>(gpu_place);

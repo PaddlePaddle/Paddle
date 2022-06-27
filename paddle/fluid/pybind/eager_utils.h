@@ -171,13 +171,11 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos);
 
-paddle::experimental::Place CastPyArg2Place(PyObject* obj,
-                                            const std::string& op_type,
-                                            ssize_t arg_pos);
+paddle::Place CastPyArg2Place(PyObject* obj, const std::string& op_type,
+                              ssize_t arg_pos);
 
-paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
-                                                  const std::string& op_type,
-                                                  ssize_t arg_pos);
+paddle::DataType CastPyArg2DataType(PyObject* obj, const std::string& op_type,
+                                    ssize_t arg_pos);
 
 paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
