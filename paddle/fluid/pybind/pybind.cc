@@ -2801,6 +2801,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::Place, platform::IPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPinnedPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::MLUPlace>)
+      .def("_equals", &IsSamePlace<platform::Place, platform::CustomPlace>)
       .def("is_gpu_place",
            [](platform::Place &self) { return platform::is_gpu_place(self); })
       .def("is_cpu_place",
