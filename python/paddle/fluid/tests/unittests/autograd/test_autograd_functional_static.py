@@ -23,7 +23,6 @@ import config
 import utils
 from utils import (_compute_numerical_batch_jacobian,
                    _compute_numerical_jacobian)
-from paddle.autograd.functional import _as_tensors
 
 paddle.enable_static()
 

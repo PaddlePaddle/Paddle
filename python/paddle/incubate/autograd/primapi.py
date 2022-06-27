@@ -14,8 +14,10 @@
 
 import typing
 
+import paddle.autograd.utils as tensor_utils
+import paddle.incubate.autograd.utils as prim_utils
 from paddle.fluid import framework
-from paddle.incubate.autograd import primx, utils
+from paddle.incubate.autograd import primx
 
 
 @framework.static_only
@@ -63,7 +65,7 @@ def forward_gradients(targets, inputs, input_gradients=None):
             paddle.incubate.autograd.disable_prim()
             paddle.disable_static()
     """
-    if not utils.prim_enabled():
+    if not prim_utils.prim_enabled():
         raise RuntimeError('forward_gradients must be running on primitive'
                            'operators, use enable_prim to turn it on.')
 
@@ -75,8 +77,8 @@ def forward_gradients(targets, inputs, input_gradients=None):
         raise TypeError(f'Expected inputs is Tensor|Sequence[Tesnor], '
                         f'but got {type(inputs)}.')
 
-    ys, xs, xs_dot = utils.to_tensors(targets), utils.to_tensors(
-        inputs), utils.to_tensors(input_gradients)
+    ys, xs, xs_dot = tensor_utils.as_tensors(targets), tensor_utils.as_tensors(
+        inputs), tensor_utils.as_tensors(input_gradients)
 
     block = framework.default_main_program().current_block()
     if any(x.block != block for x in xs + ys):

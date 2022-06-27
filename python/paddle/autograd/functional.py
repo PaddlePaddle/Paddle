@@ -17,6 +17,7 @@ import typing
 
 import paddle
 from paddle.fluid import framework
+from paddle.autograd.utils import as_tensors
 
 
 def vjp(func, xs, v=None):
@@ -348,14 +349,14 @@ class _Jacobian(object):
     def __init__(self, func, xs):
         # Skip separating in prim mode temporarily, as detach and clone are not
         # primitive operators.
-        if not paddle.fluid._non_static_mode and paddle.incubate.autograd.prim_enabled(
-        ):
+        if not paddle.fluid._non_static_mode(
+        ) and paddle.incubate.autograd.prim_enabled():
             self._xs = xs
         else:
             self._xs = _separate(xs)
-        self._ys = func(*_as_tensors(self._xs))
-        self._flatten_xs = self._flatten(_as_tensors(self._xs))
-        self._flatten_ys = self._flatten(_as_tensors(self._ys))
+        self._ys = func(*as_tensors(self._xs))
+        self._flatten_xs = self._flatten(as_tensors(self._xs))
+        self._flatten_ys = self._flatten(as_tensors(self._ys))
         self._cache = {}
 
     @property
@@ -459,7 +460,7 @@ class _JacobianBatchLast(_Jacobian):
 
     def _flatten(self, xs):
         return paddle.concat(
-            tuple(x.reshape((-1, x.shape[-1])) for x in _as_tensors(xs)), 0)
+            tuple(x.reshape((-1, x.shape[-1])) for x in as_tensors(xs)), 0)
 
     def _evaluate(self, row):
         return self._flatten(_grad(self._flatten_ys[row, :], self._xs))
@@ -485,7 +486,7 @@ class _JacobianBatchFirst(_Jacobian):
 
     def _flatten(self, xs):
         return paddle.concat(
-            tuple(x.reshape((x.shape[0], -1)) for x in _as_tensors(xs)), 1)
+            tuple(x.reshape((x.shape[0], -1)) for x in as_tensors(xs)), 1)
 
     def _evaluate(self, row_index):
         return self._flatten(_grad(self._flatten_ys[:, row_index], self._xs))
@@ -534,10 +535,6 @@ def _multi_index(indexes, shape):
         else:
             raise TypeError(f'Not supported index type {index}.')
     return tuple(positive_indexes)
-
-
-def _as_tensors(xs):
-    return (xs, ) if isinstance(xs, framework.Variable) else xs
 
 
 def _stack_tensor_or_return_none(origin_list):
@@ -693,7 +690,7 @@ def _check_v_shape(v, refs):
     if v is None:
         return
 
-    v, refs = _as_tensors(v), _as_tensors(refs)
+    v, refs = as_tensors(v), as_tensors(refs)
     if len(refs) != len(v):
         raise RuntimeError(f"The argument v is a tuple of invalid length:"
                            f"should be {len(refs)} but got {len(v)}.")
@@ -815,8 +812,8 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
             #         [0., 0., 0., 2.]]), None))
 
     '''
-    inputs = _as_tensors(inputs)
-    outputs = _as_tensors(func(*inputs))
+    inputs = as_tensors(inputs)
+    outputs = as_tensors(func(*inputs))
     fin_size = len(inputs)
     fout_size = len(outputs)
     flat_outputs = tuple(
@@ -952,8 +949,8 @@ def batch_jacobian(func, inputs, create_graph=False, allow_unused=False):
 
     '''
 
-    inputs = _as_tensors(inputs)
-    outputs = _as_tensors(func(*inputs))
+    inputs = as_tensors(inputs)
+    outputs = as_tensors(func(*inputs))
 
     batch_size = inputs[0].shape[0]
     for input in inputs:
@@ -1113,7 +1110,7 @@ def batch_hessian(func, inputs, create_graph=False, allow_unused=False):
             #         [0., 2., 0., 2., 0., 2., 0., 2.]]), None), (None, None))
 
     '''
-    inputs = _as_tensors(inputs)
+    inputs = as_tensors(inputs)
     outputs = func(*inputs)
     batch_size = inputs[0].shape[0]
     for input in inputs:
@@ -1244,7 +1241,7 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
             #         [0., 1., 1., 2.]]), None), (None, None))
 
     '''
-    inputs = _as_tensors(inputs)
+    inputs = as_tensors(inputs)
     outputs = func(*inputs)
     assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
         1
@@ -1349,12 +1346,12 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             #        [[8., 8.],
             #         [8., 8.]]), None])
     '''
-    xs = _as_tensors(inputs)
+    xs = as_tensors(inputs)
     if v is not None:
-        v = _as_tensors(v)
+        v = as_tensors(v)
     xs, v = _separate(xs), _separate(v)
     outputs = func(*xs)
-    ys = _as_tensors(outputs)
+    ys = as_tensors(outputs)
     assert len(ys) == 1 and isinstance(
         ys[0], framework.Variable
     ) and ys[0].shape == [
