@@ -22,6 +22,8 @@ import unittest
 import os
 import re
 
+paddle.seed(100)
+
 
 def get_cuda_version():
     result = os.popen("nvcc --version").read()
@@ -42,6 +44,7 @@ class TestCsrMv(unittest.TestCase):
     # x: csr-matrix, y: dense-vec, out: dense-vec
     def test_mv(self):
         with _test_eager_guard():
+            paddle.set_default_dtype('float64')
             origin_x = paddle.rand([64, 32])
             mask = paddle.randint(0, 2, [64, 32])
             origin_x = origin_x * mask
@@ -76,6 +79,7 @@ class TestCooMv(unittest.TestCase):
     # x: csr-matrix, y: dense-vec, out: dense-vec
     def test_mv(self):
         with _test_eager_guard():
+            paddle.set_default_dtype('float64')
             origin_x = paddle.rand([64, 32])
             mask = paddle.randint(0, 2, [64, 32])
             origin_x = origin_x * mask
