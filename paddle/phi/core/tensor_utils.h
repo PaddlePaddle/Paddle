@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/tensor_meta.h"
 
 namespace phi {
@@ -69,5 +70,19 @@ class DenseTensorUtils {
     return ret;
   }
 };
+
+template <typename Context>
+void Copy(const Context& dev_ctx,
+          const DenseTensor& src,
+          Place dst_place,
+          bool blocking,
+          DenseTensor* dst);
+
+template <typename Context>
+void Copy(const Context& dev_ctx,
+          const SelectedRows& src,
+          Place dst_place,
+          bool blocking,
+          SelectedRows* dst);
 
 }  // namespace phi

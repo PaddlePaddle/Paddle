@@ -76,9 +76,13 @@ struct ConvArgsBase {
   // dilations
   std::vector<int> d;
 
-  ConvArgsBase(const framework::Tensor* x, const framework::Tensor* w,
-               const framework::Tensor* o, const std::vector<int> s,
-               const std::vector<int> p, const std::vector<int> d, DataT dtype)
+  ConvArgsBase(const framework::Tensor* x,
+               const framework::Tensor* w,
+               const framework::Tensor* o,
+               const std::vector<int> s,
+               const std::vector<int> p,
+               const std::vector<int> d,
+               DataT dtype)
       : x(x), w(w), o(o), s(s), p(p), d(d), cudnn_dtype(dtype) {}
 
   template <typename T>
@@ -88,14 +92,22 @@ struct ConvArgsBase {
     VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
              << ", strides=" << s << ", paddings=" << p << ", dilations=" << d;
     return phi::autotune::ConvKey(
-        x_shape, w_shape, p, s, d,
+        x_shape,
+        w_shape,
+        p,
+        s,
+        d,
         paddle::experimental::CppTypeToDataType<T>::Type());
   }
 };
 
 static inline void GetNCDHW(const framework::DDim& dims,
-                            const DataLayout& layout, int* N, int* C, int* D,
-                            int* H, int* W) {
+                            const DataLayout& layout,
+                            int* N,
+                            int* C,
+                            int* D,
+                            int* H,
+                            int* W) {
   *N = dims[0];
   *C = layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
   int i = layout == DataLayout::kNCHW ? 0 : 1;

@@ -39,8 +39,8 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
     if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       paddle::framework::details::tensor_check<
-          paddle::platform::CUDADeviceContext>(api_name, tensor_name,
-                                               *dense_tensor, place);
+          paddle::platform::CUDADeviceContext>(
+          api_name, tensor_name, *dense_tensor, place);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",
@@ -49,8 +49,8 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
       return;
     }
     paddle::framework::details::tensor_check<
-        paddle::platform::CPUDeviceContext>(api_name, tensor_name,
-                                            *dense_tensor, place);
+        paddle::platform::CPUDeviceContext>(
+        api_name, tensor_name, *dense_tensor, place);
   }
 }
 
@@ -114,6 +114,7 @@ void CheckTensorHasNanOrInf(const std::string& api_name,
                             const TupleOfTensorAndVector& tensors) {
   CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
   CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<2>(tensors));
 }
 
 }  // namespace egr

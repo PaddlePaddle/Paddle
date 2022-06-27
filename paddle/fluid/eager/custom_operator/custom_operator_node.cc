@@ -50,7 +50,8 @@ static void ConstructFwdAndBwdMap(
   // Prepare pos map for grad_outputs
   VLOG(7) << "Prepare pos map for grad_outputs";
   PADDLE_ENFORCE_LE(
-      grad_outputs_names.size(), inputs_names.size(),
+      grad_outputs_names.size(),
+      inputs_names.size(),
       paddle::platform::errors::InvalidArgument(
           "Grad outputs num should be less equal than forward inputs num."));
   for (size_t i = 0; i < grad_outputs_names.size(); i++) {
@@ -114,7 +115,8 @@ static void ConstructFwdAndBwdMap(
         }
       }
     } else {
-      if (std::find(outputs_names.begin(), outputs_names.end(),
+      if (std::find(outputs_names.begin(),
+                    outputs_names.end(),
                     grad_inputs_names[i]) != outputs_names.end()) {
         for (size_t j = 0; j < outputs_names.size(); j++) {
           if (grad_inputs_names[i] == outputs_names[j]) {
@@ -143,7 +145,8 @@ static void ConstructFwdAndBwdMap(
   for (size_t i = 0; i < grad_attrs_names.size(); i++) {
     auto end =
         std::find(attrs_names.begin(), attrs_names.end(), grad_attrs_names[i]);
-    PADDLE_ENFORCE_NE(end, attrs_names.end(),
+    PADDLE_ENFORCE_NE(end,
+                      attrs_names.end(),
                       paddle::platform::errors::NotFound(
                           "All Grad attrs should be one of forward attrs and "
                           "we got %s is not one of them, please check your "
@@ -166,7 +169,8 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>,
 RunCustomOpNode::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          kSlotSmallVectorSize>& grads,
-    bool create_graph, bool is_new_grad) {  // NOLINT
+    bool create_graph,
+    bool is_new_grad) {  // NOLINT
   paddle::CustomOpKernelContext ctx;
   auto grad_inputs_name = paddle::framework::OpMetaInfoHelper::GetInputs(
       egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
@@ -263,12 +267,13 @@ RunCustomOpNode::operator()(
                                 trace_backward, &(ins_auto_grad_metas[i]));
   }
 
-  if (require_any_grad) {
-    auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
-    const auto& vec_map = meta_info_map.at(op_type_);
+  auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
+  const auto& vec_map = meta_info_map.at(op_type_);
+  if (require_any_grad && (vec_map.size() > 2)) {
     paddle::platform::RecordEvent node_creation_record_event(
         "Custom Op " + op_type_ + " double_grad node_creation",
-        paddle::platform::TracerEventType::OperatorInner, 1);
+        paddle::platform::TracerEventType::OperatorInner,
+        1);
     VLOG(6) << " Construct Grad for Custom Op: " << op_type_;
     ConstructFwdAndBwdMap(vec_map, op_type_);
     for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
@@ -346,7 +351,8 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>,
 RunCustomOpDoubleGradNode::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          kSlotSmallVectorSize>& grads,
-    bool create_graph, bool is_new_grad) {  // NOLINT
+    bool create_graph,
+    bool is_new_grad) {  // NOLINT
   paddle::CustomOpKernelContext ctx;
   auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
   const auto& vec_map = meta_info_map.at(op_type_);

@@ -60,8 +60,10 @@ class ExpandAsV2GradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExpandAsV2Grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "ExpandAsV2Grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "ExpandAsV2Grad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
@@ -99,13 +101,17 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ExpandAsV2GradNoNeedBufVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(expand_as_v2, ExpandAsInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(expand_as_v2,
+                            ExpandAsInferShapeFunctor,
                             PD_INFER_META(phi::ExpandAsInferMeta));
-REGISTER_OPERATOR(expand_as_v2, ops::ExpandAsV2Op, ops::ExpandAsV2OpMaker,
+REGISTER_OPERATOR(expand_as_v2,
+                  ops::ExpandAsV2Op,
+                  ops::ExpandAsV2OpMaker,
                   ops::ExpandAsV2GradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandAsV2GradOpMaker<paddle::imperative::OpBase>,
                   ExpandAsInferShapeFunctor);
-REGISTER_OPERATOR(expand_as_v2_grad, ops::ExpandAsV2GradOp,
+REGISTER_OPERATOR(expand_as_v2_grad,
+                  ops::ExpandAsV2GradOp,
                   ops::ExpandAsV2GradNoNeedBufVarsInferer);
 
 REGISTER_OP_VERSION(expand_as_v2)

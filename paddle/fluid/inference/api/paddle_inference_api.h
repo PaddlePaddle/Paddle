@@ -133,7 +133,7 @@ class PD_INFER_DECL Predictor {
   ///
   /// \return get a new predictor
   ///
-  std::unique_ptr<Predictor> Clone();
+  std::unique_ptr<Predictor> Clone(void* stream = nullptr);
 
   /// \brief Clear the intermediate tensors of the predictor
   void ClearIntermediateTensor();
@@ -148,6 +148,14 @@ class PD_INFER_DECL Predictor {
   /// MemoryPool.
   ///
   uint64_t TryShrinkMemory();
+
+  ///
+  /// \brief Get the execution stream on devices with a concept of stream,
+  /// otherwise returns nullptr.
+  ///
+  /// \return The execution stream or nullptr (CPU).
+  ///
+  void* GetExecStream() const;
 
  private:
   std::unique_ptr<paddle::PaddlePredictor> predictor_;

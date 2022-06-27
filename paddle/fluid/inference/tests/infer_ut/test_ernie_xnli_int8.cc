@@ -62,13 +62,17 @@ std::shared_ptr<Predictor> InitPredictor() {
       {input_name3, {1, opt_single_seq_len, 1}}};
 
   // only kHalf supported
-  config.EnableTensorRtEngine(1 << 30, 1, 5, Config::Precision::kInt8, false,
-                              false);
+  config.EnableTensorRtEngine(
+      1 << 30, 1, 5, Config::Precision::kInt8, false, false);
   // erinie varlen must be used with dynamic shape
-  config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
-                                opt_input_shape);
+  config.SetTRTDynamicShapeInfo(
+      min_input_shape, max_input_shape, opt_input_shape);
   // erinie varlen must be used with oss
   config.EnableVarseqlen();
+  paddle_infer::experimental::InternalUtils::SetTransformerPosid(&config,
+                                                                 input_name2);
+  paddle_infer::experimental::InternalUtils::SetTransformerMaskid(&config,
+                                                                  input_name3);
 
   return CreatePredictor(config);
 }
@@ -93,8 +97,8 @@ void run(Predictor *predictor, std::vector<float> *out_data) {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputHandle(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   out_data->resize(out_num);
   output_t->CopyToCpu(out_data->data());
   return;
@@ -108,7 +112,9 @@ auto PrepareOutput(std::string input_file) -> std::deque<float> {
     buffer.emplace_back(line);
   }
   std::deque<float> resDeque(buffer.size());
-  std::transform(buffer.begin(), buffer.end(), resDeque.begin(),
+  std::transform(buffer.begin(),
+                 buffer.end(),
+                 resDeque.begin(),
                  [](const std::string &val) { return std::stof(val); });
 
   return resDeque;

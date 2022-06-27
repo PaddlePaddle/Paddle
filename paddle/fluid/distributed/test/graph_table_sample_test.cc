@@ -33,13 +33,18 @@ namespace operators = paddle::operators;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
-std::vector<std::string> edges = {
-    std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
-    std::string("37\t112\t0.21"), std::string("96\t48\t1.4"),
-    std::string("96\t247\t0.31"), std::string("96\t111\t1.21"),
-    std::string("59\t45\t0.34"),  std::string("59\t145\t0.31"),
-    std::string("59\t122\t0.21"), std::string("97\t48\t0.34"),
-    std::string("97\t247\t0.31"), std::string("97\t111\t0.21")};
+std::vector<std::string> edges = {std::string("37\t45\t0.34"),
+                                  std::string("37\t145\t0.31"),
+                                  std::string("37\t112\t0.21"),
+                                  std::string("96\t48\t1.4"),
+                                  std::string("96\t247\t0.31"),
+                                  std::string("96\t111\t1.21"),
+                                  std::string("59\t45\t0.34"),
+                                  std::string("59\t145\t0.31"),
+                                  std::string("59\t122\t0.21"),
+                                  std::string("97\t48\t0.34"),
+                                  std::string("97\t247\t0.31"),
+                                  std::string("97\t111\t0.21")};
 // odd id:96 48 122 112
 char edge_file_name[] = "edges.txt";
 

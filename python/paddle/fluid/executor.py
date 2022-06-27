@@ -483,7 +483,7 @@ def _as_lodtensor(data, place, dtype=None):
             data = np.array([data]).astype(dtype)
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
-            if data.dtype == np.object:
+            if data.dtype == np.object_:
                 raise TypeError(
                     "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
                     "this means the input data contains nested lists with different lengths. "
@@ -1392,9 +1392,9 @@ class Executor(object):
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
-            if core.is_compiled_with_npu() or core.is_compiled_with_xpu(
-            ) or core.is_compiled_with_mlu() or core.is_compiled_with_ipu(
-            ) or isinstance(place, core.CustomPlace):
+            if core.is_compiled_with_npu() or core.is_compiled_with_mlu(
+            ) or core.is_compiled_with_ipu() or isinstance(
+                    place, core.CustomPlace):
                 return False
 
             compiled = isinstance(program, compiler.CompiledProgram)

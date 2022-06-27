@@ -17,6 +17,10 @@ import re
 import logging
 import numpy as np
 import shutil
+try:
+    from tqdm import tqdm
+except:
+    from .utils import tqdm
 from inspect import isgeneratorfunction
 from .... import io
 from .... import core
@@ -178,7 +182,8 @@ class PostTrainingQuantization(object):
                 "mul"].
             round_type(str, optional): The method of converting the quantized weights
                 value float->int. Currently supports ['round', 'adaround'] methods.
-                Default is `round`, which is rounding nearest to the nearest whole number.
+                Default is `round`, which is rounding nearest to the integer.
+                'adaround' is refer to https://arxiv.org/abs/2004.10568.
             learning_rate(float, optional): The learning rate of adaround method.
             is_full_quantized(bool, optional): If set is_full_quantized as True, 
                 apply quantization to all supported quantizable op type. If set
@@ -359,38 +364,41 @@ class PostTrainingQuantization(object):
         self._set_activation_persistable()
 
         if self._algo in ["KL", "hist"]:
-            _logger.info("Preparation stage ...")
             batch_id = 0
+            with tqdm(
+                    total=self._batch_nums,
+                    bar_format=
+                    'Preparation stage, Run batch:|{bar}| {n_fmt}/{total_fmt}',
+                    ncols=80) as t:
+                for data in self._data_loader():
+                    self._executor.run(program=self._program,
+                                       feed=data,
+                                       fetch_list=self._fetch_list,
+                                       return_numpy=False,
+                                       scope=self._scope)
+                    self._collect_activation_abs_min_max()
+                    batch_id += 1
+                    t.update()
+                    if self._batch_nums and batch_id >= self._batch_nums:
+                        break
+            self._init_sampling_act_histogram()
+
+        batch_id = 0
+        with tqdm(total=self._batch_nums,
+                  bar_format=
+                  'Sampling stage, Run batch:|{bar}| {n_fmt}/{total_fmt}',
+                  ncols=80) as t:
             for data in self._data_loader():
                 self._executor.run(program=self._program,
                                    feed=data,
                                    fetch_list=self._fetch_list,
                                    return_numpy=False,
                                    scope=self._scope)
-                self._collect_activation_abs_min_max()
-                if batch_id % 5 == 0:
-                    _logger.info("Run batch: " + str(batch_id))
+                self._sampling()
                 batch_id += 1
+                t.update()
                 if self._batch_nums and batch_id >= self._batch_nums:
                     break
-            _logger.info("Finish preparation stage, all batch:" + str(batch_id))
-            self._init_sampling_act_histogram()
-
-        _logger.info("Sampling stage ...")
-        batch_id = 0
-        for data in self._data_loader():
-            self._executor.run(program=self._program,
-                               feed=data,
-                               fetch_list=self._fetch_list,
-                               return_numpy=False,
-                               scope=self._scope)
-            self._sampling()
-            if batch_id % 5 == 0:
-                _logger.info("Run batch: " + str(batch_id))
-            batch_id += 1
-            if self._batch_nums and batch_id >= self._batch_nums:
-                break
-        _logger.info("Finish sampling stage, all batch: " + str(batch_id))
 
         if self._algo == 'avg':
             for var_name in self._quantized_act_var_name:
@@ -452,6 +460,7 @@ class PostTrainingQuantization(object):
                      self._weight_op_pairs,
                      scale_dict,
                      num_iterations=self._batch_nums,
+                     bias_correction=self._bias_correction,
                      lr=self._learning_rate)
 
     def save_quantized_model(self,
@@ -647,9 +656,14 @@ class PostTrainingQuantization(object):
                 scale = s * abs_max_value
                 s += 0.02
                 bins = 2**(self._activation_bits - 1) - 1
-                quant_dequant_var = np.round(
-                    np.clip(var_tensor, 0.0, scale) / scale *
-                    bins) / bins * scale
+                if self._onnx_format:
+                    quant_var = np.clip(np.round(var_tensor / scale * bins),
+                                        -bins - 1, bins)
+                    quant_dequant_var = quant_var / bins * scale
+                else:
+                    quant_dequant_var = np.round(
+                        np.clip(var_tensor, 0.0, scale) / scale *
+                        bins) / bins * scale
                 mse_loss = ((var_tensor - quant_dequant_var)**2).mean()
                 if mse_loss <= self._best_calibration_loss[var_name]:
                     self._best_calibration_loss[var_name] = mse_loss
@@ -686,9 +700,14 @@ class PostTrainingQuantization(object):
                 scale = s * abs_max_value
                 s += 0.02
                 bins = 2**(self._activation_bits - 1) - 1
-                quant_dequant_var = np.round(
-                    np.clip(var_tensor, 0.0, scale) / scale *
-                    bins) / bins * scale
+                if self._onnx_format:
+                    quant_var = np.clip(np.round(var_tensor / scale * bins),
+                                        -bins - 1, bins)
+                    quant_dequant_var = quant_var / bins * scale
+                else:
+                    quant_dequant_var = np.round(
+                        np.clip(var_tensor, 0.0, scale) / scale *
+                        bins) / bins * scale
                 emd_loss = np.abs(
                     np.mean(var_tensor) - np.mean(quant_dequant_var)) + np.abs(
                         np.std(var_tensor) - np.std(quant_dequant_var))

@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
+from paddle.incubate import sparse
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
@@ -168,31 +169,33 @@ class TestSparseConvert(unittest.TestCase):
         with _test_eager_guard():
             indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
             values = [1.0, 2.0, 3.0, 4.0, 5.0]
-            sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
-                paddle.to_tensor(indices),
-                paddle.to_tensor(values),
-                shape=[3, 4],
-                stop_gradient=False)
-            dense_tensor = sparse_x.to_dense()
-            #test to_dense_grad backward
-            out_grad = [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
-                        [9.0, 10.0, 11.0, 12.0]]
-            dense_tensor.backward(paddle.to_tensor(out_grad))
-            #mask the out_grad by sparse_x.indices()
-            correct_x_grad = [2.0, 4.0, 7.0, 9.0, 10.0]
-            assert np.array_equal(correct_x_grad,
-                                  sparse_x.grad.values().numpy())
+            indices_dtypes = ['int32', 'int64']
+            for indices_dtype in indices_dtypes:
+                sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
+                    paddle.to_tensor(indices, dtype=indices_dtype),
+                    paddle.to_tensor(values),
+                    shape=[3, 4],
+                    stop_gradient=False)
+                dense_tensor = sparse_x.to_dense()
+                #test to_dense_grad backward
+                out_grad = [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
+                            [9.0, 10.0, 11.0, 12.0]]
+                dense_tensor.backward(paddle.to_tensor(out_grad))
+                #mask the out_grad by sparse_x.indices()
+                correct_x_grad = [2.0, 4.0, 7.0, 9.0, 10.0]
+                assert np.array_equal(correct_x_grad,
+                                      sparse_x.grad.values().numpy())
 
-            paddle.device.set_device("cpu")
-            sparse_x_cpu = paddle.incubate.sparse.sparse_coo_tensor(
-                paddle.to_tensor(indices),
-                paddle.to_tensor(values),
-                shape=[3, 4],
-                stop_gradient=False)
-            dense_tensor_cpu = sparse_x_cpu.to_dense()
-            dense_tensor_cpu.backward(paddle.to_tensor(out_grad))
-            assert np.array_equal(correct_x_grad,
-                                  sparse_x_cpu.grad.values().numpy())
+                paddle.device.set_device("cpu")
+                sparse_x_cpu = paddle.incubate.sparse.sparse_coo_tensor(
+                    paddle.to_tensor(indices, dtype=indices_dtype),
+                    paddle.to_tensor(values),
+                    shape=[3, 4],
+                    stop_gradient=False)
+                dense_tensor_cpu = sparse_x_cpu.to_dense()
+                dense_tensor_cpu.backward(paddle.to_tensor(out_grad))
+                assert np.array_equal(correct_x_grad,
+                                      sparse_x_cpu.grad.values().numpy())
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_to_sparse_csr(self):
@@ -312,6 +315,43 @@ class TestSparseConvert(unittest.TestCase):
                                           sparse_x.indices().numpy())
                     assert np.array_equal(values_sorted,
                                           sparse_x.values().numpy())
+
+    def test_batch_csr(self):
+        with _test_eager_guard():
+
+            def verify(dense_x):
+                sparse_x = dense_x.to_sparse_csr()
+                out = sparse_x.to_dense()
+                assert np.allclose(out.numpy(), dense_x.numpy())
+
+            shape = np.random.randint(low=1, high=10, size=3)
+            shape = list(shape)
+            dense_x = paddle.randn(shape)
+            dense_x = paddle.nn.functional.dropout(dense_x, p=0.5)
+            verify(dense_x)
+
+            #test batchs=1
+            shape[0] = 1
+            dense_x = paddle.randn(shape)
+            dense_x = paddle.nn.functional.dropout(dense_x, p=0.5)
+            verify(dense_x)
+
+            shape = np.random.randint(low=2, high=10, size=3)
+            shape = list(shape)
+            dense_x = paddle.randn(shape)
+            #set the 0th batch to zero
+            dense_x[0] = 0
+            verify(dense_x)
+
+            dense_x = paddle.randn(shape)
+            #set the 1th batch to zero
+            dense_x[1] = 0
+            verify(dense_x)
+
+            dense_x = paddle.randn(shape)
+            #set the 2th batch to zero
+            dense_x[2] = 0
+            verify(dense_x)
 
 
 class TestCooError(unittest.TestCase):
