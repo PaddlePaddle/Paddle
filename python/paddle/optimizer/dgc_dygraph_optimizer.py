@@ -34,6 +34,7 @@ from paddle import _C_ops
 from paddle.fluid.framework import ParamBase, _in_legacy_dygraph, in_dygraph_mode, Variable, device_guard
 from paddle.distributed.collective import _get_default_group
 from paddle.optimizer.lr import LRScheduler
+from .optimizer import Optimizer
 
 __all__ = ["dgc_data_parallel", "DGCMomentumOptimizer"]
 
@@ -89,7 +90,7 @@ def sync_params_buffers(params, group=None, src_rank=0):
                                      use_calc_stream=True)
 
 
-class DGCMomentumOptimizer(paddle.optimizer.Optimizer):
+class DGCMomentumOptimizer(Optimizer):
 
     def __init__(self,
                  parameters,
@@ -130,12 +131,17 @@ class DGCMomentumOptimizer(paddle.optimizer.Optimizer):
         ],
                                                           dtype="float32")
 
+        self._not_ready_param = {}
+        self._reduce_var_ready = {}
+
         self._weight_decay = weight_decay
         self._u_velocity_acc_str = "_dgc_u_"
         self._v_velocity_acc_str = "_dgc_v_"
         self._dgc_vars = defaultdict(lambda: list())
-        self._reduce_var_ready = {}
+
         self._reduce_var_index = {}
+        self._index_to_param = {}
+
         self._dgc_comm_param = []
         self._reduce_grad_res = {}
         self._reduce_dgc_grad_res = {}
@@ -225,27 +231,19 @@ class DGCMomentumOptimizer(paddle.optimizer.Optimizer):
             reduce_function = self._get_reduce_fn(param)
             param.register_hook(reduce_function)
 
-    def _get_reduce_fn(self, param):
+    def _get_reduce_fn(self, pp):
 
         @imperative_base.no_grad
-        def reduce_grad(grad):
-
-            #NOTE: 1:ready, 0: not ready
-            self._reduce_var_ready[param.name] = 1
-            assert grad is not None, "Parameter gradient cannot be None"
-
+        def deal_grad(param, grad):
             is_use_dgc = self._is_use_dgc(param, grad)
-
             clip_var = grad
-            has_clip = False
+
             # local gradient clipping
             if self._dgc_clip_norm is not None and is_use_dgc and self._global_step_var[
                     0] >= self._rampup_begin_step:
-                clip_var = self._clip_by_norm(grad.scale(1.0 /
-                                                         self.new_group.nranks),
+                clip_var = self._clip_by_norm(grad,
                                               max_norm=self._dgc_clip_norm,
                                               name=param.name + "_grad")
-                has_clip = True
 
             u_var, v_var = self._accumulators[self._u_velocity_acc_str][
                 param.name], self._accumulators[self._v_velocity_acc_str][
@@ -253,22 +251,47 @@ class DGCMomentumOptimizer(paddle.optimizer.Optimizer):
 
             k_var, encoded_var, gather_var = self._get_auxiliary_var(param)
 
-            comm_grad = self._reduce_grad_res[param.name]
             # momentum correction and local regularization
-            self._dgc_op(param, clip_var, comm_grad, u_var, v_var, k_var,
-                         encoded_var, gather_var, is_use_dgc, has_clip)
+            self._dgc_op(param, clip_var, grad, u_var, v_var, k_var,
+                         encoded_var, gather_var, is_use_dgc)
+
+            self._reduce_grad_res[param.name] = grad
 
             self.reduce_order += 1
 
             if self.reduce_order == self.reduce_count:
-                _C_ops.dgc_wait_comm([comm_grad], self.new_group.id)
+                _C_ops.dgc_wait_comm([grad], self.new_group.id)
 
-            return grad
+        @imperative_base.no_grad
+        def reduce_grad(gg):
+            #NOTE: 1:ready, 0: not ready
+            self._reduce_var_ready[pp.name] = 1
+
+            comm_grad = gg.scale(1.0 / self.new_group.nranks)
+            order = self._reduce_var_index[pp.name]
+            if order == self.reduce_order:
+                deal_grad(pp, comm_grad)
+                for index in range(self.reduce_order, self.reduce_count):
+                    param_name = self._index_to_param[index]
+                    if self._reduce_var_ready[
+                            param_name] and param_name in self._not_ready_param.keys(
+                            ):
+                        p, g = self._not_ready_param[param_name]
+                        deal_grad(p, g)
+                        self._not_ready_param.pop(param_name)
+                    else:
+                        break
+            elif order > self.reduce_order:
+                self._not_ready_param[pp.name] = (pp, comm_grad)
+            else:
+                raise Exception("dgc backward error!")
+
+            return gg
 
         return reduce_grad
 
     def _dgc_op(self, param_var, clip_var, grad_var, u_var, v_var, k_var,
-                encoded_var, gather_var, is_use_dgc, has_clip):
+                encoded_var, gather_var, is_use_dgc):
 
         regular_type = self.regular_type
         regular_coeff = self.regular_coeff
@@ -303,8 +326,7 @@ class DGCMomentumOptimizer(paddle.optimizer.Optimizer):
                 "rampup_step": float(self._rampup_step),
                 "regular_coeff": float(regular_coeff),
                 "regular_type": int(regular_type),
-                "is_use_dgc": is_use_dgc,
-                "has_clip": has_clip
+                "is_use_dgc": is_use_dgc
             })
 
     def _clip_by_norm(self, x, max_norm, name=None):
@@ -374,10 +396,11 @@ class DGCMomentumOptimizer(paddle.optimizer.Optimizer):
         num_trainable_params = len(self.trainable_params)
 
         for index, param in enumerate(self.trainable_params):
-            self._reduce_var_ready[param.name] = 0
             self._name_param[param.name] = param
+            self._reduce_var_ready[param.name] = 0
             self._reduce_var_index[
                 param.name] = num_trainable_params - index - 1
+            self._index_to_param[num_trainable_params - index - 1] = param.name
 
             self._reduce_grad_res[param.name] = paddle.zeros_like(
                 param, dtype=param.dtype)
@@ -428,7 +451,7 @@ class DGCMomentumOptimizer(paddle.optimizer.Optimizer):
     def _clear_counters(self):
         """Reset all the grad reduce and call counters."""
         self.reduce_order = 0
-        #self._reduce_grad_res.clear()
+        self._not_ready_param.clear()
         for k in self._reduce_var_ready.keys():
             self._reduce_var_ready[k] = 0
 

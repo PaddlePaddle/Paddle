@@ -33,7 +33,7 @@ from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import TensorParallel, model_parallel_random_seed
 from ..meta_parallel import PipelineParallel, ShardingParallel
-from ..meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer, DGCMomentumOptimizer
+from ..meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
@@ -928,9 +928,10 @@ class Fleet(object):
                     "which will take effect in distributed training.")
             self._user_defined_strategy = copy.deepcopy(strategy)
 
-        if self._user_defined_strategy is not None and self._user_defined_strategy.dgc:
+        if paddle.fluid.framework._non_static_mode(
+        ) and self._user_defined_strategy is not None and self._user_defined_strategy.dgc:
             configs = self._user_defined_strategy.dgc_configs
-            dgc_optimizer = DGCMomentumOptimizer(
+            dgc_optimizer = paddle.optimizer.DGCMomentumOptimizer(
                 parameters=optimizer._parameter_list,
                 learning_rate=optimizer._learning_rate,
                 momentum=optimizer._momentum,

@@ -91,9 +91,6 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
 
     bool is_use_dgc = ctx.Attr<bool>("is_use_dgc");
     if (!is_use_dgc) {
-      // grad div nranks.
-      grad_out_e.device(eigen_ctx) = g_e / static_cast<float>(nranks);
-
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventRecord(comm->compute_event(), dev_ctx.stream()));
@@ -125,26 +122,21 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
                           "DGC only support one of None|L1Decay|L2Decay "
                           "Regularization for now."));
 
-    bool has_clip = ctx.Attr<bool>("has_clip");
-    auto factor =
-        has_clip ? (1.0f * nranks) : (1.0f / nranks) * (1.0f * nranks);
-
     if (regular_type == 0) {
-      grad_out_e.device(eigen_ctx) = g_e * factor;
+      grad_out_e.device(eigen_ctx) = (1.0 * nranks) * g_e;
     } else if (regular_type == 1) {
       // L1Decay. grad = grad + coeff * sign(param)
-      grad_out_e.device(eigen_ctx) = g_e * factor + regular_coeff * p_e.sign();
+      grad_out_e.device(eigen_ctx) =
+          (1.0 * nranks) * g_e + regular_coeff * p_e.sign();
     } else if (regular_type == 2) {
       // L2Decay. grad = grad + coeff * param
-      grad_out_e.device(eigen_ctx) = g_e * factor + regular_coeff * p_e;
+      grad_out_e.device(eigen_ctx) = (1.0 * nranks) * g_e + regular_coeff * p_e;
     }
 
     if (static_cast<int>(*current_step) < static_cast<int>(rampup_begin_step)) {
       VLOG(10) << "current_step:" << *current_step
                << " < rampup_begin_step:" << rampup_begin_step
                << " so does't use dgc";
-
-      // sync calc stream
 
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(

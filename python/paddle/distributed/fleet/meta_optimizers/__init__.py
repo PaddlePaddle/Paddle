@@ -32,4 +32,3 @@ from .dygraph_optimizer import HeterParallelOptimizer
 from .dygraph_optimizer import HybridParallelGradScaler
 from .tensor_parallel_optimizer import TensorParallelOptimizer
 from .raw_program_optimizer import RawProgramOptimizer
-from .dgc_dygraph_optimizer import DGCMomentumOptimizer

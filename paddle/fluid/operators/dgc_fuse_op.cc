@@ -115,11 +115,6 @@ class DGCFuseOpMaker : public framework::OpProtoAndCheckerMaker {
                   "whether use dgc.")
         .SetDefault(false);
 
-    AddAttr<bool>("has_clip",
-                  "(bool, false)"
-                  "whether has clipped in dgc.")
-        .SetDefault(false);
-
     AddComment(R"DOC(
     Original paper is https://arxiv.org/abs/1712.01887
     DGC reduce the communication bandwidth by sending only the important gradients (sparse update):\
