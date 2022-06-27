@@ -41,6 +41,11 @@ from .collective import recv  # noqa: F401
 from .collective import get_group  # noqa: F401
 from .collective import send  # noqa: F401
 from .collective import wait  # noqa: F401
+from .collective import isend  # noqa: F401
+from .collective import irecv  # noqa: F401
+from .collective import batch_isend_irecv  # noqa: F401
+from .collective import P2POp  # noqa: F401
+from .collective import reduce_scatter  # noqa: F401
 
 from .auto_parallel import shard_op  # noqa: F401
 from .auto_parallel import shard_tensor  # noqa: F401
@@ -88,4 +93,9 @@ __all__ = [  # noqa
     "get_rank",
     "ProbabilityEntry",
     "ParallelMode",
+    "isend",
+    "irecv",
+    "batch_isend_irecv",
+    "P2POp",
+    "reduce_scatter",
 ]
