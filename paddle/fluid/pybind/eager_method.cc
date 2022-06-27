@@ -262,8 +262,13 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           sizeof_dtype * numel);
     }
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (self->tensor.is_gpu()) {
+#if defined(PADDLE_WITH_CUDA)
+    gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
+#elif defined(PADDLE_WITH_HIP)
+    gpuMemcpyKind kind = hipMemcpyDeviceToHost;
+#endif
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -275,7 +280,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           dense_tensor->data(),
           paddle::framework::DataTypeSize(dense_tensor->dtype()) *
               dense_tensor->numel(),
-          cudaMemcpyDeviceToHost);
+          kind);
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -285,7 +290,33 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           dense_tensor->data(),
           paddle::framework::DataTypeSize(dense_tensor->dtype()) *
               dense_tensor->numel(),
-          cudaMemcpyDeviceToHost);
+          kind);
+    }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (self->tensor.is_custom_device()) {
+    if (self->tensor.is_selected_rows()) {
+      VLOG(6) << "Getting SelectedRows's numpy value";
+      auto* selected_rows =
+          static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+      auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
+          selected_rows->mutable_value());
+      phi::DeviceManager::GetDeviceWithPlace(self->tensor.place())
+          ->MemoryCopyD2H(
+              pybind11::detail::array_proxy(array)->data,
+              dense_tensor->data(),
+              paddle::framework::DataTypeSize(dense_tensor->dtype()) *
+                  dense_tensor->numel());
+    } else {
+      VLOG(6) << "Getting DenseTensor's numpy value";
+      auto dense_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+      phi::DeviceManager::GetDeviceWithPlace(self->tensor.place())
+          ->MemoryCopyD2H(
+              pybind11::detail::array_proxy(array)->data,
+              dense_tensor->data(),
+              paddle::framework::DataTypeSize(dense_tensor->dtype()) *
+                  dense_tensor->numel());
     }
 #endif
   } else {

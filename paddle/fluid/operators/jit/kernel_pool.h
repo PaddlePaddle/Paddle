@@ -69,9 +69,9 @@ class JitCodePool {
 
 class JitCodeCreatorPool {
   typedef std::unique_ptr<const GenCreator> GenCreatorPtr;
-  typedef std::unordered_map<KernelKey, std::vector<GenCreatorPtr>,
-                             KernelKey::Hash>
-      GenCreatorPtrMap;
+  typedef std::
+      unordered_map<KernelKey, std::vector<GenCreatorPtr>, KernelKey::Hash>
+          GenCreatorPtrMap;
 
  public:
   JitCodeCreatorPool() = default;

@@ -28,14 +28,17 @@ template <typename T>
 struct SelectedRowsAdd<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const phi::SelectedRows& input1,
-                  const phi::SelectedRows& input2, phi::SelectedRows* output) {
+                  const phi::SelectedRows& input2,
+                  phi::SelectedRows* output) {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(
-        in1_height, input2.height(),
+        in1_height,
+        input2.height(),
         platform::errors::InvalidArgument("The two inputs height must be equal."
                                           "But received first input height  = "
                                           "[%d], second input height = [%d]",
-                                          in1_height, input2.height()));
+                                          in1_height,
+                                          input2.height()));
     output->set_height(in1_height);
 
     auto& in1_rows = input1.rows();
@@ -54,38 +57,51 @@ struct SelectedRowsAdd<platform::CPUDeviceContext, T> {
 
     auto in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(
-        in1_row_numel, in2_value.numel() / in2_rows.size(),
+        in1_row_numel,
+        in2_value.numel() / in2_rows.size(),
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
             "But received first input width = [%d], second input width = [%d]",
-            in1_row_numel, in2_value.numel() / in2_rows.size()));
+            in1_row_numel,
+            in2_value.numel() / in2_rows.size()));
     PADDLE_ENFORCE_EQ(
-        in1_row_numel, out_value->numel() / out_rows.size(),
+        in1_row_numel,
+        out_value->numel() / out_rows.size(),
         platform::errors::InvalidArgument(
             "The input and oupput width must be equal."
             "But received input width = [%d], output width = [%d]",
-            in1_row_numel, out_value->numel() / out_rows.size()));
+            in1_row_numel,
+            out_value->numel() / out_rows.size()));
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(in1_place), true,
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(in1_place),
+                      true,
                       platform::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2.place();
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(in2_place), true,
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(in2_place),
+                      true,
                       platform::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto out_place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(out_place), true,
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(out_place),
+                      true,
                       platform::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
 
     auto* out_data = out_value->data<T>();
     auto* in1_data = in1_value.data<T>();
-    memory::Copy(out_place, out_data, in1_place, in1_data,
+    memory::Copy(out_place,
+                 out_data,
+                 in1_place,
+                 in1_data,
                  in1_value.numel() * sizeof(T));
 
     auto* in2_data = in2_value.data<T>();
-    memory::Copy(out_place, out_data + in1_value.numel(), in2_place, in2_data,
+    memory::Copy(out_place,
+                 out_data + in1_value.numel(),
+                 in2_place,
+                 in2_data,
                  in2_value.numel() * sizeof(T));
   }
 };
@@ -97,39 +113,48 @@ template <typename T>
 struct SelectedRowsAddTensor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const phi::SelectedRows& input1,
-                  const framework::Tensor& input2, framework::Tensor* output) {
+                  const framework::Tensor& input2,
+                  framework::Tensor* output) {
     auto in1_height = input1.height();
     const auto& in2_dims = input2.dims();
     const auto& out_dims = output->dims();
     PADDLE_ENFORCE_EQ(
-        in1_height, in2_dims[0],
+        in1_height,
+        in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
                                           "But received first input height = "
                                           "[%d], second input height = [%d]",
-                                          in1_height, in2_dims[0]));
+                                          in1_height,
+                                          in2_dims[0]));
     PADDLE_ENFORCE_EQ(
-        in1_height, out_dims[0],
+        in1_height,
+        out_dims[0],
         platform::errors::InvalidArgument(
             "The input and output height must be equal."
             "But received input height = [%d], output height = [%d]",
-            in1_height, out_dims[0]));
+            in1_height,
+            out_dims[0]));
 
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(
-        in1_row_numel, input2.numel() / in1_height,
+        in1_row_numel,
+        input2.numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
             "But received first input width = [%d], second input width = [%d]",
-            in1_row_numel, input2.numel() / in1_height));
+            in1_row_numel,
+            input2.numel() / in1_height));
     PADDLE_ENFORCE_EQ(
-        in1_row_numel, output->numel() / in1_height,
+        in1_row_numel,
+        output->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The input and output width must be equal."
             "But received input width = [%d], output width = [%d]",
-            in1_row_numel, output->numel() / in1_height));
+            in1_row_numel,
+            output->numel() / in1_height));
 
     phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
     functor(context, output, 0.0);
@@ -156,15 +181,18 @@ template struct SelectedRowsAddTensor<platform::CPUDeviceContext, double>;
 template <typename T>
 struct SelectedRowsAddTo<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
-                  const phi::SelectedRows& input1, const int64_t input2_offset,
+                  const phi::SelectedRows& input1,
+                  const int64_t input2_offset,
                   phi::SelectedRows* input2) {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(
-        in1_height, input2->height(),
+        in1_height,
+        input2->height(),
         platform::errors::InvalidArgument("The two inputs height must be equal."
                                           "But received first input height = "
                                           "[%d], second input height = [%d]",
-                                          in1_height, input2->height()));
+                                          in1_height,
+                                          input2->height()));
 
     auto& in1_rows = input1.rows();
     auto& in2_rows = *(input2->mutable_rows());
@@ -177,17 +205,22 @@ struct SelectedRowsAddTo<platform::CPUDeviceContext, T> {
     mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(in1_place), true,
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(in1_place),
+                      true,
                       platform::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2->place();
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(in2_place), true,
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(in2_place),
+                      true,
                       platform::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
-    memory::Copy(in2_place, in2_data + input2_offset, in1_place, in1_data,
+    memory::Copy(in2_place,
+                 in2_data + input2_offset,
+                 in1_place,
+                 in1_data,
                  in1_value.numel() * sizeof(T));
   }
 };
@@ -209,12 +242,14 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, T> {
       auto& in_rows = (*iter)->rows();
       size += in_rows.end() - in_rows.begin();
       auto in1_height = (*iter)->height();
-      PADDLE_ENFORCE_EQ(in1_height, input2->height(),
+      PADDLE_ENFORCE_EQ(in1_height,
+                        input2->height(),
                         platform::errors::InvalidArgument(
                             "The two inputs height must be equal."
                             "But received first input height = [%d], second "
                             "input height = [%d]",
-                            in1_height, input2->height()));
+                            in1_height,
+                            input2->height()));
     }
     // concat rows
     std::vector<int64_t> in2_rows;
@@ -244,7 +279,8 @@ template struct SelectedRowsSumTo<platform::CPUDeviceContext, double>;
 template <typename T>
 struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
-                  const phi::SelectedRows& input1, framework::Tensor* input2) {
+                  const phi::SelectedRows& input1,
+                  framework::Tensor* input2) {
     if (UNLIKELY(input1.rows().size() == 0)) {
       LOG(WARNING) << "input selected rows is empty!";
       return;
@@ -252,22 +288,26 @@ struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
     auto in1_height = input1.height();
     const auto& in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(
-        in1_height, in2_dims[0],
+        in1_height,
+        in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
                                           "But received first input height = "
                                           "[%d], second input height = [%d]",
-                                          in1_height, in2_dims[0]));
+                                          in1_height,
+                                          in2_dims[0]));
 
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(
-        in1_row_numel, input2->numel() / in1_height,
+        in1_row_numel,
+        input2->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
             "But received first input width = [%d], second input width = [%d]",
-            in1_row_numel, input2->numel() / in1_height));
+            in1_row_numel,
+            input2->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
     auto* input2_data = input2->data<T>();
@@ -284,7 +324,8 @@ struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
 template <typename T>
 struct SelectedRowsAddToTensor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
-                  const phi::SelectedRows& input1, framework::Tensor* input2) {
+                  const phi::SelectedRows& input1,
+                  framework::Tensor* input2) {
     if (UNLIKELY(input1.rows().size() == 0)) {
       LOG(WARNING) << "input selected rows is empty!";
       return;
@@ -292,22 +333,26 @@ struct SelectedRowsAddToTensor<phi::CPUContext, T> {
     auto in1_height = input1.height();
     const auto& in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(
-        in1_height, in2_dims[0],
+        in1_height,
+        in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
                                           "But received first input height = "
                                           "[%d], second input height = [%d]",
-                                          in1_height, in2_dims[0]));
+                                          in1_height,
+                                          in2_dims[0]));
 
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(
-        in1_row_numel, input2->numel() / in1_height,
+        in1_row_numel,
+        input2->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
             "But received first input width = [%d], second input width = [%d]",
-            in1_row_numel, input2->numel() / in1_height));
+            in1_row_numel,
+            input2->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
     auto* input2_data = input2->data<T>();
@@ -343,14 +388,18 @@ namespace scatter {
 
 template <typename T, typename DeviceContext>
 typename std::enable_if<!std::is_integral<T>::value>::type elementwise_add_to(
-    phi::funcs::BlasT<DeviceContext, T>* blas, size_t data_len, const T* in,
+    phi::funcs::BlasT<DeviceContext, T>* blas,
+    size_t data_len,
+    const T* in,
     T* out) {
   blas->AXPY(data_len, T(1.f), in, out);
 }
 
 template <typename T, typename DeviceContext>
 typename std::enable_if<std::is_integral<T>::value>::type elementwise_add_to(
-    phi::funcs::BlasT<DeviceContext, T>* blas, size_t data_len, const T* in,
+    phi::funcs::BlasT<DeviceContext, T>* blas,
+    size_t data_len,
+    const T* in,
     T* out) {
   for (size_t i = 0; i < data_len; i++) {
     out[i] += in[i];
@@ -361,7 +410,8 @@ template <typename T, typename DeviceContext>
 typename std::enable_if<std::is_same<T, platform::bfloat16>::value>::type
 add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
                   const std::unordered_map<int64_t, size_t>& rows_to_id,
-                  int64_t input_width, const DeviceContext& context,
+                  int64_t input_width,
+                  const DeviceContext& context,
                   T* out_data) {
 #ifndef PADDLE_WITH_MKLDNN
   auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
@@ -383,9 +433,10 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
 #else
     for (size_t i = 0; i < input_rows.size(); i++) {
       size_t out_i = rows_to_id.at(input_rows[i]);
-      elementwise_add_to<T, DeviceContext>(
-          &blas, static_cast<size_t>(input_width), &input_data[i * input_width],
-          &out_data[out_i * input_width]);
+      elementwise_add_to<T, DeviceContext>(&blas,
+                                           static_cast<size_t>(input_width),
+                                           &input_data[i * input_width],
+                                           &out_data[out_i * input_width]);
     }
 #endif
   }
@@ -395,7 +446,8 @@ template <typename T, typename DeviceContext>
 typename std::enable_if<!std::is_same<T, platform::bfloat16>::value>::type
 add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
                   const std::unordered_map<int64_t, size_t>& rows_to_id,
-                  int64_t input_width, const DeviceContext& context,
+                  int64_t input_width,
+                  const DeviceContext& context,
                   T* out_data) {
   VLOG(4) << "[CPU] add_sparse_inputs <" << typeid(T).name();
   auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
@@ -408,9 +460,10 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
 
     for (size_t i = 0; i < input_rows.size(); i++) {
       size_t out_i = rows_to_id.at(input_rows[i]);
-      elementwise_add_to<T, DeviceContext>(
-          &blas, static_cast<size_t>(input_width), &input_data[i * input_width],
-          &out_data[out_i * input_width]);
+      elementwise_add_to<T, DeviceContext>(&blas,
+                                           static_cast<size_t>(input_width),
+                                           &input_data[i * input_width],
+                                           &out_data[out_i * input_width]);
     }
   }
 }
@@ -425,8 +478,10 @@ struct MergeAddImpl {
     return out;
   }
 
-  void operator()(const DeviceContext& context, const phi::SelectedRows& input,
-                  phi::SelectedRows* output, const bool sorted_result = false) {
+  void operator()(const DeviceContext& context,
+                  const phi::SelectedRows& input,
+                  phi::SelectedRows* output,
+                  const bool sorted_result = false) {
     std::vector<const phi::SelectedRows*> inputs;
     inputs.push_back(&input);
     (*this)(context, inputs, output, sorted_result);
@@ -434,7 +489,8 @@ struct MergeAddImpl {
 
   void operator()(const DeviceContext& context,
                   const std::vector<const phi::SelectedRows*>& inputs,
-                  phi::SelectedRows* output, const bool sorted_result = false) {
+                  phi::SelectedRows* output,
+                  const bool sorted_result = false) {
     if (inputs.size() == 0) {
       VLOG(3) << "no input! return";
       return;
@@ -459,11 +515,13 @@ struct MergeAddImpl {
       if (input->rows().size() == 0) {
         continue;
       }
-      PADDLE_ENFORCE_EQ(input_width, input->value().dims()[1],
+      PADDLE_ENFORCE_EQ(input_width,
+                        input->value().dims()[1],
                         platform::errors::InvalidArgument(
                             "All inputs should have same "
                             "dimension except for the first one."));
-      PADDLE_ENFORCE_EQ(input_height, input->height(),
+      PADDLE_ENFORCE_EQ(input_height,
+                        input->height(),
                         platform::errors::InvalidArgument(
                             "All inputs should have same height."));
       row_num += input->rows().size();
@@ -483,8 +541,8 @@ struct MergeAddImpl {
       merge_rows.reserve(row_num);
       // concat rows
       for (auto* in : inputs) {
-        merge_rows.insert(merge_rows.end(), in->rows().begin(),
-                          in->rows().end());
+        merge_rows.insert(
+            merge_rows.end(), in->rows().begin(), in->rows().end());
       }
       out.set_rows(merge_rows);
       auto in_place = inputs[0]->place();
@@ -493,7 +551,10 @@ struct MergeAddImpl {
       for (auto* in : inputs) {
         auto* in_data = in->value().data<T>();
         auto in_numel = in->rows().size() * input_width;
-        memory::Copy(out_place, out_data + copied_numel, in_place, in_data,
+        memory::Copy(out_place,
+                     out_data + copied_numel,
+                     in_place,
+                     in_data,
                      in_numel * sizeof(T));
         copied_numel += in_numel;
       }
@@ -515,8 +576,8 @@ struct MergeAddImpl {
         rows_to_id[merge_rows[i]] = i;
       }
 
-      add_sparse_inputs<T, DeviceContext>(inputs, rows_to_id, input_width,
-                                          context, out_data);
+      add_sparse_inputs<T, DeviceContext>(
+          inputs, rows_to_id, input_width, context, out_data);
     }
   }
 };
@@ -528,22 +589,24 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
   phi::SelectedRows operator()(const platform::CPUDeviceContext& context,
                                const phi::SelectedRows& input,
                                const bool sorted_result) {
-    return MergeAddImpl<platform::CPUDeviceContext, T>()(context, input,
-                                                         sorted_result);
+    return MergeAddImpl<platform::CPUDeviceContext, T>()(
+        context, input, sorted_result);
   }
 
   void operator()(const platform::CPUDeviceContext& context,
-                  const phi::SelectedRows& input, phi::SelectedRows* output,
+                  const phi::SelectedRows& input,
+                  phi::SelectedRows* output,
                   const bool sorted_result) {
-    MergeAddImpl<platform::CPUDeviceContext, T>()(context, input, output,
-                                                  sorted_result);
+    MergeAddImpl<platform::CPUDeviceContext, T>()(
+        context, input, output, sorted_result);
   }
 
   void operator()(const platform::CPUDeviceContext& context,
                   const std::vector<const phi::SelectedRows*>& inputs,
-                  phi::SelectedRows* output, const bool sorted_result) {
-    MergeAddImpl<platform::CPUDeviceContext, T>()(context, inputs, output,
-                                                  sorted_result);
+                  phi::SelectedRows* output,
+                  const bool sorted_result) {
+    MergeAddImpl<platform::CPUDeviceContext, T>()(
+        context, inputs, output, sorted_result);
   }
 };
 
@@ -558,14 +621,16 @@ struct MergeAdd<phi::CPUContext, T> {
   }
 
   void operator()(const phi::CPUContext& context,
-                  const phi::SelectedRows& input, phi::SelectedRows* output,
+                  const phi::SelectedRows& input,
+                  phi::SelectedRows* output,
                   const bool sorted_result) {
     MergeAddImpl<phi::CPUContext, T>()(context, input, output, sorted_result);
   }
 
   void operator()(const phi::CPUContext& context,
                   const std::vector<const phi::SelectedRows*>& inputs,
-                  phi::SelectedRows* output, const bool sorted_result) {
+                  phi::SelectedRows* output,
+                  const bool sorted_result) {
     MergeAddImpl<phi::CPUContext, T>()(context, inputs, output, sorted_result);
   }
 };
@@ -596,7 +661,8 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
   }
 
   void operator()(const platform::XPUDeviceContext& context,
-                  const phi::SelectedRows& input, phi::SelectedRows* output,
+                  const phi::SelectedRows& input,
+                  phi::SelectedRows* output,
                   const bool sorted_result = false) {
     framework::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
@@ -628,19 +694,31 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
     xpu::ctx_guard RAII_GUARD(context.x_context());
     int64_t* x_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(xm);
     int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
-    memory::Copy(context.GetPlace(), y_rows_data, platform::CPUPlace(),
-                 merge_rows.data(), ym * sizeof(int64_t));
-    memory::Copy(context.GetPlace(), x_rows_data, platform::CPUPlace(),
-                 input_rows.data(), xm * sizeof(int64_t));
-    int r =
-        xpu::merge_dup_rows<T, int64_t>(context.x_context(), x_data, y_data,
-                                        x_rows_data, y_rows_data, xm, n, ym);
+    memory::Copy(context.GetPlace(),
+                 y_rows_data,
+                 platform::CPUPlace(),
+                 merge_rows.data(),
+                 ym * sizeof(int64_t));
+    memory::Copy(context.GetPlace(),
+                 x_rows_data,
+                 platform::CPUPlace(),
+                 input_rows.data(),
+                 xm * sizeof(int64_t));
+    int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
+                                            x_data,
+                                            y_data,
+                                            x_rows_data,
+                                            y_rows_data,
+                                            xm,
+                                            n,
+                                            ym);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "merge_dup_rows");
   }
 
   void operator()(const platform::XPUDeviceContext& context,
                   const std::vector<const phi::SelectedRows*>& inputs,
-                  phi::SelectedRows* output, const bool sorted_result = false) {
+                  phi::SelectedRows* output,
+                  const bool sorted_result = false) {
     if (inputs.size() == 0) {
       VLOG(3) << "no input! return";
       return;
@@ -665,11 +743,13 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
       if (input->rows().size() == 0) {
         continue;
       }
-      PADDLE_ENFORCE_EQ(input_width, input->value().dims()[1],
+      PADDLE_ENFORCE_EQ(input_width,
+                        input->value().dims()[1],
                         platform::errors::InvalidArgument(
                             "All inputs should have same "
                             "dimension except for the first one."));
-      PADDLE_ENFORCE_EQ(input_height, input->height(),
+      PADDLE_ENFORCE_EQ(input_height,
+                        input->height(),
                         platform::errors::InvalidArgument(
                             "All inputs should have same height."));
       row_num += input->rows().size();
@@ -711,13 +791,24 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
       xpu::ctx_guard RAII_GUARD(context.x_context());
       int64_t* x_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(xm);
       int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
-      memory::Copy(context.GetPlace(), y_rows_data, platform::CPUPlace(),
-                   merge_rows.data(), ym * sizeof(int64_t));
-      memory::Copy(context.GetPlace(), x_rows_data, platform::CPUPlace(),
-                   input_rows.data(), xm * sizeof(int64_t));
-      int r =
-          xpu::merge_dup_rows<T, int64_t>(context.x_context(), x_data, y_data,
-                                          x_rows_data, y_rows_data, xm, n, ym);
+      memory::Copy(context.GetPlace(),
+                   y_rows_data,
+                   platform::CPUPlace(),
+                   merge_rows.data(),
+                   ym * sizeof(int64_t));
+      memory::Copy(context.GetPlace(),
+                   x_rows_data,
+                   platform::CPUPlace(),
+                   input_rows.data(),
+                   xm * sizeof(int64_t));
+      int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
+                                              x_data,
+                                              y_data,
+                                              x_rows_data,
+                                              y_rows_data,
+                                              xm,
+                                              n,
+                                              ym);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "merge_dup_rows");
     }
   }
@@ -734,7 +825,8 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
   }
 
   void operator()(const platform::CPUDeviceContext& context,
-                  const phi::SelectedRows& input, phi::SelectedRows* output) {
+                  const phi::SelectedRows& input,
+                  phi::SelectedRows* output) {
     std::vector<const phi::SelectedRows*> inputs;
     inputs.push_back(&input);
     (*this)(context, inputs, output);
@@ -767,11 +859,13 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
       if (input->rows().size() == 0) {
         continue;
       }
-      PADDLE_ENFORCE_EQ(input_width, input->value().dims()[1],
+      PADDLE_ENFORCE_EQ(input_width,
+                        input->value().dims()[1],
                         platform::errors::InvalidArgument(
                             "All inputs should have same "
                             "dimension except for the first one."));
-      PADDLE_ENFORCE_EQ(input_height, input->height(),
+      PADDLE_ENFORCE_EQ(input_height,
+                        input->height(),
                         platform::errors::InvalidArgument(
                             "All input should have same height."));
       row_num += input->rows().size();
@@ -809,7 +903,8 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
 
       for (size_t i = 0; i < input_rows.size(); i++) {
         size_t out_i = rows_to_id[input_rows[i]];
-        elementwise_add_to<T>(&blas, static_cast<size_t>(input_width),
+        elementwise_add_to<T>(&blas,
+                              static_cast<size_t>(input_width),
                               &input_data[i * input_width],
                               &out_data[out_i * input_width]);
       }
@@ -836,27 +931,32 @@ template struct MergeAverage<platform::CPUDeviceContext, double>;
 template <typename T>
 struct UpdateToTensor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
-                  const ScatterOps& op, const phi::SelectedRows& input1,
+                  const ScatterOps& op,
+                  const phi::SelectedRows& input1,
                   framework::Tensor* input2) {
     auto in1_height = input1.height();
     const auto& in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(
-        in1_height, in2_dims[0],
+        in1_height,
+        in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
                                           "But received first input height = "
                                           "[%d], second input height = [%d]",
-                                          in1_height, in2_dims[0]));
+                                          in1_height,
+                                          in2_dims[0]));
 
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(
-        in1_row_numel, input2->numel() / in1_height,
+        in1_row_numel,
+        input2->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
             "But received first input width = [%d], second input width = [%d]",
-            in1_row_numel, input2->numel() / in1_height));
+            in1_row_numel,
+            input2->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
     auto* input2_data = input2->data<T>();

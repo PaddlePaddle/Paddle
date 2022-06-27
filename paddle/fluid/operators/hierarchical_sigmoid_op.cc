@@ -188,13 +188,19 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "hsigmoid_grad");
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "hsigmoid_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "hsigmoid_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@Grad",
+                   "hsigmoid_grad");
     OP_INOUT_CHECK(ctx->HasInput("PreOut"), "Input", "PreOut", "hsigmoid_grad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("W")), "Output",
-                   "W@Grad", "hsigmoid_grad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@Grad", "hsigmoid_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("W")),
+                   "Output",
+                   "W@Grad",
+                   "hsigmoid_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@Grad",
+                   "hsigmoid_grad");
 
     if (ctx->HasOutput(framework::GradVarName("Bias"))) {
       ctx->SetOutputDim(framework::GradVarName("Bias"),
@@ -254,11 +260,13 @@ namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(hierarchical_sigmoid,
                             HierarchicalSigmoidInferShapeFunctor,
                             PD_INFER_META(phi::HierarchicalSigmoidInferMeta));
-REGISTER_OPERATOR(hierarchical_sigmoid, ops::HierarchicalSigmoidOp,
+REGISTER_OPERATOR(hierarchical_sigmoid,
+                  ops::HierarchicalSigmoidOp,
                   ops::HierarchicalSigmoidOpMaker<int>,
                   ops::HierarchicalSigmoidGradMaker<paddle::framework::OpDesc>,
                   ops::HierarchicalSigmoidGradMaker<paddle::imperative::OpBase>,
                   HierarchicalSigmoidInferShapeFunctor);
-REGISTER_OPERATOR(hierarchical_sigmoid_grad, ops::HierarchicalSigmoidGradOp,
+REGISTER_OPERATOR(hierarchical_sigmoid_grad,
+                  ops::HierarchicalSigmoidGradOp,
                   ops::HierarchicalSigmoidGradOpGradVarTypeInference,
                   ops::HierarchicalSigmoidGradOpNoNeedBufferVarInferer);

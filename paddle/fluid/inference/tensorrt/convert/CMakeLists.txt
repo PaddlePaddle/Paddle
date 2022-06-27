@@ -60,6 +60,7 @@ list(
   preln_skip_layernorm.cc
   roll_op.cc
   transformer_input_convert_op.cc
+  cast_op.cc
   remove_padding_op.cc
   recover_padding_op.cc
   preln_residual_bias.cc

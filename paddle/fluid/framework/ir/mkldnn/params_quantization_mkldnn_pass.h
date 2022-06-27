@@ -14,18 +14,30 @@
 
 #pragma once
 
-#include "paddle/phi/core/selected_rows.h"
-#include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
-namespace phi {
-namespace sr {
+namespace paddle {
+namespace framework {
+namespace ir {
 
-template <typename Context>
-void Copy(const Context& dev_ctx,
-          const SelectedRows& src,
-          Place dst_place,
-          bool blocking,
-          SelectedRows* dst);
+class Graph;
+/*
+ * Quantize parameters of ops
+ */
+class ParamsQuantizationMkldnnPass : public FusePassBase {
+ public:
+  ParamsQuantizationMkldnnPass();
+  virtual ~ParamsQuantizationMkldnnPass() {}
 
-}  // namespace sr
-}  // namespace phi
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+
+  void QuantizeConv(Graph* graph, bool with_residual_connection) const;
+
+ private:
+  const std::string name_scope_ = "params_quantization_mkldnn_pass";
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

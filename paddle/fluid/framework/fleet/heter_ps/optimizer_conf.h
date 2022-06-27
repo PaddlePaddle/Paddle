@@ -35,8 +35,12 @@ class OptimizerConfig {
   float mf_min_bound = -10;
   float mf_max_bound = 10;
 
-  void set_sparse_sgd(float nonclk_coeff, float clk_coeff, float min_bound,
-                      float max_bound, float learning_rate, float initial_g2sum,
+  void set_sparse_sgd(float nonclk_coeff,
+                      float clk_coeff,
+                      float min_bound,
+                      float max_bound,
+                      float learning_rate,
+                      float initial_g2sum,
                       float initial_range) {
     this->nonclk_coeff = nonclk_coeff;
     this->clk_coeff = clk_coeff;
@@ -57,9 +61,12 @@ class OptimizerConfig {
     this->initial_range = optimizer_config.initial_range;
   }
 
-  void set_embedx_sgd(float mf_create_thresholds, float mf_learning_rate,
-                      float mf_initial_g2sum, float mf_initial_range,
-                      float mf_min_bound, float mf_max_bound) {
+  void set_embedx_sgd(float mf_create_thresholds,
+                      float mf_learning_rate,
+                      float mf_initial_g2sum,
+                      float mf_initial_range,
+                      float mf_min_bound,
+                      float mf_max_bound) {
     this->mf_create_thresholds = mf_create_thresholds;
     this->mf_learning_rate = mf_learning_rate;
     this->mf_initial_g2sum = mf_initial_g2sum;

@@ -29,7 +29,8 @@ set(COMMON_KERNEL_DEPS
     arg_map_context
     convert_utils
     lod_utils
-    custom_kernel)
+    custom_kernel
+    phi_tensor_utils)
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
     eigen_function
@@ -81,8 +82,6 @@ set(COMMON_KERNEL_DEPS
     utf8proc)
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
-# For strings kernels
-add_subdirectory(strings)
 
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")

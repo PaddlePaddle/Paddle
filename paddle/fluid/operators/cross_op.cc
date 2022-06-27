@@ -44,18 +44,23 @@ class CrossGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::InvalidArgument("Input(X) should be not null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"), true,
+        ctx->HasInput("Y"),
+        true,
         platform::errors::InvalidArgument("Input(Y) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(X@GRAD) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Y")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Y")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Y@GRAD) should be not null."));
 
@@ -65,13 +70,15 @@ class CrossGradOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputsDim("X");
     auto y_dims = ctx->GetInputsDim("Y");
     for (size_t i = 0; i < x_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(x_dims[i], y_dims[i],
+      PADDLE_ENFORCE_EQ(x_dims[i],
+                        y_dims[i],
                         phi::errors::InvalidArgument(
                             "The 'shape' of Input(X) should be equal to "
                             "the 'shape' of Input(Y). But received "
                             "Input(X).dimensions = [%s], "
                             "Input(Y).dimensions = [%s]",
-                            x_dims[i], y_dims[i]));
+                            x_dims[i],
+                            y_dims[i]));
     }
   }
 
@@ -122,9 +129,12 @@ class CrossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(cross, CrossInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(cross,
+                            CrossInferShapeFunctor,
                             PD_INFER_META(phi::CrossInferMeta));
-REGISTER_OPERATOR(cross, ops::CrossOp, ops::CrossOpMaker,
+REGISTER_OPERATOR(cross,
+                  ops::CrossOp,
+                  ops::CrossOpMaker,
                   ops::CrossGradMaker<paddle::framework::OpDesc>,
                   ops::CrossGradMaker<paddle::imperative::OpBase>,
                   CrossInferShapeFunctor);

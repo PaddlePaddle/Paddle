@@ -35,14 +35,16 @@ class FillAnyKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_EQ(
-        std::isnan(static_cast<double>(fill_var)), false,
+        std::isnan(static_cast<double>(fill_var)),
+        false,
         platform::errors::InvalidArgument("fill value should not be NaN,"
                                           " but received NaN"));
 
     out->mutable_data<T>(ctx.GetPlace());
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
     phi::funcs::SetConstant<DeviceContext, T> functor;
-    functor(reinterpret_cast<const DeviceContext &>(dev_ctx), out,
+    functor(reinterpret_cast<const DeviceContext &>(dev_ctx),
+            out,
             static_cast<T>(fill_var));
   }
 };

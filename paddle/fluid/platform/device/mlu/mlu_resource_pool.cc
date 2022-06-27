@@ -45,14 +45,17 @@ MluStreamResourcePool& MluStreamResourcePool::Instance() {
 
 std::shared_ptr<MluStreamObject> MluStreamResourcePool::New(int dev_idx) {
   PADDLE_ENFORCE_GE(
-      dev_idx, 0,
+      dev_idx,
+      0,
       platform::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
-      dev_idx, pool_.size(),
+      dev_idx,
+      pool_.size(),
       platform::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
-          pool_.size(), dev_idx));
+          pool_.size(),
+          dev_idx));
   return pool_[dev_idx]->New();
 }
 
@@ -83,14 +86,17 @@ MluEventResourcePool& MluEventResourcePool::Instance() {
 
 std::shared_ptr<MluEventObject> MluEventResourcePool::New(int dev_idx) {
   PADDLE_ENFORCE_GE(
-      dev_idx, 0,
+      dev_idx,
+      0,
       platform::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
-      dev_idx, pool_.size(),
+      dev_idx,
+      pool_.size(),
       platform::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
-          pool_.size(), dev_idx));
+          pool_.size(),
+          dev_idx));
   return pool_[dev_idx]->New();
 }
 
