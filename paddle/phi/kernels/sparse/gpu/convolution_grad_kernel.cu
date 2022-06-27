@@ -83,7 +83,9 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
   *kernel_grad = phi::EmptyLike<T>(dev_ctx, kernel);
   T* d_kernel_ptr = kernel_grad->data<T>();
   phi::funcs::SetConstant<GPUContext, T> set_zero;
-  set_zero(dev_ctx, kernel_grad, static_cast<T>(0.0f));
+  // set_zero(dev_ctx, kernel_grad, static_cast<T>(0.0f));
+  phi::backends::gpu::GpuMemsetAsync(
+      d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel(), dev_ctx.stream());
 
   int half_kernel_size = kernel_size / 2;
   auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
@@ -91,8 +93,14 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
       phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
   DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
   T* x_grad_values_ptr = x_grad_values.data<T>();
-  set_zero(dev_ctx, &x_grad_values, static_cast<T>(0.0f));
-  set_zero(dev_ctx, &d_x_features, static_cast<T>(0.0f));
+  // set_zero(dev_ctx, &x_grad_values, static_cast<T>(0.0f));
+  phi::backends::gpu::GpuMemsetAsync(x_grad_values_ptr,
+                                     0,
+                                     sizeof(T) * x_grad_values.numel(),
+                                     dev_ctx.stream());
+  // set_zero(dev_ctx, &d_x_features, static_cast<T>(0.0f));
+  phi::backends::gpu::GpuMemsetAsync(
+      d_x_features_ptr, 0, sizeof(T) * d_x_features.numel(), dev_ctx.stream());
   phi::Copy<GPUContext>(dev_ctx,
                         x.non_zero_indices(),
                         dev_ctx.GetPlace(),
@@ -138,7 +146,7 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
            config.thread_per_block.x,
            0,
            dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                               rulebook_ptr + rulebook_len,
+                               rulebook_ptr,
                                in_features_ptr,
                                rulebook_len,
                                in_channels);
@@ -150,7 +158,7 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
            config.thread_per_block.x,
            0,
            dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                               rulebook_ptr + rulebook_len,
+                               rulebook_ptr,
                                in_features_ptr,
                                rulebook_len,
                                in_channels);
@@ -164,7 +172,7 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
            config.thread_per_block.x,
            0,
            dev_ctx.stream()>>>(out_grad.non_zero_elements().data<T>(),
-                               rulebook_ptr + rulebook_len * 2,
+                               rulebook_ptr + rulebook_len,
                                out_grad_features_ptr,
                                rulebook_len,
                                out_channels);
@@ -176,7 +184,7 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
            config.thread_per_block.x,
            0,
            dev_ctx.stream()>>>(out_grad.non_zero_elements().data<T>(),
-                               rulebook_ptr + rulebook_len * 2,
+                               rulebook_ptr + rulebook_len,
                                out_grad_features_ptr,
                                rulebook_len,
                                out_channels);
@@ -231,13 +239,12 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
   phi::funcs::ScatterCUDAKernel<<<config.block_per_grid,
                                   config.thread_per_block,
                                   0,
-                                  dev_ctx.stream()>>>(
-      d_x_features_ptr,
-      rulebook_ptr + rulebook_len,
-      x_grad_values_ptr,
-      rulebook_len,
-      in_channels,
-      false);
+                                  dev_ctx.stream()>>>(d_x_features_ptr,
+                                                      rulebook_ptr,
+                                                      x_grad_values_ptr,
+                                                      rulebook_len,
+                                                      in_channels,
+                                                      false);
 }
 
 template <typename T, typename Context>

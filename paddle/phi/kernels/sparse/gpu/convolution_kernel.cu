@@ -139,6 +139,8 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   T* out_features_ptr = out_features.data<T>();
   phi::funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
+  // phi::backends::gpu::GpuMemsetAsync(out_features_ptr,
+  // static_cast<T>(0.0f), sizeof(T) * out_features.numel(), dev_ctx.stream());
 
   const int VecSize = VecBytes / sizeof(T);
   if (in_channels % VecSize == 0) {
@@ -149,7 +151,7 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
            config.thread_per_block.x,
            0,
            dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                               rulebook_ptr + n,
+                               rulebook_ptr,
                                in_features_ptr,
                                n,
                                in_channels);
@@ -161,7 +163,7 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
            config.thread_per_block.x,
            0,
            dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                               rulebook_ptr + n,
+                               rulebook_ptr,
                                in_features_ptr,
                                n,
                                in_channels);
@@ -186,7 +188,7 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
                      config.thread_per_block,
                      0,
                      dev_ctx.stream()>>>(
-        n, kernel_size, rulebook_ptr + 2 * n, out_index_ptr, unique_value_ptr);
+        n, kernel_size, rulebook_ptr + n, out_index_ptr, unique_value_ptr);
   }
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
@@ -224,7 +226,7 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
            config.thread_per_block,
            0,
            dev_ctx.stream()>>>(out_features_ptr,
-                               rulebook_ptr + 2 * n,
+                               rulebook_ptr + n,
                                out_values_ptr,
                                n,
                                out_channels,
