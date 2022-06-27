@@ -81,7 +81,6 @@ if not defined BUILD_DIR set BUILD_DIR=build
 if not defined NEW_RELEASE_ALL set NEW_RELEASE_ALL=ON
 if not defined NEW_RELEASE_PYPI set NEW_RELEASE_PYPI=OFF
 if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
-set PRECISION_TEST=OFF
 
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
