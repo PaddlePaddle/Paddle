@@ -1322,10 +1322,10 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
-      if (x_shape.size() == 1 && y_shape.size() == 1) {
-        VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
-        return false;
-      }
+      // if (x_shape.size() == 1 && y_shape.size() == 1) {
+      //   VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
+      //   return false;
+      // }
       if (x_var_desc->Persistable()) {
         VLOG(3) << "Input X is a parameter which is not supported for "
                    "elementwise_add/elementwise_mul in tensorrt, swap x and "
