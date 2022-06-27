@@ -606,18 +606,22 @@ int ProductRuleBook(const Context& dev_ctx,
                                 rulebook_ptr + rulebook_rows * rulebook_cols,
                                 -1);
 
-    phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
-        rulebook_ptr, last, rulebook_ptr + rulebook_rows * rulebook_cols - 1);
-    IntT rulebook_len = 0;
-    phi::backends::gpu::GpuMemcpyAsync(
-        &rulebook_len,
-        rulebook_ptr + rulebook_rows * rulebook_cols - 1,
-        sizeof(IntT),
-        gpuMemcpyDeviceToHost,
-        dev_ctx.stream());
+    // phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
+    //     rulebook_ptr, last, rulebook_ptr + rulebook_rows * rulebook_cols -
+    //     1);
+    // IntT rulebook_len = 0;
+    // phi::backends::gpu::GpuMemcpyAsync(
+    //     &rulebook_len,
+    //     rulebook_ptr + rulebook_rows * rulebook_cols - 1,
+    //     sizeof(IntT),
+    //     gpuMemcpyDeviceToHost,
+    //     dev_ctx.stream());
 
-    dev_ctx.Wait();
-    rulebook_len /= 2;
+    // dev_ctx.Wait();
+    // rulebook_len /= 2;
+    // printf("rulebook_len = %d\n", rulebook_len);
+    // printf("distance = %d\n", last-rulebook_ptr);
+    IntT rulebook_len = (last - rulebook_ptr) / 2;
 
 #ifdef PADDLE_WITH_HIP
     thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
