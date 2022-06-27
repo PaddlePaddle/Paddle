@@ -246,7 +246,7 @@ class OpConverter {
         X_name = op_desc.Input("Input")[0];
       }
       X_v = scope.FindVar(X_name);
-      // 
+      //
       if (engine->GetITensorMap()->count(X_name)) {
         continue;
       }
@@ -422,6 +422,17 @@ class OpConverter {
     nvinfer1::ITensor* c =
         TRT_ENGINE_ADD_LAYER(
             engine_, ElementWise, *a, *b, nvinfer1::ElementWiseOperation::kDIV)
+            ->getOutput(0);
+    return c;
+  }
+
+  nvinfer1::ITensor* FloorDiv(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
+    nvinfer1::ITensor* c =
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             ElementWise,
+                             *a,
+                             *b,
+                             nvinfer1::ElementWiseOperation::kFLOOR_DIV)
             ->getOutput(0);
     return c;
   }

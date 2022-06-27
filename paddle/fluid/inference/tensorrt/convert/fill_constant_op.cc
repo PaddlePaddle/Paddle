@@ -21,7 +21,8 @@ namespace tensorrt {
 class FillConstantOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4)
         << "convert a fluid fill_constant op to tensorrt fill_constant layer";
 
@@ -33,11 +34,10 @@ class FillConstantOpConverter : public OpConverter {
         BOOST_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
     std::unique_ptr<framework::Tensor> out_tensor(new framework::Tensor());
     out_tensor->Resize(phi::make_ddim(shape));
-
     nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
     void* trt_data = nullptr;
     size_t trt_num;
-    if (dtype == 2) {  // int
+    if (dtype == 2 || dtype == 3) {  // int, int64
       auto* tmp_ptr = out_tensor->mutable_data<int>(platform::CPUPlace());
       for (int64_t i = 0; i < out_tensor->numel(); i++)
         tmp_ptr[i] = std::stoi(str_value);

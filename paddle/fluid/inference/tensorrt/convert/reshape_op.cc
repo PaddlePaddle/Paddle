@@ -77,7 +77,7 @@ class ReshapeOpConverter : public OpConverter {
               output_numel = Prod(output_numel, concat_inputs[i]);
             }
           }
-          concat_inputs[minus_index] = Div(input_numel, output_numel);
+          concat_inputs[minus_index] = FloorDiv(input_numel, output_numel);
         }
         real_shape_tensor = Concat(concat_inputs);
       }
