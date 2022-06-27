@@ -1250,7 +1250,8 @@ def identity_loss(x, reduction="none"):
         Out = SUM(Out)
 
     Parameters:
-        x (Variable): The calculated loss ``Tensor``.
+        x (Variable): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of
+             additional dimensions. It's data type should be float32, float64 on CPU and float16, float32 on IPU.
         reduction(str|int): Reduce the loss output. Supported string values are: 'mean', 'sum', 'none'
                             the corresponding int values are 0, 1, 2 respectively. The default value is "none".
 
