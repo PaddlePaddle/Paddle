@@ -55,3 +55,9 @@ class TestResnetBase(TestParallelExecutorBase):
             np.testing.assert_allclose(func_1_loss_area,
                                        func_2_loss_area,
                                        rtol=delta2)
+            self.assertAlmostEquals(np.mean(func_1_first_loss),
+                                    func_2_first_loss[0],
+                                    delta=1e-5)
+            self.assertAlmostEquals(np.mean(func_1_last_loss),
+                                    func_2_last_loss[0],
+                                    delta=delta2)

@@ -68,8 +68,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                 feed_data_reader, FeedDataReader
             ), "feed_data_reader must be type of FeedDataReader"
 
-        paddle.seed(1)
-        paddle.framework.random._manual_program_seed(1)
+        paddle.seed(0)
+        paddle.framework.random._manual_program_seed(0)
         main = fluid.Program()
         startup = fluid.Program()
 
