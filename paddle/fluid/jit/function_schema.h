@@ -14,14 +14,11 @@
 
 #pragma once
 
-#include <ostream>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace jit {

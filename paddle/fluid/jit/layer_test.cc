@@ -18,7 +18,6 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -51,6 +50,7 @@ PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace jit {
+using DenseTensor = phi::DenseTensor;
 
 std::vector<Variable> PrepareInputs(const phi::Place& place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();

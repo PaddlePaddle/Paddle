@@ -14,6 +14,10 @@
 
 #include "paddle/fluid/jit/layer_utils.h"
 
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/var_desc.h"
+#include "paddle/phi/core/enforce.h"
+
 namespace paddle {
 namespace jit {
 

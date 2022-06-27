@@ -14,6 +14,15 @@
 
 #include "paddle/fluid/jit/serializer.h"
 
+#include <dirent.h>
+#include <fstream>
+#include <set>
+
+#include "paddle/fluid/platform/device_context.h"
+
+#include "paddle/fluid/jit/executor_function.h"
+#include "paddle/fluid/jit/layer_utils.h"
+
 namespace paddle {
 namespace jit {
 
@@ -44,13 +53,11 @@ Layer Deserializer::operator()(const std::string& path,
 
   // Read from one pdiparams file, refine here
   ReadTensorData(path + PDPARAMS_SUFFIX, param_names_set, place, &params_dict);
-
   // ReadAttributeData();
 
   Layer layer = Layer(infos, params_dict, place);
 
   for (auto& info : infos) {
-    VLOG(3) << "info->FunctionName(): " << info->FunctionName();
     layer.SetFunction(info->FunctionName(),
                       MakeFunction<ExecutorFunction>(info, params_dict, place));
   }

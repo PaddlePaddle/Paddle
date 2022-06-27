@@ -17,11 +17,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "paddle/phi/core/enforce.h"
-
-#include "paddle/fluid/jit/executor_function.h"
-#include "paddle/fluid/jit/function_schema.h"
-#include "paddle/fluid/jit/pe_function.h"
+#include "paddle/fluid/jit/base_function.h"
 
 namespace paddle {
 namespace jit {

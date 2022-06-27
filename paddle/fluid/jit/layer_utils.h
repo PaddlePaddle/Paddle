@@ -18,13 +18,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/enforce.h"
 
 #include "paddle/fluid/jit/function_schema.h"
 
