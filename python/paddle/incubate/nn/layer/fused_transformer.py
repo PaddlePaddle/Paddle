@@ -29,11 +29,12 @@ def _set_var_distributed(var):
 
     var.is_distributed = True
 
-    # NOTE: use current_block and find_var_recursive to support while_loop
-    startup_block = paddle.static.default_startup_program().current_block()
-    main_block = paddle.static.default_main_program().current_block()
-    startup_block._find_var_recursive(var.name).is_distributed = True
-    main_block._find_var_recursive(var.name).is_distributed = True
+    if not paddle.fluid.framework._non_static_mode():
+        # NOTE: use current_block and find_var_recursive to support while_loop
+        startup_block = paddle.static.default_startup_program().current_block()
+        main_block = paddle.static.default_main_program().current_block()
+        startup_block._find_var_recursive(var.name).is_distributed = True
+        main_block._find_var_recursive(var.name).is_distributed = True
 
 
 class FusedBiasDropoutResidualLayerNorm(Layer):
