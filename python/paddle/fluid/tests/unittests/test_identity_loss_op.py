@@ -41,9 +41,9 @@ class TestIdentityLossOp(OpTest):
 
         self.inputs['X'] = input
         if self.reduction == 0:
-            output = input.mean()
-        elif self.reduction == 1:
             output = input.sum()
+        elif self.reduction == 1:
+            output = input.mean()
         else:
             output = input
         self.outputs = {'Out': output}
@@ -123,10 +123,10 @@ class TestIdentityLossAPI(unittest.TestCase):
         self.place = fluid.CPUPlace()
 
     def identity_loss_ref(self, input, reduction):
-        if reduction == 0 or reduction == "mean":
-            return input.mean()
-        elif reduction == 1 or reduction == "sum":
+        if reduction == 0 or reduction == "sum":
             return input.sum()
+        elif reduction == 1 or reduction == "mean":
+            return input.mean()
         else:
             return input
 
@@ -164,8 +164,8 @@ class TestIdentityLossAPI(unittest.TestCase):
         test_case(self.x, 0)
         test_case(self.x, 1)
         test_case(self.x, 2)
-        test_case(self.x, "mean")
         test_case(self.x, "sum")
+        test_case(self.x, "mean")
         test_case(self.x, "none")
         paddle.enable_static()
 
