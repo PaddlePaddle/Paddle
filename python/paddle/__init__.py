@@ -35,8 +35,8 @@ from .framework import set_flags  # noqa: F401
 from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
-from fluid.layers import l2_normalize  # noqa: F401
-from fluid.dataset import *  # noqa: F401
+from .fluid.layers import l2_normalize  # noqa: F401
+from .fluid.dataset import *  # noqa: F401
 
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
