@@ -80,7 +80,8 @@ PADDLE_CAPI_EXPORT extern void PD_DeletePaddleBuf(PD_PaddleBuf* buf);
 PADDLE_CAPI_EXPORT extern void PD_PaddleBufResize(PD_PaddleBuf* buf,
                                                   size_t length);
 
-PADDLE_CAPI_EXPORT extern void PD_PaddleBufReset(PD_PaddleBuf* buf, void* data,
+PADDLE_CAPI_EXPORT extern void PD_PaddleBufReset(PD_PaddleBuf* buf,
+                                                 void* data,
                                                  size_t length);
 
 PADDLE_CAPI_EXPORT extern bool PD_PaddleBufEmpty(PD_PaddleBuf* buf);
@@ -106,7 +107,8 @@ PADDLE_CAPI_EXPORT extern void PD_SetPaddleTensorData(PD_Tensor* tensor,
                                                       PD_PaddleBuf* buf);
 
 PADDLE_CAPI_EXPORT extern void PD_SetPaddleTensorShape(PD_Tensor* tensor,
-                                                       int* shape, int size);
+                                                       int* shape,
+                                                       int size);
 
 PADDLE_CAPI_EXPORT extern const char* PD_GetPaddleTensorName(
     const PD_Tensor* tensor);
@@ -122,13 +124,18 @@ PADDLE_CAPI_EXPORT extern const int* PD_GetPaddleTensorShape(
 
 // AnalysisPredictor
 PADDLE_CAPI_EXPORT extern bool PD_PredictorRun(const PD_AnalysisConfig* config,
-                                               PD_Tensor* inputs, int in_size,
+                                               PD_Tensor* inputs,
+                                               int in_size,
                                                PD_Tensor** output_data,
-                                               int* out_size, int batch_size);
+                                               int* out_size,
+                                               int batch_size);
 
 PADDLE_CAPI_EXPORT extern bool PD_PredictorZeroCopyRun(
-    const PD_AnalysisConfig* config, PD_ZeroCopyData* inputs, int in_size,
-    PD_ZeroCopyData** output, int* out_size);
+    const PD_AnalysisConfig* config,
+    PD_ZeroCopyData* inputs,
+    int in_size,
+    PD_ZeroCopyData** output,
+    int* out_size);
 
 // AnalysisConfig
 enum Precision { kFloat32 = 0, kInt8, kHalf };
@@ -206,8 +213,12 @@ PADDLE_CAPI_EXPORT extern bool PD_SpecifyInputName(
     const PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern void PD_EnableTensorRtEngine(
-    PD_AnalysisConfig* config, int workspace_size, int max_batch_size,
-    int min_subgraph_size, Precision precision, bool use_static,
+    PD_AnalysisConfig* config,
+    int workspace_size,
+    int max_batch_size,
+    int min_subgraph_size,
+    Precision precision,
+    bool use_static,
     bool use_calib_mode);
 
 PADDLE_CAPI_EXPORT extern bool PD_TensorrtEngineEnabled(

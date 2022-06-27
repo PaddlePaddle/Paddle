@@ -18,9 +18,10 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
+#include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
@@ -38,23 +39,8 @@ void CsrDenseMatmulGradKernel(const Context& dev_ctx,
 
   // dx{SparseCsr} = dout{Dense} * y'{Dense}
   if (dx) {
-    // InferMeta of SparseCsrTensor 'dx'
-    dx->set_dims(x.dims());
-
-    phi::Copy(dev_ctx,
-              x.non_zero_crows(),
-              dev_ctx.GetPlace(),
-              false,
-              dx->mutable_non_zero_crows());
-    phi::Copy(dev_ctx,
-              x.non_zero_cols(),
-              dev_ctx.GetPlace(),
-              false,
-              dx->mutable_non_zero_cols());
-
-    DenseTensor* values = dx->mutable_non_zero_elements();
-    values->Resize(x.non_zero_elements().dims());
-    dev_ctx.template Alloc<T>(values);
+    // InferMeta of SparseCsrTensor 'dx', CreateLikeInferMeta
+    EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
 
     sparse_blas.SDDMM(
         false, true, static_cast<T>(1), dout, y, static_cast<T>(0), dx);
@@ -69,13 +55,13 @@ void CsrDenseMatmulGradKernel(const Context& dev_ctx,
 
     dev_ctx.template Alloc<T>(dy);
 
-    sparse_blas.DSDMM(
+    sparse_blas.SPMM(
         true, false, static_cast<T>(1), x, dout, static_cast<T>(0), dy);
   }
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
-      " backward of 'sparse.mm' use cusparseSDDMM, Only "
-      "support it from CUDA 11.3"));
+      "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
+      "CUDA 11.3"));
 #endif
 }
 
@@ -97,7 +83,7 @@ void CsrMaskedMatmulGradKernel(const Context& dev_ctx,
     meta_dx.set_dtype(x.dtype());
 
     dev_ctx.template Alloc<T>(dx);
-    sparse_blas.DSDMM(
+    sparse_blas.SPMM(
         false, true, static_cast<T>(1), dout, y, static_cast<T>(0), dx);
   }
 
@@ -109,7 +95,7 @@ void CsrMaskedMatmulGradKernel(const Context& dev_ctx,
     std::swap(trans_dim_vec[rank - 1], trans_dim_vec[rank - 2]);
     DenseTensor trans_dy = phi::Empty<T, Context>(dev_ctx, trans_dim_vec);
 
-    sparse_blas.DSDMM(
+    sparse_blas.SPMM(
         true, false, static_cast<T>(1), dout, x, static_cast<T>(0), &trans_dy);
 
     // InferMeta of DenseTensor 'dy'

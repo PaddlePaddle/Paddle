@@ -24,14 +24,16 @@ namespace paddle {
 namespace framework {
 
 void SetMicroId(paddle::framework::Scope* scope,
-                platform::DeviceContext* dev_ctx, const platform::Place& place,
+                platform::DeviceContext* dev_ctx,
+                const platform::Place& place,
                 int micro_id) {
   // create microbatch_id variable
   // and set micro id value
   auto* ptr = scope->Var("microbatch_id");
   InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
   framework::Variable* var = scope->FindVar("microbatch_id");
-  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), 1,
+  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(),
+                    1,
                     platform::errors::InvalidArgument(
                         "the type of microbatch_id  should be LoDTensor"));
   auto* tensor = var->GetMutable<framework::LoDTensor>();
@@ -49,7 +51,9 @@ void SetMicroId(paddle::framework::Scope* scope,
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(*dev_ctx).stream();
     memory::Copy(
-        place, tensor_data, platform::CPUPlace(),
+        place,
+        tensor_data,
+        platform::CPUPlace(),
         reinterpret_cast<void*>(temp_ptr),
         tensor->numel() * framework::SizeOfType(
                               framework::TransToProtoVarType(tensor->dtype())),
@@ -201,11 +205,13 @@ void HeterSectionWorker::MiniBatchBarrier() {
     VLOG(4) << "got one task from task que in cpu worker";
     auto message_name = task.first;
     auto micro_id = task.second;
-    PADDLE_ENFORCE_EQ(message_name.find("backward") != std::string::npos, true,
+    PADDLE_ENFORCE_EQ(message_name.find("backward") != std::string::npos,
+                      true,
                       platform::errors::InvalidArgument(
                           "cpu trainers only receive backward data"));
     PADDLE_ENFORCE_EQ(
-        micro_ids.find(micro_id) == micro_ids.end(), true,
+        micro_ids.find(micro_id) == micro_ids.end(),
+        true,
         platform::errors::InvalidArgument("minibatch_scope_ can not be nullptr "
                                           "when create MicroBatch Scope"));
     micro_ids.insert(micro_id);
@@ -324,18 +330,18 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
   if (program.Size() > 1) {
     auto& heter_block = program.Block(1);
     auto heter_var_list = heter_block.AllVars();
-    var_list.insert(var_list.end(), heter_var_list.begin(),
-                    heter_var_list.end());
+    var_list.insert(
+        var_list.end(), heter_var_list.begin(), heter_var_list.end());
   }
   if (program.Size() > 2) {
     auto& heter_block = program.Block(2);
     auto heter_var_list = heter_block.AllVars();
-    var_list.insert(var_list.end(), heter_var_list.begin(),
-                    heter_var_list.end());
+    var_list.insert(
+        var_list.end(), heter_var_list.begin(), heter_var_list.end());
   }
   auto global_micro_id = thread_id_ * 10 + microbatch_id;
-  SetMicroId((*microbatch_scopes_)[microbatch_id], dev_ctx_, place,
-             global_micro_id);
+  SetMicroId(
+      (*microbatch_scopes_)[microbatch_id], dev_ctx_, place, global_micro_id);
   for (auto& var : var_list) {
     if (var->Persistable() && microbatch_id == 0) {
       if (root_scope_->FindVar(var->Name()) != nullptr) continue;
@@ -404,7 +410,8 @@ void HeterSectionWorker::Run() {
       auto message_name = task.first;
       auto micro_id = task.second;
       if (is_last_stage) {
-        PADDLE_ENFORCE_EQ(message_name.find("forward") != std::string::npos, 1,
+        PADDLE_ENFORCE_EQ(message_name.find("forward") != std::string::npos,
+                          1,
                           platform::errors::InvalidArgument(
                               "last stage only receive forward data"));
         RunForward(micro_id);
@@ -440,8 +447,11 @@ void HeterSectionWorker::BatchPostProcess() {
     size_t total_ops_size = forward_ops_.size() + backward_ops_.size();
     if (batch_num_ > 0 && batch_num_ % 100 == 0) {
       for (size_t i = 0; i < total_ops_size; ++i) {
-        fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
-                op_name_[i].c_str(), op_total_time_[i] / batch_num_);
+        fprintf(stderr,
+                "op_name:[%zu][%s], op_mean_time:[%fs]\n",
+                i,
+                op_name_[i].c_str(),
+                op_total_time_[i] / batch_num_);
       }
       if (pipeline_stage_ == 0) {
         fprintf(stderr, "mean read time: %fs\n", read_time_ / batch_num_);
@@ -494,15 +504,16 @@ void HeterSectionWorker::PrintFetchVars() {
     time_t curtime;
     time(&curtime);
     char mbstr[80];
-    std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S",
-                  std::localtime(&curtime));
+    std::strftime(
+        mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S", std::localtime(&curtime));
     std::stringstream ss;
     ss << "time: [" << mbstr << "], ";
     ss << "batch: [" << batch_num_ << "], ";
     for (int i = 0; i < fetch_var_num; ++i) {
       platform::PrintVar((*microbatch_scopes_)[0],
                          fetch_config_.fetch_var_names(i),
-                         fetch_config_.fetch_var_str_format(i), &ss);
+                         fetch_config_.fetch_var_str_format(i),
+                         &ss);
       if (i < fetch_var_num - 1) {
         ss << ", ";
       }

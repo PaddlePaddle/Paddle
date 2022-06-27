@@ -28,7 +28,8 @@ limitations under the License. */
 #define ACC_DIFF 1e-3
 #endif
 
-DEFINE_string(word2vec_dirname, "",
+DEFINE_string(word2vec_dirname,
+              "",
               "Directory of the word2vec inference model.");
 DEFINE_string(book_dirname, "", "Directory of the book inference model.");
 
@@ -137,8 +138,8 @@ void MainImageClassification(const paddle::PaddlePlace& place) {
   // which should be in the range [0.0, 1.0].
   feed_target_shapes[0][0] = batch_size;
   framework::DDim input_dims = phi::make_ddim(feed_target_shapes[0]);
-  SetupTensor<float>(&input, input_dims, static_cast<float>(0),
-                     static_cast<float>(1));
+  SetupTensor<float>(
+      &input, input_dims, static_cast<float>(0), static_cast<float>(1));
   std::vector<framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 

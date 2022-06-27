@@ -32,7 +32,8 @@ class GatherOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(ctx.GetPlace()), true,
+        platform::is_xpu_place(ctx.GetPlace()),
+        true,
         platform::errors::PreconditionNotMet("This kernel only runs on XPU."));
 
     auto *x = ctx.Input<Tensor>("X");
@@ -60,13 +61,15 @@ class GatherOpXPUKernel : public framework::OpKernel<T> {
     const auto index_dims = index->dims();
     if (index_dims.size() == 2) {
       PADDLE_ENFORCE_EQ(
-          index_dims[1], 1,
+          index_dims[1],
+          1,
           platform::errors::InvalidArgument(
               "The last dim of index should be 1 when it is 2D, but we get %d",
               index_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
-          index_dims.size(), 1,
+          index_dims.size(),
+          1,
           platform::errors::InvalidArgument(
               "The index should be 1D, when it is not 2D, but we get %d",
               index_dims.size()));
@@ -81,19 +84,28 @@ class GatherOpXPUKernel : public framework::OpKernel<T> {
     if (framework::TransToProtoVarType(index->dtype()) ==
         framework::proto::VarType::INT32) {
       r = xpu::gather<XPUType, int>(
-          dev_ctx.x_context(), reinterpret_cast<const XPUType *>(x->data<T>()),
-          index->data<int>(), reinterpret_cast<XPUType *>(output->data<T>()),
-          xshape, index->dims()[0], axis);
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType *>(x->data<T>()),
+          index->data<int>(),
+          reinterpret_cast<XPUType *>(output->data<T>()),
+          xshape,
+          index->dims()[0],
+          axis);
     } else {
       r = xpu::gather<XPUType, int64_t>(
-          dev_ctx.x_context(), reinterpret_cast<const XPUType *>(x->data<T>()),
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType *>(x->data<T>()),
           index->data<int64_t>(),
-          reinterpret_cast<XPUType *>(output->data<T>()), xshape,
-          index->dims()[0], axis);
+          reinterpret_cast<XPUType *>(output->data<T>()),
+          xshape,
+          index->dims()[0],
+          axis);
     }
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
                       platform::errors::External(
-                          "XPU gather kernel return wrong value[%d %s]", r,
+                          "XPU gather kernel return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -105,7 +117,8 @@ class GatherGradOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(ctx.GetPlace()), true,
+        platform::is_xpu_place(ctx.GetPlace()),
+        true,
         platform::errors::PreconditionNotMet("This kernel only runs on XPU."));
 
     auto *index = ctx.Input<Tensor>("Index");
@@ -135,13 +148,15 @@ class GatherGradOpXPUKernel : public framework::OpKernel<T> {
     const auto index_dims = index->dims();
     if (index_dims.size() == 2) {
       PADDLE_ENFORCE_EQ(
-          index_dims[1], 1,
+          index_dims[1],
+          1,
           platform::errors::InvalidArgument(
               "The last dim of index should be 1 when it is 2D, but we get %d",
               index_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
-          index_dims.size(), 1,
+          index_dims.size(),
+          1,
           platform::errors::InvalidArgument(
               "The index should be 1D, when it is not 2D, but we get %d",
               index_dims.size()));
@@ -159,30 +174,43 @@ class GatherGradOpXPUKernel : public framework::OpKernel<T> {
       r = xpu::gather_grad<XPUType, int>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType *>(dout->data<T>()),
-          index->data<int>(), reinterpret_cast<XPUType *>(dx->data<T>()),
-          xshape, index->dims()[0], axis, overwrite);
+          index->data<int>(),
+          reinterpret_cast<XPUType *>(dx->data<T>()),
+          xshape,
+          index->dims()[0],
+          axis,
+          overwrite);
     } else {
       xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
       int *index_int_ptr_l3 =
           RAII_GUARD.alloc_l3_or_gm<int32_t>(index->numel());
       r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),
                                          index->data<int64_t>(),
-                                         index_int_ptr_l3, index->numel());
+                                         index_int_ptr_l3,
+                                         index->numel());
       PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
+          r,
+          XPU_SUCCESS,
           platform::errors::External("XPU API(cast_v2) return wrong "
                                      "value[%d %s]",
-                                     r, XPUAPIErrorMsg[r]));
+                                     r,
+                                     XPUAPIErrorMsg[r]));
 
       r = xpu::gather_grad<XPUType, int>(
           dev_ctx.x_context(),
-          reinterpret_cast<const XPUType *>(dout->data<T>()), index_int_ptr_l3,
-          reinterpret_cast<XPUType *>(dx->data<T>()), xshape, index->dims()[0],
-          axis, overwrite);
+          reinterpret_cast<const XPUType *>(dout->data<T>()),
+          index_int_ptr_l3,
+          reinterpret_cast<XPUType *>(dx->data<T>()),
+          xshape,
+          index->dims()[0],
+          axis,
+          overwrite);
     }
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
                       platform::errors::External(
-                          "XPU gather grad kernel return wrong value[%d %s]", r,
+                          "XPU gather grad kernel return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -191,8 +219,10 @@ class GatherGradOpXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(gather, ops::GatherOpXPUKernel<float>,
+REGISTER_OP_XPU_KERNEL(gather,
+                       ops::GatherOpXPUKernel<float>,
                        ops::GatherOpXPUKernel<paddle::platform::float16>);
-REGISTER_OP_XPU_KERNEL(gather_grad, ops::GatherGradOpXPUKernel<float>,
+REGISTER_OP_XPU_KERNEL(gather_grad,
+                       ops::GatherGradOpXPUKernel<float>,
                        ops::GatherGradOpXPUKernel<paddle::platform::float16>);
 #endif

@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"

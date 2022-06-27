@@ -42,7 +42,8 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
 inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
     const std::string& inputs_name,
     const std::vector<paddle::experimental::Tensor>& inputs,
-    const paddle::experimental::DataType& dst_dtype, std::string op_name) {
+    const paddle::experimental::DataType& dst_dtype,
+    std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
           << paddle::framework::DataType2String(dst_dtype) << ").";
@@ -59,7 +60,8 @@ inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
 }
 
 inline paddle::experimental::Tensor EagerAmpAutoCast(
-    const std::string& input_name, const paddle::experimental::Tensor& input,
+    const std::string& input_name,
+    const paddle::experimental::Tensor& input,
     const paddle::experimental::DataType& dst_dtype,
     const std::string& op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"

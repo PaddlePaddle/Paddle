@@ -23,15 +23,18 @@ class BoxCoderOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("PriorBox"), true,
+        ctx->HasInput("PriorBox"),
+        true,
         platform::errors::NotFound(
             "Input(PriorBox) of BoxCoder operator is not found."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("TargetBox"), true,
+        ctx->HasInput("TargetBox"),
+        true,
         platform::errors::NotFound(
             "Input(TargetBox) of BoxCoder operator is not found."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("OutputBox"), true,
+        ctx->HasOutput("OutputBox"),
+        true,
         platform::errors::NotFound(
             "Output(OutputBox) of BoxCoder operator is not found."));
 
@@ -39,12 +42,14 @@ class BoxCoderOp : public framework::OperatorWithKernel {
     auto target_box_dims = ctx->GetInputDim("TargetBox");
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(prior_box_dims.size(), 2,
+      PADDLE_ENFORCE_EQ(prior_box_dims.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The rank of Input PriorBox in BoxCoder operator "
                             "must be 2. But received rank = %d",
                             prior_box_dims.size()));
-      PADDLE_ENFORCE_EQ(prior_box_dims[1], 4,
+      PADDLE_ENFORCE_EQ(prior_box_dims[1],
+                        4,
                         platform::errors::InvalidArgument(
                             "The second dimension of PriorBox in BoxCoder "
                             "operator must be 4. But received dimension = %d",
@@ -52,13 +57,15 @@ class BoxCoderOp : public framework::OperatorWithKernel {
       if (ctx->HasInput("PriorBoxVar")) {
         auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
         PADDLE_ENFORCE_EQ(
-            prior_box_var_dims.size(), 2,
+            prior_box_var_dims.size(),
+            2,
             platform::errors::InvalidArgument(
                 "The rank of Input(PriorBoxVar) in BoxCoder operator"
                 " should be 2. But received rank = %d",
                 prior_box_var_dims.size()));
         PADDLE_ENFORCE_EQ(
-            prior_box_dims, prior_box_var_dims,
+            prior_box_dims,
+            prior_box_var_dims,
             platform::errors::InvalidArgument(
                 "The dimension of Input(PriorBoxVar) should be equal to"
                 "the dimension of Input(PriorBox) in BoxCoder operator "
@@ -69,25 +76,30 @@ class BoxCoderOp : public framework::OperatorWithKernel {
     auto code_type = GetBoxCodeType(ctx->Attrs().Get<std::string>("code_type"));
     int axis = ctx->Attrs().Get<int>("axis");
     if (code_type == BoxCodeType::kEncodeCenterSize) {
-      PADDLE_ENFORCE_EQ(target_box_dims.size(), 2,
+      PADDLE_ENFORCE_EQ(target_box_dims.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The rank of Input TargetBox in BoxCoder operator "
                             "must be 2. But received rank is %d",
                             target_box_dims.size()));
-      PADDLE_ENFORCE_EQ(target_box_dims[1], 4,
+      PADDLE_ENFORCE_EQ(target_box_dims[1],
+                        4,
                         platform::errors::InvalidArgument(
                             "The second dimension of TargetBox in BoxCoder "
                             "operator is 4. But received dimension is %d",
                             target_box_dims[1]));
-      ctx->SetOutputDim("OutputBox", phi::make_ddim({target_box_dims[0],
-                                                     prior_box_dims[0], 4}));
+      ctx->SetOutputDim(
+          "OutputBox",
+          phi::make_ddim({target_box_dims[0], prior_box_dims[0], 4}));
     } else if (code_type == BoxCodeType::kDecodeCenterSize) {
-      PADDLE_ENFORCE_EQ(target_box_dims.size(), 3,
+      PADDLE_ENFORCE_EQ(target_box_dims.size(),
+                        3,
                         platform::errors::InvalidArgument(
                             "The rank of Input TargetBox in BoxCoder "
                             "operator must be 3. But received rank is %d",
                             target_box_dims.size()));
-      PADDLE_ENFORCE_EQ(axis == 0 || axis == 1, true,
+      PADDLE_ENFORCE_EQ(axis == 0 || axis == 1,
+                        true,
                         platform::errors::InvalidArgument(
                             "axis in BoxCoder operator must be 0 or 1."
                             "But received axis = %d",
@@ -95,20 +107,23 @@ class BoxCoderOp : public framework::OperatorWithKernel {
       if (ctx->IsRuntime()) {
         if (axis == 0) {
           PADDLE_ENFORCE_EQ(
-              target_box_dims[1], prior_box_dims[0],
+              target_box_dims[1],
+              prior_box_dims[0],
               platform::errors::InvalidArgument(
                   "When axis is 0, The second "
                   "dimension of TargetBox in BoxCoder "
                   "should be equal to the first dimension of PriorBox."));
         } else if (axis == 1) {
           PADDLE_ENFORCE_EQ(
-              target_box_dims[0], prior_box_dims[0],
+              target_box_dims[0],
+              prior_box_dims[0],
               platform::errors::InvalidArgument(
                   "When axis is 1, The first "
                   "dimension of TargetBox in BoxCoder "
                   "should be equal to the first dimension of PriorBox."));
         }
-        PADDLE_ENFORCE_EQ(target_box_dims[2], prior_box_dims[1],
+        PADDLE_ENFORCE_EQ(target_box_dims[2],
+                          prior_box_dims[1],
                           platform::errors::InvalidArgument(
                               "The third dimension of TargetBox"
                               " in BoxCoder should be equal to the "
@@ -231,9 +246,12 @@ box will broadcast to target box along the assigned axis.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    box_coder, ops::BoxCoderOp, ops::BoxCoderOpMaker,
+    box_coder,
+    ops::BoxCoderOp,
+    ops::BoxCoderOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
-    box_coder, ops::BoxCoderKernel<paddle::platform::CPUDeviceContext, float>,
+    box_coder,
+    ops::BoxCoderKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BoxCoderKernel<paddle::platform::CPUDeviceContext, double>);

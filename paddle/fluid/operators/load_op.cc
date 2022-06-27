@@ -67,7 +67,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(load, ops::LoadOp, ops::LoadOpProtoMaker);
 
 REGISTER_OP_CPU_KERNEL(
-    load, ops::LoadOpKernel<paddle::platform::CPUDeviceContext, float>,
+    load,
+    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LoadOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::LoadOpKernel<paddle::platform::CPUDeviceContext,
                       paddle::platform::bfloat16>,

@@ -27,17 +27,20 @@ class DistributedPushSparseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInputs("Ids"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("Ids"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Ids) of PushSparseOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Outs) of PushSparseOp should not be null."));
 
     auto ids_dims = ctx->GetInputsDim("Ids");
 
     for (auto &ids_dim : ids_dims) {
-      PADDLE_ENFORCE_EQ(ids_dim.size(), 2,
+      PADDLE_ENFORCE_EQ(ids_dim.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The dimension of the 'Ids' tensor must be 2."));
     }
@@ -126,7 +129,8 @@ random value and set the value into the table for the next looking up.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(distributed_push_sparse, ops::DistributedPushSparseOp,
+REGISTER_OPERATOR(distributed_push_sparse,
+                  ops::DistributedPushSparseOp,
                   ops::DistributedPushSparseOpMaker);
 
 REGISTER_OP_CPU_KERNEL(

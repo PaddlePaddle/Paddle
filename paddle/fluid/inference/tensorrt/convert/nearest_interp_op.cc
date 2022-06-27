@@ -28,7 +28,8 @@ namespace tensorrt {
 class NearestInterpolateOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid nearest_interp op";
 
     framework::OpDesc op_desc(op, nullptr);
