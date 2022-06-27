@@ -147,7 +147,9 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
           "Step 4. Execute the compiled executable program.");
       VLOG(4) << "Execute the compiled executable program";
       if (FLAGS_enable_cinn_allocate_oneshot) {
-        auto temp_scope = launch_context->PrepareTensorBuffer(scope, place);
+        // execute the compiled program by allocating/releasing buffers in
+        // one-shot manner
+        auto* temp_scope = launch_context->PrepareTensorBuffer(scope, place);
         LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
         details::ReleaseResource<DeviceContext>({temp_scope}, stream);
       } else {

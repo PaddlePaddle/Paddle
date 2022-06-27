@@ -74,6 +74,9 @@ class CinnLaunchContext {
   framework::ParallelExecutor* InitializePE(const platform::Place& place,
                                             framework::Scope* scope);
 
+  // Prepare all buffers of tensors used during the execution of CINN compiled
+  // program, it returns the scope owning the intermediate variables, which will
+  // be released once execution done.
   framework::Scope* PrepareTensorBuffer(const framework::Scope& scope,
                                         const platform::Place& place);
 
