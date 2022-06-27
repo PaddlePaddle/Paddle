@@ -173,93 +173,78 @@ PyObject* ToPyObject(const std::tuple<Args...>& out,
   TupleTensorResult<decltype(out), sizeof...(Args)>::Run(
       out, result, args, inplace_var_idx_map);
 
+  return result;
+}
+
+paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
+                                              const std::string& op_type,
                                               ssize_t arg_pos);
+
+paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
+                                              const std::string& op_type,
                                               ssize_t arg_pos);
 
-                                              paddle::experimental::IntArray
-                                              CastPyArg2IntArray(
-                                                  PyObject * obj,
+paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos);
 
-                                              paddle::Place CastPyArg2Place(
-                                                  PyObject * obj,
-                                                  const std::string& op_type,
-                                                  ssize_t arg_pos);
+paddle::Place CastPyArg2Place(PyObject* obj,
+                              const std::string& op_type,
+                              ssize_t arg_pos);
 
-                                              paddle::DataType
-                                              CastPyArg2DataType(
-                                                  PyObject * obj,
-                                                  const std::string& op_type,
-                                                  ssize_t arg_pos);
+paddle::DataType CastPyArg2DataType(PyObject* obj,
+                                    const std::string& op_type,
+                                    ssize_t arg_pos);
 
-                                              paddle::optional<
-                                                  paddle::experimental::Tensor>
-                                              GetOptionalTensorFromArgs(
-                                                  const std::string& op_type,
-                                                  const std::string& arg_name,
-                                                  PyObject* args,
-                                                  ssize_t arg_idx,
-                                                  bool dispensable = false);
+paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable = false);
 
-                                              paddle::experimental::Tensor&
-                                              GetTensorFromArgs(
-                                                  const std::string& op_type,
-                                                  const std::string& arg_name,
-                                                  PyObject* args,
-                                                  ssize_t arg_idx,
-                                                  bool dispensable = false);
+paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
+                                                const std::string& arg_name,
+                                                PyObject* args,
+                                                ssize_t arg_idx,
+                                                bool dispensable = false);
 
-                                              std::vector<
-                                                  paddle::experimental::Tensor>
-                                              GetTensorListFromArgs(
-                                                  const std::string& op_type,
-                                                  const std::string& arg_name,
-                                                  PyObject* args,
-                                                  ssize_t arg_idx,
-                                                  bool dispensable = false);
+std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable = false);
 
-                                              paddle::experimental::Tensor*
-                                              GetTensorPtrFromArgs(
-                                                  const std::string& op_type,
-                                                  const std::string& arg_name,
-                                                  PyObject* args,
-                                                  ssize_t arg_idx,
-                                                  bool dispensable = false);
+paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
+                                                   const std::string& arg_name,
+                                                   PyObject* args,
+                                                   ssize_t arg_idx,
+                                                   bool dispensable = false);
 
-                                              std::vector<
-                                                  paddle::experimental::Tensor*>
-                                              GetTensorPtrListFromArgs(
-                                                  const std::string& op_type,
-                                                  const std::string& arg_name,
-                                                  PyObject* args,
-                                                  ssize_t arg_idx,
-                                                  bool dispensable = false);
+std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable = false);
 
-                                              std::vector<
-                                                  paddle::experimental::Tensor*>
-                                                  GetTensorPtrListFromPyObject(
-                                                      PyObject * obj);
+std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromPyObject(
+    PyObject* obj);
 
-                                              std::vector<
-                                                  paddle::experimental::Tensor>
-                                                  GetTensorListFromPyObject(
-                                                      PyObject * obj);
+std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
+    PyObject* obj);
 
-                                              paddle::experimental::Tensor&
-                                                  GetTensorFromPyObject(
-                                                      PyObject * obj);
+paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj);
 
-                                              // end of Slice related methods
+// end of Slice related methods
 
-                                              std::vector<
-                                                  paddle::framework::Scope*>
-                                              GetScopePtrListFromArgs(
-                                                  const std::string& op_type,
-                                                  const std::string& arg_name,
-                                                  PyObject* args,
-                                                  ssize_t arg_idx,
-                                                  bool dispensable);
+std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable);
 
 }  // namespace pybind
 }  // namespace paddle
