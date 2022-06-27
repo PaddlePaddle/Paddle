@@ -121,7 +121,7 @@ class Parallelizer:
         if self._strategy is None:
             return
         # apply amp pass
-        # FIXME we disenable amp for eval since it has a little bug with 
+        # FIXME we disenable amp for eval since it has a little bug with
         # eval program and which will be fixed in future
         if self._mode == 'train' and self._strategy.amp:
             config = copy.deepcopy(self._strategy.amp_configs)
@@ -141,7 +141,7 @@ class Parallelizer:
                                              self._pass_context)
 
         # apply recompute pass
-        # recompute is then train-only optimization 
+        # recompute is then train-only optimization
         if self._mode == "train" and self._strategy.recompute:
             config = copy.deepcopy(self._strategy.recompute_configs)
             config["dist_context"] = self._dist_context
@@ -167,7 +167,7 @@ class Parallelizer:
             auto_parallel_sharding_pass.apply([main_program], [startup_program],
                                               self._pass_context)
 
-        # recompute is then train-only optimization 
+        # recompute is then train-only optimization
         if self._mode == "train" and self._strategy.gradient_merge:
             config = copy.deepcopy(self._strategy.gradient_merge_configs)
             config["dist_context"] = self._dist_context
