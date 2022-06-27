@@ -2375,7 +2375,8 @@ PDNode *patterns::PriorBox::operator()() {
   return boxes_var;
 }
 
-std::unordered_set<std::string> conv_act_set({"identity", "relu", "sigmoid", "tanh"});
+std::unordered_set<std::string> conv_act_set(
+    {"identity", "relu", "sigmoid", "tanh"});
 #if CUDNN_VERSION >= 8300
 conv_act_set.insert("swish");
 #endif
