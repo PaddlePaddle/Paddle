@@ -19,30 +19,26 @@ namespace jit {
 
 Layer Deserializer::operator()(const std::string& dir_path) {
   const auto& file_name_prefixs = GetPdmodelFileNamePrefix(dir_path);
-  std::vector<std::string> func_names;
-  std::vector<framework::ProgramDesc> program_descs;
-  std::vector<std::vector<std::string>> param_names_for_each_program;
   // set is ordered
   std::set<std::string> param_names_set;
-  VariableNameMap params_dict;
+  std::vector<std::shared_ptr<FunctionInfo>> infos;
+  Name2VariableMap params_dict;
   for (auto& it : file_name_prefixs) {
-    func_names.emplace_back(it.first);
+    auto& func_name = it.first;
+    auto program_desc = LoadProgram(dir_path + it.second + PDMODEL_SUFFIX);
 
-    auto program = LoadProgram(dir_path + it.second + PDMODEL_SUFFIX);
-    program_descs.emplace_back(program);
-
-    // TODO(dev): load int/float params
-    std::vector<std::string> persistable_var_names;
-    auto all_var_desc = program.Block(0).AllVars();
+    // TODO(dev): load int/float attrs
+    std::vector<std::string> persist_var_names;
+    auto all_var_desc = program_desc.Block(0).AllVars();
     for (auto* desc_ptr : all_var_desc) {
       if (IsPersistable(desc_ptr)) {
-        persistable_var_names.emplace_back(desc_ptr->Name());
+        persist_var_names.emplace_back(desc_ptr->Name());
       }
     }
 
-    param_names_for_each_program.emplace_back(persistable_var_names);
-    param_names_set.insert(persistable_var_names.begin(),
-                           persistable_var_names.end());
+    param_names_set.insert(persist_var_names.begin(), persist_var_names.end());
+    infos.emplace_back(std::make_shared<FunctionInfo>(
+        func_name, persist_var_names, program_desc));
   }
 
   auto default_place = imperative::GetCurrentTracer()->ExpectedPlace();
@@ -52,11 +48,7 @@ Layer Deserializer::operator()(const std::string& dir_path) {
                  default_place,
                  &params_dict);
 
-  return Layer(func_names,
-               program_descs,
-               param_names_for_each_program,
-               params_dict,
-               default_place);
+  return Layer(infos, params_dict, default_place);
 }
 
 bool Deserializer::IsPersistable(framework::VarDesc* desc_ptr) {
@@ -100,7 +92,7 @@ Deserializer::GetPdmodelFileNamePrefix(const std::string& path) {
 void Deserializer::ReadTensorData(const std::string& file_name,
                                   const std::set<std::string>& var_name,
                                   const phi::Place& place,
-                                  VariableNameMap* params_dict) const {
+                                  Name2VariableMap* params_dict) const {
   VLOG(3) << "ReadTensorData from: " << file_name;
   std::ifstream fin(file_name, std::ios::binary);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();

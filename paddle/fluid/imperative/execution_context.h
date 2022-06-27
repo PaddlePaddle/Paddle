@@ -47,7 +47,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
 
   std::string InputName(const std::string& name) const override {
     auto it = var_map_in_.find(name);
-    PADDLE_ENFORCE_NE(it, var_map_in_.end(),
+    PADDLE_ENFORCE_NE(it,
+                      var_map_in_.end(),
                       platform::errors::PreconditionNotMet(
                           "Can not find [%s] in Input", name));
     return it->second[0] ? GetNameFromVar(it->second[0])
@@ -57,7 +58,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   std::vector<std::string> InputNames(const std::string& name) const override {
     auto it = var_map_in_.find(name);
     PADDLE_ENFORCE_NE(
-        it, var_map_in_.end(),
+        it,
+        var_map_in_.end(),
         platform::errors::NotFound("Can not find [%s] in Input", name));
     std::vector<std::string> vec_res;
     vec_res.reserve(it->second.size());
@@ -74,7 +76,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   std::string OutputName(const std::string& name) const override {
     auto it = var_map_out_.find(name);
     PADDLE_ENFORCE_NE(
-        it, var_map_out_.end(),
+        it,
+        var_map_out_.end(),
         platform::errors::NotFound("Can not find [%s] in Output", name));
     return it->second[0] ? GetNameFromVar(it->second[0])
                          : framework::kEmptyVarName;
@@ -83,7 +86,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   std::vector<std::string> OutputNames(const std::string& name) const override {
     auto it = var_map_out_.find(name);
     PADDLE_ENFORCE_NE(
-        it, var_map_out_.end(),
+        it,
+        var_map_out_.end(),
         platform::errors::NotFound("Can not find [%s] in Output", name));
     std::vector<std::string> vec_res;
     vec_res.reserve(it->second.size());
@@ -110,7 +114,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
       it = default_attrs_.find(name);
       if (it == default_attrs_.end()) {
         PADDLE_THROW(platform::errors::NotFound(
-            "Can not find [%s] in attributes of op %s.", name,
+            "Can not find [%s] in attributes of op %s.",
+            name,
             this->GetOp().Type()));
       }
     }
@@ -147,7 +152,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   size_t InputSize(const std::string& name) const override {
     auto it = var_map_in_.find(name);
     PADDLE_ENFORCE_NE(
-        it, var_map_in_.end(),
+        it,
+        var_map_in_.end(),
         platform::errors::NotFound("Can not find [%s] in Input", name));
     return it->second.size();
   }
@@ -155,7 +161,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   size_t OutputSize(const std::string& name) const override {
     auto it = var_map_out_.find(name);
     PADDLE_ENFORCE_NE(
-        it, var_map_out_.end(),
+        it,
+        var_map_out_.end(),
         platform::errors::NotFound("Can not find [%s] in Output", name));
     return it->second.size();
   }

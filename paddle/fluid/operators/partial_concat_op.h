@@ -26,10 +26,13 @@ using Tensor = framework::Tensor;
 
 static inline int64_t ComputeStartIndex(int64_t start_index, int64_t size) {
   PADDLE_ENFORCE_EQ(
-      start_index >= -size && start_index < size, true,
+      start_index >= -size && start_index < size,
+      true,
       platform::errors::InvalidArgument(
           "The start_index is expected to be in range of [%d, %d), but got %d",
-          -size, size, start_index));
+          -size,
+          size,
+          start_index));
   if (start_index < 0) {
     start_index += size;
   }
@@ -42,12 +45,14 @@ class PartialConcatKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
-    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true,
+    PADDLE_ENFORCE_EQ(ins[0] != nullptr,
+                      true,
                       platform::errors::InvalidArgument(
                           "The input of partial concat should not be null."));
 
     auto input_dim = ins[0]->dims();
-    PADDLE_ENFORCE_EQ(input_dim.size(), 2,
+    PADDLE_ENFORCE_EQ(input_dim.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "Only supports 2-D array with batch size in the 1st "
                           "dimension and data in the 2nd."));
@@ -72,7 +77,8 @@ class PartialConcatKernel : public framework::OpKernel<T> {
       for (int j = 0; j < batch; ++j) {
         const T* in_data = ins[i]->data<T>();
         memcpy(out_data + out_size * j + partial_len * i,
-               in_data + in_size * j + start_index, partial_len * sizeof(T));
+               in_data + in_size * j + start_index,
+               partial_len * sizeof(T));
       }
     }
   }
@@ -87,7 +93,8 @@ class PartialConcatGradientOpKernel : public framework::OpKernel<T> {
     auto outs =
         ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
 
-    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true,
+    PADDLE_ENFORCE_EQ(ins[0] != nullptr,
+                      true,
                       platform::errors::InvalidArgument(
                           "The input of partial concat should not be null."));
     // all parameters
@@ -118,7 +125,8 @@ class PartialConcatGradientOpKernel : public framework::OpKernel<T> {
       int bs_index = id % grad_batch_len;
       int var_id = bs_index / partial_len;
       auto* out_t = outs[var_id]->data<T>();
-      memcpy(out_t + bs_id * in_size + start_index, out_grad_t + id,
+      memcpy(out_t + bs_id * in_size + start_index,
+             out_grad_t + id,
              partial_len * sizeof(T));
     }
   }

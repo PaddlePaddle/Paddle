@@ -15,18 +15,17 @@
 #pragma once
 
 #include <dirent.h>
-
-#include <algorithm>
 #include <fstream>
 #include <set>
 #include <string>
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
+
+#include "paddle/fluid/jit/function_schema.h"
+#include "paddle/fluid/jit/layer.h"
 
 namespace paddle {
 namespace jit {
@@ -62,7 +61,7 @@ class Deserializer {
   void ReadTensorData(const std::string& file_name,
                       const std::set<std::string>& var_name,
                       const phi::Place& place,
-                      VariableNameMap* params_dict) const;
+                      Name2VariableMap* params_dict) const;
 
   // void ReadExtraInfo(const std::string& file_name) const;
   // void ReadByteCode(const std::string& file_name) const;

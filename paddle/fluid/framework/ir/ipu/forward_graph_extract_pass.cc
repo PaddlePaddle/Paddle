@@ -24,10 +24,14 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter ForwardGraphExtractPass::ApplyImpl";
 
   std::unordered_map<OpRole, std::unordered_set<ir::Node*>> all_ops{
-      {OpRole::kForward, {}},  {OpRole::kBackward, {}},
-      {OpRole::kOptimize, {}}, {OpRole::kRPC, {}},
-      {OpRole::kDist, {}},     {OpRole::kLRSched, {}},
-      {OpRole::kLoss, {}},     {OpRole::kNotSpecified, {}}};
+      {OpRole::kForward, {}},
+      {OpRole::kBackward, {}},
+      {OpRole::kOptimize, {}},
+      {OpRole::kRPC, {}},
+      {OpRole::kDist, {}},
+      {OpRole::kLRSched, {}},
+      {OpRole::kLoss, {}},
+      {OpRole::kNotSpecified, {}}};
   for (auto* node : graph->Nodes()) {
     if (!node->IsOp()) {
       continue;

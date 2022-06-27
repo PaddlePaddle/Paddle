@@ -39,7 +39,8 @@ struct ImagAndRealToComplexFunctor {
 
 template <typename T>
 struct ComplexGradForRealFunctor {
-  inline HOSTDEVICE T operator()(const T x, const T y,
+  inline HOSTDEVICE T operator()(const T x,
+                                 const T y,
                                  const platform::complex<T> out,
                                  const platform::complex<T> dout) {
     return dout.real;
@@ -48,7 +49,8 @@ struct ComplexGradForRealFunctor {
 
 template <typename T>
 struct ComplexGradForImagFunctor {
-  inline HOSTDEVICE T operator()(const T x, const T y,
+  inline HOSTDEVICE T operator()(const T x,
+                                 const T y,
                                  const platform::complex<T> out,
                                  const platform::complex<T> dout) {
     return dout.imag;
@@ -100,10 +102,20 @@ class ComplexGradKernel : public framework::OpKernel<T> {
 
     // skip out in a hacky way
     auto* out = dout;
-    ElemwiseGradCompute<DeviceContext, T, ComplexGradForRealFunctor<T>,
-                        ComplexGradForImagFunctor<T>, C>(
-        ctx, *x, *y, *out, *dout, /*axis*/ -1, dx, dy,
-        ComplexGradForRealFunctor<T>(), ComplexGradForImagFunctor<T>());
+    ElemwiseGradCompute<DeviceContext,
+                        T,
+                        ComplexGradForRealFunctor<T>,
+                        ComplexGradForImagFunctor<T>,
+                        C>(ctx,
+                           *x,
+                           *y,
+                           *out,
+                           *dout,
+                           /*axis*/ -1,
+                           dx,
+                           dy,
+                           ComplexGradForRealFunctor<T>(),
+                           ComplexGradForImagFunctor<T>());
   }
 };
 

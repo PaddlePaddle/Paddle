@@ -43,7 +43,8 @@ std::string CipherUtils::GenKeyToFile(int length, const std::string& filename) {
   prng.GenerateBlock(reinterpret_cast<unsigned char*>(&(rng.at(0))),
                      rng.size());
   std::ofstream fout(filename, std::ios::binary);
-  PADDLE_ENFORCE_EQ(fout.is_open(), true,
+  PADDLE_ENFORCE_EQ(fout.is_open(),
+                    true,
                     paddle::platform::errors::Unavailable(
                         "Failed to open file : %s, "
                         "make sure input filename is available.",
@@ -64,7 +65,8 @@ std::string CipherUtils::ReadKeyFromFile(const std::string& filename) {
 std::unordered_map<std::string, std::string> CipherUtils::LoadConfig(
     const std::string& config_file) {
   std::ifstream fin(config_file);
-  PADDLE_ENFORCE_EQ(fin.is_open(), true,
+  PADDLE_ENFORCE_EQ(fin.is_open(),
+                    true,
                     paddle::platform::errors::Unavailable(
                         "Failed to open file : %s, "
                         "make sure input filename is available.",
@@ -95,7 +97,8 @@ std::unordered_map<std::string, std::string> CipherUtils::LoadConfig(
 template <>
 bool CipherUtils::GetValue<bool>(
     const std::unordered_map<std::string, std::string>& config,
-    const std::string& key, bool* output) {
+    const std::string& key,
+    bool* output) {
   auto itr = config.find(key);
   if (itr == config.end()) {
     return false;

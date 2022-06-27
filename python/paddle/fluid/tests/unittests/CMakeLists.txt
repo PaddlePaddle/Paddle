@@ -129,6 +129,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model)
+list(APPEND MIXED_DIST_TEST_OPS test_tcp_store)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -868,6 +869,7 @@ if(WITH_DISTRIBUTE)
                       test_auto_parallel_reshard_dpmppp ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_cost_model MODULES
                       test_auto_parallel_cost_model ENVS ${dist_ENVS})
+
       if(WITH_GPU
          OR WITH_XPU
          OR WITH_ASCEND
@@ -895,6 +897,21 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_se_resnext_dgc")
   endif()
+
+  # port range (20000, 23000) is reserved for dist-ops
+  set(dist_ut_port 20001)
+  if(NOT WIN32)
+    bash_test_modules(
+      test_tcp_store
+      START_BASH
+      dist_test.sh
+      LABELS
+      "RUN_TYPE=EXCLUSIVE"
+      ENVS
+      "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+    math(EXPR dist_ut_port "${dist_ut_port}+1")
+  endif()
+
   if(NOT APPLE)
     if(WITH_GPU OR WITH_ROCM)
       bash_test_modules(test_c_comm_init_op START_BASH test_c_comm_init_op.sh
@@ -930,7 +947,6 @@ if(WITH_DISTRIBUTE)
     endif()
 
     # port range (20000, 23000) is reserved for dist-ops
-    set(dist_ut_port 20001)
     foreach(TEST_OP ${DIST_TEST_OPS})
       bash_test_modules(
         ${TEST_OP}
@@ -1356,7 +1372,7 @@ set_tests_properties(test_matmul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_gather_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_gather_op PROPERTIES TIMEOUT 180)
 set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pylayer_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)

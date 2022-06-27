@@ -270,6 +270,7 @@ EOF
     # docker environment is fully controlled by this script.
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
     set +e
+    PRECISION_TEST=OFF
     cmake .. \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
@@ -3139,6 +3140,7 @@ EOF
 function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
 }
+
 
 # origin name: example
 function exec_samplecode_test() {
