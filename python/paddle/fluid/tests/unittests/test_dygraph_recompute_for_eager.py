@@ -14,6 +14,10 @@
 
 from __future__ import print_function
 
+import os
+
+os.environ['FLAGS_enable_eager_mode'] = '1'
+
 import unittest
 import numpy as np
 
@@ -181,6 +185,12 @@ class TestPyLayer(unittest.TestCase):
 
     def test_fc_net_with_dropout(self):
         self.test_base_case()
+
+    def test_fc_net_without_restore_rng(self):
+        loss_ref, param_ref, grad_ref = run_model(
+            recompute_block=[2],
+            recompute_kwargs={"preserve_rng_state": False},
+            enable_autocast=True)
 
     def test_fc_net_with_amp(self):
         self.test_base_case(enable_autocast=True)
