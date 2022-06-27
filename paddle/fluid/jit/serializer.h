@@ -51,9 +51,13 @@ class Deserializer {
 
   bool EndsWith(const std::string& str, const std::string& suffix);
 
+  void ReplaceAll(std::string* str,
+                  const std::string& old_value,
+                  const std::string& new_value);
+
   bool FileExists(const std::string& file_path);
 
-  const std::vector<std::pair<std::string, std::string>> GetPdmodelFilePaths(
+  const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
       const std::string& path);
 
   void ReadTensorData(const std::string& file_name,

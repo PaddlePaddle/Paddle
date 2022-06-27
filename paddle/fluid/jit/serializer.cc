@@ -28,7 +28,7 @@ namespace jit {
 
 Layer Deserializer::operator()(const std::string& path,
                                const phi::Place& place) {
-  const auto& pdmodel_paths = GetPdmodelFilePaths(path);
+  const auto& pdmodel_paths = PdmodelFilePaths(path);
   // set is ordered
   std::set<std::string> param_names_set;
   std::vector<std::shared_ptr<FunctionInfo>> infos;
@@ -89,17 +89,34 @@ bool Deserializer::EndsWith(const std::string& str, const std::string& suffix) {
          0;
 }
 
+void Deserializer::ReplaceAll(std::string* str,
+                              const std::string& old_value,
+                              const std::string& new_value) {
+  std::string::size_type pos = 0;
+  while ((pos = str->find(old_value, pos)) != std::string::npos) {
+    *str = str->replace(pos, old_value.length(), new_value);
+    if (new_value.length() > 0) {
+      pos += new_value.length();
+    }
+  }
+}
+
 bool Deserializer::FileExists(const std::string& file_path) {
   std::ifstream file(file_path.c_str());
   return file.good();
 }
 
 const std::vector<std::pair<std::string, std::string>>
-Deserializer::GetPdmodelFilePaths(const std::string& path) {
+Deserializer::PdmodelFilePaths(const std::string& path) {
   std::vector<std::pair<std::string, std::string>> pdmodel_paths;
-  std::string layer_prefix = path.substr(path.find_last_of("/") + 1);
-  std::string dir_path = path.substr(0, path.length() - layer_prefix.length());
-  VLOG(3) << "layer_prefix:" << layer_prefix << "dir_path:" << dir_path;
+  std::string format_path = path;
+  ReplaceAll(&format_path, R"(\\)", "/");
+  ReplaceAll(&format_path, R"(\)", "/");
+
+  std::string layer_prefix =
+      format_path.substr(format_path.find_last_of("/") + 1);
+  std::string dir_path =
+      format_path.substr(0, format_path.length() - layer_prefix.length());
   DIR* dir = opendir(dir_path.c_str());
   struct dirent* ptr;
 
@@ -110,7 +127,6 @@ Deserializer::GetPdmodelFilePaths(const std::string& path) {
         EndsWith(file_name, PDMODEL_SUFFIX)) {
       std::string prefix = file_name.substr(
           0, file_name.length() - std::string(PDMODEL_SUFFIX).length());
-      VLOG(3) << "prefix: " << prefix;
       std::string func_name = prefix.substr(prefix.find_first_of(".") + 1);
       VLOG(3) << "func_name:" << func_name << "path:" << dir_path + file_name;
 
