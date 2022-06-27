@@ -322,10 +322,12 @@ std::string GenerateOpFunctionsBody(
       std::string inplace_arg_name = inplace_pair.second;
       std::string inplace_return_name = inplace_pair.first;
       const char* RETURN_INPLACE_TENSOR_TEMPLATE =
-          "ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_args_info, "
+          "ssize_t arg_id = "
+          "GetIdxFromCoreOpsInfoMap(intermediate_state_core_ops_args_info, "
           "\"%s\", \"%s\");\n"
           "    ssize_t return_id = "
-          "GetIdxFromCoreOpsInfoMap(core_ops_returns_info, \"%s\", \"%s\");\n"
+          "GetIdxFromCoreOpsInfoMap(intermediate_state_core_ops_returns_info, "
+          "\"%s\", \"%s\");\n"
           "    return ToPyObject(out, return_id, args, arg_id);";
       return_str = paddle::string::Sprintf(RETURN_INPLACE_TENSOR_TEMPLATE,
                                            op_type,
@@ -365,11 +367,12 @@ std::string GenerateOpFunctionsBody(
 
 static std::string GenerateCoreOpsInfoMap() {
   std::string result =
-      "static PyObject * eager_get_core_ops_args_info(PyObject *self) {\n"
+      "static PyObject * "
+      "eager_get_intermediate_state_core_ops_args_info(PyObject *self) {\n"
       "  PyThreadState *tstate = nullptr;\n"
       "  try\n"
       "  {\n"
-      "    return ToPyObject(core_ops_args_info);\n"
+      "    return ToPyObject(intermediate_state_core_ops_args_info);\n"
       "  }\n"
       "  catch(...) {\n"
       "    if (tstate) {\n"
@@ -380,11 +383,12 @@ static std::string GenerateCoreOpsInfoMap() {
       "  }\n"
       "}\n"
       "\n"
-      "static PyObject * eager_get_core_ops_args_type_info(PyObject *self) {\n"
+      "static PyObject * "
+      "eager_get_intermediate_state_core_ops_args_type_info(PyObject *self) {\n"
       "  PyThreadState *tstate = nullptr;\n"
       "  try\n"
       "  {\n"
-      "    return ToPyObject(core_ops_args_type_info);\n"
+      "    return ToPyObject(intermediate_state_core_ops_args_type_info);\n"
       "  }\n"
       "  catch(...) {\n"
       "    if (tstate) {\n"
@@ -395,11 +399,12 @@ static std::string GenerateCoreOpsInfoMap() {
       "  }\n"
       "}\n"
       "\n"
-      "static PyObject * eager_get_core_ops_returns_info(PyObject *self) {\n"
+      "static PyObject * "
+      "eager_get_intermediate_state_core_ops_returns_info(PyObject *self) {\n"
       "  PyThreadState *tstate = nullptr;\n"
       "  try\n"
       "  {\n"
-      "    return ToPyObject(core_ops_returns_info);\n"
+      "    return ToPyObject(intermediate_state_core_ops_returns_info);\n"
       "  }\n"
       "  catch(...) {\n"
       "    if (tstate) {\n"
@@ -528,17 +533,21 @@ int main(int argc, char* argv[]) {
   auto op_funcs = GenerateOpFunctions();
   auto core_ops_infos = GenerateCoreOpsInfoMap();
   std::string core_ops_infos_registry =
-      "{\"get_core_ops_args_info\", "
-      "(PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS, "
-      "\"C++ interface function for eager_get_core_ops_args_info.\"},\n"
-      "{\"get_core_ops_args_type_info\", "
-      "(PyCFunction)(void(*)(void))eager_get_core_ops_args_type_info, "
+      "{\"get_intermediate_state_core_ops_args_info\", "
+      "(PyCFunction)(void(*)(void))eager_get_intermediate_state_core_ops_args_"
+      "info, METH_NOARGS, "
+      "\"C++ interface function for "
+      "eager_get_intermediate_state_core_ops_args_info.\"},\n"
+      "{\"get_intermediate_state_core_ops_args_type_info\", "
+      "(PyCFunction)(void(*)(void))eager_get_intermediate_state_core_ops_args_"
+      "type_info, "
       "METH_NOARGS, "
       "\"C++ interface function for eager_get_core_ops_args_type_info.\"},\n"
-      "  {\"get_core_ops_returns_info\", "
-      "(PyCFunction)(void(*)(void))eager_get_core_ops_returns_info, "
+      "  {\"get_intermediate_state_core_ops_returns_info\", "
+      "(PyCFunction)(void(*)(void))eager_get_intermediate_state_core_ops_"
+      "returns_info, "
       "METH_NOARGS, \"C++ interface function for "
-      "eager_get_core_ops_returns_info.\"},\n";
+      "eager_get_intermediate_state_core_ops_returns_info.\"},\n";
 
   out << "namespace paddle {\n"
       << "namespace pybind {\n\n";
