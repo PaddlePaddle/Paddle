@@ -22,13 +22,15 @@ namespace platform {
 struct XPUDeviceEventWrapper {
   explicit XPUDeviceEventWrapper(const platform::Place& place) {
     PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(place), true,
+        platform::is_xpu_place(place),
+        true,
         platform::errors::PreconditionNotMet(
             "Required device shall be XPUPlace, but received %d. ", place));
 
     device_id_ = place.device;
     PADDLE_ENFORCE_GT(
-        device_id_, -1,
+        device_id_,
+        -1,
         platform::errors::PreconditionNotMet(
             "Required DeviceOption.device_id > -1, but received %d. ",
             device_id_));
@@ -39,7 +41,8 @@ struct XPUDeviceEventWrapper {
   int device_id_;
 };
 
-void DeviceEventCreateXPU(DeviceEvent* event, const platform::Place& place,
+void DeviceEventCreateXPU(DeviceEvent* event,
+                          const platform::Place& place,
                           unsigned int) {
   event->InitEvent(std::make_shared<XPUDeviceEventWrapper>(place));
 }
@@ -47,8 +50,9 @@ void DeviceEventCreateXPU(DeviceEvent* event, const platform::Place& place,
 void DeviceEventRecordXPU(DeviceEvent* event, const DeviceContext* context) {
   auto* wrapper = static_cast<XPUDeviceEventWrapper*>(event->GetEvent().get());
   PADDLE_ENFORCE_NOT_NULL(
-      wrapper, platform::errors::PreconditionNotMet(
-                   "Failed to dynamic_cast event into XPUDeviceEventWrapper."));
+      wrapper,
+      platform::errors::PreconditionNotMet(
+          "Failed to dynamic_cast event into XPUDeviceEventWrapper."));
 
   auto* xpu_dev_ctx = dynamic_cast<const platform::XPUDeviceContext*>(context);
   PADDLE_ENFORCE_NOT_NULL(
@@ -61,8 +65,9 @@ void DeviceEventRecordXPU(DeviceEvent* event, const DeviceContext* context) {
 void DeviceEventFinishXPU(const DeviceEvent* event) {
   auto* wrapper = static_cast<XPUDeviceEventWrapper*>(event->GetEvent().get());
   PADDLE_ENFORCE_NOT_NULL(
-      wrapper, platform::errors::PreconditionNotMet(
-                   "Failed to dynamic_cast event into XPUDeviceEventWrapper."));
+      wrapper,
+      platform::errors::PreconditionNotMet(
+          "Failed to dynamic_cast event into XPUDeviceEventWrapper."));
   xpu_event_wait(wrapper->handle_);
 }
 
@@ -76,8 +81,9 @@ void DeviceEventXPUWaitXPU(const DeviceEvent* event,
                            const DeviceContext* context) {
   auto* wrapper = static_cast<XPUDeviceEventWrapper*>(event->GetEvent().get());
   PADDLE_ENFORCE_NOT_NULL(
-      wrapper, platform::errors::PreconditionNotMet(
-                   "Failed to dynamic_cast event into XPUDeviceEventWrapper."));
+      wrapper,
+      platform::errors::PreconditionNotMet(
+          "Failed to dynamic_cast event into XPUDeviceEventWrapper."));
   auto* xpu_dev_ctx = dynamic_cast<const platform::XPUDeviceContext*>(context);
   PADDLE_ENFORCE_NOT_NULL(
       xpu_dev_ctx,
@@ -110,9 +116,11 @@ REGISTER_EVENT_QUERY_FUNCTION(kXPU, paddle::platform::DeviceEventQueryXPU)
 REGISTER_EVENT_FINISH_FUNCTION(kXPU, paddle::platform::DeviceEventFinishXPU)
 REGISTER_EVENT_SET_FINISHED_FUNCTION(
     kXPU, paddle::platform::DeviceEventSetFinishedXPU)
-REGISTER_EVENT_WAIT_FUNCTION(kXPU, kXPU,
+REGISTER_EVENT_WAIT_FUNCTION(kXPU,
+                             kXPU,
                              paddle::platform::DeviceEventXPUWaitXPU)
-REGISTER_EVENT_WAIT_FUNCTION(kCPU, kXPU,
+REGISTER_EVENT_WAIT_FUNCTION(kCPU,
+                             kXPU,
                              paddle::platform::DeviceEventCPUWaitXPU)
 REGISTER_EVENT_RESET_FUNCTION(kXPU, paddle::platform::EventResetXPU)
 #endif

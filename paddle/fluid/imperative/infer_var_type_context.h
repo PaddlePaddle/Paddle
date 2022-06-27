@@ -80,7 +80,8 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   bool InputTypeAnyOf(const std::string& name,
                       framework::proto::VarType::Type type) const override {
     auto& inputs = inputs_.at(name);
-    return std::any_of(inputs.begin(), inputs.end(),
+    return std::any_of(inputs.begin(),
+                       inputs.end(),
                        [&type](const std::shared_ptr<VarType>& var) {
                          return GetType(var) == type;
                        });
@@ -89,7 +90,8 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   bool InputTypeAllOf(const std::string& name,
                       framework::proto::VarType::Type type) const override {
     auto& inputs = inputs_.at(name);
-    return std::all_of(inputs.begin(), inputs.end(),
+    return std::all_of(inputs.begin(),
+                       inputs.end(),
                        [&type](const std::shared_ptr<VarType>& var) {
                          return GetType(var) == type;
                        });

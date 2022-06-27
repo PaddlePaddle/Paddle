@@ -160,8 +160,19 @@ def create_get_args_node(names):
 
         def get_args_0():
             nonlocal x, y
+            return x, y
     """
+
+    def empty_node():
+        func_def = """
+        def {func_name}():
+            return
+        """.format(func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX))
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
     assert isinstance(names, (list, tuple))
+    if not names:
+        return empty_node()
 
     def remove_attribute(x):
         if '.' in x: return x.split('.')[0]
@@ -196,7 +207,18 @@ def create_set_args_node(names):
             nonlocal x, y
             x, y = __args
     """
+
+    def empty_node():
+        func_def = """
+        def {func_name}({args}):
+            pass
+        """.format(func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
+                   args=ARGS_NAME)
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
     assert isinstance(names, (list, tuple))
+    if not names:
+        return empty_node()
 
     def remove_attribute(x):
         if '.' in x: return x.split('.')[0]

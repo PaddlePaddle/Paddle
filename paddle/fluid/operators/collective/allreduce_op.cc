@@ -69,11 +69,13 @@ If input and output are the same variable, in-place allreduce will be used.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(allreduce, ops::AllReduceOp,
+REGISTER_OP_WITHOUT_GRADIENT(allreduce,
+                             ops::AllReduceOp,
                              ops::AllReduceOpMaker);
 
 REGISTER_OP_CPU_KERNEL(
-    allreduce, ops::AllReduceOpKernel<plat::CPUDeviceContext, float>,
+    allreduce,
+    ops::AllReduceOpKernel<plat::CPUDeviceContext, float>,
     ops::AllReduceOpKernel<plat::CPUDeviceContext, double>,
     ops::AllReduceOpKernel<plat::CPUDeviceContext, int>,
     ops::AllReduceOpKernel<plat::CPUDeviceContext, int64_t>,

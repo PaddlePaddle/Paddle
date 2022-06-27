@@ -525,7 +525,8 @@ def transform_if_else(node, root):
     if ARGS_NAME in nonlocal_names:
         nonlocal_names.remove(ARGS_NAME)
 
-    nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)]
+    nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)
+                          ] if nonlocal_names else []
 
     empty_arg_node = gast.arguments(args=[],
                                     posonlyargs=[],

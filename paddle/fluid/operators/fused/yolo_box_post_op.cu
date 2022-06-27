@@ -90,7 +90,8 @@ static float BoxIOU(Box a, Box b) {
   return BoxIntersection(a, b) / BoxUnion(a, b);
 }
 
-static void PostNMS(std::vector<Detection>* det_bboxes, float thresh,
+static void PostNMS(std::vector<Detection>* det_bboxes,
+                    float thresh,
                     int classes) {
   int total = det_bboxes->size();
   if (total <= 0) {
@@ -130,9 +131,12 @@ static void PostNMS(std::vector<Detection>* det_bboxes, float thresh,
   }
 }
 
-__global__ void YoloBoxNum(const float* input, int* bbox_count,
-                           const int grid_size, const int class_num,
-                           const int anchors_num, float prob_thresh) {
+__global__ void YoloBoxNum(const float* input,
+                           int* bbox_count,
+                           const int grid_size,
+                           const int class_num,
+                           const int anchors_num,
+                           float prob_thresh) {
   int x_id = blockIdx.x * blockDim.x + threadIdx.x;
   int y_id = blockIdx.y * blockDim.y + threadIdx.y;
   int z_id = blockIdx.z * blockDim.z + threadIdx.z;
@@ -150,11 +154,18 @@ __global__ void YoloBoxNum(const float* input, int* bbox_count,
   atomicAdd(bbox_count, 1);
 }
 
-__global__ void YoloTensorParseKernel(
-    const float* input, const float* im_shape_data, const float* im_scale_data,
-    float* output, int* bbox_index, const int grid_size, const int class_num,
-    const int anchors_num, const int netw, const int neth, int* biases,
-    float prob_thresh) {
+__global__ void YoloTensorParseKernel(const float* input,
+                                      const float* im_shape_data,
+                                      const float* im_scale_data,
+                                      float* output,
+                                      int* bbox_index,
+                                      const int grid_size,
+                                      const int class_num,
+                                      const int anchors_num,
+                                      const int netw,
+                                      const int neth,
+                                      int* biases,
+                                      float prob_thresh) {
   int x_id = blockIdx.x * blockDim.x + threadIdx.x;
   int y_id = blockIdx.y * blockDim.y + threadIdx.y;
   int z_id = blockIdx.z * blockDim.z + threadIdx.z;
@@ -216,7 +227,8 @@ __global__ void YoloTensorParseKernel(
 
 static void YoloTensorParseCuda(
     const float* input_data,  // [in] YOLO_BOX_HEAD layer output
-    const float* image_shape_data, const float* image_scale_data,
+    const float* image_shape_data,
+    const float* image_scale_data,
     float** bboxes_tensor_ptr,  // [out] Bounding boxes output tensor
     int* bbox_count_max_alloc,  // [in/out] maximum bounding Box number
                                 // allocated in dev
@@ -226,8 +238,13 @@ static void YoloTensorParseCuda(
                                  // device side
     int* bbox_index_device_ptr,  // [in] bounding Box index for kernel threads
                                  // shared access
-    int grid_size, int class_num, int anchors_num, int netw, int neth,
-    int* biases_device, float prob_thresh) {
+    int grid_size,
+    int class_num,
+    int anchors_num,
+    int netw,
+    int neth,
+    int* biases_device,
+    float prob_thresh) {
   dim3 threads_per_block(16, 16, 4);
   dim3 number_of_blocks((grid_size / threads_per_block.x) + 1,
                         (grid_size / threads_per_block.y) + 1,
@@ -236,21 +253,24 @@ static void YoloTensorParseCuda(
   // Estimate how many boxes will be choosed
   int bbox_count = 0;
 #ifdef PADDLE_WITH_HIP
-  hipMemcpy(bbox_count_device_ptr, &bbox_count, sizeof(int),
-            hipMemcpyHostToDevice);
+  hipMemcpy(
+      bbox_count_device_ptr, &bbox_count, sizeof(int), hipMemcpyHostToDevice);
 #else
-  cudaMemcpy(bbox_count_device_ptr, &bbox_count, sizeof(int),
-             cudaMemcpyHostToDevice);
+  cudaMemcpy(
+      bbox_count_device_ptr, &bbox_count, sizeof(int), cudaMemcpyHostToDevice);
 #endif
-  YoloBoxNum<<<number_of_blocks, threads_per_block, 0>>>(
-      input_data, bbox_count_device_ptr, grid_size, class_num, anchors_num,
-      prob_thresh);
+  YoloBoxNum<<<number_of_blocks, threads_per_block, 0>>>(input_data,
+                                                         bbox_count_device_ptr,
+                                                         grid_size,
+                                                         class_num,
+                                                         anchors_num,
+                                                         prob_thresh);
 #ifdef PADDLE_WITH_HIP
-  hipMemcpy(&bbox_count, bbox_count_device_ptr, sizeof(int),
-            hipMemcpyDeviceToHost);
+  hipMemcpy(
+      &bbox_count, bbox_count_device_ptr, sizeof(int), hipMemcpyDeviceToHost);
 #else
-  cudaMemcpy(&bbox_count, bbox_count_device_ptr, sizeof(int),
-             cudaMemcpyDeviceToHost);
+  cudaMemcpy(
+      &bbox_count, bbox_count_device_ptr, sizeof(int), cudaMemcpyDeviceToHost);
 #endif
 
   // Record actual bbox number
@@ -274,16 +294,25 @@ static void YoloTensorParseCuda(
   // Now generate bboxes
   int bbox_index = 0;
 #ifdef PADDLE_WITH_HIP
-  hipMemcpy(bbox_index_device_ptr, &bbox_index, sizeof(int),
-            hipMemcpyHostToDevice);
+  hipMemcpy(
+      bbox_index_device_ptr, &bbox_index, sizeof(int), hipMemcpyHostToDevice);
 #else
-  cudaMemcpy(bbox_index_device_ptr, &bbox_index, sizeof(int),
-             cudaMemcpyHostToDevice);
+  cudaMemcpy(
+      bbox_index_device_ptr, &bbox_index, sizeof(int), cudaMemcpyHostToDevice);
 #endif
   YoloTensorParseKernel<<<number_of_blocks, threads_per_block, 0>>>(
-      input_data, image_shape_data, image_scale_data, bbox_tensor,
-      bbox_index_device_ptr, grid_size, class_num, anchors_num, netw, neth,
-      biases_device, prob_thresh);
+      input_data,
+      image_shape_data,
+      image_scale_data,
+      bbox_tensor,
+      bbox_index_device_ptr,
+      grid_size,
+      class_num,
+      anchors_num,
+      netw,
+      neth,
+      biases_device,
+      prob_thresh);
 }
 
 template <typename T>
@@ -324,12 +353,16 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_HIP
     hipMalloc(reinterpret_cast<void**>(&device_anchors),
               anchors.size() * sizeof(int));
-    hipMemcpy(device_anchors, anchors.data(), anchors.size() * sizeof(int),
+    hipMemcpy(device_anchors,
+              anchors.data(),
+              anchors.size() * sizeof(int),
               hipMemcpyHostToDevice);
 #else
     cudaMalloc(reinterpret_cast<void**>(&device_anchors),
                anchors.size() * sizeof(int));
-    cudaMemcpy(device_anchors, anchors.data(), anchors.size() * sizeof(int),
+    cudaMemcpy(device_anchors,
+               anchors.data(),
+               anchors.size() * sizeof(int),
                cudaMemcpyHostToDevice);
 #endif
     int* device_anchors_ptr[3];
@@ -392,7 +425,8 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
 
         YoloTensorParseCuda(
             boxes_input[input_id] + batch_id * c * h * w,
-            image_shape_data + batch_id * 2, image_scale_data + batch_id * 2,
+            image_shape_data + batch_id * 2,
+            image_scale_data + batch_id * 2,
             &(ts_info[ts_id].bboxes_dev_ptr),  // output in gpu,must use 2-level
                                                // pointer, because we may
                                                // re-malloc
@@ -401,8 +435,12 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
             &(ts_info[ts_id].bbox_count_host),     // record bbox numbers
             ts_info[ts_id].bbox_count_device_ptr,  // for atomicAdd
             bbox_index_device_ptr,                 // for atomicAdd
-            h, class_num, anchors_num[input_id], downsample_ratio[input_id] * h,
-            downsample_ratio[input_id] * w, device_anchors_ptr[input_id],
+            h,
+            class_num,
+            anchors_num[input_id],
+            downsample_ratio[input_id] * h,
+            downsample_ratio[input_id] * w,
+            device_anchors_ptr[input_id],
             conf_thresh);
 
         // batch info update
@@ -415,12 +453,14 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
 // we need copy bbox_count_host boxes to cpu memory
 #ifdef PADDLE_WITH_HIP
         hipMemcpyAsync(
-            ts_info[ts_id].bboxes_host_ptr, ts_info[ts_id].bboxes_dev_ptr,
+            ts_info[ts_id].bboxes_host_ptr,
+            ts_info[ts_id].bboxes_dev_ptr,
             ts_info[ts_id].bbox_count_host * (5 + class_num) * sizeof(float),
             hipMemcpyDeviceToHost);
 #else
         cudaMemcpyAsync(
-            ts_info[ts_id].bboxes_host_ptr, ts_info[ts_id].bboxes_dev_ptr,
+            ts_info[ts_id].bboxes_host_ptr,
+            ts_info[ts_id].bboxes_dev_ptr,
             ts_info[ts_id].bbox_count_host * (5 + class_num) * sizeof(float),
             cudaMemcpyDeviceToHost);
 #endif

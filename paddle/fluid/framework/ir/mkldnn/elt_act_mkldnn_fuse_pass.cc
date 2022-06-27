@@ -26,11 +26,19 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  std::vector<std::string> act_types = {
-      "relu", "tanh", "leaky_relu", "swish", "hard_swish", "sqrt",
-      "abs",  "clip", "gelu",       "relu6", "sigmoid"};
-  std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub",
-                                        "elementwise_mul"};
+  std::vector<std::string> act_types = {"relu",
+                                        "tanh",
+                                        "leaky_relu",
+                                        "swish",
+                                        "hard_swish",
+                                        "sqrt",
+                                        "abs",
+                                        "clip",
+                                        "gelu",
+                                        "relu6",
+                                        "sigmoid"};
+  std::vector<std::string> elt_types = {
+      "elementwise_add", "elementwise_sub", "elementwise_mul"};
 
   for (const auto &elt_type : elt_types)
     for (const auto &act_type : act_types) {
@@ -52,7 +60,9 @@ void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
 }
 
 void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
-    Graph *graph, const std::string &elt_type, const std::string &act_type,
+    Graph *graph,
+    const std::string &elt_type,
+    const std::string &act_type,
     const std::unordered_map<std::string, std::string> &attr_map) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
@@ -72,14 +82,14 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
                      Graph *g) {
     VLOG(4) << "Fuse " << elt_type << " with activation op.";
     // Elementwise output
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
-                              elementwise_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_out, elementwise_out, elementwise_act_pattern);
     // ACT output
-    GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out,
-                              elementwise_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        activation_out, activation_out, elementwise_act_pattern);
     // ops
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise,
-                              elementwise_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise, elementwise, elementwise_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(activation, activation, elementwise_act_pattern);
 
     auto *elementwise_op = elementwise->Op();
@@ -88,7 +98,8 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
       const std::string wo_elt_type =
           "The " + elt_type;  // Workaround for PP error message checking.
       PADDLE_ENFORCE_EQ(
-          BOOST_GET_CONST(bool, elementwise_op->GetAttr("use_mkldnn")), true,
+          BOOST_GET_CONST(bool, elementwise_op->GetAttr("use_mkldnn")),
+          true,
           platform::errors::PreconditionNotMet(
               wo_elt_type + "+Act fusion may happen only when oneDNN library "
                             "is used."));
@@ -118,7 +129,9 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
   gpd(graph, handler);
   AddStatis(found_elementwise_activation_count);
   PrettyLogDetail("---    fused %d %s with %s activation",
-                  found_elementwise_activation_count, elt_type, act_type);
+                  found_elementwise_activation_count,
+                  elt_type,
+                  act_type);
 }
 
 }  // namespace ir
