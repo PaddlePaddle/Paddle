@@ -63,8 +63,8 @@ TEST(AnalysisPredictor, use_cpu) {
   EXPECT_EQ(outputs.size(), expected_size);
   float* data_o = static_cast<float*>(outputs[0].data.data());
   for (size_t j = 0; j < outputs[0].data.length() / sizeof(float); j += 10) {
-    EXPECT_NEAR((data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0.,
-                12e-5);
+    EXPECT_NEAR(
+        (data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0., 12e-5);
   }
 }
 
@@ -98,8 +98,8 @@ TEST(Predictor, use_cpu) {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputHandle(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  size_t out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                   std::multiplies<int>());
+  size_t out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
 
   std::vector<float> out_data;
   out_data.resize(out_num);
@@ -118,8 +118,8 @@ TEST(Predictor, use_cpu) {
 
   float* data_o = out_data.data();
   for (size_t j = 0; j < out_num; j += 10) {
-    EXPECT_NEAR((data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0.,
-                10e-5);
+    EXPECT_NEAR(
+        (data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0., 10e-5);
   }
 }
 

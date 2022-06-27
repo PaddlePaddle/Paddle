@@ -48,12 +48,15 @@ class DotGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        true, ctx->HasInput("X"),
+        true,
+        ctx->HasInput("X"),
         platform::errors::PreconditionNotMet("Input(X) should not be null."));
     PADDLE_ENFORCE_EQ(
-        true, ctx->HasInput("Y"),
+        true,
+        ctx->HasInput("Y"),
         platform::errors::PreconditionNotMet("Input(Y) should not be null."));
-    PADDLE_ENFORCE_EQ(true, ctx->HasInput(framework::GradVarName("Out")),
+    PADDLE_ENFORCE_EQ(true,
+                      ctx->HasInput(framework::GradVarName("Out")),
                       platform::errors::PreconditionNotMet(
                           "Input(Out@GRAD) should not be null."));
 
@@ -101,10 +104,13 @@ class DotOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(dot, DotInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(dot,
+                            DotInferShapeFunctor,
                             PD_INFER_META(phi::DotInferMeta));
 
-REGISTER_OPERATOR(dot, ops::DotOp, ops::DotOpMaker,
+REGISTER_OPERATOR(dot,
+                  ops::DotOp,
+                  ops::DotOpMaker,
                   ops::DotOpGradMaker<paddle::framework::OpDesc>,
                   ops::DotOpGradMaker<paddle::imperative::OpBase>,
                   DotInferShapeFunctor);
@@ -112,7 +118,8 @@ REGISTER_OPERATOR(dot, ops::DotOp, ops::DotOpMaker,
 REGISTER_OPERATOR(dot_grad, ops::DotGradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    dot, ops::DotKernel<paddle::platform::CPUDeviceContext, float>,
+    dot,
+    ops::DotKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DotKernel<paddle::platform::CPUDeviceContext, double>,
     ops::DotKernel<paddle::platform::CPUDeviceContext, int>,
     ops::DotKernel<paddle::platform::CPUDeviceContext, int64_t>,
@@ -121,7 +128,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::DotKernel<paddle::platform::CPUDeviceContext,
                    paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
-    dot_grad, ops::DotGradKernel<paddle::platform::CPUDeviceContext, float>,
+    dot_grad,
+    ops::DotGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DotGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::DotGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::DotGradKernel<paddle::platform::CPUDeviceContext, int64_t>,

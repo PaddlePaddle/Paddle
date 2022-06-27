@@ -253,7 +253,9 @@ GraphPatternDetector::handle_t GetGenerateDelete(
             // output node
             for (Node* s_node : node->outputs) {
               iter->second->outputs.push_back(s_node);
-              std::replace(s_node->inputs.begin(), s_node->inputs.end(), node,
+              std::replace(s_node->inputs.begin(),
+                           s_node->inputs.end(),
+                           node,
                            iter->second);
               s_node->Op()->RenameInput(node->Name(), iter->second->Name());
             }
@@ -387,7 +389,8 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
                 Attribute operation =
                     GetAttrValue(attr_map.operation().value());
                 attr = boost::apply_visitor(
-                    operation_visitor(attr_map.operation().type()), attr,
+                    operation_visitor(attr_map.operation().type()),
+                    attr,
                     operation);
               }
               op_desc.SetAttr(attr_map.replace_attr().name(), attr);
@@ -442,7 +445,8 @@ void GeneratePass::ApplyImpl(Graph* graph) const {
 }
 
 void GeneratePass::VerifyDesc() const {
-  PADDLE_ENFORCE_NE(multi_pass_desc_.pass_descs_size(), 0,
+  PADDLE_ENFORCE_NE(multi_pass_desc_.pass_descs_size(),
+                    0,
                     platform::errors::InvalidArgument(
                         "Size of PassDesc should not be empty."));
 }
@@ -537,7 +541,8 @@ void PassPairs::AddPassDesc(const SubgraphType& pattern,
   proto::PassDesc* pass_desc = multi_pass_desc_.add_pass_descs();
   pass_desc->mutable_pattern()->CopyFrom(pattern.ProgramDesc().blocks(0).ops());
   pass_desc->mutable_replace()->CopyFrom(replace.ProgramDesc().blocks(0).ops());
-  PADDLE_ENFORCE_EQ(pattern.InputVars().size(), replace.InputVars().size(),
+  PADDLE_ENFORCE_EQ(pattern.InputVars().size(),
+                    replace.InputVars().size(),
                     platform::errors::InvalidArgument(
                         "Size of lambda expression arguments is not equal "
                         "between pattern/replace subgraph."));
@@ -546,7 +551,8 @@ void PassPairs::AddPassDesc(const SubgraphType& pattern,
     var_map->set_pattern_var(pattern.InputVars()[i]);
     var_map->set_replace_var(replace.InputVars()[i]);
   }
-  PADDLE_ENFORCE_EQ(pattern.OutputVars().size(), replace.OutputVars().size(),
+  PADDLE_ENFORCE_EQ(pattern.OutputVars().size(),
+                    replace.OutputVars().size(),
                     platform::errors::InvalidArgument(
                         "Size of lambda expression returns is not equal "
                         "between pattern/replace subgraph."));

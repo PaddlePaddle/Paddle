@@ -90,8 +90,11 @@ void SeqConvEltAddReluFusePass::ApplyImpl(ir::Graph* graph) const {
   fuse_pattern(x);
 
   // Create New OpDesc
-  auto fuse_creator = [&](Node* seqconv, Node* input, Node* seqconv_weight,
-                          Node* eltadd_bias, Node* relu_out) {
+  auto fuse_creator = [&](Node* seqconv,
+                          Node* input,
+                          Node* seqconv_weight,
+                          Node* eltadd_bias,
+                          Node* relu_out) {
     OpDesc op_desc;
     op_desc.SetType("fusion_seqconv_eltadd_relu");
     op_desc.SetInput("X", {input->Name()});
@@ -134,8 +137,8 @@ void SeqConvEltAddReluFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(relu, relu, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(relu_out, relu_out, fuse_pattern);
 
-    fuse_creator(seqconv, subgraph.at(x), seqconv_weight, eltadd_bias,
-                 relu_out);
+    fuse_creator(
+        seqconv, subgraph.at(x), seqconv_weight, eltadd_bias, relu_out);
     std::unordered_set<const Node*> marked_nodes(
         {seqconv, seqconv_out, eltadd, eltadd_out, relu});
     GraphSafeRemoveNodes(graph, marked_nodes);

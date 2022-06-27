@@ -65,8 +65,10 @@ class DiagonalGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "DiagonalGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Input")), "Output",
-                   framework::GradVarName("Input"), "DiagonalGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Input")),
+                   "Output",
+                   framework::GradVarName("Input"),
+                   "DiagonalGrad");
 
     ctx->SetOutputDim(framework::GradVarName("Input"),
                       ctx->GetInputDim("Input"));
@@ -105,13 +107,17 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(DiagonalGradNoNeedBufferVarsInferer,
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(diagonal, DiagonalInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(diagonal,
+                            DiagonalInferShapeFunctor,
                             PD_INFER_META(phi::DiagonalInferMeta));
 
-REGISTER_OPERATOR(diagonal, ops::DiagonalOp, ops::DiagonalOpMaker,
+REGISTER_OPERATOR(diagonal,
+                  ops::DiagonalOp,
+                  ops::DiagonalOpMaker,
                   ops::DiagonalGradOpMaker<paddle::framework::OpDesc>,
                   ops::DiagonalGradOpMaker<paddle::imperative::OpBase>,
                   DiagonalInferShapeFunctor);
 
-REGISTER_OPERATOR(diagonal_grad, ops::DiagonalGradOp,
+REGISTER_OPERATOR(diagonal_grad,
+                  ops::DiagonalGradOp,
                   ops::DiagonalGradNoNeedBufferVarsInferer)

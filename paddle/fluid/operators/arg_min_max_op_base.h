@@ -58,7 +58,8 @@ class BaseArgMinMaxOpMaker : public framework::OpProtoAndCheckerMaker {
       Computes the indices of the %s elements of the input tensor's element
       along the provided axis.
 )DOC",
-                               OpName(), Name()));
+                               OpName(),
+                               Name()));
   }
 };
 

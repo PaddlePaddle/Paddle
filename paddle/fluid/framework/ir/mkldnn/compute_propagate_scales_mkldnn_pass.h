@@ -44,9 +44,11 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
 
   std::vector<float> GetScales(Tensor* tensor, int axis) const;
 
-  void ComputeVarScales(ir::Graph* graph, Scope* scope,
+  void ComputeVarScales(ir::Graph* graph,
+                        Scope* scope,
                         const std::unordered_set<std::string>& ops,
-                        const std::string& weight_name, const int axis,
+                        const std::string& weight_name,
+                        const int axis,
                         StringPairMap* var_quant_scales) const;
 
   void ComputeSingleGruWeightScales(Scope* scope,
@@ -54,7 +56,8 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
                                     const std::string& wh_var_name,
                                     Tensor* tensor) const;
 
-  void ComputeGruWeightScales(ir::Graph* graph, Scope* scope,
+  void ComputeGruWeightScales(ir::Graph* graph,
+                              Scope* scope,
                               const std::string& wx_name,
                               const std::string& wh_name,
                               StringPairMap* var_quant_scales) const;
@@ -64,24 +67,29 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
                                      const std::string& wh_var_name,
                                      Tensor* tensor) const;
 
-  void ComputeLstmWeightScales(ir::Graph* graph, Scope* scope,
+  void ComputeLstmWeightScales(ir::Graph* graph,
+                               Scope* scope,
                                const std::string& wx_name,
                                const std::string& wh_name,
                                StringPairMap* var_quant_scales) const;
 
-  void ComputeWeightScales(ir::Graph* graph, Scope* scope,
+  void ComputeWeightScales(ir::Graph* graph,
+                           Scope* scope,
                            StringPairMap* var_quant_scales) const;
 
-  void UpdateScaleOpInScale(Node* op_node, const std::string& input_name,
+  void UpdateScaleOpInScale(Node* op_node,
+                            const std::string& input_name,
                             const std::string& output_name,
                             StringPairMap* var_quant_scales) const;
 
   std::unordered_set<std::string> UpdateScales(
-      ir::Graph* graph, StringPairMap* var_quant_scales,
+      ir::Graph* graph,
+      StringPairMap* var_quant_scales,
       const std::unordered_set<std::string>& scale_immutable_ops) const;
 
   void PropagateScales(
-      ir::Graph* graph, StringPairMap* var_quant_scales,
+      ir::Graph* graph,
+      StringPairMap* var_quant_scales,
       const std::unordered_set<std::string>& scale_immutable_ops) const;
 
   void ConvertStringPairMap(

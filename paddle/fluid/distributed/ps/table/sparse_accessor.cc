@@ -173,7 +173,8 @@ bool SparseAccessor::HasMF(int size) {
 }
 
 // from SparseFeatureValue to SparsePullValue
-int32_t SparseAccessor::Select(float** select_values, const float** values,
+int32_t SparseAccessor::Select(float** select_values,
+                               const float** values,
                                size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
@@ -192,7 +193,8 @@ int32_t SparseAccessor::Select(float** select_values, const float** values,
 // first dim: item
 // second dim: field num
 int32_t SparseAccessor::Merge(float** update_values,
-                              const float** other_update_values, size_t num) {
+                              const float** other_update_values,
+                              size_t num) {
   auto embedx_dim = _config.embedx_dim();
   size_t total_dim = SparsePushValue::Dim(embedx_dim);
   for (size_t value_item = 0; value_item < num; ++value_item) {
@@ -210,7 +212,8 @@ int32_t SparseAccessor::Merge(float** update_values,
 // from SparsePushValue to SparseFeatureValue
 // first dim: item
 // second dim: field num
-int32_t SparseAccessor::Update(float** update_values, const float** push_values,
+int32_t SparseAccessor::Update(float** update_values,
+                               const float** push_values,
                                size_t num) {
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
@@ -273,7 +276,8 @@ std::string SparseAccessor::ParseToString(const float* v, int param) {
   os << v[0] << " " << v[1] << " " << v[2] << " " << v[3] << " " << v[4] << " "
      << v[5];
   for (int i = sparse_feature_value.EmbedG2SumIndex();
-       i < sparse_feature_value.EmbedxWIndex(); i++) {
+       i < sparse_feature_value.EmbedxWIndex();
+       i++) {
     os << " " << v[i];
   }
   auto show = sparse_feature_value.Show(const_cast<float*>(v));
@@ -282,7 +286,8 @@ std::string SparseAccessor::ParseToString(const float* v, int param) {
   if (score >= _config.embedx_threshold() &&
       param > sparse_feature_value.EmbedxWIndex()) {
     for (auto i = sparse_feature_value.EmbedxWIndex();
-         i < sparse_feature_value.Dim(); ++i) {
+         i < sparse_feature_value.Dim();
+         ++i) {
       os << " " << v[i];
     }
   }

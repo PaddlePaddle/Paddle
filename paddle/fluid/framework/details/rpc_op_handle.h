@@ -39,8 +39,10 @@ namespace framework {
 namespace details {
 
 struct RPCOpHandle : public OpHandleBase {
-  RPCOpHandle(ir::Node* node, const framework::OpDesc& op_desc,
-              Scope* local_scope, const std::string& name,
+  RPCOpHandle(ir::Node* node,
+              const framework::OpDesc& op_desc,
+              Scope* local_scope,
+              const std::string& name,
               const platform::Place& place);
 
   std::string Name() const override;

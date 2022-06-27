@@ -371,19 +371,6 @@ TEST(AnalysisPredictor, enable_onnxruntime) {
   ASSERT_TRUE(!config.use_onnxruntime());
 }
 
-TEST(AnalysisPredictor, exp_enable_use_gpu_fp16) {
-  AnalysisConfig config;
-  config.SwitchIrOptim();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  config.EnableUseGpu(100, 0);
-  config.Exp_EnableUseGpuFp16();
-  ASSERT_TRUE(config.gpu_fp16_enabled());
-#else
-  config.DisableGpu();
-#endif
-  LOG(INFO) << config.Summary();
-}
-
 }  // namespace paddle
 
 namespace paddle_infer {
@@ -443,19 +430,6 @@ TEST(Predictor, EnableONNXRuntime) {
   auto predictor = CreatePredictor(config);
 }
 
-TEST(Predictor, Exp_EnableUseGpuFp16) {
-  Config config;
-  config.SetModel(FLAGS_dirname);
-  config.SwitchIrOptim();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  config.EnableUseGpu(100, 0);
-  config.Exp_EnableUseGpuFp16();
-#else
-  config.DisableGpu();
-#endif
-  auto predictor = CreatePredictor(config);
-}
-
 TEST(Tensor, CpuShareExternalData) {
   Config config;
   config.SetModel(FLAGS_dirname);
@@ -476,8 +450,8 @@ TEST(Tensor, CpuShareExternalData) {
   auto out = predictor->GetOutputHandle("fc_1.tmp_2");
   auto out_shape = out->shape();
   std::vector<float> out_data;
-  out_data.resize(std::accumulate(out_shape.begin(), out_shape.end(), 1,
-                                  std::multiplies<int>()));
+  out_data.resize(std::accumulate(
+      out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()));
   out->ShareExternalData<float>(out_data.data(), out_shape, PlaceType::kCPU);
 
   predictor->Run();
@@ -507,7 +481,9 @@ TEST(Tensor, GpuShareExternalData) {
 
   for (size_t i = 0; i < 4; ++i) {
     cudaMalloc(reinterpret_cast<void**>(&input_gpu[i]), 4 * sizeof(int64_t));
-    cudaMemcpy(input_gpu[i], input_data[i].data(), 4 * sizeof(int64_t),
+    cudaMemcpy(input_gpu[i],
+               input_data[i].data(),
+               4 * sizeof(int64_t),
                cudaMemcpyHostToDevice);
   }
 
@@ -519,9 +495,10 @@ TEST(Tensor, GpuShareExternalData) {
   auto out = predictor->GetOutputHandle("fc_1.tmp_2");
   auto out_shape = out->shape();
   float* out_data = nullptr;
-  auto out_size = std::accumulate(out_shape.begin(), out_shape.end(), 1,
-                                  std::multiplies<int>()) *
-                  sizeof(float);
+  auto out_size =
+      std::accumulate(
+          out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()) *
+      sizeof(float);
   cudaMalloc(reinterpret_cast<void**>(out_data), out_size * sizeof(float));
   out->ShareExternalData<float>(out_data, out_shape, PlaceType::kGPU);
 

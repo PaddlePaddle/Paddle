@@ -44,9 +44,11 @@ class ElementwiseMaxGradXPUKernel : public ElemwiseGradKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(elementwise_max, ops::ElementwiseMaxXPUKernel<float>,
+REGISTER_OP_XPU_KERNEL(elementwise_max,
+                       ops::ElementwiseMaxXPUKernel<float>,
                        ops::ElementwiseMaxXPUKernel<paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
-    elementwise_max_grad, ops::ElementwiseMaxGradXPUKernel<float>,
+    elementwise_max_grad,
+    ops::ElementwiseMaxGradXPUKernel<float>,
     ops::ElementwiseMaxGradXPUKernel<paddle::platform::float16>);
 #endif

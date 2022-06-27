@@ -72,7 +72,9 @@ struct FusedResidualDropoutBiasTester {
     ctx = reinterpret_cast<platform::CUDADeviceContext *>(device_ctx);
   }
 
-  FusedResidualDropoutBiasTester(int rows, int cols, uint64_t seed = 0,
+  FusedResidualDropoutBiasTester(int rows,
+                                 int cols,
+                                 uint64_t seed = 0,
                                  float dropout_prob = 0.0,
                                  bool is_upscale_in_train = false,
                                  bool is_test = false)
@@ -144,11 +146,25 @@ struct FusedResidualDropoutBiasTester {
         }
       }
       // call dropout
-      Dropout<T>(bias_out, src.dims(), &correct_out, &correct_mask, *ctx, seed,
-                 dropout_prob, is_upscale_in_train, is_test);
+      Dropout<T>(bias_out,
+                 src.dims(),
+                 &correct_out,
+                 &correct_mask,
+                 *ctx,
+                 seed,
+                 dropout_prob,
+                 is_upscale_in_train,
+                 is_test);
     } else {
-      Dropout<T>(src_vec, src.dims(), &correct_out, &correct_mask, *ctx, seed,
-                 dropout_prob, is_upscale_in_train, is_test);
+      Dropout<T>(src_vec,
+                 src.dims(),
+                 &correct_out,
+                 &correct_mask,
+                 *ctx,
+                 seed,
+                 dropout_prob,
+                 is_upscale_in_train,
+                 is_test);
     }
     ctx->Wait();
     PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
@@ -164,8 +180,13 @@ struct FusedResidualDropoutBiasTester {
   }
 
   void BaseBackward() {
-    DropoutGrad<T>(&correct_dsrc, src.dims(), correct_out, correct_mask, *ctx,
-                   dropout_prob, is_upscale_in_train);
+    DropoutGrad<T>(&correct_dsrc,
+                   src.dims(),
+                   correct_out,
+                   correct_mask,
+                   *ctx,
+                   dropout_prob,
+                   is_upscale_in_train);
     // calc dbias
     memset(&correct_dbias[0], 0, cols * sizeof(T));
     if (has_bias) {
@@ -175,9 +196,11 @@ struct FusedResidualDropoutBiasTester {
 
   void FusedForward() {
     const int VecSize = MAX_CACHE_BYTES / sizeof(T);
-    auto config = paddle::operators::Get1DBlocksAnd2DGrids(
-        *ctx, static_cast<uint64_t>(rows), static_cast<uint64_t>(cols),
-        VecSize);
+    auto config =
+        paddle::operators::Get1DBlocksAnd2DGrids(*ctx,
+                                                 static_cast<uint64_t>(rows),
+                                                 static_cast<uint64_t>(cols),
+                                                 VecSize);
 
     const int increment = ((cols - 1) / (config.thread_per_block.x *
                                          config.block_per_grid.x * VecSize) +
@@ -187,9 +210,19 @@ struct FusedResidualDropoutBiasTester {
     T *bias_ptr = has_bias ? bias.data<T>() : nullptr;
     T *residual_ptr = add_residual ? residual.data<T>() : nullptr;
     paddle::operators::LaunchResidualDropoutBias<T, uint8_t>(
-        rows, cols, increment, seed, dropout_prob, is_test, is_upscale_in_train,
-        src.data<T>(), residual_ptr, bias_ptr, mask.data<uint8_t>(),
-        out.data<T>(), *ctx);
+        rows,
+        cols,
+        increment,
+        seed,
+        dropout_prob,
+        is_test,
+        is_upscale_in_train,
+        src.data<T>(),
+        residual_ptr,
+        bias_ptr,
+        mask.data<uint8_t>(),
+        out.data<T>(),
+        *ctx);
     ctx->Wait();
     PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
   }
@@ -201,8 +234,15 @@ struct FusedResidualDropoutBiasTester {
 
     T *bias_ptr = has_bias ? dbias.data<T>() : nullptr;
     paddle::operators::LaunchResidualDropoutBiasGrad<T, uint8_t>(
-        out.data<T>(), mask.data<uint8_t>(), dropout_prob, is_upscale_in_train,
-        rows, cols, dsrc.data<T>(), bias_ptr, *ctx);
+        out.data<T>(),
+        mask.data<uint8_t>(),
+        dropout_prob,
+        is_upscale_in_train,
+        rows,
+        cols,
+        dsrc.data<T>(),
+        bias_ptr,
+        *ctx);
   }
 
   void Run() {
@@ -289,8 +329,8 @@ TEST(FusedDropout, GPUFusedResidualDropoutBiasIsUpscaleInTrain) {
   const int rows = 16;
   const int cols = 16;
   for (auto is_upscale_in_train : {true, false}) {
-    FusedResidualDropoutBiasTester<float> test(rows, cols, 0, 1.0,
-                                               is_upscale_in_train, false);
+    FusedResidualDropoutBiasTester<float> test(
+        rows, cols, 0, 1.0, is_upscale_in_train, false);
     test.Run();
     test.CheckOut(static_cast<float>(1e-5));
     test.CheckGrad(static_cast<float>(1e-5));
@@ -309,8 +349,8 @@ TEST(FusedDropout, GPUFusedResidualDropoutBiasIsTest) {
 TEST(FusedDropout, GPUFusedResidualDropoutBiasSeed) {
   const int rows = 16;
   const int cols = 16;
-  FusedResidualDropoutBiasTester<float> test(rows, cols, 125, 0.0, false,
-                                             false);
+  FusedResidualDropoutBiasTester<float> test(
+      rows, cols, 125, 0.0, false, false);
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
   test.CheckGrad(static_cast<float>(1e-5));
@@ -350,8 +390,8 @@ TEST(FusedDropout, GPUFusedResidualDropoutBiasLargeShapeFp16) {
   if (std::getenv("_cols") != nullptr) {
     cols = atoi(std::getenv("_cols"));
   }
-  FusedResidualDropoutBiasTester<platform::float16> test(rows, cols, 0, 0.0,
-                                                         true, true);
+  FusedResidualDropoutBiasTester<platform::float16> test(
+      rows, cols, 0, 0.0, true, true);
   test.Run();
   test.CheckOut(static_cast<platform::float16>(1e-1));
   test.CheckGrad(static_cast<platform::float16>(1e-1));

@@ -34,7 +34,9 @@ class SubGraph {
  public:
   SubGraph() = default;
   explicit SubGraph(int type) : type_(type) {}
-  SubGraph(int type, std::string func_name, bool save_intermediate_out,
+  SubGraph(int type,
+           std::string func_name,
+           bool save_intermediate_out,
            const std::unordered_set<Node*>& nodes_set)
       : type_(type),
         func_name_(func_name),

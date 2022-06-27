@@ -68,8 +68,8 @@ class SoftmaxOp : public framework::OperatorWithKernel {
               "float16 can only be used on GPU/NPU/XPU/MLU place"));
     }
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
-                                   library_);
+    return framework::OpKernelType(
+        input_data_type, ctx.GetPlace(), layout_, library_);
   }
 };
 
@@ -181,8 +181,8 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
             "float16 can only be used on GPU/NPU/XPU/MLU place"));
     }
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
-                                   library_);
+    return framework::OpKernelType(
+        input_data_type, ctx.GetPlace(), layout_, library_);
   }
 };
 
@@ -211,14 +211,20 @@ DECLARE_INPLACE_OP_INFERER(SoftmaxInplaceInferer, {"X", "Out"});
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(softmax, SoftmaxInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(softmax,
+                            SoftmaxInferShapeFunctor,
                             PD_INFER_META(phi::SoftmaxInferMeta));
-REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
+REGISTER_OPERATOR(softmax,
+                  ops::SoftmaxOp,
+                  ops::SoftmaxOpMaker,
                   ops::SoftmaxOpInferVarType,
                   ops::SoftmaxOpGradMaker<paddle::framework::OpDesc>,
                   ops::SoftmaxOpGradMaker<paddle::imperative::OpBase>,
-                  ops::SoftmaxInplaceInferer, SoftmaxInferShapeFunctor);
-DECLARE_INFER_SHAPE_FUNCTOR(softmax_grad, SoftmaxGradInferShapeFunctor,
+                  ops::SoftmaxInplaceInferer,
+                  SoftmaxInferShapeFunctor);
+DECLARE_INFER_SHAPE_FUNCTOR(softmax_grad,
+                            SoftmaxGradInferShapeFunctor,
                             PD_INFER_META(phi::GeneralUnaryGradInferMeta));
-REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad,
+REGISTER_OPERATOR(softmax_grad,
+                  ops::SoftmaxOpGrad,
                   SoftmaxGradInferShapeFunctor);

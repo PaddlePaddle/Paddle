@@ -50,7 +50,8 @@ bool InterpretercoreInferShapeContext::HasInput(const std::string& name) const {
   const auto& in = it->second;
   if (in.size() == 0) return false;
   PADDLE_ENFORCE_EQ(
-      in.size(), 1UL,
+      in.size(),
+      1UL,
       platform::errors::InvalidArgument(
           "Input %s should not contain more than one inputs.", name));
   return in[0] != nullptr;
@@ -69,7 +70,8 @@ bool InterpretercoreInferShapeContext::HasOutput(
     return false;
   }
   PADDLE_ENFORCE_EQ(
-      out.size(), 1UL,
+      out.size(),
+      1UL,
       platform::errors::InvalidArgument(
           "Output %s should not contain more than one outputs.", name));
   return out[0] != nullptr;
@@ -132,11 +134,14 @@ std::string InterpretercoreInferShapeContext::GetInputNameByIdx(
     size_t idx) const {
   auto& op_proto =
       paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
-  PADDLE_ENFORCE_LT(idx, op_proto->inputs().size(),
+  PADDLE_ENFORCE_LT(idx,
+                    op_proto->inputs().size(),
                     platform::errors::OutOfRange(
                         "The index should be less than the size of inputs of "
                         "operator %s, but got index is %d and size is %d",
-                        op_.Type(), idx, op_proto->inputs().size()));
+                        op_.Type(),
+                        idx,
+                        op_proto->inputs().size()));
   return op_proto->inputs()[idx].name();
 }
 
@@ -144,40 +149,51 @@ std::string InterpretercoreInferShapeContext::GetOutputNameByIdx(
     size_t idx) const {
   auto& op_proto =
       paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
-  PADDLE_ENFORCE_LT(idx, op_proto->outputs().size(),
+  PADDLE_ENFORCE_LT(idx,
+                    op_proto->outputs().size(),
                     platform::errors::OutOfRange(
                         "The index should be less than the size of outputs of "
                         "operator %s, but got index is %d and size is %d",
-                        op_.Type(), idx, op_proto->outputs().size()));
+                        op_.Type(),
+                        idx,
+                        op_proto->outputs().size()));
   return op_proto->outputs()[idx].name();
 }
 
 void InterpretercoreInferShapeContext::ShareDim(const std::string& in,
                                                 const std::string& out,
-                                                size_t i, size_t j) {
+                                                size_t i,
+                                                size_t j) {
   auto in_it = ctx_.inputs.find(in);
   auto out_it = ctx_.outputs.find(out);
-  PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
+  PADDLE_ENFORCE_NE(in_it,
+                    ctx_.inputs.end(),
                     platform::errors::NotFound("Input %s does not exist.", in));
   PADDLE_ENFORCE_NE(
-      out_it, ctx_.outputs.end(),
+      out_it,
+      ctx_.outputs.end(),
       platform::errors::NotFound("Output %s does not exist.", out));
-  PADDLE_ENFORCE_LT(i, in_it->second.size(),
+  PADDLE_ENFORCE_LT(i,
+                    in_it->second.size(),
                     platform::errors::InvalidArgument(
                         "The index of input dimension is out of range, "
                         "excepted index less than %zu, but received %zu.",
-                        in_it->second.size(), i));
-  PADDLE_ENFORCE_LT(j, out_it->second.size(),
+                        in_it->second.size(),
+                        i));
+  PADDLE_ENFORCE_LT(j,
+                    out_it->second.size(),
                     platform::errors::InvalidArgument(
                         "The index of output dimension is out of range, "
                         "excepted index less than %zu, but received %zu.",
-                        out_it->second.size(), j));
+                        out_it->second.size(),
+                        j));
 
   Variable* in_var = in_it->second[i];
   Variable* out_var = out_it->second[j];
 
   PADDLE_ENFORCE_EQ(
-      in_var->Type(), out_var->Type(),
+      in_var->Type(),
+      out_var->Type(),
       platform::errors::InvalidArgument(
           "The type of input (%s) and output (%s) are inconsistent.", in, out));
 
@@ -202,10 +218,12 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
     const std::string& in, const std::string& out) const {
   auto in_it = ctx_.inputs.find(in);
   auto out_it = ctx_.outputs.find(out);
-  PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
+  PADDLE_ENFORCE_NE(in_it,
+                    ctx_.inputs.end(),
                     platform::errors::NotFound(
                         "Input [%s] found error in Op [%s]", in, op_.Type()));
-  PADDLE_ENFORCE_NE(out_it, ctx_.outputs.end(),
+  PADDLE_ENFORCE_NE(out_it,
+                    ctx_.outputs.end(),
                     platform::errors::NotFound(
                         "Output [%s] found error in Op [%s]", out, op_.Type()));
 
@@ -213,7 +231,8 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
   auto& out_var_list = out_it->second;
 
   PADDLE_ENFORCE_EQ(
-      in_var_list.size(), out_var_list.size(),
+      in_var_list.size(),
+      out_var_list.size(),
       platform::errors::PreconditionNotMet(
           "Op [%s]: Input var size should be equal with output var size",
           op_.Type()));
@@ -228,10 +247,12 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
     Variable* in_var = in_var_list[i];
     if (!in_var->IsType<LoDTensor>()) return;
     Variable* out_var = out_var_list[i];
-    PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "The %d-th output of Output(%s) must be LoDTensor.",
-                          i, out_var_names[i]));
+                          i,
+                          out_var_names[i]));
     auto& in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
@@ -244,33 +265,41 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
 
 void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
                                                 const std::string& out,
-                                                size_t i, size_t j) const {
+                                                size_t i,
+                                                size_t j) const {
   if (can_skip_lod_) {
     return;
   }
   auto in_it = ctx_.inputs.find(in);
   auto out_it = ctx_.outputs.find(out);
-  PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
+  PADDLE_ENFORCE_NE(in_it,
+                    ctx_.inputs.end(),
                     platform::errors::NotFound("Input %s does not exist.", in));
   PADDLE_ENFORCE_NE(
-      out_it, ctx_.outputs.end(),
+      out_it,
+      ctx_.outputs.end(),
       platform::errors::NotFound("Output %s does not exist.", out));
-  PADDLE_ENFORCE_LT(i, in_it->second.size(),
+  PADDLE_ENFORCE_LT(i,
+                    in_it->second.size(),
                     platform::errors::InvalidArgument(
                         "The index of input dimension is out of range, "
                         "excepted index less than %zu, but received %zu.",
-                        in_it->second.size(), i));
-  PADDLE_ENFORCE_LT(j, out_it->second.size(),
+                        in_it->second.size(),
+                        i));
+  PADDLE_ENFORCE_LT(j,
+                    out_it->second.size(),
                     platform::errors::InvalidArgument(
                         "The index of output dimension is out of range, "
                         "excepted index less than %zu, but received %zu.",
-                        out_it->second.size(), j));
+                        out_it->second.size(),
+                        j));
 
   Variable* in_var = in_it->second.at(i);
   if (!in_var->IsType<LoDTensor>()) return;
   Variable* out_var = out_it->second.at(j);
   PADDLE_ENFORCE_EQ(
-      out_var->IsType<LoDTensor>(), true,
+      out_var->IsType<LoDTensor>(),
+      true,
       platform::errors::InvalidArgument(
           "The %zu-th output of Output(%s) must be LoDTensor.", j, out));
   auto& in_tensor = in_var->Get<LoDTensor>();
@@ -353,10 +382,12 @@ DDim InterpretercoreInferShapeContext::GetInputDim(
     const std::string& name) const {
   const std::vector<Variable*>& vars = InputVars(name);
   PADDLE_ENFORCE_EQ(
-      vars.size(), 1UL,
+      vars.size(),
+      1UL,
       platform::errors::InvalidArgument(
           "Input(%s) should hold one element, but now it holds %zu elements.",
-          name, vars.size()));
+          name,
+          vars.size()));
   return this->GetDim(vars[0]);
 }
 
@@ -387,10 +418,12 @@ void InterpretercoreInferShapeContext::SetOutputDim(const std::string& name,
                                                     const DDim& dim) {
   auto& vars = OutputVars(name);
   PADDLE_ENFORCE_EQ(
-      vars.size(), 1UL,
+      vars.size(),
+      1UL,
       platform::errors::InvalidArgument("Output(%s) should hold one element, "
                                         "but now it holds %zu elements.",
-                                        name, vars.size()));
+                                        name,
+                                        vars.size()));
   SetDim(vars[0], dim);
 }
 
@@ -433,8 +466,10 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetDims(
     const std::vector<Variable*>& vars) const {
   std::vector<DDim> ret;
   ret.reserve(vars.size());
-  std::transform(vars.begin(), vars.end(), std::back_inserter(ret),
-                 [this](Variable* var) { return this->GetDim(var); });
+  std::transform(
+      vars.begin(), vars.end(), std::back_inserter(ret), [this](Variable* var) {
+        return this->GetDim(var);
+      });
   return ret;
 }
 
@@ -460,12 +495,14 @@ void InterpretercoreInferShapeContext::SetDim(Variable* var, const DDim& dim) {
 void InterpretercoreInferShapeContext::SetDims(
     const std::vector<Variable*>& vars, const std::vector<DDim>& dims) {
   size_t length = vars.size();
-  PADDLE_ENFORCE_EQ(length, dims.size(),
+  PADDLE_ENFORCE_EQ(length,
+                    dims.size(),
                     platform::errors::InvalidArgument(
                         "The number of input variables do not match the "
                         "number of input dimensions, the number of variables "
                         "is %zu, the number of dimensions is %zu.",
-                        length, dims.size()));
+                        length,
+                        dims.size()));
   for (size_t i = 0; i < length; ++i) {
     if (vars[i] == nullptr) {
       continue;
@@ -485,9 +522,12 @@ std::vector<proto::VarType::Type> InterpretercoreInferShapeContext::GetVarTypes(
   std::vector<proto::VarType::Type> retv;
   retv.resize(vars.size());
   std::transform(
-      vars.begin(), vars.end(), retv.begin(),
+      vars.begin(),
+      vars.end(),
+      retv.begin(),
       std::bind(std::mem_fn(&InterpretercoreInferShapeContext::GetVarType),
-                this, std::placeholders::_1));
+                this,
+                std::placeholders::_1));
   return retv;
 }
 
@@ -500,9 +540,10 @@ const std::vector<Variable*>& InterpretercoreInferShapeContext::InputVars(
     const std::string& name) const {
   auto it = ctx_.inputs.find(name);
   PADDLE_ENFORCE_NE(
-      it, ctx_.inputs.end(),
-      platform::errors::NotFound("Operator (%s) does not have the input (%s).",
-                                 op_.Type(), name));
+      it,
+      ctx_.inputs.end(),
+      platform::errors::NotFound(
+          "Operator (%s) does not have the input (%s).", op_.Type(), name));
   return it->second;
 }
 
@@ -510,7 +551,8 @@ const std::vector<Variable*>& InterpretercoreInferShapeContext::OutputVars(
     const std::string& name) const {
   auto it = ctx_.outputs.find(name);
   PADDLE_ENFORCE_NE(
-      it, ctx_.outputs.end(),
+      it,
+      ctx_.outputs.end(),
       platform::errors::NotFound(
           "Operator (%s) does not have the outputs (%s).", op_.Type(), name));
   return it->second;
@@ -523,7 +565,8 @@ VariableScope::VariableScope(Scope* scope) {
   vec_meta_info_.emplace_back(0, nullptr);
   scope_ = scope;
   PADDLE_ENFORCE_NE(
-      scope, nullptr,
+      scope,
+      nullptr,
       platform::errors::PreconditionNotMet(
           "You have passed a nullptr to construct VariableScope."));
   listener_ = std::make_shared<VariableScopeListener>(this);
@@ -548,11 +591,14 @@ void VariableScope::SetLocalScope(Scope* local_scope) {
 Variable* VariableScope::FindVar(const std::string& name) const {
   auto it = name2id_.find(name);
   if (it != name2id_.end()) {
-    PADDLE_ENFORCE_LT(it->second, var_list_.size(),
+    PADDLE_ENFORCE_LT(it->second,
+                      var_list_.size(),
                       platform::errors::NotFound(
                           "The id(%d) of variable(%s) should not be larger "
                           "than the size of variable list(%d).",
-                          it->second, name, var_list_.size()));
+                          it->second,
+                          name,
+                          var_list_.size()));
     return var_list_[it->second];
   }
   return nullptr;
@@ -574,7 +620,8 @@ std::string VariableScope::GetNameById(int id) const {
   // typically when the target variable is not existed in the original program
   // desc, but created by interpretercore.
   // For example, created and used by d2h_copy or h2d_copy operator.
-  auto it = std::find_if(name2id_.begin(), name2id_.end(),
+  auto it = std::find_if(name2id_.begin(),
+                         name2id_.end(),
                          [id](const auto& pair) { return pair.second == id; });
   if (it != name2id_.end()) {
     return it->first;
@@ -648,15 +695,18 @@ bool VariableScope::GetVarSikpInplace(int id) const {
 }
 
 void VariableScope::CheckExist(int id) const {
-  PADDLE_ENFORCE_LT(id, var_list_.size(),
+  PADDLE_ENFORCE_LT(id,
+                    var_list_.size(),
                     platform::errors::PreconditionNotMet(
                         "Required var_id < %d, but received var_id = %d.",
-                        var_list_.size(), id));
+                        var_list_.size(),
+                        id));
 }
 
 void VariableScope::CheckExist(const std::string& name) const {
   PADDLE_ENFORCE_EQ(
-      HasVar(name), true,
+      HasVar(name),
+      true,
       platform::errors::NotFound("%s not in VariableScope.", name));
 }
 
@@ -709,10 +759,12 @@ void VariableScopeListener::onCreateScope(Scope* Scope) {}
 void VariableScopeListener::onDeleteScope(Scope* Scope) {}
 void VariableScopeListener::onClear() {}
 
-Instruction::Instruction(size_t id, OpFuncNode&& op_func_node,
+Instruction::Instruction(size_t id,
+                         OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx)
     : id_(id), op_func_node_(op_func_node), dev_ctx_(dev_ctx) {
-  PADDLE_ENFORCE_GE(id, 0,
+  PADDLE_ENFORCE_GE(id,
+                    0,
                     platform::errors::PreconditionNotMet(
                         "Required id >= 0, but received id = %d", id));
 }
@@ -745,8 +797,9 @@ const std::map<int, int>& Instruction::InplaceBackMap() const {
 
 OperatorBase* Instruction::OpBase() const {
   auto op_base = op_func_node_.operator_base_;
-  PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
-                                       "op_base shall not be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      op_base,
+      platform::errors::PreconditionNotMet("op_base shall not be nullptr."));
   return op_base.get();
 }
 

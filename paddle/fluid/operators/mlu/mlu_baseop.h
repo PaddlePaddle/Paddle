@@ -1583,11 +1583,13 @@ class MLUCnnl {
                         const cnnlTensorDescriptor_t output_desc,
                         void* output);
 
-  static void TrilTriu(const ExecutionContext& ctx, const int diagonal_k,
+  static void TrilTriu(const ExecutionContext& ctx,
+                       const int diagonal_k,
                        const bool tri_up_mode,
                        const cnnlTensorDescriptor_t input_desc,
                        const void* input,
-                       const cnnlTensorDescriptor_t output_desc, void* output);
+                       const cnnlTensorDescriptor_t output_desc,
+                       void* output);
 
   static void MatrixBandPart(const ExecutionContext& ctx,
                              const cnnlTensorDescriptor_t data_desc,

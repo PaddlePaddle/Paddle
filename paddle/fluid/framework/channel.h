@@ -255,8 +255,10 @@ class ChannelObject {
     return !closed_;
   }
 
-  size_t Read(size_t n, T* p, std::unique_lock<std::mutex>& lock,  // NOLINT
-              bool once = false) {                                 // NOLINT
+  size_t Read(size_t n,
+              T* p,
+              std::unique_lock<std::mutex>& lock,  // NOLINT
+              bool once = false) {                 // NOLINT
     size_t finished = 0;
     CHECK(n <= MaxCapacity() - reading_count_);
     reading_count_ += n;

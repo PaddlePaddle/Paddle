@@ -36,7 +36,8 @@ class StandaloneExecutor : public ExecutorBase {
  public:
   StandaloneExecutor(const platform::Place& place,
                      const ProgramDesc& startup_prog,
-                     const ProgramDesc& main_prog, Scope* scope);
+                     const ProgramDesc& main_prog,
+                     Scope* scope);
 
   ~StandaloneExecutor() {}
 
@@ -61,7 +62,8 @@ class StandaloneExecutor : public ExecutorBase {
 
   std::shared_ptr<InterpreterCore> GetInterpreterCore(
       const std::vector<std::string>& feed_names,
-      const std::vector<std::string>& fetch_names, bool add_fetch_op);
+      const std::vector<std::string>& fetch_names,
+      bool add_fetch_op);
 
   platform::Place place_;
   const ProgramDesc& startup_prog_;

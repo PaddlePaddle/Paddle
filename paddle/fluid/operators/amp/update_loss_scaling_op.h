@@ -53,11 +53,14 @@ inline HOSTDEVICE bool IsFoundNanInf(const bool* found_nan_inf_data) {
 template <typename T, typename FoundInfFlagT>
 inline HOSTDEVICE void Update(const FoundInfFlagT found_inf_data,
                               const T* pre_loss_scaling_data,
-                              const int* good_in_data, const int* bad_in_data,
+                              const int* good_in_data,
+                              const int* bad_in_data,
                               const int incr_every_n_steps,
                               const int decr_every_n_nan_or_inf,
-                              const float incr_ratio, const float decr_ratio,
-                              T* updated_loss_scaling_data, int* good_out_data,
+                              const float incr_ratio,
+                              const float decr_ratio,
+                              T* updated_loss_scaling_data,
+                              int* good_out_data,
                               int* bad_out_data) {
   if (IsFoundNanInf(found_inf_data)) {
     *good_out_data = 0;
@@ -85,18 +88,25 @@ inline HOSTDEVICE void Update(const FoundInfFlagT found_inf_data,
 template <typename DeviceContext, typename T, bool IsFoundInfOnCPU>
 class UpdateLossScalingFunctor {
  public:
-  void operator()(const DeviceContext& dev_ctx, const bool* found_inf_data,
-                  const T* pre_loss_scaling_data, const int* good_in_data,
-                  const int* bad_in_data, const int incr_every_n_steps,
-                  const int decr_every_n_nan_or_inf, const float incr_ratio,
-                  const float decr_ratio, T* updated_loss_scaling_data,
-                  int* good_out_data, int* bad_out_data) const;
+  void operator()(const DeviceContext& dev_ctx,
+                  const bool* found_inf_data,
+                  const T* pre_loss_scaling_data,
+                  const int* good_in_data,
+                  const int* bad_in_data,
+                  const int incr_every_n_steps,
+                  const int decr_every_n_nan_or_inf,
+                  const float incr_ratio,
+                  const float decr_ratio,
+                  T* updated_loss_scaling_data,
+                  int* good_out_data,
+                  int* bad_out_data) const;
 };
 
 template <typename DeviceContext, typename T>
 class LazyZeros {
  public:
-  void operator()(const DeviceContext& dev_ctx, const bool* found_inf_data,
+  void operator()(const DeviceContext& dev_ctx,
+                  const bool* found_inf_data,
                   const std::vector<const framework::Tensor*>& xs,
                   const std::vector<framework::Tensor*>& outs) const;
 };
@@ -112,7 +122,8 @@ class UpdateLossScalingKernel : public framework::OpKernel<T> {
     const auto xs = ctx.MultiInput<framework::Tensor>("X");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
     const auto* found_inf = ctx.Input<Tensor>("FoundInfinite");
-    PADDLE_ENFORCE_EQ(found_inf->numel(), 1,
+    PADDLE_ENFORCE_EQ(found_inf->numel(),
+                      1,
                       platform::errors::InvalidArgument(
                           "FoundInfinite must has only one element."));
     const bool* found_inf_data = found_inf->data<bool>();
@@ -137,8 +148,8 @@ class UpdateLossScalingKernel : public framework::OpKernel<T> {
         stop_update = stop_update_tensor->data<bool>()[0];
       } else {
         framework::Tensor tmp_tensor;
-        framework::TensorCopySync(*stop_update_tensor, platform::CPUPlace(),
-                                  &tmp_tensor);
+        framework::TensorCopySync(
+            *stop_update_tensor, platform::CPUPlace(), &tmp_tensor);
         stop_update = tmp_tensor.data<bool>()[0];
       }
     }
@@ -169,14 +180,32 @@ class UpdateLossScalingKernel : public framework::OpKernel<T> {
     const float decr_ratio = ctx.Attr<float>("decr_ratio");
     if (is_found_inf_on_cpu) {
       UpdateLossScalingFunctor<DeviceContext, MPDType, true>{}(
-          dev_ctx, found_inf_data, pre_loss_scaling_data, good_in_data,
-          bad_in_data, incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio,
-          decr_ratio, updated_loss_scaling_data, good_out_data, bad_out_data);
+          dev_ctx,
+          found_inf_data,
+          pre_loss_scaling_data,
+          good_in_data,
+          bad_in_data,
+          incr_every_n_steps,
+          decr_every_n_nan_or_inf,
+          incr_ratio,
+          decr_ratio,
+          updated_loss_scaling_data,
+          good_out_data,
+          bad_out_data);
     } else {
       UpdateLossScalingFunctor<DeviceContext, MPDType, false>{}(
-          dev_ctx, found_inf_data, pre_loss_scaling_data, good_in_data,
-          bad_in_data, incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio,
-          decr_ratio, updated_loss_scaling_data, good_out_data, bad_out_data);
+          dev_ctx,
+          found_inf_data,
+          pre_loss_scaling_data,
+          good_in_data,
+          bad_in_data,
+          incr_every_n_steps,
+          decr_every_n_nan_or_inf,
+          incr_ratio,
+          decr_ratio,
+          updated_loss_scaling_data,
+          good_out_data,
+          bad_out_data);
     }
   }
 };
