@@ -63,11 +63,15 @@ class TestCinnLaunchOp : public ::testing::Test {
 
     // create cinn_launch_op and elementwise_add op
     cinn_launch_op = paddle::framework::OpRegistry::CreateOp(
-        "cinn_launch", {{"X", {"x", "y"}}}, {{"Out", {test_op_out_name}}},
+        "cinn_launch",
+        {{"X", {"x", "y"}}},
+        {{"Out", {test_op_out_name}}},
         {{"compilation_key", compilation_key}});
-    elementwise_add_op = paddle::framework::OpRegistry::CreateOp(
-        "elementwise_add", {{"X", {"x"}}, {"Y", {"y"}}},
-        {{"Out", {add_op_out_name}}}, {{}});
+    elementwise_add_op =
+        paddle::framework::OpRegistry::CreateOp("elementwise_add",
+                                                {{"X", {"x"}}, {"Y", {"y"}}},
+                                                {{"Out", {add_op_out_name}}},
+                                                {{}});
   }
 
   void RunAndCheck(const platform::Place& place) {

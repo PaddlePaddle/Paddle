@@ -30,10 +30,12 @@ TODO: Documentation of {{api_name}} op.
   {% set name = input["name"] %}
   {% set typename = input["typename"] %}
 AddInput({{name| to_opmaker_name}}, "({{typename}}), input {{i}} of {{op_name}} op.")
-  {%- if typename is vec +%}
+  {%- if typename is vec %}
+
     .AsDuplicable()
   {%- endif %}
-  {%- if input["optional"] +%}
+  {%- if input["optional"] %}
+
     .AsDispensable()
   {%- endif %}
 {%- endmacro %}
@@ -44,10 +46,12 @@ AddInput({{name| to_opmaker_name}}, "({{typename}}), input {{i}} of {{op_name}} 
   {% set typename = output["typename"] %}
   {% set is_intermediate = output["intermediate"] %}
 AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name}} op.")
-  {%- if typename is vec +%}
+  {%- if typename is vec %}
+
     .AsDuplicable()
   {%- endif %}
-  {%- if is_intermediate +%}
+  {%- if is_intermediate %}
+
     .AsIntermediate()
   {%- endif %}
 {%- endmacro %}
@@ -67,7 +71,7 @@ AddInput("{{name | to_pascal_case}}TensorList", "attribute {{i}} for {{op_name}}
     .AsDispensable();
   {% endif %}
 AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_type}}), attribute {{i}} for {{op_name}} op.")
-  {%- if "default_value" in attr +%}
+  {% if "default_value" in attr %}
     .SetDefault({{process_default_value(attr)}})
   {%- endif %}
 {%- endmacro %}
@@ -128,7 +132,9 @@ PD_REGISTER_ARG_MAPPING_FN({{api["name"]}}, phi::{{api["name"] | to_pascal_case}
 {% macro get_input_list(inputs, kernel_args) %}{# inline #}
 paddle::small_vector<const char*> inputs {
 {%- for input in inputs %}
+{%- if input["name"] in kernel_args %}
 {{input["name"] | to_opmaker_name_cstr}}{{", " if not loop.last}}
+{%- endif %}
 {%- endfor %}
 }
 {%- endmacro %}

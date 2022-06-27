@@ -47,6 +47,61 @@ inline cusparseOperation_t GetTransposeOperation(const bool trans) {
   }
 }
 
+template <typename T, typename IntT>
+inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
+                                const phi::GPUContext& dev_ctx,
+                                cusparseSpMatDescr_t* descriptor) {
+  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  auto x_ndims = xdim_vec.size();
+  PADDLE_ENFORCE_GE(
+      x_ndims,
+      2,
+      phi::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
+                                   "greater than or eaqual to 2."));
+  int64_t M = xdim_vec[x_ndims - 2];
+  int64_t N = xdim_vec[x_ndims - 1];
+  int batch_size = 1;
+  for (int i = 0; i < x_ndims - 2; i++) {
+    batch_size *= xdim_vec[i];
+  }
+  PADDLE_ENFORCE_EQ(x.non_zero_crows().numel(),
+                    batch_size * (M + 1),
+                    phi::errors::PreconditionNotMet(
+                        "the length of SparseCsrTensor crows is not right."));
+
+  const IntT* crows_data = x.non_zero_crows().data<IntT>();
+  const IntT* cols_data = x.non_zero_cols().data<IntT>();
+  const T* values_data = x.non_zero_elements().data<T>();
+
+  int64_t batch_nnz = x.nnz() / batch_size;
+  cudaDataType_t gpu_type = GetGpuDataType<T>();
+  dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseCreateCsr(descriptor,
+                                    M,
+                                    N,
+                                    batch_nnz,
+                                    const_cast<IntT*>(crows_data),
+                                    const_cast<IntT*>(cols_data),
+                                    const_cast<T*>(values_data),
+                                    CUSPARSE_INDEX_64I,
+                                    CUSPARSE_INDEX_64I,
+                                    CUSPARSE_INDEX_BASE_ZERO,
+                                    gpu_type);
+  });
+  if (batch_size > 1) {
+#if CUDA_VERSION >= 11070
+    dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
+      phi::dynload::cusparseCsrSetStridedBatch(
+          *descriptor, batch_size, M + 1, batch_nnz);
+    });
+#else
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Batch Sparse matmul use 'cusparseCsrSetStridedBatch', which is "
+        "supported from CUDA 11.7"));
+#endif
+  }
+}
+
 template <typename T>
 class CuSparseSpMatDescriptor {
  public:
@@ -55,45 +110,9 @@ class CuSparseSpMatDescriptor {
       : dev_ctx_(dev_ctx) {
     PD_VISIT_INTEGRAL_TYPES(
         x.non_zero_crows().dtype(), "CuSparseSpMatDescriptor", ([&] {
-          const data_t* crows_data = x.non_zero_crows().data<data_t>();
-          const data_t* cols_data = x.non_zero_cols().data<data_t>();
-          const T* values_data = x.non_zero_elements().data<T>();
-          int64_t nnz = x.nnz();
-
-          std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
-          auto x_ndims = xdim_vec.size();
-          int64_t M = xdim_vec[x_ndims - 2];
-          int64_t N = xdim_vec[x_ndims - 1];
-          int batch_size = 1;
-          for (int i = 0; i < x_ndims - 2; i++) {
-            batch_size *= xdim_vec[i];
-          }
-
-          cudaDataType_t gpu_type = GetGpuDataType<T>();
-          dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
-            phi::dynload::cusparseCreateCsr(&descriptor_,
-                                            M,
-                                            N,
-                                            nnz,
-                                            const_cast<data_t*>(crows_data),
-                                            const_cast<data_t*>(cols_data),
-                                            const_cast<T*>(values_data),
-                                            CUSPARSE_INDEX_64I,
-                                            CUSPARSE_INDEX_64I,
-                                            CUSPARSE_INDEX_BASE_ZERO,
-                                            gpu_type);
-          });
-          PADDLE_ENFORCE_EQ(x.non_zero_crows().numel(), batch_size * (M + 1));
-          PADDLE_ENFORCE_EQ(x.non_zero_cols().numel(), x.nnz());
-          if (batch_size > 1) {
-            dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
-              phi::dynload::cusparseCsrSetStridedBatch(
-                  descriptor_, batch_size, M + 1, nnz);
-            });
-          }
+          CreateCsrDescriptor<T, data_t>(x, dev_ctx_, &descriptor_);
         }));
-
-    VLOG(6) << "Create cusparseSpMatDescr_t " << &descriptor_;
+    VLOG(6) << "Create csr cusparseSpMatDescr_t " << &descriptor_;
   }
 
   ~CuSparseSpMatDescriptor() {
@@ -116,9 +135,14 @@ class CuSparseDnMatDescriptor {
   explicit CuSparseDnMatDescriptor(const phi::DenseTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
-    const T* x_data = x.data<T>();
     std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
     auto x_ndims = xdim_vec.size();
+    PADDLE_ENFORCE_GE(
+        x_ndims,
+        2,
+        phi::errors::InvalidArgument("the dim size of DenseTensor must be "
+                                     "greater than or eaqual to 2."));
+
     int64_t M = xdim_vec[x_ndims - 2];
     int64_t N = xdim_vec[x_ndims - 1];
     int batch_size = 1;
@@ -126,6 +150,7 @@ class CuSparseDnMatDescriptor {
       batch_size *= xdim_vec[i];
     }
 
+    const T* x_data = x.data<T>();
     cudaDataType_t gpu_type = GetGpuDataType<T>();
     dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
       phi::dynload::cusparseCreateDnMat(&descriptor_,
@@ -139,10 +164,16 @@ class CuSparseDnMatDescriptor {
 
     PADDLE_ENFORCE_EQ(x.numel(), batch_size * M * N);
     if (batch_size > 1) {
+#if CUDA_VERSION >= 11070
       dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
         phi::dynload::cusparseDnMatSetStridedBatch(
             descriptor_, batch_size, M * N);
       });
+#else
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Batch Sparse matmul use 'cusparseDnMatSetStridedBatch', which is "
+          "supported from CUDA 11.7"));
+#endif
     }
     VLOG(6) << "Create cusparseDnMatDescr_t " << &descriptor_;
   }
@@ -162,20 +193,19 @@ class CuSparseDnMatDescriptor {
 };
 
 template <>
-template <typename T>
-void SparseBlas<phi::GPUContext>::DSDMM(bool transa,
-                                        bool transb,
-                                        T alpha,
-                                        const phi::SparseCsrTensor& mat_a,
-                                        const phi::DenseTensor& mat_b,
-                                        T beta,
-                                        phi::DenseTensor* mat_c) const {
-  cudaDataType_t gpu_type = GetGpuDataType<T>();
-
+template <typename T, typename TensorType>
+void SparseBlas<phi::GPUContext>::SPMM(bool transa,
+                                       bool transb,
+                                       T alpha,
+                                       const TensorType& mat_a,
+                                       const phi::DenseTensor& mat_b,
+                                       T beta,
+                                       phi::DenseTensor* mat_out) const {
   auto a_descriptor = CuSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
   auto b_descriptor = CuSparseDnMatDescriptor<T>(mat_b, dev_ctx_);
-  auto c_descriptor = CuSparseDnMatDescriptor<T>(*mat_c, dev_ctx_);
+  auto out_descriptor = CuSparseDnMatDescriptor<T>(*mat_out, dev_ctx_);
 
+  cudaDataType_t gpu_type = GetGpuDataType<T>();
   size_t buffer_size = 0;
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpMM_bufferSize(handle,
@@ -185,7 +215,7 @@ void SparseBlas<phi::GPUContext>::DSDMM(bool transa,
                                           a_descriptor.descriptor(),
                                           b_descriptor.descriptor(),
                                           &beta,
-                                          c_descriptor.descriptor(),
+                                          out_descriptor.descriptor(),
                                           gpu_type,
                                           CUSPARSE_SPMM_ALG_DEFAULT,
                                           &buffer_size);
@@ -202,7 +232,7 @@ void SparseBlas<phi::GPUContext>::DSDMM(bool transa,
                                a_descriptor.descriptor(),
                                b_descriptor.descriptor(),
                                &beta,
-                               c_descriptor.descriptor(),
+                               out_descriptor.descriptor(),
                                gpu_type,
                                CUSPARSE_SPMM_ALG_DEFAULT,
                                tmp_buffer_ptr);
@@ -211,19 +241,19 @@ void SparseBlas<phi::GPUContext>::DSDMM(bool transa,
 
 #if CUDA_VERSION >= 11030
 template <>
-template <typename T>
+template <typename T, typename TensorType>
 void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
                                         bool transb,
                                         T alpha,
                                         const phi::DenseTensor& mat_a,
                                         const phi::DenseTensor& mat_b,
                                         T beta,
-                                        phi::SparseCsrTensor* mat_c) const {
+                                        TensorType* mat_out) const {
   cudaDataType_t gpu_type = GetGpuDataType<T>();
 
   auto a_descriptor = CuSparseDnMatDescriptor<T>(mat_a, dev_ctx_);
   auto b_descriptor = CuSparseDnMatDescriptor<T>(mat_b, dev_ctx_);
-  auto c_descriptor = CuSparseSpMatDescriptor<T>(*mat_c, dev_ctx_);
+  auto out_descriptor = CuSparseSpMatDescriptor<T>(*mat_out, dev_ctx_);
 
   size_t buffer_size = 0;
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
@@ -234,7 +264,7 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
                                            a_descriptor.descriptor(),
                                            b_descriptor.descriptor(),
                                            &beta,
-                                           c_descriptor.descriptor(),
+                                           out_descriptor.descriptor(),
                                            gpu_type,
                                            CUSPARSE_SDDMM_ALG_DEFAULT,
                                            &buffer_size);
@@ -252,7 +282,7 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
                                            a_descriptor.descriptor(),
                                            b_descriptor.descriptor(),
                                            &beta,
-                                           c_descriptor.descriptor(),
+                                           out_descriptor.descriptor(),
                                            gpu_type,
                                            CUSPARSE_SDDMM_ALG_DEFAULT,
                                            tmp_buffer_ptr);
@@ -266,7 +296,7 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
                                 a_descriptor.descriptor(),
                                 b_descriptor.descriptor(),
                                 &beta,
-                                c_descriptor.descriptor(),
+                                out_descriptor.descriptor(),
                                 gpu_type,
                                 CUSPARSE_SDDMM_ALG_DEFAULT,
                                 tmp_buffer_ptr);

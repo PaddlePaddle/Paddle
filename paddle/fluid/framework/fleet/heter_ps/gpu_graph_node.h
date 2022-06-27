@@ -37,8 +37,10 @@ struct GpuPsCommGraph {
   // the size of neighbor array and graph_node_list array
   GpuPsCommGraph()
       : neighbor_list(NULL), node_list(NULL), neighbor_size(0), node_size(0) {}
-  GpuPsCommGraph(int64_t *neighbor_list_, GpuPsGraphNode *node_list_,
-                 int64_t neighbor_size_, int64_t node_size_)
+  GpuPsCommGraph(int64_t *neighbor_list_,
+                 GpuPsGraphNode *node_list_,
+                 int64_t neighbor_size_,
+                 int64_t node_size_)
       : neighbor_list(neighbor_list_),
         node_list(node_list_),
         neighbor_size(neighbor_size_),
@@ -177,17 +179,23 @@ struct NeighborSampleResult {
   void display() {
     VLOG(0) << "in node sample result display ------------------";
     int64_t *res = new int64_t[sample_size * key_size];
-    cudaMemcpy(res, val, sample_size * key_size * sizeof(int64_t),
+    cudaMemcpy(res,
+               val,
+               sample_size * key_size * sizeof(int64_t),
                cudaMemcpyDeviceToHost);
     int *ac_size = new int[key_size];
-    cudaMemcpy(ac_size, actual_sample_size, key_size * sizeof(int),
+    cudaMemcpy(ac_size,
+               actual_sample_size,
+               key_size * sizeof(int),
                cudaMemcpyDeviceToHost);  // 3, 1, 3
     int total_sample_size = 0;
     for (int i = 0; i < key_size; i++) {
       total_sample_size += ac_size[i];
     }
     int64_t *res2 = new int64_t[total_sample_size];  // r
-    cudaMemcpy(res2, actual_val, total_sample_size * sizeof(int64_t),
+    cudaMemcpy(res2,
+               actual_val,
+               total_sample_size * sizeof(int64_t),
                cudaMemcpyDeviceToHost);  // r
 
     int start = 0;
@@ -213,20 +221,26 @@ struct NeighborSampleResult {
     std::vector<int64_t> graph;
     int64_t *sample_keys = new int64_t[q.len];
     std::string key_str;
-    cudaMemcpy(sample_keys, q.key, q.len * sizeof(int64_t),
-               cudaMemcpyDeviceToHost);
+    cudaMemcpy(
+        sample_keys, q.key, q.len * sizeof(int64_t), cudaMemcpyDeviceToHost);
     int64_t *res = new int64_t[sample_size * key_size];
-    cudaMemcpy(res, val, sample_size * key_size * sizeof(int64_t),
+    cudaMemcpy(res,
+               val,
+               sample_size * key_size * sizeof(int64_t),
                cudaMemcpyDeviceToHost);
     int *ac_size = new int[key_size];
-    cudaMemcpy(ac_size, actual_sample_size, key_size * sizeof(int),
+    cudaMemcpy(ac_size,
+               actual_sample_size,
+               key_size * sizeof(int),
                cudaMemcpyDeviceToHost);  // 3, 1, 3
     int total_sample_size = 0;
     for (int i = 0; i < key_size; i++) {
       total_sample_size += ac_size[i];
     }
     int64_t *res2 = new int64_t[total_sample_size];  // r
-    cudaMemcpy(res2, actual_val, total_sample_size * sizeof(int64_t),
+    cudaMemcpy(res2,
+               actual_val,
+               total_sample_size * sizeof(int64_t),
                cudaMemcpyDeviceToHost);  // r
 
     int start = 0;
@@ -266,8 +280,8 @@ struct NodeQueryResult {
   void display() {
     VLOG(0) << "in node query result display ------------------";
     int64_t *res = new int64_t[actual_sample_size];
-    cudaMemcpy(res, val, actual_sample_size * sizeof(int64_t),
-               cudaMemcpyDeviceToHost);
+    cudaMemcpy(
+        res, val, actual_sample_size * sizeof(int64_t), cudaMemcpyDeviceToHost);
 
     VLOG(0) << "actual_sample_size =" << actual_sample_size;
     std::string str;

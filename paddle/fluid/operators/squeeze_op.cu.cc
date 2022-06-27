@@ -18,7 +18,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    squeeze, ops::SqueezeKernel<paddle::platform::CUDADeviceContext, float>,
+    squeeze,
+    ops::SqueezeKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SqueezeKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SqueezeKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::SqueezeKernel<paddle::platform::CUDADeviceContext, plat::bfloat16>,

@@ -38,7 +38,8 @@ namespace detail {
 class BuddyAllocator {
  public:
   BuddyAllocator(std::unique_ptr<SystemAllocator> system_allocator,
-                 size_t min_chunk_size, size_t max_chunk_size,
+                 size_t min_chunk_size,
+                 size_t max_chunk_size,
                  size_t extra_padding_size = 0,
                  const std::string dev_type = "");
 

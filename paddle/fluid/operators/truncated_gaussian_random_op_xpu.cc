@@ -49,8 +49,11 @@ class XPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
       data_cpu[i] = truncated_normal(dist(*engine));
     }
 
-    memory::Copy(context.GetPlace(), data, platform::CPUPlace(),
-                 reinterpret_cast<void*>(data_cpu.get()), size * sizeof(T));
+    memory::Copy(context.GetPlace(),
+                 data,
+                 platform::CPUPlace(),
+                 reinterpret_cast<void*>(data_cpu.get()),
+                 size * sizeof(T));
   }
 };
 
@@ -58,8 +61,9 @@ class XPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(truncated_gaussian_random,
-                       ops::XPUTruncatedGaussianRandomKernel<
-                           paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(
+    truncated_gaussian_random,
+    ops::XPUTruncatedGaussianRandomKernel<paddle::platform::XPUDeviceContext,
+                                          float>);
 
 #endif  // PADDLE_WITH_XPU

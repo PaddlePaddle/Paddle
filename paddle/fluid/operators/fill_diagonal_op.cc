@@ -126,8 +126,10 @@ class FillIDiagonalGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "mul");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "mul");
     auto x_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -202,24 +204,28 @@ DECLARE_INPLACE_OP_INFERER(FillIDiagonalGradOpInplaceInferer,
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(fill_diagonal, ops::FillIDiagonalOp,
+REGISTER_OPERATOR(fill_diagonal,
+                  ops::FillIDiagonalOp,
                   ops::FillIDiagonalOpMaker,
                   ops::FillIDiagonalOpVarTypeInference,
                   ops::FillIDiagonalGradOpMaker<paddle::framework::OpDesc>,
                   ops::FillIDiagonalGradOpMaker<paddle::imperative::OpBase>,
                   ops::FillIDiagonalOpInplaceInferer);
 
-REGISTER_OPERATOR(fill_diagonal_grad, ops::FillIDiagonalGradOp,
+REGISTER_OPERATOR(fill_diagonal_grad,
+                  ops::FillIDiagonalGradOp,
                   ops::FillIDiagonalGradOpInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(fill_diagonal, ops::FillIDiagonalKernel<float>,
+REGISTER_OP_CPU_KERNEL(fill_diagonal,
+                       ops::FillIDiagonalKernel<float>,
                        ops::FillIDiagonalKernel<double>,
                        ops::FillIDiagonalKernel<int64_t>,
                        ops::FillIDiagonalKernel<int>,
                        ops::FillIDiagonalKernel<paddle::platform::float16>,
                        ops::FillIDiagonalKernel<bool>);
 
-REGISTER_OP_CPU_KERNEL(fill_diagonal_grad, ops::FillIDiagonalGradKernel<float>,
+REGISTER_OP_CPU_KERNEL(fill_diagonal_grad,
+                       ops::FillIDiagonalGradKernel<float>,
                        ops::FillIDiagonalGradKernel<double>,
                        ops::FillIDiagonalGradKernel<int64_t>,
                        ops::FillIDiagonalGradKernel<int>,
