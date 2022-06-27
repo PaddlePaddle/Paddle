@@ -26,7 +26,8 @@ namespace operators {
 
 class SeluOp : public framework::OperatorWithKernel {
  public:
-  SeluOp(const std::string &type, const framework::VariableNameMap &inputs,
+  SeluOp(const std::string &type,
+         const framework::VariableNameMap &inputs,
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
@@ -100,8 +101,10 @@ class SeluGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "selu_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "selu_grad");
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "selu_grad");
     auto x_grad_name = framework::GradVarName("X");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("Out"));
@@ -120,10 +123,14 @@ class SeluGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(selu, SeluInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(selu,
+                            SeluInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
-REGISTER_OPERATOR(selu, ops::SeluOp, ops::SeluOpMaker, ops::SeluOpInferVarType,
+REGISTER_OPERATOR(selu,
+                  ops::SeluOp,
+                  ops::SeluOpMaker,
+                  ops::SeluOpInferVarType,
                   ops::SeluGradMaker<paddle::framework::OpDesc>,
                   ops::SeluGradMaker<paddle::imperative::OpBase>,
                   SeluInferShapeFunctor);

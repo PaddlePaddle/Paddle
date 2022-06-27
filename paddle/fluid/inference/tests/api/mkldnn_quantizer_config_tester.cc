@@ -51,8 +51,8 @@ TEST(Mkldnn_quantizer_config, configuration) {
   cfg.mkldnn_quantizer_config()->SetEnabledOpTypes(enabled_op_types);
   cfg.mkldnn_quantizer_config()->SetExcludedOpIds(excluded_op_ids);
   cfg.mkldnn_quantizer_config()->SetDefaultScaleAlgo(default_scale_algo);
-  cfg.mkldnn_quantizer_config()->SetScaleAlgo("conv2d", "Input",
-                                              conv2d_scale_algo);
+  cfg.mkldnn_quantizer_config()->SetScaleAlgo(
+      "conv2d", "Input", conv2d_scale_algo);
 
   PADDLE_ENFORCE_EQ(cfg.mkldnn_quantizer_config()->warmup_data()->size(),
                     warmup_data_size,
@@ -61,7 +61,8 @@ TEST(Mkldnn_quantizer_config, configuration) {
                         "the one set previously."));
 
   PADDLE_ENFORCE_EQ(
-      cfg.mkldnn_quantizer_config()->warmup_data()->at(0).name, "image",
+      cfg.mkldnn_quantizer_config()->warmup_data()->at(0).name,
+      "image",
       platform::errors::InvalidArgument(
           "Warmup data got from config differs with the one set previously."));
 

@@ -18,7 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-void gen_assist_seq(framework::Tensor* assit_tensor, int64_t dim,
+void gen_assist_seq(framework::Tensor* assit_tensor,
+                    int64_t dim,
                     const framework::ExecutionContext& ctx) {
   const int64_t dimx2 = dim;
   std::vector<paddle::platform::float16> assit;
@@ -69,8 +70,10 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     tmp_indices.mutable_data<int>(ctx.GetPlace());
 
     // run ascend
-    const auto& runner = NpuOpRunner("TopKD", {*input, assist_seq_tensor},
-                                     {*output, tmp_indices}, attr_input);
+    const auto& runner = NpuOpRunner("TopKD",
+                                     {*input, assist_seq_tensor},
+                                     {*output, tmp_indices},
+                                     attr_input);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -80,7 +83,9 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     auto dst_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(indices->dtype()));
     const auto& runner_cast_indices =
-        NpuOpRunner("Cast", {tmp_indices}, {*indices},
+        NpuOpRunner("Cast",
+                    {tmp_indices},
+                    {*indices},
                     {{"dst_type", static_cast<int>(dst_dtype)}});
     runner_cast_indices.Run(stream);
   }

@@ -1,15 +1,15 @@
 diff --git a/paddle/fluid/operators/jit/gen/jitcode.h b/paddle/fluid/operators/jit/gen/jitcode.h
-index 23650c8efc..24466e4327 100644
+index d71497275d..cb56e1d949 100644
 --- a/paddle/fluid/operators/jit/gen/jitcode.h
 +++ b/paddle/fluid/operators/jit/gen/jitcode.h
-@@ -97,8 +97,8 @@ class JitCode : public GenBase, public Xbyak::CodeGenerator {
+@@ -102,8 +102,8 @@ class JitCode : public GenBase, public Xbyak::CodeGenerator {
      }
      ret();
    }
 -  void L(const char* label) { Xbyak::CodeGenerator::L(label); }
 -  void L(Xbyak::Label& label) { Xbyak::CodeGenerator::L(label); }  // NOLINT
-+  void L(const char* label) { }
-+  void L(Xbyak::Label& label) { }  // NOLINT
++  void L(const char* label) {  }
++  void L(Xbyak::Label& label) {  }  // NOLINT
    // Enhanced vector extension
-   Xbyak::Address EVEX_compress_addr(Xbyak::Reg64 base, int offt,
-                                     bool bcast = false) {
+   Xbyak::Address EVEX_compress_addr(Xbyak::Reg64 base,
+                                     int offt,

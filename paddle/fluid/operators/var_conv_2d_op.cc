@@ -61,27 +61,34 @@ void VarConv2dOpMaker::Make() {
 
 void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
-      ctx->HasInput("X"), true,
+      ctx->HasInput("X"),
+      true,
       platform::errors::NotFound("X(Input) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
-      ctx->HasInput("W"), true,
+      ctx->HasInput("W"),
+      true,
       platform::errors::NotFound("W(Input) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
-      ctx->HasInput("ROW"), true,
+      ctx->HasInput("ROW"),
+      true,
       platform::errors::NotFound("Input(ROW) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
-      ctx->HasInput("COLUMN"), true,
+      ctx->HasInput("COLUMN"),
+      true,
       platform::errors::NotFound("Input(COLUMN) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
-      ctx->HasOutput("Out"), true,
+      ctx->HasOutput("Out"),
+      true,
       platform::errors::NotFound("Out(Output) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
-      ctx->HasOutput("Col"), true,
+      ctx->HasOutput("Col"),
+      true,
       platform::errors::NotFound("Col(Output) of VarConv2dOP is not found."));
 
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(
-      x_dims.size(), 2,
+      x_dims.size(),
+      2,
       platform::errors::InvalidArgument(
           "The rank of X(Input) can't be less than 2, but received rank is %u.",
           x_dims.size()));
@@ -89,7 +96,8 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   auto w_dims = ctx->GetInputDim("W");
 
   PADDLE_ENFORCE_EQ(
-      w_dims.size(), 2,
+      w_dims.size(),
+      2,
       platform::errors::InvalidArgument(
           "Input W should be a 2-D tensor, but its actual dimension is %u.",
           w_dims.size()));
@@ -98,40 +106,49 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   int kernel_h = ctx->Attrs().Get<int>("KernelH");
   int kernel_w = ctx->Attrs().Get<int>("KernelW");
   PADDLE_ENFORCE_EQ(
-      w_dims[0], output_channel,
+      w_dims[0],
+      output_channel,
       platform::errors::InvalidArgument(
           "Input W's dimension[0] should be equal to OutputChannel, the "
           "dimension[0] is %d, OutputChannel is %d.",
-          w_dims[0], output_channel));
+          w_dims[0],
+          output_channel));
   PADDLE_ENFORCE_EQ(
-      w_dims[1], input_channel * kernel_h * kernel_w,
+      w_dims[1],
+      input_channel * kernel_h * kernel_w,
       platform::errors::InvalidArgument(
           "Input W's dimension[1] should be equal to InputChannel * StrideH * "
           "StrideW, the dimension[1] is %d, expected value is %d.",
-          w_dims[1], input_channel * kernel_h * kernel_w));
+          w_dims[1],
+          input_channel * kernel_h * kernel_w));
 
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =
         BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
     const auto& x_lod = x_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(
-        !x_lod.empty(), true,
+        !x_lod.empty(),
+        true,
         platform::errors::InvalidArgument("The Input(X) Tensor of VarConv2dOP "
                                           "does not contain LoD information."));
 
-    PADDLE_ENFORCE_GE(x_lod.size(), 1,
+    PADDLE_ENFORCE_GE(x_lod.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "The Input(X)'s lod info is corrupted."));
-    PADDLE_ENFORCE_EQ(x_dims[0], static_cast<int64_t>(x_lod[0].back()),
+    PADDLE_ENFORCE_EQ(x_dims[0],
+                      static_cast<int64_t>(x_lod[0].back()),
                       platform::errors::InvalidArgument(
                           "The Input(X)'s lod info mismatches the actual "
                           "tensor shape, input lod is %s, tensor shape is %s.",
-                          x_lod, x_dims));
+                          x_lod,
+                          x_dims));
 
     framework::Variable* row_var =
         BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("ROW")[0]);
     const auto& row_lod = row_var->Get<LoDTensor>().lod();
-    PADDLE_ENFORCE_EQ(!row_lod.empty(), true,
+    PADDLE_ENFORCE_EQ(!row_lod.empty(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The Input(ROW) Tensor of VarConv2dOP does not "
                           "contain LoD information."));
@@ -139,7 +156,8 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
     framework::Variable* col_var =
         BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("COLUMN")[0]);
     const auto& col_lod = col_var->Get<LoDTensor>().lod();
-    PADDLE_ENFORCE_EQ(!col_lod.empty(), true,
+    PADDLE_ENFORCE_EQ(!col_lod.empty(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The Input(COLUMN) Tensor of VarConv2dOP does not "
                           "contain LoD information."));
@@ -156,7 +174,8 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
 template <typename DeviceContext, typename T>
 class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
  public:
-  void Im2Col(const framework::ExecutionContext& ctx, const LoDTensor& input,
+  void Im2Col(const framework::ExecutionContext& ctx,
+              const LoDTensor& input,
               LoDTensor* col) const {
     int input_channel = ctx.Attr<int>("InputChannel");
     auto* in_row = ctx.Input<LoDTensor>("ROW");
@@ -309,9 +328,16 @@ class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
         continue;
       }
 
-      blas.GEMM(CblasNoTrans, CblasNoTrans, output_channel, top_im_size,
-                input_channel * kernel_h * kernel_w, 1.0, w_data,
-                col_data + col_offset[b], 0.0, top_data + top_offset[b]);
+      blas.GEMM(CblasNoTrans,
+                CblasNoTrans,
+                output_channel,
+                top_im_size,
+                input_channel * kernel_h * kernel_w,
+                1.0,
+                w_data,
+                col_data + col_offset[b],
+                0.0,
+                top_data + top_offset[b]);
     }
   }
 };
@@ -338,13 +364,16 @@ class VarConv2dGradMaker : public framework::SingleGradOpMaker<T> {
 };
 
 void VarConv2dOpGrad::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                    true,
                     platform::errors::NotFound(
                         "Input(X) of SequencePadGradOp is not found."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
+  PADDLE_ENFORCE_EQ(ctx->HasInput("W"),
+                    true,
                     platform::errors::NotFound(
                         "Input(W) of SequencePadGradOp is not found."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+  PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                    true,
                     platform::errors::NotFound(
                         "Input(Out@GRAD) of SequencePadGradOp is not found."));
 
@@ -457,13 +486,26 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
         continue;
       }
 
-      blas.GEMM(CblasTrans, CblasNoTrans, input_channel * kernel_h * kernel_w,
-                top_im_size, output_channel, 1.0, w_data,
-                top_diff + top_offset[b], 1.0, col_diff + col_offset[b]);
+      blas.GEMM(CblasTrans,
+                CblasNoTrans,
+                input_channel * kernel_h * kernel_w,
+                top_im_size,
+                output_channel,
+                1.0,
+                w_data,
+                top_diff + top_offset[b],
+                1.0,
+                col_diff + col_offset[b]);
 
-      blas.GEMM(CblasNoTrans, CblasTrans, output_channel,
-                input_channel * kernel_h * kernel_w, top_im_size, 1.0,
-                top_diff + top_offset[b], col_data + col_offset[b], 1.0,
+      blas.GEMM(CblasNoTrans,
+                CblasTrans,
+                output_channel,
+                input_channel * kernel_h * kernel_w,
+                top_im_size,
+                1.0,
+                top_diff + top_offset[b],
+                col_data + col_offset[b],
+                1.0,
                 w_diff);
     }
     Im2ColGrad(ctx, col_diff);
@@ -476,7 +518,9 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plt = paddle::platform;
 namespace frm = paddle::framework;
-REGISTER_OPERATOR(var_conv_2d, ops::VarConv2dOP, ops::VarConv2dOpMaker,
+REGISTER_OPERATOR(var_conv_2d,
+                  ops::VarConv2dOP,
+                  ops::VarConv2dOpMaker,
                   ops::VarConv2dGradMaker<paddle::framework::OpDesc>,
                   ops::VarConv2dGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(var_conv_2d_grad, ops::VarConv2dOpGrad);

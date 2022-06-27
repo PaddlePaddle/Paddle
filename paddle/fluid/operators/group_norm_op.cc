@@ -55,7 +55,8 @@ class GroupNormOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
-          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 1.0f, true,
+          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 1.0f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'epsilon' in Op(GroupNorm) should be between"
                                 "0.0 and 1.0f, But received [%s].",
@@ -64,7 +65,8 @@ class GroupNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("groups", "The number of groups that divided from channels.")
         .AddCustomChecker([](const int &groups) {
           PADDLE_ENFORCE_GT(
-              groups, 0,
+              groups,
+              0,
               platform::errors::InvalidArgument(
                   "'groups' in Op(GroupNorm) should be greater than zero,"
                   "But received [%s].",
@@ -89,11 +91,13 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
     // check input
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GroupNormGrad");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "GroupNormGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Variance"), "Input", "Variance",
-                   "GroupNormGrad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Variance"), "Input", "Variance", "GroupNormGrad");
     OP_INOUT_CHECK(ctx->HasInput("Mean"), "Input", "Mean", "GroupNormGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
-                   framework::GradVarName("Y"), "GroupNormGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")),
+                   "Input",
+                   framework::GradVarName("Y"),
+                   "GroupNormGrad");
 
     // check output
     if (ctx->HasOutput(framework::GradVarName("X"))) {
@@ -115,8 +119,9 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
 
     PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::InvalidArgument(
-                 "Input(Y@GRAD) of GroupNormGradOp should not be null"));
+        var,
+        platform::errors::InvalidArgument(
+            "Input(Y@GRAD) of GroupNormGradOp should not be null"));
     const Tensor *t = nullptr;
     if (var->IsType<Tensor>()) {
       t = &var->Get<Tensor>();
@@ -124,8 +129,9 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
       t = &var->Get<LoDTensor>();
     }
     PADDLE_ENFORCE_NOT_NULL(
-        t, platform::errors::InvalidArgument(
-               "Input(Y@GRAD) Tensor of GroupNormGradOp should not be null"));
+        t,
+        platform::errors::InvalidArgument(
+            "Input(Y@GRAD) Tensor of GroupNormGradOp should not be null"));
     return framework::OpKernelType(framework::TransToProtoVarType(t->dtype()),
                                    ctx.GetPlace());
   }
@@ -171,14 +177,18 @@ class GroupNormOpInferVarType
 }  // namespace operators
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(group_norm, GroupNormInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(group_norm,
+                            GroupNormInferShapeFunctor,
                             PD_INFER_META(phi::GroupNormInferMeta));
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
+REGISTER_OPERATOR(group_norm,
+                  ops::GroupNormOp,
+                  ops::GroupNormOpMaker,
                   ops::GroupNormOpInferVarType,
                   ops::GroupNormGradMaker<paddle::framework::OpDesc>,
                   ops::GroupNormGradMaker<paddle::imperative::OpBase>,
                   GroupNormInferShapeFunctor);
-REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp,
+REGISTER_OPERATOR(group_norm_grad,
+                  ops::GroupNormGradOp,
                   ops::GroupNormGradInplaceInferer);

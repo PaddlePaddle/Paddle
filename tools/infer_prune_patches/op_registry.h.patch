@@ -1,10 +1,10 @@
 diff --git a/paddle/fluid/framework/op_registry.h b/paddle/fluid/framework/op_registry.h
-index a1f07f9f25..179df3b981 100644
+index d38efbff31..f5bef776d6 100644
 --- a/paddle/fluid/framework/op_registry.h
 +++ b/paddle/fluid/framework/op_registry.h
-@@ -178,9 +178,8 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
-     RegisterKernelClass<PlaceType, T>(
-         op_type, library_type, customized_type_value,
+@@ -186,9 +186,8 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
+         library_type,
+         customized_type_value,
  
 -        [op_type](const framework::ExecutionContext& ctx) {
 +        [](const framework::ExecutionContext& ctx) {
@@ -13,12 +13,14 @@ index a1f07f9f25..179df3b981 100644
          });
      constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
      OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelTypes...>
-@@ -240,13 +239,8 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
- 
-   void operator()(const char* op_type, const char* library_type,
+@@ -257,15 +256,8 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
+   void operator()(const char* op_type,
+                   const char* library_type,
                    int customized_type_value) const {
 -    RegisterKernelClass<PlaceType, T>(
--        op_type, library_type, customized_type_value,
+-        op_type,
+-        library_type,
+-        customized_type_value,
 -
 -        [op_type](const framework::ExecutionContext& ctx) {
 -          Functor()(ctx);
@@ -29,7 +31,7 @@ index a1f07f9f25..179df3b981 100644
  
      constexpr auto size =
          std::tuple_size<std::tuple<DataTypeAndKernelType...>>::value;
-@@ -275,7 +269,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
+@@ -296,7 +288,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
      VarTypeInference
      InferShapeBase
  */
@@ -38,7 +40,7 @@ index a1f07f9f25..179df3b981 100644
    STATIC_ASSERT_GLOBAL_NAMESPACE(                                        \
        __reg_op__##op_type,                                               \
        "REGISTER_OPERATOR must be called in global namespace");           \
-@@ -286,15 +280,22 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
+@@ -307,15 +299,22 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
      return 0;                                                            \
    }
  
@@ -62,7 +64,7 @@ index a1f07f9f25..179df3b981 100644
                                              place_class, customized_name,      \
                                              customized_type_value, ...)        \
    STATIC_ASSERT_GLOBAL_NAMESPACE(                                              \
-@@ -311,18 +312,22 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
+@@ -332,18 +331,22 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
      return 0;                                                                  \
    }
  
@@ -91,7 +93,7 @@ index a1f07f9f25..179df3b981 100644
  
  #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
    REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
-@@ -340,6 +345,11 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
+@@ -361,6 +364,11 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
    REGISTER_OP_KERNEL(op_type, MLU, ::paddle::platform::MLUPlace, __VA_ARGS__)
  
  #define REGISTER_OP_KERNEL_EX(op_type, library_type, place_class,  \
@@ -103,7 +105,7 @@ index a1f07f9f25..179df3b981 100644
                                customized_name,                     \
                                customized_type_value,               \
                                ...)                                 \
-@@ -357,8 +367,10 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
+@@ -378,8 +386,10 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
      return 0;                                                                  \
    }
  
@@ -116,7 +118,7 @@ index a1f07f9f25..179df3b981 100644
        op_type, CUDA, ::paddle::platform::CUDAPlace, DEFAULT_TYPE,     \
        ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
        __VA_ARGS__)
-@@ -375,12 +387,6 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
+@@ -396,12 +406,6 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
        ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
        __VA_ARGS__)
  
@@ -129,7 +131,7 @@ index a1f07f9f25..179df3b981 100644
  #define REGISTER_OP_MLU_KERNEL_FUNCTOR(op_type, ...)                  \
    REGISTER_OP_KERNEL_EX(                                              \
        op_type, MLU, ::paddle::platform::MLUPlace, DEFAULT_TYPE,       \
-@@ -392,7 +398,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
+@@ -413,7 +417,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
   * we will use and tell the compiler to
   * link them into target.
   */
@@ -140,7 +142,7 @@ index a1f07f9f25..179df3b981 100644
    STATIC_ASSERT_GLOBAL_NAMESPACE(                          \
        __use_op_itself_##op_type,                           \
        "USE_OP_ITSELF must be called in global namespace"); \
-@@ -400,6 +408,10 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
+@@ -421,6 +427,10 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
    UNUSED static int use_op_itself_##op_type##_ = TouchOpRegistrar_##op_type()
  
  #define USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(op_type,                     \
@@ -151,7 +153,7 @@ index a1f07f9f25..179df3b981 100644
                                                LIBRARY_TYPE,                \
                                                customized_name)             \
    STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
-@@ -410,33 +422,58 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
+@@ -431,33 +441,58 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
    UNUSED static int use_op_kernel_##op_type##_##LIBRARY_TYPE##_##customized_name##_ = /* NOLINT */ \
        TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE##_##customized_name()
  

@@ -78,7 +78,8 @@ struct paddle_variant_caster<V<Ts...>> {
 
   template <typename T>
   typename std::enable_if<
-      !std::is_same<T, boost::detail::variant::void_>::value, bool>::type
+      !std::is_same<T, boost::detail::variant::void_>::value,
+      bool>::type
   try_load(handle src, bool convert) {
     auto caster = make_caster<T>();
     if (!load_success_ && caster.load(src, convert)) {
@@ -123,7 +124,8 @@ struct paddle_variant_caster<V<Ts...>> {
     return load_success_;
   }
 
-  static handle cast(Type const& src, return_value_policy policy,
+  static handle cast(Type const& src,
+                     return_value_policy policy,
                      handle parent) {
     paddle_variant_caster_visitor visitor(policy, parent);
     return boost::apply_visitor(visitor, src);

@@ -67,14 +67,18 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     // NOTE(zhiqiu): NPUGetFloatStatus updates data on input in-place.
     // tmp is only placeholder.
     const auto& runner_float_status =
-        NpuOpRunner("NPUGetFloatStatus", {*float_status}, {tmp},
+        NpuOpRunner("NPUGetFloatStatus",
+                    {*float_status},
+                    {tmp},
                     {{"message", std::string("check_nan_and_inf")}});
     runner_float_status.Run(stream);
 
     Tensor sum;
     sum.mutable_data<float>({1}, ctx.GetPlace());
     const auto& runner_reduce_sum =
-        NpuOpRunner("ReduceSumD", {*float_status}, {sum},
+        NpuOpRunner("ReduceSumD",
+                    {*float_status},
+                    {sum},
                     {{"axes", std::vector<int>{0}}, {"keep_dims", true}});
     runner_reduce_sum.Run(stream);
 

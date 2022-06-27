@@ -28,8 +28,10 @@ static int op_run_num = 0;
 
 class OpWithoutKernelTest : public OperatorBase {
  public:
-  OpWithoutKernelTest(const std::string& type, const VariableNameMap& inputs,
-                      const VariableNameMap& outputs, const AttributeMap& attrs)
+  OpWithoutKernelTest(const std::string& type,
+                      const VariableNameMap& inputs,
+                      const VariableNameMap& outputs,
+                      const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs), x(1) {}
 
  private:
@@ -128,9 +130,11 @@ class OpWithKernelTest : public OperatorWithKernel {
   OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
     int sub_type = ctx.Attr<int>("kernel_sub_type");
-    return OpKernelType(proto::VarType::FP32, ctx.GetPlace(),
+    return OpKernelType(proto::VarType::FP32,
+                        ctx.GetPlace(),
                         framework::DataLayout::kAnyLayout,
-                        framework::LibraryType::kPlain, sub_type);
+                        framework::LibraryType::kPlain,
+                        sub_type);
   }
 };
 
@@ -215,14 +219,18 @@ class CPUKernalMultiInputsTest : public OpKernel<float> {
 }  // namespace paddle
 
 REGISTER_OP_WITHOUT_GRADIENT(
-    op_with_kernel, paddle::framework::OpWithKernelTest,
+    op_with_kernel,
+    paddle::framework::OpWithKernelTest,
     paddle::framework::OpKernelTestProtoAndCheckerMaker);
 
 REGISTER_OP_CPU_KERNEL(op_with_kernel,
                        paddle::framework::CPUKernelTest<float, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
-    op_with_kernel, CPU, paddle::platform::CPUPlace, MY_SPECIAL_NAME,
+    op_with_kernel,
+    CPU,
+    paddle::platform::CPUPlace,
+    MY_SPECIAL_NAME,
     paddle::framework::special_type_value,
     paddle::framework::CPUKernel2Test<float, float>);
 
@@ -261,7 +269,8 @@ TEST(OpKernel, all) {
 }
 
 REGISTER_OP_WITHOUT_GRADIENT(
-    op_multi_inputs_with_kernel, paddle::framework::OpWithKernelTest,
+    op_multi_inputs_with_kernel,
+    paddle::framework::OpWithKernelTest,
     paddle::framework::OpKernelTestMultiInputsProtoAndCheckerMaker);
 REGISTER_OP_CPU_KERNEL(op_multi_inputs_with_kernel,
                        paddle::framework::CPUKernalMultiInputsTest);
@@ -405,18 +414,22 @@ REGISTER_OP_WITHOUT_GRADIENT(
     paddle::framework::IndicateSelectedRowsDataTypeTest,
     paddle::framework::IndicateSelectedRowsDataTypeTestProtoMaker);
 REGISTER_OP_WITHOUT_GRADIENT(
-    indicate_other_data_type_test, paddle::framework::IndicateOtherDataTypeTest,
+    indicate_other_data_type_test,
+    paddle::framework::IndicateOtherDataTypeTest,
     paddle::framework::IndicateOtherDataTypeTestProtoMaker);
 
-REGISTER_OP_CPU_KERNEL(indicate_lod_tensor_data_type_test,
-                       paddle::framework::EmptyTestKernel<
-                           paddle::platform::CPUDeviceContext, int>);
-REGISTER_OP_CPU_KERNEL(indicate_selected_rows_data_type_test,
-                       paddle::framework::EmptyTestKernel<
-                           paddle::platform::CPUDeviceContext, int>);
-REGISTER_OP_CPU_KERNEL(indicate_other_data_type_test,
-                       paddle::framework::EmptyTestKernel<
-                           paddle::platform::CPUDeviceContext, int>);
+REGISTER_OP_CPU_KERNEL(
+    indicate_lod_tensor_data_type_test,
+    paddle::framework::EmptyTestKernel<paddle::platform::CPUDeviceContext,
+                                       int>);
+REGISTER_OP_CPU_KERNEL(
+    indicate_selected_rows_data_type_test,
+    paddle::framework::EmptyTestKernel<paddle::platform::CPUDeviceContext,
+                                       int>);
+REGISTER_OP_CPU_KERNEL(
+    indicate_other_data_type_test,
+    paddle::framework::EmptyTestKernel<paddle::platform::CPUDeviceContext,
+                                       int>);
 
 TEST(IndicateVarDataTypeTest, lodtensor) {
   paddle::framework::InitDevices();
@@ -526,8 +539,8 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
   auto* dev_ctx = pool.Get(cpu_place);
 
   paddle::framework::RuntimeContext ctx({}, {});
-  paddle::framework::ExecutionContext exe_context(*(op.get()), scope, *dev_ctx,
-                                                  ctx);
+  paddle::framework::ExecutionContext exe_context(
+      *(op.get()), scope, *dev_ctx, ctx);
 
   ASSERT_EQ(exe_context.InputSize("input"), 1u);
   ASSERT_EQ(exe_context.OutputSize("output"), 1u);
@@ -550,7 +563,8 @@ class GetLoDLevelTest : public OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GetLoDLevelTest");
 
     auto lod_level = ctx->GetLoDLevel("X");
-    PADDLE_ENFORCE_GT(lod_level, 0,
+    PADDLE_ENFORCE_GT(lod_level,
+                      0,
                       paddle::platform::errors::InvalidArgument(
                           "The LoD level Input(X) should be larger than 0."));
   }
@@ -583,16 +597,18 @@ class GetSetLoDLevelTestMaker : public OpProtoAndCheckerMaker {
 REGISTER_OP_WITHOUT_GRADIENT(get_lod_level_test,
                              paddle::framework::GetLoDLevelTest,
                              paddle::framework::GetSetLoDLevelTestMaker);
-REGISTER_OP_CPU_KERNEL(get_lod_level_test,
-                       paddle::framework::EmptyTestKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    get_lod_level_test,
+    paddle::framework::EmptyTestKernel<paddle::platform::CPUDeviceContext,
+                                       float>);
 
 REGISTER_OP_WITHOUT_GRADIENT(set_lod_level_test,
                              paddle::framework::SetLoDLevelTest,
                              paddle::framework::GetSetLoDLevelTestMaker);
-REGISTER_OP_CPU_KERNEL(set_lod_level_test,
-                       paddle::framework::EmptyTestKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    set_lod_level_test,
+    paddle::framework::EmptyTestKernel<paddle::platform::CPUDeviceContext,
+                                       float>);
 
 void SetGetLoDLevelTestMain(std::string op_type) {
   paddle::framework::InitDevices({});
@@ -643,7 +659,8 @@ class OpUnusedVarTest : public OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
   OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
-    return OpKernelType(proto::VarType::FP32, ctx.GetPlace(),
+    return OpKernelType(proto::VarType::FP32,
+                        ctx.GetPlace(),
                         framework::DataLayout::kAnyLayout);
   }
 };
@@ -683,14 +700,16 @@ class OpWithoutUnusedVarKernelTest : public OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_WITHOUT_GRADIENT(
-    op_with_unused_var, paddle::framework::OpUnusedVarTest,
+    op_with_unused_var,
+    paddle::framework::OpUnusedVarTest,
     paddle::framework::OpUnusedVarTestProtoAndCheckerMaker);
 
 REGISTER_OP_CPU_KERNEL(op_with_unused_var,
                        paddle::framework::OpWithUnusedVarKernelTest<float>);
 
 REGISTER_OP_WITHOUT_GRADIENT(
-    op_without_unused_var, paddle::framework::OpUnusedVarTest,
+    op_without_unused_var,
+    paddle::framework::OpUnusedVarTest,
     paddle::framework::OpUnusedVarTestProtoAndCheckerMaker);
 
 REGISTER_OP_CPU_KERNEL(op_without_unused_var,

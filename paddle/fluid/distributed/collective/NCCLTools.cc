@@ -27,7 +27,8 @@ ncclRedOp_t ToNCCLRedType(ReduceOp reduction) {
       {ReduceOp::PRODUCT, ncclProd},
   };
   auto it = red_type.find(reduction);
-  PADDLE_ENFORCE_EQ(it != red_type.end(), true,
+  PADDLE_ENFORCE_EQ(it != red_type.end(),
+                    true,
                     platform::errors::InvalidArgument(
                         "Invalid nccl reduction. Must be ncclMin | ncclMax | "
                         "ncclProd | ncclSum"));

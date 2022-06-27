@@ -58,11 +58,14 @@ class ShapeMLUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(shape, ops::ShapeMLUKernel<bool>,
+REGISTER_OP_MLU_KERNEL(shape,
+                       ops::ShapeMLUKernel<bool>,
                        ops::ShapeMLUKernel<uint8_t>,
-                       ops::ShapeMLUKernel<int8_t>, ops::ShapeMLUKernel<int>,
+                       ops::ShapeMLUKernel<int8_t>,
+                       ops::ShapeMLUKernel<int>,
                        ops::ShapeMLUKernel<int64_t>,
                        ops::ShapeMLUKernel<paddle::platform::float16>,
-                       ops::ShapeMLUKernel<float>, ops::ShapeMLUKernel<double>);
+                       ops::ShapeMLUKernel<float>,
+                       ops::ShapeMLUKernel<double>);
 
 #endif

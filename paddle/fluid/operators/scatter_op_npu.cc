@@ -69,11 +69,15 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
     if (overwrite) {
       if (framework::TransToProtoVarType(x->dtype()) ==
           framework::proto::VarType::INT64) {
-        NpuOpRunner::TypeAdapter(
-            {*x, *index, *updates}, {*out}, {}, dev_ctx, op_func_update,
-            {framework::proto::VarType::INT32, framework::proto::VarType::INT32,
-             framework::proto::VarType::INT32},
-            {framework::proto::VarType::INT32});
+        NpuOpRunner::TypeAdapter({*x, *index, *updates},
+                                 {*out},
+                                 {},
+                                 dev_ctx,
+                                 op_func_update,
+                                 {framework::proto::VarType::INT32,
+                                  framework::proto::VarType::INT32,
+                                  framework::proto::VarType::INT32},
+                                 {framework::proto::VarType::INT32});
       } else {
         const auto& runner_update = NpuOpRunner(
             "TensorScatterUpdate", {*x, *index, *updates}, {*out}, {});
@@ -82,11 +86,15 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
     } else {
       if (framework::TransToProtoVarType(x->dtype()) ==
           framework::proto::VarType::INT64) {
-        NpuOpRunner::TypeAdapter(
-            {*x, *index, *updates}, {*out}, {}, dev_ctx, op_func_add,
-            {framework::proto::VarType::INT32, framework::proto::VarType::INT32,
-             framework::proto::VarType::INT32},
-            {framework::proto::VarType::INT32});
+        NpuOpRunner::TypeAdapter({*x, *index, *updates},
+                                 {*out},
+                                 {},
+                                 dev_ctx,
+                                 op_func_add,
+                                 {framework::proto::VarType::INT32,
+                                  framework::proto::VarType::INT32,
+                                  framework::proto::VarType::INT32},
+                                 {framework::proto::VarType::INT32});
       } else {
         const auto& runner_add =
             NpuOpRunner("TensorScatterAdd", {*x, *index, *updates}, {*out}, {});
@@ -101,7 +109,8 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    scatter, ops::ScatterNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    scatter,
+    ops::ScatterNPUKernel<paddle::platform::NPUDeviceContext, float>,
 #ifdef PADDLE_WITH_ASCEND_INT64
     ops::ScatterNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
 #endif

@@ -37,7 +37,8 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
 
     PADDLE_ENFORCE_EQ(
-        x->lod().empty(), false,
+        x->lod().empty(),
+        false,
         platform::errors::NotFound("Input(X) Tensor of SequencePadOp does not "
                                    "contain LoD information."));
 
@@ -46,8 +47,14 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
     int padded_length = ctx.Attr<int>("padded_length");
 
     math::PaddingLoDTensorFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), *x, out, *pad_value,
-        padded_length, 0, false, math::kBatchLengthWidth);
+        ctx.template device_context<DeviceContext>(),
+        *x,
+        out,
+        *pad_value,
+        padded_length,
+        0,
+        false,
+        math::kBatchLengthWidth);
 
     LoDTensor seq_len;
     seq_len.Resize(len_t->dims());
@@ -55,8 +62,10 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
     for (size_t i = 1; i < x->lod()[0].size(); ++i) {
       len_data[i - 1] = x->lod()[0][i] - x->lod()[0][i - 1];
     }
-    framework::TensorCopy(seq_len, ctx.GetPlace(),
-                          ctx.template device_context<DeviceContext>(), len_t);
+    framework::TensorCopy(seq_len,
+                          ctx.GetPlace(),
+                          ctx.template device_context<DeviceContext>(),
+                          len_t);
   }
 };
 
@@ -72,8 +81,13 @@ class SequencePadGradOpKernel : public framework::OpKernel<T> {
       int padded_length = ctx.Attr<int>("padded_length");
 
       math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
-          ctx.template device_context<DeviceContext>(), *d_out, d_x,
-          padded_length, 0, false, math::kBatchLengthWidth);
+          ctx.template device_context<DeviceContext>(),
+          *d_out,
+          d_x,
+          padded_length,
+          0,
+          false,
+          math::kBatchLengthWidth);
     }
   }
 };

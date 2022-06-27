@@ -43,8 +43,13 @@ void Pool3DPlugin::serialize(void *buffer) const TRT_NOEXCEPT {
 }
 
 Pool3DPlugin *Pool3DPlugin::clone() const TRT_NOEXCEPT {
-  return new Pool3DPlugin(ceil_mode_, pool3d_type_, adaptive_, ksize_, strides_,
-                          paddings_, input_shape_);
+  return new Pool3DPlugin(ceil_mode_,
+                          pool3d_type_,
+                          adaptive_,
+                          ksize_,
+                          strides_,
+                          paddings_,
+                          input_shape_);
 }
 
 const char *Pool3DPlugin::getPluginType() const TRT_NOEXCEPT {
@@ -56,7 +61,8 @@ int Pool3DPlugin::getNbOutputs() const TRT_NOEXCEPT { return 1; }
 int Pool3DPlugin::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::DataType Pool3DPlugin::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types,
+    int index,
+    const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
   return input_types[0];
 }
@@ -65,17 +71,20 @@ void Pool3DPlugin::destroy() TRT_NOEXCEPT { delete this; }
 
 nvinfer1::Dims Pool3DPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *inputDims, int nbInputs) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(nbInputs, 1,
+  PADDLE_ENFORCE_EQ(nbInputs,
+                    1,
                     platform::errors::InvalidArgument(
                         "The Pool3D Plugin only has one input, so the nbInputs "
                         "value should be 1, but get %d.",
                         nbInputs));
-  PADDLE_ENFORCE_EQ(index, 0,
+  PADDLE_ENFORCE_EQ(index,
+                    0,
                     platform::errors::InvalidArgument(
                         "The Pool3D Plugin only has one input, so "
                         "the index value should be 0, but get %d.",
                         index));
-  PADDLE_ENFORCE_EQ(inputDims[0].nbDims, 4,
+  PADDLE_ENFORCE_EQ(inputDims[0].nbDims,
+                    4,
                     platform::errors::InvalidArgument(
                         "The Pool3D Plugin only has four Dimensions, so the "
                         "nbDims value should be 4, but get %d.",
@@ -91,12 +100,15 @@ nvinfer1::Dims Pool3DPlugin::getOutputDimensions(
   return output_dims;
 }
 
-int Pool3DPlugin::enqueue(int batchSize, const void *const *inputs,
+int Pool3DPlugin::enqueue(int batchSize,
+                          const void *const *inputs,
 #if IS_TRT_VERSION_LT(8000)
-                          void **outputs, void *workspace,
+                          void **outputs,
+                          void *workspace,
                           cudaStream_t stream) TRT_NOEXCEPT {
 #else
-                          void *const *outputs, void *workspace,
+                          void *const *outputs,
+                          void *workspace,
                           cudaStream_t stream) TRT_NOEXCEPT {
 #endif
   int input_size = 0;
@@ -112,14 +124,32 @@ int Pool3DPlugin::enqueue(int batchSize, const void *const *inputs,
     phi::funcs::MaxPool<float> pool_process;
     phi::funcs::Pool3dDirectCUDAFunctor<phi::funcs::MaxPool<float>, float>
         pool3d_forward;
-    pool3d_forward(idata, input_shape, output_shape, ksize_, strides_,
-                   paddings_, true, adaptive_, odatas[0], stream, pool_process);
+    pool3d_forward(idata,
+                   input_shape,
+                   output_shape,
+                   ksize_,
+                   strides_,
+                   paddings_,
+                   true,
+                   adaptive_,
+                   odatas[0],
+                   stream,
+                   pool_process);
   } else if (pool3d_type_ == Pool3DType::avg) {
     phi::funcs::AvgPool<float> pool_process;
     phi::funcs::Pool3dDirectCUDAFunctor<phi::funcs::AvgPool<float>, float>
         pool3d_forward;
-    pool3d_forward(idata, input_shape, output_shape, ksize_, strides_,
-                   paddings_, true, adaptive_, odatas[0], stream, pool_process);
+    pool3d_forward(idata,
+                   input_shape,
+                   output_shape,
+                   ksize_,
+                   strides_,
+                   paddings_,
+                   true,
+                   adaptive_,
+                   odatas[0],
+                   stream,
+                   pool_process);
   }
 
   return cudaGetLastError() != cudaSuccess;
@@ -141,8 +171,13 @@ Pool3DPluginDynamic::Pool3DPluginDynamic(void const *serialData,
 }
 
 nvinfer1::IPluginV2DynamicExt *Pool3DPluginDynamic::clone() const TRT_NOEXCEPT {
-  return new Pool3DPluginDynamic(ceil_mode_, pool3d_type_, adaptive_, ksize_,
-                                 strides_, paddings_, is_global_);
+  return new Pool3DPluginDynamic(ceil_mode_,
+                                 pool3d_type_,
+                                 adaptive_,
+                                 ksize_,
+                                 strides_,
+                                 paddings_,
+                                 is_global_);
 }
 
 const char *Pool3DPluginDynamic::getPluginType() const TRT_NOEXCEPT {
@@ -153,11 +188,14 @@ int Pool3DPluginDynamic::getNbOutputs() const TRT_NOEXCEPT { return 1; }
 int Pool3DPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 void Pool3DPluginDynamic::configurePlugin(
-    const nvinfer1::DynamicPluginTensorDesc *in, int nbInputs,
-    const nvinfer1::DynamicPluginTensorDesc *out, int nbOutputs) TRT_NOEXCEPT {}
+    const nvinfer1::DynamicPluginTensorDesc *in,
+    int nbInputs,
+    const nvinfer1::DynamicPluginTensorDesc *out,
+    int nbOutputs) TRT_NOEXCEPT {}
 
 size_t Pool3DPluginDynamic::getWorkspaceSize(
-    const nvinfer1::PluginTensorDesc *inputs, int nbInputs,
+    const nvinfer1::PluginTensorDesc *inputs,
+    int nbInputs,
     const nvinfer1::PluginTensorDesc *outputs,
     int nbOutputs) const TRT_NOEXCEPT {
   return 0;
@@ -181,14 +219,18 @@ void Pool3DPluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
 }
 
 nvinfer1::DimsExprs Pool3DPluginDynamic::getOutputDimensions(
-    int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
+    int output_index,
+    const nvinfer1::DimsExprs *inputs,
+    int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(nb_inputs, 1,
+  PADDLE_ENFORCE_EQ(nb_inputs,
+                    1,
                     platform::errors::InvalidArgument(
                         "The Split plugin should be only one input."));
 
   PADDLE_ENFORCE_EQ(
-      inputs[0].d[1]->isConstant(), true,
+      inputs[0].d[1]->isConstant(),
+      true,
       platform::errors::InvalidArgument("The channel dimension should be "
                                         "static, but we found it's dynamic."));
   nvinfer1::DimsExprs output(inputs[0]);
@@ -226,24 +268,24 @@ nvinfer1::DimsExprs Pool3DPluginDynamic::getOutputDimensions(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
             nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
-                                    *inputs[0].d[2], *v0_tmp),
+            *expr_builder.operation(
+                nvinfer1::DimensionOperation::kSUM, *inputs[0].d[2], *v0_tmp),
             *stri_0),
         *one_value);
     output.d[3] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
             nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
-                                    *inputs[0].d[3], *v1_tmp),
+            *expr_builder.operation(
+                nvinfer1::DimensionOperation::kSUM, *inputs[0].d[3], *v1_tmp),
             *stri_1),
         *one_value);
     output.d[4] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
             nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
-                                    *inputs[0].d[4], *v2_tmp),
+            *expr_builder.operation(
+                nvinfer1::DimensionOperation::kSUM, *inputs[0].d[4], *v2_tmp),
             *stri_2),
         *one_value);
 
@@ -252,8 +294,8 @@ nvinfer1::DimsExprs Pool3DPluginDynamic::getOutputDimensions(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
             nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
-                                    *inputs[0].d[2], *ceil_tmp),
+            *expr_builder.operation(
+                nvinfer1::DimensionOperation::kSUM, *inputs[0].d[2], *ceil_tmp),
             *stri_0),
         *one_value);
     output.d[3] = expr_builder.operation(
@@ -261,7 +303,8 @@ nvinfer1::DimsExprs Pool3DPluginDynamic::getOutputDimensions(
         *expr_builder.operation(
             nvinfer1::DimensionOperation::kFLOOR_DIV,
             *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
-                                    *inputs[0].d[3], *ceil1_tmp),
+                                    *inputs[0].d[3],
+                                    *ceil1_tmp),
             *stri_1),
         *one_value);
     output.d[4] = expr_builder.operation(
@@ -269,7 +312,8 @@ nvinfer1::DimsExprs Pool3DPluginDynamic::getOutputDimensions(
         *expr_builder.operation(
             nvinfer1::DimensionOperation::kFLOOR_DIV,
             *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
-                                    *inputs[0].d[4], *ceil2_tmp),
+                                    *inputs[0].d[4],
+                                    *ceil2_tmp),
             *stri_2),
         *one_value);
   }
@@ -278,17 +322,22 @@ nvinfer1::DimsExprs Pool3DPluginDynamic::getOutputDimensions(
 }
 
 bool Pool3DPluginDynamic::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc *in_out,
+    int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
-      in_out, platform::errors::InvalidArgument(
-                  "The input of swish plugin shoule not be nullptr."));
+      in_out,
+      platform::errors::InvalidArgument(
+          "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
-      pos, nb_inputs + nb_outputs,
+      pos,
+      nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
-                                        pos, nb_inputs + nb_outputs));
+                                        pos,
+                                        nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
   return ((in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
@@ -296,14 +345,17 @@ bool Pool3DPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType Pool3DPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types,
+    int index,
+    const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0,
+  PADDLE_ENFORCE_EQ(index,
+                    0,
                     platform::errors::InvalidArgument(
                         "The Pool3D Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
-  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT), true,
+  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT),
+                    true,
                     platform::errors::InvalidArgument(
                         "The input type should be half or float"));
   return input_types[0];
@@ -312,7 +364,8 @@ nvinfer1::DataType Pool3DPluginDynamic::getOutputDataType(
 int Pool3DPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
                                  const nvinfer1::PluginTensorDesc *output_desc,
                                  const void *const *inputs,
-                                 void *const *outputs, void *workspace,
+                                 void *const *outputs,
+                                 void *workspace,
                                  cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   int n = input_dims.d[0];
@@ -342,8 +395,8 @@ int Pool3DPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
     output_shape[3] = 1;
     output_shape[4] = 1;
   } else {
-    auto data_dim = CalcOutputSize({d, h, w}, ceil_mode_, adaptive_, ksize_,
-                                   strides_, paddings_);
+    auto data_dim = CalcOutputSize(
+        {d, h, w}, ceil_mode_, adaptive_, ksize_, strides_, paddings_);
     output_shape[2] = data_dim[0];
     output_shape[3] = data_dim[1];
     output_shape[4] = data_dim[2];
@@ -353,14 +406,32 @@ int Pool3DPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
     phi::funcs::MaxPool<float> pool_process;
     phi::funcs::Pool3dDirectCUDAFunctor<phi::funcs::MaxPool<float>, float>
         pool3d_forward;
-    pool3d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
-                   true, adaptive_, output, stream, pool_process);
+    pool3d_forward(input,
+                   input_shape,
+                   output_shape,
+                   ksize,
+                   strides_,
+                   paddings,
+                   true,
+                   adaptive_,
+                   output,
+                   stream,
+                   pool_process);
   } else if (pool3d_type_ == "avg") {
     phi::funcs::AvgPool<float> pool_process;
     phi::funcs::Pool3dDirectCUDAFunctor<phi::funcs::AvgPool<float>, float>
         pool3d_forward;
-    pool3d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
-                   true, adaptive_, output, stream, pool_process);
+    pool3d_forward(input,
+                   input_shape,
+                   output_shape,
+                   ksize,
+                   strides_,
+                   paddings,
+                   true,
+                   adaptive_,
+                   output,
+                   stream,
+                   pool_process);
   }
 
   return cudaGetLastError() != cudaSuccess;

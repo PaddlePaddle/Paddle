@@ -80,9 +80,10 @@ class PruneGateByCapacityFunctor {
     int threads = kNumCUDAThreads;
 
     prune_gate_by_capacity_kernel<T1, T2>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(
-            gate_idx_data, new_gate_idx_data_, expert_count_out_data,
-            batch_size);
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(gate_idx_data,
+                                                   new_gate_idx_data_,
+                                                   expert_count_out_data,
+                                                   batch_size);
   }
 
  private:

@@ -25,14 +25,19 @@ class TensorUtils {
   static void CudaFreePinnedMemory(void* mem);
 
   static void CopyTensor(Tensor* p_dst, const Tensor& src);
-  static void CopyTensorAsync(Tensor* p_dst, const Tensor& src,
+  static void CopyTensorAsync(Tensor* p_dst,
+                              const Tensor& src,
                               void* exec_stream);
-  static void CopyTensorAsync(Tensor* p_dst, const Tensor& src, CallbackFunc cb,
+  static void CopyTensorAsync(Tensor* p_dst,
+                              const Tensor& src,
+                              CallbackFunc cb,
                               void* cb_params);
 
  private:
-  static void CopyTensorImpl(Tensor* p_dst, const Tensor& src,
-                             void* exec_stream, CallbackFunc cb,
+  static void CopyTensorImpl(Tensor* p_dst,
+                             const Tensor& src,
+                             void* exec_stream,
+                             CallbackFunc cb,
                              void* cb_params);
 };
 
