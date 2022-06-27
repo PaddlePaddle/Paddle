@@ -174,6 +174,19 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
 
   if (subm) {
     // set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n, 1);
+    unique_value.ResizeAndAllocate(
+        {static_cast<int>(out->nnz() * kernel_size)});
+    out_index.ResizeAndAllocate({static_cast<int>(n)});
+    int* out_index_ptr = out_index.data<int>();
+    int* unique_value_ptr = unique_value.data<int>();
+    cudaMemsetAsync(out_index_ptr, 0, sizeof(int) * n, dev_ctx.stream());
+    UpdateOutIndex<<<config.block_per_grid,
+                     config.thread_per_block,
+                     0,
+                     dev_ctx.stream()>>>(
+        n, kernel_size, rulebook_ptr + 2 * n, out_index_ptr, unique_value_ptr);
   }
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
@@ -202,7 +215,7 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   }
 
   // 4. scatter
-  if (subm) {
+  if (false) {
     set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n * out_channels, 1);

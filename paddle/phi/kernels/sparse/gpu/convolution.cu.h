@@ -473,6 +473,21 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
   }
 }
 
+template <typename IntT>
+__global__ void UpdateOutIndex(const int n,
+                               const int kernel_size,
+                               const IntT* out_indexs,
+                               int* out_index_counts,
+                               int* origin_out_indexs) {
+  CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
+    IntT index = out_indexs[i];
+    // kernel_size at most
+    int j = atomicAdd(out_index_counts + index, 1);
+    // nnz * kernel_size
+    origin_out_indexs[index * kernel_size + j] = i;
+  }
+}
+
 // the basic algorithm can refer to convolution_kernel.cc or
 // the second paper
 // example:
@@ -631,6 +646,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                              non_zero_num,
                                              out_rulebook_ptr);
     *rulebook = out_rulebook;
+
     return rulebook_len;
 
   } else {
