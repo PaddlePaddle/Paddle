@@ -50,19 +50,6 @@ class Pad3dMKLDNNKernel : public framework::OpKernel<T> {
 
   }
 };
-template <typename T>
-class Pad3dGradMKLDNNKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    this->RunKernel(ctx);
-  }
-
-  void RunKernel(const framework::ExecutionContext& ctx) const {
-    const auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
-    const auto& onednn_engine = dev_ctx.GetEngine();
-  }
-};
 }  // namespace operators
 }  // namespace paddle
 
@@ -72,7 +59,3 @@ REGISTER_OP_KERNEL(pad3d, MKLDNN, paddle::platform::CPUPlace,
                    ops::Pad3dMKLDNNKernel<int8_t>,
                    ops::Pad3dMKLDNNKernel<uint8_t>,
                    ops::Pad3dMKLDNNKernel<paddle::platform::bfloat16>);
-
-REGISTER_OP_KERNEL(pad3d_grad, MKLDNN, paddle::platform::CPUPlace,
-                   ops::Pad3dGradMKLDNNKernel<float>,
-                   ops::Pad3dGradMKLDNNKernel<paddle::platform::bfloat16>);
