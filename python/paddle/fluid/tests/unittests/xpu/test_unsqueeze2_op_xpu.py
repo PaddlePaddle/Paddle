@@ -256,9 +256,9 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
             self.new_shape = (10, 1, 1, 2, 5, 1)
 
 
-support_types = get_xpu_op_support_types("unsqueeze2")
-for stype in support_types:
-    create_test_class(globals(), XPUTestUnsqueeze2Op, stype)
+#support_types = get_xpu_op_support_types("unsqueeze2")
+#for stype in support_types:
+#    create_test_class(globals(), XPUTestUnsqueeze2Op, stype)
 
 if __name__ == "__main__":
     unittest.main()
