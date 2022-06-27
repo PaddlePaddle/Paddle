@@ -156,7 +156,8 @@ class MultiHeadMatmulV2FusePass : public FusePassBase {
   const std::string name_scope_{"multihead_matmul_fuse_v2"};
 
  private:
-  int BuildFusionV2(Graph* graph, const std::string& name_scope,
+  int BuildFusionV2(Graph* graph,
+                    const std::string& name_scope,
                     Scope* scope) const;
 };
 
@@ -170,7 +171,8 @@ class MultiHeadMatmulV3FusePass : public FusePassBase {
   const std::string name_scope_{"multihead_matmul_fuse_v3"};
 
  private:
-  int BuildFusionV3(Graph* graph, const std::string& name_scope,
+  int BuildFusionV3(Graph* graph,
+                    const std::string& name_scope,
                     Scope* scope) const;
 };
 

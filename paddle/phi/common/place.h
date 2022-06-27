@@ -256,4 +256,6 @@ enum class PlaceType {
 PADDLE_API bool operator==(const Place& place, PlaceType place_type);
 PADDLE_API bool operator==(PlaceType place_type, const Place& place);
 
+PADDLE_API GPUPlace DefaultGPUPlace();
+
 }  // namespace paddle

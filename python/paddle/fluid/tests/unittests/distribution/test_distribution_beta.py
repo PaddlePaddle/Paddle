@@ -22,6 +22,8 @@ import config
 from config import ATOL, DEVICES, RTOL
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
+np.random.seed(2022)
+
 
 @place(DEVICES)
 @parameterize_cls((TEST_CASE_NAME, 'alpha', 'beta'),

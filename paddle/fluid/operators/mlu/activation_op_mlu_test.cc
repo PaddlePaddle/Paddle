@@ -37,7 +37,8 @@ inline T relu_grad_dx(T x, T out, T dout) {
 }
 
 template <typename T>
-void Compare(fw::Scope* scope, const plat::DeviceContext& ctx,
+void Compare(fw::Scope* scope,
+             const plat::DeviceContext& ctx,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
@@ -56,8 +57,8 @@ void Compare(fw::Scope* scope, const plat::DeviceContext& ctx,
   auto tensor_out = out->GetMutable<fw::LoDTensor>();
 
   fw::AttributeMap attrs;
-  auto op = fw::OpRegistry::CreateOp(op_type, {{"X", {"X"}}},
-                                     {{"Out", {"Out"}}}, attrs);
+  auto op = fw::OpRegistry::CreateOp(
+      op_type, {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   op->Run(*scope, place);
 
   ctx.Wait();
@@ -89,7 +90,8 @@ void Compare(fw::Scope* scope, const plat::DeviceContext& ctx,
 }
 
 template <typename T>
-void CompareGrad(fw::Scope* scope, const plat::DeviceContext& ctx,
+void CompareGrad(fw::Scope* scope,
+                 const plat::DeviceContext& ctx,
                  std::string op_type) {
   auto dout = scope->Var("DOut");
   auto tensor_dout = dout->GetMutable<fw::LoDTensor>();
@@ -120,7 +122,8 @@ void CompareGrad(fw::Scope* scope, const plat::DeviceContext& ctx,
   fw::AttributeMap attrs;
   auto op = fw::OpRegistry::CreateOp(op_type,
                                      {{"Out@GRAD", {"DOut"}}, {"Out", {"Out"}}},
-                                     {{"X@GRAD", {"DX"}}}, attrs);
+                                     {{"X@GRAD", {"DX"}}},
+                                     attrs);
   op->Run(*scope, place);
 
   ctx.Wait();

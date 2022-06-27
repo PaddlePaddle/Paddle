@@ -43,7 +43,8 @@ class CIdentityOpKernel : public framework::OpKernel<T> {
 
     int rid = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        rid, 0,
+        rid,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for c_identity op must be non-negative.", rid));
     out->mutable_data<T>(ctx.GetPlace());

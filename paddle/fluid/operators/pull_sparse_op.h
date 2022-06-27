@@ -34,8 +34,8 @@ void PullSparseFunctor(const framework::ExecutionContext& ctx) {
   // note: GetInstance() is not thread-safe
   // we assume FleetWrapper has been already initialized
   auto fleet_ptr = framework::FleetWrapper::GetInstance();
-  fleet_ptr->PullSparseToTensorSync(table_id, fea_dim, padding_id,
-                                    ctx.GetPlace(), &inputs, &outputs);
+  fleet_ptr->PullSparseToTensorSync(
+      table_id, fea_dim, padding_id, ctx.GetPlace(), &inputs, &outputs);
 }
 
 template <typename T>
@@ -54,9 +54,17 @@ void PushSparseFunctor(const framework::ExecutionContext& ctx) {
   // note: GetInstance() is not thread-safe
   // we assume FleetWrapper has been already initialized
   auto fleet_ptr = framework::FleetWrapper::GetInstance();
-  fleet_ptr->PushSparseFromTensorWithLabelAsync(
-      scope, table_id, fea_dim, padding_id, scale_sparse, accesor, label_name,
-      ctx.GetPlace(), input_names, &inputs, &grads);
+  fleet_ptr->PushSparseFromTensorWithLabelAsync(scope,
+                                                table_id,
+                                                fea_dim,
+                                                padding_id,
+                                                scale_sparse,
+                                                accesor,
+                                                label_name,
+                                                ctx.GetPlace(),
+                                                input_names,
+                                                &inputs,
+                                                &grads);
 }
 
 template <typename T>

@@ -40,10 +40,12 @@ class CinnCacheKey {
 
   CinnCacheKey(const ir::Graph& graph,
                const std::map<std::string, const LoDTensor*>& input_tensors,
-               const std::string& arch_str, GraphHashStrategy graph_hash);
+               const std::string& arch_str,
+               GraphHashStrategy graph_hash);
   CinnCacheKey(const ir::Graph& graph,
                const std::map<std::string, DDim>& input_shapes,
-               const std::string& arch_str, GraphHashStrategy graph_hash);
+               const std::string& arch_str,
+               GraphHashStrategy graph_hash);
 
   ~CinnCacheKey() = default;
 

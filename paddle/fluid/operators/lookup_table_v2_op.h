@@ -78,20 +78,25 @@ struct LookupTableV2CPUFunctor {
           memset(output + i * row_width, 0, row_width * sizeof(T));
         } else {
           PADDLE_ENFORCE_LT(
-              ids[i], row_number,
+              ids[i],
+              row_number,
               platform::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
-                  row_number, ids[i]));
+                  row_number,
+                  ids[i]));
           PADDLE_ENFORCE_GE(
-              ids[i], 0,
+              ids[i],
+              0,
               platform::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
-                  row_number, ids[i]));
-          memcpy(output + i * row_width, table + ids[i] * row_width,
+                  row_number,
+                  ids[i]));
+          memcpy(output + i * row_width,
+                 table + ids[i] * row_width,
                  row_width * sizeof(T));
         }
       }
@@ -108,25 +113,29 @@ struct LookupTableV2CPUFunctor {
           memset(output + i * row_width, 0, row_width * sizeof(T));
         } else {
           PADDLE_ENFORCE_GE(
-              ids[i], 0,
+              ids[i],
+              0,
               platform::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0. But received %ld",
                   ids[i]));
           auto id_index = table_t.Index(ids[i]);
           PADDLE_ENFORCE_GE(
-              id_index, 0,
+              id_index,
+              0,
               platform::errors::InvalidArgument(
                   "the input key should be exists. But received %d.",
                   id_index));
 
           if (input_data_type == framework::proto::VarType::BF16) {
-            memcpy(output + i * row_width, table + id_index * row_width,
+            memcpy(output + i * row_width,
+                   table + id_index * row_width,
                    row_width * sizeof(T));
           } else {
             auto blas =
                 phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context_);
-            blas.VCOPY(row_width, table + id_index * row_width,
+            blas.VCOPY(row_width,
+                       table + id_index * row_width,
                        output + i * row_width);
           }
         }
@@ -199,13 +208,15 @@ struct LookupTableV2GradCPUFunctor {
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
           phi::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
-      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
+      PADDLE_ENFORCE_EQ(d_table_value->dims(),
+                        d_output_dims_2d,
                         platform::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "
                             "output@Grad should be same. "
                             "But received lookup_table@Grad's shape = [%s], "
                             "output@Grad's shape = [%s].",
-                            d_table_value->dims(), d_output_dims_2d));
+                            d_table_value->dims(),
+                            d_output_dims_2d));
       memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
 
     } else {
@@ -228,19 +239,23 @@ struct LookupTableV2GradCPUFunctor {
           // do nothing.
         } else {
           PADDLE_ENFORCE_LT(
-              ids_data[i], N,
+              ids_data[i],
+              N,
               platform::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
-                  N, ids_data[i]));
+                  N,
+                  ids_data[i]));
           PADDLE_ENFORCE_GE(
-              ids_data[i], 0,
+              ids_data[i],
+              0,
               platform::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
-                  N, ids_data[i]));
+                  N,
+                  ids_data[i]));
           for (int j = 0; j < D; ++j) {
             d_table_data[ids_data[i] * D + j] += d_output_data[i * D + j];
           }
