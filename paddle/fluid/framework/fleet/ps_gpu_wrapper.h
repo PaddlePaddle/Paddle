@@ -360,8 +360,6 @@ class PSGPUWrapper {
     }
 
     feature_value_accessor_.Configure(config);
-    VLOG(0) << "INIT feature_value_accessor_:" << feature_value_accessor_.GetAccessorInfo().dim
-            << "  embedx_sgd_dim:" << feature_value_accessor_.common_feature_value.embedx_sgd_dim;
     InitializeGPUServer(config);
   }
   #endif

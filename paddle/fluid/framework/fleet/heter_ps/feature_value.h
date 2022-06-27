@@ -27,19 +27,6 @@ namespace framework {
 
 typedef uint64_t FeatureKey;
 
-struct GpuAccessorInfo {
-  // value维度
-  size_t dim;
-  // value各个维度的size
-  size_t size;
-  // push value维度
-  size_t update_dim;
-  // push value各个维度的size
-  size_t update_size;
-  // value中mf动态长度部分总size大小, 包含mf_g2sum和 mf_dim, sparse下生效
-  size_t mf_size;
-};
-
 class FeatureValueAccessor {
  public:
   __host__ __device__  FeatureValueAccessor() {}
@@ -52,11 +39,8 @@ class FeatureValueAccessor {
   }
   __host__ __device__  virtual int Initialize() = 0;
 
-  __host__ __device__  virtual GpuAccessorInfo GetAccessorInfo() { return _accessor_info; }
-
  protected:
   std::unordered_map<std::string, float> _config;
-  GpuAccessorInfo _accessor_info;
 };
 
 // adagrad: embed_sgd_dim=1, embedx_sgd_dim=1,embedx_dim=n
@@ -225,18 +209,7 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
     common_feature_value.optimizer_type_ = optimizer_type;
     common_feature_value.embedx_dim = sparse_embedx_dim;
 
-    InitAccessorInfo();
     return 0;
-  }
-
-  // 初始化AccessorInfo
-  __host__ __device__ virtual void InitAccessorInfo() {
-    _accessor_info.dim = common_feature_value.Dim();
-    _accessor_info.size = common_feature_value.Size();
-    _accessor_info.update_dim = 5 + common_feature_value.EmbedWDim();
-    _accessor_info.update_size = _accessor_info.update_dim * sizeof(float);
-    _accessor_info.mf_size =
-        (common_feature_value.EmbedWDim() + common_feature_value.EmbedXDim()) * sizeof(float);
   }
 
   __host__ __device__ std::string ParseToString(const float* v, int param_size) {

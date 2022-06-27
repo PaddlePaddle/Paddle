@@ -1127,7 +1127,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
   size_t feature_value_size = 0;
 
   feature_value_size = TYPEALIGN(8, feature_value_accessor_.common_feature_value.Size(max_mf_dim_));
-  VLOG(0) << "PullSparse max_dim:" << max_mf_dim_ << " feature_value_size:" << feature_value_size;
+  VLOG(3) << "PullSparse max_dim:" << max_mf_dim_ << " feature_value_size:" << feature_value_size;
   
 #ifdef PADDLE_WITH_CUDA
   VLOG(3) << "Begine Gpu Ps PullSparse";
