@@ -731,9 +731,9 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     size_t left = 0, right = 0;
 
     size_t real_len = len_per_thread;
-    if (z < remain) real_len++;
+    if ((size_t)z < remain) real_len++;
 
-    if (z < remain) {
+    if ((size_t)z < remain) {
       left = z * (len_per_thread + 1);
       right = left + real_len;
     } else {
