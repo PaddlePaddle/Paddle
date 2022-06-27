@@ -24,9 +24,13 @@ from op_test import OpTest
 def get_broadcast_shape(shp1, shp2):
     pad_shp1, pad_shp2 = shp1, shp2
     if len(shp1) > len(shp2):
-        pad_shp2 = [1, ] * (len(shp1) - len(shp2)) + shp2
+        pad_shp2 = [
+            1,
+        ] * (len(shp1) - len(shp2)) + shp2
     elif len(shp1) < len(shp2):
-        pad_shp1 = [1, ] * (len(shp2) - len(shp1)) + shp1
+        pad_shp1 = [
+            1,
+        ] * (len(shp2) - len(shp1)) + shp1
     for d1, d2 in zip(pad_shp1, pad_shp2):
         if d1 != d2 and d1 != 1 and d2 != 1:
             raise ValueError
@@ -42,7 +46,9 @@ def compute_graph_send_e_recv_for_sum(inputs, attributes):
     compute_type = attributes['compute_type']
 
     gather_x = x[src_index]
-    out_shp = [x.shape[0], ] + get_broadcast_shape(x.shape[1:], e.shape[1:])
+    out_shp = [
+        x.shape[0],
+    ] + get_broadcast_shape(x.shape[1:], e.shape[1:])
     results = np.zeros(out_shp, dtype=x.dtype)
 
     # Calculate forward output
@@ -63,7 +69,9 @@ def compute_graph_send_e_recv_for_mean(inputs, attributes):
     compute_type = attributes['compute_type']
 
     gather_x = x[src_index]
-    out_shp = [x.shape[0], ] + get_broadcast_shape(x.shape[1:], e.shape[1:])
+    out_shp = [
+        x.shape[0],
+    ] + get_broadcast_shape(x.shape[1:], e.shape[1:])
     results = np.zeros(out_shp, dtype=x.dtype)
 
     # Calculate forward output
@@ -75,12 +83,13 @@ def compute_graph_send_e_recv_for_mean(inputs, attributes):
     for index, s_id in enumerate(dst_index):
         results[s_id, :] += x_compute_e[index, :]
         count[s_id] += 1
-        results = results / count.reshape([-1, 1])
-        results[np.isnan(results)] = 0
+    results = results / count.reshape([-1, 1])
+    results[np.isnan(results)] = 0
     return results, count
 
 
 class TestGraphSendERecvSumOp(OpTest):
+
     def setUp(self):
         paddle.enable_static()
         self.op_type = "graph_send_e_recv"
@@ -113,6 +122,7 @@ class TestGraphSendERecvSumOp(OpTest):
 
 
 class TestSumCase1(TestGraphSendERecvSumOp):
+
     def set_config(self):
         self.x = np.random.random((100, 20)).astype("float64")
         self.e = np.random.random((150, 1)).astype("float64")
@@ -123,16 +133,7 @@ class TestSumCase1(TestGraphSendERecvSumOp):
 
 
 class TestSumCase2(TestGraphSendERecvSumOp):
-    def set_config(self):
-        self.x = np.random.random((100, 1)).astype("float64")
-        self.e = np.random.random((15, 20)).astype("float64")
-        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
-        self.src_index = index[:, 0]
-        self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
 
-
-class TestSumCase3(TestGraphSendERecvSumOp):
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
         self.e = np.random.random((15, 20)).astype("float64")
@@ -142,7 +143,8 @@ class TestSumCase3(TestGraphSendERecvSumOp):
         self.compute_type = 'MUL'
 
 
-class TestSumCase4(TestGraphSendERecvSumOp):
+class TestSumCase3(TestGraphSendERecvSumOp):
+
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
         self.e = np.random.random((150, 1)).astype("float64")
@@ -152,17 +154,30 @@ class TestSumCase4(TestGraphSendERecvSumOp):
         self.compute_type = 'MUL'
 
 
-class TestSumCase5(TestGraphSendERecvSumOp):
+class TestSumCase4(TestGraphSendERecvSumOp):
+
     def set_config(self):
-        self.x = np.random.random((100, 1)).astype("float64")
-        self.e = np.random.random((15, 20)).astype("float64")
-        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.x = np.random.random((10, 8, 5)).astype("float64")
+        self.e = np.random.random((15, 8, 1)).astype("float64")
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'ADD'
+
+
+class TestSumCase5(TestGraphSendERecvSumOp):
+
+    def set_config(self):
+        self.x = np.random.random((10, 8, 5)).astype("float64")
+        self.e = np.random.random((15, 8, 1)).astype("float64")
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
         self.compute_type = 'MUL'
 
 
 class TestGraphSendERecvMeanOp(OpTest):
+
     def setUp(self):
         paddle.enable_static()
         self.op_type = "graph_send_e_recv"
@@ -175,8 +190,8 @@ class TestGraphSendERecvMeanOp(OpTest):
         }
         self.attrs = {'compute_type': self.compute_type, 'pool_type': 'MEAN'}
 
-        out, dst_count = compute_graph_send_e_recv_for_mean(self.inputs,
-                                                            self.attrs)
+        out, dst_count = compute_graph_send_e_recv_for_mean(
+            self.inputs, self.attrs)
 
         self.outputs = {'Out': out, 'Dst_count': dst_count}
 
@@ -193,3 +208,14 @@ class TestGraphSendERecvMeanOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X', 'E'], 'Out')
+
+
+def TestMeanCast1(TestGraphSendERecvSumOp):
+
+    def set_config(self):
+        self.x = np.random.random((10, 20)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'MUL'

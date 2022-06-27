@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
 #include "paddle/phi/kernels/graph_send_e_recv_grad_kernel.h"
 #include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -172,11 +173,7 @@ void CalculateXGrad(const Context& ctx,
       ManipulateMeanGradCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
           out_grad, d_index, s_index, x_grad, index_size, slice_size, s_count);
     } else if (compute_type == "MUL") {
-      const auto& broad_shape = phi::InferBroadcastShape(out_grad_dims, e_dims);
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
-      DenseTensor out_grad_temp;
-      out_grad_temp.Resize(phi::make_ddim(bcast_info));
-      ctx.template Alloc<T>(&out_grad_temp);
       thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
       if (bcast_info.use_bcast) {
         CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
