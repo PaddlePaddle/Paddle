@@ -1195,6 +1195,17 @@ void AnalysisPredictor::PrepareArgument() {
         passes.erase(iterator);
       }
     }
+
+    if (config_.ir_debug_) {
+      auto it = std::begin(passes);
+      while (it != std::end(passes)) {
+        if (*it != "graph_viz_pass") {
+          it = passes.insert(it + 1, "graph_viz_pass");
+        } else {
+          ++it;
+        }
+      }
+    }
   }
   if (!config_.ir_optim()) {
     passes.clear();
@@ -1204,6 +1215,8 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
+
+  argument_.SetModelPrecision(static_cast<int>(model_precision_));
 }
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.

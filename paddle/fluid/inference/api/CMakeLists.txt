@@ -82,6 +82,7 @@ if(WITH_ONNXRUNTIME)
          ir_pass_manager
          op_compatible_info
          infer_io_utils
+         model_utils
          onnxruntime
          paddle2onnx)
 else()

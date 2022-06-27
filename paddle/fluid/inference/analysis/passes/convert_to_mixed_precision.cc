@@ -16,6 +16,7 @@
 
 #include <unordered_set>
 
+#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -57,21 +58,6 @@ bool GpuKernelSupportPrecision(
   res |= IsKernelSupportPrecision(
       op_type, phi::Backend::GPUDNN, data_type, layout);
   return res;
-}
-
-bool OpSupportPrecision(const std::string& phi_op_type,
-                        phi::Backend backend,
-                        phi::DataType precision,
-                        const std::unordered_set<std::string>& blacklist) {
-  bool support_precision = false;
-  if (blacklist.count(phi_op_type) == 0) {
-    if (backend == phi::Backend::GPU)
-      support_precision = GpuKernelSupportPrecision(phi_op_type, precision);
-    else
-      support_precision =
-          IsKernelSupportPrecision(phi_op_type, backend, precision);
-  }
-  return support_precision;
 }
 
 // Just process special cases.
@@ -151,55 +137,7 @@ void ConvertTensorDtype(framework::ir::Graph* graph,
 
   int num_low_precision = 0;
   int suffix = 0;
-  auto update_cast_desc = [&](framework::OpDesc& desc,
-                              const std::string& x_name,
-                              const std::string& out_name,
-                              const int in_dtype,
-                              const int out_dtype) {
-    desc.SetType("cast");
-    desc.SetInput("X", {x_name});
-    desc.SetOutput("Out", {out_name});
-    desc.SetAttr("in_dtype", in_dtype);
-    desc.SetAttr("out_dtype", out_dtype);
-    desc.SetAttr("use_mkldnn", false);
-    desc.SetAttr("with_quant_attr", false);
-    desc.Flush();
-  };
-
   framework::BlockDesc* block_desc{nullptr};
-  auto AddCastOp =
-      [&](framework::ir::Graph* graph,
-          framework::ir::Node* node,
-          framework::ir::Node* next_op,
-          framework::proto::VarType::Type from_type,
-          framework::proto::VarType::Type to_type,
-          std::unordered_map<framework::ir::Node*, framework::ir::Node*>* map) {
-        if (map->count(node) == 0) {
-          // insert cast op before node.
-          std::string cast_input_name = node->Var()->Name();
-          std::string cast_output_name =
-              node->Var()->Name() + "_cast.tmp_" + std::to_string(suffix++);
-          CHECK_NOTNULL(block_desc);
-          framework::OpDesc cast_op_desc(block_desc);
-          update_cast_desc(cast_op_desc,
-                           cast_input_name,
-                           cast_output_name,
-                           static_cast<int>(from_type),
-                           static_cast<int>(to_type));
-          auto* cast_op_node = graph->CreateOpNode(&cast_op_desc);
-          auto* cast_output_vardesc = block_desc->Var(cast_output_name);
-          cast_output_vardesc->SetPersistable(false);
-          cast_output_vardesc->SetDataType(to_type);
-          cast_output_vardesc->SetShape(node->Var()->GetShape());
-          auto* cast_output_node = graph->CreateVarNode(cast_output_vardesc);
-          IR_NODE_LINK_TO(cast_op_node, cast_output_node);
-          (*map)[node] = cast_output_node;
-        }
-        next_op->Op()->RenameInput(node->Name(), map->at(node)->Name());
-        IR_NODE_LINK_TO(node, map->at(node)->inputs[0]);
-        IR_NODE_LINK_TO(map->at(node), next_op);
-      };
-
   std::vector<framework::ir::Node*> output_nodes;
   std::unordered_map<framework::ir::Node*, framework::ir::Node*> cast_map;
 
@@ -248,6 +186,8 @@ void ConvertTensorDtype(framework::ir::Graph* graph,
                       op_node,
                       in_var->GetDataType(),
                       to_type,
+                      &suffix,
+                      block_desc,
                       &cast_map);
           }
         }
@@ -269,6 +209,8 @@ void ConvertTensorDtype(framework::ir::Graph* graph,
                       op_node,
                       in_var->GetDataType(),
                       framework::proto::VarType::FP32,
+                      &suffix,
+                      block_desc,
                       &cast_map);
           }
         }
@@ -288,6 +230,8 @@ void ConvertTensorDtype(framework::ir::Graph* graph,
                     op_node,
                     to_type,
                     framework::proto::VarType::FP32,
+                    &suffix,
+                    block_desc,
                     &cast_map);
         }
       }
@@ -305,6 +249,8 @@ void ConvertTensorDtype(framework::ir::Graph* graph,
                 node->outputs[0],
                 to_type,
                 framework::proto::VarType::FP32,
+                &suffix,
+                block_desc,
                 &cast_map);
     } else if (!keep_io_types &&
                var->GetDataType() == framework::proto::VarType::FP32) {
@@ -314,6 +260,8 @@ void ConvertTensorDtype(framework::ir::Graph* graph,
                 node->outputs[0],
                 framework::proto::VarType::FP32,
                 to_type,
+                &suffix,
+                block_desc,
                 &cast_map);
     }
   }
@@ -322,6 +270,71 @@ void ConvertTensorDtype(framework::ir::Graph* graph,
     LOG(INFO) << "---  detected " << num_low_precision << " low precision ops";
 }
 }  // namespace
+
+bool OpSupportPrecision(const std::string& phi_op_type,
+                        phi::Backend backend,
+                        phi::DataType precision,
+                        const std::unordered_set<std::string>& blacklist) {
+  bool support_precision = false;
+  if (blacklist.count(phi_op_type) == 0) {
+    if (backend == phi::Backend::GPU)
+      support_precision = GpuKernelSupportPrecision(phi_op_type, precision);
+    else
+      support_precision =
+          IsKernelSupportPrecision(phi_op_type, backend, precision);
+  }
+  return support_precision;
+}
+
+void AddCastOp(
+    framework::ir::Graph* graph,
+    framework::ir::Node* node,
+    framework::ir::Node* next_op,
+    framework::proto::VarType::Type from_type,
+    framework::proto::VarType::Type to_type,
+    int* suffix,
+    framework::BlockDesc* block_desc,
+    std::unordered_map<framework::ir::Node*, framework::ir::Node*>* map) {
+  auto update_cast_desc = [&](framework::OpDesc& desc,
+                              const std::string& x_name,
+                              const std::string& out_name,
+                              const int in_dtype,
+                              const int out_dtype) {
+    desc.SetType("cast");
+    desc.SetInput("X", {x_name});
+    desc.SetOutput("Out", {out_name});
+    desc.SetAttr("in_dtype", in_dtype);
+    desc.SetAttr("out_dtype", out_dtype);
+    desc.SetAttr("use_mkldnn", false);
+    desc.SetAttr("with_quant_attr", false);
+    desc.Flush();
+  };
+
+  if (map->count(node) == 0) {
+    // insert cast op before node.
+    std::string cast_input_name = node->Var()->Name();
+    std::string cast_output_name =
+        node->Var()->Name() + "_cast.tmp_" + std::to_string((*suffix)++);
+    CHECK_NOTNULL(block_desc);
+    framework::OpDesc cast_op_desc(block_desc);
+    update_cast_desc(cast_op_desc,
+                     cast_input_name,
+                     cast_output_name,
+                     static_cast<int>(from_type),
+                     static_cast<int>(to_type));
+    auto* cast_op_node = graph->CreateOpNode(&cast_op_desc);
+    auto* cast_output_vardesc = block_desc->Var(cast_output_name);
+    cast_output_vardesc->SetPersistable(false);
+    cast_output_vardesc->SetDataType(to_type);
+    cast_output_vardesc->SetShape(node->Var()->GetShape());
+    auto* cast_output_node = graph->CreateVarNode(cast_output_vardesc);
+    IR_NODE_LINK_TO(cast_op_node, cast_output_node);
+    (*map)[node] = cast_output_node;
+  }
+  next_op->Op()->RenameInput(node->Name(), map->at(node)->Name());
+  IR_NODE_LINK_TO(node, map->at(node)->inputs[0]);
+  IR_NODE_LINK_TO(map->at(node), next_op);
+}
 
 void ConvertToMixedPrecision(const std::string& model_file,
                              const std::string& params_file,
