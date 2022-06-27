@@ -726,11 +726,11 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     auto& mem_pool = this->mem_pools_[i * this->multi_mf_dim_ + j];
 
     // ============ add for multi-thread ================
-    int len_per_thread = len / thread_num;
-    int remain = len % thread_num;
-    int left = -1, right = -1;
+    size_t len_per_thread = len / thread_num;
+    size_t remain = len % thread_num;
+    size_t left = 0, right = 0;
 
-    int real_len = len_per_thread;
+    size_t real_len = len_per_thread;
     if (z < remain) real_len++;
 
     if (z < remain) {
