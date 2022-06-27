@@ -257,6 +257,22 @@ if(WITH_PYTHON)
     target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
   endif()
 
+  set(api_yaml_path
+      "${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/legacy_api.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_api.yaml"
+  )
+  set(eager_impl_file_blacklist
+      ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function_impl_blacklist.h
+  )
+  set(tmp_eager_impl_file_blacklist ${eager_impl_file_blacklist}.tmp)
+  add_custom_target(
+    eager_op_function_impl_blacklist
+    COMMAND
+      "${PYTHON_EXECUTABLE}"
+      "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function_generator_blacklist_gen.py"
+      "--api_yaml_path=${api_yaml_path}"
+      "--eager_impl_file_blacklist=${eager_impl_file_blacklist}"
+    VERBATIM)
+
   set(impl_file ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h)
   set(tmp_impl_file ${impl_file}.tmp)
   set(eager_impl_file
@@ -264,8 +280,9 @@ if(WITH_PYTHON)
   set(tmp_eager_impl_file ${eager_impl_file}.tmp)
 
   set(OP_IMPL_DEPS op_function_generator)
-  set(EAGER_OP_IMPL_DEPS eager_op_function_generator
-                         eager_final_state_python_c_codegen)
+  set(EAGER_OP_IMPL_DEPS
+      eager_op_function_generator eager_final_state_python_c_codegen
+      eager_op_function_impl_blacklist)
 
   if(WIN32)
     if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
