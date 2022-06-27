@@ -137,6 +137,13 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   new_op_func_node.output_index["Out"] = {var_scope_->VarId(new_var_name)};
   new_op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
   new_op_func_node.kernel_func_(exec_ctx);
+  // NOTE(winter-wang): in npu device, D2H kernel is asynchronous. need to
+  // explicit synchronization.
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (op_type == kMemcpyD2H) {
+    dev_ctx->Wait();
+  }
+#endif
   // NOTE(Aurelius84): data_transform_op is expensive operation, so we tag them
   // as kQueueSync and execute them in thread pool.
   new_op_func_node.type_ = OpFuncType::kQueueSync;
