@@ -311,7 +311,7 @@ class _SaveLoadConfig(object):
         self.with_hook = False
 
         # if True, multi `StaticFunction` will share params in one file.
-        self.use_combine = False
+        self.combine_params = False
 
     @property
     def output_spec(self):
@@ -393,7 +393,7 @@ def _parse_save_configs(configs):
     inner_config = _SaveLoadConfig()
     inner_config.output_spec = configs.get('output_spec', None)
     inner_config.with_hook = configs.get('with_hook', False)
-    inner_config.use_combine = configs.get("use_combine", False)
+    inner_config.combine_params = configs.get("use_combine", False)
 
     return inner_config
 
@@ -850,9 +850,8 @@ def save(layer, path, input_spec=None, **configs):
     # whether outermost layer has pre/post hook, if does, we need also save
     # these operators in program.
     with_hook = configs.with_hook
-    # whether save multi `to_statc` into one saved model.
-    use_combine = configs.use_combine
-    if use_combine:
+    combine_params = configs.combine_params
+    if combine_params:
         configs._program_only = True
 
     scope = core.Scope()
@@ -867,11 +866,8 @@ def save(layer, path, input_spec=None, **configs):
             layer,
         ]
 
-    # when use_combine is True and input `Layer` is `Layer`, will save multi StaticFunction else only one
-    static_programs = []
     all_vars = set()
-    property_vals = []
-
+    property_vals = []  # (value, key)
     for attr_func in functions:
         if isinstance(layer, Layer):
             static_func = getattr(inner_layer, attr_func, None)
@@ -879,7 +875,9 @@ def save(layer, path, input_spec=None, **configs):
                 if static_func.is_property:
                     # property method to be exported
                     immediate_val = static_func()
-                    property_vals.append((immediate_val, attr_func))
+                    property_vals.append(
+                        (immediate_val,
+                         layer.__class__.__name__ + '.' + attr_func))
                     continue
 
                 concrete_program = static_func.concrete_program_specify_input_spec(
@@ -1007,10 +1005,6 @@ def save(layer, path, input_spec=None, **configs):
             model_filename = file_prefix + '.' + attr_func + INFER_MODEL_SUFFIX
             params_filename = file_prefix + '.' + attr_func + INFER_PARAMS_SUFFIX
 
-        if use_combine:
-            # set parms filepath to None
-            params_filename = None
-
         with scope_guard(scope):
             save_inference_model(
                 dirname=model_path,
@@ -1029,15 +1023,16 @@ def save(layer, path, input_spec=None, **configs):
             all_vars.add(var)
 
     # save shared params
-    if use_combine:
-        import itertools
+    if combine_params:
         params_filename = file_prefix + INFER_PARAMS_SUFFIX
         with scope_guard(scope):
-            fluid.io.save_vars(Executor(_current_expected_place()),
-                               dirname=model_path,
-                               vars=list(
-                                   filter(fluid.io.is_persistable, all_vars)),
-                               filename=params_filename)
+            paddle.static.save_vars(Executor(_current_expected_place()),
+                                    dirname=model_path,
+                                    vars=list(
+                                        filter(fluid.io.is_persistable,
+                                               all_vars)),
+                                    filename=params_filename)
+        # TODO: save property
 
     # NOTE(chenweihang): [ Save extra variable info ]
     # save_inference_model will lose some important variable information, including:
