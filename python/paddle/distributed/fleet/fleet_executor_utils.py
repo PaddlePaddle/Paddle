@@ -14,6 +14,7 @@
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY
 from paddle.fluid import core
+from paddle.static import Program
 
 
 class TaskNode:
