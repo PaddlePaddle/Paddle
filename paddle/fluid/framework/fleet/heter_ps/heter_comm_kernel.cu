@@ -146,7 +146,7 @@ __global__ void dy_mf_fill_shard_grads_kernel(KeyType* d_shard_keys,
 
 // optimized version
 template <>
-__global__ void dy_mf_fill_shard_grads<FeatureKey, FeaturePushValue, int>(
+__global__ void dy_mf_fill_shard_grads_kernel<FeatureKey, FeaturePushValue, int>(
     FeatureKey* d_shard_keys,
     FeatureKey* d_keys,
     FeaturePushValue* d_shard_grads,
@@ -271,7 +271,7 @@ __global__ void dy_mf_fill_dvals_kernel(ValType* d_shard_vals,
 
 // optimized version
 template <>
-__global__ void dy_mf_fill_dvals<FeatureValue, int>(FeatureValue* d_shard_vals,
+__global__ void dy_mf_fill_dvals_kernel<FeatureValue, int>(FeatureValue* d_shard_vals,
                                                     FeatureValue* d_vals,
                                                     int* idx,
                                                     size_t len,
@@ -310,36 +310,6 @@ __global__ void dy_mf_fill_dvals<FeatureValue, int>(FeatureValue* d_shard_vals,
     }
   }
 }
-
-template <typename KeyType, typename ValType, typename GradType>
-HeterComm<KeyType, ValType, GradType>::HeterComm(
-    size_t capacity, std::shared_ptr<HeterPsResource> resource) {
-  VLOG(1) << "Construct new HeterComm";
-  resource_ = resource;
-  storage_.resize(resource_->total_gpu());
-  multi_mf_dim_ = resource->multi_mf();
-  for (int i = 0; i < resource_->total_gpu(); ++i) {
-    platform::CUDADeviceGuard guard(resource_->dev_id(i));
-    // allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
-    //     2, 1, 20, (size_t)-1, false, false));  // NOLINT
-    allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
-        8, 1, (unsigned int)-1, (size_t)-1, false, false));
-    if (!multi_mf_dim_) {
-      auto table = new Table(capacity / load_factor_);
-      tables_.push_back(table);
-    } else {
-      max_mf_dim_ = resource->max_mf_dim();
-      size_t val_type_size = TYPEALIGN(
-          8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
-      size_t grad_type_size = TYPEALIGN(
-          8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
-      auto ptr_table = new PtrTable(capacity / load_factor_);
-      ptr_table->set_feature_value_size(val_type_size, grad_type_size);
-      ptr_tables_.push_back(ptr_table);
-    }
-    if (multi_node_) {
-      storage_[i].init(feanum_, resource_->dev_id(i));
-    }
 
     // cuda implemention of  heter_comm_kernel.h
     template <typename T, typename StreamType>
@@ -518,7 +488,7 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
 
       if (grad_dim > 0) {
         int grid_size2 = (n * grad_dim - 1) / block_size_ + 1;
-        merge_gradient_embedx_kernel<<<grid_size2, block_size_, 0, stream>>>(
+        merge_gradients_embedx_kernel<<<grid_size2, block_size_, 0, stream>>>(
             offset,
             fea_num,
             index,
