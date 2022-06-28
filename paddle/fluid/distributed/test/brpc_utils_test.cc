@@ -31,7 +31,8 @@ namespace operators = paddle::operators;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
-void CreateVarsOnScope(framework::Scope* scope, platform::Place* place,
+void CreateVarsOnScope(framework::Scope* scope,
+                       platform::Place* place,
                        const platform::DeviceContext& ctx) {
   // var 1
   framework::Variable* var1 = scope->Var("x1");
@@ -78,16 +79,20 @@ void RunMultiVarMsg(platform::Place place) {
   LOG(INFO) << "begin SerializeToMultiVarMsg";
 
   butil::IOBuf io_buf;
-  distributed::SerializeToMultiVarMsgAndIOBuf(message_name, send_var_name,
-                                              recv_var_name, ctx, &scope,
-                                              &multi_msg, &io_buf);
+  distributed::SerializeToMultiVarMsgAndIOBuf(message_name,
+                                              send_var_name,
+                                              recv_var_name,
+                                              ctx,
+                                              &scope,
+                                              &multi_msg,
+                                              &io_buf);
   EXPECT_GT(multi_msg.ByteSizeLong(), static_cast<size_t>(0));
 
   // deserialize
   framework::Scope scope_recv;
   LOG(INFO) << "begin DeserializeFromMultiVarMsg";
-  distributed::DeserializeFromMultiVarMsgAndIOBuf(multi_msg, &io_buf, ctx,
-                                                  &scope_recv);
+  distributed::DeserializeFromMultiVarMsgAndIOBuf(
+      multi_msg, &io_buf, ctx, &scope_recv);
 
   // check var1
   framework::Variable* var1 = scope_recv.FindVar("x1");

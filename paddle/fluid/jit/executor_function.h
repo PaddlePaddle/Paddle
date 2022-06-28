@@ -14,40 +14,52 @@
 
 #pragma once
 
+#include <iostream>
+#include <string>
+#include <vector>
+
+#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
+
 #include "paddle/fluid/jit/base_function.h"
+#include "paddle/fluid/jit/function_schema.h"
+#include "paddle/fluid/jit/function_utils.h"
 
 namespace paddle {
 namespace jit {
 
-class ExectorFunction : public BaseFunction {
+class ExecutorFunction : public BaseFunction {
  public:
-  ExectorFunction(const framework::ProgramDesc &program_desc,
-                  const std::vector<std::string> param_names,
-                  const VariableNameMap &params_dict,
-                  const phi::Place &place)
-      : BaseFunction(program_desc, param_names, params_dict, place),
-        inner_exe_(place_) {}
+  ExecutorFunction(const std::shared_ptr<FunctionInfo> &info,
+                   const Name2VariableMap &params_dict,
+                   const phi::Place &place)
+      : info_(info), place_(place), inner_exe_(place_) {
+    utils::ShareParamsIntoScope(info_->ParamNames(), params_dict, &scope_);
+    VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
+  }
 
-  ~ExectorFunction() {}
+  ~ExecutorFunction() noexcept {}
 
   std::vector<Variable> operator()(const std::vector<Variable> &inputs) {
-    // share input into scope
-    ShareInputsIntoScope(inputs);
-    // run program
-    inner_exe_.Run(program_desc_,
+    utils::ShareInputsIntoScope(info_->InputArgNames(), inputs, &scope_);
+    inner_exe_.Run(info_->ProgramDesc(),
                    &scope_,
                    /*blockID=*/0,
                    false,
                    true,
-                   schema_.GetOutputArgNames());
+                   info_->OutputArgNames());
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
-    // fetch outputs
     std::vector<Variable> res;
-    FetchOutput(&res);
+    utils::FetchVarsByNames(info_->OutputArgNames(), scope_, &res);
     return res;
   }
 
  private:
+  std::shared_ptr<FunctionInfo> info_;
+  framework::Scope scope_;
+  phi::Place place_;
   framework::Executor inner_exe_;
 };
 

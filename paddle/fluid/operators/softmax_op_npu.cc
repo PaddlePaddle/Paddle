@@ -72,8 +72,8 @@ class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
     dX->mutable_data<T>(ctx.GetPlace());
 
     framework::NPUAttributeMap attr_input = {};
-    const auto& runner = NpuOpRunner(std::string("SoftmaxGrad"),
-                                     {tmp_out, tmp_dOut}, {*dX}, attr_input);
+    const auto& runner = NpuOpRunner(
+        std::string("SoftmaxGrad"), {tmp_out, tmp_dOut}, {*dX}, attr_input);
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -91,12 +91,14 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    softmax, ops::SoftmaxNPUKernel<plat::NPUDeviceContext, float>,
+    softmax,
+    ops::SoftmaxNPUKernel<plat::NPUDeviceContext, float>,
     ops::SoftmaxNPUKernel<plat::NPUDeviceContext, double>,
     ops::SoftmaxNPUKernel<plat::NPUDeviceContext, plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    softmax_grad, ops::SoftmaxGradNPUKernel<plat::NPUDeviceContext, float>,
+    softmax_grad,
+    ops::SoftmaxGradNPUKernel<plat::NPUDeviceContext, float>,
     ops::SoftmaxGradNPUKernel<plat::NPUDeviceContext, double>,
     ops::SoftmaxGradNPUKernel<plat::NPUDeviceContext,
                               paddle::platform::float16>);

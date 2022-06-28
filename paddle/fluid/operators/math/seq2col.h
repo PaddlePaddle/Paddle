@@ -20,8 +20,12 @@ namespace math {
 
 template <typename T>
 struct Seq2ColFunctor {
-  Seq2ColFunctor(const T* seq, T* col, size_t seq_length, size_t frame_length,
-                 size_t n_frames, size_t hop_length)
+  Seq2ColFunctor(const T* seq,
+                 T* col,
+                 size_t seq_length,
+                 size_t frame_length,
+                 size_t n_frames,
+                 size_t hop_length)
       : seq_(seq),
         col_(col),
         seq_length_(seq_length),
@@ -86,8 +90,12 @@ struct Seq2ColFunctor {
 
 template <typename T>
 struct Col2SeqFunctor {
-  Col2SeqFunctor(const T* col, T* seq, size_t seq_length, size_t frame_length,
-                 size_t n_frames, size_t hop_length)
+  Col2SeqFunctor(const T* col,
+                 T* seq,
+                 size_t seq_length,
+                 size_t frame_length,
+                 size_t n_frames,
+                 size_t hop_length)
       : col_(col),
         seq_(seq),
         seq_length_(seq_length),

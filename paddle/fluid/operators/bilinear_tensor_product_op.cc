@@ -94,11 +94,13 @@ DECLARE_INFER_SHAPE_FUNCTOR(bilinear_tensor_product,
                             BilinearTensorProductInferShapeFunctor,
                             PD_INFER_META(phi::BilinearTensorProductInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(
-    bilinear_tensor_product_grad, BilinearTensorProductGradInferShapeFunctor,
+    bilinear_tensor_product_grad,
+    BilinearTensorProductGradInferShapeFunctor,
     PD_INFER_META(phi::BilinearTensorProductGradInferMeta));
 
 REGISTER_OPERATOR(
-    bilinear_tensor_product, ops::BilinearTensorProductOp,
+    bilinear_tensor_product,
+    ops::BilinearTensorProductOp,
     ops::BilinearTensorProductOpMaker,
     ops::BilinearTensorProductGradOpMaker<paddle::framework::OpDesc>,
     ops::BilinearTensorProductGradOpMaker<paddle::imperative::OpBase>,

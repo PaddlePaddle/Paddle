@@ -65,8 +65,11 @@ class MulOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library, customized_type_value);
+    return framework::OpKernelType(input_data_type,
+                                   ctx.GetPlace(),
+                                   layout,
+                                   library,
+                                   customized_type_value);
   }
 };
 
@@ -190,8 +193,11 @@ class MulGradOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library, customized_type_value);
+    return framework::OpKernelType(input_data_type,
+                                   ctx.GetPlace(),
+                                   layout,
+                                   library,
+                                   customized_type_value);
   }
 };
 
@@ -268,16 +274,22 @@ class MulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(mul, MulInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(mul,
+                            MulInferShapeFunctor,
                             PD_INFER_META(phi::MatmulWithFlattenInferMeta));
-REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpInferVarType,
+REGISTER_OPERATOR(mul,
+                  ops::MulOp,
+                  ops::MulOpMaker,
+                  ops::MulOpInferVarType,
                   ops::MulOpGradMaker<paddle::framework::OpDesc>,
                   ops::MulOpGradMaker<paddle::imperative::OpBase>,
                   MulInferShapeFunctor);
 
-DECLARE_INFER_SHAPE_FUNCTOR(mul_grad, MulGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(mul_grad,
+                            MulGradInferShapeFunctor,
                             PD_INFER_META(phi::GeneralBinaryGradInferMeta));
-REGISTER_OPERATOR(mul_grad, ops::MulGradOp,
+REGISTER_OPERATOR(mul_grad,
+                  ops::MulGradOp,
                   ops::MulDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MulDoubleGradMaker<paddle::imperative::OpBase>,
                   MulGradInferShapeFunctor);

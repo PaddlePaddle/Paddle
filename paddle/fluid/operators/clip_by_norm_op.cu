@@ -47,7 +47,8 @@ class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>
               .Var()
               ->GetMutable<phi::SelectedRows>();
       merge_func(context.template device_context<platform::CUDADeviceContext>(),
-                 *x, merged_input);
+                 *x,
+                 merged_input);
       input = &(merged_input->value());
 
       phi::SelectedRows* output_selected_rows =
@@ -75,10 +76,16 @@ class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>
     }
     Tensor tmp = context.AllocateTmpTensor<float, platform::CUDADeviceContext>(
         {1}, dev_ctx);
-    TensorReduceImpl<platform::float16, float, kps::AddFunctor,
+    TensorReduceImpl<platform::float16,
+                     float,
+                     kps::AddFunctor,
                      kps::SquareFunctor<platform::float16, float>>(
-        dev_ctx, *input, &tmp, kps::SquareFunctor<platform::float16, float>(),
-        reduce_dims, dev_ctx.stream());
+        dev_ctx,
+        *input,
+        &tmp,
+        kps::SquareFunctor<platform::float16, float>(),
+        reduce_dims,
+        dev_ctx.stream());
     auto tmp_eigen = EigenVector<float>::Flatten(tmp);
     auto x_norm = tmp_eigen.sqrt();
 

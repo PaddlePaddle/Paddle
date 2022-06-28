@@ -92,7 +92,8 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
     T* recv_buff = out->mutable_data<T>(in->dims(), place);
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     PADDLE_ENFORCE_EQ(
-        gloo->IsInitialized(), true,
+        gloo->IsInitialized(),
+        true,
         platform::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
     gloo::AllreduceOptions opts(gloo->GetContext());
@@ -120,7 +121,8 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
                 &gloo::product<T>));
         break;
       default:
-        PADDLE_ENFORCE_EQ(true, false,
+        PADDLE_ENFORCE_EQ(true,
+                          false,
                           platform::errors::InvalidArgument(
                               "Invalid reduce type: %d.", red_type));
     }
@@ -272,9 +274,14 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
             << ", sendbuff:" << sendbuff << ", recvbuff:" << recvbuff
             << ", out_size:" << out->memory_size();
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
-        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
-        reinterpret_cast<void*>(stream)));
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        platform::dynload::HcclAllReduce(sendbuff,
+                                         recvbuff,
+                                         numel,
+                                         dtype,
+                                         hccl_red_type,
+                                         comm->comm(),
+                                         reinterpret_cast<void*>(stream)));
 
     out->Resize(in->dims());
 #else
@@ -337,8 +344,13 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_EQ(
-        bkcl_all_reduce(comm->comm(), sendbuff, recvbuff, numel, dtype,
-                        bkcl_red_type, stream),
+        bkcl_all_reduce(comm->comm(),
+                        sendbuff,
+                        recvbuff,
+                        numel,
+                        dtype,
+                        bkcl_red_type,
+                        stream),
         BKCL_SUCCESS,
         platform::errors::PreconditionNotMet("BKCL all reduce failed"));
 #else
@@ -531,7 +543,8 @@ Call collective AllReduce with reduce type %s. If input and output are
 the same variable, in-place allreduce will be used.
 Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/usage/operations.html#allreduce
 )DOC",
-                               GetName(), GetName()));
+                               GetName(),
+                               GetName()));
   }
 
  protected:

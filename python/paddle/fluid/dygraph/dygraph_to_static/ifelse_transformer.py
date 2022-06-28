@@ -524,7 +524,8 @@ def transform_if_else(node, root):
     if ARGS_NAME in nonlocal_names:
         nonlocal_names.remove(ARGS_NAME)
 
-    nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)]
+    nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)
+                          ] if nonlocal_names else []
 
     empty_arg_node = gast.arguments(args=[],
                                     posonlyargs=[],
@@ -557,8 +558,20 @@ def create_get_args_node(names):
 
         def get_args_0():
             nonlocal x, y
+            return x, y
     """
+
+    def empty_node():
+        func_def = """
+        def {func_name}():
+            return
+        """.format(func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX))
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
     assert isinstance(names, (list, tuple))
+    if not names:
+        return empty_node()
+
     template = """
     def {func_name}():
         nonlocal {vars}
@@ -578,7 +591,19 @@ def create_set_args_node(names):
             nonlocal x, y
             x, y = __args
     """
+
+    def empty_node():
+        func_def = """
+        def {func_name}({args}):
+            pass
+        """.format(func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
+                   args=ARGS_NAME)
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
     assert isinstance(names, (list, tuple))
+    if not names:
+        return empty_node()
+
     template = """
     def {func_name}({args}):
         nonlocal {vars}

@@ -22,6 +22,11 @@ from .unary import tanh
 from .binary import matmul
 from .binary import masked_matmul
 
+from .math import add
+from .math import divide
+from .math import multiply
+from .math import subtract
+
 from . import nn
 
 __all__ = [
@@ -32,4 +37,8 @@ __all__ = [
     'tanh',
     'matmul',
     'masked_matmul',
+    'add',
+    'subtract',
+    'multiply',
+    'divide',
 ]

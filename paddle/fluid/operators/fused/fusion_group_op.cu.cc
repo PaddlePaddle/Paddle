@@ -19,6 +19,7 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
-    fusion_group, ops::FusionGroupKernel<plat::CUDADeviceContext, float>,
+    fusion_group,
+    ops::FusionGroupKernel<plat::CUDADeviceContext, float>,
     ops::FusionGroupKernel<plat::CUDADeviceContext, double>,
     ops::FusionGroupKernel<plat::CUDADeviceContext, plat::float16>);

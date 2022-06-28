@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import typing
 
 import paddle
 
@@ -656,10 +657,14 @@ def split_transpose(op, check_dot, ys_bar):
 @REGISTER_TRANSPOSE('concat_p')
 def concat_transpose(op, check_dot, y_bar):
     xs, = op_position_inputs(op)
+    if not isinstance(xs, typing.Sequence):
+        xs = [xs]
     for x in xs:
         assert check_dot(x), 'check_dot(x) must be True'
     axis = op.attr('axis')
     sections = [x.shape[axis] for x in xs]
+    if len(sections) == 1:
+        return y_bar
     return split(y_bar, num_or_sections=sections, axis=axis)
 
 

@@ -66,12 +66,17 @@ class SplitMLUKernel : public framework::OpKernel<T> {
       vct_tensor.push_back(GetBasePtr(outs[i]));
     }
     // init in tensors
-    MLUCnnlTensorDesc input_desc(*in, CNNL_LAYOUT_ARRAY,
-                                 ToCnnlDataType(in->dtype()));
+    MLUCnnlTensorDesc input_desc(
+        *in, CNNL_LAYOUT_ARRAY, ToCnnlDataType(in->dtype()));
 
     // MLU should do sth
-    MLUCnnl::Split(ctx, num_tensor, axis, input_desc.get(), GetBasePtr(in),
-                   desc_vector.data(), vct_tensor.data());
+    MLUCnnl::Split(ctx,
+                   num_tensor,
+                   axis,
+                   input_desc.get(),
+                   GetBasePtr(in),
+                   desc_vector.data(),
+                   vct_tensor.data());
   }
 };
 
@@ -81,7 +86,9 @@ class SplitMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(split, ops::SplitMLUKernel<float>,
-                       ops::SplitMLUKernel<int64_t>, ops::SplitMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(split,
+                       ops::SplitMLUKernel<float>,
+                       ops::SplitMLUKernel<int64_t>,
+                       ops::SplitMLUKernel<int>,
                        ops::SplitMLUKernel<bool>,
                        ops::SplitMLUKernel<plat::float16>);

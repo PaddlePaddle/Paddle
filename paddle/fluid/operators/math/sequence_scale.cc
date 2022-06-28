@@ -27,7 +27,8 @@ namespace math {
 template <typename T>
 class ScaleLoDTensorFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context, const T* scales,
+  void operator()(const platform::CPUDeviceContext& context,
+                  const T* scales,
                   framework::LoDTensor* seq) {
     const size_t level = 0;
     auto lod = seq->lod();
@@ -38,7 +39,8 @@ class ScaleLoDTensorFunctor<platform::CPUDeviceContext, T> {
     T* seq_data = seq->mutable_data<T>(context.GetPlace());
     for (size_t i = 0; i < num_seq; ++i) {
       for (size_t j = lod[level][i] * seq_width;
-           j < lod[level][i + 1] * seq_width; ++j) {
+           j < lod[level][i + 1] * seq_width;
+           ++j) {
         seq_data[j] *= scales[i];
       }
     }
@@ -48,7 +50,8 @@ class ScaleLoDTensorFunctor<platform::CPUDeviceContext, T> {
 template <typename T>
 class ScaleLoDTensorFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context, const T* scales,
+  void operator()(const phi::CPUContext& context,
+                  const T* scales,
                   framework::LoDTensor* seq) {
     const size_t level = 0;
     auto lod = seq->lod();
@@ -59,7 +62,8 @@ class ScaleLoDTensorFunctor<phi::CPUContext, T> {
     T* seq_data = seq->mutable_data<T>(context.GetPlace());
     for (size_t i = 0; i < num_seq; ++i) {
       for (size_t j = lod[level][i] * seq_width;
-           j < lod[level][i + 1] * seq_width; ++j) {
+           j < lod[level][i + 1] * seq_width;
+           ++j) {
         seq_data[j] *= scales[i];
       }
     }

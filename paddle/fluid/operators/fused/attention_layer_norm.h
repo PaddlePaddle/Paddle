@@ -22,8 +22,10 @@ namespace operators {
 template <typename T>
 class AttnLayerNorm {
  public:
-  AttnLayerNorm(const platform::CUDADeviceContext& dev_ctx, float epsilon,
-                int64_t batch_size, int64_t feature_size)
+  AttnLayerNorm(const platform::CUDADeviceContext& dev_ctx,
+                float epsilon,
+                int64_t batch_size,
+                int64_t feature_size)
       : dev_ctx_(dev_ctx),
         epsilon_(epsilon),
         batch_size_(batch_size),
@@ -31,17 +33,25 @@ class AttnLayerNorm {
 
   ~AttnLayerNorm() {}
 
-  void ComputeForward(const T* x_data, const LayerNormParamType<T>* scale_data,
-                      const LayerNormParamType<T>* bias_data, T* y_data,
+  void ComputeForward(const T* x_data,
+                      const LayerNormParamType<T>* scale_data,
+                      const LayerNormParamType<T>* bias_data,
+                      T* y_data,
                       LayerNormParamType<T>* mean_data,
                       LayerNormParamType<T>* var_data) {
     auto stream = dev_ctx_.stream();
 
     switch (GetDesiredBlockDim(feature_size_)) {
-      FIXED_BLOCK_DIM_CASE(LayerNormForward<T, LayerNormParamType<T>, kBlockDim>
-                           <<<batch_size_, kBlockDim, 0, stream>>>(
-                               x_data, scale_data, bias_data, y_data, mean_data,
-                               var_data, epsilon_, feature_size_));
+      FIXED_BLOCK_DIM_CASE(
+          LayerNormForward<T, LayerNormParamType<T>, kBlockDim>
+          <<<batch_size_, kBlockDim, 0, stream>>>(x_data,
+                                                  scale_data,
+                                                  bias_data,
+                                                  y_data,
+                                                  mean_data,
+                                                  var_data,
+                                                  epsilon_,
+                                                  feature_size_));
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Feature_size must be larger than 1"));
@@ -49,16 +59,26 @@ class AttnLayerNorm {
     }
   }
 
-  void ComputeBackward(const T* x_data, const T* d_y_data,
+  void ComputeBackward(const T* x_data,
+                       const T* d_y_data,
                        const LayerNormParamType<T>* scale_data,
                        const LayerNormParamType<T>* mean_data,
-                       const LayerNormParamType<T>* var_data, T* d_x_data,
+                       const LayerNormParamType<T>* var_data,
+                       T* d_x_data,
                        LayerNormParamType<T>* d_scale_data,
                        LayerNormParamType<T>* d_bias_data) {
-    LayerNormBackward<T, LayerNormParamType<T>>(
-        x_data, d_y_data, scale_data, mean_data, var_data, d_x_data,
-        d_scale_data, d_bias_data, epsilon_, batch_size_, feature_size_,
-        dev_ctx_);
+    LayerNormBackward<T, LayerNormParamType<T>>(x_data,
+                                                d_y_data,
+                                                scale_data,
+                                                mean_data,
+                                                var_data,
+                                                d_x_data,
+                                                d_scale_data,
+                                                d_bias_data,
+                                                epsilon_,
+                                                batch_size_,
+                                                feature_size_,
+                                                dev_ctx_);
   }
 
  private:

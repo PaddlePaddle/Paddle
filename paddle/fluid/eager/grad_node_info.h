@@ -56,7 +56,8 @@ class Edge {
   // indicate which edge it is.
   // Since we have slot design in operators we will have to locate an edge with
   // slot and rank.
-  Edge(const std::shared_ptr<GradNodeBase>& grad_node, size_t in_slot_id,
+  Edge(const std::shared_ptr<GradNodeBase>& grad_node,
+       size_t in_slot_id,
        size_t in_rank)
       : in_slot_id_(in_slot_id), in_rank_(in_rank), grad_node_(grad_node) {}
 
@@ -179,7 +180,8 @@ class GradNodeBase {
                                kSlotSmallVectorSize>
   operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                   kSlotSmallVectorSize>& grads,  // NOLINT
-             bool create_graph = false, bool is_new_grad = false) = 0;
+             bool create_graph = false,
+             bool is_new_grad = false) = 0;
 
   virtual void ClearTensorWrappers() = 0;
 
@@ -225,7 +227,8 @@ class GradNodeBase {
   /**
    * Register GradientHook
    * **/
-  int64_t RegisterGradientHook(size_t slot_id, size_t rank,
+  int64_t RegisterGradientHook(size_t slot_id,
+                               size_t rank,
                                std::shared_ptr<egr::TensorHook>&& hook);
 
   /**
@@ -282,9 +285,11 @@ class GradNodeBase {
   // backward
   // Each entry consists one pair of
   // <hook_id, <out_rank, std::shared_ptr<TensorHook>>>
-  std::map<int64_t, std::tuple<
-                        /* slot id */ size_t, /* rank */ size_t,
-                        /* hook */ std::shared_ptr<TensorHook>>>
+  std::map<int64_t,
+           std::tuple<
+               /* slot id */ size_t,
+               /* rank */ size_t,
+               /* hook */ std::shared_ptr<TensorHook>>>
       gradient_hooks_;
   int64_t next_hook_id_{0};
 
