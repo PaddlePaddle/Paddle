@@ -28,9 +28,9 @@ set(generated_deps final_dygraph_function final_dygraph_node dygraph_function
                    dygraph_node)
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-  message("Performing Eager Dygraph Auto Code Generation")
   add_subdirectory(auto_code_generator)
 endif()
+message("Performing Eager Dygraph Auto Code Generation")
 
 add_subdirectory(api)
 add_subdirectory(accumulation)
