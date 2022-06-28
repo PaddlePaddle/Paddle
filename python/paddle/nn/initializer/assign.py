@@ -33,16 +33,15 @@ class Assign(NumpyArrayInitializer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             # numpy array
             data_1 = paddle.ones(shape=[1, 2], dtype='float32')
             weight_attr_1 = paddle.framework.ParamAttr(
                 name="linear_weight_1", 
-                initializer=paddle.nn.initializer.Assign(np.array([2, 2])))
+                initializer=paddle.nn.initializer.Assign(paddle.to_tensor([2, 2])))
             bias_attr_1 = paddle.framework.ParamAttr(
                 name="linear_bias_1",
-                initializer=paddle.nn.initializer.Assign(np.array([2])))
+                initializer=paddle.nn.initializer.Assign(paddle.to_tensor([2])))
             linear_1 = paddle.nn.Linear(2, 2, weight_attr=weight_attr_1, bias_attr=bias_attr_1)
             # linear_1.weight:  [2. 2.]
             # linear_1.bias:  [2.]

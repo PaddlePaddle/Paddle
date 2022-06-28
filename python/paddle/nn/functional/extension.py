@@ -55,15 +55,15 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.nn.functional as F
-            import numpy as np
-            
-            diag_embed = np.random.randn(2, 3).astype('float32')
+
+            diag_embed = paddle.randn((2, 3), dtype='float32')
             # [[ 0.7545889 , -0.25074545,  0.5929117 ],
             #  [-0.6097662 , -0.01753256,  0.619769  ]]
 
             data1 = F.diag_embed(diag_embed)
-            data1.numpy()
+            print(data1.numpy())
             # [[[ 0.7545889 ,  0.        ,  0.        ],
             #  [ 0.        , -0.25074545,  0.        ],
             #   [ 0.        ,  0.        ,  0.5929117 ]],
@@ -73,7 +73,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
             #  [ 0.        ,  0.        ,  0.619769  ]]]
 
             data2 = F.diag_embed(diag_embed, offset=-1, dim1=0, dim2=2)
-            data2.numpy()
+            print(data2.numpy())
             # [[[ 0.        ,  0.        ,  0.        ,  0.        ],
             #   [ 0.7545889 ,  0.        ,  0.        ,  0.        ],
             #   [ 0.        , -0.25074545,  0.        ,  0.        ],
@@ -85,7 +85,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
             #   [ 0.        ,  0.        ,  0.619769  ,  0.        ]]]
 
             data3 = F.diag_embed(diag_embed, offset=1, dim1=0, dim2=2)
-            data3.numpy()
+            print(data3.numpy())
             # [[[ 0.        ,  0.7545889 ,  0.        ,  0.        ],
             #   [ 0.        , -0.6097662 ,  0.        ,  0.        ]],
             #

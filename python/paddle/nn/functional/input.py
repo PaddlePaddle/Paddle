@@ -172,26 +172,21 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
             import paddle.nn as nn
 
-            x0 = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
-            w0 = np.full(shape=(10, 3), fill_value=2).astype(np.float32)
-
             # x.data = [[3], [4], [5]]
             # x.shape = [3, 1]
-            x = paddle.to_tensor(x0, stop_gradient=False)
+            x = paddle.arange(3, 6).reshape((3, 1)).astype(paddle.int64)
 
             # w.data = [[2. 2. 2.] ... [2. 2. 2.]]
             # w.shape = [10, 3]
-            w = paddle.to_tensor(w0, stop_gradient=False)
+            w = paddle.full((10, 3), fill_value=2).astype(paddle.float32)
 
             # emb.data = [[[2., 2., 2.]], [[2., 2., 2.]], [[2., 2., 2.]]]
             # emb.shape = [3, 1, 3]
             emb = nn.functional.embedding(
                     x=x, weight=w, sparse=True, name="embedding")
-
     """
     padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
         weight.shape[0] + padding_idx)

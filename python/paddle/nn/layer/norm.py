@@ -159,17 +159,19 @@ class InstanceNorm1D(_InstanceNormBase):
 
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
-          instance_norm = paddle.nn.InstanceNorm1D(2)
-          instance_norm_out = instance_norm(x)
+            x = paddle.rand((2, 2, 3), dtype='float32')
+            instance_norm = paddle.nn.InstanceNorm1D(2)
+            instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out)
+            print(instance_norm_out)
+            # Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            #        [[[-0.56572700, -0.83951598,  1.40524304],
+            #          [-0.46387440, -0.92492324,  1.38879693]],
 
+            #         [[-0.78550941,  1.41106880, -0.62555927],
+            #          [ 0.71496391,  0.69830102, -1.41326499]]])
     """
 
     def _check_input_dim(self, input):
@@ -230,16 +232,26 @@ class InstanceNorm2D(_InstanceNormBase):
 
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
-          instance_norm = paddle.nn.InstanceNorm2D(2)
-          instance_norm_out = instance_norm(x)
+            x = paddle.rand((2, 2, 2, 3), dtype='float32')
+            instance_norm = paddle.nn.InstanceNorm2D(2)
+            instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out)
+            print(instance_norm_out)
+            # Tensor(shape=[2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            #        [[[[ 1.51262438,  0.58050478, -1.28373027],
+            #           [-0.54157424, -0.96977335,  0.70194888]],
+
+            #          [[-0.88423026, -0.85942686,  0.94660789],
+            #           [-0.99203366,  0.18827406,  1.60080862]]],
+
+
+            #         [[[ 0.66845161,  1.02875185,  0.60532320],
+            #           [-1.38479519, -1.40470886,  0.48697743]],
+
+            #          [[ 1.68909955,  0.41228935, -0.33580893],
+            #           [ 0.50634289, -1.25070953, -1.02121270]]]])
     """
 
     def _check_input_dim(self, input):
@@ -300,16 +312,30 @@ class InstanceNorm3D(_InstanceNormBase):
 
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
-          instance_norm = paddle.nn.InstanceNorm3D(2)
-          instance_norm_out = instance_norm(x)
+            x = paddle.rand((2, 2, 2, 2, 3), dtype='float32')
+            instance_norm = paddle.nn.InstanceNorm3D(2)
+            instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy)
+            print(instance_norm_out)
+            # Tensor(shape=[2, 2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            #        [[[[[ 0.78950000, -0.95114672,  0.07016513],
+            #            [ 0.83149511, -1.41246879,  1.50352156]],
+            #           [[-1.20609438,  1.10056257, -0.98687476],
+            #            [ 0.92267644,  0.30523098, -0.96656609]]],
+            #          [[[ 1.39297271,  1.51444387,  0.06453549],
+            #            [ 0.29658160,  0.14619878, -1.42231143]],
+            #           [[-0.28942785,  0.34286317, -0.73381197],
+            #            [-1.26171327, -1.30870938,  1.25837743]]]],
+            #         [[[[ 0.09699749,  0.81308597,  1.17036819],
+            #            [-0.87002528, -0.58951634,  1.13854587]],
+            #           [[ 1.16830051, -1.58555734, -1.83007419],
+            #            [ 0.20596768,  0.49280676, -0.21090110]]],
+            #          [[[ 0.97976345,  1.19445372,  1.07885933],
+            #            [-1.25354362, -0.92022312,  0.44466886]],
+            #           [[ 0.06069959, -0.52262604,  1.67643547],
+            #            [-0.88104081, -1.27751136, -0.57993573]]]]])
     """
 
     def _check_input_dim(self, input):
@@ -349,17 +375,31 @@ class GroupNorm(Layer):
     Examples:
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          paddle.disable_static()
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 6, 2, 2)).astype('float32')
-          x = paddle.to_tensor(x_data) 
-          group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
-          group_norm_out = group_norm(x)
+            paddle.disable_static()
+            x = paddle.rand((2, 4, 2, 2), dtype='float32')
+            group_norm = paddle.nn.GroupNorm(num_channels=4, num_groups=4)
+            group_norm_out = group_norm(x)
 
-          print(group_norm_out.numpy())
+            print(group_norm_out)
+            # Tensor(shape=[2, 4, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            #        [[[[ 1.34158754,  0.32084092],
+            #           [-0.23383741, -1.42859089]],
+            #          [[-0.63200343,  0.11431548],
+            #           [ 1.57281029, -1.05512238]],
+            #          [[ 1.55782926,  0.18116413],
+            #           [-0.75171113, -0.98728198]],
+            #          [[ 1.22718668, -0.21486671],
+            #           [-1.48962617,  0.47730666]]],
+            #         [[[ 1.06119967, -0.05727005],
+            #           [ 0.58574373, -1.58967257]],
+            #          [[ 1.14549148,  0.27241856],
+            #           [ 0.18749733, -1.60540688]],
+            #          [[ 0.43826357,  0.88884753],
+            #           [-1.69718659,  0.37007567]],
+            #          [[-1.16985214,  1.59062362],
+            #           [-0.28837061, -0.13240062]]]])
     """
 
     def __init__(self,
@@ -507,16 +547,26 @@ class LayerNorm(Layer):
 
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
-          layer_norm = paddle.nn.LayerNorm(x_data.shape[1:])
-          layer_norm_out = layer_norm(x)
+            x = paddle.rand((2, 2, 2, 3), dtype='float32')
+            layer_norm = paddle.nn.LayerNorm(x.shape[1:])
+            layer_norm_out = layer_norm(x)
 
-          print(layer_norm_out)
+            print(layer_norm_out)
+            # Tensor(shape=[2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            #        [[[[ 1.35144782,  0.01915425, -0.32821643],
+            #           [ 0.51990020,  0.76354569, -1.10935581]],
+
+            #          [[-0.94152832,  0.77012277,  0.69062823],
+            #           [ 1.23641872, -1.68291521, -1.28919947]]],
+
+
+            #         [[[-0.52111953,  0.46399048,  0.30291116],
+            #           [-1.20606709,  0.42004031,  1.47211719]],
+
+            #          [[-1.36349869, -0.51109129,  1.22044814],
+            #           [ 1.51911557, -0.68733019, -1.10951960]]]])
     """
 
     def __init__(self,
@@ -751,16 +801,16 @@ class BatchNorm1D(_BatchNormBase):
     Examples:
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 1, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
-          batch_norm = paddle.nn.BatchNorm1D(1)
-          batch_norm_out = batch_norm(x)
+            x = paddle.rand((2, 1, 3), dtype='float32')
+            batch_norm = paddle.nn.BatchNorm1D(1)
+            batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out)
+            print(batch_norm_out)
+            # Tensor(shape=[2, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            #        [[[-1.60998952,  0.68036604, -0.42679715]],
+            #         [[-0.61078143,  1.45995307,  0.50725055]]])
     """
 
     def __init__(self,
@@ -853,16 +903,18 @@ class BatchNorm2D(_BatchNormBase):
     Examples:
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
-          batch_norm = paddle.nn.BatchNorm2D(1)
-          batch_norm_out = batch_norm(x)
+            x = paddle.rand((2, 1, 2, 3), dtype='float32')
+            batch_norm = paddle.nn.BatchNorm2D(1)
+            batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out)
+            print(batch_norm_out)
+            # Tensor(shape=[2, 1, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            #        [[[[-0.57748532,  0.21218109,  0.48258257],
+            #           [-0.47551131,  0.73691654,  1.01816535]]],
+            #         [[[ 0.55303979, -0.35313177,  0.84333110],
+            #           [-2.88714051,  0.26335931,  0.18369389]]]])
     """
 
     def _check_data_format(self, input):
@@ -941,16 +993,22 @@ class BatchNorm3D(_BatchNormBase):
     Examples:
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 1, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
-          batch_norm = paddle.nn.BatchNorm3D(1)
-          batch_norm_out = batch_norm(x)
+            x = paddle.rand((2, 1, 2, 2, 3), dtype='float32')
+            batch_norm = paddle.nn.BatchNorm3D(1)
+            batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out)
+            print(batch_norm_out)
+            # Tensor(shape=[2, 1, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            #        [[[[[ 0.07837152,  1.18636239,  1.10010946],
+            #            [ 1.31199801, -0.04061794, -0.63103521]],
+            #           [[-0.51687443,  1.56720293, -0.89170504],
+            #            [ 0.72325385, -1.44667232, -1.37768829]]]],
+            #         [[[[ 1.59401238, -0.47450209, -1.03129101],
+            #            [-1.48430407,  1.21759379,  0.40846741]],
+            #           [[-0.15320110, -1.20116448, -0.59544474],
+            #            [-0.54495078,  0.01039839,  1.19168079]]]]])
     """
 
     def __init__(self,
@@ -1054,18 +1112,16 @@ class SyncBatchNorm(_BatchNormBase):
     Examples:
         .. code-block:: python
 
-          import paddle
-          import paddle.nn as nn
-          import numpy as np
+            import paddle
+            import paddle.nn as nn
 
-          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
-          x = paddle.to_tensor(x)
+            x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]], dtype='float32')
 
-          if paddle.is_compiled_with_cuda():
-              sync_batch_norm = nn.SyncBatchNorm(2)
-              hidden1 = sync_batch_norm(x)
-              print(hidden1)
-              # [[[[0.26824948, 1.0936325],[0.26824948, -1.6301316]],[[ 0.8095662, -0.665287],[-1.2744656, 1.1301866 ]]]]
+            if paddle.is_compiled_with_cuda():
+                sync_batch_norm = nn.SyncBatchNorm(2)
+                hidden1 = sync_batch_norm(x)
+                print(hidden1)
+                # [[[[0.26824948, 1.0936325],[0.26824948, -1.6301316]],[[ 0.8095662, -0.665287],[-1.2744656, 1.1301866 ]]]]
     """
 
     def __init__(self,

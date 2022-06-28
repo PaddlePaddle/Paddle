@@ -186,17 +186,17 @@ def weight_norm(layer, name='weight', dim=0):
     Examples:
         .. code-block:: python
 
-          import numpy as np
-          from paddle.nn import Conv2D
-          from paddle.nn.utils import weight_norm
+            import paddle
+            from paddle.nn import Conv2D
+            from paddle.nn.utils import weight_norm
 
-          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
-          conv = Conv2D(3, 5, 3)
-          wn = weight_norm(conv)
-          print(conv.weight_g.shape)
-          # [5]
-          print(conv.weight_v.shape)
-          # [5, 3, 3, 3]
+            x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]], dtype='float32')
+            conv = Conv2D(3, 5, 3)
+            wn = weight_norm(conv)
+            print(conv.weight_g.shape)
+            # [5]
+            print(conv.weight_v.shape)
+            # [5, 3, 3, 3]
     """
     WeightNorm.apply(layer, name, dim)
     return layer

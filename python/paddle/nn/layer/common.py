@@ -375,17 +375,14 @@ class Upsample(Layer):
         .. code-block:: python
             
             import paddle
-            import paddle.nn as nn
-            import numpy as np
 
-            input_data = np.random.rand(2,3,6,10).astype("float32")
-            upsample_out  = paddle.nn.Upsample(size=[12,12])
+            input_data = paddle.rand((2, 3, 6, 10), dtype="float32")
+            upsample_out  = paddle.nn.Upsample(size=[12, 12])
 
             input = paddle.to_tensor(input_data)
             output = upsample_out(x=input)
             print(output.shape)
-            # [2L, 3L, 12L, 12L]
-
+            # [2, 3, 12, 12]
     """
 
     def __init__(self,
@@ -727,17 +724,26 @@ class Dropout(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.array([[1,2,3], [4,5,6]]).astype('float32')
-            x = paddle.to_tensor(x)
+            x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
             m = paddle.nn.Dropout(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
             print(x)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[1., 2., 3.],
+            #         [4., 5., 6.]])
+
             print(y_train)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[2. , 4. , 0. ],
+            #         [0. , 0. , 12.]])
+
             print(y_test)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[1., 2., 3.],
+            #         [4., 5., 6.]])
    """
 
     def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
@@ -789,17 +795,74 @@ class Dropout2D(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
-            x = paddle.to_tensor(x)
+            x = paddle.rand((2, 3, 2, 2), dtype='float32')
             m = paddle.nn.Dropout2D(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
             print(x)
+            # Tensor(shape=[2, 3, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[[[0.22427362, 0.69390815],
+            #           [0.05016756, 0.25090888]],
+
+            #          [[0.82788289, 0.97196996],
+            #           [0.32626262, 0.68071109]],
+
+            #          [[0.19998004, 0.77746302],
+            #           [0.00338497, 0.10670204]]],
+
+
+            #         [[[0.78070933, 0.63725704],
+            #           [0.27759516, 0.80883104]],
+
+            #          [[0.21104427, 0.26922041],
+            #           [0.84469289, 0.22432126]],
+
+            #          [[0.42947900, 0.33176073],
+            #           [0.48777375, 0.09769285]]]])
+
             print(y_train)
+            # Tensor(shape=[2, 3, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[[[0.        , 0.        ],
+            #           [0.        , 0.        ]],
+
+            #          [[0.        , 0.        ],
+            #           [0.        , 0.        ]],
+
+            #          [[0.39996007, 1.55492604],
+            #           [0.00676993, 0.21340409]]],
+
+
+            #         [[[0.        , 0.        ],
+            #           [0.        , 0.        ]],
+
+            #          [[0.42208853, 0.53844082],
+            #           [1.68938577, 0.44864252]],
+
+            #          [[0.        , 0.        ],
+            #           [0.        , 0.        ]]]])
+
             print(y_test)
+            # Tensor(shape=[2, 3, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[[[0.22427362, 0.69390815],
+            #           [0.05016756, 0.25090888]],
+
+            #          [[0.82788289, 0.97196996],
+            #           [0.32626262, 0.68071109]],
+
+            #          [[0.19998004, 0.77746302],
+            #           [0.00338497, 0.10670204]]],
+
+
+            #         [[[0.78070933, 0.63725704],
+            #           [0.27759516, 0.80883104]],
+
+            #          [[0.21104427, 0.26922041],
+            #           [0.84469289, 0.22432126]],
+
+            #          [[0.42947900, 0.33176073],
+            #           [0.48777375, 0.09769285]]]])
    """
 
     def __init__(self, p=0.5, data_format='NCHW', name=None):
@@ -849,10 +912,8 @@ class Dropout3D(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
-            x = paddle.to_tensor(x)
+            x = paddle.rand((2, 3, 4, 5, 6), dtype='float32')
             m = paddle.nn.Dropout3D(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
@@ -907,18 +968,26 @@ class AlphaDropout(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.array([[-1, 1], [-1, 1]]).astype('float32')
-            x = paddle.to_tensor(x)
+            x = paddle.to_tensor([[-1, 1], [-1, 1]], dtype='float32')
             m = paddle.nn.AlphaDropout(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
             print(x)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[-1.,  1.],
+            #         [-1.,  1.]])
+
             print(y_train)
-            # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[-0.10721093, -0.77919382],
+            #         [-0.10721093, -0.77919382]])
+
             print(y_test)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[-1.,  1.],
+            #         [-1.,  1.]])
    """
 
     def __init__(self, p=0.5, name=None):
@@ -1285,18 +1354,15 @@ class CosineSimilarity(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            np.random.seed(0)
-            x1 = np.random.rand(2,3)
-            x2 = np.random.rand(2,3)
-            x1 = paddle.to_tensor(x1)
-            x2 = paddle.to_tensor(x2)
+            x1 = paddle.rand((2, 3))
+            x2 = paddle.rand((2, 3))
 
             cos_sim_func = nn.CosineSimilarity(axis=0)
             result = cos_sim_func(x1, x2)
             print(result)
-            # [0.99806249 0.9817672  0.94987036]
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.65727973, 0.01315312, 0.93454957])
     """
 
     def __init__(self, axis=1, eps=1e-8):
@@ -1383,17 +1449,16 @@ class Embedding(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
-            y_data = np.arange(6, 12).reshape((3, 2)).astype(np.float32)
+            x = paddle.arange(3, 6, dtype=paddle.int64).reshape((3, 1))
+            y = paddle.arange(6, 12, dtype=paddle.float32).reshape((3, 2))
 
-            x = paddle.to_tensor(x_data, stop_gradient=False)
-            y = paddle.to_tensor(y_data, stop_gradient=False)
+            x.stop_gradient = False
+            y.stop_gradient = False
 
             embedding = paddle.nn.Embedding(10, 3, sparse=True)
 
-            w0=np.full(shape=(10, 3), fill_value=2).astype(np.float32)
+            w0 = paddle.full(shape=(10, 3), fill_value=2, dtype=paddle.float32)
             embedding.weight.set_value(w0)
 
             adam = paddle.optimizer.Adam(parameters=[embedding.weight], learning_rate=0.01)
@@ -1409,7 +1474,6 @@ class Embedding(Layer):
             out=embedding(x)
             out.backward()
             adam.step()
-
     """
 
     def __init__(self,

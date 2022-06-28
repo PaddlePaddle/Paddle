@@ -54,28 +54,39 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
-            # theta shape = [1, 2, 3]
-            theta = np.array([[[-0.7, -0.4, 0.3],
-                               [ 0.6,  0.5, 1.5]]]).astype("float32")
-            theta_t = paddle.to_tensor(theta)
-            y_t = F.affine_grid(
-                    theta_t,
-                    [1, 2, 3, 3],
-                    align_corners=False)
+
+            # shape=[1, 1, 3, 3]
+            x = paddle.to_tensor(
+                [[[[-0.6,  0.8, -0.5],
+                    [-0.5,  0.2,  1.2],
+                    [ 1.4,  0.3, -0.2]]]], dtype="float64")
+
+            # grid shape = [1, 3, 4, 2]
+            grid = paddle.to_tensor(
+                [[[[ 0.2,  0.3],
+                [-0.4, -0.3],
+                [-0.9,  0.3],
+                [-0.9, -0.6]],
+                [[ 0.4,  0.1],
+                [ 0.9, -0.8],
+                [ 0.4,  0.5],
+                [ 0.5, -0.2]],
+                [[ 0.1, -0.8],
+                [-0.3, -1. ],
+                [ 0.7,  0.4],
+                [ 0.2,  0.8]]]], dtype="float64")
+
+            y_t = F.grid_sample(
+                x,
+                grid,
+                mode='bilinear',
+                padding_mode='border',
+                align_corners=True)
             print(y_t)
-            
-            #[[[[ 1.0333333   0.76666665]
-            #   [ 0.76666665  1.0999999 ]
-            #   [ 0.5         1.4333333 ]]
-            #
-            #  [[ 0.5666667   1.1666666 ]
-            #   [ 0.3         1.5       ]
-            #   [ 0.03333333  1.8333334 ]]
-            #
-            #  [[ 0.10000002  1.5666667 ]
-            #   [-0.16666666  1.9000001 ]
-            #   [-0.43333334  2.2333333 ]]]]
+            # Tensor(shape=[1, 1, 3, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[[[ 0.34000000,  0.01600000,  0.08600000, -0.44800000],
+            #           [ 0.55000000, -0.07600000,  0.35000000,  0.59000000],
+            #           [ 0.59600000,  0.38000000,  0.52000000,  0.24000000]]]])
     """
     if not isinstance(theta, Variable):
         raise ValueError("The theta should be a Tensor.")
@@ -208,31 +219,28 @@ def grid_sample(x,
         
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
-            
+
             # shape=[1, 1, 3, 3]
-            x = np.array([[[[-0.6,  0.8, -0.5],
-                            [-0.5,  0.2,  1.2],
-                            [ 1.4,  0.3, -0.2]]]]).astype("float64")
-            
+            x = paddle.to_tensor(
+                [[[[-0.6,  0.8, -0.5],
+                    [-0.5,  0.2,  1.2],
+                    [ 1.4,  0.3, -0.2]]]], dtype="float64")
+
             # grid shape = [1, 3, 4, 2]
-            grid = np.array(
-                         [[[[ 0.2,  0.3],
-                            [-0.4, -0.3],
-                            [-0.9,  0.3],
-                            [-0.9, -0.6]],
-                           [[ 0.4,  0.1],
-                            [ 0.9, -0.8],
-                            [ 0.4,  0.5],
-                            [ 0.5, -0.2]],
-                           [[ 0.1, -0.8],
-                            [-0.3, -1. ],
-                            [ 0.7,  0.4],
-                            [ 0.2,  0.8]]]]).astype("float64")
-            
-            
-            x = paddle.to_tensor(x)
-            grid = paddle.to_tensor(grid)
+            grid = paddle.to_tensor(
+                [[[[ 0.2,  0.3],
+                [-0.4, -0.3],
+                [-0.9,  0.3],
+                [-0.9, -0.6]],
+                [[ 0.4,  0.1],
+                [ 0.9, -0.8],
+                [ 0.4,  0.5],
+                [ 0.5, -0.2]],
+                [[ 0.1, -0.8],
+                [-0.3, -1. ],
+                [ 0.7,  0.4],
+                [ 0.2,  0.8]]]], dtype="float64")
+
             y_t = F.grid_sample(
                 x,
                 grid,
@@ -240,11 +248,10 @@ def grid_sample(x,
                 padding_mode='border',
                 align_corners=True)
             print(y_t)
-            
-            # output shape = [1, 1, 3, 4]
-            # [[[[ 0.34   0.016  0.086 -0.448]
-            #    [ 0.55  -0.076  0.35   0.59 ]
-            #    [ 0.596  0.38   0.52   0.24 ]]]]
+            # Tensor(shape=[1, 1, 3, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[[[ 0.34000000,  0.01600000,  0.08600000, -0.44800000],
+            #           [ 0.55000000, -0.07600000,  0.35000000,  0.59000000],
+            #           [ 0.59600000,  0.38000000,  0.52000000,  0.24000000]]]])
     """
 
     _modes = ['bilinear', 'nearest']
@@ -314,12 +321,11 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
-            x = np.random.randn(2, 9, 4, 4).astype(np.float32)
-            x_var = paddle.to_tensor(x)
-            out_var = F.pixel_shuffle(x_var, 3)
-            out = out_var.numpy()
-            # (2, 1, 12, 12)
+
+            x = paddle.randn((2, 9, 4, 4), dtype=paddle.float32)
+            out = F.pixel_shuffle(x, 3)
+            print(out.shape)
+            # [2, 1, 12, 12]
     """
     if not isinstance(upscale_factor, int):
         raise TypeError("upscale factor must be int type")

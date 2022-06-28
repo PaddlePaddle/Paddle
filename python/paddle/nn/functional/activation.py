@@ -273,10 +273,12 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
-            out = F.hardtanh(x) # [-1., 0.3, 1.]
+            x = paddle.to_tensor([-1.5, 0.3, 2.5])
+            out = F.hardtanh(x)
+            print(out)
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [-1.       , 0.30000001,  1.       ])
     """
 
     if in_dynamic_mode():
@@ -479,23 +481,24 @@ def prelu(x, weight, data_format="NCHW", name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
-                               [ 3.0, -4.0,  5.0, -6.0],
-                               [-7.0, -8.0,  8.0,  9.0]],
-                              [[ 1.0, -2.0, -3.0,  4.0],
-                               [-5.0,  6.0,  7.0, -8.0],
-                               [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
-            x = paddle.to_tensor(data)
-            w = paddle.to_tensor(np.array([0.25]).astype('float32'))
+            x = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
+                                [ 3.0, -4.0,  5.0, -6.0],
+                                [-7.0, -8.0,  8.0,  9.0]],
+                                [[ 1.0, -2.0, -3.0,  4.0],
+                                [-5.0,  6.0,  7.0, -8.0],
+                                [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
+            w = paddle.to_tensor([0.25], dtype='float32')
             out = F.prelu(x, w)
-            # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
-            #    [ 3.  , -1.  ,  5.  , -1.5 ],
-            #    [-1.75, -2.  ,  8.  ,  9.  ]],
-            #   [[ 1.  , -0.5 , -0.75,  4.  ],
-            #    [-1.25,  6.  ,  7.  , -2.  ],
-            #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
+            print(out)
+            # Tensor(shape=[1, 2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[[[-0.50000000,  3.        , -1.        ,  5.        ],
+            #           [ 3.        , -1.        ,  5.        , -1.50000000],
+            #           [-1.75000000, -2.        ,  8.        ,  9.        ]],
+
+            #          [[ 1.        , -0.50000000, -0.75000000,  4.        ],
+            #           [-1.25000000,  6.        ,  7.        , -2.        ],
+            #           [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
     """
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'prelu')
     check_variable_and_dtype(weight, 'weight',
@@ -688,10 +691,12 @@ def relu(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
-            out = F.relu(x) # [0., 0., 1.]
+            x = paddle.to_tensor([-2, 0, 1], dtype='float32')
+            out = F.relu(x)
+            print(out)
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0., 0., 1.])
     """
 
     if in_dygraph_mode():
@@ -854,10 +859,12 @@ def relu6(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
-            out = F.relu6(x) # [0, 0.3, 6]
+            x = paddle.to_tensor([-1, 0.3, 6.5], dtype='float32')
+            out = F.relu6(x)
+            print(out)
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.        , 0.30000001, 6.        ])
     """
     threshold = 6.0
     if in_dynamic_mode():
@@ -905,10 +912,13 @@ def selu(x,
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
-            out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
+            x = paddle.to_tensor([[0.0, 1.0],[2.0, 3.0]], dtype='float32')
+            out = F.selu(x)
+            print(out)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[0.        , 1.05070102],
+            #         [2.10140204, 3.15210295]])
     """
     if scale <= 1.0:
         raise ValueError(
@@ -1067,25 +1077,35 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = np.array([[[2.0, 3.0, 4.0, 5.0],
-                        [3.0, 4.0, 5.0, 6.0],
-                        [7.0, 8.0, 8.0, 9.0]],
-                        [[1.0, 2.0, 3.0, 4.0],
-                        [5.0, 6.0, 7.0, 8.0],
-                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
-            x = paddle.to_tensor(x)
+            x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
+                                [3.0, 4.0, 5.0, 6.0],
+                                [7.0, 8.0, 8.0, 9.0]],
+                                [[1.0, 2.0, 3.0, 4.0],
+                                [5.0, 6.0, 7.0, 8.0],
+                                [6.0, 7.0, 8.0, 9.0]]], dtype='float32')
             out1 = F.softmax(x)
+            print(out1)
+            # Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[[0.03205860, 0.08714432, 0.23688281, 0.64391422],
+            #          [0.03205860, 0.08714432, 0.23688281, 0.64391422],
+            #          [0.07232949, 0.19661194, 0.19661194, 0.53444666]],
+
+            #         [[0.03205860, 0.08714432, 0.23688281, 0.64391422],
+            #          [0.03205860, 0.08714432, 0.23688281, 0.64391422],
+            #          [0.03205860, 0.08714432, 0.23688281, 0.64391422]]])
+
             out2 = F.softmax(x, dtype='float64')
-            # out1's data type is float32; out2's data type is float64
-            # out1 and out2's value is as follows:
-            # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
-            # [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+            print(out2)
+            # Tensor(shape=[2, 3, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[[0.03205860, 0.08714432, 0.23688282, 0.64391426],
+            #          [0.03205860, 0.08714432, 0.23688282, 0.64391426],
+            #          [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+
+            #         [[0.03205860, 0.08714432, 0.23688282, 0.64391426],
+            #          [0.03205860, 0.08714432, 0.23688282, 0.64391426],
+            #          [0.03205860, 0.08714432, 0.23688282, 0.64391426]]])
+
     """
 
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
@@ -1170,10 +1190,12 @@ def softplus(x, beta=1, threshold=20, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-            out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = F.softplus(x)
+            print(out)
+            # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.51301527, 0.59813893, 0.74439669, 0.85435522])
     """
     if in_dynamic_mode():
         return _C_ops.softplus(x, 'beta', beta, 'threshold', threshold)
@@ -1221,10 +1243,12 @@ def softshrink(x, threshold=0.5, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
-            out = F.softshrink(x) # [-0.4, 0, 0, 0.3]
+            x = paddle.to_tensor([-0.9, -0.2, 0.1, 0.8])
+            out = F.softshrink(x)
+            print(out)
+            # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [-0.39999998,  0.        ,  0.        ,  0.30000001])
     """
     if threshold < 0:
         raise ValueError(
@@ -1268,10 +1292,12 @@ def softsign(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-            out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = F.softsign(x)
+            print(out)
+            # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
     """
     if in_dynamic_mode():
         return _C_ops.softsign(x)
@@ -1305,10 +1331,12 @@ def swish(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-2., 0., 1.]))
-            out = F.swish(x) # [-0.238406, 0., 0.731059]
+            x = paddle.to_tensor([-2., 0., 1.])
+            out = F.swish(x)
+            print(out)
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [-0.23840584,  0.        ,  0.73105860])
     """
     if in_dygraph_mode():
         return _C_ops.final_state_swish(x, 1.0)
@@ -1388,10 +1416,12 @@ def tanhshrink(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-            out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = F.tanhshrink(x)
+            print(out)
+            # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [-0.02005100, -0.00262472,  0.00033201,  0.00868741])
     """
     if in_dynamic_mode():
         return _C_ops.tanh_shrink(x)
@@ -1433,10 +1463,12 @@ def thresholded_relu(x, threshold=1.0, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([2., 0., 1.]))
-            out = F.thresholded_relu(x) # [2., 0., 0.]
+            x = paddle.to_tensor([2., 0., 1.])
+            out = F.thresholded_relu(x)
+            print(out)
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [2., 0., 0.])
     """
 
     if in_dynamic_mode():

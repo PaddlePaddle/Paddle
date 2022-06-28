@@ -247,16 +247,15 @@ def fluid_softmax_with_cross_entropy(logits,
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            data = np.random.rand(128).astype("float32")
-            label = np.random.rand(1).astype("int64")
-            data = paddle.to_tensor(data)
-            label = paddle.to_tensor(label)
+            data = paddle.rand((128, )).astype(paddle.float32)
+            label = paddle.rand((1, )).astype(paddle.int64)
             linear = paddle.nn.Linear(128, 100)
             x = linear(data)
             out = paddle.nn.functional.softmax_with_cross_entropy(logits=x, label=label)
             print(out)
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False,
+            #        [4.88648510])
     """
     if _non_static_mode():
         if core.is_compiled_with_npu():
@@ -1020,14 +1019,13 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(3,3).astype("float32")
-            label_data = np.random.rand(3,3).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.rand((3, 3), dtype="float32")
+            label = paddle.rand((3, 3), dtype="float32")
             output = paddle.nn.functional.smooth_l1_loss(input, label)
             print(output)
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.14229359])
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'smooth_l1_loss')
@@ -1452,33 +1450,27 @@ def kl_div(input, label, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             import paddle.nn.functional as F
 
             shape = (5, 20)
-            input = np.random.uniform(-10, 10, shape).astype('float32')
-            target = np.random.uniform(-10, 10, shape).astype('float32')
+            input = paddle.uniform(shape, min=-10, max=10, dtype='float32')
+            target = paddle.uniform(shape, min=-10, max=10, dtype='float32')
 
             # 'batchmean' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='batchmean')
+            pred_loss = F.kl_div(input, target, reduction='batchmean')
             # shape=[1]
 
             # 'mean' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='mean')
+            pred_loss = F.kl_div(input, target, reduction='mean')
             # shape=[1]
 
             # 'sum' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='sum')
+            pred_loss = F.kl_div(input, target, reduction='sum')
             # shape=[1]
 
             # 'none' reduction, loss shape is same with input shape
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='none')
+            pred_loss = F.kl_div(input, target, reduction='none')
             # shape=[5, 20]
-
     """
     # ugly type promotion
     if fluid.data_feeder.convert_dtype(
@@ -1633,7 +1625,6 @@ def ctc_loss(log_probs,
 
             # declarative mode
             import paddle.nn.functional as F
-            import numpy as np
             import paddle
 
             # length of the longest logit sequence
@@ -1645,30 +1636,24 @@ def ctc_loss(log_probs,
             # class num
             class_num = 3
 
-            np.random.seed(1)
-            log_probs = np.array([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
-                                    [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
+            log_probs = paddle.to_tensor([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
+                                        [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
 
-                                    [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
-                                    [5.38816750e-01, 4.19194520e-01, 6.85219526e-01]],
+                                        [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
+                                        [5.38816750e-01, 4.19194520e-01, 6.85219526e-01]],
 
-                                    [[2.04452246e-01, 8.78117442e-01, 2.73875929e-02],
-                                    [6.70467496e-01, 4.17304814e-01, 5.58689833e-01]],
+                                        [[2.04452246e-01, 8.78117442e-01, 2.73875929e-02],
+                                        [6.70467496e-01, 4.17304814e-01, 5.58689833e-01]],
 
-                                    [[1.40386939e-01, 1.98101491e-01, 8.00744593e-01],
-                                    [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]],
+                                        [[1.40386939e-01, 1.98101491e-01, 8.00744593e-01],
+                                        [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]],
 
-                                    [[8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
-                                    [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]]).astype("float32")
-            labels = np.array([[1, 2, 2],
-                            [1, 2, 2]]).astype("int32")
-            input_lengths = np.array([5, 5]).astype("int64")
-            label_lengths = np.array([3, 3]).astype("int64")
-
-            log_probs = paddle.to_tensor(log_probs)
-            labels = paddle.to_tensor(labels)
-            input_lengths = paddle.to_tensor(input_lengths)
-            label_lengths = paddle.to_tensor(label_lengths)
+                                        [[8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
+                                        [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]], dtype="float32")
+            labels = paddle.to_tensor([[1, 2, 2],
+                                        [1, 2, 2]], dtype="int32")
+            input_lengths = paddle.to_tensor([5, 5], dtype="int64")
+            label_lengths = paddle.to_tensor([3, 3], dtype="int64")
 
             loss = F.ctc_loss(log_probs, labels,
                 input_lengths,
@@ -1683,7 +1668,6 @@ def ctc_loss(log_probs,
                 blank=0,
                 reduction='mean')
             print(loss)  #[1.1376063]
-
     """
 
     loss_out = fluid.layers.warpctc(log_probs, labels, blank, norm_by_times,

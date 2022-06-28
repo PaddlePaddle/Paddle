@@ -31,7 +31,6 @@ class LayerDict(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             from collections import OrderedDict
 
             sublayers = OrderedDict([
@@ -47,21 +46,20 @@ class LayerDict(Layer):
             for k in layers_dict:
                 l = layers_dict[k]
 
-            len(layers_dict)
-            #3
+            print(len(layers_dict))
+            # 3
 
             del layers_dict['conv2d']
-            len(layers_dict)
-            #2
+            print(len(layers_dict))
+            # 2
 
             conv1d = layers_dict.pop('conv1d')
-            len(layers_dict)
-            #1
+            print(len(layers_dict))
+            # 1
 
             layers_dict.clear()
-            len(layers_dict)
-            #0
-
+            print(len(layers_dict))
+            # 0
     """
 
     def __init__(self, sublayers=None):

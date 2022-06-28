@@ -75,13 +75,12 @@ class AvgPool1D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+            data = ppaddle.uniform([1, 3, 32], min=-1, max=1, dtype=paddle.float32)
             AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
             pool_out = AvgPool1D(data)
-            # pool_out shape: [1, 3, 16]
-
+            print(pool_out.shape)
+            # [1, 3, 16]
     """
 
     def __init__(self,
@@ -173,15 +172,14 @@ class AvgPool2D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
             # max pool2d
-            input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+            input = paddle.uniform([1, 3, 32, 32], min=-1, max=1, dtype=paddle.float32)
             AvgPool2D = nn.AvgPool2D(kernel_size=2,
                                 stride=2, padding=0)
             output = AvgPool2D(input)
-            # output.shape [1, 3, 16, 16]
-
+            print(output.shape)
+            # [1, 3, 16, 16]
     """
 
     def __init__(self,
@@ -270,15 +268,14 @@ class AvgPool3D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
             # avg pool3d
-            input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
+            input = paddle.uniform([1, 2, 3, 32, 32], min=-1, max=1, dtype=paddle.float32)
             AvgPool3D = nn.AvgPool3D(kernel_size=2,
-                                   stride=2, padding=0)
+                                    stride=2, padding=0)
             output = AvgPool3D(input)
-            # output.shape [1, 2, 3, 16, 16]
-
+            print(output.shape)
+            # [1, 2, 1, 16, 16]
     """
 
     def __init__(self,
@@ -372,17 +369,17 @@ class MaxPool1D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+            data = paddle.uniform([1, 3, 32], min=-1, max=1, dtype=paddle.float32)
             MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
             pool_out = MaxPool1D(data)
-            # pool_out shape: [1, 3, 16]
+            print(pool_out.shape)
+            # [1, 3, 16]
 
             MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, return_mask=True)
             pool_out, indices = MaxPool1D(data)
-            # pool_out shape: [1, 3, 16], indices shape: [1, 3, 16]
-
+            print(pool_out.shape, indices.shape)
+            # [1, 3, 16] [1, 3, 16]
     """
 
     def __init__(self,
@@ -472,19 +469,20 @@ class MaxPool2D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
             # max pool2d
-            input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+            input = paddle.uniform([1, 3, 32, 32], min=-1, max=1, dtype=paddle.float32)
             MaxPool2D = nn.MaxPool2D(kernel_size=2,
-                                   stride=2, padding=0)
+                                    stride=2, padding=0)
             output = MaxPool2D(input)
-            # output.shape [1, 3, 16, 16]
+            print(output.shape)
+            # [1, 3, 16, 16]
 
             # for return_mask=True
             MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, return_mask=True)
             output, max_indices = MaxPool2D(input)
-            # output.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
+            print(output.shape, max_indices.shape)
+            # [1, 3, 16, 16] [1, 3, 16, 16]
     """
 
     def __init__(self,
@@ -569,19 +567,20 @@ class MaxPool3D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
             # max pool3d
-            input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
+            input = paddle.uniform([1, 2, 3, 32, 32], min=-1, max=1, dtype=paddle.float32)
             MaxPool3D = nn.MaxPool3D(kernel_size=2,
-                                   stride=2, padding=0)
+                                    stride=2, padding=0)
             output = MaxPool3D(input)
-            # output.shape [1, 2, 3, 16, 16]
+            print(output.shape)
+            # [1, 2, 1, 16, 16]
 
             # for return_mask=True
             MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, return_mask=True)
             output, max_indices = MaxPool3D(input)
-            # output.shape [1, 2, 3, 16, 16], max_indices.shape [1, 2, 3, 16, 16],
+            print(output.shape, max_indices.shape)
+            # [1, 2, 1, 16, 16] [1, 2, 1, 16, 16]
     """
 
     def __init__(self,
@@ -659,12 +658,12 @@ class AdaptiveAvgPool1D(Layer):
             #
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+            data = paddle.uniform([1, 3, 32], min=-1, max=1, dtype=paddle.float32)
             AdaptiveAvgPool1D = nn.AdaptiveAvgPool1D(output_size=16)
             pool_out = AdaptiveAvgPool1D(data)
-            # pool_out shape: [1, 3, 16]
+            print(pool_out.shape)
+            # [1, 3, 16]
     """
 
     def __init__(self, output_size, name=None):
@@ -738,14 +737,13 @@ class AdaptiveAvgPool2D(Layer):
             #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
             #
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(2, 3, 32, 32)
-            x = paddle.to_tensor(input_data)
+            x = paddle.rand((2, 3, 32, 32))
             # x.shape is [2, 3, 32, 32]
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(output_size=3)
             pool_out = adaptive_avg_pool(x = x)
-            # pool_out.shape is [2, 3, 3, 3]
+            print(pool_out.shape)
+            # [2, 3, 3, 3]
     """
 
     def __init__(self, output_size, data_format="NCHW", name=None):
@@ -830,14 +828,13 @@ class AdaptiveAvgPool3D(Layer):
             #                 output[:, :, i, j, k] =
             #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(2, 3, 8, 32, 32)
-            x = paddle.to_tensor(input_data)
+            x = paddle.rand((2, 3, 8, 32, 32))
             # x.shape is [2, 3, 8, 32, 32]
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(output_size=3)
             pool_out = adaptive_avg_pool(x = x)
-            # pool_out = [2, 3, 3, 3, 3]
+            print(pool_out.shape)
+            # [2, 3, 3, 3, 3]
     """
 
     def __init__(self, output_size, data_format="NCDHW", name=None):
@@ -911,18 +908,18 @@ class AdaptiveMaxPool1D(Layer):
             #
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+            data = paddle.uniform([1, 3, 32], min=-1, max=1, dtype=paddle.float32)
             AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16)
             pool_out = AdaptiveMaxPool1D(data)
-            # pool_out shape: [1, 3, 16]
+            print(pool_out.shape)
+            # [1, 3, 16]
 
             # for return_mask = true
             AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16, return_mask=True)
             pool_out, indices = AdaptiveMaxPool1D(data)
-            # pool_out shape: [1, 3, 16], indices shape: [1, 3, 16]
-
+            print(pool_out.shape, indices.shape)
+            # [1, 3, 16] [1, 3, 16]
     """
 
     def __init__(self, output_size, return_mask=False, name=None):
@@ -995,12 +992,12 @@ class AdaptiveMaxPool2D(Layer):
             #             output[:, :, i, j] = max(input[:, :, hstart: hend, wstart: wend])
             #
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(2, 3, 32, 32)
-            x = paddle.to_tensor(input_data)
+            x = paddle.rand((2, 3, 32, 32))
             adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=3, return_mask=True)
             pool_out, indices = adaptive_max_pool(x = x)
+            print(pool_out.shape, indices.shape)
+            # [2, 3, 3, 3] [2, 3, 3, 3]
     """
 
     def __init__(self, output_size, return_mask=False, name=None):
@@ -1082,17 +1079,16 @@ class AdaptiveMaxPool3D(Layer):
             #                 output[:, :, i, j, k] =
             #                     max(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(2, 3, 8, 32, 32)
-            x = paddle.to_tensor(input_data)
+            x = paddle.rand((2, 3, 8, 32, 32))
             pool = paddle.nn.AdaptiveMaxPool3D(output_size=4)
             out = pool(x)
-            # out shape: [2, 3, 4, 4, 4]
+            print(out.shape)
+            # [2, 3, 4, 4, 4]
             pool = paddle.nn.AdaptiveMaxPool3D(output_size=3, return_mask=True)
             out, indices = pool(x)
-            # out shape: [2, 3, 4, 4, 4], indices shape: [2, 3, 4, 4, 4]
-
+            print(out.shape, indices.shape)
+            # [2, 3, 3, 3, 3] [2, 3, 3, 3, 3]
     """
 
     def __init__(self, output_size, return_mask=False, name=None):
@@ -1153,15 +1149,15 @@ class MaxUnPool1D(Layer):
         
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
             data = paddle.rand(shape=[1, 3, 16])
             pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
-            # pool_out shape: [1, 3, 8],  indices shape: [1, 3, 8]
+            print(pool_out.shape, indices.shape)
+            # [1, 3, 8] [1, 3, 8]
             Unpool1D = paddle.nn.MaxUnPool1D(kernel_size=2, padding=0)
             unpool_out = Unpool1D(pool_out, indices)
-            # unpool_out shape: [1, 3, 16]
-
+            print(unpool_out.shape)
+            # [1, 3, 16]
     """
 
     def __init__(self,
@@ -1325,15 +1321,15 @@ class MaxUnPool3D(Layer):
         
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
             data = paddle.rand(shape=[1, 1, 4, 4, 6])
             pool_out, indices = F.max_pool3d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
-            # pool_out shape: [1, 1, 2, 2, 3],  indices shape: [1, 1, 2, 2, 3]
+            print(pool_out.shape, indices.shape)
+            # [1, 1, 2, 2, 3] [1, 1, 2, 2, 3]
             Unpool3D = paddle.nn.MaxUnPool3D(kernel_size=2, padding=0)
             unpool_out = Unpool3D(pool_out, indices)
-            # unpool_out shape: [1, 1, 4, 4, 6]
-
+            print(unpool_out.shape)
+            # [1, 1, 4, 4, 6]
     """
 
     def __init__(self,

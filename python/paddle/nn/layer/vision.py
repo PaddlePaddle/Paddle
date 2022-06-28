@@ -50,16 +50,12 @@ class PixelShuffle(Layer):
             
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            x = np.random.randn(2, 9, 4, 4).astype(np.float32)
-            x_var = paddle.to_tensor(x)
+            x = paddle.randn((2, 9, 4, 4), dtype=paddle.float32)
             pixel_shuffle = nn.PixelShuffle(3)
-            out_var = pixel_shuffle(x_var)
-            out = out_var.numpy()
+            out = pixel_shuffle(x)
             print(out.shape) 
-            # (2, 1, 12, 12)
-
+            # [2, 1, 12, 12]
     """
 
     def __init__(self, upscale_factor, data_format="NCHW", name=None):

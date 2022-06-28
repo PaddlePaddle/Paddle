@@ -571,18 +571,16 @@ class MSELoss(Layer):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            input_data = np.array([1.5]).astype("float32")
-            label_data = np.array([1.7]).astype("float32")
+            input = paddle.to_tensor([1.5], dtype="float32")
+            label = paddle.to_tensor([1.7], dtype="float32")
 
             mse_loss = paddle.nn.loss.MSELoss()
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
             output = mse_loss(input, label)
             print(output)
-            # [0.04000002]
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.04000002])
     """
 
     def __init__(self, reduction='mean'):
@@ -658,12 +656,9 @@ class L1Loss(Layer):
         .. code-block:: python
             
             import paddle
-            import numpy as np
 
-            input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
-            label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.to_tensor([[1.5, 0.8], [0.2, 1.3]], dtype="float32")
+            label = paddle.to_tensor([[1.7, 1], [0.4, 0.5]], dtype="float32")
 
             l1_loss = paddle.nn.L1Loss()
             output = l1_loss(input, label)
@@ -678,8 +673,9 @@ class L1Loss(Layer):
             l1_loss = paddle.nn.L1Loss(reduction='none')
             output = l1_loss(input, label)
             print(output)
-            # [[0.20000005 0.19999999]
-            # [0.2        0.79999995]]
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[0.20000005, 0.19999999],
+            #         [0.20000000, 0.79999995]])
     """
 
     def __init__(self, reduction='mean', name=None):
@@ -758,17 +754,16 @@ class BCELoss(Layer):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
-            input_data = np.array([0.5, 0.6, 0.7]).astype("float32")
-            label_data = np.array([1.0, 0.0, 1.0]).astype("float32")
 
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.to_tensor([0.5, 0.6, 0.7], dtype="float32")
+            label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
+
             bce_loss = paddle.nn.BCELoss()
             output = bce_loss(input, label)
-            print(output)  # [0.65537095]
-
+            print(output)
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.65537095])
     """
 
     def __init__(self, weight=None, reduction='mean', name=None):
@@ -933,36 +928,35 @@ class KLDivLoss(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             import paddle.nn as nn
 
             shape = (5, 20)
-            x = np.random.uniform(-10, 10, shape).astype('float32')
-            target = np.random.uniform(-10, 10, shape).astype('float32')
+            x = paddle.uniform(shape, min=-10, max=10, dtype='float32')
+            target = paddle.uniform(shape, min=-10, max=10, dtype='float32')
 
             # 'batchmean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
-            # shape=[1]
+            pred_loss = kldiv_criterion(x, target)
+            print(pred_loss.shape)
+            # [1]
 
             # 'mean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='mean')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
-            # shape=[1]
+            pred_loss = kldiv_criterion(x, target)
+            print(pred_loss.shape)
+            # [1]
 
             # 'sum' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='sum')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
-            # shape=[1]
+            pred_loss = kldiv_criterion(x, target)
+            print(pred_loss.shape)
+            # [1]
 
             # 'none' reduction, loss shape is same with X shape
             kldiv_criterion = nn.KLDivLoss(reduction='none')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
-            # shape=[5, 20]
+            pred_loss = kldiv_criterion(x, target)
+            print(pred_loss.shape)
+            # [5, 20]
     """
 
     def __init__(self, reduction='mean'):
@@ -1075,7 +1069,6 @@ class CTCLoss(Layer):
         .. code-block:: python
 
             # declarative mode
-            import numpy as np
             import paddle
 
             # length of the longest logit sequence
@@ -1087,40 +1080,40 @@ class CTCLoss(Layer):
             # class num
             class_num = 3
 
-            np.random.seed(1)
-            log_probs = np.array([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
-                                    [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
+            log_probs = paddle.to_tensor(
+                [[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
+                [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
 
-                                    [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
-                                    [5.38816750e-01, 4.19194520e-01, 6.85219526e-01]],
+                [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
+                [5.38816750e-01, 4.19194520e-01, 6.85219526e-01]],
 
-                                    [[2.04452246e-01, 8.78117442e-01, 2.73875929e-02],
-                                    [6.70467496e-01, 4.17304814e-01, 5.58689833e-01]],
+                [[2.04452246e-01, 8.78117442e-01, 2.73875929e-02],
+                [6.70467496e-01, 4.17304814e-01, 5.58689833e-01]],
 
-                                    [[1.40386939e-01, 1.98101491e-01, 8.00744593e-01],
-                                    [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]],
+                [[1.40386939e-01, 1.98101491e-01, 8.00744593e-01],
+                [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]],
 
-                                    [[8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
-                                    [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]]).astype("float32")
-            labels = np.array([[1, 2, 2],
-                            [1, 2, 2]]).astype("int32")
-            input_lengths = np.array([5, 5]).astype("int64")
-            label_lengths = np.array([3, 3]).astype("int64")
-
-            log_probs = paddle.to_tensor(log_probs)
-            labels = paddle.to_tensor(labels)
-            input_lengths = paddle.to_tensor(input_lengths)
-            label_lengths = paddle.to_tensor(label_lengths)
+                [[8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
+                [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]], dtype="float32")
+            labels = paddle.to_tensor(
+                [[1, 2, 2],
+                [1, 2, 2]], dtype="int32")
+            input_lengths = paddle.to_tensor([5, 5], dtype="int64")
+            label_lengths = paddle.to_tensor([3, 3], dtype="int64")
 
             loss = paddle.nn.CTCLoss(blank=0, reduction='none')(log_probs, labels,
                 input_lengths,
                 label_lengths)
-            print(loss)  #[3.9179852 2.9076521]
+            print(loss)
+            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [3.91798496, 2.90765214])
 
             loss = paddle.nn.CTCLoss(blank=0, reduction='mean')(log_probs, labels,
                 input_lengths,
                 label_lengths)
-            print(loss)  #[1.1376063]
+            print(loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [1.13760614])
     """
 
     def __init__(self, blank=0, reduction='mean'):
@@ -1193,14 +1186,14 @@ class SmoothL1Loss(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            input_data = np.random.rand(3,3).astype("float32")
-            label_data = np.random.rand(3,3).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+
+            input = paddle.rand((3, 3), dtype="float32")
+            label = paddle.rand((3, 3), dtype="float32")
             loss = paddle.nn.SmoothL1Loss()
             output = loss(input, label)
             print(output)
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.07726325])
     """
 
     def __init__(self, reduction='mean', delta=1.0, name=None):

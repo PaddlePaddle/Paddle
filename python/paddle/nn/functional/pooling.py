@@ -201,14 +201,14 @@ def avg_pool1d(x,
 
     Examples:
         .. code-block:: python
-          
+
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+            data = paddle.uniform([1, 3, 32], min=-1, max=1, dtype=paddle.float32)
             out = F.avg_pool1d(data, kernel_size=2, stride=2, padding=0)
-            # out shape: [1, 3, 16]
+            print(out.shape)
+            # [1, 3, 16]
     """
     """NCL to NCHW"""
     data_format = "NCHW"
@@ -325,17 +325,17 @@ def avg_pool2d(x,
     
     Examples:
         .. code-block:: python
-          
+
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
-            
+
             # avg pool2d
-            x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+            x = paddle.uniform([1, 3, 32, 32], min=-1, max=1, dtype=paddle.float32)
             out = F.avg_pool2d(x,
                             kernel_size=2,
                             stride=2, padding=0)
-            # out.shape [1, 3, 16, 16]
+            print(out.shape)
+            # [1, 3, 16, 16]
     """
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
@@ -454,18 +454,18 @@ def avg_pool3d(x,
     
     Examples:
         .. code-block:: python
-          
-          import paddle
-          import numpy as np
 
-          x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
-          # avg pool3d
-          out = paddle.nn.functional.avg_pool3d(
+            import paddle
+
+            x = paddle.uniform([1, 3, 32, 32, 32], min=-1, max=1, dtype=paddle.float32)
+            # avg pool3d
+            out = paddle.nn.functional.avg_pool3d(
                                             x,
                                             kernel_size = 2,
                                             stride = 2,
                                             padding=0)
-          # out.shape: [1, 3, 16, 16, 16]
+            print(out.shape)
+            # [1, 3, 16, 16, 16]
     """
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
@@ -579,15 +579,16 @@ def max_pool1d(x,
     Examples:
         .. code-block:: python
 
-          import paddle
-          import paddle.nn.functional as F
-          import numpy as np
+            import paddle
+            import paddle.nn.functional as F
 
-          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
-          pool_out = F.max_pool1d(data, kernel_size=2, stride=2, padding=0)
-          # pool_out shape: [1, 3, 16]
-          pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
-          # pool_out shape: [1, 3, 16],  indices shape: [1, 3, 16]
+            data = paddle.uniform([1, 3, 32], min=-1, max=1, dtype=paddle.float32)
+            pool_out = F.max_pool1d(data, kernel_size=2, stride=2, padding=0)
+            print(pool_out.shape)
+            # [1, 3, 16]
+            pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
+            print(pool_out.shape, indices.shape)
+            # [1, 3, 16] [1, 3, 16]
     """
     """NCL to NCHW"""
     data_format = "NCHW"
@@ -1380,15 +1381,13 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
             #
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(2, 3, 32, 32)
-            x = paddle.to_tensor(input_data)
-            # x.shape is [2, 3, 32, 32]
+            x = paddle.rand((2, 3, 32, 32))
             out = paddle.nn.functional.adaptive_avg_pool2d(
                             x = x,
                             output_size=[3, 3])
-            # out.shape is [2, 3, 3, 3]
+            print(out.shape)
+            # [2, 3, 3, 3]
     """
     if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -1489,14 +1488,13 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             #                 output[:, :, i, j, k] =
             #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
-            import numpy as np
-            input_data = np.random.rand(2, 3, 8, 32, 32)
-            x = paddle.to_tensor(input_data)
-            # x.shape is [2, 3, 8, 32, 32]
+
+            x = paddle.rand((2, 3, 8, 32, 32))
             out = paddle.nn.functional.adaptive_avg_pool3d(
                             x = x,
                             output_size=[3, 3, 3])
-            # out.shape is [2, 3, 3, 3, 3]
+            print(out.shape)
+            # [2, 3, 3, 3, 3]
     """
     if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
@@ -1573,27 +1571,28 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     Examples:
         .. code-block:: python
 
-              # max adaptive pool1d
-              # suppose input data in shape of [N, C, L], `output_size` is m or [m],
-              # output shape is [N, C, m], adaptive pool divide L dimension
-              # of input data into m grids averagely and performs poolings in each
-              # grid to get output.
-              # adaptive max pool performs calculations as follow:
-              #
-              #     for i in range(m):
-              #         lstart = floor(i * L / m)
-              #         lend = ceil((i + 1) * L / m)
-              #         output[:, :, i] = max(input[:, :, lstart: lend])
-              #
-              import paddle
-              import paddle.nn.functional as F
-              import numpy as np
+            # max adaptive pool1d
+            # suppose input data in shape of [N, C, L], `output_size` is m or [m],
+            # output shape is [N, C, m], adaptive pool divide L dimension
+            # of input data into m grids averagely and performs poolings in each
+            # grid to get output.
+            # adaptive max pool performs calculations as follow:
+            #
+            #     for i in range(m):
+            #         lstart = floor(i * L / m)
+            #         lend = ceil((i + 1) * L / m)
+            #         output[:, :, i] = max(input[:, :, lstart: lend])
+            #
+            import paddle
+            import paddle.nn.functional as F
 
-              data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
-              pool_out = F.adaptive_max_pool1d(data, output_size=16)
-              # pool_out shape: [1, 3, 16])
-              pool_out, indices = F.adaptive_max_pool1d(data, output_size=16, return_mask=True)
-              # pool_out shape: [1, 3, 16] indices  shape: [1, 3, 16]
+            data = paddle.uniform([1, 3, 32], min=-1, max=1, dtype=paddle.float32)
+            pool_out = F.adaptive_max_pool1d(data, output_size=16)
+            print(pool_out.shape)
+            # [1, 3, 16]
+            pool_out, indices = F.adaptive_max_pool1d(data, output_size=16, return_mask=True)
+            print(pool_out.shape, indices.shape)
+            # [1, 3, 16] [1, 3, 16]
     """
     pool_type = 'max'
     if not in_dynamic_mode():
@@ -1637,46 +1636,44 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
 
 def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
     """
-        This operation applies a 2D adaptive max pooling on input tensor.
-        See more details in :ref:`api_nn_pooling_AdaptiveMaxPool2d` .
+    This operation applies a 2D adaptive max pooling on input tensor.
+    See more details in :ref:`api_nn_pooling_AdaptiveMaxPool2d` .
 
-        Args:
-            x (Tensor): The input tensor of adaptive max pool2d operator, which is a 4-D tensor. The data type can be float16, float32, float64, int32 or int64.
-            output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain two elements, (H, W). H and W can be either a int, or None which means the size will be the same as that of the input.
-            return_mask (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
-            name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
+    Args:
+        x (Tensor): The input tensor of adaptive max pool2d operator, which is a 4-D tensor. The data type can be float16, float32, float64, int32 or int64.
+        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain two elements, (H, W). H and W can be either a int, or None which means the size will be the same as that of the input.
+        return_mask (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
 
-        Returns:
-            Tensor: The output tensor of adaptive max pool2d result. The data type is same as input tensor.
+    Returns:
+        Tensor: The output tensor of adaptive max pool2d result. The data type is same as input tensor.
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-              # max adaptive pool2d
-              # suppose input data in the shape of [N, C, H, W], `output_size` is [m, n]
-              # output shape is [N, C, m, n], adaptive pool divide H and W dimensions
-              # of input data into m*n grids averagely and performs poolings in each
-              # grid to get output.
-              # adaptive max pool performs calculations as follow:
-              #
-              #     for i in range(m):
-              #         for j in range(n):
-              #             hstart = floor(i * H / m)
-              #             hend = ceil((i + 1) * H / m)
-              #             wstart = floor(i * W / n)
-              #             wend = ceil((i + 1) * W / n)
-              #             output[:, :, i, j] = max(input[:, :, hstart: hend, wstart: wend])
-              #
-              import paddle
-              import numpy as np
+            # max adaptive pool2d
+            # suppose input data in the shape of [N, C, H, W], `output_size` is [m, n]
+            # output shape is [N, C, m, n], adaptive pool divide H and W dimensions
+            # of input data into m*n grids averagely and performs poolings in each
+            # grid to get output.
+            # adaptive max pool performs calculations as follow:
+            #
+            #     for i in range(m):
+            #         for j in range(n):
+            #             hstart = floor(i * H / m)
+            #             hend = ceil((i + 1) * H / m)
+            #             wstart = floor(i * W / n)
+            #             wend = ceil((i + 1) * W / n)
+            #             output[:, :, i, j] = max(input[:, :, hstart: hend, wstart: wend])
+            #
+            import paddle
 
-              input_data = np.random.rand(2, 3, 32, 32)
-              x = paddle.to_tensor(input_data)
-              # x.shape is [2, 3, 32, 32]
-              out = paddle.nn.functional.adaptive_max_pool2d(
+            x = paddle.rand((2, 3, 32, 32))
+            out = paddle.nn.functional.adaptive_max_pool2d(
                             x = x,
                             output_size=[3, 3])
-              # out.shape is [2, 3, 3, 3]
+            print(out.shape)
+            # [2, 3, 3, 3]
     """
     if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
@@ -1724,49 +1721,48 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
 
 def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
     """
-        This operation applies a 3D adaptive max pooling on input tensor.
-        See more details in :ref:`api_nn_pooling_AdaptiveMaxPool3d` .
+    This operation applies a 3D adaptive max pooling on input tensor.
+    See more details in :ref:`api_nn_pooling_AdaptiveMaxPool3d` .
 
-        Args:
-            x (Tensor): The input tensor of adaptive max pool3d operator, which is a 5-D tensor. The data type can be float32, float64.
-            output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that of the input.
-            return_mask (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
-            name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
+    Args:
+        x (Tensor): The input tensor of adaptive max pool3d operator, which is a 5-D tensor. The data type can be float32, float64.
+        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that of the input.
+        return_mask (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
 
-        Returns:
-            Tensor: The output tensor of adaptive max pool3d result. The data type is same as input tensor.
+    Returns:
+        Tensor: The output tensor of adaptive max pool3d result. The data type is same as input tensor.
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-              # adaptive max pool3d
-              # suppose input data in the shape of [N, C, D, H, W], `output_size` is [l, m, n]
-              # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
-              # of input data into m*n grids averagely and performs poolings in each
-              # grid to get output.
-              # adaptive max pool performs calculations as follow:
-              #
-              #     for i in range(l):
-              #         for j in range(m):
-              #             for k in range(n):
-              #                 dstart = floor(i * D / l)
-              #                 dend = ceil((i + 1) * D / l)
-              #                 hstart = floor(i * H / m)
-              #                 hend = ceil((i + 1) * H / m)
-              #                 wstart = floor(i * W / n)
-              #                 wend = ceil((i + 1) * W / n)
-              #             output[:, :, i, j, k] = max(input[:, :, dstart: dend, hstart: hend, wstart: wend])
-              #
-              import paddle
-              import numpy as np
+            # adaptive max pool3d
+            # suppose input data in the shape of [N, C, D, H, W], `output_size` is [l, m, n]
+            # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
+            # of input data into m*n grids averagely and performs poolings in each
+            # grid to get output.
+            # adaptive max pool performs calculations as follow:
+            #
+            #     for i in range(l):
+            #         for j in range(m):
+            #             for k in range(n):
+            #                 dstart = floor(i * D / l)
+            #                 dend = ceil((i + 1) * D / l)
+            #                 hstart = floor(i * H / m)
+            #                 hend = ceil((i + 1) * H / m)
+            #                 wstart = floor(i * W / n)
+            #                 wend = ceil((i + 1) * W / n)
+            #             output[:, :, i, j, k] = max(input[:, :, dstart: dend, hstart: hend, wstart: wend])
+            #
+            import paddle
 
-              input_data = np.random.rand(2, 3, 8, 32, 32)
-              x = paddle.to_tensor(input_data)
-              # x.shape is [2, 3, 8, 32, 32]
-              out = paddle.nn.functional.adaptive_max_pool3d(
-                            x = x,
-                            output_size=[3, 3, 3])
-              # out.shape is [2, 3, 3, 3, 3]
+            x = paddle.rand((2, 3, 8, 32, 32))
+
+            out = paddle.nn.functional.adaptive_max_pool3d(
+                        x = x,
+                        output_size=[3, 3, 3])
+            print(out.shape)
+            # [2, 3, 3, 3, 3]
     """
 
     if not in_dynamic_mode():

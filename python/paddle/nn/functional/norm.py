@@ -57,13 +57,11 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
             import paddle.nn.functional as F
 
             paddle.disable_static()
-            x = np.arange(6, dtype=np.float32).reshape(2,3)
-            x = paddle.to_tensor(x)
+            x = paddle.arange(6, dtype=paddle.float32).reshape((2, 3))
             y = F.normalize(x)
             print(y.numpy())
             # [[0.         0.4472136  0.8944272 ]
@@ -151,22 +149,21 @@ def batch_norm(x,
     Examples:
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          x = np.random.seed(123)
-          x = np.random.random(size=(2, 1, 2, 3)).astype('float32')
-          running_mean = np.random.random(size=1).astype('float32')
-          running_variance = np.random.random(size=1).astype('float32')
-          weight_data = np.random.random(size=1).astype('float32')
-          bias_data = np.random.random(size=1).astype('float32')
-          x = paddle.to_tensor(x)
-          rm = paddle.to_tensor(running_mean)
-          rv = paddle.to_tensor(running_variance)
-          w = paddle.to_tensor(weight_data)
-          b = paddle.to_tensor(bias_data)
-          batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv, w, b)
-          print(batch_norm_out)
+            x = paddle.rand((2, 1, 2, 3), dtype='float32')
+            running_mean = paddle.rand((1, ), dtype='float32')
+            running_variance = paddle.rand((1, ), dtype='float32')
+            weight_data = paddle.rand((1, ), dtype='float32')
+            bias_data = paddle.rand((1, ), dtype='float32')
+            batch_norm_out = paddle.nn.functional.batch_norm(
+                x, running_mean, running_variance, weight_data, bias_data)
+            print(batch_norm_out)
+            # Tensor(shape=[2, 1, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[[[0.86657262, 0.96992028, 1.18944240],
+            #           [0.57268983, 0.91798258, 0.34897712]]],
+            #         [[[1.25715172, 0.27841139, 0.75982487],
+            #           [0.26014328, 0.51696843, 1.14358926]]]])
     """
     assert len(x.shape) >= 2, "input dim must be larger than 1"
 
@@ -293,14 +290,24 @@ def layer_norm(x,
 
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
-          layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
-          print(layer_norm_out)
+            x = paddle.rand((2, 2, 2, 3), dtype='float32')
+            layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
+            print(layer_norm_out)
+            # Tensor(shape=[2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[[[-0.01506122, -1.42444038, -1.33094501],
+            #           [ 1.59191775,  1.14995253, -1.11598682]],
+
+            #          [[-0.37523940,  1.32657480, -0.84159642],
+            #           [ 0.35289481,  0.08578250,  0.59614652]]],
+
+
+            #         [[[ 1.12997627, -1.14871693, -0.84014559],
+            #           [-0.70809823, -1.15990841, -0.23113357]],
+
+            #          [[ 0.78442615, -1.08051825,  1.33132505],
+            #           [-0.38778484,  1.61391354,  0.69666350]]]])
     """
     input_shape = list(x.shape)
     input_ndim = len(input_shape)
@@ -401,16 +408,25 @@ def instance_norm(x,
 
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
-          instance_norm_out = paddle.nn.functional.instance_norm(x)
+            x = paddle.rand((2, 2, 2, 3), dtype='float32')
+            instance_norm_out = paddle.nn.functional.instance_norm(x)
 
-          print(instance_norm_out)
+            print(instance_norm_out)
+            # Tensor(shape=[2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[[[ 1.01615012,  1.14311421, -1.00454712],
+            #           [-1.56547713, -0.03119646,  0.44195664]],
 
+            #          [[-1.08780944, -1.33078742, -0.40563616],
+            #           [ 1.15914237,  0.55835909,  1.10673261]]],
+
+
+            #         [[[-0.98007363, -1.16981018,  1.19950521],
+            #           [-0.81681418,  0.91668916,  0.85050368]],
+
+            #          [[ 1.27996981, -0.33091047, -0.69377816],
+            #           [ 0.83706796,  0.56574005, -1.65808761]]]])
     """
     if in_dygraph_mode():
         out = _C_ops.final_state_instance_norm(x, weight, bias, eps)

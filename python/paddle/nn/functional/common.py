@@ -364,26 +364,24 @@ def interpolate(x,
     Examples:
         .. code-block:: python
 
-	        import paddle
-	        import numpy as np
+            import paddle
             import paddle.nn.functional as F
-            
+
             # given out size
-            input_data = np.random.rand(2,3,6,10).astype("float32")
-            x = paddle.to_tensor(input_data)
-            output_1 = F.interpolate(x=x, size=[12,12])
-    	    print(output_1.shape)
-	        # [2L, 3L, 12L, 12L]
-            
+            x = paddle.rand((2, 3, 6, 10), 'float32')
+            output_1 = F.interpolate(x=x, size=[12, 12])
+            print(output_1.shape)
+            # [2, 3, 12, 12]
+
             # given scale
-            output_2 = F.interpolate(x=x, scale_factor=[2,1])
+            output_2 = F.interpolate(x=x, scale_factor=[2, 1])
             print(output_2.shape)
-            # [2L, 3L, 12L, 10L]
-            
+            # [2, 3, 12, 10]
+
             # bilinear interp
-            output_3 = F.interpolate(x=x, scale_factor=[2,1], mode="bilinear")
+            output_3 = F.interpolate(x=x, scale_factor=[2, 1], mode="bilinear")
             print(output_2.shape)
-            # [2L, 3L, 12L, 10L]
+            # [2, 3, 12, 10]
     """
     data_format = data_format.upper()
     resample = mode.upper()
@@ -803,15 +801,13 @@ def upsample(x,
         Examples:
         .. code-block:: python
             import paddle
-            import numpy as np
             import paddle.nn.functional as F
 
-            input_data = np.random.rand(2,3,6,10).astype("float32")
+            input_data = paddle.rand((2, 3, 6, 10), "float32")
             input = paddle.to_tensor(input_data)
-            output = F.upsample(x=input, size=[12,12])
+            output = F.upsample(x=input, size=[12, 12])
             print(output.shape)
-            # [2L, 3L, 12L, 12L]
-
+            # [2, 3, 12, 12]
     """
     return interpolate(x, size, scale_factor, mode, align_corners, align_mode,
                        data_format)
@@ -988,22 +984,37 @@ def dropout(x,
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.array([[1,2,3], [4,5,6]]).astype('float32')
-            x = paddle.to_tensor(x)
+            x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], 'float32')
             y_train = paddle.nn.functional.dropout(x, 0.5)
             y_test = paddle.nn.functional.dropout(x, 0.5, training=False) 
             y_0 = paddle.nn.functional.dropout(x, axis=0)
             y_1 = paddle.nn.functional.dropout(x, axis=1)
-            y_01 = paddle.nn.functional.dropout(x, axis=[0,1])
+            y_01 = paddle.nn.functional.dropout(x, axis=[0, 1])
             print(x)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[1., 2., 3.],
+            #         [4., 5., 6.]])
             print(y_train)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[0. , 4. , 0. ],
+            #         [8. , 0. , 12.]])
             print(y_test)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[1., 2., 3.],
+            #         [4., 5., 6.]])
             print(y_0)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[0., 0., 0.],
+            #         [0., 0., 0.]])
             print(y_1)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[2. , 4. , 0. ],
+            #         [8. , 10., 0. ]])
             print(y_01)
-
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[0. , 4. , 6. ],
+            #         [0. , 0. , 12.]])
     """
     # fast return for p == 0
     if p == 0:
@@ -1144,10 +1155,8 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
-            x = paddle.to_tensor(x)
+            x = paddle.rand((2, 3, 4, 5), 'float32')
             y_train = paddle.nn.functional.dropout2d(x)  #train
             y_test = paddle.nn.functional.dropout2d(x, training=False) #test
             for i in range(2):
@@ -1198,10 +1207,8 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
-            x = paddle.to_tensor(x)
+            x = paddle.rand((2, 3, 4, 5, 6), dtype='float32')
             y_train = paddle.nn.functional.dropout3d(x)  #train
             y_test = paddle.nn.functional.dropout3d(x, training=False) #test
             print(x.numpy()[0,0,:,:,:])
@@ -1247,16 +1254,22 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.array([[-1, 1], [-1, 1]]).astype('float32')
-            x = paddle.to_tensor(x)
+            x = paddle.to_tensor([[-1, 1], [-1, 1]], dtype='float32')
             y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
             y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False)
             print(x)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[-1.,  1.],
+            #         [-1.,  1.]])
             print(y_train)
-            # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[-0.10721093,  1.66559887],
+            #         [-0.10721093,  1.66559887]])
             print(y_test)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[-1.,  1.],
+            #         [-1.,  1.]])
     """
     if not isinstance(p, (float, int)):
         raise TypeError("p argument should be a float or int")
@@ -1612,17 +1625,13 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            np.random.seed(0)
-            x1 = np.random.rand(2,3)
-            x2 = np.random.rand(2,3)
-            x1 = paddle.to_tensor(x1)
-            x2 = paddle.to_tensor(x2)
-            result = paddle.nn.functional.cosine_similarity(x1, x2, axis=0)
+            x1 = paddle.rand((2, 3), dtype='float32')
+            x2 = paddle.rand((2, 3), dtype='float32')
+            result = nn.functional.cosine_similarity(x1, x2, axis=0)
             print(result)
-            # [0.99806249 0.9817672  0.94987036]
-            
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.96010154, 0.99158961, 0.99997067])
     """
     w12 = sum(paddle.multiply(x1, x2), axis=axis)
     w1 = sum(paddle.multiply(x1, x1), axis=axis)
@@ -1770,18 +1779,16 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            
-            x_data = np.array([[[0, 1, 0],
-                                [ 1,  0, 1]]]).astype("float32")
-            print(x_data.shape)
+
             paddle.disable_static()
-            x = paddle.to_tensor(x_data, stop_gradient=False)
+            x = paddle.to_tensor([[[0, 1, 0],
+                                    [ 1, 0, 1]]], dtype="float32", stop_gradient=False)
             output = paddle.nn.functional.label_smooth(x)
             print(output)
-            
-            #[[[0.03333334 0.93333334 0.03333334]
-            #  [0.93333334 0.03333334 0.93333334]]]
+
+            # Tensor(shape=[1, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            #        [[[0.03333334, 0.93333334, 0.03333334],
+            #          [0.93333334, 0.03333334, 0.93333334]]])
     """
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
