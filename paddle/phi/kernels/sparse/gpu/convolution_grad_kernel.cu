@@ -233,18 +233,64 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
   }
 
   // 4. scatter
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-      dev_ctx, rulebook_len * in_channels, 1);
+  //  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+  //      dev_ctx, rulebook_len * in_channels, 1);
+  //
+  //  phi::funcs::ScatterCUDAKernel<<<config.block_per_grid,
+  //                                  config.thread_per_block,
+  //                                  0,
+  //                                  dev_ctx.stream()>>>(d_x_features_ptr,
+  //                                                      rulebook_ptr,
+  //                                                      x_grad_values_ptr,
+  //                                                      rulebook_len,
+  //                                                      in_channels,
+  //                                                      false);
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+  DenseTensor unique_value =
+      phi::Empty<int>(dev_ctx, {static_cast<int>(x_grad->nnz() * kernel_size)});
+  DenseTensor out_index =
+      phi::Empty<int>(dev_ctx, {static_cast<int>(rulebook_len)});
+  int* out_index_ptr = out_index.data<int>();
+  int* unique_value_ptr = unique_value.data<int>();
+  cudaMemsetAsync(
+      out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
 
-  phi::funcs::ScatterCUDAKernel<<<config.block_per_grid,
-                                  config.thread_per_block,
-                                  0,
-                                  dev_ctx.stream()>>>(d_x_features_ptr,
-                                                      rulebook_ptr,
-                                                      x_grad_values_ptr,
-                                                      rulebook_len,
-                                                      in_channels,
-                                                      false);
+  UpdateOutIndex<<<config.block_per_grid,
+                   config.thread_per_block,
+                   0,
+                   dev_ctx.stream()>>>(
+      rulebook_len, kernel_size, rulebook_ptr, out_index_ptr, unique_value_ptr);
+
+  if (in_channels % VecSize == 0) {
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, x_grad->nnz() * in_channels / VecSize, 1);
+    phi::funcs::sparse::ScatterKernelV2<T, VecSize>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(d_x_features_ptr,
+                               out_index.data<int>(),
+                               unique_value.data<int>(),
+                               x_grad->nnz(),
+                               kernel_size,
+                               in_channels,
+                               x_grad_values_ptr);
+  } else {
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, x_grad->nnz() * in_channels, 1);
+    phi::funcs::sparse::ScatterKernelV2<T, 1>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(d_x_features_ptr,
+                               out_index.data<int>(),
+                               unique_value.data<int>(),
+                               x_grad->nnz(),
+                               kernel_size,
+                               in_channels,
+                               x_grad_values_ptr);
+  }
 }
 
 template <typename T, typename Context>

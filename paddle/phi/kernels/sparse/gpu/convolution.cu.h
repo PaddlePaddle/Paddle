@@ -68,6 +68,34 @@ __global__ void GatherKernel(const T* params,
   }
 }
 
+template <typename T, typename IntT, int VecSize>
+__global__ void GatherKernelV2(const T* inputs,
+                               const int* index_counts,
+                               const int* origin_indexs,
+                               const int non_zero_num,
+                               const int kernel_size,
+                               T* output,
+                               const int channels) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const int vec_channels = channels / VecSize;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using StoreT = phi::AlignedVector<T, VecSize>;
+  for (int i = tid; i < non_zero_num * vec_channels;
+       i += gridDim.x * blockDim.x) {
+    int indices_i = i / vec_channels;
+    int channels_i = i - indices_i * vec_channels;
+    int len = index_counts[indices_i];
+    LoadT in_vec;
+    phi::Load<T, VecSize>(inputs + indices_i * channels + channels_i * VecSize,
+                          &in_vec);
+    for (int j = 0; j < len; j++) {
+      int out_i = origin_indexs[indices_i * kernel_size + j];
+      phi::Store<T, VecSize>(in_vec,
+                             output + out_i * channels + channels_i * VecSize);
+    }
+  }
+}
+
 template <typename IntT>
 __global__ void UniqueKernel(const IntT* in_indexs,
                              const int rulebook_len,
@@ -397,15 +425,34 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
 template <typename IntT>
 __global__ void UpdateOutIndex(const int n,
                                const int kernel_size,
-                               const IntT* out_indexs,
-                               int* out_index_counts,
-                               int* origin_out_indexs) {
+                               const IntT* indexs,
+                               int* index_counts,
+                               int* index_groups) {
   CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
-    IntT index = out_indexs[i];
+    IntT index = indexs[i];
     // kernel_size at most
-    int j = atomicAdd(out_index_counts + index, 1);
+    int j = atomicAdd(index_counts + index, 1);
     // nnz * kernel_size
-    origin_out_indexs[index * kernel_size + j] = i;
+    index_groups[index * kernel_size + j] = i;
+  }
+}
+
+template <typename IntT>
+__global__ void UpdateOutIndexV2(const int n,
+                                 const int kernel_size,
+                                 const int half_kernel_offset,
+                                 const IntT* indexs,
+                                 int* index_counts,
+                                 int* index_groups) {
+  CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
+    IntT index = indexs[i];
+    // kernel_size at most
+    int* counts_ptr =
+        i < half_kernel_offset ? index_counts : index_counts + nnz;
+    int j = atomicAdd(counts_ptr + index, 1);
+    // nnz * kernel_size
+    int group_offset = i < half_kernel_offset ? 0 : kernel_size / 2;
+    index_groups[index * kernel_size + j + group_offset] = i;
   }
 }
 

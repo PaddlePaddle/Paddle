@@ -117,6 +117,8 @@ __global__ void ScatterKernelV2(const T* input,
     int len = out_index_counts[indices_i];
     // max(end-start) = kernel_size
     StoreT sums = {static_cast<T>(0)};
+    phi::Load<T, VecSize>(out + indices_i * channels + channels_i * VecSize,
+                          &sums);
     for (int j = 0; j < len; j++) {
       const int out_feature_i = origin_out_indexs[indices_i * kernel_size + j];
       LoadT vec_in;
