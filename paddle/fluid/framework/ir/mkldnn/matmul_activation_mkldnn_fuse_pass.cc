@@ -24,9 +24,19 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  std::vector<std::string> act_types = {
-      "relu", "mish",  "swish", "sqrt", "hard_swish",   "sigmoid",   "abs",
-      "gelu", "relu6", "clip",  "tanh", "hard_sigmoid", "leaky_relu"};
+  std::vector<std::string> act_types = {"abs",
+                                        "clip",
+                                        "gelu",
+                                        "hard_sigmoid",
+                                        "hard_swish",
+                                        "leaky_relu",
+                                        "mish",
+                                        "relu",
+                                        "relu6",
+                                        "sigmoid",
+                                        "sqrt",
+                                        "swish",
+                                        "tanh"};
 
   std::vector<std::string> matmul_types = {"matmul"};
 
@@ -53,7 +63,9 @@ void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
 }
 
 void MatmulActivationMkldnnFusePass::FuseMatmulAct(
-    Graph* graph, const std::string& matmul_type, std::string& act_type,
+    Graph* graph,
+    const std::string& matmul_type,
+    std::string& act_type,
     const std::unordered_map<std::string, std::string>& attrs_map) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
@@ -77,8 +89,8 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     GET_IR_NODE_FROM_SUBGRAPH(matmul, matmul_op, matmul_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(activation, activation_op, matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out,
-                              matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        activation_out, activation_out, matmul_act_pattern);
 
     OpDesc* matmul_op = matmul->Op();
     OpDesc* act_op = activation->Op();
@@ -108,7 +120,8 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
   AddStatis(found_matmul_activation_count);
   if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
     PrettyLogDetail("---    fused %d matmul with %s activation",
-                    found_matmul_activation_count, act_type);
+                    found_matmul_activation_count,
+                    act_type);
   }
 }
 

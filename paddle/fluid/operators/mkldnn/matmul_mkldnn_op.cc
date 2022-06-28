@@ -474,8 +474,8 @@ class MatMulMKLDNNHandler
       } else if (activation_type != "") {
         const auto activation_algorithm =
             paddle::platform::AcquireActivationAlgorithm(activation_type);
-        post_operations.append_eltwise(activation_scale, activation_algorithm,
-                                       alpha, beta);
+        post_operations.append_eltwise(
+            activation_scale, activation_algorithm, alpha, beta);
       }
     }
 
