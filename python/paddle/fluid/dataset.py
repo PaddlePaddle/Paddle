@@ -817,6 +817,17 @@ class InMemoryDataset(DatasetBase):
 
     @deprecated(
         since="2.0.0",
+        update_to="paddle.distributed.InMemoryDataset.handle_preload_done_data")
+    def handle_preload_done_data(self, is_shuffle=False):
+        """
+        Handle load-done data where use ps_gpu_wrapper and preload_into_memeory
+        """
+        if self.use_ps_gpu and core._is_compiled_with_heterps():
+            self.psgpu.set_dataset(self.dataset)
+            self.psgpu.handle_preload_done_data(is_shuffle)
+
+    @deprecated(
+        since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.local_shuffle")
     def local_shuffle(self):
         """

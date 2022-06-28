@@ -874,6 +874,18 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
   VLOG(3) << "End LoadIntoMemory(), dataset[" << dataset_ << "]";
 }
 
+void PSGPUWrapper::HandlePreloadDoneData(bool is_shuffle) {
+  // local shuffle
+  if (is_shuffle) {
+    dataset_->LocalShuffle();
+  }
+
+  std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
+  gpu_task->Reset();
+  data_ready_channel_->Put(gpu_task);
+  VLOG(3) << "End HandlePreloadDoneData(), dataset[" << dataset_ << "]";
+}
+
 void PSGPUWrapper::start_build_thread() {
   running_ = true;
   VLOG(3) << "start build CPU ps thread.";
