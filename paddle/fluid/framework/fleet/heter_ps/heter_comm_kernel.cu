@@ -200,17 +200,14 @@ __global__ void merge_gradients_basic_kernel(const uint32_t* offset,
                                              size_t grad_value_size,
                                              DynamicGradMerger& merger) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-
   if (i < n) {
     uint32_t start = offset[i];
     uint32_t num = fea_num[i];
     int ori_index = index[start];
-
     FeaturePushValue& lhs = *(FeaturePushValue*)(output + i * grad_value_size);
     FeaturePushValue& in =
         *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
     merger.update_basic(lhs, in);
-
     for (int j = 1; j < num; ++j) {
       ori_index = index[start + j];
       FeaturePushValue& rhs =
@@ -230,22 +227,17 @@ __global__ void merge_gradients_embedx_kernel(const uint32_t* offset,
                                               size_t grad_value_size,
                                               DynamicGradMerger& merger) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-
   if (i < n) {
     size_t value_idx = i / grad_dim;
     size_t field_idx = i % grad_dim;
-
     uint32_t start = offset[value_idx];
     uint32_t num = fea_num[value_idx];
     int ori_index = index[start];
-
     FeaturePushValue& in =
         *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
     FeaturePushValue& lhs =
         *(FeaturePushValue*)(output + value_idx * grad_value_size);
-
     merger.update_embedx(lhs, in, field_idx);
-
     for (int j = 1; j < num; ++j) {
       int ori_index = index[start + j];
       FeaturePushValue& rhs =
@@ -626,11 +618,8 @@ template void HeterCommKernel::
         long long len,
         size_t val_size,
         const cudaStream_t& stream);
-
-
-
 #endif
 
-  }  // namespace framework
+}  // namespace framework
 }  // namespace paddle
 #endif
