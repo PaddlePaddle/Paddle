@@ -75,7 +75,9 @@ struct BinaryNotEqual {
 // index_select() function for Tensor
 template <typename InT, typename IndexT>
 void IndexSelect(const framework::ExecutionContext& context,
-                 const Tensor& input, const Tensor& index, Tensor* output,
+                 const Tensor& input,
+                 const Tensor& index,
+                 Tensor* output,
                  int dim) {
   auto input_dim = input.dims();
   auto input_dim_size = input_dim.size();
@@ -98,27 +100,31 @@ void IndexSelect(const framework::ExecutionContext& context,
 
   std::vector<InT> input_vec;
   std::vector<IndexT> index_vec;
-  paddle::framework::TensorToVector(input, context.device_context(),
-                                    &input_vec);
-  paddle::framework::TensorToVector(index, context.device_context(),
-                                    &index_vec);
+  paddle::framework::TensorToVector(
+      input, context.device_context(), &input_vec);
+  paddle::framework::TensorToVector(
+      index, context.device_context(), &index_vec);
   std::vector<InT> out_vec(output->numel());
 
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
-        index_vec[i], 0,
+        index_vec[i],
+        0,
         platform::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            input_dim[dim], index_vec[i]));
+            input_dim[dim],
+            index_vec[i]));
     PADDLE_ENFORCE_LT(
-        index_vec[i], input_dim[dim],
+        index_vec[i],
+        input_dim[dim],
         platform::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            input_dim[dim], index_vec[i]));
+            input_dim[dim],
+            index_vec[i]));
   }
 
   for (auto i = 0; i < outer_nums; i++) {
@@ -141,9 +147,14 @@ void IndexSelect(const framework::ExecutionContext& context,
 // The core logic of computing Unique Consecutive for a flattend Tensor
 template <typename InT, typename IndexT, typename equal_T, typename not_equal_T>
 static void UniqueConsecutiveFlattendCUDATensor(
-    const framework::ExecutionContext& context, const Tensor& in, Tensor* out,
-    bool return_inverse, bool return_counts, equal_T equal,
-    not_equal_T not_equal, int64_t num_input) {
+    const framework::ExecutionContext& context,
+    const Tensor& in,
+    Tensor* out,
+    bool return_inverse,
+    bool return_counts,
+    equal_T equal,
+    not_equal_T not_equal,
+    int64_t num_input) {
   // 0. Prepration
   Tensor in_hat;
   framework::TensorCopy(in, context.GetPlace(), &in_hat);
@@ -153,21 +164,22 @@ static void UniqueConsecutiveFlattendCUDATensor(
   sorted_indices.Resize(phi::make_ddim({num_input}));
   auto sorted_indices_data =
       sorted_indices.mutable_data<IndexT>(context.GetPlace());
-  thrust::sequence(thrust::device, sorted_indices_data,
-                   sorted_indices_data + num_input);
+  thrust::sequence(
+      thrust::device, sorted_indices_data, sorted_indices_data + num_input);
   // 1. Calculate op result: 'out'
   Tensor range;
   range.Resize(phi::make_ddim({num_input + 1}));
   auto range_data_ptr = range.mutable_data<IndexT>(context.GetPlace());
-  thrust::sequence(thrust::device, range_data_ptr,
-                   range_data_ptr + num_input + 1);
+  thrust::sequence(
+      thrust::device, range_data_ptr, range_data_ptr + num_input + 1);
   framework::TensorCopy(in_hat, context.GetPlace(), out);
   int num_out;
   auto out_data = out->mutable_data<InT>(context.GetPlace());
-  num_out = thrust::unique_by_key(thrust::device, out_data,
-                                  out_data + num_input, range_data_ptr, equal)
-                .first -
-            out_data;
+  num_out =
+      thrust::unique_by_key(
+          thrust::device, out_data, out_data + num_input, range_data_ptr, equal)
+          .first -
+      out_data;
   out->Resize(phi::make_ddim({num_out}));
 
   // 2. Calculate inverse index: 'inverse'
@@ -178,15 +190,21 @@ static void UniqueConsecutiveFlattendCUDATensor(
     Tensor inv_loc;
     inv_loc.Resize(phi::make_ddim({num_input}));
     auto inv_loc_data_ptr = inv_loc.mutable_data<IndexT>(context.GetPlace());
-    thrust::adjacent_difference(thrust::device, in_data_hat,
-                                in_data_hat + num_input, inv_loc_data_ptr,
+    thrust::adjacent_difference(thrust::device,
+                                in_data_hat,
+                                in_data_hat + num_input,
+                                inv_loc_data_ptr,
                                 not_equal);
     thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
     inv_loc_data_dev[0] = 0;  // without device_ptr, segmentation fault
-    thrust::inclusive_scan(thrust::device, inv_loc_data_ptr,
-                           inv_loc_data_ptr + num_input, inv_loc_data_ptr);
-    thrust::scatter(thrust::device, inv_loc_data_ptr,
-                    inv_loc_data_ptr + num_input, sorted_indices_data,
+    thrust::inclusive_scan(thrust::device,
+                           inv_loc_data_ptr,
+                           inv_loc_data_ptr + num_input,
+                           inv_loc_data_ptr);
+    thrust::scatter(thrust::device,
+                    inv_loc_data_ptr,
+                    inv_loc_data_ptr + num_input,
+                    sorted_indices_data,
                     inverse_data);
   }
   // 3. Calculate 'counts'
@@ -198,8 +216,10 @@ static void UniqueConsecutiveFlattendCUDATensor(
     thrust::fill(thrust::device, count_data, count_data + num_out, 0);
     thrust::device_ptr<IndexT> range_data_ptr_dev(range_data_ptr);
     range_data_ptr_dev[num_out] = num_input;
-    thrust::adjacent_difference(thrust::device, range_data_ptr + 1,
-                                range_data_ptr + num_out + 1, count_data);
+    thrust::adjacent_difference(thrust::device,
+                                range_data_ptr + 1,
+                                range_data_ptr + num_out + 1,
+                                count_data);
   }
 }
 
@@ -207,9 +227,15 @@ static void UniqueConsecutiveFlattendCUDATensor(
 // from above function
 template <typename InT, typename IndexT, typename equal_T, typename not_equal_T>
 static void ComputeUniqueConsecutiveDims(
-    const framework::ExecutionContext& context, Tensor* sorted_indices,
-    IndexT* sorted_indices_data, Tensor* out, bool return_inverse,
-    bool return_counts, equal_T equal, not_equal_T not_equal, int64_t row) {
+    const framework::ExecutionContext& context,
+    Tensor* sorted_indices,
+    IndexT* sorted_indices_data,
+    Tensor* out,
+    bool return_inverse,
+    bool return_counts,
+    equal_T equal,
+    not_equal_T not_equal,
+    int64_t row) {
   // 1. inverse indices: 'inverse'
   Tensor* inverse = context.Output<Tensor>("Index");
   inverse->Resize(phi::make_ddim({row}));
@@ -217,15 +243,22 @@ static void ComputeUniqueConsecutiveDims(
   Tensor inv_loc;
   inv_loc.Resize(phi::make_ddim({row}));
   auto inv_loc_data_ptr = inv_loc.mutable_data<IndexT>(context.GetPlace());
-  thrust::adjacent_difference(thrust::device, sorted_indices_data,
-                              sorted_indices_data + row, inv_loc_data_ptr,
+  thrust::adjacent_difference(thrust::device,
+                              sorted_indices_data,
+                              sorted_indices_data + row,
+                              inv_loc_data_ptr,
                               not_equal);
   thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
   inv_loc_data_dev[0] = 0;
-  thrust::inclusive_scan(thrust::device, inv_loc_data_ptr,
-                         inv_loc_data_ptr + row, inv_loc_data_ptr);
-  thrust::scatter(thrust::device, inv_loc_data_ptr, inv_loc_data_ptr + row,
-                  sorted_indices_data, inverse_data);
+  thrust::inclusive_scan(thrust::device,
+                         inv_loc_data_ptr,
+                         inv_loc_data_ptr + row,
+                         inv_loc_data_ptr);
+  thrust::scatter(thrust::device,
+                  inv_loc_data_ptr,
+                  inv_loc_data_ptr + row,
+                  sorted_indices_data,
+                  inverse_data);
 
   // 2. sorted indices
   Tensor range;
@@ -233,11 +266,13 @@ static void ComputeUniqueConsecutiveDims(
   auto range_data_ptr = range.mutable_data<IndexT>(context.GetPlace());
   thrust::sequence(thrust::device, range_data_ptr, range_data_ptr + row + 1);
   int num_out;
-  num_out =
-      thrust::unique_by_key(thrust::device, sorted_indices_data,
-                            sorted_indices_data + row, range_data_ptr, equal)
-          .first -
-      sorted_indices_data;
+  num_out = thrust::unique_by_key(thrust::device,
+                                  sorted_indices_data,
+                                  sorted_indices_data + row,
+                                  range_data_ptr,
+                                  equal)
+                .first -
+            sorted_indices_data;
   thrust::device_ptr<IndexT> range_data_ptr_dev(range_data_ptr);
   range_data_ptr_dev[num_out] = row;
   sorted_indices->Resize(phi::make_ddim({num_out}));
@@ -247,15 +282,19 @@ static void ComputeUniqueConsecutiveDims(
   counts->Resize(phi::make_ddim({num_out}));
   auto count_data = counts->mutable_data<IndexT>(context.GetPlace());
   thrust::fill(thrust::device, count_data, count_data + row, 0);
-  thrust::adjacent_difference(thrust::device, range_data_ptr + 1,
-                              range_data_ptr + row + 1, count_data);
+  thrust::adjacent_difference(
+      thrust::device, range_data_ptr + 1, range_data_ptr + row + 1, count_data);
 }
 
 // Calculate unique consecutive when 'axis' is set
 template <typename DeviceContext, typename InT, typename IndexT>
 static void UniqueConsecutiveDimsCUDATensor(
-    const framework::ExecutionContext& context, const Tensor& in, Tensor* out,
-    bool return_inverse, bool return_counts, int axis) {
+    const framework::ExecutionContext& context,
+    const Tensor& in,
+    Tensor* out,
+    bool return_inverse,
+    bool return_counts,
+    int axis) {
   // 1. Transpose & reshape
   // Transpose tensor: eg. axis=1, [dim0, dim1, dim2] -> [dim1, dim0, dim2]
   std::vector<int> permute(in.dims().size());
@@ -292,12 +331,18 @@ static void UniqueConsecutiveDimsCUDATensor(
 
   // 2. Calculate 'inverse', 'counts'
   // Init index
-  thrust::sequence(thrust::device, sorted_indices_data,
-                   sorted_indices_data + row);
+  thrust::sequence(
+      thrust::device, sorted_indices_data, sorted_indices_data + row);
   ComputeUniqueConsecutiveDims<InT, IndexT>(
-      context, &sorted_indices, sorted_indices_data, out, return_inverse,
-      return_counts, BinaryEqual<InT>(col, in_trans_data),
-      BinaryNotEqual<InT>(col, in_trans_data), row);
+      context,
+      &sorted_indices,
+      sorted_indices_data,
+      out,
+      return_inverse,
+      return_counts,
+      BinaryEqual<InT>(col, in_trans_data),
+      BinaryNotEqual<InT>(col, in_trans_data),
+      row);
 
   // 3. Select indices and reshape back to get 'out'
   Tensor out_trans;
@@ -314,8 +359,8 @@ static void UniqueConsecutiveDimsCUDATensor(
   std::vector<framework::Tensor> out_trans_unbind = Unbind(out_trans);
   math::ConcatFunctor<DeviceContext, InT> concat_functor;
   concat_functor(dev_ctx, out_trans_unbind, 0, &out_trans);
-  TransCompute<DeviceContext, InT>(out_trans.dims().size(), dev_ctx, out_trans,
-                                   out, permute);
+  TransCompute<DeviceContext, InT>(
+      out_trans.dims().size(), dev_ctx, out_trans, out, permute);
 }
 
 // functor for processing a flattend Tensor
@@ -328,8 +373,11 @@ struct UniqueConsecutiveFlattendCUDAFunctor {
   const bool return_counts_;
 
   UniqueConsecutiveFlattendCUDAFunctor(
-      const framework::ExecutionContext& context, const Tensor& in, Tensor* out,
-      bool return_inverse, bool return_counts)
+      const framework::ExecutionContext& context,
+      const Tensor& in,
+      Tensor* out,
+      bool return_inverse,
+      bool return_counts)
       : ctx_(context),
         in_(in),
         out_(out),
@@ -339,8 +387,14 @@ struct UniqueConsecutiveFlattendCUDAFunctor {
   template <typename IndexT>
   void apply() const {
     UniqueConsecutiveFlattendCUDATensor<InT, IndexT>(
-        ctx_, in_, out_, return_inverse_, return_counts_,
-        thrust::equal_to<InT>(), thrust::not_equal_to<InT>(), in_.numel());
+        ctx_,
+        in_,
+        out_,
+        return_inverse_,
+        return_counts_,
+        thrust::equal_to<InT>(),
+        thrust::not_equal_to<InT>(),
+        in_.numel());
   }
 };
 
@@ -355,8 +409,10 @@ struct UniqueConsecutiveDimsCUDAFunctor {
   const bool return_counts_;
 
   UniqueConsecutiveDimsCUDAFunctor(const framework::ExecutionContext& context,
-                                   const Tensor& in, Tensor* out,
-                                   const int axis, bool return_inverse,
+                                   const Tensor& in,
+                                   Tensor* out,
+                                   const int axis,
+                                   bool return_inverse,
                                    bool return_counts)
       : ctx_(context),
         in_(in),
@@ -384,7 +440,8 @@ class UniqueConsecutiveKernel<platform::CUDADeviceContext, InT>
         context.Attr<int>("dtype"));
     if (data_type == framework::proto::VarType::INT32) {
       PADDLE_ENFORCE_LE(
-          x->numel() + 1, INT_MAX,
+          x->numel() + 1,
+          INT_MAX,
           platform::errors::InvalidArgument(
               "The number of elements in Input(X) should be less than or "
               "equal to INT_MAX, but received num is %d. Please set `dtype` to "

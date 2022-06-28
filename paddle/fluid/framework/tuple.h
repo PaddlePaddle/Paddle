@@ -27,8 +27,13 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-typedef boost::variant<int, int64_t, float, double, std::string, Tensor,
-                       LoDTensor /*, ChannelHolder*/>
+typedef paddle::variant<int,
+                        int64_t,
+                        float,
+                        double,
+                        std::string,
+                        Tensor,
+                        LoDTensor /*, ChannelHolder*/>
     ElementVar;
 
 class Tuple {
@@ -59,8 +64,8 @@ bool Tuple::isSameType(const Tuple& t) const {
     return false;
   }
   for (size_t j = 0; j < tuple_size; ++j) {
-    auto type1 = get(j).which();
-    auto type2 = t.get(j).which();
+    auto type1 = get(j).index();
+    auto type2 = t.get(j).index();
     if (type1 != type2) return false;
   }
   return true;

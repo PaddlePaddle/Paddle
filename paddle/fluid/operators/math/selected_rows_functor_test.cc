@@ -90,9 +90,9 @@ TEST(selected_rows_functor, cpu_add) {
       new paddle::framework::Tensor()};
   tensor2->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
 
-  paddle::operators::math::SelectedRowsAddTensor<
-      paddle::platform::CPUDeviceContext, float>
-      add_tensor_functor;
+  paddle::operators::math::
+      SelectedRowsAddTensor<paddle::platform::CPUDeviceContext, float>
+          add_tensor_functor;
   add_tensor_functor(ctx, *output, *tensor1, tensor2.get());
 
   auto* tensor2_data = tensor2->data<float>();
@@ -183,9 +183,9 @@ TEST(selected_rows_functor, cpu_add_to) {
   tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
-  paddle::operators::math::SelectedRowsAddToTensor<
-      paddle::platform::CPUDeviceContext, float>
-      add_to_tensor_functor;
+  paddle::operators::math::
+      SelectedRowsAddToTensor<paddle::platform::CPUDeviceContext, float>
+          add_to_tensor_functor;
   add_to_tensor_functor(ctx, *output, tensor1.get());
 
   auto* tensor1_data = tensor1->data<float>();
@@ -221,9 +221,9 @@ TEST(selected_rows_functor, cpu_merge_average_float) {
       cpu_place);
   functor(ctx, in_value, 1.0);
 
-  paddle::operators::math::scatter::MergeAverage<
-      paddle::platform::CPUDeviceContext, float>
-      merge_average_functor;
+  paddle::operators::math::scatter::
+      MergeAverage<paddle::platform::CPUDeviceContext, float>
+          merge_average_functor;
   phi::SelectedRows output = merge_average_functor(ctx, *selected_rows);
 
   auto out_height = output.height();
@@ -460,7 +460,8 @@ TEST(selected_rows_functor, cpu_sum_to) {
   sum_to_functor(ctx,
                  std::vector<phi::SelectedRows*>(
                      {selected_rows1.get(), selected_rows2.get()}),
-                 std::vector<int64_t>({0, in1_value->numel()}), output.get());
+                 std::vector<int64_t>({0, in1_value->numel()}),
+                 output.get());
   auto out_height = output->height();
   EXPECT_EQ(out_height, height);
   auto& out_rows = output->rows();
@@ -489,9 +490,9 @@ TEST(selected_rows_functor, cpu_sum_to) {
       new paddle::framework::Tensor()};
   tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
-  paddle::operators::math::SelectedRowsAddToTensor<
-      paddle::platform::CPUDeviceContext, float>
-      add_to_tensor_functor;
+  paddle::operators::math::
+      SelectedRowsAddToTensor<paddle::platform::CPUDeviceContext, float>
+          add_to_tensor_functor;
   add_to_tensor_functor(ctx, *output, tensor1.get());
   auto* tensor1_data = tensor1->data<float>();
   // row0: 1.0 + 2.0 + 3.0

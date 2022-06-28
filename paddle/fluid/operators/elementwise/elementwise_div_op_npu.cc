@@ -100,7 +100,9 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
       Tensor x_nozero_f(x->type());
       x_nozero_f.mutable_data<T>(x->dims(), place);
       const auto& runner_x_nonzero_f =
-          NpuOpRunner("Cast", {x_nozero}, {x_nozero_f},
+          NpuOpRunner("Cast",
+                      {x_nozero},
+                      {x_nozero_f},
                       {{"dst_type", static_cast<int32_t>(0)}});
       runner_x_nonzero_f.Run(stream);
 
@@ -145,7 +147,9 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         const auto& runner_reduce =
-            NpuOpRunner("ReduceSumD", {tmp_mul}, {reduced_tmp_mul},
+            NpuOpRunner("ReduceSumD",
+                        {tmp_mul},
+                        {reduced_tmp_mul},
                         {{"axes", axes}, {"keep_dims", false}});
         runner_reduce.Run(stream);
 

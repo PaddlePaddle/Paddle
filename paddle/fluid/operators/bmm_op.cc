@@ -26,42 +26,51 @@ class BmmOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::NotFound("Input(X) of BmmOp should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"), true,
+        ctx->HasInput("Y"),
+        true,
         platform::errors::NotFound("Input(Y) of BmmOp should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::NotFound("Output(Out) of BmmOp should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(x_dims.size(), 3,
+    PADDLE_ENFORCE_EQ(x_dims.size(),
+                      3,
                       platform::errors::InvalidArgument(
                           "Input(X) of BmmOp must be 3-dimensional in BmmOp, "
                           "but received X's shape: [%s].",
                           x_dims));
-    PADDLE_ENFORCE_EQ(y_dims.size(), 3,
+    PADDLE_ENFORCE_EQ(y_dims.size(),
+                      3,
                       platform::errors::InvalidArgument(
                           "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
                           "but received Y's shape: [%s].",
                           y_dims));
     PADDLE_ENFORCE_EQ(
-        x_dims[0], y_dims[0],
+        x_dims[0],
+        y_dims[0],
         platform::errors::InvalidArgument(
             "Input(X) and Input(Y) must have the same batch size in BmmOp, "
             "but received X's batch size: [%s],"
             "Y's batch size [%s]",
-            x_dims[0], y_dims[0]));
+            x_dims[0],
+            y_dims[0]));
     PADDLE_ENFORCE_EQ(
-        x_dims[2], y_dims[1],
+        x_dims[2],
+        y_dims[1],
         platform::errors::InvalidArgument(
             "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
             "but receive X's width: [%s],"
             "Y's height: [%s].",
-            x_dims[2], y_dims[1]));
+            x_dims[2],
+            y_dims[1]));
 
     std::vector<int64_t> dim_out;
     dim_out.push_back(x_dims[0]);
@@ -103,12 +112,15 @@ class BmmOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::NotFound("Input(X) of BmmOp should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"), true,
+        ctx->HasInput("Y"),
+        true,
         platform::errors::NotFound("Input(Y) of BmmOp should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::NotFound(
                           "Output(Out@GRAD) of BmmOp should not be null."));
 
@@ -154,13 +166,17 @@ class BmmOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(bmm, ops::BmmOp, ops::BmmOpMaker,
+REGISTER_OPERATOR(bmm,
+                  ops::BmmOp,
+                  ops::BmmOpMaker,
                   ops::BmmOpGradMaker<paddle::framework::OpDesc>,
                   ops::BmmOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bmm_grad, ops::BmmOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    bmm, ops::BmmKernel<paddle::platform::CPUDeviceContext, float>,
+    bmm,
+    ops::BmmKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BmmKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    bmm_grad, ops::BmmGradKernel<paddle::platform::CPUDeviceContext, float>,
+    bmm_grad,
+    ops::BmmGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BmmGradKernel<paddle::platform::CPUDeviceContext, double>);

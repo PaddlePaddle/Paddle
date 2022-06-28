@@ -20,7 +20,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_XPU_KERNEL(
-    flatten, ops::FlattenKernel<paddle::platform::XPUDeviceContext, float>,
+    flatten,
+    ops::FlattenKernel<paddle::platform::XPUDeviceContext, float>,
     ops::FlattenKernel<paddle::platform::XPUDeviceContext, int>,
     ops::FlattenKernel<paddle::platform::XPUDeviceContext, int8_t>,
     ops::FlattenKernel<paddle::platform::XPUDeviceContext, int64_t>);
@@ -31,7 +32,8 @@ REGISTER_OP_XPU_KERNEL(
     ops::FlattenGradKernel<paddle::platform::XPUDeviceContext, int8_t>,
     ops::FlattenGradKernel<paddle::platform::XPUDeviceContext, int64_t>);
 REGISTER_OP_XPU_KERNEL(
-    flatten2, ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, float>,
+    flatten2,
+    ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, float>,
     ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, int>,
     ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, int8_t>,
     ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, int64_t>);

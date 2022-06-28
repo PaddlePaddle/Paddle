@@ -36,12 +36,12 @@ struct QuantizeDataType<paddle::platform::float16> {
 };
 
 template <typename T>
-__global__ void FindAbsMaxKernel(const T* in, const int n, T* out) {
+__global__ void FindAbsMaxKernel(const T *in, const int n, T *out) {
   int bid = threadIdx.x + blockIdx.x * blockDim.x;
   int tid = threadIdx.x;
 
-  extern __shared__ char* shared_max_data_tmp[];
-  auto shared_max_data = reinterpret_cast<T*>(shared_max_data_tmp);
+  extern __shared__ char *shared_max_data_tmp[];
+  auto shared_max_data = reinterpret_cast<T *>(shared_max_data_tmp);
   if (gridDim.x > 1) {
     T local_max_data = T(0);
     for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
@@ -73,14 +73,16 @@ __global__ void FindAbsMaxKernel(const T* in, const int n, T* out) {
 
 template <typename T>
 struct FindAbsMaxFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx, const T* in,
-                  const int num, T* out) {
+  void operator()(const platform::CUDADeviceContext &ctx,
+                  const T *in,
+                  const int num,
+                  T *out) {
     int block = 1024;
     int grid = (block - 1 + num) / block;
     grid = (grid > block) ? block : grid;
 
     framework::Tensor max;
-    T* max_data = max.mutable_data<T>(phi::make_ddim({grid}), ctx.GetPlace());
+    T *max_data = max.mutable_data<T>(phi::make_ddim({grid}), ctx.GetPlace());
     FindAbsMaxKernel<T>
         <<<grid, block, 1024 * sizeof(T), ctx.stream()>>>(in, num, max_data);
     FindAbsMaxKernel<T>
@@ -93,13 +95,15 @@ template struct FindAbsMaxFunctor<platform::CUDADeviceContext,
                                   paddle::platform::float16>;
 
 template <typename T>
-__global__ void FindChannelAbsMaxKernelQuantAxis0(const T* in, const int n,
-                                                  const int c, T* out) {
+__global__ void FindChannelAbsMaxKernelQuantAxis0(const T *in,
+                                                  const int n,
+                                                  const int c,
+                                                  T *out) {
   int tid = threadIdx.x;
   int channel_size = n / c;
-  const T* in_c = in + blockIdx.x * channel_size;
-  extern __shared__ char* shared_max_data_tmp[];
-  auto shared_max_data = reinterpret_cast<T*>(shared_max_data_tmp);
+  const T *in_c = in + blockIdx.x * channel_size;
+  extern __shared__ char *shared_max_data_tmp[];
+  auto shared_max_data = reinterpret_cast<T *>(shared_max_data_tmp);
   T local_max_data = T(0);
   for (int i = tid; i < channel_size; i += blockDim.x) {
     T tmp = static_cast<T>(
@@ -122,17 +126,16 @@ __global__ void FindChannelAbsMaxKernelQuantAxis0(const T* in, const int n,
 }
 
 template <typename T>
-__global__ void FindChannelAbsMaxKernelQuantAxis1(const T* in, const int n,
-                                                  const int cin, const int cout,
-                                                  T* out) {
-  extern __shared__ char* shared_max_data_tmp[];
-  auto shared_max_data = reinterpret_cast<T*>(shared_max_data_tmp);
+__global__ void FindChannelAbsMaxKernelQuantAxis1(
+    const T *in, const int n, const int cin, const int cout, T *out) {
+  extern __shared__ char *shared_max_data_tmp[];
+  auto shared_max_data = reinterpret_cast<T *>(shared_max_data_tmp);
   int cout_wh_size = n / cin;
   int wh_size = n / (cin * cout);
 
   int tid = threadIdx.x;
   int bid = blockIdx.x;
-  const T* in_current = in + tid * cout_wh_size + bid * wh_size;
+  const T *in_current = in + tid * cout_wh_size + bid * wh_size;
   T local_max_data = T(0);
   for (int i = 0; i < wh_size; i++) {
     T tmp = static_cast<T>(
@@ -162,24 +165,26 @@ __global__ void FindChannelAbsMaxKernelQuantAxis1(const T* in, const int n,
 
 template <typename T>
 struct FindChannelAbsMaxFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx,
-                  const framework::Tensor& in_tensor, const int quant_axis,
-                  T* out_abs_max) {
+  void operator()(const platform::CUDADeviceContext &ctx,
+                  const framework::Tensor &in_tensor,
+                  const int quant_axis,
+                  T *out_abs_max) {
     PADDLE_ENFORCE_EQ(
-        quant_axis == 0 || quant_axis == 1, true,
+        quant_axis == 0 || quant_axis == 1,
+        true,
         platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
                                           "the received is %d",
                                           quant_axis));
     const int num = in_tensor.numel();
     auto in_dims = in_tensor.dims();
-    const T* in_data = in_tensor.data<T>();
+    const T *in_data = in_tensor.data<T>();
     if (quant_axis == 0) {
       int cout = in_dims[0];
       int grid = cout;
       int block = 1024;
       FindChannelAbsMaxKernelQuantAxis0<T>
-          <<<grid, block, block * sizeof(T), ctx.stream()>>>(in_data, num, cout,
-                                                             out_abs_max);
+          <<<grid, block, block * sizeof(T), ctx.stream()>>>(
+              in_data, num, cout, out_abs_max);
     } else if (quant_axis == 1) {
       int cin = in_dims[0];
       int cout = in_dims[1];
@@ -213,9 +218,12 @@ struct FindChannelAbsMaxFunctor<platform::CUDADeviceContext, T> {
 template struct FindChannelAbsMaxFunctor<platform::CUDADeviceContext, float>;
 
 template <typename T>
-__global__ void ClipAndQuantKernel(const T* in, const T* scale,
-                                   const int bin_cnt, const int round_type,
-                                   const int n, T* out) {
+__global__ void ClipAndQuantKernel(const T *in,
+                                   const T *scale,
+                                   const int bin_cnt,
+                                   const int round_type,
+                                   const int n,
+                                   T *out) {
   int bid = threadIdx.x + blockIdx.x * blockDim.x;
   int tid = threadIdx.x;
 
@@ -227,25 +235,30 @@ __global__ void ClipAndQuantKernel(const T* in, const T* scale,
 
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
-    x = bin_cnt_t * inv_s * x;
     if (round_type == 0) {
+      x = bin_cnt_t * inv_s * x;
       x = roundWithTiesToEven(x);
+      ComputeDataType max_bound = bin_cnt_t;
+      ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
+      x = x > max_bound ? max_bound : x;
+      x = x < min_bound ? min_bound : x;
+      out[i] = static_cast<T>(x);
     } else {
-      x = round(x);
+      ComputeDataType v = x > s ? s : x;
+      v = v < -s ? -s : v;
+      v = bin_cnt_t * inv_s * v;
+      out[i] = static_cast<T>(round(v));
     }
-    ComputeDataType max_bound = bin_cnt_t;
-    ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
-    x = x > max_bound ? max_bound : x;
-    x = x < min_bound ? min_bound : x;
-    out[i] = static_cast<T>(x);
   }
 }
 
 template <typename T>
-__global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
+__global__ void ClipAndQuantDequantKernel(const T *in,
+                                          const T *scale,
                                           const int bin_cnt,
-                                          const int round_type, const int n,
-                                          T* out) {
+                                          const int round_type,
+                                          const int n,
+                                          T *out) {
   int bid = threadIdx.x + blockIdx.x * blockDim.x;
   int tid = threadIdx.x;
 
@@ -257,33 +270,39 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
 
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
-    x = bin_cnt_t * inv_s * x;
     if (round_type == 0) {
+      x = bin_cnt_t * inv_s * x;
       x = roundWithTiesToEven(x);
+      ComputeDataType max_bound = bin_cnt_t;
+      ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
+      x = x > max_bound ? max_bound : x;
+      x = x < min_bound ? min_bound : x;
+      out[i] = static_cast<T>((x * s) / bin_cnt_t);
     } else {
+      x = x > s ? s : x;
+      x = x < -s ? -s : x;
+      x = bin_cnt_t * inv_s * x;
       x = round(x);
+      out[i] = static_cast<T>((x * s) / bin_cnt_t);
     }
-    ComputeDataType max_bound = bin_cnt_t;
-    ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
-    x = x > max_bound ? max_bound : x;
-    x = x < min_bound ? min_bound : x;
-    out[i] = static_cast<T>((x * s) / bin_cnt_t);
   }
 }
 
 template <typename T>
 struct ClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx,
-                  const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, const int round_type,
-                  framework::Tensor* out) {
+  void operator()(const platform::CUDADeviceContext &ctx,
+                  const framework::Tensor &in,
+                  const framework::Tensor &scale,
+                  const int bin_cnt,
+                  const int round_type,
+                  framework::Tensor *out) {
     int num = in.numel();
     int block = 1024;
     int grid = (block - 1 + num) / block;
 
-    const T* in_data = in.data<T>();
-    const T* scale_data = scale.data<T>();
-    T* out_data = out->mutable_data<T>(ctx.GetPlace());
+    const T *in_data = in.data<T>();
+    const T *scale_data = scale.data<T>();
+    T *out_data = out->mutable_data<T>(ctx.GetPlace());
 
     ClipAndQuantKernel<T><<<grid, block, 0, ctx.stream()>>>(
         in_data, scale_data, bin_cnt, round_type, num, out_data);
@@ -294,17 +313,19 @@ template struct ClipAndFakeQuantFunctor<platform::CUDADeviceContext, float>;
 
 template <typename T>
 struct ClipAndFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx,
-                  const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, const int round_type,
-                  framework::Tensor* out) {
+  void operator()(const platform::CUDADeviceContext &ctx,
+                  const framework::Tensor &in,
+                  const framework::Tensor &scale,
+                  const int bin_cnt,
+                  const int round_type,
+                  framework::Tensor *out) {
     int num = in.numel();
     int block = 1024;
     int grid = (block - 1 + num) / block;
 
-    const T* in_data = in.data<T>();
-    const T* scale_data = scale.data<T>();
-    T* out_data = out->mutable_data<T>(ctx.GetPlace());
+    const T *in_data = in.data<T>();
+    const T *scale_data = scale.data<T>();
+    T *out_data = out->mutable_data<T>(ctx.GetPlace());
 
     ClipAndQuantDequantKernel<T><<<grid, block, 0, ctx.stream()>>>(
         in_data, scale_data, bin_cnt, round_type, num, out_data);
@@ -313,16 +334,18 @@ struct ClipAndFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
 
 // ChannelClipAndQuantKernel for quant_axis is 0
 template <typename T>
-__global__ void ChannelClipAndQuantKernelQuantAxis0(const T* in, const T* scale,
+__global__ void ChannelClipAndQuantKernelQuantAxis0(const T *in,
+                                                    const T *scale,
                                                     const int bin_cnt,
                                                     const int round_type,
                                                     const int64_t n,
-                                                    const int c, T* out) {
+                                                    const int c,
+                                                    T *out) {
   int tid = threadIdx.x;
 
   int64_t channel_size = n / c;
-  const T* in_c = in + blockIdx.x * channel_size;
-  T* out_c = out + blockIdx.x * channel_size;
+  const T *in_c = in + blockIdx.x * channel_size;
+  T *out_c = out + blockIdx.x * channel_size;
 
   using ComputeDataType = typename QuantizeDataType<T>::type;
 
@@ -332,25 +355,33 @@ __global__ void ChannelClipAndQuantKernelQuantAxis0(const T* in, const T* scale,
 
   for (int64_t i = tid; i < channel_size; i += blockDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in_c[i]);
-    x = bin_cnt_t * inv_s * x;
     if (round_type == 0) {
+      x = bin_cnt_t * inv_s * x;
       x = roundWithTiesToEven(x);
+      ComputeDataType max_bound = bin_cnt_t;
+      ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
+      x = x > max_bound ? max_bound : x;
+      x = x < min_bound ? min_bound : x;
+      out_c[i] = static_cast<T>(x);
     } else {
-      x = round(x);
+      ComputeDataType v = x > s ? s : x;
+      v = v < -s ? -s : v;
+      v = bin_cnt_t * inv_s * v;
+      out_c[i] = static_cast<T>(round(v));
     }
-    ComputeDataType max_bound = bin_cnt_t;
-    ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
-    x = x > max_bound ? max_bound : x;
-    x = x < min_bound ? min_bound : x;
-    out_c[i] = static_cast<T>(x);
   }
 }
 
 // ChannelClipAndQuantKernel for quant_axis is N
 template <typename T>
-__global__ void ChannelClipAndQuantKernelQuantAxisN(
-    const T* in, const T* scale, const int bin_cnt, const int round_type,
-    const int64_t n, const int nScale, const int quant_stride, T* out) {
+__global__ void ChannelClipAndQuantKernelQuantAxisN(const T *in,
+                                                    const T *scale,
+                                                    const int bin_cnt,
+                                                    const int round_type,
+                                                    const int64_t n,
+                                                    const int nScale,
+                                                    const int quant_stride,
+                                                    T *out) {
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   using ComputeDataType = typename QuantizeDataType<T>::type;
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
@@ -359,37 +390,44 @@ __global__ void ChannelClipAndQuantKernelQuantAxisN(
         static_cast<ComputeDataType>(scale[(i / quant_stride) % nScale]);
     ComputeDataType inv_s = inverse(s);
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
-    x = bin_cnt_t * inv_s * x;
     if (round_type == 0) {
+      x = bin_cnt_t * inv_s * x;
       x = roundWithTiesToEven(x);
+      ComputeDataType max_bound = bin_cnt_t;
+      ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
+      x = x > max_bound ? max_bound : x;
+      x = x < min_bound ? min_bound : x;
+      out[i] = static_cast<T>(x);
     } else {
-      x = round(x);
+      ComputeDataType v = x > s ? s : x;
+      v = v < -s ? -s : v;
+      v = bin_cnt_t * inv_s * v;
+      out[i] = static_cast<T>(round(v));
     }
-    ComputeDataType max_bound = bin_cnt_t;
-    ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
-    x = x > max_bound ? max_bound : x;
-    x = x < min_bound ? min_bound : x;
-    out[i] = static_cast<T>(x);
   }
 }
 
 template <typename T>
 struct ChannelClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx,
-                  const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, const int round_type, const int quant_axis,
-                  framework::Tensor* out) {
+  void operator()(const platform::CUDADeviceContext &ctx,
+                  const framework::Tensor &in,
+                  const framework::Tensor &scale,
+                  const int bin_cnt,
+                  const int round_type,
+                  const int quant_axis,
+                  framework::Tensor *out) {
     PADDLE_ENFORCE_EQ(
-        quant_axis == 0 || quant_axis == 1, true,
+        quant_axis == 0 || quant_axis == 1,
+        true,
         platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
                                           "the received is %d",
                                           quant_axis));
 
     int64_t num = in.numel();
     auto in_dims = in.dims();
-    const T* in_data = in.data<T>();
-    const T* scale_data = scale.data<T>();
-    T* out_data = out->mutable_data<T>(ctx.GetPlace());
+    const T *in_data = in.data<T>();
+    const T *scale_data = scale.data<T>();
+    T *out_data = out->mutable_data<T>(ctx.GetPlace());
 
     if (quant_axis == 0) {
       int grid = in_dims[0];
@@ -411,9 +449,15 @@ struct ChannelClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
       const int64_t grid_size =
           std::min(max_blocks, (num + block_size - 1) / block_size);
 
-      ChannelClipAndQuantKernelQuantAxisN<T><<<grid_size, block_size>>>(
-          in_data, scale_data, bin_cnt, round_type, num, in_dims[quant_axis],
-          quant_stride, out_data);
+      ChannelClipAndQuantKernelQuantAxisN<T>
+          <<<grid_size, block_size>>>(in_data,
+                                      scale_data,
+                                      bin_cnt,
+                                      round_type,
+                                      num,
+                                      in_dims[quant_axis],
+                                      quant_stride,
+                                      out_data);
     }
   }
 };
@@ -422,12 +466,14 @@ template struct ChannelClipAndFakeQuantFunctor<platform::CUDADeviceContext,
                                                float>;
 
 template <typename T>
-__global__ void FindRangeAbsMaxAndFillArray(const T* cur_scale,
-                                            const T* last_scale,
-                                            const int64_t* iter,
-                                            const int window_size, T* scale_arr,
-                                            T* out_scale, int* need_find_max,
-                                            int* out_size) {
+__global__ void FindRangeAbsMaxAndFillArray(const T *cur_scale,
+                                            const T *last_scale,
+                                            const int64_t *iter,
+                                            const int window_size,
+                                            T *scale_arr,
+                                            T *out_scale,
+                                            int *need_find_max,
+                                            int *out_size) {
   int it = iter[0];
   int idx = it % window_size;
   T removed = scale_arr[idx];
@@ -446,45 +492,63 @@ __global__ void FindRangeAbsMaxAndFillArray(const T* cur_scale,
 
 template <typename T>
 struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx,
-                  const framework::Tensor& cur_scale,
-                  const framework::Tensor& last_scale,
-                  const framework::Tensor& iter, const int window_size,
-                  framework::Tensor* scales_arr, framework::Tensor* out_scale) {
+  void operator()(const platform::CUDADeviceContext &ctx,
+                  const framework::Tensor &cur_scale,
+                  const framework::Tensor &last_scale,
+                  const framework::Tensor &iter,
+                  const int window_size,
+                  framework::Tensor *scales_arr,
+                  framework::Tensor *out_scale) {
     const auto gpu_place = ctx.GetPlace();
 
-    T* scale_arr = scales_arr->mutable_data<T>(gpu_place);
-    T* out_scale_data = out_scale->mutable_data<T>(gpu_place);
+    T *scale_arr = scales_arr->mutable_data<T>(gpu_place);
+    T *out_scale_data = out_scale->mutable_data<T>(gpu_place);
 
     framework::Tensor need_find_max, out_size;
-    int* find_max = need_find_max.mutable_data<int>({1}, gpu_place);
-    int* out_size_data = out_size.mutable_data<int>({1}, gpu_place);
+    int *find_max = need_find_max.mutable_data<int>({1}, gpu_place);
+    int *out_size_data = out_size.mutable_data<int>({1}, gpu_place);
 
-    FindRangeAbsMaxAndFillArray<T><<<1, 1, 0, ctx.stream()>>>(
-        cur_scale.data<T>(), last_scale.data<T>(), iter.data<int64_t>(),
-        window_size, scale_arr, out_scale_data, find_max, out_size_data);
+    FindRangeAbsMaxAndFillArray<T>
+        <<<1, 1, 0, ctx.stream()>>>(cur_scale.data<T>(),
+                                    last_scale.data<T>(),
+                                    iter.data<int64_t>(),
+                                    window_size,
+                                    scale_arr,
+                                    out_scale_data,
+                                    find_max,
+                                    out_size_data);
 
     int g_find_max;
-    memory::Copy(platform::CPUPlace(), &g_find_max, gpu_place, find_max,
-                 sizeof(int), ctx.stream());
+    memory::Copy(platform::CPUPlace(),
+                 &g_find_max,
+                 gpu_place,
+                 find_max,
+                 sizeof(int),
+                 ctx.stream());
     ctx.Wait();
     if (g_find_max) {
       int len;
-      memory::Copy(platform::CPUPlace(), &len, gpu_place, out_size_data,
-                   sizeof(int), ctx.stream());
+      memory::Copy(platform::CPUPlace(),
+                   &len,
+                   gpu_place,
+                   out_size_data,
+                   sizeof(int),
+                   ctx.stream());
       ctx.Wait();
-      FindAbsMaxFunctor<platform::CUDADeviceContext, T>()(ctx, scale_arr, len,
-                                                          out_scale_data);
+      FindAbsMaxFunctor<platform::CUDADeviceContext, T>()(
+          ctx, scale_arr, len, out_scale_data);
     }
   }
 };
 
 template <typename T>
-__global__ void FindMovingAverageAbsMaxKernel(const T* in_state,
-                                              const T* in_accum,
-                                              const T* cur_scale, const T rate,
-                                              T* out_state, T* out_accum,
-                                              T* out_scale) {
+__global__ void FindMovingAverageAbsMaxKernel(const T *in_state,
+                                              const T *in_accum,
+                                              const T *cur_scale,
+                                              const T rate,
+                                              T *out_state,
+                                              T *out_accum,
+                                              T *out_scale) {
   T state = rate * (*in_state) + T(1.0f);
   T accum = rate * (*in_accum) + (*cur_scale);
   *out_state = state;
@@ -496,92 +560,119 @@ template struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, float>;
 
 template <typename T>
 struct FindMovingAverageAbsMaxFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx,
-                  const framework::Tensor& in_accum,
-                  const framework::Tensor& in_state, const T* cur_scale,
-                  const float rate, framework::Tensor* out_state,
-                  framework::Tensor* out_accum, framework::Tensor* out_scale) {
+  void operator()(const platform::CUDADeviceContext &ctx,
+                  const framework::Tensor &in_accum,
+                  const framework::Tensor &in_state,
+                  const T *cur_scale,
+                  const float rate,
+                  framework::Tensor *out_state,
+                  framework::Tensor *out_accum,
+                  framework::Tensor *out_scale) {
     const auto gpu_place = ctx.GetPlace();
 
     T rate_t = static_cast<T>(rate);
-    T* out_state_data = out_state->mutable_data<T>(gpu_place);
-    T* out_accum_data = out_accum->mutable_data<T>(gpu_place);
-    T* out_scale_data = out_scale->mutable_data<T>(gpu_place);
+    T *out_state_data = out_state->mutable_data<T>(gpu_place);
+    T *out_accum_data = out_accum->mutable_data<T>(gpu_place);
+    T *out_scale_data = out_scale->mutable_data<T>(gpu_place);
 
-    FindMovingAverageAbsMaxKernel<T><<<1, 1, 0, ctx.stream()>>>(
-        in_state.data<T>(), in_accum.data<T>(), cur_scale, rate_t,
-        out_state_data, out_accum_data, out_scale_data);
+    FindMovingAverageAbsMaxKernel<T>
+        <<<1, 1, 0, ctx.stream()>>>(in_state.data<T>(),
+                                    in_accum.data<T>(),
+                                    cur_scale,
+                                    rate_t,
+                                    out_state_data,
+                                    out_accum_data,
+                                    out_scale_data);
   }
 };
 
 // ChannelClipAndQuantDequantKernel for quant_axis is 0
 template <typename T>
-__global__ void ChannelClipAndQuantDequantKernelQuantAxis0(
-    const T* in, const T* scale, const int bin_cnt, const int round_type,
-    const int n, const int c, T* out) {
+__global__ void ChannelClipAndQuantDequantKernelQuantAxis0(const T *in,
+                                                           const T *scale,
+                                                           const int bin_cnt,
+                                                           const int round_type,
+                                                           const int n,
+                                                           const int c,
+                                                           T *out) {
   int tid = threadIdx.x;
 
   int channel_size = n / c;
-  const T* in_c = in + blockIdx.x * channel_size;
-  T* out_c = out + blockIdx.x * channel_size;
+  const T *in_c = in + blockIdx.x * channel_size;
+  T *out_c = out + blockIdx.x * channel_size;
 
   T s = scale[blockIdx.x];
   T inv_s = inverse(s);
 
   for (int i = tid; i < channel_size; i += blockDim.x) {
     T x = in_c[i];
-    x = bin_cnt * inv_s * x;
     if (round_type == 0) {
+      x = bin_cnt * inv_s * x;
       x = roundWithTiesToEven(x);
+      T max_bound = bin_cnt;
+      T min_bound = -bin_cnt - static_cast<T>(1);
+      x = x > max_bound ? max_bound : x;
+      x = x < min_bound ? min_bound : x;
+      out_c[i] = (x * s) / bin_cnt;
     } else {
-      x = round(x);
+      T v = x > s ? s : x;
+      v = v < -s ? -s : v;
+      v = bin_cnt * inv_s * v;
+      out_c[i] = round(v) * s / bin_cnt;
     }
-    T max_bound = bin_cnt;
-    T min_bound = -bin_cnt - static_cast<T>(1);
-    x = x > max_bound ? max_bound : x;
-    x = x < min_bound ? min_bound : x;
-    out_c[i] = (x * s) / bin_cnt;
   }
 }
 
 // ChannelClipAndQuantDequantKernel for quant_axis is 1
 template <typename T>
-__global__ void ChannelClipAndQuantDequantKernelQuantAxis1(
-    const T* in, const T* scale, const int bin_cnt, const int round_type,
-    const int n, const int cin, const int cout, T* out) {
+__global__ void ChannelClipAndQuantDequantKernelQuantAxis1(const T *in,
+                                                           const T *scale,
+                                                           const int bin_cnt,
+                                                           const int round_type,
+                                                           const int n,
+                                                           const int cin,
+                                                           const int cout,
+                                                           T *out) {
   T s = scale[blockIdx.x % cout];
   T inv_s = inverse(s);
 
   int wh_size = n / (cin * cout);
-  const T* in_c = in + blockIdx.x * wh_size;
-  T* out_c = out + blockIdx.x * wh_size;
+  const T *in_c = in + blockIdx.x * wh_size;
+  T *out_c = out + blockIdx.x * wh_size;
 
   for (int i = threadIdx.x; i < wh_size; i += blockDim.x) {
     T x = in_c[i];
-    x = bin_cnt * inv_s * x;
     if (round_type == 0) {
+      x = bin_cnt * inv_s * x;
       x = roundWithTiesToEven(x);
+      T max_bound = bin_cnt;
+      T min_bound = -bin_cnt - static_cast<T>(1);
+      x = x > max_bound ? max_bound : x;
+      x = x < min_bound ? min_bound : x;
+      out_c[i] = (x * s) / bin_cnt;
     } else {
-      x = round(x);
+      T v = x > s ? s : x;
+      v = v < -s ? -s : v;
+      v = bin_cnt * inv_s * v;
+      out_c[i] = round(v) * s / bin_cnt;
     }
-    T max_bound = bin_cnt;
-    T min_bound = -bin_cnt - static_cast<T>(1);
-    x = x > max_bound ? max_bound : x;
-    x = x < min_bound ? min_bound : x;
-    out_c[i] = (x * s) / bin_cnt;
   }
 }
 
 template <typename T>
 struct ChannelClipFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx,
-                  const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, const int round_type, const int quant_axis,
-                  framework::Tensor* out) {
+  void operator()(const platform::CUDADeviceContext &ctx,
+                  const framework::Tensor &in,
+                  const framework::Tensor &scale,
+                  const int bin_cnt,
+                  const int round_type,
+                  const int quant_axis,
+                  framework::Tensor *out) {
     // At present, channelwise quantization supports conv2d, depthwise_conv2d
     // conv2d_transpose and mul
     PADDLE_ENFORCE_EQ(
-        quant_axis == 0 || quant_axis == 1, true,
+        quant_axis == 0 || quant_axis == 1,
+        true,
         platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
                                           "the received is %d",
                                           quant_axis));
@@ -589,25 +680,34 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
     int num = in.numel();
     auto in_dims = in.dims();
 
-    const T* in_data = in.data<T>();
-    const T* scale_data = scale.data<T>();
-    T* out_data = out->mutable_data<T>(ctx.GetPlace());
+    const T *in_data = in.data<T>();
+    const T *scale_data = scale.data<T>();
+    T *out_data = out->mutable_data<T>(ctx.GetPlace());
 
     if (quant_axis == 0) {
       int grid = in_dims[0];
       int block = 1024;
       ChannelClipAndQuantDequantKernelQuantAxis0<T>
-          <<<grid, block, 0, ctx.stream()>>>(in_data, scale_data, bin_cnt,
-                                             round_type, num, in_dims[0],
+          <<<grid, block, 0, ctx.stream()>>>(in_data,
+                                             scale_data,
+                                             bin_cnt,
+                                             round_type,
+                                             num,
+                                             in_dims[0],
                                              out_data);
     } else if (quant_axis == 1) {
       int grid = in_dims[0] * in_dims[1];
       int block = 1024;
 
       ChannelClipAndQuantDequantKernelQuantAxis1<T>
-          <<<grid, block, 0, ctx.stream()>>>(in_data, scale_data, bin_cnt,
-                                             round_type, num, in_dims[0],
-                                             in_dims[1], out_data);
+          <<<grid, block, 0, ctx.stream()>>>(in_data,
+                                             scale_data,
+                                             bin_cnt,
+                                             round_type,
+                                             num,
+                                             in_dims[0],
+                                             in_dims[1],
+                                             out_data);
     }
   }
 };

@@ -47,7 +47,7 @@ template <typename T>
 void MatrixBitCodeFunctor<T>::Add(const framework::Tensor &vec,
                                   framework::Tensor *tmat) {
   MatrixBitCodeFunctorAdd<T> func(vec, tmat);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T>
@@ -79,7 +79,7 @@ template <typename T>
 void MatrixBitCodeFunctor<T>::AddGrad(const framework::Tensor &tmat,
                                       framework::Tensor *vec) {
   MatrixBitCodeFunctorAddGrad<T> func(tmat, vec);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T>
@@ -88,7 +88,8 @@ struct MatrixBitCodeFunctorSum : public boost::static_visitor<void> {
   framework::Tensor *sum_;
   T scale_sum_;
 
-  MatrixBitCodeFunctorSum(const framework::Tensor &tmat, framework::Tensor *sum,
+  MatrixBitCodeFunctorSum(const framework::Tensor &tmat,
+                          framework::Tensor *sum,
                           T scale_sum)
       : tmat_(tmat), sum_(sum), scale_sum_(scale_sum) {}
 
@@ -117,9 +118,10 @@ struct MatrixBitCodeFunctorSum : public boost::static_visitor<void> {
 
 template <typename T>
 void MatrixBitCodeFunctor<T>::Sum(const framework::Tensor &tmat,
-                                  framework::Tensor *sum, T scale_sum) {
+                                  framework::Tensor *sum,
+                                  T scale_sum) {
   MatrixBitCodeFunctorSum<T> func(tmat, sum, scale_sum);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T>
@@ -163,7 +165,7 @@ void MatrixBitCodeFunctor<T>::Mul(framework::Tensor *tmat,
                                   const framework::Tensor &weight,
                                   const framework::Tensor &input) {
   MatrixBitCodeFunctorMul<T> func(tmat, weight, input);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T, size_t N>
@@ -220,7 +222,7 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::Tensor &tmat,
                                             framework::Tensor *weight,
                                             const framework::Tensor &input) {
   MatrixBitCodeFunctorMulGradWeight<T> func(tmat, weight, input);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T>
@@ -277,7 +279,7 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::Tensor &tmat,
                                             phi::SelectedRows *weight,
                                             const framework::Tensor &input) {
   MatrixBitCodeFunctorMulGradWeightSR<T> func(tmat, weight, input);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T>
@@ -321,7 +323,7 @@ void MatrixBitCodeFunctor<T>::MulGradError(const framework::Tensor &tmat,
                                            const framework::Tensor &weight,
                                            framework::Tensor *input) {
   MatrixBitCodeFunctorMulGradError<T> func(tmat, weight, input);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T>
@@ -350,7 +352,7 @@ struct MatrixBitCodeFunctorSub : public boost::static_visitor<void> {
 template <typename T>
 void MatrixBitCodeFunctor<T>::Sub(framework::Tensor *tmat) {
   MatrixBitCodeFunctorSub<T> func(tmat);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template class MatrixBitCodeFunctor<float>;

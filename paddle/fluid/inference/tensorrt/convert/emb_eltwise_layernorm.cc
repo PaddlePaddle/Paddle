@@ -29,7 +29,8 @@ namespace tensorrt {
 class EmbEltwiseLayerNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert fluid EmbEltwiseLayerNorm op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -94,7 +95,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       input_embs.push_back(emb_data);
       emb_sizes.push_back(emb_size);
       PADDLE_ENFORCE_EQ(
-          emb_dims.size(), 2,
+          emb_dims.size(),
+          2,
           platform::errors::InvalidArgument(
               "The fused EmbEltwiseLayerNorm's emb should be 2 dims."));
       hidden = emb_dims[1];
@@ -117,31 +119,38 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         output_fp16 = 1;
       }
       PADDLE_ENFORCE_EQ(
-          input_num, 3,
+          input_num,
+          3,
           platform::errors::InvalidArgument(
               "When using oss and var-len, embedding_eltwise_layernorm op"
               "should have 3 inputs only, but got %d.",
               input_num));
       PADDLE_ENFORCE_EQ(
-          output_fp16, 1,
+          output_fp16,
+          1,
           platform::errors::InvalidArgument(
               "Only Precision::KHalf(fp16) is supported when infering "
               "ernie(bert) model with config.EnableVarseqlen(). "
               "But Precision::KFloat32 is setted."));
       const std::vector<nvinfer1::PluginField> fields{
-          {"bert_embeddings_layernorm_beta", bias,
+          {"bert_embeddings_layernorm_beta",
+           bias,
            nvinfer1::PluginFieldType::kFLOAT32,
            static_cast<int32_t>(bias_size)},
-          {"bert_embeddings_layernorm_gamma", scale,
+          {"bert_embeddings_layernorm_gamma",
+           scale,
            nvinfer1::PluginFieldType::kFLOAT32,
            static_cast<int32_t>(scale_size)},
-          {"bert_embeddings_word_embeddings", input_embs[0],
+          {"bert_embeddings_word_embeddings",
+           input_embs[0],
            nvinfer1::PluginFieldType::kFLOAT32,
            static_cast<int32_t>(emb_sizes[0])},
-          {"bert_embeddings_token_type_embeddings", input_embs[2],
+          {"bert_embeddings_token_type_embeddings",
+           input_embs[2],
            nvinfer1::PluginFieldType::kFLOAT32,
            static_cast<int32_t>(emb_sizes[2])},
-          {"bert_embeddings_position_embeddings", input_embs[1],
+          {"bert_embeddings_position_embeddings",
+           input_embs[1],
            nvinfer1::PluginFieldType::kFLOAT32,
            static_cast<int32_t>(emb_sizes[1])},
           {"output_fp16", &output_fp16, nvinfer1::PluginFieldType::kINT32, 1},
@@ -216,7 +225,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       } else {
         layer = plugin_layer;
         auto output_name = op_desc.Output("Out")[0];
-        RreplenishLayerAndOutput(layer, "CustomEmbLayerNormPluginDynamic_V2",
+        RreplenishLayerAndOutput(layer,
+                                 "CustomEmbLayerNormPluginDynamic_V2",
                                  {output_name, std::string("qkv_plugin_mask")},
                                  test_mode);
       }
@@ -225,13 +235,19 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
       plugin::DynamicPluginTensorRT* plugin = nullptr;
-      plugin = new plugin::EmbEltwiseLayernormPluginDynamic(
-          input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
-          eps, with_fp16);
+      plugin = new plugin::EmbEltwiseLayernormPluginDynamic(input_embs,
+                                                            bias,
+                                                            scale,
+                                                            emb_sizes,
+                                                            bias_size,
+                                                            scale_size,
+                                                            hidden,
+                                                            eps,
+                                                            with_fp16);
       layer = engine_->AddDynamicPlugin(input_ids.data(), input_num, plugin);
       auto output_name = op_desc.Output("Out")[0];
-      RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm", {output_name},
-                               test_mode);
+      RreplenishLayerAndOutput(
+          layer, "emb_eltwise_layernorm", {output_name}, test_mode);
     }
   }
 };

@@ -22,7 +22,9 @@ namespace paddle {
 namespace operators {
 
 // use for loop to speed up Eigen broadcast. 4 timer faster then broadcast
-template <typename DeviceContext, typename T, typename Functor,
+template <typename DeviceContext,
+          typename T,
+          typename Functor,
           bool kNoNeedBufferX = false>
 class ReduceSumGradKernel : public framework::OpKernel<T> {
  public:
@@ -85,8 +87,8 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
         auto out_kernel_type = framework::OpKernelType(
             static_cast<framework::proto::VarType::Type>(in_dtype),
             context.GetPlace());
-        framework::TransDataType(in_kernel_type, out_kernel_type, *pre_input,
-                                 &tmp_tensor);
+        framework::TransDataType(
+            in_kernel_type, out_kernel_type, *pre_input, &tmp_tensor);
         ComputeFromInput(&tmp_tensor, context);
       } else {
         auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
@@ -108,10 +110,19 @@ struct SumFunctor {
 };
 
 struct SumGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
-                  const Dim& dim, int size) {
+  template <typename DeviceContext,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const DeviceContext& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size) {
     dx->device(place) = dy->broadcast(dim);
   }
 };
