@@ -2065,17 +2065,19 @@ Scope* OperatorWithKernel::PrepareData(
 
       auto kernel_type_for_var =
           GetKernelTypeForVar(in_name, *tensor_in, expected_kernel_key);
-      if (kernel_type_for_var.data_type_ == expected_kernel_key.data_type_ &&
-          kernel_type_for_var.data_layout_ ==
-              expected_kernel_key.data_layout_) {
+      bool need_trans_dtype =
+          kernel_type_for_var.data_type_ != expected_kernel_key.data_type_;
+      bool need_trans_layout = NeedTransformLayout(
+          kernel_type_for_var.data_layout_, expected_kernel_key.data_layout_);
+      if (!need_trans_dtype && !need_trans_layout) {
         if (!run_phi_kernel_ &&
             platform::places_are_same_class(kernel_type_for_var.place_,
                                             expected_kernel_key.place_)) {
           continue;
         }
       }
-      std::unique_ptr<OpKernelType> new_expected_kernel_key = nullptr;
 
+      std::unique_ptr<OpKernelType> new_expected_kernel_key = nullptr;
       if (run_phi_kernel_ && in_def->backend != phi::Backend::ALL_BACKEND) {
         auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
         if (in_def->backend != tensor_backend &&
@@ -2088,6 +2090,11 @@ Scope* OperatorWithKernel::PrepareData(
               expected_kernel_key.library_type_,
               expected_kernel_key.customized_type_value_);
         }
+      }
+
+      if (!need_trans_dtype && !need_trans_layout &&
+          new_expected_kernel_key == nullptr) {
+        continue;
       }
 
       VLOG(3) << "Transform Variable " << var_name << " from "
