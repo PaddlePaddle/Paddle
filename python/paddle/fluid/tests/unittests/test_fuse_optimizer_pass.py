@@ -42,14 +42,14 @@ class TestFuseOptimizationOps(TestParallelExecutorBase):
         if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
-        not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
+        not_fuse_op_first_loss, not_fuse_op_last_loss, _ = self.check_network_convergence(
             model,
             feed_dict=feed_dict,
             get_data_from_feeder=get_data_from_feeder,
             use_device=use_device,
             fuse_all_optimizer_ops=False,
             optimizer=optimizer)
-        fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
+        fuse_op_first_loss, fuse_op_last_loss, _ = self.check_network_convergence(
             model,
             feed_dict=feed_dict,
             get_data_from_feeder=get_data_from_feeder,
