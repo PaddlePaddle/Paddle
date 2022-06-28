@@ -90,11 +90,7 @@ def create_undefined_var(name):
 def create_nonlocal_stmt_node(names):
     assert isinstance(names, (list, tuple))
 
-    def remove_attribute(x):
-        if '.' in x: return x.split('.')[0]
-        else: return x
-
-    mapped = list(map(remove_attribute, names))
+    mapped = list(filter(lambda n: '.' not in n, names))
     names = sorted(
         mapped,
         key=mapped.index)  # to keep the order, we can't use set() to unique
@@ -176,18 +172,14 @@ def create_get_args_node(names):
     if not names:
         return empty_node()
 
-    def remove_attribute(x):
-        if '.' in x: return x.split('.')[0]
-        else: return x
-
-    mapped = list(map(remove_attribute, names))
+    mapped = list(filter(lambda n: '.' not in n, names))
     nonlocal_names = sorted(
         mapped,
         key=mapped.index)  # to keep the order, we can't use set() to unique
     template = """
     def {func_name}():
         nonlocal {nonlocal_vars}
-        return {vars},
+        return {vars}
     """
     func_def = template.format(
         func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
@@ -222,18 +214,14 @@ def create_set_args_node(names):
     if not names:
         return empty_node()
 
-    def remove_attribute(x):
-        if '.' in x: return x.split('.')[0]
-        else: return x
-
-    mapped = list(map(remove_attribute, names))
+    mapped = list(filter(lambda n: '.' not in n, names))
     nonlocal_names = sorted(
         mapped,
         key=mapped.index)  # to keep the order, we can't use set() to unique
     template = """
     def {func_name}({args}):
         nonlocal {nonlocal_vars}
-        {vars}, = {args}
+        {vars} = {args}
     """
     func_def = template.format(
         func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),

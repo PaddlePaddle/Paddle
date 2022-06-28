@@ -39,7 +39,6 @@ WHILE_BODY_PREFIX = 'while_body'
 
 FOR_CONDITION_PREFIX = 'for_loop_condition'
 FOR_BODY_PREFIX = 'for_loop_body'
-GENERATE_VARIABLE_PREFIX = 'generate_variable'
 
 ARGS_NAME = '__args'
 
@@ -688,12 +687,6 @@ class LoopTransformer(gast.NodeTransformer):
             decorator_list=[],
             returns=None,
             type_comment=None)
-        # TODO(??? xiongkun: why we need rename ?)
-        for name in loop_var_names:
-            if "." in name:
-                rename_transformer = RenameTransformer(condition_func_node)
-                rename_transformer.rename(
-                    name, unique_name.generate(GENERATE_VARIABLE_PREFIX))
         new_stmts.append(condition_func_node)
 
         # 6. create & append loop body function node
@@ -717,11 +710,6 @@ class LoopTransformer(gast.NodeTransformer):
             decorator_list=[],
             returns=None,
             type_comment=None)
-        for name in loop_var_names:
-            if "." in name:
-                rename_transformer = RenameTransformer(body_func_node)
-                rename_transformer.rename(
-                    name, unique_name.generate(GENERATE_VARIABLE_PREFIX))
         new_stmts.append(body_func_node)
 
         get_args_node = create_get_args_node(nonlocal_names)
@@ -780,11 +768,6 @@ class LoopTransformer(gast.NodeTransformer):
             returns=None,
             type_comment=None)
 
-        for name in loop_var_names:
-            if "." in name:
-                rename_transformer = RenameTransformer(condition_func_node)
-                rename_transformer.rename(
-                    name, unique_name.generate(GENERATE_VARIABLE_PREFIX))
         new_stmts.append(condition_func_node)
 
         new_body = node.body
@@ -807,11 +790,6 @@ class LoopTransformer(gast.NodeTransformer):
             decorator_list=[],
             returns=None,
             type_comment=None)
-        for name in loop_var_names:
-            if "." in name:
-                rename_transformer = RenameTransformer(body_func_node)
-                rename_transformer.rename(
-                    name, unique_name.generate(GENERATE_VARIABLE_PREFIX))
         new_stmts.append(body_func_node)
         get_args_node = create_get_args_node(nonlocal_names)
         set_args_node = create_set_args_node(nonlocal_names)

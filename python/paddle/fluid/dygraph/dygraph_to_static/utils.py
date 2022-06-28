@@ -412,10 +412,16 @@ def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
         raise TypeError(
             'name_ids must be list or tuple or set, but received %s' %
             type(type(name_ids)))
-    gast_names = [
-        gast.Name(id=name_id, ctx=ctx, annotation=None, type_comment=None)
-        for name_id in name_ids
-    ]
+
+    def create_node_for_name(name):
+        if '.' not in name:
+            return gast.Name(id=name,
+                             ctx=ctx,
+                             annotation=None,
+                             type_comment=None)
+        return gast.parse(name).body[0].value
+
+    gast_names = [create_node_for_name(name_id) for name_id in name_ids]
     if len(gast_names) == 1 and not gen_tuple_if_single:
         name_node = gast_names[0]
     else:

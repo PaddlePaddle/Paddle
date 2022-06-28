@@ -416,7 +416,11 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
 
     # modified vars
     body_modified_vars = _modified_vars(if_vars_dict, parent_vars_dict)
+    body_modified_vars = set(filter(lambda x: x != "__args",
+                                    body_modified_vars))
     orelse_modified_vars = _modified_vars(else_vars_dict, parent_vars_dict)
+    orelse_modified_vars = set(
+        filter(lambda x: x != "__args", orelse_modified_vars))
     modified_vars = body_modified_vars | orelse_modified_vars
 
     # new vars
