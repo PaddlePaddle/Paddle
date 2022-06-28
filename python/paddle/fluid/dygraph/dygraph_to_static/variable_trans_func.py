@@ -39,7 +39,7 @@ def create_nonlocal_stmt_node(names):
     return gast.parse(func_code).body[0]
 
 
-def create_fill_constant_node(name, value):
+def create_fill_constant_node(name, value=0):
     func_code = "{} = paddle.full(shape=[1], ".format(name)
     if isinstance(value, bool):
         func_code += "dtype='bool', fill_value={}, name='{}')".format(
