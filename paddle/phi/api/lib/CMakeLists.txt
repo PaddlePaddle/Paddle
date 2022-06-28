@@ -326,7 +326,7 @@ cc_library(
 cc_library(
   context_pool
   SRCS context_pool.cc
-  DEPS phi_context phi_enforce place)
+  DEPS phi_context phi_enforce place init)
 
 cc_library(
   kernel_dispatch
