@@ -18,8 +18,8 @@
  * in the root directory of this source tree.
  */
 
-#ifndef CONCURRENT_UNORDERED_MAP_CUH
-#define CONCURRENT_UNORDERED_MAP_CUH
+#ifndef PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_CONCURRENT_UNORDERED_MAP_CUH_H_
+#define PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_CONCURRENT_UNORDERED_MAP_CUH_H_
 
 #include <thrust/pair.h>
 
@@ -28,11 +28,11 @@
 #include <iterator>
 #include <type_traits>
 
-#include "hash_functions.cuh"
-#include "managed.cuh"
-#include "managed_allocator.cuh"
+#include "cudf/hash_functions.cuh"
+#include "cudf/managed.cuh"
+#include "cudf/managed_allocator.cuh"
 
-// TODO: replace this with CUDA_TRY and propagate the error
+// TODO(Thunderbrook): replace this with CUDA_TRY and propagate the error
 #ifndef CUDA_RT_CALL
 #define CUDA_RT_CALL(call)                                                    \
   {                                                                           \
@@ -51,54 +51,60 @@
   }
 #endif
 
-// TODO: can we do this more efficiently?
+// TODO(Thunderbrook): can we do this more efficiently?
 __inline__ __device__ int8_t atomicCAS(int8_t* address,
                                        int8_t compare,
                                        int8_t val) {
-  int32_t* base_address = (int32_t*)((char*)address - ((size_t)address & 3));
-  int32_t int_val = (int32_t)val << (((size_t)address & 3) * 8);
-  int32_t int_comp = (int32_t)compare << (((size_t)address & 3) * 8);
+  int32_t* base_address = \
+    (reinterpret_cast<int32_t*>)((reinterpret_cast<char*>)address - \
+    ((static_cast<size_t>)address & 3));
+  int32_t int_val = (int32_t)val << (((static_cast<size_t>)address & 3) * 8);
+  int32_t int_comp = \
+    (int32_t)compare << (((static_cast<size_t>)address & 3) * 8);
   return (int8_t)atomicCAS(base_address, int_comp, int_val);
 }
 
-// TODO: can we do this more efficiently?
+// TODO(Thunderbrook): can we do this more efficiently?
 __inline__ __device__ int16_t atomicCAS(int16_t* address,
                                         int16_t compare,
                                         int16_t val) {
-  int32_t* base_address = (int32_t*)((char*)address - ((size_t)address & 2));
-  int32_t int_val = (int32_t)val << (((size_t)address & 2) * 8);
-  int32_t int_comp = (int32_t)compare << (((size_t)address & 2) * 8);
+  int32_t* base_address = \
+    (reinterpret_cast<int32_t*>)((reinterpret_cast<char*>)address - \
+    ((static_cast<size_t>)address & 2));
+  int32_t int_val = (int32_t)val << (((static_cast<size_t>)address & 2) * 8);
+  int32_t int_comp = \
+    (int32_t)compare << (((static_cast<size_t>)address & 2) * 8);
   return (int16_t)atomicCAS(base_address, int_comp, int_val);
 }
 
 __inline__ __device__ int64_t atomicCAS(int64_t* address,
                                         int64_t compare,
                                         int64_t val) {
-  return (int64_t)atomicCAS((unsigned long long*)address,
-                            (unsigned long long)compare,
-                            (unsigned long long)val);
+  return (int64_t)atomicCAS((unsigned long long*)address, // NOLINT
+                            (unsigned long long)compare,  // NOLINT
+                            (unsigned long long)val); // NOLINT
 }
 
 __inline__ __device__ uint64_t atomicCAS(uint64_t* address,
                                          uint64_t compare,
                                          uint64_t val) {
-  return (uint64_t)atomicCAS((unsigned long long*)address,
-                             (unsigned long long)compare,
-                             (unsigned long long)val);
+  return (uint64_t)atomicCAS((unsigned long long*)address, // NOLINT
+                             (unsigned long long)compare, // NOLINT
+                             (unsigned long long)val); // NOLINT
 }
 
-__inline__ __device__ long long int atomicCAS(long long int* address,
-                                              long long int compare,
-                                              long long int val) {
-  return (long long int)atomicCAS((unsigned long long*)address,
-                                  (unsigned long long)compare,
-                                  (unsigned long long)val);
+__inline__ __device__ long long int atomicCAS(long long int* address, // NOLINT
+                                              long long int compare, // NOLINT
+                                              long long int val) {   // NOLINT
+  return (long long int)atomicCAS((unsigned long long*)address, // NOLINT
+                                  (unsigned long long)compare, // NOLINT
+                                  (unsigned long long)val);   // NOLINT
 }
 
 __inline__ __device__ double atomicCAS(double* address,
                                        double compare,
                                        double val) {
-  return __longlong_as_double(atomicCAS((unsigned long long int*)address,
+  return __longlong_as_double(atomicCAS((unsigned long long int*)address, // NOLINT
                                         __double_as_longlong(compare),
                                         __double_as_longlong(val)));
 }
@@ -107,17 +113,18 @@ __inline__ __device__ float atomicCAS(float* address,
                                       float compare,
                                       float val) {
   return __int_as_float(
-      atomicCAS((int*)address, __float_as_int(compare), __float_as_int(val)));
+      atomicCAS((reinterpret_cast<int*>)address, \
+      __float_as_int(compare), __float_as_int(val)));
 }
 
 __inline__ __device__ int64_t atomicAdd(int64_t* address, int64_t val) {
-  return (int64_t)atomicAdd((unsigned long long*)address,
-                            (unsigned long long)val);
+  return (int64_t)atomicAdd((unsigned long long*)address, // NOLINT
+                            (unsigned long long)val); // NOLINT
 }
 
 __inline__ __device__ uint64_t atomicAdd(uint64_t* address, uint64_t val) {
-  return (uint64_t)atomicAdd((unsigned long long*)address,
-                             (unsigned long long)val);
+  return (uint64_t)atomicAdd((unsigned long long*)address, // NOLINT
+                             (unsigned long long)val); // NOLINT
 }
 
 template <typename pair_type>
@@ -147,13 +154,13 @@ load_pair_vectorized(const pair_type* __restrict__ const ptr) {
     pair_type2vec_type converter = {0};
     converter.vec_val = *reinterpret_cast<const int*>(ptr);
     return converter.pair_val;
-  } else if (sizeof(short) == sizeof(pair_type)) {
+  } else if (sizeof(short) == sizeof(pair_type)) { // NOLINT
     union pair_type2vec_type {
-      short vec_val;
+      short vec_val; // NOLINT
       pair_type pair_val;
     };
     pair_type2vec_type converter = {0};
-    converter.vec_val = *reinterpret_cast<const short*>(ptr);
+    converter.vec_val = *reinterpret_cast<const short*>(ptr); // NOLINT
     return converter.pair_val;
   } else {
     return *ptr;
@@ -187,14 +194,14 @@ __forceinline__ __device__ void store_pair_vectorized(
     pair_type2vec_type converter = {0};
     converter.pair_val = val;
     *reinterpret_cast<int*>(ptr) = converter.vec_val;
-  } else if (sizeof(short) == sizeof(pair_type)) {
+  } else if (sizeof(short) == sizeof(pair_type)) { // NOLINT
     union pair_type2vec_type {
-      short vec_val;
+      short vec_val; // NOLINT
       pair_type pair_val;
     };
     pair_type2vec_type converter = {0};
     converter.pair_val = val;
-    *reinterpret_cast<short*>(ptr) = converter.vec_val;
+    *reinterpret_cast<short*>(ptr) = converter.vec_val; // NOLINT
   } else {
     *ptr = val;
   }
@@ -346,7 +353,7 @@ class concurrent_unordered_map : public managed {
 
  private:
   union pair2longlong {
-    unsigned long long int longlong;
+    unsigned long long int longlong; // NOLINT
     value_type pair;
   };
 
@@ -375,10 +382,10 @@ class concurrent_unordered_map : public managed {
           &hashtbl_values_ptr_attributes, m_hashtbl_values);
 
 #if CUDART_VERSION >= 10000
-      if (cudaSuccess == status &&
+      if (cudaSuccess == status && // NOLINT
           hashtbl_values_ptr_attributes.type == cudaMemoryTypeManaged)
 #else
-      if (cudaSuccess == status && hashtbl_values_ptr_attributes.isManaged)
+      if (cudaSuccess == status && hashtbl_values_ptr_attributes.isManaged) // NOLINT
 #endif
       {
         int dev_id = 0;
@@ -428,7 +435,7 @@ class concurrent_unordered_map : public managed {
   // Generic update of a hash table value for any aggregator
   template <typename aggregation_type>
   __forceinline__ __device__ void update_existing_value(
-      mapped_type& existing_value,
+      mapped_type& existing_value, // NOLINT
       value_type const& insert_pair,
       aggregation_type) {
     // update without CAS
@@ -436,7 +443,7 @@ class concurrent_unordered_map : public managed {
   }
 
   __forceinline__ __device__ void accum_existing_value_atomic(
-      mapped_type& existing_value, value_type const& accum_pair) {
+      mapped_type& existing_value, value_type const& accum_pair) { // NOLINT
     // update with CAS
     // existing_value = insert_pair.second;
     int num_element =
@@ -450,7 +457,8 @@ class concurrent_unordered_map : public managed {
     // atomicAdd(&existing_value, double val)
   }
 
-  // TODO Overload atomicAdd for 1 byte and 2 byte types, until then, overload
+  // TODO(Thunderbrook)
+  // Overload atomicAdd for 1 byte and 2 byte types, until then, overload
   // specifically for the
   // types where atomicAdd already has an overload. Otherwise the generic
   // update_existing_value will
@@ -488,8 +496,7 @@ class concurrent_unordered_map : public managed {
     atomicAdd(&existing_value, static_cast<mapped_type>(1));
   }
   */
-
-  /* --------------------------------------------------------------------------*/
+  /* --------------------------------------------------------------------------*/  // NOLINT
   /**
    * @Synopsis  Inserts a new (key, value) pair. If the key already exists in
    the map
@@ -513,7 +520,7 @@ class concurrent_unordered_map : public managed {
    *
    * @Returns An iterator to the newly inserted key,value pair
    */
-  /* ----------------------------------------------------------------------------*/
+  /* ----------------------------------------------------------------------------*/ // NOLINT
   template <typename aggregation_type,
             class comparison_type = key_equal,
             typename hash_value_type = typename Hasher::result_type>
@@ -532,9 +539,7 @@ class concurrent_unordered_map : public managed {
     // the write location of the new key
     if (true == precomputed_hash) {
       hash_value = precomputed_hash_value;
-    }
-    // Otherwise, compute the hash value from the new key
-    else {
+    } else {  // Otherwise, compute the hash value from the new key
       hash_value = m_hf(x.first);
     }
 
@@ -567,9 +572,9 @@ class concurrent_unordered_map : public managed {
       // operation, it is safe to perform the operation when the existing_value
       // still
       // has its initial value
-      // TODO: Use template specialization to make use of native atomic
-      // functions
-      // TODO: How to handle data types less than 32 bits?
+      // TODO(Thunderbrook): Use template specialization to
+      // make use of native atomic functions
+      // TODO(Thunderbrook): How to handle data types less than 32 bits?
       if (keys_equal(unused_key, old_key) || keys_equal(insert_key, old_key)) {
         update_existing_value(existing_value, x, op);
 
@@ -695,9 +700,7 @@ x.second );
     // the write location of the new key
     if (true == precomputed_hash) {
       hash_value = precomputed_hash_value;
-    }
-    // Otherwise, compute the hash value from the new key
-    else {
+    } else {  // Otherwise, compute the hash value from the new key
       hash_value = m_hf(k);
     }
 
@@ -733,9 +736,10 @@ x.second );
       // operation, it is safe to perform the operation when the existing_value
       // still
       // has its initial value
-      // TODO: Use template specialization to make use of native atomic
+      // TODO(Thunderbrook): Use template specialization
+      // to make use of native atomic
       // functions
-      // TODO: How to handle data types less than 32 bits?
+      // TODO(Thunderbrook): How to handle data types less than 32 bits?
 
       // Situation #1: Empty slot: this key never exist in the table, ready to
       // insert.
@@ -743,9 +747,8 @@ x.second );
         // update_existing_value(existing_value, x, op);
         existing_value = (mapped_type)(atomicAdd(value_counter, 1));
         break;
-
-      }  // Situation #2+#3: Target slot: This slot is the slot for this key
-      else if (keys_equal(insert_key, old_key)) {
+      } else if (keys_equal(insert_key, old_key)) {
+        // Situation #2+#3: Target slot: This slot is the slot for this key
         while (existing_value == m_unused_element) {
           // Situation #2: This slot is inserting by another CUDA thread and the
           // value is not yet
@@ -798,7 +801,7 @@ x.second );
     if (count_collisions) m_collisions = 0;
   }
 
-  unsigned long long get_num_collisions() const { return m_collisions; }
+  unsigned long long get_num_collisions() const { return m_collisions; } // NOLINT
 
   void print() {
     for (size_type i = 0; i < 5; ++i) {
@@ -862,7 +865,7 @@ x.second );
   size_type m_hashtbl_capacity;
   value_type* m_hashtbl_values;
 
-  unsigned long long m_collisions;
+  unsigned long long m_collisions; // NOLINT
 };
 
-#endif  // CONCURRENT_UNORDERED_MAP_CUH
+#endif  // PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_CONCURRENT_UNORDERED_MAP_CUH_H_
