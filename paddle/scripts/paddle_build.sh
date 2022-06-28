@@ -3346,7 +3346,6 @@ function main() {
         build_pr_and_develop
         ;;
       build_dev_test)
-        #build_develop
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         get_build_time_file
         ;;
