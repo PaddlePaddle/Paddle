@@ -2092,9 +2092,10 @@ Scope* OperatorWithKernel::PrepareData(
         }
       }
 
-      if (!need_trans_dtype && !need_trans_layout &&
-          new_expected_kernel_key == nullptr) {
-        continue;
+      if (!need_trans_dtype && !need_trans_layout) {
+        if (run_phi_kernel_ && new_expected_kernel_key == nullptr) {
+          continue;
+        }
       }
 
       VLOG(3) << "Transform Variable " << var_name << " from "
