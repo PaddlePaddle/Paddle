@@ -447,12 +447,12 @@ __global__ void UpdateOutIndexV2(const int n,
   CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
     IntT index = indexs[i];
     // kernel_size at most
-    int* counts_ptr =
-        i < half_kernel_offset ? index_counts : index_counts + nnz;
-    int j = atomicAdd(counts_ptr + index, 1);
-    // nnz * kernel_size
-    int group_offset = i < half_kernel_offset ? 0 : kernel_size / 2;
-    index_groups[index * kernel_size + j + group_offset] = i;
+    /// int* counts_ptr =
+    ///     i < half_kernel_offset ? index_counts : index_counts + nnz;
+    /// int j = atomicAdd(counts_ptr + index, 1);
+    ///// nnz * kernel_size
+    /// int group_offset = i < half_kernel_offset ? 0 : kernel_size / 2;
+    /// index_groups[index * kernel_size + j + group_offset] = i;
   }
 }
 

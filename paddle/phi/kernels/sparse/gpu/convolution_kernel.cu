@@ -139,47 +139,33 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   T* out_features_ptr = out_features.data<T>();
   phi::funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
-
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n, 1);
-  DenseTensor index_groups = phi::Empty<int>(dev_ctx, {x.nnz() * kernel_size});
-  DenseTensor index_counts = phi::Empty<int>(dev_ctx, {n});
-  int* index_counts_ptr = index_counts.data<int>();
-  int* index_groups_ptr = index_groups.data<int>();
-  cudaMemsetAsync(index_counts_ptr, 0, sizeof(int) * n, dev_ctx.stream());
-  UpdateOutIndex<<<config.block_per_grid,
-                   config.thread_per_block,
-                   0,
-                   dev_ctx.stream()>>>(
-      n, kernel_size, rulebook_ptr, index_counts_ptr, index_groups_ptr);
+  // phi::backends::gpu::GpuMemsetAsync(out_features_ptr,
+  // static_cast<T>(0.0f), sizeof(T) * out_features.numel(), dev_ctx.stream());
 
   const int VecSize = VecBytes / sizeof(T);
   if (in_channels % VecSize == 0) {
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, x.nnz() * in_channels / VecSize, 1);
-    GatherKernelV2<T, IntT, VecSize>
+        dev_ctx, n * in_channels / VecSize, 1);
+    GatherKernel<T, IntT, VecSize>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
            0,
            dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                               index_counts_ptr,
-                               index_groups_ptr,
-                               x.nnz(),
-                               kernel_size,
+                               rulebook_ptr,
                                in_features_ptr,
+                               n,
                                in_channels);
   } else {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, x.nnz() * in_channels, 1);
-    GatherKernelV2<T, IntT, 1>
+    auto config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n * in_channels, 1);
+    GatherKernel<T, IntT, 1>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
            0,
            dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                               index_counts_ptr,
-                               index_groups_ptr,
-                               x.nnz(),
-                               kernel_size,
+                               rulebook_ptr,
                                in_features_ptr,
+                               n,
                                in_channels);
   }
 
@@ -190,6 +176,8 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
 
   if (subm) {
+    // set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n, 1);
     unique_value.ResizeAndAllocate(
         {static_cast<int>(out->nnz() * kernel_size)});
