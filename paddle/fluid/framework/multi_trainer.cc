@@ -81,11 +81,13 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
 
 std::string MultiTrainer::GetDumpPath(int tid) {
   if (user_define_dump_filename_ != "") {
-    return string::format_string("%s/part-%s-%05d", dump_fields_path_.c_str(),
-                                 user_define_dump_filename_.c_str(), tid);
+    return string::format_string("%s/part-%s-%05d",
+                                 dump_fields_path_.c_str(),
+                                 user_define_dump_filename_.c_str(),
+                                 tid);
   }
-  return string::format_string("%s/part-%03d-%05d", dump_fields_path_.c_str(),
-                               mpi_rank_, tid);
+  return string::format_string(
+      "%s/part-%03d-%05d", dump_fields_path_.c_str(), mpi_rank_, tid);
 }
 
 void MultiTrainer::InitDumpEnv() {
@@ -151,7 +153,8 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   for (auto& var : main_program.Block(0).AllVars()) {
     if (var->Persistable()) {
       auto it = std::find(need_merge_var_names_.begin(),
-                          need_merge_var_names_.end(), var->Name());
+                          need_merge_var_names_.end(),
+                          var->Name());
       if (it == need_merge_var_names_.end() &&
           var->GetType() != proto::VarType::SELECTED_ROWS) {
         VLOG(2) << "train param: " << var->Name();

@@ -21,7 +21,9 @@
 namespace paddle {
 namespace operators {
 
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          size_t D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using Tensor = framework::Tensor;
@@ -33,12 +35,14 @@ inline std::vector<int> get_new_shape(
   std::vector<int> vec_new_shape;
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
-    PADDLE_ENFORCE_EQ(tensor->dims(), phi::make_ddim({1}),
+    PADDLE_ENFORCE_EQ(tensor->dims(),
+                      phi::make_ddim({1}),
                       platform::errors::InvalidArgument(
                           "The shape of dimension tensor should be [1],"
                           "but received d%.",
                           tensor->dims()));
-    if (platform::is_gpu_place(tensor->place())) {
+    if (platform::is_gpu_place(tensor->place()) ||
+        platform::is_mlu_place(tensor->place())) {
       framework::Tensor temp;
       paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
       vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
@@ -55,9 +59,10 @@ inline std::vector<T> get_new_data_from_tensor(const Tensor* new_data_tensor) {
   std::vector<T> vec_new_data;
   auto* new_data = new_data_tensor->data<T>();
   framework::Tensor cpu_starts_tensor;
-  if (platform::is_gpu_place(new_data_tensor->place())) {
-    paddle::framework::TensorCopySync(*new_data_tensor, platform::CPUPlace(),
-                                      &cpu_starts_tensor);
+  if (platform::is_gpu_place(new_data_tensor->place()) ||
+      platform::is_mlu_place(new_data_tensor->place())) {
+    paddle::framework::TensorCopySync(
+        *new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
   vec_new_data = std::vector<T>(new_data, new_data + new_data_tensor->numel());
@@ -65,8 +70,12 @@ inline std::vector<T> get_new_data_from_tensor(const Tensor* new_data_tensor) {
 }
 
 inline void ExtractNCDWH(const framework::DDim& dims,
-                         const DataLayout& data_layout, int* N, int* C, int* D,
-                         int* H, int* W) {
+                         const DataLayout& data_layout,
+                         int* N,
+                         int* C,
+                         int* D,
+                         int* H,
+                         int* W) {
   *N = dims[0];
 
   if (dims.size() == 3) {
@@ -88,10 +97,14 @@ inline void ExtractNCDWH(const framework::DDim& dims,
 }
 
 template <typename T>
-static void NearestNeighborInterpolate(const Tensor& input, Tensor* output,
-                                       const float ratio_h, const float ratio_w,
-                                       const int n, const int c,
-                                       const int out_h, const int out_w,
+static void NearestNeighborInterpolate(const Tensor& input,
+                                       Tensor* output,
+                                       const float ratio_h,
+                                       const float ratio_w,
+                                       const int n,
+                                       const int c,
+                                       const int out_h,
+                                       const int out_w,
                                        const bool align_corners,
                                        const DataLayout& data_layout) {
   auto input_t = EigenTensor<T, 4>::From(input);
@@ -118,10 +131,15 @@ static void NearestNeighborInterpolate(const Tensor& input, Tensor* output,
 }
 
 template <typename T>
-static void LinearInterpolation(const Tensor& input, Tensor* output,
-                                const float ratio_w, const int in_w,
-                                const int n, const int c, const int out_w,
-                                const bool align_corners, const bool align_mode,
+static void LinearInterpolation(const Tensor& input,
+                                Tensor* output,
+                                const float ratio_w,
+                                const int in_w,
+                                const int n,
+                                const int c,
+                                const int out_w,
+                                const bool align_corners,
+                                const bool align_mode,
                                 const DataLayout data_layout) {
   auto input_t = EigenTensor<T, 3>::From(input);
   auto output_t = EigenTensor<T, 3>::From(*output);
@@ -178,9 +196,13 @@ static void LinearInterpolation(const Tensor& input, Tensor* output,
 
 template <typename T>
 static void LinearInterpolationGrad(const Tensor& output_grad,
-                                    Tensor* input_grad, const float ratio_w,
-                                    const int in_w, const int n, const int c,
-                                    const int out_w, const bool align_corners,
+                                    Tensor* input_grad,
+                                    const float ratio_w,
+                                    const int in_w,
+                                    const int n,
+                                    const int c,
+                                    const int out_w,
+                                    const bool align_corners,
                                     const int align_mode,
                                     const DataLayout data_layout) {
   auto input_grad_t = EigenTensor<T, 3>::From(*input_grad);
@@ -215,10 +237,16 @@ static void LinearInterpolationGrad(const Tensor& output_grad,
 }
 
 template <typename T>
-static void BilinearInterpolation(const Tensor& input, Tensor* output,
-                                  const float ratio_h, const float ratio_w,
-                                  const int in_h, const int in_w, const int n,
-                                  const int c, const int out_h, const int out_w,
+static void BilinearInterpolation(const Tensor& input,
+                                  Tensor* output,
+                                  const float ratio_h,
+                                  const float ratio_w,
+                                  const int in_h,
+                                  const int in_w,
+                                  const int n,
+                                  const int c,
+                                  const int out_h,
+                                  const int out_w,
                                   const bool align_corners,
                                   const bool align_mode,
                                   const DataLayout data_layout) {
@@ -309,12 +337,22 @@ static void BilinearInterpolation(const Tensor& input, Tensor* output,
 }
 
 template <typename T>
-static void TrilinearInterpolation(
-    const Tensor& input, Tensor* output, const float ratio_d,
-    const float ratio_h, const float ratio_w, const int in_d, const int in_h,
-    const int in_w, const int n, const int c, const int out_d, const int out_h,
-    const int out_w, const bool align_corners, const bool align_mode,
-    const DataLayout& data_layout) {
+static void TrilinearInterpolation(const Tensor& input,
+                                   Tensor* output,
+                                   const float ratio_d,
+                                   const float ratio_h,
+                                   const float ratio_w,
+                                   const int in_d,
+                                   const int in_h,
+                                   const int in_w,
+                                   const int n,
+                                   const int c,
+                                   const int out_d,
+                                   const int out_h,
+                                   const int out_w,
+                                   const bool align_corners,
+                                   const bool align_mode,
+                                   const DataLayout& data_layout) {
   auto input_t = EigenTensor<T, 5>::From(input);
   auto output_t = EigenTensor<T, 5>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
@@ -484,10 +522,16 @@ static inline T cubic_interp(T x0, T x1, T x2, T x3, T t) {
 }
 
 template <typename T>
-static void BicubicInterpolation(const Tensor& input, Tensor* output,
-                                 const float ratio_h, const float ratio_w,
-                                 const int in_h, const int in_w, const int n,
-                                 const int c, const int out_h, const int out_w,
+static void BicubicInterpolation(const Tensor& input,
+                                 Tensor* output,
+                                 const float ratio_h,
+                                 const float ratio_w,
+                                 const int in_h,
+                                 const int in_w,
+                                 const int n,
+                                 const int c,
+                                 const int out_h,
+                                 const int out_w,
                                  const bool align_corners,
                                  const DataLayout data_layout) {
   auto input_t = EigenTensor<T, 4>::From(input);
@@ -525,25 +569,31 @@ static void BicubicInterpolation(const Tensor& input, Tensor* output,
                   cubic_interp<T>(input_t(i, j, access_y, access_x_0),
                                   input_t(i, j, access_y, access_x_1),
                                   input_t(i, j, access_y, access_x_2),
-                                  input_t(i, j, access_y, access_x_3), x_t);
+                                  input_t(i, j, access_y, access_x_3),
+                                  x_t);
             } else {
               coefficients[ii] =
                   cubic_interp<T>(input_t(i, access_y, access_x_0, j),
                                   input_t(i, access_y, access_x_1, j),
                                   input_t(i, access_y, access_x_2, j),
-                                  input_t(i, access_y, access_x_3, j), x_t);
+                                  input_t(i, access_y, access_x_3, j),
+                                  x_t);
             }
           }
 
           // interp y direction
           if (data_layout == DataLayout::kNCHW) {
-            output_t(i, j, k, l) =
-                cubic_interp<T>(coefficients[0], coefficients[1],
-                                coefficients[2], coefficients[3], y_t);
+            output_t(i, j, k, l) = cubic_interp<T>(coefficients[0],
+                                                   coefficients[1],
+                                                   coefficients[2],
+                                                   coefficients[3],
+                                                   y_t);
           } else {
-            output_t(i, k, l, j) =
-                cubic_interp<T>(coefficients[0], coefficients[1],
-                                coefficients[2], coefficients[3], y_t);
+            output_t(i, k, l, j) = cubic_interp<T>(coefficients[0],
+                                                   coefficients[1],
+                                                   coefficients[2],
+                                                   coefficients[3],
+                                                   y_t);
           }
         }
       }
@@ -552,10 +602,16 @@ static void BicubicInterpolation(const Tensor& input, Tensor* output,
 }
 
 template <typename T>
-static void NearestNeighborInterpolateGrad(
-    const Tensor& output_grad, Tensor* input_grad, const float ratio_h,
-    const float ratio_w, const int n, const int c, const int out_h,
-    const int out_w, const bool align_corners, const DataLayout data_layout) {
+static void NearestNeighborInterpolateGrad(const Tensor& output_grad,
+                                           Tensor* input_grad,
+                                           const float ratio_h,
+                                           const float ratio_w,
+                                           const int n,
+                                           const int c,
+                                           const int out_h,
+                                           const int out_w,
+                                           const bool align_corners,
+                                           const DataLayout data_layout) {
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
 
@@ -581,11 +637,19 @@ static void NearestNeighborInterpolateGrad(
 }
 
 template <typename T>
-static void BilinearInterpolationGrad(
-    const Tensor& output_grad, Tensor* input_grad, const float ratio_h,
-    const float ratio_w, const int in_h, const int in_w, const int n,
-    const int c, const int out_h, const int out_w, const bool align_corners,
-    const int align_mode, const DataLayout data_layout) {
+static void BilinearInterpolationGrad(const Tensor& output_grad,
+                                      Tensor* input_grad,
+                                      const float ratio_h,
+                                      const float ratio_w,
+                                      const int in_h,
+                                      const int in_w,
+                                      const int n,
+                                      const int c,
+                                      const int out_h,
+                                      const int out_w,
+                                      const bool align_corners,
+                                      const int align_mode,
+                                      const DataLayout data_layout) {
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
@@ -632,12 +696,22 @@ static void BilinearInterpolationGrad(
 }
 
 template <typename T>
-static void TrilinearInterpolationGrad(
-    const Tensor& output_grad, Tensor* input_grad, const float ratio_d,
-    const float ratio_h, const float ratio_w, const int in_d, const int in_h,
-    const int in_w, const int n, const int c, const int out_d, const int out_h,
-    const int out_w, const bool align_corners, const int align_mode,
-    const DataLayout data_layout) {
+static void TrilinearInterpolationGrad(const Tensor& output_grad,
+                                       Tensor* input_grad,
+                                       const float ratio_d,
+                                       const float ratio_h,
+                                       const float ratio_w,
+                                       const int in_d,
+                                       const int in_h,
+                                       const int in_w,
+                                       const int n,
+                                       const int c,
+                                       const int out_d,
+                                       const int out_h,
+                                       const int out_w,
+                                       const bool align_corners,
+                                       const int align_mode,
+                                       const DataLayout data_layout) {
   auto input_grad_t = EigenTensor<T, 5>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 5>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
@@ -720,10 +794,15 @@ static void TrilinearInterpolationGrad(
 
 template <typename T>
 static void BicubicInterpolationGrad(const Tensor& output_grad,
-                                     Tensor* input_grad, const float ratio_h,
-                                     const float ratio_w, const int in_h,
-                                     const int in_w, const int n, const int c,
-                                     const int out_h, const int out_w,
+                                     Tensor* input_grad,
+                                     const float ratio_h,
+                                     const float ratio_w,
+                                     const int in_h,
+                                     const int in_w,
+                                     const int n,
+                                     const int c,
+                                     const int out_h,
+                                     const int out_w,
                                      const bool align_corners,
                                      const DataLayout data_layout) {
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
@@ -775,7 +854,8 @@ static void BicubicInterpolationGrad(const Tensor& output_grad,
 
 template <typename T>
 static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
-                                const Tensor& input, Tensor* output) {
+                                const Tensor& input,
+                                Tensor* output) {
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -809,7 +889,8 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
       out_w = out_size_data[0];
     }
   }
-  PADDLE_ENFORCE_GT(out_w, 0,
+  PADDLE_ENFORCE_GT(out_w,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
@@ -832,14 +913,23 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
                               : static_cast<float>(in_w) / out_w;
   }
   if ("linear" == interp_method) {
-    LinearInterpolation<T>(input, output, ratio_w, in_w, n, c, out_w,
-                           align_corners, align_mode, data_layout);
+    LinearInterpolation<T>(input,
+                           output,
+                           ratio_w,
+                           in_w,
+                           n,
+                           c,
+                           out_w,
+                           align_corners,
+                           align_mode,
+                           data_layout);
   }
 }
 
 template <typename T>
 static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
-                                const Tensor& input, Tensor* output) {
+                                const Tensor& input,
+                                Tensor* output) {
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -878,11 +968,13 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
       out_w = out_size_data[1];
     }
   }
-  PADDLE_ENFORCE_GT(out_h, 0,
+  PADDLE_ENFORCE_GT(out_h,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_h in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
-  PADDLE_ENFORCE_GT(out_w, 0,
+  PADDLE_ENFORCE_GT(out_w,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
@@ -911,21 +1003,50 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
   }
 
   if ("bilinear" == interp_method) {
-    BilinearInterpolation<T>(input, output, ratio_h, ratio_w, in_h, in_w, n, c,
-                             out_h, out_w, align_corners, align_mode,
+    BilinearInterpolation<T>(input,
+                             output,
+                             ratio_h,
+                             ratio_w,
+                             in_h,
+                             in_w,
+                             n,
+                             c,
+                             out_h,
+                             out_w,
+                             align_corners,
+                             align_mode,
                              data_layout);
   } else if ("nearest" == interp_method) {
-    NearestNeighborInterpolate<T>(input, output, ratio_h, ratio_w, n, c, out_h,
-                                  out_w, align_corners, data_layout);
+    NearestNeighborInterpolate<T>(input,
+                                  output,
+                                  ratio_h,
+                                  ratio_w,
+                                  n,
+                                  c,
+                                  out_h,
+                                  out_w,
+                                  align_corners,
+                                  data_layout);
   } else if ("bicubic" == interp_method) {
-    BicubicInterpolation<T>(input, output, ratio_h, ratio_w, in_h, in_w, n, c,
-                            out_h, out_w, align_corners, data_layout);
+    BicubicInterpolation<T>(input,
+                            output,
+                            ratio_h,
+                            ratio_w,
+                            in_h,
+                            in_w,
+                            n,
+                            c,
+                            out_h,
+                            out_w,
+                            align_corners,
+                            data_layout);
   }
 }
 
 template <typename T>
 static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
-                                const Tensor& input, Tensor* output) {
+                                const Tensor& input,
+                                Tensor* output) {
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -968,15 +1089,18 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
       out_w = out_size_data[2];
     }
   }
-  PADDLE_ENFORCE_GT(out_d, 0,
+  PADDLE_ENFORCE_GT(out_d,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_d in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
-  PADDLE_ENFORCE_GT(out_h, 0,
+  PADDLE_ENFORCE_GT(out_h,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_h in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
-  PADDLE_ENFORCE_GT(out_w, 0,
+  PADDLE_ENFORCE_GT(out_w,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
@@ -1012,15 +1136,29 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
   }
 
   if ("trilinear" == interp_method) {
-    TrilinearInterpolation<T>(input, output, ratio_d, ratio_h, ratio_w, in_d,
-                              in_h, in_w, n, c, out_d, out_h, out_w,
-                              align_corners, align_mode, data_layout);
+    TrilinearInterpolation<T>(input,
+                              output,
+                              ratio_d,
+                              ratio_h,
+                              ratio_w,
+                              in_d,
+                              in_h,
+                              in_w,
+                              n,
+                              c,
+                              out_d,
+                              out_h,
+                              out_w,
+                              align_corners,
+                              align_mode,
+                              data_layout);
   }
 }
 
 template <typename T>
 static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
-                                Tensor* input_grad, const Tensor& output_grad) {
+                                Tensor* input_grad,
+                                const Tensor& output_grad) {
   auto* input = ctx.Input<Tensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
@@ -1078,14 +1216,23 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
                               : static_cast<float>(in_w) / out_w;
   }
   if ("linear" == interp_method) {
-    LinearInterpolationGrad<T>(output_grad, input_grad, ratio_w, in_w, n, c,
-                               out_w, align_corners, align_mode, data_layout);
+    LinearInterpolationGrad<T>(output_grad,
+                               input_grad,
+                               ratio_w,
+                               in_w,
+                               n,
+                               c,
+                               out_w,
+                               align_corners,
+                               align_mode,
+                               data_layout);
   }
 }
 
 template <typename T>
 static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
-                                Tensor* input_grad, const Tensor& output_grad) {
+                                Tensor* input_grad,
+                                const Tensor& output_grad) {
   auto* input = ctx.Input<Tensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
@@ -1153,23 +1300,50 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
   }
 
   if ("bilinear" == interp_method) {
-    BilinearInterpolationGrad<T>(output_grad, input_grad, ratio_h, ratio_w,
-                                 in_h, in_w, n, c, out_h, out_w, align_corners,
-                                 align_mode, data_layout);
+    BilinearInterpolationGrad<T>(output_grad,
+                                 input_grad,
+                                 ratio_h,
+                                 ratio_w,
+                                 in_h,
+                                 in_w,
+                                 n,
+                                 c,
+                                 out_h,
+                                 out_w,
+                                 align_corners,
+                                 align_mode,
+                                 data_layout);
   } else if ("nearest" == interp_method) {
-    NearestNeighborInterpolateGrad<T>(output_grad, input_grad, ratio_h, ratio_w,
-                                      n, c, out_h, out_w, align_corners,
+    NearestNeighborInterpolateGrad<T>(output_grad,
+                                      input_grad,
+                                      ratio_h,
+                                      ratio_w,
+                                      n,
+                                      c,
+                                      out_h,
+                                      out_w,
+                                      align_corners,
                                       data_layout);
   } else if ("bicubic" == interp_method) {
-    BicubicInterpolationGrad<T>(output_grad, input_grad, ratio_h, ratio_w, in_h,
-                                in_w, n, c, out_h, out_w, align_corners,
+    BicubicInterpolationGrad<T>(output_grad,
+                                input_grad,
+                                ratio_h,
+                                ratio_w,
+                                in_h,
+                                in_w,
+                                n,
+                                c,
+                                out_h,
+                                out_w,
+                                align_corners,
                                 data_layout);
   }
 }
 
 template <typename T>
 static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
-                                Tensor* input_grad, const Tensor output_grad) {
+                                Tensor* input_grad,
+                                const Tensor output_grad) {
   auto* input = ctx.Input<Tensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
@@ -1245,9 +1419,22 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
   }
 
   if ("trilinear" == interp_method) {
-    TrilinearInterpolationGrad<T>(
-        output_grad, input_grad, ratio_d, ratio_h, ratio_w, in_d, in_h, in_w, n,
-        c, out_d, out_h, out_w, align_corners, align_mode, data_layout);
+    TrilinearInterpolationGrad<T>(output_grad,
+                                  input_grad,
+                                  ratio_d,
+                                  ratio_h,
+                                  ratio_w,
+                                  in_d,
+                                  in_h,
+                                  in_w,
+                                  n,
+                                  c,
+                                  out_d,
+                                  out_h,
+                                  out_w,
+                                  align_corners,
+                                  align_mode,
+                                  data_layout);
   }
 }
 

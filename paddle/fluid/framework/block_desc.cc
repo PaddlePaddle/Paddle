@@ -212,7 +212,8 @@ BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
   }
 }
 
-BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
+BlockDesc::BlockDesc(const BlockDesc &other,
+                     proto::BlockDesc *desc,
                      ProgramDesc *prog)
     : prog_(prog), desc_(desc) {
   need_update_ = true;
@@ -227,10 +228,13 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
 
 void BlockDesc::SetForwardBlockID(int32_t forward_block_id) {
   PADDLE_ENFORCE_EQ(
-      desc_->has_forward_block_idx(), false,
+      desc_->has_forward_block_idx(),
+      false,
       platform::errors::PreconditionNotMet(
           "Block %d's parent block ID has been set to %d, cannot be set to %d.",
-          desc_->idx(), desc_->forward_block_idx(), forward_block_id));
+          desc_->idx(),
+          desc_->forward_block_idx(),
+          forward_block_id));
   desc_->set_forward_block_idx(forward_block_id);
 }
 
@@ -268,7 +272,7 @@ void BlockDesc::MoveFrom(BlockDesc *block) {
     for (const auto &pair : src_op->GetAttrMap()) {
       const auto &attr_name = pair.first;
       const auto &attr_value = pair.second;
-      auto attr_type = static_cast<proto::AttrType>(attr_value.which() - 1);
+      auto attr_type = static_cast<proto::AttrType>(attr_value.index() - 1);
       if (attr_type == proto::AttrType::BLOCK) {
         auto block_id = BOOST_GET_CONST(BlockDesc *, attr_value)->ID();
         dst_op->SetBlockAttr(attr_name, prog_->MutableBlock(block_id));

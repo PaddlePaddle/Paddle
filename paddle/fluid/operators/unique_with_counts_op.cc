@@ -23,16 +23,17 @@ class UniqueWithCountsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "unique_with_counts");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "unique_with_counts");
-    OP_INOUT_CHECK(ctx->HasOutput("Index"), "Output", "Index",
-                   "unique_with_counts");
-    OP_INOUT_CHECK(ctx->HasOutput("Count"), "Output", "Count",
-                   "unique_with_counts");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "unique_with_counts");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Index"), "Output", "Index", "unique_with_counts");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Count"), "Output", "Count", "unique_with_counts");
 
     auto in_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(
-        in_dims.size(), 1,
+        in_dims.size(),
+        1,
         platform::errors::InvalidArgument("The Input(X) should be 1-D Tensor, "
                                           "But now the dims of Input(X) is %d.",
                                           in_dims.size()));
@@ -72,9 +73,11 @@ class UniqueWithCountsOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(unique_with_counts, ops::UniqueWithCountsOp,
+REGISTER_OP_WITHOUT_GRADIENT(unique_with_counts,
+                             ops::UniqueWithCountsOp,
                              ops::UniqueWithCountsOpMaker);
-REGISTER_OP_CPU_KERNEL(unique_with_counts, ops::UniqueWithCountsKernel<float>,
+REGISTER_OP_CPU_KERNEL(unique_with_counts,
+                       ops::UniqueWithCountsKernel<float>,
                        ops::UniqueWithCountsKernel<double>,
                        ops::UniqueWithCountsKernel<int32_t>,
                        ops::UniqueWithCountsKernel<int64_t>);

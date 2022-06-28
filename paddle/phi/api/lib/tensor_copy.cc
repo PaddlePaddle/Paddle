@@ -14,28 +14,30 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/tensor_copy.h"
 
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace experimental {
 
-void copy(const Tensor& src, Place place, bool blocking, Tensor* dst) {
+void copy(const Tensor& src, const Place& place, bool blocking, Tensor* dst) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(src);
   kernel_key_set.backend_set =
       kernel_key_set.backend_set | BackendSet(phi::TransToPhiBackend(place));
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "copy", kernel_key);
 
-  VLOG(6) << "copy API kernel key: " << kernel_key;
-  VLOG(6) << "copy API kernel: " << kernel;
+  VLOG(6) << "start copy. ";
 
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto target_place = phi::TransToPhiPlace(kernel_key.backend());
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.GetMutable(
+      target_place.GetType() == place.GetType() ? place : target_place);
 
   auto dense_x = TensorToDenseTensor(src);
 
@@ -43,14 +45,9 @@ void copy(const Tensor& src, Place place, bool blocking, Tensor* dst) {
   phi::MetaTensor meta_out(kernel_out);
   phi::UnchangedInferMeta(*dense_x, &meta_out);
 
-  using kernel_signature = void (*)(const platform::DeviceContext&,
-                                    const phi::DenseTensor&,
-                                    phi::Place,
-                                    bool,
-                                    phi::DenseTensor*);
+  phi::Copy(*dev_ctx, *dense_x, place, blocking, kernel_out);
 
-  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  (*kernel_fn)(*dev_ctx, *dense_x, place, blocking, kernel_out);
+  VLOG(6) << "copy finished. ";
 }
 
 }  // namespace experimental

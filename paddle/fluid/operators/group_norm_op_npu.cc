@@ -14,7 +14,8 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/operators/group_norm_op.h"
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -31,18 +32,22 @@ struct GroupNormFunction {
     stream = ctx.template device_context<paddle::platform::NPUDeviceContext>()
                  .stream();
   }
-  void ReduceMean(const Tensor* x, Tensor* y, const std::vector<int>& dim,
+  void ReduceMean(const Tensor* x,
+                  Tensor* y,
+                  const std::vector<int>& dim,
                   bool keep_dims = true) {
     //  y should be init first
-    const auto& runner = NpuOpRunner("ReduceMeanD", {*x}, {*y},
-                                     {{"axes", dim}, {"keep_dims", keep_dims}});
+    const auto& runner = NpuOpRunner(
+        "ReduceMeanD", {*x}, {*y}, {{"axes", dim}, {"keep_dims", keep_dims}});
     runner.Run(stream);
   }
-  void ReduceSum(const Tensor* x, Tensor* y, const std::vector<int>& dim,
+  void ReduceSum(const Tensor* x,
+                 Tensor* y,
+                 const std::vector<int>& dim,
                  bool keep_dims = true) {
     //  y should be init first
-    const auto& runner = NpuOpRunner("ReduceSumD", {*x}, {*y},
-                                     {{"axes", dim}, {"keep_dims", keep_dims}});
+    const auto& runner = NpuOpRunner(
+        "ReduceSumD", {*x}, {*y}, {{"axes", dim}, {"keep_dims", keep_dims}});
     runner.Run(stream);
   }
   void Add(const Tensor* x, const Tensor* y, Tensor* z) {
@@ -86,9 +91,13 @@ struct GroupNormFunction {
     const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
-  Tensor ReduceMeanToNG(const Tensor* x, const DataLayout& data_layout,
-                        const int64_t N, const int64_t C, const int64_t H,
-                        const int64_t W, const int G) {
+  Tensor ReduceMeanToNG(const Tensor* x,
+                        const DataLayout& data_layout,
+                        const int64_t N,
+                        const int64_t C,
+                        const int64_t H,
+                        const int64_t W,
+                        const int G) {
     Tensor y(x->type());
     // y.mutable_data<T>( {N,G,1}, place );
     if (data_layout == DataLayout::kNCHW) {
@@ -301,7 +310,9 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(group_norm, ops::GroupNormNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(group_norm,
+                       ops::GroupNormNPUKernel<float>,
                        ops::GroupNormNPUKernel<plat::float16>);
-REGISTER_OP_NPU_KERNEL(group_norm_grad, ops::GroupNormGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(group_norm_grad,
+                       ops::GroupNormGradNPUKernel<float>,
                        ops::GroupNormGradNPUKernel<plat::float16>);

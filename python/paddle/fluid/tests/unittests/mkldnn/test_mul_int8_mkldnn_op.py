@@ -64,7 +64,7 @@ class TestMKLDNNMulOpS8S8(OpTest):
 
         B_data = np.random.uniform(-127, 127, (5, 20)).astype(np.float32)
 
-        quant_B = np.round(B_data * self.scale_y[0]).astype(np.int)
+        quant_B = np.round(B_data * self.scale_y[0]).astype(np.int_)
         output = np.dot(A_data, quant_B)
 
         scale_output_shift = (self.scale_out) / \
@@ -136,7 +136,7 @@ class TestMKLDNNMulOpS8S8WithFlatten(TestMKLDNNMulOpS8S8):
         A_data_reshape = A_data.reshape(3 * 4, 4 * 3)
         B_data_reshape = B_data.reshape(2 * 6, 1 * 2 * 3)
 
-        quant_B = np.round(B_data_reshape * self.scale_y[0]).astype(np.int)
+        quant_B = np.round(B_data_reshape * self.scale_y[0]).astype(np.int_)
         output = np.dot(A_data_reshape, quant_B)
 
         scale_output_shift = (self.scale_out) / \

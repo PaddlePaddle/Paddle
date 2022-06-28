@@ -114,8 +114,13 @@ class ParallelConnectContext : public gloo::rendezvous::Context {
     for (int i = 0; i < NBYTES; i++) {
       octet[i] = ipAddress >> (i * 8);
     }
-    snprintf(ipAddressFinal, sizeof(ipAddressFinal), "%d.%d.%d.%d", octet[0],
-             octet[1], octet[2], octet[3]);
+    snprintf(ipAddressFinal,
+             sizeof(ipAddressFinal),
+             "%d.%d.%d.%d",
+             octet[0],
+             octet[1],
+             octet[2],
+             octet[3]);
     return std::string(ipAddressFinal);
   }
 
@@ -161,7 +166,8 @@ class GlooWrapper {
 
   void SetPrefix(const std::string& prefix) { prefix_ = prefix; }
 
-  void SetHdfsStore(const std::string& path, const std::string& fs_name,
+  void SetHdfsStore(const std::string& path,
+                    const std::string& fs_name,
                     const std::string& fs_ugi) {
     store_type_ = GlooStoreType::HDFS;
     hdfs_path_ = path;
@@ -214,7 +220,8 @@ class GlooWrapper {
           static_cast<void (*)(void*, const void*, const void*, size_t)>(
               &gloo::min<T>));
     } else {
-      PADDLE_ENFORCE_EQ(0, 1,
+      PADDLE_ENFORCE_EQ(0,
+                        1,
                         paddle::platform::errors::InvalidArgument(
                             "AllReduce mode not known: " + mode));
     }
@@ -246,7 +253,8 @@ class GlooWrapper {
   //                   if it is vector, use AllgathervOptions,
   //                   which works in different length occasion.
   template <typename T>
-  void AllGatherVector(T* input_ptr, T* output_ptr,
+  void AllGatherVector(T* input_ptr,
+                       T* output_ptr,
                        std::vector<size_t>& element_nums) {  // NOLINT
     CHECK_EQ(is_initialized_, true);
 #ifdef PADDLE_WITH_GLOO
@@ -260,7 +268,8 @@ class GlooWrapper {
   }
 
   template <typename T>
-  void AllGatherVector(T* input_ptr, T* output_ptr,
+  void AllGatherVector(T* input_ptr,
+                       T* output_ptr,
                        size_t element_num) {  // NOLINT
     CHECK_EQ(is_initialized_, true);
 #ifdef PADDLE_WITH_GLOO

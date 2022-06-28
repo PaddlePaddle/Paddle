@@ -15,18 +15,17 @@
 from __future__ import print_function
 
 import six
+import paddle
 from paddle.utils import gast
-
 from paddle.fluid import core
 from paddle.fluid import unique_name
 from paddle.fluid.framework import Variable
-from paddle.fluid.layers import fill_constant
 from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = [
     'create_bool_as_type', 'create_fill_constant_node',
     'create_static_variable_gast_node', 'data_layer_not_check',
-    'to_static_variable', 'to_static_variable_gast_node'
+    'to_static_variable', 'to_static_variable_gast_node', 'create_undefined_var'
 ]
 
 
@@ -75,6 +74,17 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
                                          need_check_feed=False)
 
 
+def create_undefined_var(name):
+    func_code = "{} = _jst.UndefinedVar('{}')".format(name, name)
+    return gast.parse(func_code).body[0]
+
+
+def create_nonlocal_stmt_node(names):
+    assert isinstance(names, (list, tuple))
+    func_code = "nonlocal {}".format(','.join(names))
+    return gast.parse(func_code).body[0]
+
+
 def to_static_variable_gast_node(name):
     func_code = "{} = _jst.to_static_variable({})".format(name, name)
     return gast.parse(func_code).body[0]
@@ -87,17 +97,19 @@ def create_static_variable_gast_node(name):
 
 
 def create_fill_constant_node(name, value):
-    func_code = "{} = paddle.fluid.layers.fill_constant(shape=[1], ".format(
-        name)
+    func_code = "{} = paddle.full(shape=[1], ".format(name)
     if isinstance(value, bool):
-        func_code += "dtype='bool', value={}, name='{}')".format(value, name)
+        func_code += "dtype='bool', fill_value={}, name='{}')".format(
+            value, name)
         return gast.parse(func_code).body[0]
     if isinstance(value, float):
-        func_code += "dtype='float64', value={}, name='{}')".format(value, name)
+        func_code += "dtype='float64', fill_value={}, name='{}')".format(
+            value, name)
         return gast.parse(func_code).body[0]
 
     if isinstance(value, int):
-        func_code += "dtype='int64', value={}, name='{}')".format(value, name)
+        func_code += "dtype='int64', fill_value={}, name='{}')".format(
+            value, name)
         return gast.parse(func_code).body[0]
 
 
@@ -106,12 +118,12 @@ def to_static_variable(x):
     Translate a Python Tensor to PaddlePaddle static graph Tensor
     '''
     if isinstance(x, bool):
-        return fill_constant(shape=[1], dtype='bool', value=x)
+        return paddle.full(shape=[1], dtype='bool', fill_value=x)
     if isinstance(x, float):
-        return fill_constant(shape=[1], dtype='float64', value=x)
+        return paddle.full(shape=[1], dtype='float64', fill_value=x)
 
     if isinstance(x, six.integer_types):
-        return fill_constant(shape=[1], dtype='int64', value=x)
+        return paddle.full(shape=[1], dtype='int64', fill_value=x)
 
     return x
 
@@ -121,6 +133,6 @@ def create_bool_as_type(x, value=True):
     Create a bool variable, which type is the same as x.
     '''
     if isinstance(x, Variable):
-        return fill_constant(shape=[1], value=value, dtype="bool")
+        return paddle.full(shape=[1], fill_value=value, dtype="bool")
     else:
         return value

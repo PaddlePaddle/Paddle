@@ -37,10 +37,12 @@ class CumSumMLUKernel : public framework::OpKernel<T> {
     Tensor flat_x(x->type());
     if (flatten) {
       PADDLE_ENFORCE_EQ(
-          axis, -1,
+          axis,
+          -1,
           platform::errors::InvalidArgument(
               "when flatten is true, attr axis must be default %d, but got %d",
-              -1, axis));
+              -1,
+              axis));
 
       flat_x.ShareDataWith(*x);
       flat_x.Resize(phi::make_ddim({x->numel()}));
@@ -51,8 +53,14 @@ class CumSumMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc input_desc(*input_ptr);
     MLUCnnlTensorDesc out_desc(*out);
 
-    MLUCnnl::Cumsum(ctx, true_axis, exclusive, reverse, input_desc.get(),
-                    GetBasePtr(input_ptr), out_desc.get(), GetBasePtr(out));
+    MLUCnnl::Cumsum(ctx,
+                    true_axis,
+                    exclusive,
+                    reverse,
+                    input_desc.get(),
+                    GetBasePtr(input_ptr),
+                    out_desc.get(),
+                    GetBasePtr(out));
   }
 };
 
@@ -62,6 +70,7 @@ class CumSumMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(cumsum, ops::CumSumMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(cumsum,
+                       ops::CumSumMLUKernel<int>,
                        ops::CumSumMLUKernel<float>,
                        ops::CumSumMLUKernel<plat::float16>);

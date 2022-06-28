@@ -30,7 +30,9 @@ bool SortScorePairDescend(const std::pair<float, T>& pair1,
 
 template <class T>
 static inline void GetMaxScoreIndex(
-    const std::vector<T>& scores, const T threshold, int top_k,
+    const std::vector<T>& scores,
+    const T threshold,
+    int top_k,
     std::vector<std::pair<T, int>>* sorted_indices) {
   for (size_t i = 0; i < scores.size(); ++i) {
     if (scores[i] > threshold) {
@@ -38,7 +40,8 @@ static inline void GetMaxScoreIndex(
     }
   }
   // Sort the score pair according to the scores in descending order
-  std::stable_sort(sorted_indices->begin(), sorted_indices->end(),
+  std::stable_sort(sorted_indices->begin(),
+                   sorted_indices->end(),
                    SortScorePairDescend<int>);
   // Keep top_k scores if needed.
   if (top_k > -1 && top_k < static_cast<int>(sorted_indices->size())) {
@@ -65,7 +68,8 @@ static inline T BBoxArea(const T* box, const bool normalized) {
 }
 
 template <class T>
-static inline T JaccardOverlap(const T* box1, const T* box2,
+static inline T JaccardOverlap(const T* box1,
+                               const T* box2,
                                const bool normalized) {
   if (box2[0] > box1[2] || box2[2] < box1[0] || box2[1] > box1[3] ||
       box2[3] < box1[1]) {
@@ -86,7 +90,9 @@ static inline T JaccardOverlap(const T* box1, const T* box2,
 }
 
 template <class T>
-T PolyIoU(const T* box1, const T* box2, const size_t box_size,
+T PolyIoU(const T* box1,
+          const T* box2,
+          const size_t box_size,
           const bool normalized) {
   T bbox1_area = PolyArea<T>(box1, box_size, normalized);
   T bbox2_area = PolyArea<T>(box2, box_size, normalized);
@@ -109,7 +115,8 @@ static inline std::vector<std::pair<T, int>> GetSortedScoreIndex(
     sorted_indices.emplace_back(scores[i], i);
   }
   // Sort the score pair according to the scores in descending order
-  std::stable_sort(sorted_indices.begin(), sorted_indices.end(),
+  std::stable_sort(sorted_indices.begin(),
+                   sorted_indices.end(),
                    [](const std::pair<T, int>& a, const std::pair<T, int>& b) {
                      return a.first < b.first;
                    });
@@ -130,8 +137,11 @@ static inline framework::Tensor VectorToTensor(
 
 template <class T>
 framework::Tensor NMS(const platform::DeviceContext& ctx,
-                      framework::Tensor* bbox, framework::Tensor* scores,
-                      T nms_threshold, float eta, bool pixel_offset = true) {
+                      framework::Tensor* bbox,
+                      framework::Tensor* scores,
+                      T nms_threshold,
+                      float eta,
+                      bool pixel_offset = true) {
   int64_t num_boxes = bbox->dims()[0];
   // 4: [xmin ymin xmax ymax]
   int64_t box_size = bbox->dims()[1];
@@ -151,9 +161,9 @@ framework::Tensor NMS(const platform::DeviceContext& ctx,
     bool flag = true;
     for (int kept_idx : selected_indices) {
       if (flag) {
-        T overlap =
-            JaccardOverlap<T>(bbox_data + idx * box_size,
-                              bbox_data + kept_idx * box_size, normalized);
+        T overlap = JaccardOverlap<T>(bbox_data + idx * box_size,
+                                      bbox_data + kept_idx * box_size,
+                                      normalized);
         flag = (overlap <= adaptive_threshold);
       } else {
         break;

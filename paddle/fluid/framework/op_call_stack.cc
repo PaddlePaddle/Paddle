@@ -33,7 +33,8 @@ std::string InsertIndentationIntoEachLine(const std::string &str) {
   return sout.str();
 }
 
-void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
+void InsertCallStackInfo(const std::string &type,
+                         const AttributeMap &attrs,
                          platform::EnforceNotMet *exception) {
   if (attrs.count("sub_block") != 0) {
     return;
