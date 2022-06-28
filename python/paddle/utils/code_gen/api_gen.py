@@ -24,6 +24,11 @@ inplace_out_type_map = {
     "std::vector<Tensor>": "std::vector<Tensor>&"
 }
 
+inplace_optional_out_type_map = {
+    "Tensor": "paddle::optional<Tensor>&",
+    "std::vector<Tensor>": "paddle::optional<std::vector<Tensor>>&"
+}
+
 
 class ForwardAPI(BaseAPI):
 
@@ -80,7 +85,11 @@ class ForwardAPI(BaseAPI):
         for i, out_type in enumerate(self.outputs['types']):
             out_name = self.outputs['names'][i].split('@')[0]
             if inplace_flag and out_name in self.inplace_map:
-                out_type_list.append(inplace_out_type_map[out_type])
+                if self.inplace_map[out_name] in self.optional_vars:
+                    out_type_list.append(
+                        inplace_optional_out_type_map[out_type])
+                else:
+                    out_type_list.append(inplace_out_type_map[out_type])
             else:
                 out_type_list.append(out_type)
 
@@ -94,7 +103,11 @@ class ForwardAPI(BaseAPI):
         for i, out_type in enumerate(self.outputs['types']):
             out_name = self.outputs['names'][i].split('@')[0]
             if inplace_flag and out_name in self.inplace_map:
-                out_type_list.append(inplace_out_type_map[out_type])
+                if self.inplace_map[out_name] in self.optional_vars:
+                    out_type_list.append(
+                        inplace_optional_out_type_map[out_type])
+                else:
+                    out_type_list.append(inplace_out_type_map[out_type])
             elif self.is_dygraph_api or out_name not in self.intermediate_outs:
                 out_type_list.append(out_type)
 
@@ -178,15 +191,21 @@ class ForwardAPI(BaseAPI):
                 set_out_func = 'SetKernelOutput' if out_tensor_type_list is None or out_tensor_type_list[
                     i] == 'dense' else 'SetSelectedRowsKernelOutput'
 
+                get_out_code = f"&std::get<{i}>(api_output)"
+                if self.outputs['names'][
+                        i] in self.inplace_map and self.inplace_map[
+                            self.outputs['names'][i]] in self.optional_vars:
+                    get_out_code = f"std::get<{i}>(api_output).get_ptr()"
+
                 if out_dtype_list[i] == 'std::vector<Tensor>':
                     assert self.outputs['out_size_expr'][i] is not None, \
                         f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
                     output_create = output_create + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, kernel_backend, &std::get<{i}>(api_output));"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, kernel_backend, {get_out_code});"""
 
                 else:
                     output_create = output_create + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, &std::get<{i}>(api_output));"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, {get_out_code});"""
 
                 if not inplace_flag and self.view_map is not None and self.outputs[
                         'names'][i] in self.view_map:

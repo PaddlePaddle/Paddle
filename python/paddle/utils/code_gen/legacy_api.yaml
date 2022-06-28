@@ -1857,9 +1857,9 @@
   infer_meta :
     func : SgdInferMeta
   kernel :
-    func : sgd {dense, dense, dense -> dense, dense},
-           sgd_dense_param_sparse_grad {dense, dense, selected_rows, dense, dense},
-           sgd_sparse_param_sparse_grad {selected_rows, dense, selected_rows, selected_rows, selected_rows}
+    func : sgd {dense, dense, dense, dense -> dense, dense},
+           sgd_dense_param_sparse_grad {dense, dense, selected_rows, dense -> dense, dense},
+           sgd_sparse_param_sparse_grad {selected_rows, dense, selected_rows, selected_rows -> selected_rows, selected_rows}
   optional : master_param
   inplace : (param -> param_out), (master_param -> master_param_out)
 

@@ -58,6 +58,7 @@ class BaseAPI(object):
         input_args = []
         inplace_type_map = {
             "const Tensor&": "Tensor&",
+            "const paddle::optional<Tensor>&": "paddle::optional<Tensor>&",
             "const std::vector<Tensor>&": "std::vector<Tensor>&"
         }
         for name in self.inputs['names']:
@@ -286,12 +287,12 @@ class BaseAPI(object):
             # check the tensor type
             for item in inputs:
                 assert item in [
-                    'dense', 'selected_rows'
-                ], f"{self.api} : Invalid input tensor type ('{item}'), here we only support 'dense' and 'selected_rows'."
+                    'dense', 'selected_rows', 'sparse_coo', 'sparse_csr'
+                ], f"{self.api} : Invalid input tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
             for item in outputs:
                 assert item in [
-                    'dense', 'selected_rows'
-                ], f"{self.api} : Invalid output tensor type ('{item}'), here we only support 'dense' and 'selected_rows'."
+                    'dense', 'selected_rows', 'sparse_coo', 'sparse_csr'
+                ], f"{self.api} : Invalid output tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
 
             return (inputs, outputs)
 
@@ -682,7 +683,6 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         outputs_args, kernel_output_names, output_create = self.gene_output(
             self.outputs['types'], out_tensor_type_list, code_indent,
             inplace_flag)
-        api_func_name = self.get_api_func_name() + ('_' if inplace_flag else '')
         cudnn_args = '' if self.kernel[
             'use_gpudnn'] == 'false' else ', ' + self.kernel['use_gpudnn']
         return f"""
@@ -699,7 +699,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  {{
-{code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{api_func_name} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
+{code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{kernel_name} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
 {code_indent}    (*kernel_fn)({kernel_args}, {outputs_args});
 {code_indent}  }}
 
