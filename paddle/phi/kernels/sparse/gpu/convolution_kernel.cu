@@ -177,7 +177,6 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
 
   if (subm) {
     // set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
-
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n, 1);
     unique_value.ResizeAndAllocate(
         {static_cast<int>(out->nnz() * kernel_size)});

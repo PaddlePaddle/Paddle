@@ -96,6 +96,41 @@ __global__ void GatherKernelV2(const T* inputs,
   }
 }
 
+template <typename T, typename IntT, int VecSize>
+__global__ void GatherKernelV3(const T* inputs,
+                               const int* index_counts,
+                               const int* origin_indexs,
+                               const int non_zero_num,
+                               const int kernel_size,
+                               T* output,
+                               const int channels) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const int vec_channels = channels / VecSize;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using StoreT = phi::AlignedVector<T, VecSize>;
+  for (int i = tid; i < non_zero_num * vec_channels;
+       i += gridDim.x * blockDim.x) {
+    int indices_i = i / vec_channels;
+    int channels_i = i - indices_i * vec_channels;
+    int len1 = index_counts[indices_i];
+    LoadT in_vec;
+    phi::Load<T, VecSize>(inputs + indices_i * channels + channels_i * VecSize,
+                          &in_vec);
+    for (int j = 0; j < len1; j++) {
+      int out_i = origin_indexs[indices_i * kernel_size + j];
+      phi::Store<T, VecSize>(in_vec,
+                             output + out_i * channels + channels_i * VecSize);
+    }
+    int len2 = index_counts[non_zero_num + indices_i];
+    for (int j = 0; j < len2; j++) {
+      int out_i = origin_indexs[indices_i * kernel_size + j +
+                                kernel_size * non_zero_num];
+      phi::Store<T, VecSize>(in_vec,
+                             output + out_i * channels + channels_i * VecSize);
+    }
+  }
+}
+
 template <typename IntT>
 __global__ void UniqueKernel(const IntT* in_indexs,
                              const int rulebook_len,
@@ -438,21 +473,24 @@ __global__ void UpdateOutIndex(const int n,
 }
 
 template <typename IntT>
-__global__ void UpdateOutIndexV2(const int n,
+__global__ void UpdateOutIndexV2(const int rulebook_len,
+                                 const int non_zero_num,
                                  const int kernel_size,
                                  const int half_kernel_offset,
                                  const IntT* indexs,
                                  int* index_counts,
                                  int* index_groups) {
-  CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
+  CUDA_KERNEL_LOOP_TYPE(i, rulebook_len, int64_t) {
     IntT index = indexs[i];
-    // kernel_size at most
-    /// int* counts_ptr =
-    ///     i < half_kernel_offset ? index_counts : index_counts + nnz;
-    /// int j = atomicAdd(counts_ptr + index, 1);
-    ///// nnz * kernel_size
-    /// int group_offset = i < half_kernel_offset ? 0 : kernel_size / 2;
-    /// index_groups[index * kernel_size + j + group_offset] = i;
+    int* counts_ptr =
+        i < half_kernel_offset ? index_counts : index_counts + non_zero_num;
+    int* groups_ptr = i < half_kernel_offset
+                          ? index_groups
+                          : index_groups + non_zero_num * kernel_size;
+    // conflict kernel_size times at most
+    int j = atomicAdd(counts_ptr + index, 1);
+    // nnz * kernel_size
+    groups_ptr[index * kernel_size + j] = i;
   }
 }
 
