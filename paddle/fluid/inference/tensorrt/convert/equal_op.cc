@@ -29,22 +29,13 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-class ComparisonsOpConverter : public OpConverter {
+class EqualOpConverter : public OpConverter {
  public:
-  ComparisonsOpConverter() {}
+  EqualOpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    auto op_pair = ops.find(op_type_);
-    PADDLE_ENFORCE_NE(op_pair,
-                      ops.end(),
-                      platform::errors::InvalidArgument(
-                          "Elementwise op's type(%s) is not supported. Please "
-                          "check if the op_type is correct.",
-                          op_type_));
-
-    // Here the two nullptr looks strange, that's because the
-    // framework::OpDesc's constructor is strange.
+#if IS_TRT_VERSION_GE(8000)
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;
 
@@ -85,48 +76,19 @@ class ComparisonsOpConverter : public OpConverter {
       X = expand_layer->getOutput(0);
     }
 
-    layer = TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *X, *Y, op_pair->second);
-    RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
-  }
-
- protected:
-  static const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
-      ops;
-  std::string op_type_;
-};
-
-#if IS_TRT_VERSION_GE(7000)
-const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
-    ComparisonsOpConverter::ops = {
-        {"greater", nvinfer1::ElementWiseOperation::kGREATER},
-        {"less", nvinfer1::ElementWiseOperation::kLESS},
-        {"equal", nvinfer1::ElementWiseOperation::kEQUAL},
-};
+    layer = TRT_ENGINE_ADD_LAYER(
+        engine_, ElementWise, *X, *Y, nvinfer1::ElementWiseOperation::kEQUAL);
+    RreplenishLayerAndOutput(layer, "equal", {output_name}, test_mode);
 #else
-PADDLE_THROW(
-    platform::errors::Fatal("ElementWise Compare Operation is only supported "
-                            "on TRT 7 or higher version."));
+    PADDLE_THROW(
+        platform::errors::Fatal("ElementWise Equal Operation is only supported "
+                                "on TRT 8 or higher version."));
 #endif
-
-class GreaterOpConverter : public ComparisonsOpConverter {
- public:
-  GreaterOpConverter() { op_type_ = "greater"; }
-};
-
-class LessOpConverter : public ComparisonsOpConverter {
- public:
-  LessOpConverter() { op_type_ = "less"; }
-};
-
-class EqualOpConverter : public ComparisonsOpConverter {
- public:
-  EqualOpConverter() { op_type_ = "equal"; }
+  }
 };
 
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(greater, GreaterOpConverter);
-REGISTER_TRT_OP_CONVERTER(less, LessOpConverter);
 REGISTER_TRT_OP_CONVERTER(equal, EqualOpConverter);

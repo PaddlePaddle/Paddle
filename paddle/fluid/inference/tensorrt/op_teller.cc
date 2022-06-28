@@ -111,8 +111,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_div",
       "elementwise_pow",
       "equal",
-      "greater",
-      "less",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -217,8 +215,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_div",
       "elementwise_pow",
       "equal",
-      "greater",
-      "less",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -2055,11 +2051,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 #endif
 
-    if (op_type == "equal" || op_type == "greater" || op_type == "less") {
-#if !IS_TRT_VERSION_GE(7000)
-      VLOG(3) << "compare is not supported when TensorRT < 7.0";
+    if (op_type == "equal") {
+#if !IS_TRT_VERSION_GE(8000)
+      VLOG(3) << "compare is not supported when TensorRT < 8.0";
       return false;
-#endif
+#else
       int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
       if (axis == 0) {
         return false;
@@ -2071,6 +2067,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                    "the pass.";
         return false;
       }
+#endif
     }
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
