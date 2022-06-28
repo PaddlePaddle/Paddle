@@ -130,13 +130,12 @@ class Engine:
             self._initialize(mode)
 
     def tuning(self,
-                tuning_config=None,
-                optimizer=None,
-                loss=None,
-                dataset=None,
-                batch_size=16,
-                gradient_scale=True,
-                metrics=None):
+               user_configs=None,
+               optimizer=None,
+               loss=None,
+               batch_size=16,
+               gradient_scale=True,
+               metrics=None):
 
         if optimizer and not isinstance(
                 optimizer,
@@ -159,7 +158,7 @@ class Engine:
             assert isinstance(metric, Metric), \
                 "{} is not sub class of Metric".format(
                     metric.__class__.__name__)
-                    
+
         self._metrics = to_list(metrics)
         self._gradient_scale = gradient_scale
 
@@ -169,25 +168,32 @@ class Engine:
         # step1 Generate Forward program
         self._build()
         from .utils import debug_program
-        debug_program(self._dist_contexts[self._modes[0]]._original_serial_main_program, "./", "build_main")
-        debug_program(self._dist_contexts[self._modes[0]]._original_serial_startup_program, "./", "build_startup")
+        debug_program(
+            self._dist_contexts[self._modes[0]]._original_serial_main_program,
+            "./", "build_main")
+        debug_program(
+            self._dist_contexts[
+                self._modes[0]]._original_serial_startup_program, "./",
+            "build_startup")
 
         # step2 Do Parallelism tuning
         self._plan(self._modes[0])
- 
+
         # step3 Do Optimization tuning
         from .tuner.optimization_tuner import OptimizationTuner
-        self._optimization_tuner = OptimizationTuner(                 
+        self._optimization_tuner = OptimizationTuner(
+            user_configs,
             self._dist_contexts[self._modes[0]],
             self._planners[self._modes[0]].completer,
-            tuning_config = tuning_config,
-            rank = self._cur_rank)
+            self.inputs_spec,
+            self.labels_spec,
+            batch_size=batch_size,
+            rank=self._cur_rank)
 
         self._optimization_tuner.tune()
 
         # step4 summary tuning result or continue running
         print(" end of tunning ! " * 8)
-        
 
     def _build(self):
         for mode in self._modes:
