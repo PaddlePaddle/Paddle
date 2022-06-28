@@ -23,7 +23,6 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_, _non_static_mode
 from paddle.fluid.core import VarDesc
 from paddle.fluid import core
 import numpy as np
-import collections
 
 
 # for distributed tensor model parallel
