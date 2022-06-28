@@ -81,7 +81,6 @@ if not defined BUILD_DIR set BUILD_DIR=build
 if not defined NEW_RELEASE_ALL set NEW_RELEASE_ALL=ON
 if not defined NEW_RELEASE_PYPI set NEW_RELEASE_PYPI=OFF
 if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
-set PRECISION_TEST=OFF
 
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
@@ -686,7 +685,8 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
 %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
 %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
-%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%PATH%
+%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;^
+%PATH%
 
 REM TODO: make ut find .dll in install\onnxruntime\lib
 xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y
