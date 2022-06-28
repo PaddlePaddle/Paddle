@@ -208,7 +208,7 @@ class CustomCodeTable {
   const int64_t* ids_;
 };
 
-using CodeTable = boost::variant<SimpleCodeTable, CustomCodeTable<int64_t>>;
+using CodeTable = paddle::variant<SimpleCodeTable, CustomCodeTable<int64_t>>;
 
 template <typename T>
 class MatrixBitCodeFunctor {

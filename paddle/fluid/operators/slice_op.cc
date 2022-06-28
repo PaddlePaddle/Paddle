@@ -201,7 +201,8 @@ class SliceOpVarTypeInference : public framework::VarTypeInference {
     auto x_name = "Input";
     auto out_name = "Out";
     auto decrease_axis = ctx->GetAttr("decrease_axis");
-    auto not_decrease = boost::get<std::vector<int>>(decrease_axis).size() == 0;
+    auto not_decrease =
+        paddle::get<std::vector<int>>(decrease_axis).size() == 0;
     if (not_decrease) {
       // The default type of out is LoDTensor.
       // However, if no axis is decreased and the type of input is not
