@@ -111,13 +111,13 @@ class TaskNode:
 
     def add_upstream_task(self, upstream, buffer_size=2):
         if self.lazy_initialize:
-            self.ups.append((upstream, buffer_size))
+            self.upstreams.append((upstream, buffer_size))
         else:
             self.node.add_upstream_task(upstream, buffer_size)
 
     def add_downstream_task(self, downstream, buffer_size=2):
         if self.lazy_initialize:
-            self.downs.append((downstream, buffer_size))
+            self.downstreams.append((downstream, buffer_size))
         else:
             self.node.add_downstream_task(downstream, buffer_size)
 
