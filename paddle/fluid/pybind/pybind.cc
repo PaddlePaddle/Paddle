@@ -3338,7 +3338,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::take_ownership);
 
   py::class_<FetchList>(m, "FetchList", R"DOC( FetchList is a
-        vector of boost::variant<LoDTensor, LoDTensorArray>.
+        vector of paddle::variant<LoDTensor, LoDTensorArray>.
         )DOC")
       .def(
           "_move_to_list",
@@ -3385,7 +3385,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::arg("var"));
 
   py::class_<FetchUnmergedList>(m, "FetchUnmergedList", R"DOC(
-        FetchUnmergedList is 2-D array of FetchType(boost::variant(LoDTensor, LoDTensorArray)).
+        FetchUnmergedList is 2-D array of FetchType(paddle::variant(LoDTensor, LoDTensorArray)).
         )DOC")
       .def(
           "_move_to_list",
@@ -4606,12 +4606,15 @@ All parameter, weight, gradient are variables in Paddle.
                pybind11::gil_scoped_release release;
                ret = self.Run(fetch_tensors, return_merged);
              }
+
+             // TODO(Ruibiao): Refactor the run interface of PE to avoid use
+             // boost::get here
              if (return_merged) {
                return py::cast(
-                   std::move(BOOST_GET(paddle::framework::FetchList, ret)));
+                   std::move(boost::get<paddle::framework::FetchList>(ret)));
              } else {
                return py::cast(std::move(
-                   BOOST_GET(paddle::framework::FetchUnmergedList, ret)));
+                   boost::get<paddle::framework::FetchUnmergedList>(ret)));
              }
            })
       .def("device_count", &ParallelExecutor::DeviceCount);

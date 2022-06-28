@@ -17,11 +17,15 @@ typedef SSIZE_T ssize_t;
 
 #include <Python.h>
 
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/selected_rows.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 namespace paddle {
@@ -81,9 +85,9 @@ PyObject* ToPyObject(const std::string& value);
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
-                     ssize_t value_idx,
                      PyObject* args,
-                     ssize_t arg_idx);
+                     const std::map<ssize_t, ssize_t>& inplace_var_idx_map);
+PyObject* ToPyObject(PyObject* args, ssize_t arg_idx);
 PyObject* ToPyObject(const std::vector<bool>& value);
 PyObject* ToPyObject(const std::vector<int>& value);
 PyObject* ToPyObject(const std::vector<int64_t>& value);
@@ -112,15 +116,13 @@ struct TupleTensorResult {
 
   static void Run(const Tuple& out,
                   PyObject* result,
-                  ssize_t value_idx,
                   PyObject* args,
-                  ssize_t arg_idx) {
-    TupleTensorResult<Tuple, N - 1>::Run(out, result, value_idx, args, arg_idx);
-    if (N - 1 == value_idx) {
+                  const std::map<ssize_t, ssize_t>& inplace_var_idx_map) {
+    TupleTensorResult<Tuple, N - 1>::Run(
+        out, result, args, inplace_var_idx_map);
+    if (!inplace_var_idx_map.empty() && inplace_var_idx_map.count(N - 1)) {
       PyTuple_SET_ITEM(
-          result,
-          N - 1,
-          ToPyObject(std::get<N - 1>(out), value_idx, args, arg_idx));
+          result, N - 1, ToPyObject(args, inplace_var_idx_map.at(N - 1)));
     } else {
       PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out)));
     }
@@ -135,12 +137,10 @@ struct TupleTensorResult<Tuple, 1> {
 
   static void Run(const Tuple& out,
                   PyObject* result,
-                  ssize_t value_idx,
                   PyObject* args,
-                  ssize_t arg_idx) {
-    if (value_idx == 0) {
-      PyTuple_SET_ITEM(
-          result, 0, ToPyObject(std::get<0>(out), value_idx, args, arg_idx));
+                  const std::map<ssize_t, ssize_t>& inplace_var_idx_map) {
+    if (!inplace_var_idx_map.empty() && inplace_var_idx_map.count(0)) {
+      PyTuple_SET_ITEM(result, 0, ToPyObject(args, inplace_var_idx_map.at(0)));
     } else {
       PyTuple_SET_ITEM(result, 0, ToPyObject(std::get<0>(out)));
     }
@@ -159,22 +159,23 @@ PyObject* ToPyObject(const std::tuple<Args...>& out) {
 
 template <typename... Args>
 PyObject* ToPyObject(const std::tuple<Args...>& out,
-                     ssize_t value_idx,
                      PyObject* args,
-                     ssize_t arg_idx) {
+                     const std::map<ssize_t, ssize_t>& inplace_var_idx_map) {
   // For inplace op, directly return the input PyObject of the inplace tensor.
   // [Parameter]
   // out: Outputs tuple after executing op.
-  // value_idx: Index of inplace tensor in outputs tuple. Used to find the
-  // output inplace tensor.
   // args: Input PyObject.
-  // arg_idx: Index of inplace PyObject in input args. Used to find the input
+  // inplace_var_idx_map: Index of Tensors in inplace_map, e.g. {{value_idx,
+  // arg_idx}}.
+  // - value_idx: Index of inplace tensor in outputs tuple. Used to find the
+  // output inplace tensor.
+  // - arg_idx: Index of inplace PyObject in input args. Used to find the input
   // inplace PyObject.
   auto len = sizeof...(Args);
   PyObject* result = PyTuple_New(len);
 
   TupleTensorResult<decltype(out), sizeof...(Args)>::Run(
-      out, result, value_idx, args, arg_idx);
+      out, result, args, inplace_var_idx_map);
 
   return result;
 }

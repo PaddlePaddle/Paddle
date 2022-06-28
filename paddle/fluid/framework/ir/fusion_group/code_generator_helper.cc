@@ -78,7 +78,7 @@ static std::string RefineTemplateWithAttr(const std::string& op_type,
     }
     Attribute attr = it->second;
     proto::AttrType attr_type =
-        static_cast<proto::AttrType>(it->second.which() - 1);
+        static_cast<proto::AttrType>(it->second.index() - 1);
     if (attr_type == proto::AttrType::BOOLEAN) {
       bool result = BOOST_GET(bool, attr);
       if (result) {

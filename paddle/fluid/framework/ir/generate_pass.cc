@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/generate_pass.h"
 
+#include "boost/blank.hpp"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
@@ -105,7 +106,7 @@ Attribute GetOpAttrValue(const OpDesc* desc,
                          const proto::PassDesc::Attr& attr) {
   Attribute value = desc->GetAttr(attr.name());
   if (attr.has_element_index()) {
-    value = boost::apply_visitor(element_visitor(attr.element_index()), value);
+    value = paddle::visit(element_visitor(attr.element_index()), value);
   }
   return value;
 }
@@ -203,7 +204,7 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
         Attribute attr = GetVarAttrValue(x->Var(), condition.attr());
         if (condition.has_operation()) {
           Attribute operation = GetAttrValue(condition.operation().value());
-          attr = boost::apply_visitor(
+          attr = paddle::visit(
               operation_visitor(condition.operation().type()), attr, operation);
         }
         switch (condition.type()) {
@@ -388,7 +389,7 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
               if (attr_map.has_operation()) {
                 Attribute operation =
                     GetAttrValue(attr_map.operation().value());
-                attr = boost::apply_visitor(
+                attr = paddle::visit(
                     operation_visitor(attr_map.operation().type()),
                     attr,
                     operation);

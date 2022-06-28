@@ -145,7 +145,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param[in] other another AnalysisConfig
   ///
-  explicit AnalysisConfig(const AnalysisConfig& other);
+  AnalysisConfig(const AnalysisConfig& other);
   ///
   /// \brief Construct a new AnalysisConfig from a no-combined model.
   ///
