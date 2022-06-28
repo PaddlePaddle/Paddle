@@ -1787,7 +1787,7 @@
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
