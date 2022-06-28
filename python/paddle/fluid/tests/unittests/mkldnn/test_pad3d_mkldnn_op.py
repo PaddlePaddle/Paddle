@@ -41,7 +41,7 @@ from paddle.fluid import Program, program_guard, Executor, default_main_program
 class TestPad3dOneDNNOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        self.value = 0.0
+        self.value = 1.0
         self.initTestCase()
         self.op_type = "pad3d"
         self.python_api = paddle.nn.functional.pad
@@ -102,23 +102,12 @@ class TestPad3dOneDNNOp(OpTest):
     #     self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
-        self.shape = (2, 3, 4, 5, 6)
-        self.paddings = [0, 0, 0, 0, 0, 0]
+        self.shape = (6, 2, 3, 4, 5)
+        self.paddings = [2, 3, 4, 5, 0, 0]
         self.mode = "constant"
         self.data_format = "NCDHW"
-        self.pad_value = 0.0
+        self.pad_value = 1.0
         self.variable_paddings = False
-
-
-class TestCase1(TestPad3dOneDNNOp):
-    def initTestCase(self):
-        self.shape = (2, 3, 4, 5, 6)
-        self.paddings = [0, 1, 2, 3, 4, 5]
-        self.mode = "constant"
-        self.data_format = "NCDHW"
-        self.value = 1.0
-        self.variable_paddings = False
-
 
 
 if __name__ == '__main__':
