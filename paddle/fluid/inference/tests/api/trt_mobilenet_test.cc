@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
@@ -83,8 +83,10 @@ TEST(PredictorPool, use_gpu) {
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputHandle(input_names[0]);
   std::vector<int> in_shape = {1, 3, 224, 224};
-  int in_num = std::accumulate(in_shape.begin(), in_shape.end(), 1,
-                               [](int &a, int &b) { return a * b; });
+  int in_num =
+      std::accumulate(in_shape.begin(), in_shape.end(), 1, [](int &a, int &b) {
+        return a * b;
+      });
 
   std::vector<float> input(in_num, 0);
   input_t->Reshape(in_shape);

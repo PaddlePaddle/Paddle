@@ -15,6 +15,7 @@
 #include <cassert>
 #include <cstring>
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/plugin/gelu_op_plugin.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -79,8 +80,8 @@ __device__ half do_tanh<half>(half a) {
 // the kernel below is not aligned with fluid fp32 forwrad ones, use it for
 // fp16.
 template <typename T, unsigned TPB>
-__global__ void no_exact_gelu_kernel(const T a, const T b, const T c, int n,
-                                     const T* input, T* output) {
+__global__ void no_exact_gelu_kernel(
+    const T a, const T b, const T c, int n, const T* input, T* output) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int idx = blockIdx.x * TPB + threadIdx.x;
   if (idx < n) {
@@ -92,11 +93,15 @@ __global__ void no_exact_gelu_kernel(const T a, const T b, const T c, int n,
 #endif
 }
 
-int GeluPlugin::enqueue(int batch_size, const void* const* inputs,
+int GeluPlugin::enqueue(int batch_size,
+                        const void* const* inputs,
 #if IS_TRT_VERSION_LT(8000)
-                        void** outputs, void*, cudaStream_t stream) {
+                        void** outputs,
+                        void*,
+                        cudaStream_t stream) {
 #else
-                        void* const* outputs, void*,
+                        void* const* outputs,
+                        void*,
                         cudaStream_t stream) TRT_NOEXCEPT {
 #endif
   const auto& input_dims = this->getInputDims(0);
@@ -112,15 +117,15 @@ int GeluPlugin::enqueue(int batch_size, const void* const* inputs,
     VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp32";
     const float* input = static_cast<const float*>(inputs[0]);
     float* output = static_cast<float*>(outputs[0]);
-    gelu_kernel<float, block_size><<<grid_size, block_size, 0, stream>>>(
-        kA, num, input, output);
+    gelu_kernel<float, block_size>
+        <<<grid_size, block_size, 0, stream>>>(kA, num, input, output);
   } else if (type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp16";
     const half* input = static_cast<const half*>(inputs[0]);
     half* output = static_cast<half*>(outputs[0]);
-    no_exact_gelu_kernel<half,
-                         block_size><<<grid_size, block_size, 0, stream>>>(
-        kAT, kBT, kCT, num, input, output);
+    no_exact_gelu_kernel<half, block_size>
+        <<<grid_size, block_size, 0, stream>>>(
+            kAT, kBT, kCT, num, input, output);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The Gelu TRT Plugin's input type should be float or half."));
@@ -132,23 +137,30 @@ int GeluPlugin::enqueue(int batch_size, const void* const* inputs,
 #if IS_TRT_VERSION_GE(6000)
 
 nvinfer1::DimsExprs GeluPluginDynamic::getOutputDimensions(
-    int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
   return inputs[0];
 }
 
 bool GeluPluginDynamic::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc* in_out,
+    int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
-      in_out, platform::errors::InvalidArgument(
-                  "The input of swish plugin shoule not be nullptr."));
+      in_out,
+      platform::errors::InvalidArgument(
+          "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
-      pos, nb_inputs + nb_outputs,
+      pos,
+      nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
-                                        pos, nb_inputs + nb_outputs));
+                                        pos,
+                                        nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
@@ -168,18 +180,22 @@ bool GeluPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType GeluPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* input_types,
+    int index,
+    const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The Gelu Plugin only has one input, so the "
-                                  "index value should be 0, but get %d.",
-                                  index));
+  PADDLE_ENFORCE_EQ(index,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The Gelu Plugin only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
   return input_types[0];
 }
 
 int GeluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                                const nvinfer1::PluginTensorDesc* output_desc,
-                               const void* const* inputs, void* const* outputs,
+                               const void* const* inputs,
+                               void* const* outputs,
                                void* workspace,
                                cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
@@ -192,15 +208,15 @@ int GeluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp32";
     const float* input = static_cast<const float*>(inputs[0]);
     float* output = static_cast<float*>(outputs[0]);
-    gelu_kernel<float, block_size><<<grid_size, block_size, 0, stream>>>(
-        kA, num, input, output);
+    gelu_kernel<float, block_size>
+        <<<grid_size, block_size, 0, stream>>>(kA, num, input, output);
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp16";
     const half* input = static_cast<const half*>(inputs[0]);
     half* output = static_cast<half*>(outputs[0]);
-    no_exact_gelu_kernel<half,
-                         block_size><<<grid_size, block_size, 0, stream>>>(
-        kAT, kBT, kCT, num, input, output);
+    no_exact_gelu_kernel<half, block_size>
+        <<<grid_size, block_size, 0, stream>>>(
+            kAT, kBT, kCT, num, input, output);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The Gelu TRT Plugin's input type should be float or half."));

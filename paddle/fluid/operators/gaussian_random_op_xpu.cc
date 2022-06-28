@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include <random>
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -41,8 +42,11 @@ class XPUGaussianRandomKernel : public framework::OpKernel<T> {
     for (int64_t i = 0; i < size; ++i) {
       data_cpu[i] = dist(*engine);
     }
-    memory::Copy(context.GetPlace(), data, platform::CPUPlace(),
-                 reinterpret_cast<void*>(data_cpu.get()), size * sizeof(T));
+    memory::Copy(context.GetPlace(),
+                 data,
+                 platform::CPUPlace(),
+                 reinterpret_cast<void*>(data_cpu.get()),
+                 size * sizeof(T));
   }
 };
 

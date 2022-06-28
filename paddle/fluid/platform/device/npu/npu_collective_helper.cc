@@ -14,6 +14,7 @@
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include <utility>
+
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 
@@ -55,25 +56,30 @@ class HCCLCommImpl : public HCCLComm {
   std::unique_ptr<NPUDeviceContext> dev_ctx_;
 };
 
-HCCLComm* HCCLCommContext::CreateHCCLComm(HcclRootInfo* hccl_id, int nranks,
-                                          int rank, int dev_id, int ring_id) {
+HCCLComm* HCCLCommContext::CreateHCCLComm(
+    HcclRootInfo* hccl_id, int nranks, int rank, int dev_id, int ring_id) {
   PADDLE_ENFORCE_NOT_NULL(hccl_id,
                           platform::errors::InvalidArgument(
                               "The hccl unique id should not be null."));
   PADDLE_ENFORCE_GT(
-      nranks, 1,
+      nranks,
+      1,
       platform::errors::InvalidArgument(
           "Expected nranks > 1. But received nranks is %d.", nranks));
-  PADDLE_ENFORCE_GE(rank, 0,
+  PADDLE_ENFORCE_GE(rank,
+                    0,
                     platform::errors::InvalidArgument(
                         "Expected rank >= 0. But received rank is %d.", rank));
   PADDLE_ENFORCE_LT(
-      rank, nranks,
+      rank,
+      nranks,
       platform::errors::InvalidArgument(
           "Expected rank < nranks. But received rank is %d, nranks is %d.",
-          rank, nranks));
+          rank,
+          nranks));
   PADDLE_ENFORCE_GE(
-      dev_id, 0,
+      dev_id,
+      0,
       platform::errors::InvalidArgument(
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
@@ -100,8 +106,8 @@ HCCLComm* HCCLCommContext::CreateHCCLComm(HcclRootInfo* hccl_id, int nranks,
   return comm_wrapper;
 }
 
-HCCLComm* HCCLCommContext::AssignHCCLComm(HcclComm comm, int nranks, int rank,
-                                          int dev_id, int ring_id) {
+HCCLComm* HCCLCommContext::AssignHCCLComm(
+    HcclComm comm, int nranks, int rank, int dev_id, int ring_id) {
   std::unique_ptr<NPUDeviceContext> dev_ctx(
       new NPUDeviceContext(NPUPlace(dev_id)));
 

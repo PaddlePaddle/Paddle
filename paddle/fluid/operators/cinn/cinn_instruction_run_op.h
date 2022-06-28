@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/hlir/framework/instruction.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -44,9 +45,11 @@ class CinnInstructionRunOpKernel : public framework::OpKernel<T> {
         CinnCompiler::GetInstance()->GetCompiledObject(cached_index);
     const std::vector<std::unique_ptr<CinnInstruction>>& instructions =
         compiled_object.runtime_program->GetRunInstructions();
-    PADDLE_ENFORCE_LT(ins_index, instructions.size(),
+    PADDLE_ENFORCE_LT(ins_index,
+                      instructions.size(),
                       platform::errors::InvalidArgument(
-                          "Index(%ld) > instructions.size(%ld).", ins_index,
+                          "Index(%ld) > instructions.size(%ld).",
+                          ins_index,
                           instructions.size()));
     auto&& instruction = instructions.at(ins_index);
 
@@ -70,7 +73,8 @@ class CinnInstructionRunOpKernel : public framework::OpKernel<T> {
     // step 3: launch CINN runtime to execute the instruction
     // TODO(CtfGo): simplify format of arguments package as a vector in CINN
     // and update this usage call
-    instruction->Run(&launch_context->FinalizeArguments(), false,
+    instruction->Run(&launch_context->FinalizeArguments(),
+                     false,
                      details::GetStream<DeviceContext>(ctx));
   }
 };

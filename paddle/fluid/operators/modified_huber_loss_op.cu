@@ -15,6 +15,7 @@ limitations under the License. */
 #include <thrust/for_each.h>
 #include <thrust/host_vector.h>
 #include <thrust/tuple.h>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/modified_huber_loss_op.h"
 #include "paddle/phi/core/hostdevice.h"
@@ -60,9 +61,11 @@ class ModifiedHuberLossGradGPUKernel : public framework::OpKernel<T> {
       auto iter_begin = thrust::make_zip_iterator(
           thrust::make_tuple(x_grad_ptr, inter_val_ptr, y_ptr, out_grad_ptr));
 
-      auto iter_end = thrust::make_zip_iterator(
-          thrust::make_tuple(x_grad_ptr + counts, inter_val_ptr + counts,
-                             y_ptr + counts, out_grad_ptr + counts));
+      auto iter_end =
+          thrust::make_zip_iterator(thrust::make_tuple(x_grad_ptr + counts,
+                                                       inter_val_ptr + counts,
+                                                       y_ptr + counts,
+                                                       out_grad_ptr + counts));
 
       thrust::for_each(iter_begin, iter_end, ModifiedHuberLossBackward());
     }

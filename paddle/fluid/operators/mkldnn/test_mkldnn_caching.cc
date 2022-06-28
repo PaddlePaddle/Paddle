@@ -16,6 +16,7 @@
 #include <map>
 #include <random>
 #include <string>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -65,8 +66,10 @@ class CacheTester {
 };
 
 template <typename T>
-void RunOperator(const platform::Place &place, const std::string &op_type,
-                 const framework::DDim &dims, const std::string &first_input) {
+void RunOperator(const platform::Place &place,
+                 const std::string &op_type,
+                 const framework::DDim &dims,
+                 const std::string &first_input) {
   framework::Scope scope;
 
   std::map<const std::string, int> num_inputs = {{"softmax", 1},
@@ -82,18 +85,22 @@ void RunOperator(const platform::Place &place, const std::string &op_type,
 
   std::vector<InputVars> input_names = {
       {first_input, scope.Var(first_input)->GetMutable<framework::LoDTensor>()},
-      {"x1", num_inputs[op_type] > 1
-                 ? scope.Var("x1")->GetMutable<framework::LoDTensor>()
-                 : nullptr},
-      {"x2", num_inputs[op_type] > 2
-                 ? scope.Var("x2")->GetMutable<framework::LoDTensor>()
-                 : nullptr},
-      {"x3", num_inputs[op_type] > 3
-                 ? scope.Var("x3")->GetMutable<framework::LoDTensor>()
-                 : nullptr},
-      {"x4", num_inputs[op_type] > 4
-                 ? scope.Var("x4")->GetMutable<framework::LoDTensor>()
-                 : nullptr}};
+      {"x1",
+       num_inputs[op_type] > 1
+           ? scope.Var("x1")->GetMutable<framework::LoDTensor>()
+           : nullptr},
+      {"x2",
+       num_inputs[op_type] > 2
+           ? scope.Var("x2")->GetMutable<framework::LoDTensor>()
+           : nullptr},
+      {"x3",
+       num_inputs[op_type] > 3
+           ? scope.Var("x3")->GetMutable<framework::LoDTensor>()
+           : nullptr},
+      {"x4",
+       num_inputs[op_type] > 4
+           ? scope.Var("x4")->GetMutable<framework::LoDTensor>()
+           : nullptr}};
   auto *y = scope.Var(output_name)->GetMutable<framework::LoDTensor>();
 
   // Initialize input data
@@ -118,15 +125,18 @@ void RunOperator(const platform::Place &place, const std::string &op_type,
 
   auto &pool = platform::DeviceContextPool::Instance();
 
-  auto op =
-      num_inputs[op_type] > 1
-          ? framework::OpRegistry::CreateOp(
-                op_type, {{first_input_var_name, {first_input}},
-                          {second_input_var_name, {"x1"}}},
-                {{output_var_name, {output_name}}}, {{"use_mkldnn", {true}}})
-          : framework::OpRegistry::CreateOp(
-                op_type, {{first_input_var_name, {first_input}}},
-                {{output_var_name, {output_name}}}, {{"use_mkldnn", {true}}});
+  auto op = num_inputs[op_type] > 1
+                ? framework::OpRegistry::CreateOp(
+                      op_type,
+                      {{first_input_var_name, {first_input}},
+                       {second_input_var_name, {"x1"}}},
+                      {{output_var_name, {output_name}}},
+                      {{"use_mkldnn", {true}}})
+                : framework::OpRegistry::CreateOp(
+                      op_type,
+                      {{first_input_var_name, {first_input}}},
+                      {{output_var_name, {output_name}}},
+                      {{"use_mkldnn", {true}}});
 
   op->Run(scope, place);
   pool.Get(place)->Wait();
@@ -138,7 +148,8 @@ TEST(test_conv2d_reuse_cache, cpu_place) {
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal");
-  PADDLE_ENFORCE_EQ(ct.Analyze(9), true,
+  PADDLE_ENFORCE_EQ(ct.Analyze(9),
+                    true,
                     platform::errors::InvalidArgument(
                         "Invalid number of cached oneDNN objects"));
 }
@@ -149,7 +160,8 @@ TEST(test_conv2d_noreuse_cache, cpu_place) {
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal2");
-  PADDLE_ENFORCE_EQ(ct.Analyze(18), true,
+  PADDLE_ENFORCE_EQ(ct.Analyze(18),
+                    true,
                     platform::errors::InvalidArgument(
                         "Invalid number of cached oneDNN objects"));
 }

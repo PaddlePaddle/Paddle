@@ -41,7 +41,8 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
     auto nranks_tensor = context.Input<framework::Tensor>("nranks");
     const int nranks = static_cast<const int>(*nranks_tensor->data<float>());
     PADDLE_ENFORCE_GT(
-        nranks, 1,
+        nranks,
+        1,
         platform::errors::InvalidArgument(
             "DGC is not useful when num_trainers <= 1, but now nranks=%d",
             nranks));
@@ -72,8 +73,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       auto* velocity_out = context.Output<framework::Tensor>("VelocityOut");
       auto* master_param_out =
           context.Output<framework::Tensor>("MasterParamOut");
-      paddle::optional<const framework::Tensor&> master_param_opt =
-          paddle::none;
+      paddle::optional<framework::Tensor> master_param_opt(paddle::none);
       float mu = context.Attr<float>("mu");
       bool use_nesterov = context.Attr<bool>("use_nesterov");
       std::string regularization_method =
@@ -87,9 +87,19 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
         phi::MomentumDenseKernel<T>(
             static_cast<const typename framework::ConvertToPhiContext<
                 DeviceContext>::TYPE&>(dev_ctx),
-            *param, *grad, *velocity, *learning_rate, master_param_opt, mu,
-            use_nesterov, regularization_method, regularization_coeff,
-            multi_precision, rescale_grad, param_out, velocity_out,
+            *param,
+            *grad,
+            *velocity,
+            *learning_rate,
+            master_param_opt,
+            mu,
+            use_nesterov,
+            regularization_method,
+            regularization_coeff,
+            multi_precision,
+            rescale_grad,
+            param_out,
+            velocity_out,
             master_param_out);
       } else {
         // sgd dense param sparse grad
@@ -97,9 +107,19 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
         phi::MomentumSparseKernel<T>(
             static_cast<const typename framework::ConvertToPhiContext<
                 DeviceContext>::TYPE&>(dev_ctx),
-            *param, *grad, *velocity, *learning_rate, master_param_opt, mu,
-            use_nesterov, regularization_method, regularization_coeff,
-            multi_precision, rescale_grad, param_out, velocity_out,
+            *param,
+            *grad,
+            *velocity,
+            *learning_rate,
+            master_param_opt,
+            mu,
+            use_nesterov,
+            regularization_method,
+            regularization_coeff,
+            multi_precision,
+            rescale_grad,
+            param_out,
+            velocity_out,
             master_param_out);
       }
 
@@ -117,8 +137,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       auto* param_out = context.Output<framework::Tensor>("ParamOut");
       auto* master_param_out =
           context.Output<framework::Tensor>("MasterParamOut");
-      paddle::optional<const framework::Tensor&> master_param_opt =
-          paddle::none;
+      paddle::optional<framework::Tensor> master_param_opt(paddle::none);
       if (multi_precision) {
         auto* master_param = context.Input<framework::Tensor>("MasterParam");
         master_param_opt = *master_param;
@@ -130,16 +149,26 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
         phi::SGDDenseKernel<T>(
             static_cast<const typename framework::ConvertToPhiContext<
                 DeviceContext>::TYPE&>(dev_ctx),
-            *param, *learning_rate, *grad, master_param_opt, multi_precision,
-            param_out, master_param_out);
+            *param,
+            *learning_rate,
+            *grad,
+            master_param_opt,
+            multi_precision,
+            param_out,
+            master_param_out);
       } else {
         // sgd dense param sparse grad
         auto* grad = context.Input<phi::SelectedRows>("Grad");
         phi::SGDDenseParamSparseGradKernel<T>(
             static_cast<const typename framework::ConvertToPhiContext<
                 DeviceContext>::TYPE&>(dev_ctx),
-            *param, *learning_rate, *grad, master_param_opt, multi_precision,
-            param_out, master_param_out);
+            *param,
+            *learning_rate,
+            *grad,
+            master_param_opt,
+            multi_precision,
+            param_out,
+            master_param_out);
       }
     } else if (param_var->IsType<phi::SelectedRows>() &&
                grad_var->IsType<phi::SelectedRows>() &&
@@ -149,8 +178,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       auto* param_out = context.Output<phi::SelectedRows>("ParamOut");
       auto* master_param_out =
           context.Output<phi::SelectedRows>("MasterParamOut");
-      paddle::optional<const phi::SelectedRows&> master_param_opt =
-          paddle::none;
+      paddle::optional<phi::SelectedRows> master_param_opt(paddle::none);
       if (multi_precision) {
         auto* master_param = context.Input<phi::SelectedRows>("MasterParam");
         master_param_opt = *master_param;
@@ -159,8 +187,13 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       phi::SGDSparseParamSparseGradKernel<T>(
           static_cast<const typename framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
-          *param, *learning_rate, *grad, master_param_opt, multi_precision,
-          param_out, master_param_out);
+          *param,
+          *learning_rate,
+          *grad,
+          master_param_opt,
+          multi_precision,
+          param_out,
+          master_param_out);
 
     } else {
       PADDLE_THROW("gdc not support yet");

@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,10 +22,12 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 
 class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -59,7 +61,8 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
                                 TensorConfig(data_gen=partial(generate_weight))
                             },
                             inputs={
-                                "input_data": TensorConfig(
+                                "input_data":
+                                TensorConfig(
                                     data_gen=partial(generate_input, shape)),
                             },
                             outputs=["output_data"])
@@ -68,6 +71,7 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             # The input.dims[1] must be equal to the weight's length.
             if self.dims == 1:
@@ -104,8 +108,7 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
             return 1, 2
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape
@@ -120,11 +123,11 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
 
     def add_skip_trt_case(self):
         pass
@@ -136,6 +139,7 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
 
 class TrtConvertElementwiseTest_two_input_without_broadcast(
         TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         if len(inputs['input_data1'].shape) == 1:
@@ -144,13 +148,14 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
         return True
 
     def sample_program_configs(self):
+
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
         for shape in [[4], [4, 32], [2, 64, 32], [1, 8, 16, 32]]:
             for op_type in [
                     "elementwise_add", "elementwise_mul", "elementwise_sub",
-                    "elementwise_div"
+                    "elementwise_div", "elementwise_pow"
             ]:
                 for axis in [0, -1]:
                     self.dims = len(shape)
@@ -172,9 +177,11 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
                         ops=ops,
                         weights={},
                         inputs={
-                            "input_data1": TensorConfig(
+                            "input_data1":
+                            TensorConfig(
                                 data_gen=partial(generate_input, shape)),
-                            "input_data2": TensorConfig(
+                            "input_data2":
+                            TensorConfig(
                                 data_gen=partial(generate_input, shape))
                         },
                         outputs=["output_data"])
@@ -183,6 +190,7 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {
@@ -243,8 +251,7 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
             self.dynamic_shape.opt_input_shape = {}
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape
@@ -270,6 +277,7 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
 
 
 class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         if len(inputs['input_data1'].shape) != len(inputs['input_data2'].shape):
@@ -278,6 +286,7 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -309,7 +318,7 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
                 input2_shape = input2_shape_list[j][i]
                 for op_type in [
                         "elementwise_add", "elementwise_mul", "elementwise_sub",
-                        "elementwise_div"
+                        "elementwise_div", "elementwise_pow"
                 ]:
                     for axis in axis_list[j][i]:
                         self.shape1 = input1_shape
@@ -332,9 +341,11 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
                             ops=ops,
                             weights={},
                             inputs={
-                                "input_data1": TensorConfig(data_gen=partial(
+                                "input_data1":
+                                TensorConfig(data_gen=partial(
                                     generate_input, input1_shape)),
-                                "input_data2": TensorConfig(data_gen=partial(
+                                "input_data2":
+                                TensorConfig(data_gen=partial(
                                     generate_input, input2_shape))
                             },
                             outputs=["output_data"])
@@ -343,6 +354,7 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             max_shape = [[128], [128, 128], [128, 128, 128],
                          [128, 128, 128, 128]]
@@ -368,8 +380,7 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape
@@ -396,10 +407,12 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
 
 
 class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -411,7 +424,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                           [batch, 32, 16, 32]]:
                 for op_type in [
                         "elementwise_add", "elementwise_mul", "elementwise_sub",
-                        "elementwise_div"
+                        "elementwise_div", "elementwise_pow"
                 ]:
                     for axis in [-1 if len(shape) == 1 else 1]:
                         self.dims = len(shape)
@@ -436,7 +449,8 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                                 TensorConfig(data_gen=partial(generate_weight))
                             },
                             inputs={
-                                "input_data": TensorConfig(
+                                "input_data":
+                                TensorConfig(
                                     data_gen=partial(generate_input, shape)),
                             },
                             outputs=["output_data"])
@@ -445,6 +459,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             # The input.dims[1] must be equal to the weight's length.
             if self.dims == 1:
@@ -483,8 +498,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
             return 1, 2
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape
@@ -499,30 +513,24 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             input_x_names = program_config.ops[0].inputs["X"]
             for weight_name in program_config.weights:
                 if weight_name in input_x_names:
                     return True
-            op_type = program_config.ops[0].type
-            if op_type in ["elementwise_sub", "elementwise_div"]:
-                input_y_names = program_config.ops[0].inputs["Y"]
-                for weight_name in program_config.weights:
-                    if weight_name in input_y_names:
-                        return True
             return False
 
         self.add_skip_case(
             teller1, SkipReasons.TRT_NOT_SUPPORT,
-            "Input X should not be parameters in elementwise op and Input Y should not be parameters in elementwise_sub or elementwise_div op"
-        )
+            "Input X should not be parameters in elementwise op.")
 
     def test(self):
         self.add_skip_trt_case()

@@ -35,7 +35,8 @@ namespace operators {
 
 class IncrementOp : public framework::OperatorWithKernel {
  public:
-  IncrementOp(const std::string &type, const framework::VariableNameMap &inputs,
+  IncrementOp(const std::string &type,
+              const framework::VariableNameMap &inputs,
               const framework::VariableNameMap &outputs,
               const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
@@ -87,9 +88,12 @@ class IncrementGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(increment, IncrementInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(increment,
+                            IncrementInferShapeFunctor,
                             PD_INFER_META(phi::IncrementInferMeta));
-REGISTER_OPERATOR(increment, ops::IncrementOp, ops::IncrementOpMaker,
+REGISTER_OPERATOR(increment,
+                  ops::IncrementOp,
+                  ops::IncrementOpMaker,
                   ops::IncrementGradOpMaker<paddle::framework::OpDesc>,
                   ops::IncrementGradOpMaker<paddle::imperative::OpBase>,
                   IncrementInferShapeFunctor);

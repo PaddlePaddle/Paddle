@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/c_allgather_op.h"
-
 #include <memory>
+
+#include "paddle/fluid/operators/collective/c_allgather_op.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -61,9 +61,13 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
             << ", group is " << group << ", ring_id is " << ring_id
             << ", nranks is " << nranks;
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllGather(
-        send_buff, recv_buff, send_numel, dtype, comm->comm(),
-        reinterpret_cast<void *>(stream)));
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        platform::dynload::HcclAllGather(send_buff,
+                                         recv_buff,
+                                         send_numel,
+                                         dtype,
+                                         comm->comm(),
+                                         reinterpret_cast<void *>(stream)));
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -78,7 +82,8 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(c_allgather, ops::CAllGatherOpASCENDKernel<int8_t>,
+REGISTER_OP_NPU_KERNEL(c_allgather,
+                       ops::CAllGatherOpASCENDKernel<int8_t>,
                        ops::CAllGatherOpASCENDKernel<int>,
                        ops::CAllGatherOpASCENDKernel<int64_t>,
                        ops::CAllGatherOpASCENDKernel<float>,

@@ -69,7 +69,8 @@ std::shared_ptr<tf_pd<Type>> MKLDNNFwdPrimitiveDesc(const Engine& e,
 }
 
 template <typename Type, typename Engine, typename Primitive, typename... Args>
-tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e, const Primitive& p,
+tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e,
+                                   const Primitive& p,
                                    Args&&... args) {
   auto desc = tf_desc<Type>(args...);
   return tf_pd<Type>(desc, e, p);
@@ -78,21 +79,14 @@ tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e, const Primitive& p,
 inline void MatchShapeToLayout(framework::Tensor* tensor_in,
                                framework::DataLayout from,
                                framework::DataLayout to) {
-  // In these data layouts, channel dimension is either on 2nd position: nChw or
-  // at last nhwC, so for dim==2 these layouts are the same and nothing should
-  // be done. Similarly for dim==1 when you have just one possible combination.
-  if (tensor_in->dims().size() < 3) {
-    return;
-  }
-
   auto print_dims = [](const std::vector<int>& dims) {
     std::ostringstream oss;
 
     if (!dims.empty()) {
       oss << "[";
       // Convert all but the last element to avoid a trailing ","
-      std::copy(dims.begin(), dims.end() - 1,
-                std::ostream_iterator<int>(oss, ","));
+      std::copy(
+          dims.begin(), dims.end() - 1, std::ostream_iterator<int>(oss, ","));
 
       // Now add the last element with no delimiter
       oss << dims.back() << "]";
@@ -100,6 +94,15 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
 
     return oss.str();
   };
+
+  // In these data layouts, channel dimension is either on 2nd position: nChw or
+  // at last nhwC, so for dim==2 these layouts are the same and nothing should
+  // be done. Similarly for dim==1 when you have just one possible combination.
+  if (tensor_in->dims().size() < 3) {
+    VLOG(3) << "Keeping kMKLDNN/kNHWC/kNDHWC output_shape"
+            << print_dims(phi::vectorize<int>(tensor_in->dims()));
+    return;
+  }
 
   switch (from) {
     case framework::DataLayout::kMKLDNN:
@@ -146,8 +149,6 @@ inline void ClearMKLDNNCache(const platform::Place& place,
     platform::MKLDNNDeviceContext* dev_ctx =
         (platform::MKLDNNDeviceContext*)pool.Get(place);
     dev_ctx->ResetBlobMap(ptr);
-    platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-        paddle::framework::DataLayout::kNCHW);
   }
 }
 
@@ -188,13 +189,15 @@ inline dnnl::memory::data_type MKLDNNGetDataType<paddle::platform::bfloat16>() {
   return dnnl::memory::data_type::bf16;
 }
 
-inline void Reorder(dnnl::memory src, dnnl::memory dst,
+inline void Reorder(dnnl::memory src,
+                    dnnl::memory dst,
                     const dnnl::engine& engine) {
   auto reorder_prim = dnnl::reorder(src, dst);
   auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
   platform::RecordEvent record_reorder("int_reorder",
                                        platform::TracerEventType::UserDefined,
-                                       2, platform::EventRole::kUniqueOp);
+                                       2,
+                                       platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
 }
@@ -571,6 +574,12 @@ inline void RegisterModelLayout(
     std::vector<std::unique_ptr<framework::OperatorBase>>& ops,
     const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
+    // If there is already registered NHWC then quit this call
+    // not to overwrite setting with analysis of internal "while" op block
+    if (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+        framework::DataLayout::kNHWC)
+      return;
+
     VLOG(4) << "RegisterModelLayout for mkldnn";
     auto check_attrib = [](std::unique_ptr<framework::OperatorBase>& op,
                            const std::string& attrib_name) -> bool {

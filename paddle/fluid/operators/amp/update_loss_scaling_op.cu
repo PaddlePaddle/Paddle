@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -21,21 +22,36 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-__global__ void GpuUpdateLossScaling(
-    const bool* found_inf_data, const T* pre_loss_scaling_data,
-    const int* good_in_data, const int* bad_in_data,
-    const int incr_every_n_steps, const int decr_every_n_nan_or_inf,
-    const float incr_ratio, const float decr_ratio,
-    T* updated_loss_scaling_data, int* good_out_data, int* bad_out_data) {
-  Update<T>(found_inf_data, pre_loss_scaling_data, good_in_data, bad_in_data,
-            incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
-            updated_loss_scaling_data, good_out_data, bad_out_data);
+template <typename T, typename FoundNanInfFlagT>
+__global__ void GpuUpdateLossScaling(const FoundNanInfFlagT found_inf_data,
+                                     const T* pre_loss_scaling_data,
+                                     const int* good_in_data,
+                                     const int* bad_in_data,
+                                     const int incr_every_n_steps,
+                                     const int decr_every_n_nan_or_inf,
+                                     const float incr_ratio,
+                                     const float decr_ratio,
+                                     T* updated_loss_scaling_data,
+                                     int* good_out_data,
+                                     int* bad_out_data) {
+  Update<T>(found_inf_data,
+            pre_loss_scaling_data,
+            good_in_data,
+            bad_in_data,
+            incr_every_n_steps,
+            decr_every_n_nan_or_inf,
+            incr_ratio,
+            decr_ratio,
+            updated_loss_scaling_data,
+            good_out_data,
+            bad_out_data);
 }
 
 template <typename T>
-__global__ void FusedFillIf(T** outs, const size_t xs_size,
-                            const int64_t* starts, const T value,
+__global__ void FusedFillIf(T** outs,
+                            const size_t xs_size,
+                            const int64_t* starts,
+                            const T value,
                             const bool* has_inf) {
   if (!(*has_inf)) return;
 
@@ -70,20 +86,50 @@ __global__ void FusedFillIf(T** outs, const size_t xs_size,
   }
 }
 
-template <typename T>
-class UpdateLossScalingFunctor<platform::CUDADeviceContext, T> {
+template <typename T, bool IsFoundInfOnCPU>
+class UpdateLossScalingFunctor<platform::CUDADeviceContext,
+                               T,
+                               IsFoundInfOnCPU> {
  public:
   void operator()(const platform::CUDADeviceContext& dev_ctx,
-                  const bool* found_inf_data, const T* pre_loss_scaling_data,
-                  const int* good_in_data, const int* bad_in_data,
+                  const bool* found_inf_data,
+                  const T* pre_loss_scaling_data,
+                  const int* good_in_data,
+                  const int* bad_in_data,
                   const int incr_every_n_steps,
-                  const int decr_every_n_nan_or_inf, const float incr_ratio,
-                  const float decr_ratio, T* updated_loss_scaling_data,
-                  int* good_out_data, int* bad_out_data) const {
-    GpuUpdateLossScaling<T><<<1, 1, 0, dev_ctx.stream()>>>(
-        found_inf_data, pre_loss_scaling_data, good_in_data, bad_in_data,
-        incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
-        updated_loss_scaling_data, good_out_data, bad_out_data);
+                  const int decr_every_n_nan_or_inf,
+                  const float incr_ratio,
+                  const float decr_ratio,
+                  T* updated_loss_scaling_data,
+                  int* good_out_data,
+                  int* bad_out_data) const {
+    if (IsFoundInfOnCPU) {
+      GpuUpdateLossScaling<T>
+          <<<1, 1, 0, dev_ctx.stream()>>>(*found_inf_data,
+                                          pre_loss_scaling_data,
+                                          good_in_data,
+                                          bad_in_data,
+                                          incr_every_n_steps,
+                                          decr_every_n_nan_or_inf,
+                                          incr_ratio,
+                                          decr_ratio,
+                                          updated_loss_scaling_data,
+                                          good_out_data,
+                                          bad_out_data);
+    } else {
+      GpuUpdateLossScaling<T>
+          <<<1, 1, 0, dev_ctx.stream()>>>(found_inf_data,
+                                          pre_loss_scaling_data,
+                                          good_in_data,
+                                          bad_in_data,
+                                          incr_every_n_steps,
+                                          decr_every_n_nan_or_inf,
+                                          incr_ratio,
+                                          decr_ratio,
+                                          updated_loss_scaling_data,
+                                          good_out_data,
+                                          bad_out_data);
+    }
   }
 };
 
@@ -114,8 +160,12 @@ class LazyZeros<platform::CUDADeviceContext, T> {
     for (int i = 0; i < xs_size; i++) {
       h_starts[i + 1] = h_starts[i] + outs[i]->numel();
     }
-    memory::Copy(dev_ctx.GetPlace(), d_starts, cpu_place, h_starts,
-                 (xs_size + 1) * sizeof(int64_t), dev_ctx.stream());
+    memory::Copy(dev_ctx.GetPlace(),
+                 d_starts,
+                 cpu_place,
+                 h_starts,
+                 (xs_size + 1) * sizeof(int64_t),
+                 dev_ctx.stream());
 
     // copy each tensor of "outs" data address array to device
     auto h_out_addrs_mem = memory::Alloc(cpu_place, xs_size * sizeof(T*));
@@ -127,8 +177,12 @@ class LazyZeros<platform::CUDADeviceContext, T> {
     for (size_t i = 0; i < xs_size; ++i) {
       h_out_addrs[i] = outs[i]->mutable_data<T>(dev_ctx.GetPlace());
     }
-    memory::Copy(dev_ctx.GetPlace(), d_out_addrs, cpu_place, h_out_addrs,
-                 xs_size * sizeof(T*), dev_ctx.stream());
+    memory::Copy(dev_ctx.GetPlace(),
+                 d_out_addrs,
+                 cpu_place,
+                 h_out_addrs,
+                 xs_size * sizeof(T*),
+                 dev_ctx.stream());
 
     // launch cuda kernel
     int64_t total_num = h_starts[xs_size];
@@ -137,8 +191,10 @@ class LazyZeros<platform::CUDADeviceContext, T> {
         threads_per_block * 50;  // each thread deal with 50 data
     int64_t blocks_per_grid =
         (total_num + elements_per_block - 1) / elements_per_block;
-    FusedFillIf<T><<<blocks_per_grid, threads_per_block,
-                     (xs_size + 1) * sizeof(int64_t), dev_ctx.stream()>>>(
+    FusedFillIf<T><<<blocks_per_grid,
+                     threads_per_block,
+                     (xs_size + 1) * sizeof(int64_t),
+                     dev_ctx.stream()>>>(
         d_out_addrs, xs_size, d_starts, static_cast<T>(0), found_inf_data);
   }
 };

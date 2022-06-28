@@ -14,13 +14,16 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
 
-template <typename T, int D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 

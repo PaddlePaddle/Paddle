@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -124,9 +125,11 @@ class BeamSearchOp : public framework::OperatorWithKernel {
 class BeamSearchInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    ctx->SetOutputType("selected_ids", framework::proto::VarType::LOD_TENSOR,
+    ctx->SetOutputType("selected_ids",
+                       framework::proto::VarType::LOD_TENSOR,
                        framework::ALL_ELEMENTS);
-    ctx->SetOutputType("selected_scores", framework::proto::VarType::LOD_TENSOR,
+    ctx->SetOutputType("selected_scores",
+                       framework::proto::VarType::LOD_TENSOR,
                        framework::ALL_ELEMENTS);
   }
 };
@@ -136,7 +139,9 @@ class BeamSearchInferVarType : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(beam_search, ops::BeamSearchOp, ops::BeamSearchOpMaker,
+REGISTER_OPERATOR(beam_search,
+                  ops::BeamSearchOp,
+                  ops::BeamSearchOpMaker,
                   ops::BeamSearchInferVarType);
 REGISTER_OP_CPU_KERNEL(
     beam_search,

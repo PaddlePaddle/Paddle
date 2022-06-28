@@ -18,8 +18,13 @@ namespace paddle {
 namespace operators {
 
 // calculate the offset\new_dims\(strides of dim1/dim2)\matoffset
-void CalMatDims(framework::DDim out_dims, int dim1, int dim2, int64_t *offset,
-                int64_t *new_dims, int64_t *strides, int64_t *matoffset) {
+void CalMatDims(framework::DDim out_dims,
+                int dim1,
+                int dim2,
+                int64_t *offset,
+                int64_t *new_dims,
+                int64_t *strides,
+                int64_t *matoffset) {
   int64_t dimprod = 1, batchdim = 1;
   int rank = out_dims.size();
   int matoffidx = 0;
@@ -94,8 +99,8 @@ class FillDiagonalTensorOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *context) const override {
     OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "FillDiagonalTensor");
-    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out",
-                   "FillDiagonalTensor");
+    OP_INOUT_CHECK(
+        context->HasOutput("Out"), "Output", "Out", "FillDiagonalTensor");
     auto x_dims = context->GetInputDim("X");
     context->SetOutputDim("Out", x_dims);
   }
@@ -143,17 +148,23 @@ class FillDiagonalTensorKernel : public framework::OpKernel<T> {
     matdim.resize(fill_dims[0]);
     CalMatDims(out_dims, dim1, dim2, &offset, new_dims, strides, matdim.data());
     PADDLE_ENFORCE_EQ(
-        new_dims[0], fill_dims[0],
+        new_dims[0],
+        fill_dims[0],
         platform::errors::InvalidArgument("The dims should be %d x %d, but get "
                                           "%d x %d in fill tensor Y",
-                                          new_dims[0], new_dims[1],
-                                          fill_dims[0], fill_dims[1]));
+                                          new_dims[0],
+                                          new_dims[1],
+                                          fill_dims[0],
+                                          fill_dims[1]));
     PADDLE_ENFORCE_EQ(
-        new_dims[1], fill_dims[1],
+        new_dims[1],
+        fill_dims[1],
         platform::errors::InvalidArgument("The dims should be %d x %d, but get "
                                           "%d x %d in fill tensor Y",
-                                          new_dims[0], new_dims[1],
-                                          fill_dims[0], fill_dims[1]));
+                                          new_dims[0],
+                                          new_dims[1],
+                                          fill_dims[0],
+                                          fill_dims[1]));
 
     auto size = out->numel();
     for (int64_t i = 0; i < fill_dims[0]; i += 1) {
@@ -173,8 +184,10 @@ class FillDiagonalTensorGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "mul");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "mul");
     auto x_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -231,8 +244,8 @@ class FillDiagonalTensorGradKernel : public framework::OpKernel<T> {
       int64_t new_dims[2], strides[2];
       std::vector<int64_t> matdim;
       matdim.resize(matrows);
-      CalMatDims(dx_dims, dim1, dim2, &offset, new_dims, strides,
-                 matdim.data());
+      CalMatDims(
+          dx_dims, dim1, dim2, &offset, new_dims, strides, matdim.data());
 
       auto size = dx->numel();
       framework::TensorCopy(*dout, ctx.GetPlace(), dx);
@@ -260,19 +273,24 @@ DECLARE_INPLACE_OP_INFERER(FillDiagonalTensorGradOpInplaceInferer,
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    fill_diagonal_tensor, ops::FillDiagonalTensorOp,
-    ops::FillDiagonalTensorOpMaker, ops::FillDiagonalTensorOpVarTypeInference,
+    fill_diagonal_tensor,
+    ops::FillDiagonalTensorOp,
+    ops::FillDiagonalTensorOpMaker,
+    ops::FillDiagonalTensorOpVarTypeInference,
     ops::FillDiagonalTensorGradOpMaker<paddle::framework::OpDesc>,
     ops::FillDiagonalTensorGradOpMaker<paddle::imperative::OpBase>,
     ops::FillDiagonalTensorOpInplaceInferer);
 
-REGISTER_OPERATOR(fill_diagonal_tensor_grad, ops::FillDiagonalTensorGradOp,
+REGISTER_OPERATOR(fill_diagonal_tensor_grad,
+                  ops::FillDiagonalTensorGradOp,
                   ops::FillDiagonalTensorGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
-    fill_diagonal_tensor, ops::FillDiagonalTensorKernel<float>,
+    fill_diagonal_tensor,
+    ops::FillDiagonalTensorKernel<float>,
     ops::FillDiagonalTensorKernel<double>,
-    ops::FillDiagonalTensorKernel<int64_t>, ops::FillDiagonalTensorKernel<int>,
+    ops::FillDiagonalTensorKernel<int64_t>,
+    ops::FillDiagonalTensorKernel<int>,
     ops::FillDiagonalTensorKernel<int8_t>,
     ops::FillDiagonalTensorKernel<uint8_t>,
     ops::FillDiagonalTensorKernel<paddle::platform::float16>,
@@ -281,7 +299,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::FillDiagonalTensorKernel<bool>);
 
 REGISTER_OP_CPU_KERNEL(
-    fill_diagonal_tensor_grad, ops::FillDiagonalTensorGradKernel<float>,
+    fill_diagonal_tensor_grad,
+    ops::FillDiagonalTensorGradKernel<float>,
     ops::FillDiagonalTensorGradKernel<double>,
     ops::FillDiagonalTensorGradKernel<int64_t>,
     ops::FillDiagonalTensorGradKernel<int>,

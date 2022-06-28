@@ -16,9 +16,9 @@
 
 #include <cmath>
 #include <string>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -184,12 +184,12 @@ void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "matmul_v2_scale_fuse pass";
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_x, matmul_v2_in_x,
-                              matmul_v2_scale_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_y, matmul_v2_in_y,
-                              matmul_v2_scale_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_op, matmul_v2_op,
-                              matmul_v2_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_x, matmul_v2_in_x, matmul_v2_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_y, matmul_v2_in_y, matmul_v2_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_op, matmul_v2_op, matmul_v2_scale_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_in_x, scale_in_x, matmul_v2_scale_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_op, scale_op, matmul_v2_scale_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, matmul_v2_scale_pattern);

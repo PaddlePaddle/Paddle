@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include <cuda_fp16.h>
+#include <thrust/device_vector.h>
+
 #include <algorithm>
+
 #include "paddle/fluid/inference/tensorrt/plugin/split_op_plugin.h"
 
 namespace paddle {
@@ -39,17 +42,20 @@ __device__ int upper_bound(T const* vals, int n, T const& key) {
 
 nvinfer1::Dims SplitPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims* input_dims, int num_inputs) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(num_inputs, 1,
+  PADDLE_ENFORCE_EQ(num_inputs,
+                    1,
                     platform::errors::InvalidArgument(
                         "Invalid number of inputs of split TRT plugin. "
                         "Expected 1, received %d.",
                         num_inputs));
   PADDLE_ENFORCE_LT(
-      index, this->getNbOutputs(),
+      index,
+      this->getNbOutputs(),
       platform::errors::InvalidArgument(
           "Index of output should be less than the total number of outputs in "
           "split TensorRT plugin. Received index = %d >= total outputs = %d",
-          index, this->getNbOutputs()));
+          index,
+          this->getNbOutputs()));
 
   nvinfer1::Dims output_dims = input_dims[0];
   output_dims.d[axis_] = output_length_.at(index);
@@ -61,17 +67,17 @@ void SplitPlugin::shareData(const SplitPlugin* another) {
   inner_cols_ = another->inner_cols_;
   same_shape_ = another->same_shape_;
   axis_shape_ = another->axis_shape_;
-  d_segment_offsets_ = another->d_segment_offsets_;
   segment_offsets_ = another->segment_offsets_;
-  d_output_ptrs_.resize(another->d_output_ptrs_.size(), nullptr);
 }
 
 int SplitPlugin::initialize() TRT_NOEXCEPT {
-  PADDLE_ENFORCE_LE(axis_, nvinfer1::Dims::MAX_DIMS,
+  PADDLE_ENFORCE_LE(axis_,
+                    nvinfer1::Dims::MAX_DIMS,
                     platform::errors::InvalidArgument(
                         "Axis dimension exceeds max dimension in TensorRT. "
                         "Received axis = %d > MAX_DIMS = %d",
-                        axis_, nvinfer1::Dims::MAX_DIMS));
+                        axis_,
+                        nvinfer1::Dims::MAX_DIMS));
   // notice input dims is [C, H, W]
   nvinfer1::Dims dims = this->getInputDims(0);
   outer_rows_ = 1;
@@ -91,9 +97,7 @@ int SplitPlugin::initialize() TRT_NOEXCEPT {
     segment_offsets.push_back(segment_offsets.back() + output_length_[i]);
   }
   axis_shape_ = dims.d[axis_];
-  d_segment_offsets_ = segment_offsets;
   segment_offsets_ = std::move(segment_offsets);
-  d_output_ptrs_.resize(this->getNbOutputs(), nullptr);
   return 0;
 }
 
@@ -105,8 +109,11 @@ void SplitPlugin::terminate() TRT_NOEXCEPT {}
 template <typename T>
 __global__ void split_kernel(int nsegment,
                              int const* __restrict__ segment_offsets,
-                             T const* __restrict__ idata, T* const* odatas,
-                             int inner_cols, int axis_shape, int outer_rows) {
+                             T const* __restrict__ idata,
+                             T* const* odatas,
+                             int inner_cols,
+                             int axis_shape,
+                             int outer_rows) {
   int x0 = threadIdx.x + blockIdx.x * blockDim.x;
   int src_y0 = threadIdx.y + blockIdx.y * blockDim.y;
   int z0 = threadIdx.z + blockIdx.z * blockDim.z;
@@ -124,21 +131,33 @@ __global__ void split_kernel(int nsegment,
   }
 }
 
-int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
+int SplitPlugin::enqueue(int batchSize,
+                         const void* const* inputs,
 #if IS_TRT_VERSION_LT(8000)
-                         void** outputs, void* workspace, cudaStream_t stream) {
+                         void** outputs,
+                         void* workspace,
+                         cudaStream_t stream) {
 #else
-                         void* const* outputs, void* workspace,
+                         void* const* outputs,
+                         void* workspace,
                          cudaStream_t stream) TRT_NOEXCEPT {
 #endif
+  // this two thrust variables decalared here , not with in .h
+  // to avoid compiling error in cuda 11.6
+  thrust::device_vector<int> d_segment_offsets = segment_offsets_;
+  thrust::device_vector<float*> d_output_ptrs;
+  d_output_ptrs.resize(segment_offsets_.size(), nullptr);
   const int* d_segment_offsets_ptr =
-      thrust::raw_pointer_cast(&d_segment_offsets_[0]);
+      thrust::raw_pointer_cast(&d_segment_offsets[0]);
   float const* input_ptr = reinterpret_cast<float const*>(inputs[0]);
   float* const* h_odatas = reinterpret_cast<float* const*>(outputs);
-  float** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs_[0]);
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
-      output_ptrs, h_odatas, d_output_ptrs_.size() * sizeof(float*),
-      cudaMemcpyHostToDevice, stream));
+  float** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs[0]);
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemcpyAsync(output_ptrs,
+                      h_odatas,
+                      d_output_ptrs.size() * sizeof(float*),
+                      cudaMemcpyHostToDevice,
+                      stream));
 
   int outer_rows = outer_rows_ * batchSize;
 
@@ -147,9 +166,13 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
             std::min((axis_shape_ - 1) / block.y + 1, 65535u),
             std::min((outer_rows_ - 1) / block.z + 1, 65535u));
 
-  split_kernel<<<grid, block, 0, stream>>>(
-      d_segment_offsets_.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
-      inner_cols_, axis_shape_, outer_rows);
+  split_kernel<<<grid, block, 0, stream>>>(segment_offsets_.size(),
+                                           d_segment_offsets_ptr,
+                                           input_ptr,
+                                           output_ptrs,
+                                           inner_cols_,
+                                           axis_shape_,
+                                           outer_rows);
   return cudaGetLastError() != cudaSuccess;
 }
 
@@ -169,16 +192,21 @@ void SplitPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
 }
 
 nvinfer1::DimsExprs SplitPluginDynamic::getOutputDimensions(
-    int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(nb_inputs, 1,
+  PADDLE_ENFORCE_EQ(nb_inputs,
+                    1,
                     platform::errors::InvalidArgument(
                         "The Split plugin should be only one input."));
-  PADDLE_ENFORCE_LT(output_index, output_length_.size(),
+  PADDLE_ENFORCE_LT(output_index,
+                    output_length_.size(),
                     platform::errors::InvalidArgument(
                         "When GetOutputDimensions, the index(%d) should not "
                         "greater the num(%d) of the outpus.",
-                        output_index, output_length_.size()));
+                        output_index,
+                        output_length_.size()));
 
   nvinfer1::DimsExprs output_dims = inputs[0];
   output_dims.d[axis_] = expr_builder.constant(output_length_.at(output_index));
@@ -187,17 +215,22 @@ nvinfer1::DimsExprs SplitPluginDynamic::getOutputDimensions(
 }
 
 bool SplitPluginDynamic::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc* in_out,
+    int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
-      in_out, platform::errors::InvalidArgument(
-                  "The input of split plugin should not be nullptr."));
+      in_out,
+      platform::errors::InvalidArgument(
+          "The input of split plugin should not be nullptr."));
 
   PADDLE_ENFORCE_LT(
-      pos, nb_inputs + nb_outputs,
+      pos,
+      nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
-                                        pos, nb_inputs + nb_outputs));
+                                        pos,
+                                        nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
@@ -217,14 +250,16 @@ bool SplitPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType SplitPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* input_types,
+    int index,
+    const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
   return input_types[0];
 }
 
 int SplitPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                                 const nvinfer1::PluginTensorDesc* output_desc,
-                                const void* const* inputs, void* const* outputs,
+                                const void* const* inputs,
+                                void* const* outputs,
                                 void* workspace,
                                 cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
@@ -263,13 +298,20 @@ int SplitPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     float* const* h_odatas = reinterpret_cast<float* const*>(outputs);
     float** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs[0]);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
-        output_ptrs, h_odatas, d_output_ptrs.size() * sizeof(float*),
-        cudaMemcpyHostToDevice, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMemcpyAsync(output_ptrs,
+                        h_odatas,
+                        d_output_ptrs.size() * sizeof(float*),
+                        cudaMemcpyHostToDevice,
+                        stream));
 
-    split_kernel<<<grid, block, 0, stream>>>(
-        d_segment_offsets.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
-        inner_cols, axis_shape, outer_rows);
+    split_kernel<<<grid, block, 0, stream>>>(d_segment_offsets.size(),
+                                             d_segment_offsets_ptr,
+                                             input_ptr,
+                                             output_ptrs,
+                                             inner_cols,
+                                             axis_shape,
+                                             outer_rows);
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. Split-->fp16";
     thrust::device_vector<half*> d_output_ptrs;
@@ -279,13 +321,20 @@ int SplitPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     half* const* h_odatas = reinterpret_cast<half* const*>(outputs);
     half** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs[0]);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
-        output_ptrs, h_odatas, d_output_ptrs.size() * sizeof(half*),
-        cudaMemcpyHostToDevice, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMemcpyAsync(output_ptrs,
+                        h_odatas,
+                        d_output_ptrs.size() * sizeof(half*),
+                        cudaMemcpyHostToDevice,
+                        stream));
 
-    split_kernel<<<grid, block, 0, stream>>>(
-        d_segment_offsets.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
-        inner_cols, axis_shape, outer_rows);
+    split_kernel<<<grid, block, 0, stream>>>(d_segment_offsets.size(),
+                                             d_segment_offsets_ptr,
+                                             input_ptr,
+                                             output_ptrs,
+                                             inner_cols,
+                                             axis_shape,
+                                             outer_rows);
   }
   return cudaGetLastError() != cudaSuccess;
 }

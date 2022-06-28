@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
+
 #include "paddle/fluid/operators/detection/nms_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
@@ -24,8 +25,10 @@ namespace operators {
 using framework::Tensor;
 
 template <typename T>
-static __global__ void NMS(const T* boxes_data, float threshold,
-                           int64_t num_boxes, uint64_t* masks) {
+static __global__ void NMS(const T* boxes_data,
+                           float threshold,
+                           int64_t num_boxes,
+                           uint64_t* masks) {
   auto raw_start = blockIdx.y;
   auto col_start = blockIdx.x;
   if (raw_start > col_start) return;
@@ -73,8 +76,11 @@ class NMSCudaKernel : public framework::OpKernel<T> {
         boxes->data<T>(), threshold, num_boxes, mask_dev);
 
     std::vector<uint64_t> mask_host(num_boxes * blocks_per_line);
-    memory::Copy(platform::CPUPlace(), mask_host.data(), context.GetPlace(),
-                 mask_dev, num_boxes * blocks_per_line * sizeof(uint64_t),
+    memory::Copy(platform::CPUPlace(),
+                 mask_host.data(),
+                 context.GetPlace(),
+                 mask_dev,
+                 num_boxes * blocks_per_line * sizeof(uint64_t),
                  context.cuda_device_context().stream());
 
     std::vector<int64_t> remv(blocks_per_line);
@@ -94,8 +100,11 @@ class NMSCudaKernel : public framework::OpKernel<T> {
         }
       }
     }
-    memory::Copy(context.GetPlace(), output_data, platform::CPUPlace(),
-                 output_host, sizeof(int64_t) * num_boxes,
+    memory::Copy(context.GetPlace(),
+                 output_data,
+                 platform::CPUPlace(),
+                 output_host,
+                 sizeof(int64_t) * num_boxes,
                  context.cuda_device_context().stream());
   }
 };
@@ -104,5 +113,6 @@ class NMSCudaKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(nms, ops::NMSCudaKernel<float>,
+REGISTER_OP_CUDA_KERNEL(nms,
+                        ops::NMSCudaKernel<float>,
                         ops::NMSCudaKernel<double>);

@@ -41,7 +41,8 @@ void LodTensorArray2LodTensorVector(const framework::Scope &scope,
 }
 
 void LodTensorVectorResizeFromLodTensorArray(
-    const framework::Scope &scope, const std::string &base_name,
+    const framework::Scope &scope,
+    const std::string &base_name,
     const std::string &lod_tensor_array_name,
     std::vector<std::string> *res_names) {
   auto &inx =
@@ -96,10 +97,12 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
         *scope.FindVar(Output("OutIndex"))->GetMutable<framework::LoDTensor>();
 
     const size_t n = inx.size();
-    PADDLE_ENFORCE_GT(n, 0, platform::errors::InvalidArgument(
-                                "Input tensorarray size should > 0,"
-                                "but the received is %d",
-                                n));
+    PADDLE_ENFORCE_GT(
+        n,
+        0,
+        platform::errors::InvalidArgument("Input tensorarray size should > 0,"
+                                          "but the received is %d",
+                                          n));
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
@@ -129,8 +132,8 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
     // Invoke concat Op or stack Op
     auto op =
         use_stack
-            ? framework::OpRegistry::CreateOp("stack", {{"X", names}},
-                                              {{"Y", {Output("Out")}}}, attrs)
+            ? framework::OpRegistry::CreateOp(
+                  "stack", {{"X", names}}, {{"Y", {Output("Out")}}}, attrs)
             : framework::OpRegistry::CreateOp(
                   "concat", {{"X", names}}, {{"Out", {Output("Out")}}}, attrs);
 
@@ -235,10 +238,12 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 
     auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     const size_t n = inx.size();
-    PADDLE_ENFORCE_GT(n, 0, platform::errors::InvalidArgument(
-                                "Input tensorarray size should > 0, "
-                                "but the received is: %d. ",
-                                n));
+    PADDLE_ENFORCE_GT(
+        n,
+        0,
+        platform::errors::InvalidArgument("Input tensorarray size should > 0, "
+                                          "but the received is: %d. ",
+                                          n));
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
@@ -255,18 +260,21 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
     // multi-thread that will cause wrong calculation result.
     std::string grad_base_name = base_name + "_temp_grad_";
 
-    LodTensorVectorResizeFromLodTensorArray(scope, grad_base_name, Input("X"),
-                                            &grad_names);
+    LodTensorVectorResizeFromLodTensorArray(
+        scope, grad_base_name, Input("X"), &grad_names);
 
     auto use_stack = Attr<bool>("use_stack");
 
-    auto grad_op = use_stack ? framework::OpRegistry::CreateOp(
-                                   "stack_grad", {{"Y@GRAD", {dout_name}}},
-                                   {{"X@GRAD", grad_names}}, attrs)
-                             : framework::OpRegistry::CreateOp(
-                                   "concat_grad",
-                                   {{"X", names}, {"Out@GRAD", {dout_name}}},
-                                   {{"X@GRAD", grad_names}}, attrs);
+    auto grad_op =
+        use_stack ? framework::OpRegistry::CreateOp("stack_grad",
+                                                    {{"Y@GRAD", {dout_name}}},
+                                                    {{"X@GRAD", grad_names}},
+                                                    attrs)
+                  : framework::OpRegistry::CreateOp(
+                        "concat_grad",
+                        {{"X", names}, {"Out@GRAD", {dout_name}}},
+                        {{"X@GRAD", grad_names}},
+                        attrs);
 
     grad_op->Run(scope, place);
 
@@ -303,10 +311,13 @@ USE_OP_ITSELF(concat);
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    tensor_array_to_tensor, ops::LoDTensorArray2TensorOp,
-    ops::LoDTensorArray2TensorOpMaker, ops::LoDTensorArray2TensorOpInferShape,
+    tensor_array_to_tensor,
+    ops::LoDTensorArray2TensorOp,
+    ops::LoDTensorArray2TensorOpMaker,
+    ops::LoDTensorArray2TensorOpInferShape,
     ops::TensorArrayToTensorGradOpMaker<paddle::framework::OpDesc>,
     ops::TensorArrayToTensorGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(tensor_array_to_tensor_grad, ops::LoDTensorArray2TensorGradOp,
+REGISTER_OPERATOR(tensor_array_to_tensor_grad,
+                  ops::LoDTensorArray2TensorGradOp,
                   ops::LoDTensorArray2TensorGradInferShape,
                   ops::LoDTensorArray2TensorGradInferVarType);

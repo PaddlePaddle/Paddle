@@ -14,6 +14,7 @@
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_resource_pool.h"
+
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 
 namespace paddle {
@@ -46,14 +47,17 @@ NpuStreamResourcePool& NpuStreamResourcePool::Instance() {
 
 std::shared_ptr<NpuStreamObject> NpuStreamResourcePool::New(int dev_idx) {
   PADDLE_ENFORCE_GE(
-      dev_idx, 0,
+      dev_idx,
+      0,
       platform::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
-      dev_idx, pool_.size(),
+      dev_idx,
+      pool_.size(),
       platform::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
-          pool_.size(), dev_idx));
+          pool_.size(),
+          dev_idx));
   return pool_[dev_idx]->New();
 }
 
@@ -84,14 +88,17 @@ NpuEventResourcePool& NpuEventResourcePool::Instance() {
 
 std::shared_ptr<NpuEventObject> NpuEventResourcePool::New(int dev_idx) {
   PADDLE_ENFORCE_GE(
-      dev_idx, 0,
+      dev_idx,
+      0,
       platform::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
-      dev_idx, pool_.size(),
+      dev_idx,
+      pool_.size(),
       platform::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
-          pool_.size(), dev_idx));
+          pool_.size(),
+          dev_idx));
   return pool_[dev_idx]->New();
 }
 

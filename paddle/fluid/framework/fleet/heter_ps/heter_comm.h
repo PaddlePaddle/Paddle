@@ -15,14 +15,19 @@ limitations under the License. */
 #pragma once
 #include <thread>
 #include <vector>
+
+#include "cub/cub.cuh"
+#include "cub/util_allocator.cuh"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/fluid/platform/timer.h"
 #include "thrust/pair.h"
 #elif defined(PADDLE_WITH_XPU_KP)
 // #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 #include <xpu/runtime.h>
+
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
 
@@ -38,6 +43,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#define TYPEALIGN(ALIGNVAL, LEN) \
+  (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
+
 template <typename KeyType, typename ValType, typename GradType>
 class HeterComm {
  public:
@@ -46,49 +54,87 @@ class HeterComm {
   HeterComm(const HeterComm&) = delete;
   HeterComm& operator=(const HeterComm&) = delete;
 
-  void split_input_to_shard(KeyType* d_keys, int* d_idx_ptr, size_t len,
-                            int* left, int* right, int gpu_num);
-  void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len,
+  void split_input_to_shard(KeyType* d_keys,
+                            int* d_idx_ptr,
+                            size_t len,
+                            int* left,
+                            int* right,
+                            int gpu_num);
+  void merge_grad(int gpu_num,
+                  KeyType* d_keys,
+                  GradType* d_grads,
+                  size_t len,
                   int& uniq_len);  // NOLINT
+  void dynamic_merge_grad(int gpu_num,
+                          KeyType* d_keys,
+                          GradType* d_grads,
+                          size_t len,
+                          int& uniq_len);
   void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
-  void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len,
-                size_t chunk_size, int stream_num);
+  void build_ps(int num,
+                KeyType* h_keys,
+                ValType* h_vals,
+                size_t len,
+                size_t chunk_size,
+                int stream_num);
+  void build_ps(int num,
+                KeyType* h_keys,
+                char* pool,
+                size_t len,
+                size_t feature_value_size,
+                size_t chunk_size,
+                int stream_num);
   void dump();
   void show_one_table(int gpu_num);
   int get_index_by_devid(int devid);
 
 #if defined(PADDLE_WITH_CUDA)
   template <typename Sgd>
-  void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len,
+  void push_sparse(int num,
+                   KeyType* d_keys,
+                   GradType* d_grads,
+                   size_t len,
                    Sgd& sgd);  // NOLINT
 #elif defined(PADDLE_WITH_XPU_KP)
   void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len);
 #endif
 
-#if defined(PADDLE_WITH_XPU_KP)
   void set_sparse_sgd(const OptimizerConfig& optimizer_config);
   void set_embedx_sgd(const OptimizerConfig& optimizer_config);
-#endif
 
   int log2i(int x);
 
   template <typename DstPlace, typename SrcPlace, typename StreamType>
-  void memory_copy(DstPlace dst_place, void* dst, SrcPlace src_place,
-                   const void* src, size_t count, StreamType stream = 0);
+  void memory_copy(DstPlace dst_place,
+                   void* dst,
+                   SrcPlace src_place,
+                   const void* src,
+                   size_t count,
+                   StreamType stream = 0);
 
 #if defined(PADDLE_WITH_CUDA)
   template <typename Sgd>
-  void push_sparse_multi_node(int num, KeyType* d_keys, GradType* d_grads,
-                              size_t len, Sgd& sgd);  // NOLINT
+  void push_sparse_multi_node(int num,
+                              KeyType* d_keys,
+                              GradType* d_grads,
+                              size_t len,
+                              Sgd& sgd);  // NOLINT
 
   template <typename Sgd>
-  void update_one_table(int num, KeyType* d_keys, GradType* d_grads, size_t len,
+  void update_one_table(int num,
+                        KeyType* d_keys,
+                        GradType* d_grads,
+                        size_t len,
                         Sgd& sgd);  // NOLINT
 
-  int gather_one_node_grad(int num, KeyType* d_keys, GradType* d_grads,
+  int gather_one_node_grad(int num,
+                           KeyType* d_keys,
+                           GradType* d_grads,
                            int len);
 
-  int gather_multi_node_grad(int num, KeyType* d_keys, GradType* d_grads,
+  int gather_multi_node_grad(int num,
+                             KeyType* d_keys,
+                             GradType* d_grads,
                              int len);
 
   void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
@@ -97,6 +143,11 @@ class HeterComm {
     nccl_inner_comms_ = inner_comms;
     nccl_inter_comms_ = inter_comms;
     node_size_ = comm_size;
+  }
+
+  void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) {
+    multi_mf_dim_ = multi_mf_dim;
+    max_mf_dim_ = max_mf_dim;
   }
 #endif
 
@@ -116,8 +167,8 @@ class HeterComm {
     char* key_storage;
     char* val_storage;
     int sync;
-    int key_bytes_len;
-    int val_bytes_len;
+    size_t key_bytes_len;
+    size_t val_bytes_len;
     int dev_num;
   };
 
@@ -206,14 +257,36 @@ class HeterComm {
 
   void create_storage(int start_index, int end_index, int keylen, int vallen);
   void destroy_storage(int start_index, int end_index);
-  void walk_to_dest(int start_index, int gpu_num, int* h_left, int* h_right,
-                    KeyType* src_key, GradType* src_val);
-  void walk_to_src(int start_index, int gpu_num, int* h_left, int* h_right,
+  void walk_to_dest(int start_index,
+                    int gpu_num,
+                    int* h_left,
+                    int* h_right,
+                    KeyType* src_key,
+                    GradType* src_val);
+  void walk_to_dest(int start_index,
+                    int gpu_num,
+                    int* h_left,
+                    int* h_right,
+                    KeyType* src_key,
+                    char* src_val,
+                    size_t val_size);
+  void walk_to_src(int start_index,
+                   int gpu_num,
+                   int* h_left,
+                   int* h_right,
                    ValType* src_val);
+  void walk_to_src(int start_index,
+                   int gpu_num,
+                   int* h_left,
+                   int* h_right,
+                   char* src_val,
+                   size_t val_size);
 
  protected:
   using Table = HashTable<KeyType, ValType>;
+  using PtrTable = HashTable<KeyType, ValType*>;
   std::vector<Table*> tables_;
+  std::vector<PtrTable*> ptr_tables_;
   std::shared_ptr<HeterPsResource> resource_;
   std::vector<std::vector<Path>> path_;
   float load_factor_{0.75};
@@ -223,6 +296,7 @@ class HeterComm {
  private:
   int topo_aware_{0};
   std::vector<LocalStorage> storage_;
+  DynamicGradMerger merger_;
   int feanum_{1800 * 2048};
   int multi_node_{0};
   int node_size_;
@@ -230,6 +304,8 @@ class HeterComm {
 #if defined(PADDLE_WITH_CUDA)
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
+  int multi_mf_dim_{8};
+  int max_mf_dim_ = 8;
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 #endif
 };

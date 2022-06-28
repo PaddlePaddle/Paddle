@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
@@ -82,18 +83,18 @@ void ReluDoubleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void TanhDoubleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
-                          const DenseTensor& ddx,
                           const DenseTensor& dout,
+                          const DenseTensor& ddx,
                           DenseTensor* dout_new,
                           DenseTensor* ddout);
 
 template <typename T, typename Context>
 void TanhTripleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
-                          const DenseTensor& ddx,
                           const DenseTensor& dout,
-                          const DenseTensor& d_ddout,
+                          const DenseTensor& ddx,
                           const DenseTensor& d_dout_new,
+                          const DenseTensor& d_ddout,
                           DenseTensor* d_out_new,
                           DenseTensor* d_dout,
                           DenseTensor* d_ddx);
@@ -136,7 +137,7 @@ void SigmoidTripleGradKernel(const Context& dev_ctx,
                              const DenseTensor& dout,
                              const DenseTensor& ddx,
                              const DenseTensor& d_dout_new,
-                             const DenseTensor& d_ddout,
+                             const paddle::optional<DenseTensor>& d_ddout,
                              DenseTensor* d_out_new,
                              DenseTensor* d_dout,
                              DenseTensor* d_ddx);
@@ -148,6 +149,39 @@ void LogDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& ddx,
                          DenseTensor* dx,
                          DenseTensor* ddout);
+
+template <typename T, typename Context>
+void SqrtDoubleGradKernel(const Context& dev_ctx,
+                          const DenseTensor& out,
+                          const DenseTensor& dx,
+                          const DenseTensor& ddx,
+                          DenseTensor* dout,
+                          DenseTensor* ddout);
+
+template <typename T, typename Context>
+void RsqrtDoubleGradKernel(const Context& dev_ctx,
+                           const DenseTensor& out,
+                           const DenseTensor& dx,
+                           const DenseTensor& ddx,
+                           DenseTensor* dout,
+                           DenseTensor* ddout);
+
+template <typename T, typename Context>
+void CeluDoubleGradKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& dout,
+                          const DenseTensor& ddx,
+                          float alpha,
+                          DenseTensor* dx,
+                          DenseTensor* ddout);
+
+template <typename T, typename Context>
+void SquareDoubleGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& dout,
+                            const DenseTensor& ddx,
+                            DenseTensor* dx,
+                            DenseTensor* ddout);
 
 template <typename T, typename Context>
 void HardSwishGradKernel(const Context& dev_ctx,
@@ -187,6 +221,7 @@ DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Log1p);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid);
+DECLARE_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt);
 
 DECLARE_ACTIVATION_GRAD_KERNEL_NODEP(Round);
 DECLARE_ACTIVATION_GRAD_KERNEL_NODEP(Floor);
@@ -198,6 +233,7 @@ DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(SoftShrink, lambda);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(HardShrink, threshold);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Swish, beta);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Logit, eps);
+DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Celu, alpha);
 
 DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(BRelu, t_min, t_max);
 

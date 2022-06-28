@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
@@ -103,10 +105,14 @@ TEST(TEST_FLEET, graph_comm) {
   res = new int64_t[7];
   cudaMemcpy(res, neighbor_sample_res->val, 56, cudaMemcpyDeviceToHost);
   int *actual_sample_size = new int[3];
-  cudaMemcpy(actual_sample_size, neighbor_sample_res->actual_sample_size, 12,
+  cudaMemcpy(actual_sample_size,
+             neighbor_sample_res->actual_sample_size,
+             12,
              cudaMemcpyDeviceToHost);  // 3, 1, 3
   int *cumsum_sample_size = new int[3];
-  cudaMemcpy(cumsum_sample_size, neighbor_sample_res->offset, 12,
+  cudaMemcpy(cumsum_sample_size,
+             neighbor_sample_res->offset,
+             12,
              cudaMemcpyDeviceToHost);  // 0, 3, 4
 
   std::vector<std::vector<int64_t>> neighbors_;
@@ -118,7 +124,8 @@ TEST(TEST_FLEET, graph_comm) {
   neighbors_.push_back(neighbors_6);
   for (int i = 0; i < 3; i++) {
     for (int j = cumsum_sample_size[i];
-         j < cumsum_sample_size[i] + actual_sample_size[i]; j++) {
+         j < cumsum_sample_size[i] + actual_sample_size[i];
+         j++) {
       bool flag = false;
       for (int k = 0; k < neighbors_[i].size(); k++) {
         if (res[j] == neighbors_[i][k]) {

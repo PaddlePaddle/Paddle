@@ -29,6 +29,7 @@
 #include <chrono>
 #include <iostream>
 #include <vector>
+
 #include "paddle/fluid/platform/enforce.h"
 
 // Utility functions for TCP socket.
@@ -50,12 +51,17 @@ constexpr std::chrono::seconds kDefaultTimeout = std::chrono::seconds(360);
 
 std::error_code socket_error();
 void close_socket(SocketType socket);
-::addrinfo* get_addr_info(const std::string host, const std::string port,
-                          int ai_flags, int family);
+::addrinfo* get_addr_info(const std::string host,
+                          const std::string port,
+                          int ai_flags,
+                          int family);
 void free_addr_info(::addrinfo*);
-SocketType tcp_connect(const std::string host, const std::string port,
-                       int family, std::chrono::seconds timeout = kNoTimeout);
-SocketType tcp_listen(const std::string host, const std::string port,
+SocketType tcp_connect(const std::string host,
+                       const std::string port,
+                       int family,
+                       std::chrono::seconds timeout = kNoTimeout);
+SocketType tcp_listen(const std::string host,
+                      const std::string port,
                       int family);
 SocketType tcp_accept(SocketType socket);
 
@@ -73,9 +79,11 @@ void send_bytes(SocketType socket, const T* buffer, size_t len) {
 
   while (to_send > 0) {
     auto byte_sent = ::send(socket, ptr, to_send, 0);
-    PADDLE_ENFORCE_GT(byte_sent, 0, platform::errors::InvalidArgument(
-                                        "TCP send error. Details: %s.",
-                                        socket_error().message()));
+    PADDLE_ENFORCE_GT(
+        byte_sent,
+        0,
+        platform::errors::InvalidArgument("TCP send error. Details: %s.",
+                                          socket_error().message()));
     to_send -= byte_sent;
     ptr += byte_sent;
   }
@@ -91,9 +99,11 @@ void receive_bytes(SocketType socket, T* buffer, size_t len) {
 
   while (to_recv > 0) {
     auto byte_received = ::recv(socket, ptr, to_recv, 0);
-    PADDLE_ENFORCE_GT(byte_received, 0, platform::errors::InvalidArgument(
-                                            "TCP receive error. Details: %s.",
-                                            socket_error().message()));
+    PADDLE_ENFORCE_GT(
+        byte_received,
+        0,
+        platform::errors::InvalidArgument("TCP receive error. Details: %s.",
+                                          socket_error().message()));
 
     to_recv -= byte_received;
     ptr += byte_received;

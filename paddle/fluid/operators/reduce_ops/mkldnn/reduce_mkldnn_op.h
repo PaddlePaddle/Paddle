@@ -24,16 +24,18 @@ using paddle::framework::Tensor;
 using platform::to_void_cast;
 
 inline std::vector<int64_t> CalculateReducedDims(
-    const Tensor* input, const Tensor* output,
+    const Tensor* input,
+    const Tensor* output,
     std::vector<int>& reduce_dims,  // NOLINT
-    bool reduce_all, bool keep_dim) {
+    bool reduce_all,
+    bool keep_dim) {
   if (keep_dim) return phi::vectorize(output->dims());
 
-  if (reduce_all)
-    return std::vector<int64_t>(phi::vectorize(input->dims()).size(), 1);
+  if (reduce_all) return std::vector<int64_t>(input->dims().size(), 1);
 
   std::vector<int64_t> output_dims(phi::vectorize(input->dims()));
   for (size_t i = 0; i < reduce_dims.size(); ++i) {
+    // handle negative dims, f.e. "-1" means rightmost dimension
     reduce_dims[i] = (reduce_dims[i] >= 0)
                          ? reduce_dims[i]
                          : input->dims().size() + reduce_dims[i];
@@ -52,16 +54,16 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    const auto* input = ctx.Input<LoDTensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
+    const auto* x = ctx.Input<LoDTensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
 
     auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     bool keep_dim = ctx.Attr<bool>("keep_dim");
 
-    auto output_dims =
-        CalculateReducedDims(input, output, reduce_dims, reduce_all, keep_dim);
-    auto input_dims = phi::vectorize(input->dims());
+    auto x_tz = phi::vectorize(x->dims());
+    auto out_tz =
+        CalculateReducedDims(x, out, reduce_dims, reduce_all, keep_dim);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
@@ -69,18 +71,21 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     // copied without actual reduction.
     // In that case reorder must be executed to maintain compatibility with
     // PaddlePaddle reduce op
-    if (input_dims == output_dims) {
-      dnnl::memory::data_type input_type = framework::ToMKLDNNDataType(
-          framework::TransToProtoVarType(input->dtype()));
+    if (x_tz == out_tz) {
+      dnnl::memory::data_type x_type = framework::ToMKLDNNDataType(
+          framework::TransToProtoVarType(x->dtype()));
       platform::ReorderMKLDNNHandler reorder_handler(
-          input_dims, framework::TransToProtoVarType(input->dtype()),
-          input_type, onednn_engine);
+          x_tz,
+          framework::TransToProtoVarType(x->dtype()),
+          x_type,
+          onednn_engine);
 
       auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-          input->mem_desc(), platform::to_void_cast(input->data<T>()));
+          x->mem_desc(), platform::to_void_cast(x->data<T>()));
 
-      auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-          output, input->mem_desc(), ctx.GetPlace());
+      // reuse mem desc since it is a simple copy
+      auto reorder_dst_memory_p =
+          reorder_handler.AcquireDstMemory(out, x->mem_desc(), ctx.GetPlace());
 
       auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                       reorder_dst_memory_p);
@@ -88,15 +93,20 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
       reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
       astream.wait();
 
-      output->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(
-          phi::vectorize<int64_t>(output->dims())));
+      out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(
+          phi::vectorize<int64_t>(out->dims())));
     } else {
-      platform::ReductionMKLDNNHandler<T> handler(reduction_type, 0.0f, 0.0f,
-                                                  onednn_engine, ctx.GetPlace(),
-                                                  input, output, output_dims);
+      platform::ReductionMKLDNNHandler<T> handler(reduction_type,
+                                                  0.0f,
+                                                  0.0f,
+                                                  onednn_engine,
+                                                  ctx.GetPlace(),
+                                                  x,
+                                                  out,
+                                                  out_tz);
 
-      auto src_memory_p = handler.AcquireSrcMemory(input);
-      auto dst_memory_p = handler.AcquireDstMemory(output);
+      auto src_memory_p = handler.AcquireSrcMemory(x);
+      auto dst_memory_p = handler.AcquireDstMemory(out);
 
       std::unordered_map<int, dnnl::memory> reduction_args = {
           {DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}};
@@ -105,8 +115,9 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
 
       reduction_p->execute(astream, reduction_args);
       astream.wait();
-      output->set_mem_desc(dst_memory_p->get_desc().reshape(
-          phi::vectorize<int64_t>(output->dims())));
+
+      out->set_mem_desc(dst_memory_p->get_desc().reshape(
+          phi::vectorize<int64_t>(out->dims())));
     }
   }
 };
@@ -115,8 +126,10 @@ template <typename T>
 class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void RunKernel(const framework::ExecutionContext& ctx,
-                 dnnl::algorithm binary_type, dnnl::algorithm reduction_type,
-                 float scale_x, float scale_y) const {
+                 dnnl::algorithm binary_type,
+                 dnnl::algorithm reduction_type,
+                 float scale_x,
+                 float scale_y) const {
     const auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
@@ -127,22 +140,20 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     const auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    const auto input_dims =
-        CalculateReducedDims(dx, dout, dims, reduce_all, keep_dim);
-    const auto output_dims = phi::vectorize(dx->dims());
+    auto dout_tz = CalculateReducedDims(dx, dout, dims, reduce_all, keep_dim);
+    auto dx_tz = phi::vectorize(dx->dims());
 
-    auto dout_mem_desc = dout->mem_desc();
-
-    if (input_dims != output_dims) {
-      dout_mem_desc = dout_mem_desc.reshape(input_dims);
-    }
-
-    platform::BroadcastDataMKLDNNHandler<T> handler(
-        binary_type, onednn_engine, ctx.GetPlace(), dx, dout, scale_x, scale_y,
-        dout_mem_desc);
+    platform::BroadcastDataMKLDNNHandler<T> handler(binary_type,
+                                                    onednn_engine,
+                                                    ctx.GetPlace(),
+                                                    dout,
+                                                    dx,
+                                                    scale_x,
+                                                    scale_y,
+                                                    dout_tz);
 
     const auto src_memory_p = handler.AcquireSrcMemory(dout);
-    const auto dst_memory_p = handler.AcquireDstMemory(dx);
+    const auto dst_memory_p = handler.AcquireZeroedDstMemory(dx);
     const auto binary_prim = handler.AcquireForwardPrimitive();
 
     const std::unordered_map<int, dnnl::memory> args = {

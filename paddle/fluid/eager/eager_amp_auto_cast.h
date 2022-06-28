@@ -42,7 +42,8 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
 inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
     const std::string& inputs_name,
     const std::vector<paddle::experimental::Tensor>& inputs,
-    const paddle::experimental::DataType& dst_dtype, std::string op_name) {
+    const paddle::experimental::DataType& dst_dtype,
+    std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
           << paddle::framework::DataType2String(dst_dtype) << ").";
@@ -59,8 +60,10 @@ inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
 }
 
 inline paddle::experimental::Tensor EagerAmpAutoCast(
-    const std::string& input_name, const paddle::experimental::Tensor& input,
-    const paddle::experimental::DataType& dst_dtype, std::string op_name) {
+    const std::string& input_name,
+    const paddle::experimental::Tensor& input,
+    const paddle::experimental::DataType& dst_dtype,
+    const std::string& op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << ") dst_dtype("
           << paddle::framework::DataType2String(dst_dtype) << ").";
@@ -85,6 +88,17 @@ inline paddle::experimental::Tensor EagerAmpAutoCast(
     return cast_final_state_dygraph_function(input, dst_dtype);
   }
   return input;
+}
+
+inline paddle::optional<paddle::experimental::Tensor> EagerAmpAutoCast(
+    const std::string& input_name,
+    const paddle::optional<paddle::experimental::Tensor>& input,
+    const paddle::experimental::DataType& dst_dtype,
+    const std::string& op_name) {
+  if (input) {
+    return EagerAmpAutoCast(input_name, *input, dst_dtype, op_name);
+  }
+  return paddle::none;
 }
 
 }  // namespace egr

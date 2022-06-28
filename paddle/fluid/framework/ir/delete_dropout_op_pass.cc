@@ -11,9 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <string>
-
 #include "paddle/fluid/framework/ir/delete_dropout_op_pass.h"
+
+#include <string>
 
 namespace phi {
 class DenseTensor;
@@ -51,7 +51,8 @@ void DeleteDropoutOpPass::ApplyImpl(ir::Graph* graph) const {
     auto var_map = any_op2_desc->Inputs();
     std::string arg_name = "";
     for (auto& name_m : var_map) {
-      if (std::find(name_m.second.begin(), name_m.second.end(),
+      if (std::find(name_m.second.begin(),
+                    name_m.second.end(),
                     dropout_op_out_name) != name_m.second.end()) {
         arg_name = name_m.first;
       }
@@ -64,7 +65,8 @@ void DeleteDropoutOpPass::ApplyImpl(ir::Graph* graph) const {
 
     // modify the any_op2's inputs
     for (auto& name_m : var_map) {
-      if (std::find(name_m.second.begin(), name_m.second.end(),
+      if (std::find(name_m.second.begin(),
+                    name_m.second.end(),
                     dropout_op_out_name) != name_m.second.end()) {
         std::vector<std::string> new_inputs;
         for (auto& i_n : name_m.second) {

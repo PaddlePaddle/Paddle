@@ -15,6 +15,7 @@
 #if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_HIP)
 
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/dynload/nvjpeg.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -42,7 +43,8 @@ class GPUDecodeJpegKernel : public framework::OpKernel<T> {
       nvjpegStatus_t create_status =
           platform::dynload::nvjpegCreateSimple(&nvjpeg_handle);
 
-      PADDLE_ENFORCE_EQ(create_status, NVJPEG_STATUS_SUCCESS,
+      PADDLE_ENFORCE_EQ(create_status,
+                        NVJPEG_STATUS_SUCCESS,
                         platform::errors::Fatal("nvjpegCreateSimple failed: ",
                                                 create_status));
     }
@@ -51,7 +53,8 @@ class GPUDecodeJpegKernel : public framework::OpKernel<T> {
     nvjpegStatus_t state_status =
         platform::dynload::nvjpegJpegStateCreate(nvjpeg_handle, &nvjpeg_state);
 
-    PADDLE_ENFORCE_EQ(state_status, NVJPEG_STATUS_SUCCESS,
+    PADDLE_ENFORCE_EQ(state_status,
+                      NVJPEG_STATUS_SUCCESS,
                       platform::errors::Fatal("nvjpegJpegStateCreate failed: ",
                                               state_status));
 
@@ -63,12 +66,18 @@ class GPUDecodeJpegKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<framework::Tensor>("X");
     auto* x_data = x->data<T>();
 
-    nvjpegStatus_t info_status = platform::dynload::nvjpegGetImageInfo(
-        nvjpeg_handle, x_data, (size_t)x->numel(), &components, &subsampling,
-        widths, heights);
+    nvjpegStatus_t info_status =
+        platform::dynload::nvjpegGetImageInfo(nvjpeg_handle,
+                                              x_data,
+                                              (size_t)x->numel(),
+                                              &components,
+                                              &subsampling,
+                                              widths,
+                                              heights);
 
     PADDLE_ENFORCE_EQ(
-        info_status, NVJPEG_STATUS_SUCCESS,
+        info_status,
+        NVJPEG_STATUS_SUCCESS,
         platform::errors::Fatal("nvjpegGetImageInfo failed: ", info_status));
 
     int width = widths[0];
@@ -123,9 +132,14 @@ class GPUDecodeJpegKernel : public framework::OpKernel<T> {
       out_image.pitch[c] = width;
     }
 
-    nvjpegStatus_t decode_status = platform::dynload::nvjpegDecode(
-        nvjpeg_handle, nvjpeg_state, x_data, x->numel(), output_format,
-        &out_image, nvjpeg_stream);
+    nvjpegStatus_t decode_status =
+        platform::dynload::nvjpegDecode(nvjpeg_handle,
+                                        nvjpeg_state,
+                                        x_data,
+                                        x->numel(),
+                                        output_format,
+                                        &out_image,
+                                        nvjpeg_stream);
   }
 };
 

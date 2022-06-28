@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <unistd.h>
+
 #include <condition_variable>  // NOLINT
 #include <fstream>
 #include <iomanip>
@@ -17,8 +18,8 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <unordered_set>
 #include <vector>
-#include "google/protobuf/text_format.h"
 
+#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
@@ -46,13 +47,18 @@ namespace operators = paddle::operators;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
-std::vector<std::string> edges = {
-    std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
-    std::string("37\t112\t0.21"), std::string("96\t48\t1.4"),
-    std::string("96\t247\t0.31"), std::string("96\t111\t1.21"),
-    std::string("59\t45\t0.34"),  std::string("59\t145\t0.31"),
-    std::string("59\t122\t0.21"), std::string("97\t48\t0.34"),
-    std::string("97\t247\t0.31"), std::string("97\t111\t0.21")};
+std::vector<std::string> edges = {std::string("37\t45\t0.34"),
+                                  std::string("37\t145\t0.31"),
+                                  std::string("37\t112\t0.21"),
+                                  std::string("96\t48\t1.4"),
+                                  std::string("96\t247\t0.31"),
+                                  std::string("96\t111\t1.21"),
+                                  std::string("59\t45\t0.34"),
+                                  std::string("59\t145\t0.31"),
+                                  std::string("59\t122\t0.21"),
+                                  std::string("97\t48\t0.34"),
+                                  std::string("97\t247\t0.31"),
+                                  std::string("97\t111\t0.21")};
 char edge_file_name[] = "edges.txt";
 
 std::vector<std::string> nodes = {
@@ -199,7 +205,8 @@ void RunServer2() {
 
 void RunClient(
     std::map<uint64_t, std::vector<paddle::distributed::Region>>& dense_regions,
-    int index, paddle::distributed::PsBaseService* service) {
+    int index,
+    paddle::distributed::PsBaseService* service) {
   ::paddle::distributed::PSParameter worker_proto = GetWorkerProto();
   paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list_.size();

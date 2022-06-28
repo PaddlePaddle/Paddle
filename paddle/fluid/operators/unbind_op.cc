@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/unbind_op.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
@@ -28,10 +30,12 @@ class UnbindOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::NotFound("Input(X) of UnbindOp is not found."));
     PADDLE_ENFORCE_GE(
-        ctx->Outputs("Out").size(), 1UL,
+        ctx->Outputs("Out").size(),
+        1UL,
         platform::errors::NotFound("Outputs(Out) of UnbindOp is not found."));
     auto in_dims = ctx->GetInputDim("X");
     auto outs_names = ctx->Outputs("Out");
@@ -79,6 +83,8 @@ Example:
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(unbind, ops::UnbindOp, ops::UnbindOpMaker,
+REGISTER_OPERATOR(unbind,
+                  ops::UnbindOp,
+                  ops::UnbindOpMaker,
                   ops::UnbindGradMaker<paddle::framework::OpDesc>,
                   ops::UnbindGradMaker<paddle::imperative::OpBase>);

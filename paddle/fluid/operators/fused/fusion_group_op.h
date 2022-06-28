@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_code.h"
 
@@ -24,7 +25,8 @@ namespace operators {
 
 static void MutableMultiTypeData(
     std::vector<paddle::framework::LoDTensor*>* var,
-    const std::vector<int>& data_type, const platform::Place& place) {
+    const std::vector<int>& data_type,
+    const platform::Place& place) {
   for (size_t i = 0; i < var->size(); i++) {
     if (data_type[i] == framework::proto::VarType::FP32) {
       (*var)[i]->mutable_data<float>(place);

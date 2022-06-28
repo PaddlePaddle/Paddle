@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/ddim.h"
@@ -103,17 +104,23 @@ DECLARE_INPLACE_OP_INFERER(ScatterInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(scatter, ScatterInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(scatter,
+                            ScatterInferShapeFunctor,
                             PD_INFER_META(phi::ScatterInferMeta));
 
-DECLARE_INFER_SHAPE_FUNCTOR(scatter_grad, ScatterGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(scatter_grad,
+                            ScatterGradInferShapeFunctor,
                             PD_INFER_META(phi::ScatterGradInferMeta));
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(scatter, ops::ScatterOp, ops::ScatterOpMaker,
+REGISTER_OPERATOR(scatter,
+                  ops::ScatterOp,
+                  ops::ScatterOpMaker,
                   ops::ScatterGradMaker<paddle::framework::OpDesc>,
                   ops::ScatterGradMaker<paddle::imperative::OpBase>,
-                  ops::ScatterInplaceInferer, ScatterInferShapeFunctor);
-REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp,
+                  ops::ScatterInplaceInferer,
+                  ScatterInferShapeFunctor);
+REGISTER_OPERATOR(scatter_grad,
+                  ops::ScatterGradOp,
                   ops::ScatterGradNoNeedBufferVarsInferer,
                   ScatterGradInferShapeFunctor);

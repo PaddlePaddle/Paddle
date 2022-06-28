@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/psroi_pool_kernel.h"
-
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/psroi_pool_kernel.h"
 
 namespace phi {
 
@@ -107,7 +107,7 @@ template <typename T, typename Context>
 void PsroiPoolGradKernel(const Context& ctx,
                          const DenseTensor& x,
                          const DenseTensor& rois,
-                         paddle::optional<const DenseTensor&> rois_num,
+                         const paddle::optional<DenseTensor>& rois_num,
                          const DenseTensor& dout,
                          int pooled_height,
                          int pooled_width,

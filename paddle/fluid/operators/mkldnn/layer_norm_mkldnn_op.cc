@@ -20,27 +20,23 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class LayerNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
-                                   T, dnnl::layer_normalization_forward> {
+class LayerNormMKLDNNHandler
+    : public platform::
+          MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward> {
  public:
-  LayerNormMKLDNNHandler(const std::vector<int64_t>& dims, const float& epsilon,
+  LayerNormMKLDNNHandler(const std::vector<int64_t>& dims,
+                         const float& epsilon,
                          const dnnl::normalization_flags& flags,
-                         const bool& is_test, const Tensor* x,
-                         const dnnl::engine engine, platform::Place cpu_place)
+                         const bool& is_test,
+                         const Tensor* x,
+                         const dnnl::engine engine,
+                         platform::Place cpu_place)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
             engine, cpu_place) {
-    if (!is_test) {
-      // TODO(grygielski) Delete forcing stats_md after DNNL 1.2 is introduced
-      auto stats_md = dnnl::memory::desc(
-          {begin(dims), end(dims) - 1}, platform::MKLDNNGetDataType<float>(),
-          platform::GetPlainMKLDNNFormat(dims.size() - 1));
-      this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                              x->mem_desc(), stats_md, epsilon,
-                                              flags);
-    } else {
-      this->AcquireForwardPrimitiveDescriptor(
-          dnnl::prop_kind::forward_inference, x->mem_desc(), epsilon, flags);
-    }
+    const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
+                                       : dnnl::prop_kind::forward_training;
+    this->AcquireForwardPrimitiveDescriptor(
+        fwd_prop_kind, x->mem_desc(), epsilon, flags);
   }
 
   std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(const Tensor* scale,
@@ -54,8 +50,8 @@ class LayerNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
     auto mem_data_handle =
         reinterpret_cast<float*>(scaleshift_memory->get_data_handle());
     std::copy(scale->data<float>(), scale->data<float>() + C, mem_data_handle);
-    std::copy(shift->data<float>(), shift->data<float>() + C,
-              mem_data_handle + C);
+    std::copy(
+        shift->data<float>(), shift->data<float>() + C, mem_data_handle + C);
     return scaleshift_memory;
   }
 
@@ -93,7 +89,8 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     auto src_tz = phi::vectorize(x->dims());
-    PADDLE_ENFORCE_EQ(begin_norm_axis, (src_tz.size() - 1),
+    PADDLE_ENFORCE_EQ(begin_norm_axis,
+                      (src_tz.size() - 1),
                       platform::errors::InvalidArgument(
                           "MKL-DNN Layer Norm supports only last logical "
                           "axis:%d as begin_norm_axis.",
@@ -106,8 +103,8 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       flags |= dnnl::normalization_flags::use_scale_shift;
     }
 
-    LayerNormMKLDNNHandler<T> handler(src_tz, epsilon, flags, is_test, x,
-                                      mkldnn_engine, ctx.GetPlace());
+    LayerNormMKLDNNHandler<T> handler(
+        src_tz, epsilon, flags, is_test, x, mkldnn_engine, ctx.GetPlace());
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto dst_memory = handler.AcquireDstMemory(out);
@@ -147,6 +144,8 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
 // TODO(jczaja): Enable FP32 when performance is good
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(layer_norm, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(layer_norm,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::LayerNormMKLDNNOpKernel<float>,
                    ops::LayerNormMKLDNNOpKernel<paddle::platform::bfloat16>);

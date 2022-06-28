@@ -5,6 +5,7 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
+
 #include "paddle/fluid/framework/new_executor/workqueue/nonblocking_threadpool.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -14,15 +15,18 @@ namespace paddle {
 namespace framework {
 
 void WorkQueueOptions::Validate() const {
-  PADDLE_ENFORCE_GT(name.size(), 0,
+  PADDLE_ENFORCE_GT(name.size(),
+                    0,
                     platform::errors::InvalidArgument(
                         "WorkQueueOptions.name must be nonempty"));
   PADDLE_ENFORCE_EQ(
-      name.find('_'), std::string::npos,
+      name.find('_'),
+      std::string::npos,
       platform::errors::InvalidArgument(
           "WorkQueueOptions.name shouldn't contain an underline"));
   PADDLE_ENFORCE_EQ(
-      allow_spinning == false && always_spinning == true, false,
+      allow_spinning == false && always_spinning == true,
+      false,
       platform::errors::InvalidArgument("WorkQueueOptions.allow_spinning must "
                                         "be true when always_spinning is set"));
 }
@@ -43,7 +47,8 @@ class WorkQueueImpl : public WorkQueue {
       destruct_notifier_ =
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
-    queue_ = new NonblockingThreadPool(options_.name, options_.num_threads,
+    queue_ = new NonblockingThreadPool(options_.name,
+                                       options_.num_threads,
                                        options_.allow_spinning,
                                        options_.always_spinning);
   }
@@ -64,11 +69,8 @@ class WorkQueueImpl : public WorkQueue {
                                  platform::TracerEventType::UserDefined,
                                  10 /*level*/);
     if (tracker_ != nullptr) {
-      fn = [
-        task = std::move(fn), raii = CounterGuard<TaskTracker>(tracker_)
-      ]() mutable {
-        task();
-      };
+      fn = [task = std::move(fn),
+            raii = CounterGuard<TaskTracker>(tracker_)]() mutable { task(); };
     }
     queue_->AddTask(std::move(fn));
   }
@@ -133,8 +135,10 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
     queues_[idx] = new (&queues_storage_[idx])
-        NonblockingThreadPool(options.name, options.num_threads,
-                              options.allow_spinning, options.always_spinning);
+        NonblockingThreadPool(options.name,
+                              options.num_threads,
+                              options.allow_spinning,
+                              options.always_spinning);
   }
 }
 
@@ -158,11 +162,8 @@ void WorkQueueGroupImpl::AddTask(size_t queue_idx, std::function<void()> fn) {
                                10 /*level*/);
   assert(queue_idx < queues_.size());
   if (queues_options_.at(queue_idx).track_task) {
-    fn = [
-      task = std::move(fn), raii = CounterGuard<TaskTracker>(tracker_)
-    ]() mutable {
-      task();
-    };
+    fn = [task = std::move(fn),
+          raii = CounterGuard<TaskTracker>(tracker_)]() mutable { task(); };
   }
   queues_[queue_idx]->AddTask(std::move(fn));
 }
@@ -195,7 +196,8 @@ std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
     const WorkQueueOptions& options) {
   options.Validate();
   // extra check
-  PADDLE_ENFORCE_EQ(options.num_threads, 1u,
+  PADDLE_ENFORCE_EQ(options.num_threads,
+                    1u,
                     platform::errors::InvalidArgument(
                         "For a SingleThreadedWorkQueue, "
                         "WorkQueueOptions.num_threads must equals to 1."));
@@ -208,7 +210,8 @@ std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(
   options.Validate();
   // extra check
   PADDLE_ENFORCE_GT(
-      options.num_threads, 1u,
+      options.num_threads,
+      1u,
       platform::errors::InvalidArgument("For a MultiThreadedWorkQueue, "
                                         "WorkQueueOptions.num_threads must be "
                                         "greater than 1."));
@@ -218,7 +221,8 @@ std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(
 
 std::unique_ptr<WorkQueueGroup> CreateWorkQueueGroup(
     const std::vector<WorkQueueOptions>& queues_options) {
-  PADDLE_ENFORCE_GT(queues_options.size(), 1u,
+  PADDLE_ENFORCE_GT(queues_options.size(),
+                    1u,
                     platform::errors::InvalidArgument(
                         "For a WorkQueueGroup, the number of WorkQueueOptions "
                         "must be greater than 1."));

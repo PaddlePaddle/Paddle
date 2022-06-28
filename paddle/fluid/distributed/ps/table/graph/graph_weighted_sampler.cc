@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/graph/graph_weighted_sampler.h"
+
 #include <iostream>
 #include <memory>
 #include <unordered_map>
+
 #include "paddle/fluid/framework/generator.h"
 namespace paddle {
 namespace distributed {
@@ -85,7 +87,8 @@ void WeightedSampler::build(GraphEdgeBlob *edges) {
   return build_one((WeightedGraphEdgeBlob *)edges, 0, edges->size());
 }
 
-void WeightedSampler::build_one(WeightedGraphEdgeBlob *edges, int start,
+void WeightedSampler::build_one(WeightedGraphEdgeBlob *edges,
+                                int start,
                                 int end) {
   count = 0;
   this->edges = edges;
@@ -122,8 +125,8 @@ std::vector<int> WeightedSampler::sample_k(
   while (k--) {
     float query_weight = distrib(*rng);
     query_weight *= weight - subtract_weight_map[this];
-    sample_result.push_back(sample(query_weight, subtract_weight_map,
-                                   subtract_count_map, subtract));
+    sample_result.push_back(sample(
+        query_weight, subtract_weight_map, subtract_count_map, subtract));
   }
   return sample_result;
 }
@@ -145,12 +148,13 @@ int WeightedSampler::sample(
   int return_idx;
   if (right_count == 0 ||
       left_count > 0 && left->weight - left_subtract >= query_weight) {
-    return_idx = left->sample(query_weight, subtract_weight_map,
-                              subtract_count_map, subtract);
+    return_idx = left->sample(
+        query_weight, subtract_weight_map, subtract_count_map, subtract);
   } else {
-    return_idx =
-        right->sample(query_weight - (left->weight - left_subtract),
-                      subtract_weight_map, subtract_count_map, subtract);
+    return_idx = right->sample(query_weight - (left->weight - left_subtract),
+                               subtract_weight_map,
+                               subtract_count_map,
+                               subtract);
   }
   subtract_weight_map[this] += subtract;
   subtract_count_map[this]++;

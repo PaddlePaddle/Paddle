@@ -17,6 +17,7 @@
 #ifdef PADDLE_WITH_MLU
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
@@ -27,7 +28,8 @@ template <typename T>
 void MLUReduceOp(const framework::ExecutionContext& context,
                  std::string reduce_name) {
   PADDLE_ENFORCE_EQ(
-      platform::is_mlu_place(context.GetPlace()), true,
+      platform::is_mlu_place(context.GetPlace()),
+      true,
       platform::errors::Unavailable("This kernel only runs on MLU."));
   auto* input = context.Input<Tensor>("X");
   auto* output = context.Output<Tensor>("Out");
@@ -52,19 +54,29 @@ void MLUReduceOp(const framework::ExecutionContext& context,
     }
   }
 
-  MLUCnnlTensorDesc input_desc(*input, CNNL_LAYOUT_ARRAY,
-                               ToCnnlDataType(input->dtype()));
-  MLUCnnlTensorDesc output_desc(*output, CNNL_LAYOUT_ARRAY,
-                                ToCnnlDataType(output->dtype()));
+  MLUCnnlTensorDesc input_desc(
+      *input, CNNL_LAYOUT_ARRAY, ToCnnlDataType(input->dtype()));
+  MLUCnnlTensorDesc output_desc(
+      *output, CNNL_LAYOUT_ARRAY, ToCnnlDataType(output->dtype()));
 
   cnnlReduceOp_t reduce_op = GetMLUCnnlReduceOp(reduce_name);
-  MLUCnnlReduceDesc reduction_desc(reduce_dims, reduce_op, ToCnnlDataType<T>(),
+  MLUCnnlReduceDesc reduction_desc(reduce_dims,
+                                   reduce_op,
+                                   ToCnnlDataType<T>(),
                                    CNNL_NOT_PROPAGATE_NAN,
-                                   CNNL_REDUCE_NO_INDICES, CNNL_32BIT_INDICES);
+                                   CNNL_REDUCE_NO_INDICES,
+                                   CNNL_32BIT_INDICES);
 
-  MLUCnnl::Reduce(context, true /*need_workspace*/, reduction_desc.get(),
-                  nullptr, input_desc.get(), GetBasePtr(input),
-                  0 /*indices_size*/, nullptr, nullptr, output_desc.get(),
+  MLUCnnl::Reduce(context,
+                  true /*need_workspace*/,
+                  reduction_desc.get(),
+                  nullptr,
+                  input_desc.get(),
+                  GetBasePtr(input),
+                  0 /*indices_size*/,
+                  nullptr,
+                  nullptr,
+                  output_desc.get(),
                   GetBasePtr(output));
 }
 

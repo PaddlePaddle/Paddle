@@ -16,8 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/rnn_functor.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -962,14 +961,16 @@ void dropout_cpu_grad_function_inplace(const CPUContext& dev_ctx,
 }
 
 template <typename GradCellType,
-          template <typename, typename> class SingleGradLayerT,
-          template <typename, typename> class BidirGradLayerT,
+          template <typename, typename>
+          class SingleGradLayerT,
+          template <typename, typename>
+          class BidirGradLayerT,
           typename T>
 void RnnGradFunc(const CPUContext& dev_ctx,
                  const DenseTensor& x,
                  const std::vector<const DenseTensor*>& pre_state,
                  const std::vector<const DenseTensor*>& weight_list,
-                 paddle::optional<const DenseTensor&> sequence_length,
+                 const paddle::optional<DenseTensor>& sequence_length,
                  const DenseTensor& out,
                  const DenseTensor& dropout_state,
                  const DenseTensor& reserve,
@@ -1244,7 +1245,7 @@ void RnnGradKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const std::vector<const DenseTensor*>& pre_state,
                    const std::vector<const DenseTensor*>& weight_list,
-                   paddle::optional<const DenseTensor&> sequence_length,
+                   const paddle::optional<DenseTensor>& sequence_length,
                    const DenseTensor& out,
                    const DenseTensor& dropout_state,
                    const DenseTensor& reserve,

@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/partial_allgather_op.h"
 #include <memory>
 
+#include "paddle/fluid/operators/collective/partial_allgather_op.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/npu/hccl_helper.h"
 
@@ -40,13 +40,16 @@ class CallPartialGatherOpASCENDKernel : public framework::OpKernel<T> {
     auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
     int nranks = comm->nranks();
 
-    PADDLE_ENFORCE_EQ(rank, comm->rank(),
+    PADDLE_ENFORCE_EQ(rank,
+                      comm->rank(),
                       platform::errors::InvalidArgument(
                           "rank: %s should equal to %s", rank, comm->rank()));
     PADDLE_ENFORCE_EQ(
-        (numel % nranks), 0,
+        (numel % nranks),
+        0,
         platform::errors::InvalidArgument(
-            "The input numel (%d) must be divisible by nranks(%d)", numel,
+            "The input numel (%d) must be divisible by nranks(%d)",
+            numel,
             nranks));
 
     framework::DDim dims = in->dims();
@@ -71,9 +74,13 @@ class CallPartialGatherOpASCENDKernel : public framework::OpKernel<T> {
             << ", group is " << group << ", ring_id is " << ring_id
             << ", nranks is " << nranks << ", rankid is " << rank;
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllGather(
-        send_buff, recv_buff, send_numel, dtype, comm->comm(),
-        reinterpret_cast<void *>(stream)));
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        platform::dynload::HcclAllGather(send_buff,
+                                         recv_buff,
+                                         send_numel,
+                                         dtype,
+                                         comm->comm(),
+                                         reinterpret_cast<void *>(stream)));
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

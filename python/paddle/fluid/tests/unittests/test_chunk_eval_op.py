@@ -23,6 +23,7 @@ from paddle import fluid
 
 
 class Segment(object):
+
     def __init__(self, chunk_type, start_idx, end_idx):
         self.chunk_type = chunk_type
         self.start_idx = start_idx
@@ -49,15 +50,15 @@ class TestChunkEvalOp(OpTest):
         for chunk in chunks:
             if self.scheme == 'IOB':
                 data[chunk.start_idx] = chunk.chunk_type * self.num_tag_types
-                data[chunk.start_idx + 1:
-                     chunk.end_idx] = chunk.chunk_type * self.num_tag_types + (
+                data[chunk.start_idx + 1:chunk.
+                     end_idx] = chunk.chunk_type * self.num_tag_types + (
                          self.num_tag_types - 1)
                 data[chunk.end_idx] = chunk.chunk_type * self.num_tag_types + (
                     self.num_tag_types - 1
                 ) if chunk.start_idx < chunk.end_idx else data[chunk.start_idx]
             elif self.scheme == 'IOE':
-                data[chunk.start_idx:
-                     chunk.end_idx] = chunk.chunk_type * self.num_tag_types
+                data[chunk.start_idx:chunk.
+                     end_idx] = chunk.chunk_type * self.num_tag_types
                 data[chunk.end_idx] = chunk.chunk_type * self.num_tag_types + (
                     self.num_tag_types - 1)
 
@@ -67,15 +68,15 @@ class TestChunkEvalOp(OpTest):
         chunks = []
         # generate chunk beginnings
         chunk_begins = sorted(
-            np.random.choice(
-                list(range(starts[-1])), num_chunks, replace=False))
+            np.random.choice(list(range(starts[-1])), num_chunks,
+                             replace=False))
         seq_chunk_begins = []
         begin_idx = 0
         # divide chunks into sequences
         for i in range(len(starts) - 1):
             tmp_chunk_begins = []
-            while begin_idx < len(chunk_begins) and chunk_begins[
-                    begin_idx] < starts[i + 1]:
+            while begin_idx < len(
+                    chunk_begins) and chunk_begins[begin_idx] < starts[i + 1]:
                 tmp_chunk_begins.append(chunk_begins[begin_idx])
                 begin_idx += 1
             seq_chunk_begins.append(tmp_chunk_begins)
@@ -84,8 +85,9 @@ class TestChunkEvalOp(OpTest):
         for i in range(len(seq_chunk_begins)):
             for j in range(len(seq_chunk_begins[i])):
                 low = seq_chunk_begins[i][j]
-                high = seq_chunk_begins[i][j + 1] if j < len(seq_chunk_begins[
-                    i]) - 1 else starts[i + 1]
+                high = seq_chunk_begins[i][
+                    j + 1] if j < len(seq_chunk_begins[i]) - 1 else starts[i +
+                                                                           1]
                 chunk_ends.append(np.random.randint(low, high))
         # generate chunks
         for chunk_pos in zip(chunk_begins, chunk_ends):
@@ -94,11 +96,12 @@ class TestChunkEvalOp(OpTest):
         return chunks
 
     def gen_chunks(self, infer, label, starts):
-        chunks = self.rand_chunks(starts,
-                                  self.num_infer_chunks + self.num_label_chunks
-                                  - self.num_correct_chunks)
-        correct_chunks = np.random.choice(
-            list(range(len(chunks))), self.num_correct_chunks, replace=False)
+        chunks = self.rand_chunks(
+            starts, self.num_infer_chunks + self.num_label_chunks -
+            self.num_correct_chunks)
+        correct_chunks = np.random.choice(list(range(len(chunks))),
+                                          self.num_correct_chunks,
+                                          replace=False)
         infer_chunks = np.random.choice(
             [x for x in range(len(chunks)) if x not in correct_chunks],
             self.num_infer_chunks - self.num_correct_chunks,
@@ -142,10 +145,9 @@ class TestChunkEvalOp(OpTest):
         infer = np.zeros((self.batch_size, )).astype('int64')
         infer.fill(self.num_chunk_types * self.num_tag_types)
         label = np.copy(infer)
-        starts = np.random.choice(
-            list(range(1, self.batch_size)),
-            self.num_sequences - 1,
-            replace=False).tolist()
+        starts = np.random.choice(list(range(1, self.batch_size)),
+                                  self.num_sequences - 1,
+                                  replace=False).tolist()
         starts.extend([0, self.batch_size])
         starts = sorted(starts)
         self.num_correct_chunks, self.num_infer_chunks, self.num_label_chunks = self.gen_chunks(
@@ -162,18 +164,15 @@ class TestChunkEvalOp(OpTest):
         f1 = float(2 * precision * recall) / (
             precision + recall) if self.num_correct_chunks else 0
         self.outputs = {
-            'Precision': np.asarray(
-                [precision], dtype='float32'),
-            'Recall': np.asarray(
-                [recall], dtype='float32'),
-            'F1-Score': np.asarray(
-                [f1], dtype='float32'),
-            'NumInferChunks': np.asarray(
-                [self.num_infer_chunks], dtype='int64'),
-            'NumLabelChunks': np.asarray(
-                [self.num_label_chunks], dtype='int64'),
-            'NumCorrectChunks': np.asarray(
-                [self.num_correct_chunks], dtype='int64')
+            'Precision': np.asarray([precision], dtype='float32'),
+            'Recall': np.asarray([recall], dtype='float32'),
+            'F1-Score': np.asarray([f1], dtype='float32'),
+            'NumInferChunks': np.asarray([self.num_infer_chunks],
+                                         dtype='int64'),
+            'NumLabelChunks': np.asarray([self.num_label_chunks],
+                                         dtype='int64'),
+            'NumCorrectChunks': np.asarray([self.num_correct_chunks],
+                                           dtype='int64')
         }
 
     def set_input(self, infer, label, lod):
@@ -189,6 +188,7 @@ class TestChunkEvalOp(OpTest):
 
 
 class TestChunkEvalOpWithExclude(TestChunkEvalOp):
+
     def set_confs(self):
         # Use the IOE scheme and labels with 3 chunk types
         self.scheme = 'IOE'
@@ -205,6 +205,7 @@ class TestChunkEvalOpWithExclude(TestChunkEvalOp):
 
 
 class TestChunkEvalOpWithTensorInput(TestChunkEvalOp):
+
     def set_input(self, infer, label, lod):
         max_len = np.max(lod)
         pad_infer = []
@@ -233,41 +234,41 @@ class TestChunkEvalOpWithTensorInput(TestChunkEvalOp):
 
 
 class TestChunkEvalOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
 
             def test_input():
                 input_data = np.random.random(1, 1).astype("int64")
                 label_data = np.random.random(1).astype("int64")
-                fluid.layers.chunk_eval(
-                    input=input_data,
-                    label=label_data,
-                    chunk_scheme="IOB",
-                    num_chunk_types=3)
+                fluid.layers.chunk_eval(input=input_data,
+                                        label=label_data,
+                                        chunk_scheme="IOB",
+                                        num_chunk_types=3)
 
             self.assertRaises(TypeError, test_input)
 
             def test_label():
-                input_ = fluid.data(
-                    name="input", shape=[None, 1], dtype="int64")
+                input_ = fluid.data(name="input",
+                                    shape=[None, 1],
+                                    dtype="int64")
                 label_data = np.random.random(1).astype("int64")
-                fluid.layers.chunk_eval(
-                    input=input_,
-                    label=label_data,
-                    chunk_scheme="IOB",
-                    num_chunk_types=3)
+                fluid.layers.chunk_eval(input=input_,
+                                        label=label_data,
+                                        chunk_scheme="IOB",
+                                        num_chunk_types=3)
 
             self.assertRaises(TypeError, test_label)
 
             def test_type():
-                in_data = fluid.data(
-                    name="input_", shape=[None, 1], dtype="int32")
+                in_data = fluid.data(name="input_",
+                                     shape=[None, 1],
+                                     dtype="int32")
                 label = fluid.data(name="label_", shape=[1], dtype="int64")
-                fluid.layers.chunk_eval(
-                    input=in_data,
-                    label=label,
-                    chunk_scheme="IOB",
-                    num_chunk_types=3)
+                fluid.layers.chunk_eval(input=in_data,
+                                        label=label,
+                                        chunk_scheme="IOB",
+                                        num_chunk_types=3)
 
             self.assertRaises(TypeError, test_type)
 

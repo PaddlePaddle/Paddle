@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
 #include <csignal>
 
 #include "glog/logging.h"
@@ -87,16 +88,19 @@ void EraseLoadProcessPIDs(int64_t key) {
     SIGNAL_HANDLE(SIGNAL);                                        \
   }
 
-REGISTER_SIGNAL_HANDLER(SIGSEGV, SIGSEGV_handler,
+REGISTER_SIGNAL_HANDLER(SIGSEGV,
+                        SIGSEGV_handler,
                         "ERROR: Unexpected segmentation fault encountered in "
                         "DataLoader workers.\n");
 REGISTER_SIGNAL_HANDLER(
-    SIGBUS, SIGBUS_handler,
+    SIGBUS,
+    SIGBUS_handler,
     "ERROR: Unexpected BUS error encountered in DataLoader worker. "
     "This might be caused by insufficient shared memory (shm), "
     "please check whether use_shared_memory is set and storage space "
     "in /dev/shm is enough\n");
-REGISTER_SIGNAL_HANDLER(SIGFPE, SIGFPE_handler,
+REGISTER_SIGNAL_HANDLER(SIGFPE,
+                        SIGFPE_handler,
                         "ERROR: Unexpected floating-point exception "
                         "encountered in DataLoader worker.\n")
 REGISTER_SPEC_SIGNAL_HANDLER(SIGTERM, SIGTERM_handler);
@@ -153,7 +157,8 @@ void ThrowErrorIfLoadProcessFailed() {
             "  2. If run DataLoader by DataLoader(dataset, ...), run with "
             "DataLoader(dataset, ..., num_workers=0) may give better error "
             "trace",
-            process_pid, infop.si_status));
+            process_pid,
+            infop.si_status));
       } else if (infop.si_code == CLD_KILLED ||
                  infop.si_code == CLD_DUMPED) {  // killed by signal
         if (infop.si_status == SIGBUS) {
@@ -174,11 +179,13 @@ void ThrowErrorIfLoadProcessFailed() {
               "len(places).\n"
               "  3. If run by DataLoader(dataset, ..., use_shared_memory=True),"
               " set use_shared_memory=False for not using shared memory.",
-              process_pid, strsignal(infop.si_status)));
+              process_pid,
+              strsignal(infop.si_status)));
         } else {
           PADDLE_THROW(platform::errors::Fatal(
               "DataLoader process (pid %ld) exited is killed by signal: %s.",
-              process_pid, strsignal(infop.si_status)));
+              process_pid,
+              strsignal(infop.si_status)));
         }
       }
     }

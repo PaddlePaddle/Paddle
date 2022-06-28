@@ -13,6 +13,7 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/operators/quantize_op.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -27,8 +28,10 @@ framework::OpKernelType QuantOp::GetExpectedKernelType(
   framework::DataLayout layout_ = framework::DataLayout::kMKLDNN;
 
   return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
-      layout_, library_);
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+      ctx.GetPlace(),
+      layout_,
+      library_);
 }
 
 void QuantOpMaker::Make() {
@@ -57,13 +60,13 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(quantize, ops::QuantOp, ops::QuantOpMaker);
 
 REGISTER_OP_VERSION(quantize)
-    .AddCheckpoint(
-        R"ROC( Add a new attribute [bfloat16])ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "bfloat16", "If true, float32 input is converted to bfloat16",
-            false))
-    .AddCheckpoint(
-        R"ROC( Add a new attribute [Shift])ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "Shift", "Quantize data to uint8 if provided non-zero value.",
-            0.0f));
+    .AddCheckpoint(R"ROC( Add a new attribute [bfloat16])ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewAttr(
+                       "bfloat16",
+                       "If true, float32 input is converted to bfloat16",
+                       false))
+    .AddCheckpoint(R"ROC( Add a new attribute [Shift])ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewAttr(
+                       "Shift",
+                       "Quantize data to uint8 if provided non-zero value.",
+                       0.0f));

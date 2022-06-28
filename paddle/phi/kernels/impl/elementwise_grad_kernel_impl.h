@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -53,8 +53,8 @@ void AddGradImpl(const Context& dev_ctx,
 template <typename T, typename Context>
 void AddDoubleGradImpl(const Context& dev_ctx,
                        const DenseTensor& y,
-                       const paddle::optional<const DenseTensor&>& ddx,
-                       const paddle::optional<const DenseTensor&>& ddy,
+                       const paddle::optional<DenseTensor>& ddx,
+                       const paddle::optional<DenseTensor>& ddy,
                        const DenseTensor& dout,
                        int axis,
                        DenseTensor* ddout) {
@@ -87,8 +87,8 @@ void AddDoubleGradImpl(const Context& dev_ctx,
 template <typename T, typename Context>
 void SubtractDoubleGradImpl(const Context& dev_ctx,
                             const DenseTensor& y,
-                            const paddle::optional<const DenseTensor&>& ddx,
-                            const paddle::optional<const DenseTensor&>& ddy,
+                            const paddle::optional<DenseTensor>& ddx,
+                            const paddle::optional<DenseTensor>& ddy,
                             const DenseTensor& dout,
                             int axis,
                             DenseTensor* ddout) {
@@ -160,8 +160,8 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& y,
                             const DenseTensor& out,
                             const DenseTensor& dx,
-                            paddle::optional<const DenseTensor&> ddx,
-                            paddle::optional<const DenseTensor&> ddy,
+                            const paddle::optional<DenseTensor>& ddx,
+                            const paddle::optional<DenseTensor>& ddy,
                             int axis,
                             DenseTensor* dy,
                             DenseTensor* dout,
@@ -360,6 +360,14 @@ struct MulGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * y; }
 };
 
+// avoid [-Wint-in-bool-context] warning
+template <>
+struct MulGradDX<bool> {
+  HOSTDEVICE bool operator()(bool x, bool y, bool out, bool dout) const {
+    return dout && y;
+  }
+};
+
 template <typename T>
 struct MulGradDX<phi::dtype::complex<T>> {
   HOSTDEVICE phi::dtype::complex<T> operator()(
@@ -383,6 +391,14 @@ struct MulGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * x; }
 };
 
+// avoid [-Wint-in-bool-context] warning
+template <>
+struct MulGradDY<bool> {
+  HOSTDEVICE bool operator()(bool x, bool y, bool out, bool dout) const {
+    return dout && x;
+  }
+};
+
 template <typename T>
 struct MulGradDY<phi::dtype::complex<T>> {
   HOSTDEVICE phi::dtype::complex<T> operator()(
@@ -400,8 +416,8 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& y,
                               const DenseTensor& dout,
-                              paddle::optional<const DenseTensor&> ddx,
-                              paddle::optional<const DenseTensor&> ddy,
+                              const paddle::optional<DenseTensor>& ddx,
+                              const paddle::optional<DenseTensor>& ddy,
                               int axis,
                               DenseTensor* dx,
                               DenseTensor* dy,
@@ -426,8 +442,14 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
   // (5) dx = dout * ddy
   if (ddout) {
     auto& place = *dev_ctx.eigen_device();
-    // size(ddout) > size(ddx), ddout can't use memory of ddx using inplace
-    if (ddout->numel() > ddx.get_ptr()->numel()) {
+    // size(ddout) > size(ddx) or we don't have ddx, ddout can't use memory of
+    // ddx using inplace
+
+    bool without_ddx = (ddx.get_ptr() == nullptr);
+    if (!without_ddx) {
+      without_ddx = (ddout->numel() > ddx.get_ptr()->numel());
+    }
+    if (without_ddx) {
       phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
           dev_ctx,
           ddx_safe,
@@ -497,6 +519,20 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, dout, ddy_safe, dx, axis);
     }
+  } else {
+    if (dx && dy) {
+      phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+          dev_ctx,
+          ddx_safe,
+          ddy_safe,
+          dout,
+          dout,
+          axis,
+          dx,
+          dy,
+          MulGradDX<T>(),
+          MulGradDY<T>());
+    }
   }
 }
 
@@ -505,11 +541,11 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& y,
                               const DenseTensor& dout,
-                              paddle::optional<const DenseTensor&> ddx,
-                              paddle::optional<const DenseTensor&> ddy,
+                              const paddle::optional<DenseTensor>& ddx,
+                              const paddle::optional<DenseTensor>& ddy,
                               const DenseTensor& d_dx,
                               const DenseTensor& d_dy,
-                              paddle::optional<const DenseTensor&> d_ddout,
+                              const paddle::optional<DenseTensor>& d_ddout,
                               int axis,
                               DenseTensor* d_x,
                               DenseTensor* d_y,
@@ -666,6 +702,43 @@ struct MinGradDy {
     return dout * static_cast<T>(x >= y);
   }
 };
+
+template <typename T>
+struct HeavisideGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(0);
+  }
+};
+
+template <typename T>
+struct HeavisideGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(x == static_cast<T>(0));
+  }
+};
+
+template <typename T, typename Context>
+void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& y,
+                                    const DenseTensor& dout,
+                                    int axis,
+                                    DenseTensor* dx,
+                                    DenseTensor* dy) {
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  phi::funcs::
+      ElemwiseGradCompute<Context, T, HeavisideGradDx<T>, HeavisideGradDy<T>>(
+          dev_ctx,
+          x,
+          y,
+          dout,
+          dout,
+          axis,
+          dx,
+          dy,
+          HeavisideGradDx<T>(),
+          HeavisideGradDy<T>());
+}
 
 template <typename T>
 struct PowGradDX {

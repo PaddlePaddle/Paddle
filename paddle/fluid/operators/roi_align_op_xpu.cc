@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -37,7 +38,7 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
     auto aligned = ctx.Attr<bool>("aligned");
 
-    auto in_dims = in->dims();
+    const auto& in_dims = in->dims();
     int batch_size = in_dims[0];
     int channels = in_dims[1];
     int height = in_dims[2];
@@ -59,16 +60,21 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
       auto* rois_num_t = ctx.Input<Tensor>("RoisNum");
       rois_batch_size = rois_num_t->numel();
       PADDLE_ENFORCE_EQ(
-          rois_batch_size, batch_size,
+          rois_batch_size,
+          batch_size,
           platform::errors::InvalidArgument(
               "The rois_batch_size and imgs "
               "batch_size must be the same. But received rois_batch_size = %d, "
               "batch_size = %d",
-              rois_batch_size, batch_size));
+              rois_batch_size,
+              batch_size));
 
       std::vector<int> rois_num_list(rois_batch_size);
-      memory::Copy(cplace, rois_num_list.data(), xplace,
-                   rois_num_t->data<int>(), sizeof(int) * rois_batch_size);
+      memory::Copy(cplace,
+                   rois_num_list.data(),
+                   xplace,
+                   rois_num_t->data<int>(),
+                   sizeof(int) * rois_batch_size);
       cpu_lod = new int[rois_batch_size + 1];
       cpu_lod[0] = 0;
       for (int i = 0; i < rois_batch_size; i++) {
@@ -77,27 +83,32 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
     } else {
       auto lod = rois->lod();
       PADDLE_ENFORCE_EQ(
-          lod.empty(), false,
+          lod.empty(),
+          false,
           platform::errors::InvalidArgument("Input(ROIs) in ROIAlignOp does "
                                             "not contain LoD information."));
       auto rois_lod = lod.back();
       rois_batch_size = rois_lod.size() - 1;
       PADDLE_ENFORCE_EQ(
-          rois_batch_size, batch_size,
+          rois_batch_size,
+          batch_size,
           platform::errors::InvalidArgument(
               "The batch size of rois and batch size "
               "of images must be the same. But received rois batch size = %d, "
               "and images batch size = %d",
-              rois_batch_size, batch_size));
+              rois_batch_size,
+              batch_size));
       int rois_num_with_lod = rois_lod[rois_batch_size];
       PADDLE_ENFORCE_EQ(
-          rois_num, rois_num_with_lod,
+          rois_num,
+          rois_num_with_lod,
           platform::errors::InvalidArgument(
               "The actual number of rois and the number of rois "
               "provided from Input(RoIsLoD) in RoIAlign must be the same."
               " But received actual number of rois is %d, and the number "
               "of rois from RoIsLoD is %d",
-              rois_num, rois_num_with_lod));
+              rois_num,
+              rois_num_with_lod));
       for (int n = 0; n < rois_batch_size; ++n) {
         for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
           roi_batch_id_data[i] = n;
@@ -112,19 +123,36 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
     int* roi_id_data = nullptr;
     int r = xpu_malloc(reinterpret_cast<void**>(&roi_id_data),
                        (rois_batch_size + 1) * sizeof(int));
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
                       platform::errors::External("no enough memory in xpu"));
-    memory::Copy(xplace, roi_id_data, cplace, cpu_lod,
+    memory::Copy(xplace,
+                 roi_id_data,
+                 cplace,
+                 cpu_lod,
                  (rois_batch_size + 1) * sizeof(int));
     delete[] cpu_lod;
-    r = xpu::roi_align<T, int>(
-        dev_ctx.x_context(), in->data<T>(),
-        out->mutable_data<T>(ctx.GetPlace()), rois->data<T>(), roi_id_data,
-        batch_size, channels, height, width, out->dims()[0], pooled_height,
-        pooled_width, spatial_scale, sampling_ratio, true, aligned);
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+    r = xpu::roi_align<T, int>(dev_ctx.x_context(),
+                               in->data<T>(),
+                               out->mutable_data<T>(ctx.GetPlace()),
+                               rois->data<T>(),
+                               roi_id_data,
+                               batch_size,
+                               channels,
+                               height,
+                               width,
+                               out->dims()[0],
+                               pooled_height,
+                               pooled_width,
+                               spatial_scale,
+                               sampling_ratio,
+                               true,
+                               aligned);
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
                       platform::errors::External(
-                          "The roi_align XPU OP return wrong value[%d %s]", r,
+                          "The roi_align XPU OP return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
     if (dev_ctx.x_context()->xpu_stream) {
       dev_ctx.Wait();
@@ -170,8 +198,11 @@ class XPUROIAlignGradOpKernel : public framework::OpKernel<T> {
       auto* rois_num_t = ctx.Input<Tensor>("RoisNum");
       rois_batch_size = rois_num_t->numel();
       std::vector<int> rois_num_list(rois_batch_size);
-      memory::Copy(cplace, rois_num_list.data(), xplace,
-                   rois_num_t->data<int>(), sizeof(int) * rois_batch_size);
+      memory::Copy(cplace,
+                   rois_num_list.data(),
+                   xplace,
+                   rois_num_t->data<int>(),
+                   sizeof(int) * rois_batch_size);
       cpu_lod = new int[rois_batch_size + 1];
       cpu_lod[0] = 0;
       for (int i = 0; i < rois_batch_size; i++) {
@@ -188,9 +219,13 @@ class XPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     int* roi_id_data = nullptr;
     int r = xpu_malloc(reinterpret_cast<void**>(&roi_id_data),
                        (rois_batch_size + 1) * sizeof(int));
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
                       platform::errors::External("no enough memory in xpu"));
-    memory::Copy(xplace, roi_id_data, cplace, cpu_lod,
+    memory::Copy(xplace,
+                 roi_id_data,
+                 cplace,
+                 cpu_lod,
                  (rois_batch_size + 1) * sizeof(int));
     in_grad->mutable_data<T>(ctx.GetPlace());
 
@@ -198,15 +233,28 @@ class XPUROIAlignGradOpKernel : public framework::OpKernel<T> {
 
     delete[] cpu_lod;
     if (output_grad_size > 0) {
-      r = xpu::roi_align_grad<T, int>(
-          dev_ctx.x_context(), out_grad->data<T>(), in_grad->data<T>(),
-          rois->data<T>(), roi_id_data, in->dims()[0], channels, height, width,
-          out_grad->dims()[0], pooled_height, pooled_width, spatial_scale,
-          sampling_ratio, true, aligned);
+      r = xpu::roi_align_grad<T, int>(dev_ctx.x_context(),
+                                      out_grad->data<T>(),
+                                      in_grad->data<T>(),
+                                      rois->data<T>(),
+                                      roi_id_data,
+                                      in->dims()[0],
+                                      channels,
+                                      height,
+                                      width,
+                                      out_grad->dims()[0],
+                                      pooled_height,
+                                      pooled_width,
+                                      spatial_scale,
+                                      sampling_ratio,
+                                      true,
+                                      aligned);
       PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
+          r,
+          xpu::Error_t::SUCCESS,
           platform::errors::External(
-              "The roi_align_grad XPU OP return wrong value[%d %s]", r,
+              "The roi_align_grad XPU OP return wrong value[%d %s]",
+              r,
               XPUAPIErrorMsg[r]));
     }
     if (dev_ctx.x_context()->xpu_stream) {

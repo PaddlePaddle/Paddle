@@ -15,6 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
@@ -26,14 +27,16 @@ class BinaryBitwiseOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     OpComment comment;
-    AddInput("X", string::Sprintf(
-                      "Input Tensor of ``%s`` . It is "
-                      "a N-D Tensor of bool, uint8, int8, int16, int32, int64.",
-                      comment.type));
-    AddInput("Y", string::Sprintf(
-                      "Input Tensor of ``%s`` . It is "
-                      "a N-D Tensor of bool, uint8, int8, int16, int32, int64.",
-                      comment.type));
+    AddInput("X",
+             string::Sprintf(
+                 "Input Tensor of ``%s`` . It is "
+                 "a N-D Tensor of bool, uint8, int8, int16, int32, int64.",
+                 comment.type));
+    AddInput("Y",
+             string::Sprintf(
+                 "Input Tensor of ``%s`` . It is "
+                 "a N-D Tensor of bool, uint8, int8, int16, int32, int64.",
+                 comment.type));
     AddOutput("Out",
               string::Sprintf("Result of ``%s`` . It is a N-D Tensor with "
                               "the same data type of input Tensor.",
@@ -47,7 +50,9 @@ It operates ``%s`` on Tensor ``X`` and ``Y`` .
 .. note::
     ``paddle.%s`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 )DOC",
-                               comment.type, comment.equation, comment.type));
+                               comment.type,
+                               comment.equation,
+                               comment.type));
   }
 };
 
@@ -56,10 +61,11 @@ class UnaryBitwiseOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     OpComment comment;
-    AddInput("X", string::Sprintf(
-                      "Input Tensor of ``%s`` . It is "
-                      "a N-D Tensor of bool, uint8, int8, int16, int32, int64.",
-                      comment.type));
+    AddInput("X",
+             string::Sprintf(
+                 "Input Tensor of ``%s`` . It is "
+                 "a N-D Tensor of bool, uint8, int8, int16, int32, int64.",
+                 comment.type));
     AddOutput("Out",
               string::Sprintf("Result of ``%s`` . It is a N-D Tensor with "
                               "the same data type of input Tensor.",
@@ -71,7 +77,8 @@ It operates ``%s`` on Tensor ``X`` .
         %s
 
 )DOC",
-                               comment.type, comment.equation));
+                               comment.type,
+                               comment.equation));
   }
 };
 
@@ -117,9 +124,13 @@ class BinaryBitwiseOp : public framework::OperatorWithKernel {
       std::vector<int> x_dims_array(max_dim);
       std::vector<int> y_dims_array(max_dim);
       std::vector<int> out_dims_array(max_dim);
-      GetBroadcastDimsArrays(dim_x, dim_y, x_dims_array.data(),
-                             y_dims_array.data(), out_dims_array.data(),
-                             max_dim, axis);
+      GetBroadcastDimsArrays(dim_x,
+                             dim_y,
+                             x_dims_array.data(),
+                             y_dims_array.data(),
+                             out_dims_array.data(),
+                             max_dim,
+                             axis);
       context->SetOutputDim("Out", phi::make_ddim(out_dims_array));
     }
     context->ShareLoD("X", "Out");
@@ -147,7 +158,8 @@ namespace ops = ::paddle::operators;
   char _##op_type##Comment::type[]{#op_type};                           \
   char _##op_type##Comment::equation[]{_equation};                      \
   REGISTER_OPERATOR(                                                    \
-      op_type, ops::BinaryBitwiseOp<_##op_type##Comment>,               \
+      op_type,                                                          \
+      ops::BinaryBitwiseOp<_##op_type##Comment>,                        \
       ops::BinaryBitwiseOpProtoMaker<_##op_type##Comment>,              \
       ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
       ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
@@ -160,7 +172,8 @@ namespace ops = ::paddle::operators;
   char _##op_type##Comment::type[]{#op_type};                           \
   char _##op_type##Comment::equation[]{_equation};                      \
   REGISTER_OPERATOR(                                                    \
-      op_type, ops::UnaryBitwiseOp<_##op_type##Comment>,                \
+      op_type,                                                          \
+      ops::UnaryBitwiseOp<_##op_type##Comment>,                         \
       ops::UnaryBitwiseOpProtoMaker<_##op_type##Comment>,               \
       ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
       ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

@@ -43,7 +43,8 @@ void CreateVarsOnScope(framework::Scope* scope) {
   var2->GetMutable<framework::LoDTensor>();
 }
 
-void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnClient(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
 
@@ -93,8 +94,8 @@ void TestShardSendRecv(
     int64_t data_size = 6 * sizeof(float);
     std::vector<std::string> send_var_names{"w", "x"};
     int group_id = 0;
-    int ret = heter_client_ptr_->Send(group_id, send_var_names, vars_len,
-                                      values.data(), data_size);
+    int ret = heter_client_ptr_->Send(
+        group_id, send_var_names, vars_len, values.data(), data_size);
     if (!ret) {
       LOG(INFO) << ">>>> TestShardSendRecv: worker send success";
     }
@@ -122,6 +123,7 @@ void TestShardSendRecv(
 void PressTestSendRecv(
     std::shared_ptr<distributed::HeterClient> heter_client_ptr_) {
   // long l = 0, m = 0;
+  // https://paddlerec.bj.bcebos.com/online_infer/arm_brpc_ubuntu18/send_20_34
   std::ifstream file("/send_20_34", std::ios::in | std::ios::binary);
   // l = file.tellg();
   // file.seekg(0, std::ios::end);
@@ -129,13 +131,13 @@ void PressTestSendRecv(
   // file.close();
   // VLOG(0) << "size of file " << "20_34" << " is " << (m - l) << " bytes.\n";
   int64_t vars_len = 2359296 * sizeof(float);
-  int64_t data_size = vars_len * sizeof(float);
+  int64_t data_size = vars_len;
   VLOG(0) << "float num: " << data_size;
   float* data_ptr = new float[data_size];
   file.read((char*)data_ptr, 9437184);
   VLOG(0) << "send data is: " << data_ptr[0] << ", " << data_ptr[1];
   std::vector<std::string> var_names{"34"};
-  int loopCnt = 600;
+  int loopCnt = 10000;
   auto send_async = [&]() -> void {
     int i = 0;
     while (i++ < loopCnt) {
@@ -185,8 +187,8 @@ void TestScopeSendRecv(
   auto send_async = [&]() -> void {
     std::string message_name = std::to_string(distributed::PS_SAVE_WITH_SCOPE);
     std::vector<std::string> send_var_names{"w", "x"};
-    int ret = heter_client_ptr_->Send(ctx, *send_scope_ptr, message_name,
-                                      send_var_names);
+    int ret = heter_client_ptr_->Send(
+        ctx, *send_scope_ptr, message_name, send_var_names);
     if (!ret) {
       LOG(ERROR) << ">>>> TestScopeSendRecv: worker send success";
     }
@@ -197,8 +199,8 @@ void TestScopeSendRecv(
   std::vector<std::string> recv_var_names{"w", "x"};
   std::shared_ptr<framework::Scope> recv_scope_ptr =
       std::make_shared<framework::Scope>();
-  int ret = heter_client_ptr_->Recv(ctx, *recv_scope_ptr, message_name,
-                                    recv_var_names);
+  int ret = heter_client_ptr_->Recv(
+      ctx, *recv_scope_ptr, message_name, recv_var_names);
   if (!ret && recv_scope_ptr->FindVar("w") && recv_scope_ptr->FindVar("x")) {
     LOG(INFO) << "<<<< TestScopeSendRecv: worker recv success";
   } else {
@@ -222,7 +224,8 @@ TEST(HETERSENDANDRECV, CPU) {
   std::vector<std::string> end_points{switch_a_endpoint};
   std::vector<std::string> peer_endpoints{switch_b_endpoint_inter};
   std::thread switch_server_a_thread(StartSwitchServer,
-                                     std::ref(switch_server_ptr_a), end_points,
+                                     std::ref(switch_server_ptr_a),
+                                     end_points,
                                      peer_endpoints);
   switch_server_ptr_a->WaitServerReady();
 
@@ -231,7 +234,8 @@ TEST(HETERSENDANDRECV, CPU) {
   end_points = {switch_b_endpoint, switch_b_endpoint_inter};
   peer_endpoints = {};
   std::thread switch_server_b_thread(StartSwitchServer,
-                                     std::ref(switch_server_ptr_b), end_points,
+                                     std::ref(switch_server_ptr_b),
+                                     end_points,
                                      peer_endpoints);
   switch_server_ptr_b->WaitServerReady();
 
@@ -239,7 +243,8 @@ TEST(HETERSENDANDRECV, CPU) {
   peer_endpoints = {};
   std::thread switch_server_b_thread_inter(StartSwitchInterServer,
                                            std::ref(switch_server_ptr_b),
-                                           end_points, peer_endpoints);
+                                           end_points,
+                                           peer_endpoints);
   switch_server_ptr_b->WaitServerReady();
 
   // 获取 client 实例
@@ -254,8 +259,8 @@ TEST(HETERSENDANDRECV, CPU) {
   exe.Prepare(program, 0);  // solve undefined symbol: tensor_table.cc
 
   // TestScopeSendRecv(heter_client_ptr_);
-  TestShardSendRecv(heter_client_ptr_);
-  // PressTestSendRecv(heter_client_ptr_);
+  // TestShardSendRecv(heter_client_ptr_);
+  PressTestSendRecv(heter_client_ptr_);
 
   switch_server_ptr_a->Stop();
   LOG(INFO) << "switch server A stopped";

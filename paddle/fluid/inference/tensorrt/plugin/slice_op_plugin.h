@@ -28,8 +28,10 @@ namespace plugin {
 
 class SlicePlugin : public PluginTensorRT {
  public:
-  explicit SlicePlugin(std::vector<int> starts, std::vector<int> ends,
-                       std::vector<int> axes, bool with_fp16);
+  explicit SlicePlugin(std::vector<int> starts,
+                       std::vector<int> ends,
+                       std::vector<int> axes,
+                       bool with_fp16);
 
   // It was used for tensorrt deserialization.
   // It should not be called by users.
@@ -44,14 +46,20 @@ class SlicePlugin : public PluginTensorRT {
   int initialize() TRT_NOEXCEPT override { return 0; }
   bool supportsFormat(nvinfer1::DataType type, nvinfer1::PluginFormat format)
       const TRT_NOEXCEPT override;
-  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
+  nvinfer1::Dims getOutputDimensions(int index,
+                                     const nvinfer1::Dims* inputs,
                                      int nb_input_dims) TRT_NOEXCEPT override;
 #if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batch_size, const void* const* inputs, void** outputs,
+  int enqueue(int batch_size,
+              const void* const* inputs,
+              void** outputs,
 #else
-  int enqueue(int batch_size, const void* const* inputs, void* const* outputs,
+  int enqueue(int batch_size,
+              const void* const* inputs,
+              void* const* outputs,
 #endif
-              void* workspace, cudaStream_t stream) TRT_NOEXCEPT override;
+              void* workspace,
+              cudaStream_t stream) TRT_NOEXCEPT override;
 
   size_t getSerializationSize() const TRT_NOEXCEPT override;
 
@@ -64,8 +72,7 @@ class SlicePlugin : public PluginTensorRT {
   std::vector<int> ends_;
   std::vector<int> axes_;
   int* offset_temp_data_{nullptr};
-  cudaEvent_t copy_event_;
-  cudaStream_t copy_stream_;
+  std::vector<int> offset_info_;
 };
 
 class SlicePluginCreator : public TensorRTPluginCreator {
@@ -76,9 +83,10 @@ class SlicePluginCreator : public TensorRTPluginCreator {
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     return new SlicePlugin(serial_data, serial_length);
   }
 };
@@ -87,13 +95,15 @@ REGISTER_TRT_PLUGIN_V2(SlicePluginCreator);
 #if IS_TRT_VERSION_GE(6000)
 class SlicePluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit SlicePluginDynamic(std::vector<int> starts, std::vector<int> ends,
-                              std::vector<int> axes, int decrease_axis,
+  explicit SlicePluginDynamic(std::vector<int> starts,
+                              std::vector<int> ends,
+                              std::vector<int> axes,
+                              int decrease_axis,
                               bool with_fp16);
 
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new SlicePluginDynamic(starts_, ends_, axes_, decrease_axis_,
-                                  with_fp16_);
+    return new SlicePluginDynamic(
+        starts_, ends_, axes_, decrease_axis_, with_fp16_);
   }
 
   SlicePluginDynamic(void const* serialData, size_t serialLength);
@@ -107,9 +117,11 @@ class SlicePluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
 
-  nvinfer1::DimsExprs getOutputDimensions(
-      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-      nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT override;
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+      TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,
@@ -130,11 +142,14 @@ class SlicePluginDynamic : public DynamicPluginTensorRT {
 
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* inputTypes,
-      int nbInputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const
+      TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override;
 
@@ -144,8 +159,7 @@ class SlicePluginDynamic : public DynamicPluginTensorRT {
   std::vector<int> axes_;
   int decrease_axis_;
   int* offset_temp_data_{nullptr};
-  cudaEvent_t copy_event_;
-  cudaStream_t copy_stream_;
+  std::vector<int> offset_info_;
 };
 
 class SlicePluginDynamicCreator : public TensorRTPluginCreator {
@@ -156,9 +170,10 @@ class SlicePluginDynamicCreator : public TensorRTPluginCreator {
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serialData,
-      size_t serialLength) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serialData,
+                                         size_t serialLength)
+      TRT_NOEXCEPT override {
     return new SlicePluginDynamic(serialData, serialLength);
   }
 };

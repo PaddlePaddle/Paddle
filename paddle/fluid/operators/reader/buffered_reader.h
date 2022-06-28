@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,6 +33,10 @@
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #include "paddle/fluid/platform/device/mlu/mlu_resource_pool.h"
 #endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_resource_pool.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -44,7 +48,8 @@ class BufferedReader : public framework::DecoratedReader {
 
  public:
   BufferedReader(const std::shared_ptr<framework::ReaderBase>& reader,
-                 const platform::Place& place, size_t buffer_size,
+                 const platform::Place& place,
+                 size_t buffer_size,
                  bool pin_memory = false);
 
   ~BufferedReader() override;
@@ -76,6 +81,7 @@ class BufferedReader : public framework::DecoratedReader {
   std::vector<TensorVec> cuda_buffer_;
   std::vector<TensorVec> npu_buffer_;
   std::vector<TensorVec> mlu_buffer_;
+  std::vector<TensorVec> xpu_buffer_;
   size_t prev_pos_{-1UL};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   gpuStream_t compute_stream_;
@@ -93,6 +99,12 @@ class BufferedReader : public framework::DecoratedReader {
   mluStream compute_stream_;
   std::shared_ptr<platform::MluStreamObject> stream_;
   std::vector<std::shared_ptr<platform::MluEventObject>> events_;
+#endif
+
+#ifdef PADDLE_WITH_XPU
+  xpuStream compute_stream_;
+  std::shared_ptr<platform::XpuStreamObject> stream_;
+  std::vector<std::shared_ptr<platform::XpuEventObject>> events_;
 #endif
 };
 

@@ -59,13 +59,14 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
 
-    VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+    VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
             << phi::product(out->dims());
 
     dev_ctx->Wait();
 
     if (out != x) {
-      framework::TensorCopy(*static_cast<const framework::Tensor*>(x), place,
+      framework::TensorCopy(*static_cast<const framework::Tensor*>(x),
+                            place,
                             *platform::DeviceContextPool::Instance().Get(place),
                             static_cast<framework::Tensor*>(out));
     }
@@ -86,7 +87,8 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(c_broadcast, ops::CBroadcastOpASCENDKernel<int>,
+REGISTER_OP_NPU_KERNEL(c_broadcast,
+                       ops::CBroadcastOpASCENDKernel<int>,
                        ops::CBroadcastOpASCENDKernel<int8_t>,
                        ops::CBroadcastOpASCENDKernel<float>,
                        ops::CBroadcastOpASCENDKernel<plat::float16>);

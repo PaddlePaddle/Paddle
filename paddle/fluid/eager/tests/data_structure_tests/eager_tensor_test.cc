@@ -12,21 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/eager/eager_tensor.h"
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
-#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-PD_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(copy_sr, CPU, ALL_LAYOUT);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(copy_sr, GPU, ALL_LAYOUT);
-#endif
 
 namespace eager_test {
 using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
@@ -35,7 +28,7 @@ class AutogradMetaTest : public AbstractAutogradMeta {
   explicit AutogradMetaTest(int val) : val_(val) {}
   int val_ = 0;
 };
-}
+}  // namespace eager_test
 TEST(Tensor, Constructor) {
   paddle::experimental::Tensor et1 = paddle::experimental::Tensor();
   paddle::experimental::Tensor et2 = paddle::experimental::Tensor("et2");
@@ -212,7 +205,8 @@ TEST(EagerVariable, Constructor) {
 TEST(EagerVariable, DataLayout) {
   paddle::experimental::Tensor tensor;
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1, 1, 1}),
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({1, 1, 1, 1}),
                            paddle::experimental::DataLayout::UNDEFINED);
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
@@ -232,4 +226,89 @@ TEST(EagerVariable, DataLayout) {
                                     paddle::experimental::DataLayout::NCHW);
   layout = paddle::imperative::GetDataLayout(eager_var);
   CHECK_EQ(layout, paddle::experimental::DataLayout::NCHW);
+}
+
+TEST(VariableCompatTensor, MemberFunction) {
+  egr::VariableCompatTensor var_tensor;
+  // test GetMutable and Get
+  var_tensor.GetMutable<paddle::framework::Vocab>();
+  auto& vocab = var_tensor.Get<paddle::framework::Vocab>();
+  EXPECT_EQ(vocab.size(), 0UL);
+  bool caught_exception = false;
+  try {
+    var_tensor.GetMutable<paddle::framework::Strings>();
+  } catch (paddle::platform::EnforceNotMet& error) {
+    caught_exception = true;
+    std::string ex_msg = error.what();
+    EXPECT_TRUE(ex_msg.find("The Variable type must be") != std::string::npos);
+  }
+  EXPECT_TRUE(caught_exception);
+  // test Type and IsType
+  EXPECT_TRUE(var_tensor.IsType<paddle::framework::Vocab>());
+  EXPECT_EQ(var_tensor.Type(),
+            static_cast<int>(paddle::framework::proto::VarType::VOCAB));
+  // test valid and initialized
+  EXPECT_TRUE(var_tensor.IsInitialized());
+  EXPECT_TRUE(var_tensor.valid());
+  EXPECT_TRUE(var_tensor.initialized());
+  // test name
+  EXPECT_EQ(var_tensor.name(), "VariableCompatTensor");
+  // test other throw error methods
+  caught_exception = false;
+  try {
+    var_tensor.numel();
+  } catch (paddle::platform::EnforceNotMet& error) {
+    caught_exception = true;
+    std::string ex_msg = error.what();
+    EXPECT_TRUE(ex_msg.find("numel") != std::string::npos);
+  }
+  EXPECT_TRUE(caught_exception);
+  caught_exception = false;
+  try {
+    var_tensor.dims();
+  } catch (paddle::platform::EnforceNotMet& error) {
+    caught_exception = true;
+    std::string ex_msg = error.what();
+    EXPECT_TRUE(ex_msg.find("dims") != std::string::npos);
+  }
+  EXPECT_TRUE(caught_exception);
+  caught_exception = false;
+  try {
+    var_tensor.dtype();
+  } catch (paddle::platform::EnforceNotMet& error) {
+    caught_exception = true;
+    std::string ex_msg = error.what();
+    EXPECT_TRUE(ex_msg.find("dtype") != std::string::npos);
+  }
+  EXPECT_TRUE(caught_exception);
+  caught_exception = false;
+  try {
+    var_tensor.layout();
+  } catch (paddle::platform::EnforceNotMet& error) {
+    caught_exception = true;
+    std::string ex_msg = error.what();
+    EXPECT_TRUE(ex_msg.find("layout") != std::string::npos);
+  }
+  EXPECT_TRUE(caught_exception);
+  caught_exception = false;
+  try {
+    var_tensor.place();
+  } catch (paddle::platform::EnforceNotMet& error) {
+    caught_exception = true;
+    std::string ex_msg = error.what();
+    EXPECT_TRUE(ex_msg.find("place") != std::string::npos);
+  }
+  EXPECT_TRUE(caught_exception);
+  caught_exception = false;
+  try {
+    var_tensor.AllocateFrom(nullptr, phi::DataType::UNDEFINED);
+  } catch (paddle::platform::EnforceNotMet& error) {
+    caught_exception = true;
+    std::string ex_msg = error.what();
+    EXPECT_TRUE(ex_msg.find("AllocateFrom") != std::string::npos);
+  }
+  EXPECT_TRUE(caught_exception);
+  // test Clear
+  var_tensor.Clear();
+  EXPECT_FALSE(var_tensor.IsInitialized());
 }

@@ -17,9 +17,11 @@
 //
 
 #include <paddle/fluid/framework/op_registry.h>
+
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
@@ -43,8 +45,10 @@ extern void TestHandleComplexGradToRealGradEager(
     const NameVarMap<egr::EagerVariable>& outs);
 
 static framework::VariableNameMap CreateVarNameMap(
-    const framework::OpInfo& op_info, const std::string& op_type,
-    const NameVarBaseMap& varbase_map, bool is_input) {
+    const framework::OpInfo& op_info,
+    const std::string& op_type,
+    const NameVarBaseMap& varbase_map,
+    bool is_input) {
   if (op_info.proto_ == nullptr) {
     return {};
   }
@@ -56,7 +60,8 @@ static framework::VariableNameMap CreateVarNameMap(
     auto it = varbase_map.find(var.name());
     if (it == varbase_map.end()) {
       PADDLE_ENFORCE_EQ(
-          var.dispensable(), true,
+          var.dispensable(),
+          true,
           platform::errors::NotFound("Variable %s is not dispensable and "
                                      "there are no such var in inputs",
                                      var.name()));
@@ -98,12 +103,15 @@ TEST(test_prepare_op, test_prepare_op) {
       CreateVarNameMap(info, "split", ins, true);
   framework::VariableNameMap var_out_map =
       CreateVarNameMap(info, "split", outs, false);
-  auto op = framework::OpRegistry::CreateOp("split", var_in_map, var_out_map,
-                                            split_attr_map);
+  auto op = framework::OpRegistry::CreateOp(
+      "split", var_in_map, var_out_map, split_attr_map);
   ASSERT_NO_FATAL_FAILURE(PreparedOp preparedOp = PreparedOp::Prepare(
-                              ins, outs,
+                              ins,
+                              outs,
                               dynamic_cast<framework::OperatorWithKernel&>(*op),
-                              place, split_attr_map, {}));
+                              place,
+                              split_attr_map,
+                              {}));
 }
 
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
@@ -133,8 +141,11 @@ TEST(test_prepare_op, test_prepare_data) {
   auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
   vin_tensor->Resize(phi::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
-  paddle::memory::Copy(cpu_place, vin_mutable_tensor, cpu_place,
-                       src_data.data(), sizeof(float) * src_data.size());
+  paddle::memory::Copy(cpu_place,
+                       vin_mutable_tensor,
+                       cpu_place,
+                       src_data.data(),
+                       sizeof(float) * src_data.size());
 
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
@@ -148,15 +159,20 @@ TEST(test_prepare_op, test_prepare_data) {
       CreateVarNameMap(info, op_type, ins, true);
   framework::VariableNameMap var_out_map =
       CreateVarNameMap(info, op_type, outs, false);
-  auto op = framework::OpRegistry::CreateOp(op_type, var_in_map, var_out_map,
-                                            attr_map);
+  auto op = framework::OpRegistry::CreateOp(
+      op_type, var_in_map, var_out_map, attr_map);
 
   // test if it can be transformed to GPU place
-  auto prepared_op = PreparedOp::Prepare(
-      ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), gpu_place,
-      attr_map, {});
+  auto prepared_op =
+      PreparedOp::Prepare(ins,
+                          outs,
+                          dynamic_cast<framework::OperatorWithKernel&>(*op),
+                          gpu_place,
+                          attr_map,
+                          {});
   PrepareData<imperative::VarBase>(
-      dynamic_cast<framework::OperatorWithKernel&>(*op), ins,
+      dynamic_cast<framework::OperatorWithKernel&>(*op),
+      ins,
       prepared_op.kernel_type());
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
@@ -182,8 +198,11 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
   auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
   vin_tensor->Resize(phi::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
-  paddle::memory::Copy(cpu_place, vin_mutable_tensor, cpu_place,
-                       src_data.data(), sizeof(float) * src_data.size());
+  paddle::memory::Copy(cpu_place,
+                       vin_mutable_tensor,
+                       cpu_place,
+                       src_data.data(),
+                       sizeof(float) * src_data.size());
 
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
@@ -197,15 +216,20 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
   framework::VariableNameMap var_out_map =
       CreateVarNameMap(info, op_type, outs, false);
 
-  auto op = framework::OpRegistry::CreateOp(op_type, var_in_map, var_out_map,
-                                            attr_map);
+  auto op = framework::OpRegistry::CreateOp(
+      op_type, var_in_map, var_out_map, attr_map);
 
   // test if it never transferred on GPU place
-  auto prepared_op = PreparedOp::Prepare(
-      ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), cpu_place,
-      attr_map, {});
+  auto prepared_op =
+      PreparedOp::Prepare(ins,
+                          outs,
+                          dynamic_cast<framework::OperatorWithKernel&>(*op),
+                          cpu_place,
+                          attr_map,
+                          {});
   PrepareData<imperative::VarBase>(
-      dynamic_cast<framework::OperatorWithKernel&>(*op), ins,
+      dynamic_cast<framework::OperatorWithKernel&>(*op),
+      ins,
       prepared_op.kernel_type());
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {

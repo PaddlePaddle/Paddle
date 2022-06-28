@@ -27,7 +27,8 @@ class AdamwOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Tensor holds the wrong type，Expected Var(%s)'s "
                           "type is LoDTensor, "
@@ -36,27 +37,27 @@ class AdamwOpXPUKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
     using paddle::framework::LoDTensor;
 
-    auto& param = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Param"), "Input",
-                                  "Param", "Adam");
+    auto& param = GET_DATA_SAFELY(
+        ctx.Input<LoDTensor>("Param"), "Input", "Param", "Adam");
     // auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
     auto* grad_var = ctx.InputVar("Grad");
-    auto& mom1 = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Moment1"), "Input",
-                                 "Moment1", "Adam");
-    auto& mom2 = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Moment2"), "Input",
-                                 "Moment2", "Adam");
-    auto& lr = GET_DATA_SAFELY(ctx.Input<LoDTensor>("LearningRate"), "Input",
-                               "LearningRate", "Adam");
-    auto& beta1_pow = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Beta1Pow"), "Input",
-                                      "Beta1Pow", "Adam");
-    auto& beta2_pow = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Beta2Pow"), "Input",
-                                      "Beta2Pow", "Adam");
+    auto& mom1 = GET_DATA_SAFELY(
+        ctx.Input<LoDTensor>("Moment1"), "Input", "Moment1", "Adam");
+    auto& mom2 = GET_DATA_SAFELY(
+        ctx.Input<LoDTensor>("Moment2"), "Input", "Moment2", "Adam");
+    auto& lr = GET_DATA_SAFELY(
+        ctx.Input<LoDTensor>("LearningRate"), "Input", "LearningRate", "Adam");
+    auto& beta1_pow = GET_DATA_SAFELY(
+        ctx.Input<LoDTensor>("Beta1Pow"), "Input", "Beta1Pow", "Adam");
+    auto& beta2_pow = GET_DATA_SAFELY(
+        ctx.Input<LoDTensor>("Beta2Pow"), "Input", "Beta2Pow", "Adam");
 
-    auto& param_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("ParamOut"),
-                                      "Output", "ParamOut", "Adam");
-    auto& mom1_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Moment1Out"),
-                                     "Output", "Moment1Out", "Adam");
-    auto& mom2_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Moment2Out"),
-                                     "Output", "Moment2Out", "Adam");
+    auto& param_out = GET_DATA_SAFELY(
+        ctx.Output<LoDTensor>("ParamOut"), "Output", "ParamOut", "Adam");
+    auto& mom1_out = GET_DATA_SAFELY(
+        ctx.Output<LoDTensor>("Moment1Out"), "Output", "Moment1Out", "Adam");
+    auto& mom2_out = GET_DATA_SAFELY(
+        ctx.Output<LoDTensor>("Moment2Out"), "Output", "Moment2Out", "Adam");
 
     auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
     auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
@@ -64,13 +65,14 @@ class AdamwOpXPUKernel : public framework::OpKernel<T> {
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
       auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
-      PADDLE_ENFORCE_EQ(skip_update_tensor->numel(), 1,
+      PADDLE_ENFORCE_EQ(skip_update_tensor->numel(),
+                        1,
                         platform::errors::InvalidArgument(
                             "Input(SkipUpdate) size must be 1, but get %d",
                             skip_update_tensor->numel()));
       std::vector<bool> skip_update_vec;
-      paddle::framework::TensorToVector(*skip_update_tensor,
-                                        ctx.device_context(), &skip_update_vec);
+      paddle::framework::TensorToVector(
+          *skip_update_tensor, ctx.device_context(), &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
     auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
@@ -88,14 +90,16 @@ class AdamwOpXPUKernel : public framework::OpKernel<T> {
 
     bool with_decay = ctx.Attr<bool>("with_decay");
 
-    PADDLE_ENFORCE_EQ(beta1_pow_out->numel(), 1,
+    PADDLE_ENFORCE_EQ(beta1_pow_out->numel(),
+                      1,
                       platform::errors::InvalidArgument(
                           "Tensor holds the wrong size, Expected beta1 pow "
                           "output size is 1, but received "
                           "value is:%d.",
                           beta1_pow_out->numel()));
 
-    PADDLE_ENFORCE_EQ(beta2_pow_out->numel(), 1,
+    PADDLE_ENFORCE_EQ(beta2_pow_out->numel(),
+                      1,
                       platform::errors::InvalidArgument(
                           "Tensor holds the wrong size, Expected beta2 pow "
                           "output size is 1, but received "
@@ -121,8 +125,8 @@ class AdamwOpXPUKernel : public framework::OpKernel<T> {
       epsilon = static_cast<float>(GetAttrFromTensor(epsilon_tensor));
     }
     if (grad_var->IsType<framework::LoDTensor>()) {
-      auto& grad = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Grad"), "Input",
-                                   "Grad", "Adam");
+      auto& grad = GET_DATA_SAFELY(
+          ctx.Input<LoDTensor>("Grad"), "Input", "Grad", "Adam");
 
       const float* beta1_pow_ptr = beta1_pow.template data<float>();
       const float* beta2_pow_ptr = beta2_pow.template data<float>();
@@ -130,10 +134,10 @@ class AdamwOpXPUKernel : public framework::OpKernel<T> {
       Tensor xpu_beta2_pow;
       if (beta1_pow.place() == platform::CPUPlace() &&
           beta2_pow.place() == platform::CPUPlace()) {
-        paddle::framework::TensorCopy(beta1_pow, ctx.GetPlace(), dev_ctx,
-                                      &xpu_beta1_pow);
-        paddle::framework::TensorCopy(beta2_pow, ctx.GetPlace(), dev_ctx,
-                                      &xpu_beta2_pow);
+        paddle::framework::TensorCopy(
+            beta1_pow, ctx.GetPlace(), dev_ctx, &xpu_beta1_pow);
+        paddle::framework::TensorCopy(
+            beta2_pow, ctx.GetPlace(), dev_ctx, &xpu_beta2_pow);
         dev_ctx.Wait();
         beta1_pow_ptr = xpu_beta1_pow.template data<float>();
         beta2_pow_ptr = xpu_beta2_pow.template data<float>();
@@ -141,33 +145,51 @@ class AdamwOpXPUKernel : public framework::OpKernel<T> {
       if (with_decay) {
         float coeff = ctx.Attr<float>("coeff");
         int r =
-            xpu::adamw(dev_ctx.x_context(), grad.template data<T>(),
-                       mom1.template data<float>(), mom2.template data<float>(),
-                       param.template data<T>(), beta1_pow_ptr, beta2_pow_ptr,
+            xpu::adamw(dev_ctx.x_context(),
+                       grad.template data<T>(),
+                       mom1.template data<float>(),
+                       mom2.template data<float>(),
+                       param.template data<T>(),
+                       beta1_pow_ptr,
+                       beta2_pow_ptr,
                        lr.template data<float>(),
                        mom1_out.template mutable_data<float>(ctx.GetPlace()),
                        mom2_out.template mutable_data<float>(ctx.GetPlace()),
                        param_out.template mutable_data<T>(ctx.GetPlace()),
-                       beta1, beta2, epsilon, coeff, param.numel());
+                       beta1,
+                       beta2,
+                       epsilon,
+                       coeff,
+                       param.numel());
         PADDLE_ENFORCE_EQ(
-            r, xpu::SUCCESS,
+            r,
+            xpu::SUCCESS,
             platform::errors::External(
-                "XPU kernel adamw occur error in adamw error code ", r,
+                "XPU kernel adamw occur error in adamw error code ",
+                r,
                 XPUAPIErrorMsg[r]));
       } else {
-        int r =
-            xpu::adam(dev_ctx.x_context(), grad.template data<T>(),
-                      mom1.template data<float>(), mom2.template data<float>(),
-                      param.template data<T>(), beta1_pow_ptr, beta2_pow_ptr,
-                      lr.template data<float>(),
-                      mom1_out.template mutable_data<float>(ctx.GetPlace()),
-                      mom2_out.template mutable_data<float>(ctx.GetPlace()),
-                      param_out.template mutable_data<T>(ctx.GetPlace()), beta1,
-                      beta2, epsilon, param.numel());
+        int r = xpu::adam(dev_ctx.x_context(),
+                          grad.template data<T>(),
+                          mom1.template data<float>(),
+                          mom2.template data<float>(),
+                          param.template data<T>(),
+                          beta1_pow_ptr,
+                          beta2_pow_ptr,
+                          lr.template data<float>(),
+                          mom1_out.template mutable_data<float>(ctx.GetPlace()),
+                          mom2_out.template mutable_data<float>(ctx.GetPlace()),
+                          param_out.template mutable_data<T>(ctx.GetPlace()),
+                          beta1,
+                          beta2,
+                          epsilon,
+                          param.numel());
         PADDLE_ENFORCE_EQ(
-            r, xpu::SUCCESS,
+            r,
+            xpu::SUCCESS,
             platform::errors::External(
-                "XPU kernel adam occur error in adamw error code ", r,
+                "XPU kernel adam occur error in adamw error code ",
+                r,
                 XPUAPIErrorMsg[r]));
       }
 
@@ -187,26 +209,41 @@ class AdamwOpXPUKernel : public framework::OpKernel<T> {
               beta1_pow_out->mutable_data<float>(ctx.GetPlace());
           float* beta2_pow_out_p =
               beta2_pow_out->mutable_data<float>(ctx.GetPlace());
-          int r =
-              xpu::scale(dev_ctx.x_context(), beta1_pow_ptr, beta1_pow_out_p,
-                         beta1_pow.numel(), false, beta1, 0.0f);
+          int r = xpu::scale(dev_ctx.x_context(),
+                             beta1_pow_ptr,
+                             beta1_pow_out_p,
+                             beta1_pow.numel(),
+                             false,
+                             beta1,
+                             0.0f);
           PADDLE_ENFORCE_EQ(
-              r, xpu::SUCCESS,
+              r,
+              xpu::SUCCESS,
               platform::errors::External(
-                  "XPU kernel scale occur error in adamw error code ", r,
+                  "XPU kernel scale occur error in adamw error code ",
+                  r,
                   XPUAPIErrorMsg[r]));
-          r = xpu::scale(dev_ctx.x_context(), beta2_pow_ptr, beta2_pow_out_p,
-                         beta2_pow.numel(), false, beta2, 0.0f);
+          r = xpu::scale(dev_ctx.x_context(),
+                         beta2_pow_ptr,
+                         beta2_pow_out_p,
+                         beta2_pow.numel(),
+                         false,
+                         beta2,
+                         0.0f);
           PADDLE_ENFORCE_EQ(
-              r, xpu::SUCCESS,
+              r,
+              xpu::SUCCESS,
               platform::errors::External(
-                  "XPU kernel scale occur error in adamw error code ", r,
+                  "XPU kernel scale occur error in adamw error code ",
+                  r,
                   XPUAPIErrorMsg[r]));
         }
       }
     } else {
-      PADDLE_ENFORCE_EQ(1, 2, platform::errors::InvalidArgument(
-                                  "Variable type not supported by adamw_op"));
+      PADDLE_ENFORCE_EQ(1,
+                        2,
+                        platform::errors::InvalidArgument(
+                            "Variable type not supported by adamw_op"));
     }
   }
 };

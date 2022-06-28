@@ -66,16 +66,20 @@ class ConjGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(conj, ConjInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(conj,
+                            ConjInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
-REGISTER_OPERATOR(conj, ops::ConjOp, ops::ConjOpMaker,
+REGISTER_OPERATOR(conj,
+                  ops::ConjOp,
+                  ops::ConjOpMaker,
                   ops::ConjGradMaker<paddle::framework::OpDesc>,
                   ops::ConjGradMaker<paddle::imperative::OpBase>,
                   ConjInferShapeFunctor);
 
 REGISTER_OP_CPU_KERNEL(
-    conj, ops::ConjKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex<float>>,
+    conj,
+    ops::ConjKernel<paddle::platform::CPUDeviceContext,
+                    paddle::platform::complex<float>>,
     ops::ConjKernel<paddle::platform::CPUDeviceContext,
                     paddle::platform::complex<double>>,
     ops::ConjKernel<paddle::platform::CPUDeviceContext, float>,

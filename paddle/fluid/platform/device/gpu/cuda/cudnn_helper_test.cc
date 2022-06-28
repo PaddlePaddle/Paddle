@@ -15,13 +15,13 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #define GOOGLE_GLOG_DLL_DECL
 
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+
 TEST(CudnnHelper, ScopedTensorDescriptor) {
-  using paddle::platform::ScopedTensorDescriptor;
   using paddle::platform::DataLayout;
+  using paddle::platform::ScopedTensorDescriptor;
 
   ScopedTensorDescriptor tensor_desc;
   std::vector<int> shape = {2, 4, 6, 6};
@@ -65,8 +65,8 @@ TEST(CudnnHelper, ScopedTensorDescriptor) {
 }
 
 TEST(CudnnHelper, ScopedFilterDescriptor) {
-  using paddle::platform::ScopedFilterDescriptor;
   using paddle::platform::DataLayout;
+  using paddle::platform::ScopedFilterDescriptor;
 
   ScopedFilterDescriptor filter_desc;
   std::vector<int> shape = {2, 3, 3};
@@ -76,8 +76,8 @@ TEST(CudnnHelper, ScopedFilterDescriptor) {
   int nd;
   cudnnTensorFormat_t format;
   std::vector<int> kernel(3);
-  paddle::platform::dynload::cudnnGetFilterNdDescriptor(desc, 3, &type, &format,
-                                                        &nd, kernel.data());
+  paddle::platform::dynload::cudnnGetFilterNdDescriptor(
+      desc, 3, &type, &format, &nd, kernel.data());
 
   EXPECT_EQ(GetCudnnTensorFormat(DataLayout::kNCHW), format);
   EXPECT_EQ(nd, 3);
@@ -115,9 +115,14 @@ TEST(CudnnHelper, ScopedConvolutionDescriptor) {
   std::vector<int> pads(3);
   std::vector<int> strides(3);
   std::vector<int> dilations(3);
-  paddle::platform::dynload::cudnnGetConvolutionNdDescriptor(
-      desc, 3, &nd, pads.data(), strides.data(), dilations.data(), &mode,
-      &type);
+  paddle::platform::dynload::cudnnGetConvolutionNdDescriptor(desc,
+                                                             3,
+                                                             &nd,
+                                                             pads.data(),
+                                                             strides.data(),
+                                                             dilations.data(),
+                                                             &mode,
+                                                             &type);
 
   EXPECT_EQ(nd, 3);
   for (size_t i = 0; i < src_pads.size(); ++i) {
@@ -129,15 +134,15 @@ TEST(CudnnHelper, ScopedConvolutionDescriptor) {
 }
 
 TEST(CudnnHelper, ScopedPoolingDescriptor) {
-  using paddle::platform::ScopedPoolingDescriptor;
   using paddle::platform::PoolingMode;
+  using paddle::platform::ScopedPoolingDescriptor;
 
   ScopedPoolingDescriptor pool_desc;
   std::vector<int> src_kernel = {2, 2, 5};
   std::vector<int> src_pads = {1, 1, 2};
   std::vector<int> src_strides = {2, 2, 3};
-  auto desc = pool_desc.descriptor(PoolingMode::kMaximum, src_kernel, src_pads,
-                                   src_strides);
+  auto desc = pool_desc.descriptor(
+      PoolingMode::kMaximum, src_kernel, src_pads, src_strides);
 
   cudnnPoolingMode_t mode;
   cudnnNanPropagation_t nan_t = CUDNN_PROPAGATE_NAN;

@@ -12,20 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/conv_bias_mkldnn_fuse_pass.h"
 #include <gtest/gtest.h>
-#include "paddle/fluid/framework/naive_executor.h"
-#include "paddle/fluid/platform/place.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/conv_bias_mkldnn_fuse_pass.h"
+#include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
+           const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs) {
   auto* op = prog->MutableBlock(0)->AppendOp();
@@ -77,26 +79,34 @@ ProgramDesc BuildProgramDesc(bool convWithExistingBias) {
 
   // conv+bias, both with MKL-DNN
   if (convWithExistingBias) {
-    SetOp(&prog, "conv2d", "conv",
+    SetOp(&prog,
+          "conv2d",
+          "conv",
           std::vector<std::string>({"c", "weights", "conv_bias"}),
           std::vector<std::string>({"f"}));
   } else {
-    SetOp(&prog, "conv2d", "conv", std::vector<std::string>({"c", "weights"}),
+    SetOp(&prog,
+          "conv2d",
+          "conv",
+          std::vector<std::string>({"c", "weights"}),
           std::vector<std::string>({"f"}));
   }
-  SetOp(&prog, "elementwise_add", "eltwise",
+  SetOp(&prog,
+        "elementwise_add",
+        "eltwise",
         std::vector<std::string>({"f", "eltwise_bias"}),
         std::vector<std::string>({"g"}));
 
   return prog;
 }
 
-void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
+void InitTensorHolder(Scope* scope,
+                      const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
   auto tensor = x->GetMutable<LoDTensor>();
-  tensor->mutable_data(place,
-                       framework::TransToPhiDataType(proto::VarType::FP32), 1);
+  tensor->mutable_data(
+      place, framework::TransToPhiDataType(proto::VarType::FP32), 1);
 }
 
 void MainTest(bool convWithExistingBias) {

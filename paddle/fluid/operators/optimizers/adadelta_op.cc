@@ -82,10 +82,13 @@ $$
 
 namespace ops = paddle::operators;
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(adadelta, AdadeltaInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(adadelta,
+                            AdadeltaInferMetaFunctor,
                             PD_INFER_META(phi::AdadeltaInferMeta));
 REGISTER_OPERATOR(
-    adadelta, ops::AdadeltaOp, ops::AdadeltaOpMaker,
+    adadelta,
+    ops::AdadeltaOp,
+    ops::AdadeltaOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     AdadeltaInferMetaFunctor);

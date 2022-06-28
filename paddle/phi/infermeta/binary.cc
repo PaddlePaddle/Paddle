@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
@@ -159,6 +160,10 @@ void KLDivInferMeta(const MetaTensor& x,
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->share_meta(x);
+  if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
+      y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
+    out->set_dtype(DataType::FLOAT64);
+  }
 }
 
 void BCELossInferMeta(const MetaTensor& input,
@@ -201,7 +206,7 @@ void BCELossInferMeta(const MetaTensor& input,
 }
 
 void BincountInferMeta(const MetaTensor& x,
-                       const paddle::optional<const MetaTensor&> weights,
+                       const MetaTensor& weights,
                        int minlength,
                        MetaTensor* out) {
   auto input_dim = x.dims();
@@ -220,8 +225,10 @@ void BincountInferMeta(const MetaTensor& x,
                                    "But the dimension of Input(X) is [%d]",
                                    input_dim.size()));
 
-  if (weights.is_initialized()) {
-    auto weights_dim = weights->dims();
+  VLOG(1) << "####### CHECK weights";
+  if (weights) {
+    auto weights_dim = weights.dims();
+    VLOG(1) << "##### weights_dim " << weights_dim;
     PADDLE_ENFORCE_EQ(weights_dim.size(),
                       1,
                       phi::errors::InvalidArgument(
@@ -241,8 +248,8 @@ void BincountInferMeta(const MetaTensor& x,
             input_dim));
   }
   out->set_dims(phi::make_ddim({-1}));
-  if (weights.is_initialized()) {
-    out->set_dtype(weights->dtype());
+  if (weights) {
+    out->set_dtype(weights.dtype());
   } else {
     out->set_dtype(x.dtype());
   }
@@ -864,7 +871,7 @@ void DistInferMeta(const MetaTensor& x,
 }
 
 void DropoutInferMeta(const MetaTensor& x,
-                      paddle::optional<const MetaTensor&> seed_tensor,
+                      const MetaTensor& seed_tensor,
                       float p,
                       bool is_test,
                       const std::string& mode,
@@ -879,6 +886,58 @@ void DropoutInferMeta(const MetaTensor& x,
 
   if (mask != nullptr) {
     mask->set_dims(x_dims);
+    mask->set_dtype(DataType::UINT8);
+  }
+}
+
+void DropoutNdInferMeta(const MetaTensor& x,
+                        const MetaTensor& seed_tensor,
+                        float p,
+                        bool is_test,
+                        const std::string& mode,
+                        int seed,
+                        bool fix_seed,
+                        const std::vector<int>& axis,
+                        MetaTensor* out,
+                        MetaTensor* mask) {
+  auto x_dims = x.dims();
+
+  PADDLE_ENFORCE_LE(
+      axis.size(),
+      x_dims.size(),
+      phi::errors::InvalidArgument(
+          "The length of axis is expected to be less than or equal to the "
+          "dimension size of x. But recieved the length of axis is %d, the "
+          "dimension size of x is %d, x's shape is {%s}.",
+          axis.size(),
+          x_dims.size(),
+          x_dims));
+  for (size_t i = 0; i < axis.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        axis[i] >= 0 && axis[i] <= x_dims.size() - 1,
+        true,
+        phi::errors::InvalidArgument(
+            "The %d-th value of axis is expected to be greater ot "
+            "equal to 0 and less than the dimensions of x. But "
+            "recieved axis is {%s}, the dimension size of x is %d.",
+            i,
+            phi::make_ddim(axis),
+            x_dims.size()));
+  }
+
+  out->set_dims(x_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+
+  if (mask != nullptr) {
+    std::vector<int64_t> mask_dims(x.dims().size(), 1);
+
+    std::for_each(
+        axis.begin(), axis.end(), [&mask_dims, &x_dims](const int64_t& t) {
+          mask_dims[t] = x_dims[t];
+        });
+
+    mask->set_dims(make_ddim(mask_dims));
     mask->set_dtype(DataType::UINT8);
   }
 }
@@ -981,8 +1040,34 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void EmbeddingInferMeta(const MetaTensor& x,
+                        const MetaTensor& weight,
+                        int64_t padding_idx,
+                        bool sparse,
+                        MetaTensor* out) {
+  const auto& table_dims = weight.dims();
+  const auto& ids_dims = x.dims();
+  int ids_rank = ids_dims.size();
+  VLOG(5) << "ids rank is " << ids_rank << std::endl;
+  PADDLE_ENFORCE_EQ(
+      table_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: The dimensions of the 'lookup table' must be 2. "
+          "But received lookup table's dimensions = %d, "
+          "lookup table's shape = [%s].",
+          table_dims.size(),
+          table_dims));
+
+  auto output_dims = phi::vectorize(ids_dims);
+  output_dims.push_back(table_dims[1]);
+  out->set_dims(phi::make_ddim(output_dims));
+  out->set_dtype(weight.dtype());
+  out->share_lod(x);
+}
+
 void ExpandAsInferMeta(const MetaTensor& x,
-                       paddle::optional<const MetaTensor&> y,
+                       const MetaTensor& y,
                        const std::vector<int>& target_shape,
                        MetaTensor* out) {
 #define MAX_RANK_SUPPORTED 6
@@ -1534,7 +1619,7 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
                     phi::errors::InvalidArgument(
                         "X's second dimension is expected to be equal to "
                         "Vec's first dimension"
-                        "but recieved X'shape = [%s], Vec's shape = [%s]",
+                        "but received X'shape = [%s], Vec's shape = [%s]",
                         dim_x,
                         dim_vec));
 

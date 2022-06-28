@@ -17,20 +17,19 @@ limitations under the License. */
 #endif
 
 #include <stdio.h>
+
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
 #include "paddle/fluid/operators/collective/c_reduce_op.h"
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
+#include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -56,7 +55,8 @@ void PrintDebugInfo(const std::string preStr, const std::vector<T>& data) {
   VLOG(3) << preStr << ":" << std::endl << debugstring;
 }
 
-void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
+void PrepareUniqueId(f::Scope* scope,
+                     const p::DeviceContext& ctx,
                      HcclRootInfo* hccl_id) {
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
@@ -80,8 +80,8 @@ void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
 
   VLOG(3) << "break";
 
-  auto comm_init_op = f::OpRegistry::CreateOp("c_gen_hccl_id", {},
-                                              {{"Out", {"Out"}}}, gen_hccl_id);
+  auto comm_init_op = f::OpRegistry::CreateOp(
+      "c_gen_hccl_id", {}, {{"Out", {"Out"}}}, gen_hccl_id);
   VLOG(3) << "break";
   auto place = ctx.GetPlace();
   comm_init_op->Run(*scope, place);
@@ -90,7 +90,8 @@ void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
   memcpy(hccl_id, id, 1024);
 }
 
-void Prepare(f::Scope* scope, const p::DeviceContext& ctx,
+void Prepare(f::Scope* scope,
+             const p::DeviceContext& ctx,
              HcclRootInfo* hccl_id) {
   auto x = scope->Var("X");
   auto id = x->GetMutable<HcclRootInfo>();
@@ -152,8 +153,8 @@ void TestHCCLReduceOp(f::Scope* scope, const p::DeviceContext& ctx, int iter) {
   int root_id = 0;
   attrs["root_id"] = root_id;
 
-  auto op = f::OpRegistry::CreateOp("c_reduce_sum", {{"X", {"Data"}}},
-                                    {{"Out", {"OutData"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      "c_reduce_sum", {{"X", {"Data"}}}, {{"Out", {"OutData"}}}, attrs);
 
   op->Run(*scope, place);
   ctx.Wait();

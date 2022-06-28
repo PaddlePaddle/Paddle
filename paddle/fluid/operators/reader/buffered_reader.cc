@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reader/buffered_reader.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
@@ -34,7 +36,9 @@ BufferedReader::~BufferedReader() {
 
 BufferedReader::BufferedReader(
     const std::shared_ptr<framework::ReaderBase> &reader,
-    const platform::Place &place, size_t buffer_size, bool pin_memory)
+    const platform::Place &place,
+    size_t buffer_size,
+    bool pin_memory)
     : framework::DecoratedReader(reader),
       thread_pool_(1),
       place_(place),
@@ -85,10 +89,27 @@ BufferedReader::BufferedReader(
     stream_ = platform::MluStreamResourcePool::Instance().New(dev_idx);
   }
 #endif
+
+#ifdef PADDLE_WITH_XPU
+  if (platform::is_xpu_place(place_)) {
+    int dev_idx = place_.device;
+    compute_stream_ =
+        ((platform::XPUDeviceContext *)(platform::DeviceContextPool::Instance()
+                                            .Get(place_)))
+            ->stream();
+    events_.resize(buffer_size);
+    for (auto &event : events_) {
+      event = platform::XpuEventResourcePool::Instance().New(dev_idx);
+    }
+    stream_ = platform::XpuStreamResourcePool::Instance().New(dev_idx);
+  }
+#endif
+
   cpu_buffer_.resize(buffer_size);
   cuda_buffer_.resize(buffer_size);
   npu_buffer_.resize(buffer_size);
   mlu_buffer_.resize(buffer_size);
+  xpu_buffer_.resize(buffer_size);
   ReadTillBufferFullAsync();
 }
 
@@ -114,7 +135,8 @@ void BufferedReader::ReadAsync(size_t i) {
         cuda.resize(cpu.size());
       } else {
         PADDLE_ENFORCE_EQ(
-            cuda.size(), cpu.size(),
+            cuda.size(),
+            cpu.size(),
             platform::errors::InvalidArgument(
                 "Input tensor number on GPU and CPU devices are not matched."));
       }
@@ -133,7 +155,8 @@ void BufferedReader::ReadAsync(size_t i) {
         std::vector<void *> cuda_pinned_ptrs;
         cuda_pinned_ptrs.reserve(cpu.size());
         platform::RecordEvent record_event(
-            "BufferedReader:MemoryCopy", platform::TracerEventType::UserDefined,
+            "BufferedReader:MemoryCopy",
+            platform::TracerEventType::UserDefined,
             1);
         // NODE(chenweihang): When we use CUDAPinned Memory, we need call
         // cudaHostAlloc, that is a CUDA API, calling CUDA API need load
@@ -149,8 +172,11 @@ void BufferedReader::ReadAsync(size_t i) {
             auto size = cpu[i].numel() *
                         paddle::framework::DataTypeSize(cpu[i].dtype());
 
-            memory::Copy(cuda_pinned_place, cuda_pinned_ptrs[i], cpu[i].place(),
-                         cpu[i].data(), size);
+            memory::Copy(cuda_pinned_place,
+                         cuda_pinned_ptrs[i],
+                         cpu[i].place(),
+                         cpu[i].data(),
+                         size);
 
             cuda[i].set_lod(cpu[i].lod());
           } else {
@@ -190,7 +216,8 @@ void BufferedReader::ReadAsync(size_t i) {
 #endif
 
         platform::RecordEvent record_event(
-            "BufferedReader:MemoryCopy", platform::TracerEventType::UserDefined,
+            "BufferedReader:MemoryCopy",
+            platform::TracerEventType::UserDefined,
             1);
         for (size_t i = 0; i < cpu.size(); ++i) {
           auto cpu_place = cpu[i].place();
@@ -199,21 +226,25 @@ void BufferedReader::ReadAsync(size_t i) {
           auto size =
               cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
           if (platform::is_cuda_pinned_place(cpu_place)) {
-            memory::Copy(place_, gpu_ptr, cpu_place, cpu_ptr, size,
-                         stream_.get());
+            memory::Copy(
+                place_, gpu_ptr, cpu_place, cpu_ptr, size, stream_.get());
           } else if ((platform::is_gpu_place(cpu_place))) {
-            memory::Copy(place_, gpu_ptr, cpu_place, cpu_ptr, size,
-                         stream_.get());
+            memory::Copy(
+                place_, gpu_ptr, cpu_place, cpu_ptr, size, stream_.get());
           } else {
             platform::CUDAPinnedPlace cuda_pinned_place;
             framework::LoDTensor cuda_pinned_tensor;
             cuda_pinned_tensor.Resize(cpu[i].dims());
             auto cuda_pinned_ptr = cuda_pinned_tensor.mutable_data(
                 cuda_pinned_place, cpu[i].type());
-            memory::Copy(cuda_pinned_place, cuda_pinned_ptr, cpu_place, cpu_ptr,
-                         size);
-            memory::Copy(place_, gpu_ptr, cuda_pinned_place, cuda_pinned_ptr,
-                         size, stream_.get());
+            memory::Copy(
+                cuda_pinned_place, cuda_pinned_ptr, cpu_place, cpu_ptr, size);
+            memory::Copy(place_,
+                         gpu_ptr,
+                         cuda_pinned_place,
+                         cuda_pinned_ptr,
+                         size,
+                         stream_.get());
 
             platform::GpuStreamSync(stream_.get());
           }
@@ -231,11 +262,13 @@ void BufferedReader::ReadAsync(size_t i) {
         npu.resize(cpu.size());
       } else {
         PADDLE_ENFORCE_EQ(
-            npu.size(), cpu.size(),
+            npu.size(),
+            cpu.size(),
             platform::errors::InvalidArgument(
                 "Input tensor number on NPU and CPU devices are not matched. "
                 "The number on NPU is %d, on CPU is %d",
-                npu.size(), cpu.size()));
+                npu.size(),
+                cpu.size()));
       }
 
       std::vector<void *> npu_ptrs;
@@ -260,11 +293,11 @@ void BufferedReader::ReadAsync(size_t i) {
         auto size =
             cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
         if ((platform::is_npu_place(cpu_place))) {
-          memory::Copy(place_, npu_ptr, cpu_place, cpu_ptr, size,
-                       stream_.get());
+          memory::Copy(
+              place_, npu_ptr, cpu_place, cpu_ptr, size, stream_.get());
         } else {
-          memory::Copy(place_, npu_ptr, cpu_place, cpu_ptr, size,
-                       stream_.get());
+          memory::Copy(
+              place_, npu_ptr, cpu_place, cpu_ptr, size, stream_.get());
           platform::NPUStreamSync(stream_.get());
         }
         npu[i].set_lod(cpu[i].lod());
@@ -280,11 +313,13 @@ void BufferedReader::ReadAsync(size_t i) {
         mlu.resize(cpu.size());
       } else {
         PADDLE_ENFORCE_EQ(
-            mlu.size(), cpu.size(),
+            mlu.size(),
+            cpu.size(),
             platform::errors::InvalidArgument(
                 "Input tensor number on MLU and CPU devices are not matched. "
                 "The number on MLU is %d, on CPU is %d",
-                mlu.size(), cpu.size()));
+                mlu.size(),
+                cpu.size()));
       }
 
       std::vector<void *> mlu_ptrs;
@@ -310,16 +345,69 @@ void BufferedReader::ReadAsync(size_t i) {
         auto size =
             cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
         if ((platform::is_mlu_place(cpu_place))) {
-          memory::Copy(place_, mlu_ptr, cpu_place, cpu_ptr, size,
-                       stream_.get());
+          memory::Copy(
+              place_, mlu_ptr, cpu_place, cpu_ptr, size, stream_.get());
         } else {
-          memory::Copy(place_, mlu_ptr, cpu_place, cpu_ptr, size,
-                       stream_.get());
+          memory::Copy(
+              place_, mlu_ptr, cpu_place, cpu_ptr, size, stream_.get());
           platform::MLUStreamSync(stream_.get());
         }
         mlu[i].set_lod(cpu[i].lod());
       }
       platform::MLUStreamSync(stream_.get());
+    }
+#endif
+
+#ifdef PADDLE_WITH_XPU
+    if (platform::is_xpu_place(place_)) {
+      TensorVec &xpu = xpu_buffer_[i];
+      if (xpu.empty()) {
+        xpu.resize(cpu.size());
+      } else {
+        PADDLE_ENFORCE_EQ(
+            xpu.size(),
+            cpu.size(),
+            platform::errors::InvalidArgument(
+                "Input tensor number on XPU and CPU devices are not matched. "
+                "The number on XPU is %d, on CPU is %d",
+                xpu.size(),
+                cpu.size()));
+      }
+
+      std::vector<void *> xpu_ptrs;
+      xpu_ptrs.reserve(cpu.size());
+      for (size_t i = 0; i < cpu.size(); ++i) {
+        xpu[i].Resize(cpu[i].dims());
+        xpu[i].set_layout(cpu[i].layout());
+        xpu_ptrs.emplace_back(xpu[i].mutable_data(place_, cpu[i].type()));
+      }
+
+      platform::XPUDeviceGuard gurad(place_.device);
+      int r = xpu_event_record(events_[i].get(), compute_stream_);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_event_record");
+      r = xpu_stream_wait_event(stream_.get(), events_[i].get());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_stream_wait_event");
+
+      platform::RecordEvent record_event("BufferedReader:MemoryCopy",
+                                         platform::TracerEventType::UserDefined,
+                                         1);
+      for (size_t i = 0; i < cpu.size(); ++i) {
+        auto cpu_place = cpu[i].place();
+        auto cpu_ptr = cpu[i].data();
+        auto xpu_ptr = xpu_ptrs[i];
+        auto size =
+            cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
+        // TODO(zhanghuan) for now hardware not support xpu_memcpy_async, maybe
+        // KL3
+        if ((platform::is_xpu_place(cpu_place))) {
+          memory::Copy(place_, xpu_ptr, cpu_place, cpu_ptr, size);
+          platform::XPUStreamSync(stream_.get());
+        } else {
+          memory::Copy(place_, xpu_ptr, cpu_place, cpu_ptr, size);
+        }
+        xpu[i].set_lod(cpu[i].lod());
+      }
+      platform::XPUStreamSync(stream_.get());
     }
 #endif
     return i;
@@ -359,6 +447,8 @@ void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
     *out = std::move(npu_buffer_[i]);
   } else if (platform::is_mlu_place(place_)) {
     *out = std::move(mlu_buffer_[i]);
+  } else if (platform::is_xpu_place(place_)) {
+    *out = std::move(xpu_buffer_[i]);
   } else {
     *out = std::move(cpu_buffer_[i]);
   }

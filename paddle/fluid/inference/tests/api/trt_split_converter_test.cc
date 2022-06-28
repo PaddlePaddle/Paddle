@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
@@ -31,8 +31,8 @@ TEST(TensorRT, split_converter) {
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir);
   config.SwitchUseFeedFetchOps(false);
-  config.EnableTensorRtEngine(1 << 20, batch_size, 1,
-                              AnalysisConfig::Precision::kInt8, false, true);
+  config.EnableTensorRtEngine(
+      1 << 20, batch_size, 1, AnalysisConfig::Precision::kInt8, false, true);
 
   auto predictor = CreatePaddlePredictor(config);
 

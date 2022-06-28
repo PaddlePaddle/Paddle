@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/fluid/operators/transpose_op.h"
 
 namespace paddle {
 namespace operators {
@@ -27,8 +27,8 @@ class TransposeMLUKernel : public framework::OpKernel<T> {
     std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
     out->mutable_data<T>(ctx.device_context().GetPlace());
 
-    TransposeFromMLUTensor<T>(ctx, axis, x, out,
-                              false /*need_reshape_or_alloc*/);
+    TransposeFromMLUTensor<T>(
+        ctx, axis, x, out, false /*need_reshape_or_alloc*/);
   }
 };
 
@@ -47,8 +47,8 @@ class TransposeGradMLUKernel : public framework::OpKernel<T> {
     }
     x_grad->mutable_data<T>(ctx.GetPlace());
 
-    TransposeFromMLUTensor<T>(ctx, reversed_axis, out_grad, x_grad,
-                              false /*need_reshape_or_alloc*/);
+    TransposeFromMLUTensor<T>(
+        ctx, reversed_axis, out_grad, x_grad, false /*need_reshape_or_alloc*/);
   }
 };
 
@@ -57,7 +57,8 @@ class TransposeGradMLUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_MLU_KERNEL(transpose2, ops::TransposeMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(transpose2,
+                       ops::TransposeMLUKernel<float>,
                        ops::TransposeMLUKernel<paddle::platform::float16>,
                        ops::TransposeMLUKernel<int>,
                        ops::TransposeMLUKernel<int16_t>,
@@ -65,7 +66,8 @@ REGISTER_OP_MLU_KERNEL(transpose2, ops::TransposeMLUKernel<float>,
                        ops::TransposeMLUKernel<int8_t>,
                        ops::TransposeMLUKernel<bool>);
 
-REGISTER_OP_MLU_KERNEL(transpose2_grad, ops::TransposeGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(transpose2_grad,
+                       ops::TransposeGradMLUKernel<float>,
                        ops::TransposeGradMLUKernel<paddle::platform::float16>,
                        ops::TransposeGradMLUKernel<int>,
                        ops::TransposeGradMLUKernel<int16_t>,

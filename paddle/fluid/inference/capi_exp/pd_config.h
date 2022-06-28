@@ -134,7 +134,8 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseFcPadding(
 /// \param[in] device_id device_id the GPU card to use.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableUseGpu(
-    __pd_keep PD_Config* pd_config, uint64_t memory_pool_init_size_mb,
+    __pd_keep PD_Config* pd_config,
+    uint64_t memory_pool_init_size_mb,
     int32_t device_id);
 ///
 /// \brief Turn off GPU.
@@ -201,8 +202,12 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableORTOptimization(
 /// \param adaptive_seqlen Is the input of multi_encoder variable length
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
-    __pd_keep PD_Config* pd_config, int32_t l3_workspace_size, PD_Bool locked,
-    PD_Bool autotune, const char* autotune_file, const char* precision,
+    __pd_keep PD_Config* pd_config,
+    int32_t l3_workspace_size,
+    PD_Bool locked,
+    PD_Bool autotune,
+    const char* autotune_file,
+    const char* precision,
     PD_Bool adaptive_seqlen);
 ///
 /// \brief Turn on NPU.
@@ -323,9 +328,13 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigIrOptim(
 /// quantization).
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTensorRtEngine(
-    __pd_keep PD_Config* pd_config, int32_t workspace_size,
-    int32_t max_batch_size, int32_t min_subgraph_size,
-    PD_PrecisionType precision, PD_Bool use_static, PD_Bool use_calib_mode);
+    __pd_keep PD_Config* pd_config,
+    int32_t workspace_size,
+    int32_t max_batch_size,
+    int32_t min_subgraph_size,
+    PD_PrecisionType precision,
+    PD_Bool use_static,
+    PD_Bool use_calib_mode);
 ///
 /// \brief A boolean state telling whether the TensorRT engine is used.
 ///
@@ -348,9 +357,14 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigTensorRtEngineEnabled(
 /// TRT plugin will not run fp16.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigSetTrtDynamicShapeInfo(
-    __pd_keep PD_Config* pd_config, size_t tensor_num, const char** tensor_name,
-    size_t* shapes_num, int32_t** min_shape, int32_t** max_shape,
-    int32_t** optim_shape, PD_Bool disable_trt_plugin_fp16);
+    __pd_keep PD_Config* pd_config,
+    size_t tensor_num,
+    const char** tensor_name,
+    size_t* shapes_num,
+    int32_t** min_shape,
+    int32_t** max_shape,
+    int32_t** optim_shape,
+    PD_Bool disable_trt_plugin_fp16);
 ///
 /// \brief A boolean state telling whether the trt dynamic_shape is used.
 ///
@@ -367,7 +381,8 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigTensorRtDynamicShapeEnabled(
 /// \param[in] allow_build_at_runtime allow build trt engine at runtime.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTunedTensorRtDynamicShape(
-    __pd_keep PD_Config* pd_config, const char* shape_range_info_path,
+    __pd_keep PD_Config* pd_config,
+    const char* shape_range_info_path,
     PD_Bool allow_build_at_runtime);
 
 ///
@@ -432,7 +447,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigDisableTensorRtOPs(
 ///
 /// \param[in] pd_onfig config
 ///
-PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTensorRtOSS(
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableVarseqlen(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief A boolean state telling whether to use the TensorRT OSS.
@@ -472,9 +487,13 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigTensorRtDlaEnabled(
 /// \param[in] ops_filter The name of operators not supported by Lite.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableLiteEngine(
-    __pd_keep PD_Config* pd_config, PD_PrecisionType precision,
-    PD_Bool zero_copy, size_t passes_filter_num, const char** passes_filter,
-    size_t ops_filter_num, const char** ops_filter);
+    __pd_keep PD_Config* pd_config,
+    PD_PrecisionType precision,
+    PD_Bool zero_copy,
+    size_t passes_filter_num,
+    const char** passes_filter,
+    size_t ops_filter_num,
+    const char** ops_filter);
 ///
 /// \brief A boolean state indicating whether the Lite sub-graph engine is
 /// used.
@@ -614,8 +633,10 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigThreadLocalStreamEnabled(
 /// \param[in] params_buffer_size The size of the combined parameters data.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigSetModelBuffer(
-    __pd_keep PD_Config* pd_config, const char* prog_buffer,
-    size_t prog_buffer_size, const char* params_buffer,
+    __pd_keep PD_Config* pd_config,
+    const char* prog_buffer,
+    size_t prog_buffer_size,
+    const char* params_buffer,
     size_t params_buffer_size);
 ///
 /// \brief A boolean state telling whether the model is set from the CPU

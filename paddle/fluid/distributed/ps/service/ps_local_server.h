@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/distributed/ps/service/server.h"
 
 namespace paddle {
@@ -29,7 +30,9 @@ class PsLocalServer : public PSServer {
   virtual uint64_t Start(const std::string &ip, uint32_t port) { return 0; }
   virtual int32_t Stop() { return 0; }
   virtual int32_t Configure(
-      const PSParameter &config, PSEnvironment &env, size_t server_rank,
+      const PSParameter &config,
+      PSEnvironment &env,
+      size_t server_rank,
       const std::vector<framework::ProgramDesc> &server_sub_program = {}) {
     return 0;
   }
@@ -37,5 +40,5 @@ class PsLocalServer : public PSServer {
  private:
   virtual int32_t Initialize() { return 0; }
 };
-}
-}
+}  // namespace distributed
+}  // namespace paddle

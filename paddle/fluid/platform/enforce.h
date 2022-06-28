@@ -36,6 +36,7 @@ limitations under the License. */
 #include <cusparse.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
+
 #include "paddle/fluid/platform/external_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
@@ -77,6 +78,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include <error.h>
+
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
@@ -88,6 +90,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/rocblas.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include <error.h>  // NOLINT
+
 #include "paddle/phi/backends/dynload/rccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_HIP
@@ -106,9 +109,6 @@ namespace phi {
 class ErrorSummary;
 }  // namespace phi
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_int64(gpu_allocator_retry_time);
-#endif
 DECLARE_int32(call_stack_level);
 
 namespace paddle {
@@ -146,45 +146,52 @@ namespace details {
 
 using namespace phi::enforce::details;  // NOLINT
 
-#define DEFINE_SAFE_BOOST_GET(__InputType, __OutputType, __OutputTypePtr,      \
-                              __FuncName)                                      \
-  template <typename OutputType, typename InputType>                           \
-  auto __FuncName(__InputType input, const char* expression, const char* file, \
-                  int line)                                                    \
-      ->typename std::conditional<std::is_pointer<InputType>::value,           \
-                                  __OutputTypePtr, __OutputType>::type {       \
-    try {                                                                      \
-      return boost::get<OutputType>(input);                                    \
-    } catch (boost::bad_get&) {                                                \
-      HANDLE_THE_ERROR                                                         \
-      throw ::phi::enforce::EnforceNotMet(                                     \
-          phi::errors::InvalidArgument(                                        \
-              "boost::get failed, cannot get value "                           \
-              "(%s) by type %s, its type is %s.",                              \
-              expression, phi::enforce::demangle(typeid(OutputType).name()),   \
-              phi::enforce::demangle(input.type().name())),                    \
-          file, line);                                                         \
-      END_HANDLE_THE_ERROR                                                     \
-    }                                                                          \
+#define DEFINE_SAFE_BOOST_GET(                                               \
+    __InputType, __OutputType, __OutputTypePtr, __FuncName)                  \
+  template <typename OutputType, typename InputType>                         \
+  auto __FuncName(                                                           \
+      __InputType input, const char* expression, const char* file, int line) \
+      ->typename std::conditional<std::is_pointer<InputType>::value,         \
+                                  __OutputTypePtr,                           \
+                                  __OutputType>::type {                      \
+    try {                                                                    \
+      return boost::get<OutputType>(input);                                  \
+    } catch (boost::bad_get&) {                                              \
+      HANDLE_THE_ERROR                                                       \
+      throw ::phi::enforce::EnforceNotMet(                                   \
+          phi::errors::InvalidArgument(                                      \
+              "boost::get failed, cannot get value "                         \
+              "(%s) by type %s, its type is %s.",                            \
+              expression,                                                    \
+              phi::enforce::demangle(typeid(OutputType).name()),             \
+              phi::enforce::demangle(input.type().name())),                  \
+          file,                                                              \
+          line);                                                             \
+      END_HANDLE_THE_ERROR                                                   \
+    }                                                                        \
   }
 
 DEFINE_SAFE_BOOST_GET(InputType&, OutputType&, OutputType*, SafeBoostGet);
-DEFINE_SAFE_BOOST_GET(const InputType&, const OutputType&, const OutputType*,
+DEFINE_SAFE_BOOST_GET(const InputType&,
+                      const OutputType&,
+                      const OutputType*,
                       SafeBoostGetConst);
-DEFINE_SAFE_BOOST_GET(InputType&&, OutputType, OutputType*,
+DEFINE_SAFE_BOOST_GET(InputType&&,
+                      OutputType,
+                      OutputType*,
                       SafeBoostGetMutable);
 
 }  // namespace details
 
-#define BOOST_GET(__TYPE, __VALUE)                                             \
-  paddle::platform::details::SafeBoostGet<__TYPE>(__VALUE, #__VALUE, __FILE__, \
-                                                  __LINE__)
-#define BOOST_GET_CONST(__TYPE, __VALUE)                                  \
-  paddle::platform::details::SafeBoostGetConst<__TYPE>(__VALUE, #__VALUE, \
-                                                       __FILE__, __LINE__)
-#define BOOST_GET_MUTABLE(__TYPE, __VALUE)                                  \
-  paddle::platform::details::SafeBoostGetMutable<__TYPE>(__VALUE, #__VALUE, \
-                                                         __FILE__, __LINE__)
+#define BOOST_GET(__TYPE, __VALUE)                 \
+  paddle::platform::details::SafeBoostGet<__TYPE>( \
+      __VALUE, #__VALUE, __FILE__, __LINE__)
+#define BOOST_GET_CONST(__TYPE, __VALUE)                \
+  paddle::platform::details::SafeBoostGetConst<__TYPE>( \
+      __VALUE, #__VALUE, __FILE__, __LINE__)
+#define BOOST_GET_MUTABLE(__TYPE, __VALUE)                \
+  paddle::platform::details::SafeBoostGetMutable<__TYPE>( \
+      __VALUE, #__VALUE, __FILE__, __LINE__)
 
 /** OTHER EXCEPTION AND ENFORCE **/
 
@@ -197,12 +204,12 @@ struct EOFException : public std::exception {
   const char* what() const noexcept override { return err_str_.c_str(); }
 };
 
-#define PADDLE_THROW_EOF()                                                   \
-  do {                                                                       \
-    HANDLE_THE_ERROR                                                         \
-    throw paddle::platform::EOFException("There is no next data.", __FILE__, \
-                                         __LINE__);                          \
-    END_HANDLE_THE_ERROR                                                     \
+#define PADDLE_THROW_EOF()                             \
+  do {                                                 \
+    HANDLE_THE_ERROR                                   \
+    throw paddle::platform::EOFException(              \
+        "There is no next data.", __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                               \
   } while (0)
 
 #define PADDLE_THROW_BAD_ALLOC(...)                                      \
@@ -504,14 +511,14 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
     }                                                            \
   } while (0)
 
-#define PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(OP)                                 \
-  do {                                                                         \
-    auto res = cudaGetLastError();                                             \
-    if (UNLIKELY(res != cudaSuccess)) {                                        \
-      auto msg = ::paddle::platform::build_nvidia_error_msg(res);              \
-      PADDLE_THROW(platform::errors::Fatal("CUDA error after kernel (%s): %s", \
-                                           OP, msg));                          \
-    }                                                                          \
+#define PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(OP)                    \
+  do {                                                            \
+    auto res = cudaGetLastError();                                \
+    if (UNLIKELY(res != cudaSuccess)) {                           \
+      auto msg = ::paddle::platform::build_nvidia_error_msg(res); \
+      PADDLE_THROW(platform::errors::Fatal(                       \
+          "CUDA error after kernel (%s): %s", OP, msg));          \
+    }                                                             \
   } while (0)
 
 inline void retry_sleep(unsigned milliseconds) {
@@ -539,7 +546,7 @@ inline void retry_sleep(unsigned milliseconds) {
         ::paddle::platform::details::ExternalApiType<                   \
             __CUDA_STATUS_TYPE__>::kSuccess;                            \
     while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
-      paddle::platform::retry_sleep(FLAGS_gpu_allocator_retry_time);    \
+      paddle::platform::retry_sleep(10000);                             \
       __cond__ = (COND);                                                \
       ++retry_count;                                                    \
     }                                                                   \
@@ -727,7 +734,7 @@ inline void retry_sleep(unsigned millisecond) {
         ::paddle::platform::details::ExternalApiType<                   \
             __CUDA_STATUS_TYPE__>::kSuccess;                            \
     while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
-      ::paddle::platform::retry_sleep(FLAGS_gpu_allocator_retry_time);  \
+      ::paddle::platform::retry_sleep(10000);                           \
       __cond__ = (COND);                                                \
       ++retry_count;                                                    \
     }                                                                   \

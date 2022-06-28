@@ -24,8 +24,10 @@
 namespace phi {
 
 template <typename T,
-          template <typename> class ReduceOp,
-          template <typename, typename> class TransformOp>
+          template <typename>
+          class ReduceOp,
+          template <typename, typename>
+          class TransformOp>
 void Reduce(const KPDevice& dev_ctx,
             const DenseTensor& x,
             bool reduce_all,

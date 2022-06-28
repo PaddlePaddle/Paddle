@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker_factory.h"
 
 #include <stdlib.h>
+
 #include <memory>
 #include <string>
 
@@ -45,7 +46,8 @@ device_workerMap g_device_worker_map;
 std::string DeviceWorkerFactory::DeviceWorkerTypeList() {
   std::string device_worker_types;
   for (auto iter = g_device_worker_map.begin();
-       iter != g_device_worker_map.end(); ++iter) {
+       iter != g_device_worker_map.end();
+       ++iter) {
     if (iter != g_device_worker_map.begin()) {
       device_worker_types += ", ";
     }

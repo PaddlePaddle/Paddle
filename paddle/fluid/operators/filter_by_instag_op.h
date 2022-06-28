@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/mixed_vector.h"
@@ -152,8 +153,10 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < out_lods.size() - 1; i++) {
         size_t pos = out_lods[i];
         for (int k = map_data[i * 3 + 1];
-             k < map_data[i * 3 + 1] + map_data[i * 3 + 2]; k++) {
-          memcpy(out_data + pos * x1_embed_size, x1_data + k * x1_embed_size,
+             k < map_data[i * 3 + 1] + map_data[i * 3 + 2];
+             k++) {
+          memcpy(out_data + pos * x1_embed_size,
+                 x1_data + k * x1_embed_size,
                  x1_embed_size * sizeof(T));
           ++pos;
         }

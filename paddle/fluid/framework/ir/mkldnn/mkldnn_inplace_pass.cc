@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_inplace_pass.h"
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -46,10 +48,10 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     VLOG(3) << "Start to handle MKL-DNN In-Place pass";
 
     GET_IR_NODE_FROM_SUBGRAPH(current_op, inplace_to_be_op, mkldnn_inplace);
-    GET_IR_NODE_FROM_SUBGRAPH(current_op_in, inplace_to_be_op_in,
-                              mkldnn_inplace);
-    GET_IR_NODE_FROM_SUBGRAPH(current_op_out, inplace_to_be_op_out,
-                              mkldnn_inplace);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        current_op_in, inplace_to_be_op_in, mkldnn_inplace);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        current_op_out, inplace_to_be_op_out, mkldnn_inplace);
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, mkldnn_inplace);
     GET_IR_NODE_FROM_SUBGRAPH(next_op_out, next_op_out, mkldnn_inplace);
 
@@ -85,7 +87,8 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
             << outputs[in_to_outs.begin()->second][0];
     // If InferInplace pattern does not contain input node then skip
     auto inplace_input_vec = inputs[in_to_outs.begin()->first];
-    if (std::find(inplace_input_vec.begin(), inplace_input_vec.end(),
+    if (std::find(inplace_input_vec.begin(),
+                  inplace_input_vec.end(),
                   current_op_in->Name()) == inplace_input_vec.end()) {
       VLOG(3) << "oneDNN in-place pass SKIP pattern ";
       return;

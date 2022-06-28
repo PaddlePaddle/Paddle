@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ThreadPool.h>
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -56,7 +57,8 @@ class DownpourPsClientService : public PsService {
     return 0;
   }
   void service(::google::protobuf::RpcController *controller,
-               const PsRequestMessage *request, PsResponseMessage *response,
+               const PsRequestMessage *request,
+               PsResponseMessage *response,
                ::google::protobuf::Closure *done) override;
 
  protected:
@@ -161,13 +163,15 @@ class BrpcPsClient : public PSClient {
                               const std::string threshold) override;
   std::future<int32_t> Load(const std::string &epoch,
                             const std::string &mode) override;
-  std::future<int32_t> Load(uint32_t table_id, const std::string &epoch,
+  std::future<int32_t> Load(uint32_t table_id,
+                            const std::string &epoch,
                             const std::string &mode) override;
 
   std::future<int32_t> Save(const std::string &epoch,
                             const std::string &mode) override;
 
-  std::future<int32_t> Save(uint32_t table_id, const std::string &epoch,
+  std::future<int32_t> Save(uint32_t table_id,
+                            const std::string &epoch,
                             const std::string &mode) override;
 
   std::future<int32_t> Clear() override;
@@ -181,7 +185,8 @@ class BrpcPsClient : public PSClient {
 
   void FinalizeWorker() override;
 
-  virtual std::future<int32_t> PullDense(Region *regions, size_t region_num,
+  virtual std::future<int32_t> PullDense(Region *regions,
+                                         size_t region_num,
                                          size_t table_id);
 
   virtual std::future<int32_t> PushDenseParam(const Region *regions,
@@ -189,14 +194,18 @@ class BrpcPsClient : public PSClient {
                                               size_t table_id);
 
   virtual std::future<int32_t> PushDense(const Region *regions,
-                                         size_t region_num, size_t table_id);
+                                         size_t region_num,
+                                         size_t table_id);
   void PushDenseTaskConsume();
   virtual std::future<int32_t> PullSparse(float **select_values,
-                                          size_t table_id, const uint64_t *keys,
-                                          size_t num, bool is_training);
+                                          size_t table_id,
+                                          const uint64_t *keys,
+                                          size_t num,
+                                          bool is_training);
   virtual std::future<int32_t> PullSparseParam(float **select_values,
                                                size_t table_id,
-                                               const uint64_t *keys, size_t num,
+                                               const uint64_t *keys,
+                                               size_t num,
                                                bool is_training);
 
   virtual std::future<int32_t> PrintTableStat(uint32_t table_id);
@@ -212,7 +221,8 @@ class BrpcPsClient : public PSClient {
                                               void *done);
   virtual std::future<int32_t> Flush();
 
-  std::future<int32_t> SendClient2ClientMsg(int msg_type, int to_client_id,
+  std::future<int32_t> SendClient2ClientMsg(int msg_type,
+                                            int to_client_id,
                                             const std::string &msg) override;
 
   // for local save sparse
@@ -220,14 +230,19 @@ class BrpcPsClient : public PSClient {
                                    const std::string &path);
 
   std::future<int32_t> CacheShuffle(
-      uint32_t table_id, const std::string &path, const std::string &mode,
+      uint32_t table_id,
+      const std::string &path,
+      const std::string &mode,
       const std::string &cache_threshold) override;
 
   std::future<int32_t> CacheShuffleMultiTable(
-      std::vector<int> tables, const std::string &path, const std::string &mode,
+      std::vector<int> tables,
+      const std::string &path,
+      const std::string &mode,
       const std::string &cache_threshold);
 
-  std::future<int32_t> SaveCache(uint32_t table_id, const std::string &path,
+  std::future<int32_t> SaveCache(uint32_t table_id,
+                                 const std::string &path,
                                  const std::string &mode) override;
 
   std::future<int32_t> GetCacheThreshold(uint32_t table_id,
@@ -255,10 +270,12 @@ class BrpcPsClient : public PSClient {
     return dense_dim_total / shard_num + 1;
   }
 
-  std::future<int32_t> SendCmd(uint32_t table_id, int cmd_id,
+  std::future<int32_t> SendCmd(uint32_t table_id,
+                               int cmd_id,
                                const std::vector<std::string> &param);
 
-  std::future<int32_t> SendSaveCmd(uint32_t table_id, int cmd_id,
+  std::future<int32_t> SendSaveCmd(uint32_t table_id,
+                                   int cmd_id,
                                    const std::vector<std::string> &param);
 
   bool _running = false;
@@ -280,14 +297,19 @@ class BrpcPsClient : public PSClient {
   std::thread _print_thread;
 
   int PushSparseAsyncShardMerge(
-      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,       // NOLINT
-      std::vector<int> &request_kv_num, int table_id, int shard_idx,  // NOLINT
+      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,  // NOLINT
+      std::vector<int> &request_kv_num,
+      int table_id,
+      int shard_idx,  // NOLINT
       ValueAccessor *accessor);
 
   int PushSparseAsyncShardPush(
-      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,       // NOLINT
-      std::vector<int> &request_kv_num, int table_id, int shard_idx,  // NOLINT
-      DownpourBrpcClosure *closure, ValueAccessor *accessor);
+      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,  // NOLINT
+      std::vector<int> &request_kv_num,
+      int table_id,
+      int shard_idx,  // NOLINT
+      DownpourBrpcClosure *closure,
+      ValueAccessor *accessor);
 
   SparseTaskPool _sparse_task_pool;
 
@@ -303,18 +325,23 @@ class BrpcPsClient : public PSClient {
   std::future<int32_t> PushSparseRawGradient(size_t table_id,
                                              const uint64_t *keys,
                                              const float **update_values,
-                                             size_t num, void *done) override;
+                                             size_t num,
+                                             void *done) override;
 
   std::future<int32_t> PushSparseRawGradientPartial(size_t table_id,
                                                     const uint64_t *keys,
                                                     const float **update_values,
-                                                    uint32_t num, void *done,
+                                                    uint32_t num,
+                                                    void *done,
                                                     int pserver_idx) override;
 
-  std::future<int32_t> PushSparseParam(size_t table_id, const uint64_t *keys,
-                                       const float **update_values, size_t num,
+  std::future<int32_t> PushSparseParam(size_t table_id,
+                                       const uint64_t *keys,
+                                       const float **update_values,
+                                       size_t num,
                                        void *done) override;
-  std::future<int32_t> PushSparse(size_t table_id, const uint64_t *keys,
+  std::future<int32_t> PushSparse(size_t table_id,
+                                  const uint64_t *keys,
                                   const float **update_values,
                                   size_t num) override;
   void PushSparseTaskConsume();
@@ -323,7 +350,8 @@ class BrpcPsClient : public PSClient {
   int32_t StartClientService();
 
   void PushDenseRawGradient(std::shared_ptr<DenseAsyncTask> &task,  // NOLINT
-                            float *total_send_data, size_t total_send_data_size,
+                            float *total_send_data,
+                            size_t total_send_data_size,
                             DownpourBrpcClosure *closure);
   float _mae = 0;
   float _mse = 0;

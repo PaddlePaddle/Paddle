@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -50,9 +51,12 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto fleet = distributed::FleetWrapper::GetInstance();
 
     if (platform::is_cpu_place(context.GetPlace())) {
-      fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
+      fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id),
+                                    emb_dim,
                                     static_cast<uint64_t>(padding_idx),
-                                    context.GetPlace(), !is_test, &inputs,
+                                    context.GetPlace(),
+                                    !is_test,
+                                    &inputs,
                                     &outputs);
     } else {
       auto inputs_variable = context.MultiInputVar("Ids");
@@ -72,7 +76,9 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
         tmp_tensors.emplace_back(std::make_shared<framework::LoDTensor>());
         auto *p = tmp_tensors.back().get();
         framework::TensorCopy(inputs_variable[idx]->Get<framework::LoDTensor>(),
-                              cpu_place, context.device_context(), p);
+                              cpu_place,
+                              context.device_context(),
+                              p);
         tmp_input_vec.push_back(p);
       }
 
@@ -85,15 +91,20 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
       }
 
       // use fleet->PullSparse
-      fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
+      fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id),
+                                    emb_dim,
                                     static_cast<uint64_t>(padding_idx),
-                                    cpu_place, !is_test, &tmp_input_vec,
+                                    cpu_place,
+                                    !is_test,
+                                    &tmp_input_vec,
                                     &tmp_output_vec);
 
       // cp temp to origin
       for (size_t idx = 0; idx < output_var_size; ++idx) {
         framework::TensorCopy(
-            *tmp_output_vec[idx], context.GetPlace(), context.device_context(),
+            *tmp_output_vec[idx],
+            context.GetPlace(),
+            context.device_context(),
             outputs_variable[idx]->GetMutable<framework::LoDTensor>());
       }
     }

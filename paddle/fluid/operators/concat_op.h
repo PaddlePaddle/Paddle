@@ -17,11 +17,11 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/operators/utils.h"
-
 #include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -30,10 +30,13 @@ namespace operators {
 
 static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
   PADDLE_ENFORCE_EQ(
-      axis >= -rank && axis < rank, true,
+      axis >= -rank && axis < rank,
+      true,
       platform::errors::InvalidArgument(
-          "The axis is expected to be in range of [%d, %d), but got %d", -rank,
-          rank, axis));
+          "The axis is expected to be in range of [%d, %d), but got %d",
+          -rank,
+          rank,
+          axis));
   if (axis < 0) {
     axis = axis + rank;
   }

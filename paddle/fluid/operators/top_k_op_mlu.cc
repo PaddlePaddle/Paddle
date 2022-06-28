@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/fluid/operators/top_k_op.h"
 
 namespace paddle {
 namespace operators {
@@ -32,8 +32,12 @@ class TopkMLUKernel : public framework::OpKernel<T> {
     if (k_t) {
       auto k_t_ptr = static_cast<const void*>(k_t->data<int>());
       auto size = k_t->numel() * sizeof(int);
-      memory::Copy(platform::CPUPlace(), reinterpret_cast<void*>(&k),
-                   k_t->place(), k_t_ptr, size, nullptr);
+      memory::Copy(platform::CPUPlace(),
+                   reinterpret_cast<void*>(&k),
+                   k_t->place(),
+                   k_t_ptr,
+                   size,
+                   nullptr);
       framework::DDim output_dims = output->dims();
       output_dims[output_dims.size() - 1] = k;
       output->Resize(output_dims);
@@ -54,16 +58,26 @@ class TopkMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc input_desc(*input);
     MLUCnnlTensorDesc values_output_desc(*output);
     MLUCnnlTensorDesc indices_int32_desc(indices_int32);
-    MLUCnnl::TopK(ctx, k, axis, largest, sorted, input_desc.get(),
-                  GetBasePtr(input), values_output_desc.get(),
-                  GetBasePtr(output), indices_int32_desc.get(),
+    MLUCnnl::TopK(ctx,
+                  k,
+                  axis,
+                  largest,
+                  sorted,
+                  input_desc.get(),
+                  GetBasePtr(input),
+                  values_output_desc.get(),
+                  GetBasePtr(output),
+                  indices_int32_desc.get(),
                   GetBasePtr(&indices_int32));
 
     // cast indices type to int64
     MLUCnnlTensorDesc cast_output_desc(*indices);
     cnnlCastDataType_t cast_type = GetCastDataType(VT::INT32, VT::INT64);
-    MLUCnnl::Cast(ctx, cast_type, indices_int32_desc.get(),
-                  GetBasePtr(&indices_int32), cast_output_desc.get(),
+    MLUCnnl::Cast(ctx,
+                  cast_type,
+                  indices_int32_desc.get(),
+                  GetBasePtr(&indices_int32),
+                  cast_output_desc.get(),
                   GetBasePtr(indices));
   }
 };
@@ -72,5 +86,6 @@ class TopkMLUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(top_k, ops::TopkMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(top_k,
+                       ops::TopkMLUKernel<float>,
                        ops::TopkMLUKernel<paddle::platform::float16>);

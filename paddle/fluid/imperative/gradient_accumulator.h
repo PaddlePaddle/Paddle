@@ -17,6 +17,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -58,7 +59,8 @@ class GradientAccumulator {
   }
 
   // function that Sum Gradient with this Graph
-  virtual void SumGrad(std::shared_ptr<VariableWrapper> var, size_t trace_id,
+  virtual void SumGrad(std::shared_ptr<VariableWrapper> var,
+                       size_t trace_id,
                        bool unchange_input = false) = 0;
 
   virtual ~GradientAccumulator() = default;
@@ -137,7 +139,8 @@ class EagerGradientAccumulator : public GradientAccumulator {
  public:
   using GradientAccumulator::GradientAccumulator;
 
-  void SumGrad(std::shared_ptr<VariableWrapper> var, size_t trace_id,
+  void SumGrad(std::shared_ptr<VariableWrapper> var,
+               size_t trace_id,
                bool unchange_input) override;
 };
 
@@ -145,12 +148,14 @@ class SortedGradientAccumulator : public GradientAccumulator {
  public:
   using GradientAccumulator::GradientAccumulator;
 
-  void SumGrad(std::shared_ptr<VariableWrapper> var, size_t trace_id,
+  void SumGrad(std::shared_ptr<VariableWrapper> var,
+               size_t trace_id,
                bool unchange_input) override;
 
  private:
   struct SavedVarInfo {
-    SavedVarInfo(std::shared_ptr<VariableWrapper>&& v, size_t id,
+    SavedVarInfo(std::shared_ptr<VariableWrapper>&& v,
+                 size_t id,
                  bool enable_unchange_input)
         : var(std::move(v)),
           trace_id(id),
@@ -189,17 +194,22 @@ inline void CheckVar(const std::shared_ptr<VariableWrapper>& pre,
   if (!pre->IsEmpty() && !post->IsEmpty()) {
     VLOG(4) << pre->DataType() << " " << post->DataType();
     PADDLE_ENFORCE_EQ(
-        pre->DataType(), post->DataType(),
+        pre->DataType(),
+        post->DataType(),
         platform::errors::PermissionDenied(
             "The dtype of tensor(%s) before(%s) and after(%s) hook are not "
             "consistent",
-            pre->Name(), framework::DataTypeToString(pre->DataType()),
+            pre->Name(),
+            framework::DataTypeToString(pre->DataType()),
             framework::DataTypeToString(post->DataType())));
-    PADDLE_ENFORCE_EQ(pre->Place(), post->Place(),
+    PADDLE_ENFORCE_EQ(pre->Place(),
+                      post->Place(),
                       platform::errors::PermissionDenied(
                           "The place of tensor(%s) before(%s) and after(%s) "
                           "hook are not consistent",
-                          pre->Name(), pre->Place(), post->Place()));
+                          pre->Name(),
+                          pre->Place(),
+                          post->Place()));
   }
 }
 

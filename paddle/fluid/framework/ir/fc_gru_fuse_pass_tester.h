@@ -13,9 +13,9 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/framework/ir/fc_gru_fuse_pass.h"
-
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/framework/ir/fc_gru_fuse_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -23,7 +23,8 @@ namespace framework {
 namespace ir {
 
 namespace fc_gru_test {
-void AddVarToScope(Scope* param_scope, const std::string& name,
+void AddVarToScope(Scope* param_scope,
+                   const std::string& name,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
   tensor->Resize(dims);
@@ -72,9 +73,18 @@ std::unique_ptr<ir::Graph> PrepareGraph(
       layers.data("gru_batch_reset_hidden_prev_0", {}, false);
   auto* gru_batch_hidden_0 = layers.data("gru_batch_hidden_0", {}, false);
   auto* gru_hidden_0 = layers.data("gru_hidden_0", {}, false);
-  layers.gru(fc_0_tmp1, gru_w, gru_b, gru_batch_gate_0,
-             gru_batch_reset_hidden_prev_0, gru_batch_hidden_0, gru_hidden_0,
-             nullptr, false, false, activation, gate_activation);
+  layers.gru(fc_0_tmp1,
+             gru_w,
+             gru_b,
+             gru_batch_gate_0,
+             gru_batch_reset_hidden_prev_0,
+             gru_batch_hidden_0,
+             gru_hidden_0,
+             nullptr,
+             false,
+             false,
+             activation,
+             gate_activation);
 
   auto* fc_1_tmp0 = layers.mul(b, fc_w);
   auto* fc_1_tmp1 = layers.elementwise_add(fc_1_tmp0, fc_b);
@@ -83,9 +93,18 @@ std::unique_ptr<ir::Graph> PrepareGraph(
       layers.data("gru_batch_reset_hidden_prev_1", {}, false);
   auto* gru_batch_hidden_1 = layers.data("gru_batch_hidden_1", {}, false);
   auto* gru_hidden_1 = layers.data("gru_hidden_1", {}, false);
-  layers.gru(fc_1_tmp1, gru_w, gru_b, gru_batch_gate_1,
-             gru_batch_reset_hidden_prev_1, gru_batch_hidden_1, gru_hidden_1,
-             nullptr, false, false, activation, gate_activation);
+  layers.gru(fc_1_tmp1,
+             gru_w,
+             gru_b,
+             gru_batch_gate_1,
+             gru_batch_reset_hidden_prev_1,
+             gru_batch_hidden_1,
+             gru_hidden_1,
+             nullptr,
+             false,
+             false,
+             activation,
+             gate_activation);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   return graph;

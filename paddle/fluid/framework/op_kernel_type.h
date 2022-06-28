@@ -36,7 +36,8 @@ class OpKernelType {
   constexpr static int kLibBits = 4;
   constexpr static int kCustomizeBits = 4;
 
-  OpKernelType(proto::VarType::Type data_type, platform::Place place,
+  OpKernelType(proto::VarType::Type data_type,
+               platform::Place place,
                DataLayout data_layout = DataLayout::kAnyLayout,
                LibraryType library_type = LibraryType::kPlain,
                int customized_type_value = kDefaultCustomizedTypeValue)
@@ -82,9 +83,9 @@ class OpKernelType {
 
 inline std::ostream& operator<<(std::ostream& os,
                                 const OpKernelType& kernel_key) {
-  os << "data_type[" << kernel_key.data_type_ << "]:data_layout["
-     << kernel_key.data_layout_ << "]:place[" << kernel_key.place_
-     << "]:library_type[" << kernel_key.library_type_ << "]";
+  os << "{data_type[" << kernel_key.data_type_ << "]; data_layout["
+     << kernel_key.data_layout_ << "]; place[" << kernel_key.place_
+     << "]; library_type[" << kernel_key.library_type_ << "]}";
   return os;
 }
 

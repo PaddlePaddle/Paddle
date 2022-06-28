@@ -37,7 +37,7 @@ from ..meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
-from paddle.distributed.fleet.utils.recompute import RecomputeFunction
+from paddle.distributed.fleet.utils.recompute import LegacyRecomputeFunction
 from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 
 __all__ = []
@@ -46,6 +46,7 @@ _grad_scalar = None
 
 
 class _RecomputeModelWrapper(paddle.nn.Layer):
+
     def __init__(self, model, segments=2, preserve_rng_state=True):
         super(_RecomputeModelWrapper, self).__init__()
         assert isinstance(model, paddle.nn.Sequential), (
@@ -58,6 +59,7 @@ class _RecomputeModelWrapper(paddle.nn.Layer):
         self._segment_size = len(self._layers) // segments
 
     def _run_func(self, begin, end):
+
         def do_run(input):
             for i in range(begin, end):
                 input = self._layers[i](input)
@@ -66,7 +68,8 @@ class _RecomputeModelWrapper(paddle.nn.Layer):
         return do_run
 
     def _checkpoint(self, func, *args, **kwargs):
-        return RecomputeFunction.apply(func, self._preserve_rng_state, *args)
+        return LegacyRecomputeFunction.apply(func, self._preserve_rng_state,
+                                             *args)
 
     def forward(self, input):
         end = 0
@@ -91,10 +94,10 @@ def apply_ir_passes(main_program, startup_program, config):
     fuse_all_reduce = config._user_defined_strategy.fuse_all_reduce_ops
     if fuse_all_reduce and build_strategy.fuse_all_optimizer_ops:
         # FIXME(zjl): currently, fuse_all_optimizer_ops
-        # have conflict with fuse_all_reduce_ops because 
-        # RawProgramOptimizer also inserts coalesce_tensor 
-        # into program. These two procedures may conflict  
-        # in which vars are to be fused. 
+        # have conflict with fuse_all_reduce_ops because
+        # RawProgramOptimizer also inserts coalesce_tensor
+        # into program. These two procedures may conflict
+        # in which vars are to be fused.
         warnings.warn(
             'Currently, the fuse_all_optimizer_ops pass has conflict with fuse_all_reduce_ops pass. Disable the fuse_all_optimizer_ops pass temporarily.'
         )
@@ -105,6 +108,7 @@ def apply_ir_passes(main_program, startup_program, config):
 
 
 def _inited_runtime_handler_(func):
+
     def __impl__(*args, **kwargs):
         cls = args[0]
 
@@ -117,6 +121,7 @@ def _inited_runtime_handler_(func):
 
 
 def _is_non_distributed_check_(func):
+
     def __impl__(*args, **kwargs):
         cls = args[0]
 
@@ -275,8 +280,8 @@ class Fleet(object):
                 self._is_collective = role_maker._is_collective
             else:
                 raise ValueError(
-                    "`role_maker` should be subclass of `RoleMakerBase`, but got {}".
-                    format(type(role_maker)))
+                    "`role_maker` should be subclass of `RoleMakerBase`, but got {}"
+                    .format(type(role_maker)))
         self._role_maker._generate_role()
 
         import paddle.distributed.fleet as fleet
@@ -352,8 +357,8 @@ class Fleet(object):
 
             if use_tensor_parallel:
                 tensor_parallel_configs = self._user_defined_strategy.tensor_parallel_configs
-                mp_degree_tensor_parallel = int(tensor_parallel_configs[
-                    'tensor_parallel_degree'])
+                mp_degree_tensor_parallel = int(
+                    tensor_parallel_configs['tensor_parallel_degree'])
 
             if use_sharding and use_tensor_parallel:
                 assert mp_degree_sharding == mp_degree_tensor_parallel
@@ -773,14 +778,18 @@ class Fleet(object):
                 for name in fetch_var_names
             ]
 
-            self._runtime_handle._save_inference_model(
-                executor, dirname, feeded_var_names, fetch_vars, None, True, 0)
+            self._runtime_handle._save_inference_model(executor, dirname,
+                                                       feeded_var_names,
+                                                       fetch_vars, None, True,
+                                                       0)
         else:
             increment_mode = 0
             if "mode" in configs:
                 increment_mode = int(configs["mode"])
-            self._runtime_handle._save_persistables(
-                executor, dirname, main_program=None, mode=increment_mode)
+            self._runtime_handle._save_persistables(executor,
+                                                    dirname,
+                                                    main_program=None,
+                                                    mode=increment_mode)
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -815,9 +824,10 @@ class Fleet(object):
         #     "'save_inference_model' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
         # )
 
-        self._runtime_handle._save_inference_model(
-            executor, dirname, feeded_var_names, target_vars, main_program,
-            export_for_deployment, mode)
+        self._runtime_handle._save_inference_model(executor, dirname,
+                                                   feeded_var_names,
+                                                   target_vars, main_program,
+                                                   export_for_deployment, mode)
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -1000,12 +1010,11 @@ class Fleet(object):
             amp_enable = True
             amp_level = "O2" if strategy.amp_configs['use_pure_fp16'] else "O1"
             if amp_level.upper() == "O2":
-                model = paddle.amp.decorate(
-                    models=model,
-                    optimizers=None,
-                    level="O2",
-                    master_weight=None,
-                    save_dtype=None)
+                model = paddle.amp.decorate(models=model,
+                                            optimizers=None,
+                                            level="O2",
+                                            master_weight=None,
+                                            save_dtype=None)
             init_loss_scaling = strategy.amp_configs['init_loss_scaling']
             incr_ratio = strategy.amp_configs['incr_ratio']
             decr_ratio = strategy.amp_configs['decr_ratio']
@@ -1040,8 +1049,9 @@ class Fleet(object):
             return distributed_model
 
         if self._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
-            model = ShardingParallel(
-                model, self._hcg, strategy=self._user_defined_strategy)
+            model = ShardingParallel(model,
+                                     self._hcg,
+                                     strategy=self._user_defined_strategy)
         elif self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
 
             # NOTE (JZ-LIANG) init parameters broadcast within sharding group
@@ -1060,11 +1070,13 @@ class Fleet(object):
                 find_unused_parameters=self._user_defined_strategy.
                 find_unused_parameters)
         elif self._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
-            model = TensorParallel(
-                model, self._hcg, strategy=self._user_defined_strategy)
+            model = TensorParallel(model,
+                                   self._hcg,
+                                   strategy=self._user_defined_strategy)
         elif self._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
-            model = PipelineParallel(
-                model, self._hcg, strategy=self._user_defined_strategy)
+            model = PipelineParallel(model,
+                                     self._hcg,
+                                     strategy=self._user_defined_strategy)
 
         return model
 
@@ -1630,8 +1642,10 @@ class Fleet(object):
                 self.origin_main_program).with_data_parallel(
                     loss_name=loss.name, share_vars_from=None)
             loss.block.program._graph = compiled_program
-            return self.user_defined_optimizer.minimize(
-                loss, startup_program, parameter_list, no_grad_set=no_grad_set)
+            return self.user_defined_optimizer.minimize(loss,
+                                                        startup_program,
+                                                        parameter_list,
+                                                        no_grad_set=no_grad_set)
 
         if meta_optimizer:
             # print("before minimize program id:", id(loss.block.program))
@@ -1765,6 +1779,7 @@ class Fleet(object):
 
     @dygraph_only
     def distributed_scaler(self, scaler):
+
         def unscale_method(self, optimizer):
             if not self._enable:
                 return
@@ -1789,16 +1804,16 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and (
+                        param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and (
+                        param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
                 ]
-            temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
-            temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
+            temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
+            temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
             if len(param_grads_fp16):
                 _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
                                                 param_grads_fp16,
@@ -1811,11 +1826,12 @@ class Fleet(object):
             self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
             is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
 
-            # TODO(shenliang03) Since dp allreduce in the optimizer is 
-            # after the gradscaler, check_finite needs to synchronize global 
+            # TODO(shenliang03) Since dp allreduce in the optimizer is
+            # after the gradscaler, check_finite needs to synchronize global
             # information. In the future, we should use check_group to speed.
-            paddle.distributed.all_reduce(
-                is_found_inf, op=paddle.distributed.ReduceOp.MAX, group=None)
+            paddle.distributed.all_reduce(is_found_inf,
+                                          op=paddle.distributed.ReduceOp.MAX,
+                                          group=None)
             self._found_inf = is_found_inf.numpy()[0]
 
         # Only tensor_parallel and pipeline_parallel need to modify scaler

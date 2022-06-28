@@ -18,6 +18,7 @@
 #include <map>
 #include <string>
 #include <type_traits>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/variant.h"
@@ -39,8 +40,8 @@ using ExportedFlagInfoMap = std::map<std::string, FlagInfo>;
 const ExportedFlagInfoMap &GetExportedFlagInfoMap();
 ExportedFlagInfoMap *GetMutableExportedFlagInfoMap();
 
-#define __PADDLE_DEFINE_EXPORTED_FLAG(__name, __is_writable, __cpp_type,      \
-                                      __gflag_type, __default_value, __doc)   \
+#define __PADDLE_DEFINE_EXPORTED_FLAG(                                        \
+    __name, __is_writable, __cpp_type, __gflag_type, __default_value, __doc)  \
   DEFINE_##__gflag_type(__name, __default_value, __doc);                      \
   struct __PaddleRegisterFlag_##__name {                                      \
     __PaddleRegisterFlag_##__name() {                                         \
@@ -83,16 +84,16 @@ ExportedFlagInfoMap *GetMutableExportedFlagInfoMap();
 #define PADDLE_DEFINE_EXPORTED_int64(name, default_value, doc) \
   __PADDLE_DEFINE_EXPORTED_FLAG(name, true, int64_t, int64, default_value, doc)
 
-#define PADDLE_DEFINE_EXPORTED_uint64(name, default_value, doc)              \
-  __PADDLE_DEFINE_EXPORTED_FLAG(name, true, uint64_t, uint64, default_value, \
-                                doc)
+#define PADDLE_DEFINE_EXPORTED_uint64(name, default_value, doc) \
+  __PADDLE_DEFINE_EXPORTED_FLAG(                                \
+      name, true, uint64_t, uint64, default_value, doc)
 
 #define PADDLE_DEFINE_EXPORTED_double(name, default_value, doc) \
   __PADDLE_DEFINE_EXPORTED_FLAG(name, true, double, double, default_value, doc)
 
-#define PADDLE_DEFINE_EXPORTED_string(name, default_value, doc)    \
-  __PADDLE_DEFINE_EXPORTED_FLAG(name, true, ::std::string, string, \
-                                default_value, doc)
+#define PADDLE_DEFINE_EXPORTED_string(name, default_value, doc) \
+  __PADDLE_DEFINE_EXPORTED_FLAG(                                \
+      name, true, ::std::string, string, default_value, doc)
 
 }  // namespace platform
 }  // namespace paddle

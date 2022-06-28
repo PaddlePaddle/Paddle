@@ -26,6 +26,7 @@ from paddle.distributed.ps.utils.ps_factory import PsProgramBuilderFactory
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super(ParameterServerOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -34,8 +35,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
-        super(ParameterServerOptimizer, self)._set_basic_info(
-            loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        super(ParameterServerOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
 
     def _set_origin_programs(self, losses):
         self.origin_main_programs = []
@@ -69,12 +71,13 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         attrs['is_worker'] = self.role_maker._is_worker()
         attrs['is_server'] = self.role_maker._is_server()
         attrs['is_heter_worker'] = self.role_maker._is_heter_worker()
-        logger.info("this process is heter? {}".format(attrs[
-            'is_heter_worker']))
+        logger.info("this process is heter? {}".format(
+            attrs['is_heter_worker']))
         attrs['use_ps_gpu'] = self.user_defined_strategy.a_sync_configs[
             "use_ps_gpu"]
         attrs['lr_decay_steps'] = self.user_defined_strategy.a_sync_configs[
             "lr_decay_steps"]
+        attrs['is_fl_ps_mode'] = self.user_defined_strategy.is_fl_ps_mode
         attrs['k_steps'] = self.user_defined_strategy.a_sync_configs["k_steps"]
         attrs['launch_barrier'] = self.user_defined_strategy.a_sync_configs[
             "launch_barrier"]
@@ -84,7 +87,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         build_var_distributed(attrs)
 
-        # server 
+        # server
         attrs['_main_server'] = fluid.Program()
         attrs['_startup_server'] = fluid.Program()
         attrs['tensor_table'] = {}
@@ -110,6 +113,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                                 no_grad_set)
         if startup_program == None:
             startup_program = paddle.static.default_startup_program()
+
 
 #        print("program after inner optimizer minimize:",
 #              str(loss.block.program))
@@ -143,11 +147,12 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return None, None
 
     def _can_apply_geo(self, program):
+
         def get_sys_free_mem():
             plat = platform.system()
             if platform.system() == "Darwin":
-                vm = subprocess.Popen(
-                    ['vm_stat'], stdout=subprocess.PIPE).communicate()[0]
+                vm = subprocess.Popen(['vm_stat'],
+                                      stdout=subprocess.PIPE).communicate()[0]
                 # Process vm_stat
                 vmLines = vm.split('\n')
                 sep = re.compile(r':[\s]+')
@@ -155,8 +160,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 for row in range(1, len(vmLines) - 2):
                     rowText = vmLines[row].strip()
                     rowElements = sep.split(rowText)
-                    vmStats[(rowElements[0]
-                             )] = int(rowElements[1].strip(r'\.')) * 4096
+                    vmStats[(rowElements[0])] = int(
+                        rowElements[1].strip(r'\.')) * 4096
                 return vmStats["Pages free"]
             elif platform.system() == "Linux":
                 mems = {}

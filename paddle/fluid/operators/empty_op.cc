@@ -12,9 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_registry.h"
-
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
@@ -55,13 +54,14 @@ class EmptyOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
       return expected_kernel_type;
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 
@@ -88,8 +88,11 @@ class EmptyOpVarTypeInference : public framework::VarTypeInference {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-DECLARE_INFER_SHAPE_FUNCTOR(empty, EmptyInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(empty,
+                            EmptyInferShapeFunctor,
                             PD_INFER_META(phi::CreateInferMeta));
-REGISTER_OP_WITHOUT_GRADIENT(empty, ops::EmptyOp, ops::EmptyOpMaker,
+REGISTER_OP_WITHOUT_GRADIENT(empty,
+                             ops::EmptyOp,
+                             ops::EmptyOpMaker,
                              ops::EmptyOpVarTypeInference,
                              EmptyInferShapeFunctor);

@@ -13,13 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/program_processing.h"
+
 #include "paddle/fluid/framework/block_desc.h"
 
 namespace paddle {
 namespace framework {
 
 void ProgramProcessor::GetInputsOutputsInBlock(
-    const BlockDesc &current_block, std::set<std::string> *inner_inputs,
+    const BlockDesc &current_block,
+    std::set<std::string> *inner_inputs,
     std::set<std::string> *inner_outputs) {
   /* Find inputs and outputs in current control flow block.
   :param current_block: Current control flow block.
@@ -84,8 +86,8 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
 
       std::set<std::string> sub_inputs;
       std::set<std::string> sub_outputs;
-      ProgramProcessor::GetInputsOutputsInBlock(*sub_block, &sub_inputs,
-                                                &sub_outputs);
+      ProgramProcessor::GetInputsOutputsInBlock(
+          *sub_block, &sub_inputs, &sub_outputs);
       VLOG(3) << "sub_inputs.size:" << sub_inputs.size();
       VLOG(3) << "sub_outputs.size:" << sub_outputs.size();
 
@@ -104,7 +106,8 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
       }
 
       for (auto sub_input : sub_inputs) {
-        if (std::find(op_input_var_vec->begin(), op_input_var_vec->end(),
+        if (std::find(op_input_var_vec->begin(),
+                      op_input_var_vec->end(),
                       sub_input) == op_input_var_vec->end())
           op_input_var_vec->push_back(sub_input);
         VLOG(3) << "modified private inputs, inputs.size():"
@@ -115,7 +118,8 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
       auto *op_output_var_vec = &((*op_outputs)["kOutputs"]);
 
       for (auto sub_output : sub_outputs) {
-        if (std::find(op_output_var_vec->begin(), op_output_var_vec->end(),
+        if (std::find(op_output_var_vec->begin(),
+                      op_output_var_vec->end(),
                       sub_output) == op_output_var_vec->end())
           op_output_var_vec->push_back(sub_output);
         VLOG(3) << "modified private outputs, outputs.size():"

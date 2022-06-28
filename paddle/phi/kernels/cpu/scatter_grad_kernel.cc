@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/scatter_grad_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 #include "paddle/phi/kernels/funcs/scatter.h"
 

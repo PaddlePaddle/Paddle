@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/merge_selected_rows_op.h"
+
 #include <unordered_map>
 
 namespace paddle {
@@ -94,7 +95,8 @@ class MergeSelectedRowsOpInferVarType
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OPERATOR(merge_selected_rows, ops::MergeSelectedRowsOp,
+REGISTER_OPERATOR(merge_selected_rows,
+                  ops::MergeSelectedRowsOp,
                   ops::MergeSelectedRowsOpMaker,
                   ops::MergeSelectedRowsOpInferVarType);
 

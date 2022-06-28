@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
@@ -36,13 +37,15 @@ class QuantDequantMkldnnPass : public FusePassBase {
   void MarkSkipQuantizedPool2d(ir::Graph* graph) const;
 
   void CollectInfoFromFake(
-      ir::Graph* graph, Scope* scope,
+      ir::Graph* graph,
+      Scope* scope,
       const std::unordered_set<std::string>& fake_dequantize_types,
       std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
       const;
 
   void CollectInputScalesFromFake(
-      ir::Graph* graph, Scope* scope,
+      ir::Graph* graph,
+      Scope* scope,
       const std::unordered_set<std::string>& fake_quantize_types,
       std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
       const;
@@ -52,11 +55,13 @@ class QuantDequantMkldnnPass : public FusePassBase {
       std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
       const;
 
-  void CollectFakeQuantizeOps(ir::Graph* graph, Node* op_node,
+  void CollectFakeQuantizeOps(ir::Graph* graph,
+                              Node* op_node,
                               std::unordered_set<const Node*>* nodes2rm) const;
 
   void CollectFakeDequantizeOps(
-      ir::Graph* graph, Node* op_node,
+      ir::Graph* graph,
+      Node* op_node,
       std::unordered_set<const Node*>* nodes2rm) const;
 
   void RemoveFakeOps(
@@ -66,19 +71,23 @@ class QuantDequantMkldnnPass : public FusePassBase {
       const std::unordered_set<std::string>& fake_quantize_dequantize_types)
       const;
 
-  bool IsInt8Weight(Node* op_node, Scope* scope,
+  bool IsInt8Weight(Node* op_node,
+                    Scope* scope,
                     const std::string& weight_name) const;
 
   void TransposeWeight(Tensor* input) const;
 
   void DequantizeOpWeights(
-      Node* op_node, Scope* scope, const std::string& weight_name,
+      Node* op_node,
+      Scope* scope,
+      const std::string& weight_name,
       const std::string& output_name,
       const std::unordered_map<std::string, std::vector<float>>&
           weight_thresholds) const;
 
   void DequantizeWeights(
-      ir::Graph* graph, Scope* scope,
+      ir::Graph* graph,
+      Scope* scope,
       const std::unordered_map<std::string, std::vector<float>>&
           weight_thresholds) const;
 

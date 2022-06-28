@@ -15,6 +15,7 @@
 #pragma once
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -28,8 +29,8 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-inline int Im2SeqOutputSize(int input_size, int filter_size, int padding_0,
-                            int padding_1, int stride) {
+inline int Im2SeqOutputSize(
+    int input_size, int filter_size, int padding_0, int padding_1, int stride) {
   const int output_size =
       (input_size + padding_0 + padding_1 - filter_size) / stride + 1;
   return output_size;
@@ -53,8 +54,8 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       const Tensor* imgrealsize = ctx.Input<Tensor>("Y");
       auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
       Tensor cpu_shape_tensor;
-      paddle::framework::TensorCopySync(*imgrealsize, platform::CPUPlace(),
-                                        &cpu_shape_tensor);
+      paddle::framework::TensorCopySync(
+          *imgrealsize, platform::CPUPlace(), &cpu_shape_tensor);
       std::vector<int> imgreal_h;
       std::vector<int> imgreal_w;
       std::vector<int> output_height;
@@ -93,8 +94,11 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
             in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
         Tensor dst = out->Slice(offset_out,
                                 offset_out + output_height[i] * output_width[i])
-                         .Resize({output_height[i], output_width[i],
-                                  img_channels, kernels[0], kernels[1]});
+                         .Resize({output_height[i],
+                                  output_width[i],
+                                  img_channels,
+                                  kernels[0],
+                                  kernels[1]});
         offset_out += output_height[i] * output_width[i];
 
         math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, T> f;
@@ -111,10 +115,10 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       }
       out->set_lod(lod);
     } else {
-      int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
-                                           paddings[2], strides[0]);
-      int output_width = Im2SeqOutputSize(img_width, kernels[1], paddings[1],
-                                          paddings[3], strides[1]);
+      int output_height = Im2SeqOutputSize(
+          img_height, kernels[0], paddings[0], paddings[2], strides[0]);
+      int output_width = Im2SeqOutputSize(
+          img_width, kernels[1], paddings[1], paddings[3], strides[1]);
       out->mutable_data<T>(
           {static_cast<int64_t>(batch_size) * output_height * output_width,
            static_cast<int64_t>(img_channels) * kernels[0] * kernels[1]},
@@ -125,9 +129,11 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       for (int i = 0; i < batch_size; i++) {
         const Tensor src =
             in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
-        Tensor dst =
-            out->Slice(i, i + 1).Resize({output_height, output_width,
-                                         img_channels, kernels[0], kernels[1]});
+        Tensor dst = out->Slice(i, i + 1).Resize({output_height,
+                                                  output_width,
+                                                  img_channels,
+                                                  kernels[0],
+                                                  kernels[1]});
 
         math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, T> f;
         auto& dev_ctx = ctx.template device_context<DeviceContext>();
@@ -170,10 +176,10 @@ class Im2SequenceGradKernel : public framework::OpKernel<T> {
     auto kernels = ctx.Attr<std::vector<int>>("kernels");
     auto strides = ctx.Attr<std::vector<int>>("strides");
     auto paddings = ctx.Attr<std::vector<int>>("paddings");
-    int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
-                                         paddings[2], strides[0]);
-    int output_width = Im2SeqOutputSize(img_width, kernels[1], paddings[1],
-                                        paddings[3], strides[1]);
+    int output_height = Im2SeqOutputSize(
+        img_height, kernels[0], paddings[0], paddings[2], strides[0]);
+    int output_width = Im2SeqOutputSize(
+        img_width, kernels[1], paddings[1], paddings[3], strides[1]);
 
     const std::vector<int> dilations({1, 1});
 

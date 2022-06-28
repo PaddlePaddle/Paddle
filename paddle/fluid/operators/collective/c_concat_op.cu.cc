@@ -12,9 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/collective/c_concat_op.h"
+
 #include <vector>
 
-#include "paddle/fluid/operators/collective/c_concat_op.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/phi/api/include/tensor.h"
 
@@ -40,21 +41,25 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
     int rank = ctx.Attr<int>("rank");
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_GE(rank, 0,
+    PADDLE_ENFORCE_GE(rank,
+                      0,
                       platform::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "greater than or equal to 0.",
                           rank));
-    PADDLE_ENFORCE_GE(nranks, 2,
+    PADDLE_ENFORCE_GE(nranks,
+                      2,
                       platform::errors::PreconditionNotMet(
                           "The value of nranks (%d) for c_concat must be "
                           "greater than or equal to 2.",
                           nranks));
-    PADDLE_ENFORCE_LT(rank, nranks,
+    PADDLE_ENFORCE_LT(rank,
+                      nranks,
                       platform::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "less than that of nranks (%d).",
-                          rank, nranks));
+                          rank,
+                          nranks));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     framework::Tensor temp_out;
@@ -75,9 +80,10 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
     } else {
       auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
       PADDLE_ENFORCE_EQ(
-          nranks, comm->nranks(),
-          platform::errors::InvalidArgument("nranks: %s should equal to %s",
-                                            nranks, comm->nranks()));
+          nranks,
+          comm->nranks(),
+          platform::errors::InvalidArgument(
+              "nranks: %s should equal to %s", nranks, comm->nranks()));
 
       int64_t send_numel = x->numel();
       const T* send_buff = x->data<T>();
@@ -86,9 +92,13 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
 
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
-          send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
-          comm->comm(), stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::ncclAllGather(send_buff,
+                                           recv_buff,
+                                           send_numel,
+                                           static_cast<ncclDataType_t>(dtype),
+                                           comm->comm(),
+                                           stream));
     }
 
     std::vector<framework::Tensor> inputs;
@@ -119,7 +129,8 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(c_concat, ops::CConcatOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(c_concat,
+                        ops::CConcatOpCUDAKernel<float>,
                         ops::CConcatOpCUDAKernel<double>,
                         ops::CConcatOpCUDAKernel<int>,
                         ops::CConcatOpCUDAKernel<int64_t>,

@@ -15,6 +15,7 @@
 #include "paddle/fluid/pybind/bind_cost_model.h"
 
 #include <pybind11/stl.h>
+
 #include "paddle/fluid/framework/ir/cost_model.h"
 #include "paddle/fluid/framework/program_desc.h"
 
@@ -35,8 +36,10 @@ void BindCostModel(py::module* m) {
   py::class_<CostModel>(*m, "CostModel")
       .def(py::init<>())
       .def("profile_measure",
-           [](CostModel& self, py::object py_main_program,
-              py::object py_startup_program, const std::string& device,
+           [](CostModel& self,
+              py::object py_main_program,
+              py::object py_startup_program,
+              const std::string& device,
               const std::vector<std::string>& fetch_cost_list) {
              py::object py_main_program_desc = py_main_program.attr("desc");
              ProgramDesc* main_program_desc =
@@ -47,7 +50,8 @@ void BindCostModel(py::module* m) {
              ProgramDesc* startup_program_desc =
                  py_startup_program_desc.cast<ProgramDesc*>();
              return self.ProfileMeasure(*main_program_desc,
-                                        *startup_program_desc, device,
+                                        *startup_program_desc,
+                                        device,
                                         fetch_cost_list);
            });
 }

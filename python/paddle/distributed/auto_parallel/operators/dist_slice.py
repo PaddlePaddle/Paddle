@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,11 +17,13 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from ..utils import is_dim_shard
+from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedSlice(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedSlice, self).__init__(op_type)
 
@@ -30,6 +32,7 @@ register_distributed_operator_impl_container(DistributedSlice("slice"))
 
 
 class DistributedSliceImpl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedSliceImpl, self).__init__(name)
         self._forward_implemented = True
@@ -47,6 +50,29 @@ class DistributedSliceImpl(DistributedOperatorImpl):
         return True
 
     def is_output_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        in_name = op_desc.input('Input')[0]
+        out_name = op_desc.output('Out')[0]
+        axes = op_desc.attr('axes')
+        decrease_axis = op_desc.attr('decrease_axis')
+        in_dims_mapping = op_dist_attr.get_input_dims_mapping(in_name)
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+
+        ref_indices = []
+        for i in range(len(in_dims_mapping)):
+            if i not in decrease_axis:
+                ref_indices.append(i)
+        if ref_indices == []:
+            assert len(out_dims_mapping) == 1
+            if is_dim_shard(out_dims_mapping[0]):
+                return False
+        else:
+            for i in range(len(out_dims_mapping)):
+                ref_index = ref_indices[i]
+                if ref_index in axes and is_dim_shard(out_dims_mapping[i]):
+                    return False
+
         return True
 
     def is_compatible(self, dist_op):
@@ -95,17 +121,30 @@ class DistributedSliceImpl(DistributedOperatorImpl):
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
 
         ref_dims_mapping = []
+        ref_indices = []
         for i in range(len(in_dims_mapping)):
             if i not in decrease_axis:
                 ref_dims_mapping.append(in_dims_mapping[i])
+                ref_indices.append(i)
+
         if ref_dims_mapping == []:
             ref_dims_mapping = [-1]
-
-        assert len(ref_dims_mapping) == len(out_dims_mapping)
-        for i in range(len(out_dims_mapping)):
-            if out_dims_mapping[i] != ref_dims_mapping[i]:
-                out_dims_mapping[i] = ref_dims_mapping[i]
-                changed = True
+            assert len(ref_dims_mapping) == len(out_dims_mapping)
+            assert ref_dims_mapping[0] == out_dims_mapping[0]
+            changed = False
+        else:
+            assert len(ref_dims_mapping) == len(out_dims_mapping)
+            for i in range(len(out_dims_mapping)):
+                compatible_dim_mapping = compute_compatible_dim_mapping(
+                    [out_dims_mapping[i], ref_dims_mapping[i]])
+                if compatible_dim_mapping is None:
+                    continue
+                if ref_dims_mapping[i] != compatible_dim_mapping:
+                    in_dims_mapping[ref_indices[i]] = compatible_dim_mapping
+                    changed = True
+                if out_dims_mapping[i] != compatible_dim_mapping:
+                    out_dims_mapping[i] = compatible_dim_mapping
+                    changed = True
 
         return changed
 

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <functional>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -22,17 +23,22 @@ namespace operators {
 
 template <typename T>
 void GetSize(T start, T end, T step, int64_t* size) {
-  PADDLE_ENFORCE_NE(step, 0, platform::errors::InvalidArgument(
-                                 "The step of range op should not be 0."));
+  PADDLE_ENFORCE_NE(step,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The step of range op should not be 0."));
 
   if (start < end) {
     PADDLE_ENFORCE_GT(
-        step, 0, platform::errors::InvalidArgument(
-                     "The step should be greater than 0 while start < end."));
+        step,
+        0,
+        platform::errors::InvalidArgument(
+            "The step should be greater than 0 while start < end."));
   }
 
   if (start > end) {
-    PADDLE_ENFORCE_LT(step, 0,
+    PADDLE_ENFORCE_LT(step,
+                      0,
                       platform::errors::InvalidArgument(
                           "The step should be less than 0 while start > end."));
   }

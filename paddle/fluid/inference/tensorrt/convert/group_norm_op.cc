@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
@@ -28,7 +29,8 @@ namespace tensorrt {
 class GroupNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid group_norm op";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -78,10 +80,10 @@ class GroupNormOpConverter : public OpConverter {
       bias_nv_dims.d[i] = bias_dims.at(i);
     }
 
-    auto* scale_layer = TRT_ENGINE_ADD_LAYER(engine_, Constant, scale_nv_dims,
-                                             scale_weights.get());
-    auto* bias_layer = TRT_ENGINE_ADD_LAYER(engine_, Constant, bias_nv_dims,
-                                            bias_weights.get());
+    auto* scale_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Constant, scale_nv_dims, scale_weights.get());
+    auto* bias_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Constant, bias_nv_dims, bias_weights.get());
 
     std::vector<nvinfer1::ITensor*> plugin_inputs;
     plugin_inputs.emplace_back(input_itensor);
@@ -110,8 +112,8 @@ class GroupNormOpConverter : public OpConverter {
         plugin_inputs.data(), plugin_inputs.size(), *group_norm_plugin);
 
     auto output_name = op_desc.Output("Y")[0];
-    RreplenishLayerAndOutput(group_norm_plugin_layer, "group_norm",
-                             {output_name}, test_mode);
+    RreplenishLayerAndOutput(
+        group_norm_plugin_layer, "group_norm", {output_name}, test_mode);
   }
 };
 

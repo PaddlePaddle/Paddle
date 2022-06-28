@@ -89,7 +89,7 @@ def create_while_nodes(condition_name, body_name, loop_var_names):
         else:
             assign_loop_var_names.append(name)
 
-    while_func_name = "paddle.jit.dy2static.convert_while_loop"
+    while_func_name = "_jst.convert_while_loop"
     while_node_str = "[{}] = {}({}, {}, [{}])".format(
         ",".join(assign_loop_var_names), while_func_name, condition_name,
         body_name, ",".join(loop_var_names))
@@ -108,6 +108,99 @@ def create_while_nodes(condition_name, body_name, loop_var_names):
     return ret
 
 
+class NameScope:
+
+    def __init__(self):
+        """ we don't analyze the read only variable
+            because they keep the same in control flow.
+        """
+        self.globals = set()
+        self.nonlocals = set()
+        self.args = set()
+        self.w_vars = set()  # all vars been stored,
+        # may be globals or non-locals
+    def created_vars(self):
+        return self.w_vars - self.globals - self.nonlocals - self.args
+
+    def write_vars(self):
+        return self.w_vars
+
+    def global_vars(self):
+        return self.globals
+
+
+class FunctionNameLivenessAnalysis(gast.NodeVisitor):
+    """ analyze the liveness of a function.
+
+        every variables stored in this scope will be collected,
+        in addition with global/nonlocal information.
+
+        1. global variable is stored in node.var_globals.
+        2. nonlocal variable is stored in node.var_nonlocals.
+        3. arguments is stored in node.var_args.
+
+        For example:
+
+        def func(*args, **kargs):
+            a = 12
+            global i,j
+            nonlocal x,y
+            print(a)
+            i = k
+            for m in range(10):
+                q = 12
+        
+        After this visitor we have: 
+        # node is the FunctionDef node with name: "func"
+        node.pd_scope = NameScope(
+            globals = ['i', 'j'],
+            nonlocals = ['x', 'y'],
+            args = ['args', 'kargs'], 
+            wr_vars = ['a', 'i', 'q', 'm']
+        )
+    """
+
+    def __init__(self, root_node):
+        self.funcdef_stack = []
+        self.visit(root_node)
+
+    def _current_funcdef_scope(self):
+        return self.funcdef_stack[-1].pd_scope
+
+    def visit_Name(self, node):
+        self.generic_visit(node)
+        write_context = (gast.Store, gast.AugStore, gast.Del)
+        if isinstance(node.ctx, write_context):
+            self._current_funcdef_scope().w_vars.add(node.id)
+
+    def visit_FunctionDef(self, node):
+        setattr(node, 'pd_scope', NameScope())
+        self.funcdef_stack.append(node)
+        self._current_funcdef_scope().args |= set(
+            self._get_argument_names(node))
+        self.generic_visit(node)
+        self.funcdef_stack.pop()
+
+    def visit_Global(self, node):
+        self._current_funcdef_scope().globals |= set(node.names)
+
+    def visit_Nonlocal(self, node):
+        self._current_funcdef_scope().nonlocals |= set(node.names)
+
+    def _get_argument_names(self, node):
+        """ get all arguments name in the functiondef node.
+            this node is local to the function and shouldn't 
+            be created.
+        """
+        assert isinstance(
+            node, gast.FunctionDef), "Input node is not function define node"
+        names = [a for a in node.args.args]
+        names.append(node.args.vararg)
+        names.append(node.args.kwarg)
+        names = [i.id for i in names if i is not None]
+        return names
+
+
 class NameVisitor(gast.NodeVisitor):
     '''
     Analysis name liveness for loop transformer
@@ -122,7 +215,6 @@ class NameVisitor(gast.NodeVisitor):
 
         # List of nodes that have scope of variables.
         self.nodes_with_scope = []
-
         self.blacklist_names = {"False", "True", "None"}
 
         # Mapping from gast.While/gast.For to variable nodes
@@ -240,8 +332,11 @@ class NameVisitor(gast.NodeVisitor):
 
         self.current_seen_vars.add(node)
         write_context = {
-            type(gast.Store()), type(gast.AugStore()), type(gast.Del())
+            type(gast.Store()),
+            type(gast.AugStore()),
+            type(gast.Del())
         }
+
         for loop_node in self.current_loop:
             self.in_loop_vars[loop_node].append(node)
             if type(node.ctx) in write_context:
@@ -253,6 +348,7 @@ class NameVisitor(gast.NodeVisitor):
     def visit_FunctionDef(self, node):
         self.nodes_with_scope.append(node)
         self.blacklist_names.add(node.name)
+
         # The variables in the function are not visible to the outside scope.
         before_func_seen_vars = copy.copy(self.current_seen_vars)
 
@@ -349,6 +445,9 @@ class NameVisitor(gast.NodeVisitor):
         parent_node = self._get_parent_node(node)
         if isinstance(parent_node, gast.Call) and parent_node.func == node:
             return True
+        return False
+
+    def _is_global_or_nonlocal(self, node):
         return False
 
     def _is_ancestor_node(self, ancestor_node, node):
@@ -581,20 +680,18 @@ class LoopTransformer(gast.NodeTransformer):
         # 5. create & append condition function node
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(FOR_CONDITION_PREFIX),
-            args=gast.arguments(
-                args=[
-                    gast.Name(
-                        id=name,
-                        ctx=gast.Param(),
-                        annotation=None,
-                        type_comment=None) for name in loop_var_names
-                ],
-                posonlyargs=[],
-                vararg=None,
-                kwonlyargs=[],
-                kw_defaults=None,
-                kwarg=None,
-                defaults=[]),
+            args=gast.arguments(args=[
+                gast.Name(id=name,
+                          ctx=gast.Param(),
+                          annotation=None,
+                          type_comment=None) for name in loop_var_names
+            ],
+                                posonlyargs=[],
+                                vararg=None,
+                                kwonlyargs=[],
+                                kw_defaults=None,
+                                kwarg=None,
+                                defaults=[]),
             body=[gast.Return(value=cond_stmt)],
             decorator_list=[],
             returns=None,
@@ -613,20 +710,18 @@ class LoopTransformer(gast.NodeTransformer):
                 loop_var_names, ctx=gast.Load(), gen_tuple_if_single=True)))
         body_func_node = gast.FunctionDef(
             name=unique_name.generate(FOR_BODY_PREFIX),
-            args=gast.arguments(
-                args=[
-                    gast.Name(
-                        id=name,
-                        ctx=gast.Param(),
-                        annotation=None,
-                        type_comment=None) for name in loop_var_names
-                ],
-                posonlyargs=[],
-                vararg=None,
-                kwonlyargs=[],
-                kw_defaults=None,
-                kwarg=None,
-                defaults=[]),
+            args=gast.arguments(args=[
+                gast.Name(id=name,
+                          ctx=gast.Param(),
+                          annotation=None,
+                          type_comment=None) for name in loop_var_names
+            ],
+                                posonlyargs=[],
+                                vararg=None,
+                                kwonlyargs=[],
+                                kw_defaults=None,
+                                kwarg=None,
+                                defaults=[]),
             body=body_stmts,
             decorator_list=[],
             returns=None,
@@ -639,8 +734,9 @@ class LoopTransformer(gast.NodeTransformer):
         new_stmts.append(body_func_node)
 
         # 7. create & append while loop node
-        while_loop_nodes = create_while_nodes(
-            condition_func_node.name, body_func_node.name, loop_var_names)
+        while_loop_nodes = create_while_nodes(condition_func_node.name,
+                                              body_func_node.name,
+                                              loop_var_names)
         new_stmts.extend(while_loop_nodes)
 
         return new_stmts
@@ -664,20 +760,18 @@ class LoopTransformer(gast.NodeTransformer):
 
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_CONDITION_PREFIX),
-            args=gast.arguments(
-                args=[
-                    gast.Name(
-                        id=name,
-                        ctx=gast.Param(),
-                        annotation=None,
-                        type_comment=None) for name in loop_var_names
-                ],
-                posonlyargs=[],
-                vararg=None,
-                kwonlyargs=[],
-                kw_defaults=None,
-                kwarg=None,
-                defaults=[]),
+            args=gast.arguments(args=[
+                gast.Name(id=name,
+                          ctx=gast.Param(),
+                          annotation=None,
+                          type_comment=None) for name in loop_var_names
+            ],
+                                posonlyargs=[],
+                                vararg=None,
+                                kwonlyargs=[],
+                                kw_defaults=None,
+                                kwarg=None,
+                                defaults=[]),
             body=[gast.Return(value=node.test)],
             decorator_list=[],
             returns=None,
@@ -696,20 +790,18 @@ class LoopTransformer(gast.NodeTransformer):
                 loop_var_names, ctx=gast.Load(), gen_tuple_if_single=True)))
         body_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_BODY_PREFIX),
-            args=gast.arguments(
-                args=[
-                    gast.Name(
-                        id=name,
-                        ctx=gast.Param(),
-                        annotation=None,
-                        type_comment=None) for name in loop_var_names
-                ],
-                posonlyargs=[],
-                vararg=None,
-                kwonlyargs=[],
-                kw_defaults=None,
-                kwarg=None,
-                defaults=[]),
+            args=gast.arguments(args=[
+                gast.Name(id=name,
+                          ctx=gast.Param(),
+                          annotation=None,
+                          type_comment=None) for name in loop_var_names
+            ],
+                                posonlyargs=[],
+                                vararg=None,
+                                kwonlyargs=[],
+                                kw_defaults=None,
+                                kwarg=None,
+                                defaults=[]),
             body=new_body,
             decorator_list=[],
             returns=None,
@@ -721,7 +813,8 @@ class LoopTransformer(gast.NodeTransformer):
                     name, unique_name.generate(GENERATE_VARIABLE_PREFIX))
         new_stmts.append(body_func_node)
 
-        while_loop_nodes = create_while_nodes(
-            condition_func_node.name, body_func_node.name, loop_var_names)
+        while_loop_nodes = create_while_nodes(condition_func_node.name,
+                                              body_func_node.name,
+                                              loop_var_names)
         new_stmts.extend(while_loop_nodes)
         return new_stmts

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass.h"
 
 #include <algorithm>
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
@@ -40,23 +41,27 @@ Graph *Pass::Apply(Graph *graph) const {
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   for (const std::string &attr : required_pass_attrs_) {
     PADDLE_ENFORCE_NE(
-        attrs_.find(attr), attrs_.end(),
+        attrs_.find(attr),
+        attrs_.end(),
         platform::errors::InvalidArgument(
             "Required atrribute %s for pass < %s > is not set.", attr, Type()));
   }
   for (const std::string &attr : required_graph_attrs_) {
-    PADDLE_ENFORCE_EQ(graph->Has(attr), true,
+    PADDLE_ENFORCE_EQ(graph->Has(attr),
+                      true,
                       platform::errors::InvalidArgument(
                           "Required atrribute %s for graph is not set.", attr));
   }
   ApplyImpl(graph);
   // TODO(panyx0718): Add more verifications.
   PADDLE_ENFORCE_EQ(
-      HasCircle(*graph), false,
+      HasCircle(*graph),
+      false,
       platform::errors::InvalidArgument(
           "Illegal pass %s. Generated graph shouldn't contain cycle.", Type()));
   PADDLE_ENFORCE_EQ(
-      VarDescIsConsistency(*graph), true,
+      VarDescIsConsistency(*graph),
+      true,
       platform::errors::InvalidArgument(
           "The VarDescs of persistable variable are not consistency."));
   applied_ = true;
@@ -74,7 +79,8 @@ Graph *Pass::Apply(Graph *graph) const {
 }
 
 template <typename Container, typename Visitor>
-static void VisitAllElements(Container &&container, Visitor &&visitor,
+static void VisitAllElements(Container &&container,
+                             Visitor &&visitor,
                              bool reverse) {
   if (reverse) {
     std::for_each(container.rbegin(), container.rend(), visitor);
@@ -83,16 +89,19 @@ static void VisitAllElements(Container &&container, Visitor &&visitor,
   }
 }
 
-static void MergePrograms(ProgramDesc *dst, const details::ProgramDescs &srcs,
+static void MergePrograms(ProgramDesc *dst,
+                          const details::ProgramDescs &srcs,
                           bool append) {
   PADDLE_ENFORCE_NOT_NULL(
       dst, platform::errors::InvalidArgument("Dst program must be provided."));
   bool reverse = !append;
 
   auto create_var_visitor = [dst](const ProgramDesc &src) {
-    PADDLE_ENFORCE_EQ(src.Size(), 1, platform::errors::Unimplemented(
-                                         "MergePrograms can only support to "
-                                         "merge program with only one block."));
+    PADDLE_ENFORCE_EQ(
+        src.Size(),
+        1,
+        platform::errors::Unimplemented("MergePrograms can only support to "
+                                        "merge program with only one block."));
     const auto &src_block = src.Block(0);
     auto *dst_block = dst->MutableBlock(0);
     for (const auto *src_new_var : src_block.AllVars()) {
@@ -171,11 +180,13 @@ void Pass::ApplyPassesToProgram(const std::vector<const Pass *> &passes,
                               "The startup program must be provided."));
 
   for (auto *p : passes) {
-    PADDLE_ENFORCE_NOT_NULL(p, platform::errors::InvalidArgument(
-                                   "The provided pass cannot be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(p,
+                            platform::errors::InvalidArgument(
+                                "The provided pass cannot be nullptr."));
     VLOG(10) << "Pass " << p->Type();
     if (passes.size() > 1) {
-      PADDLE_ENFORCE_EQ(p->SupportApplyProgramViaGraph(), true,
+      PADDLE_ENFORCE_EQ(p->SupportApplyProgramViaGraph(),
+                        true,
                         platform::errors::PermissionDenied(
                             "Each pass must support to be applied via Graph if "
                             "multi-passes are applied."));
@@ -204,7 +215,8 @@ void Pass::ApplyImpl(ProgramDesc *main_program,
       "The pass %s does not support to apply ProgramDesc directly", Type()));
 }
 
-void Pass::ConvertToPrograms(Graph *graph, ProgramDesc *main_program,
+void Pass::ConvertToPrograms(Graph *graph,
+                             ProgramDesc *main_program,
                              ProgramDesc *startup_program) {
   ProgramDesc new_main_program;
   GraphToProgram(*graph, &new_main_program);

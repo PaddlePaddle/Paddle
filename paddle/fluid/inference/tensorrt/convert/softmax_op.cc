@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
@@ -34,7 +35,8 @@ namespace tensorrt {
 class SoftMaxOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3)
         << "convert a fluid softmax op to tensorrt softmax layer without bias";
     framework::OpDesc op_desc(op, nullptr);
@@ -46,8 +48,8 @@ class SoftMaxOpConverter : public OpConverter {
                    ? BOOST_GET_CONST(int, op_desc.GetAttr("axis"))
                    : -1;
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, SoftMax,
-                                       *const_cast<nvinfer1::ITensor*>(input1));
+    auto* layer = TRT_ENGINE_ADD_LAYER(
+        engine_, SoftMax, *const_cast<nvinfer1::ITensor*>(input1));
     uint32_t axes = std::max(0, input_dims - 3);
     // TODO(cryoco): Poor workaround. Fix padded dims problem when TRT layers
     // support Nd.

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -30,8 +31,8 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTM");
 
     OP_INOUT_CHECK(ctx->HasOutput("Reserve"), "Output", "Reserve", "CudnnLSTM");
-    OP_INOUT_CHECK(ctx->HasOutput("StateOut"), "Output", "StateOut",
-                   "CudnnLSTM");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("StateOut"), "Output", "StateOut", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasOutput("LastH"), "Output", "LastH", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasOutput("LastC"), "Output", "LastC", "CudnnLSTM");
@@ -40,12 +41,14 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
     auto init_h_dims = ctx->GetInputDim("InitH");
     auto init_c_dims = ctx->GetInputDim("InitC");
 
-    PADDLE_ENFORCE_EQ(in_dims.size(), 3,
+    PADDLE_ENFORCE_EQ(in_dims.size(),
+                      3,
                       platform::errors::InvalidArgument(
                           "The rank of Input in CudnnLSTM  must be 3. But "
                           "received Input's rank is %d.",
                           in_dims.size()));
-    PADDLE_ENFORCE_EQ(init_h_dims.size(), 3,
+    PADDLE_ENFORCE_EQ(init_h_dims.size(),
+                      3,
                       platform::errors::InvalidArgument(
                           "The rank of InitH in CudnnLSTM  must be 3. But "
                           "received InitH's rank is %d.",
@@ -54,27 +57,33 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
     if (ctx->HasInput("SequenceLength")) {
       auto seq_dims = ctx->GetInputDim("SequenceLength");
       PADDLE_ENFORCE_EQ(
-          in_dims[1], seq_dims[0],
+          in_dims[1],
+          seq_dims[0],
           platform::errors::InvalidArgument(
               "The size of SequenceLength has to equal the batch_size. But "
               "received batch_size is %d and the size of SequenceLength is %d.",
-              in_dims[1], seq_dims[0]));
+              in_dims[1],
+              seq_dims[0]));
     }
 
     PADDLE_ENFORCE_EQ(
-        in_dims[1], init_h_dims[1],
+        in_dims[1],
+        init_h_dims[1],
         platform::errors::InvalidArgument(
             "The in_dims[1] (Input dims) and init_h_dims[1] (InitH "
             "dims) should be equal. But "
             "received in_dims[1] is %d and init_h_dims[1] is %d.",
-            in_dims[1], init_h_dims[1]));
+            in_dims[1],
+            init_h_dims[1]));
 
-    PADDLE_ENFORCE_EQ(init_c_dims, init_h_dims,
+    PADDLE_ENFORCE_EQ(init_c_dims,
+                      init_h_dims,
                       platform::errors::InvalidArgument(
                           "The InitC dims and InitH "
                           "dims should be equal. But "
                           "received init_c_dims is %d and init_h_dims is %d.",
-                          init_c_dims, init_h_dims));
+                          init_c_dims,
+                          init_h_dims));
 
     auto out_dims = in_dims;
     auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
@@ -297,7 +306,9 @@ class NotImpleKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(cudnn_lstm, ops::CudnnLSTMOp, ops::CudnnLSTMOpMaker,
+REGISTER_OPERATOR(cudnn_lstm,
+                  ops::CudnnLSTMOp,
+                  ops::CudnnLSTMOpMaker,
                   ops::CudnnLSTMGradOpMaker<paddle::framework::OpDesc>,
                   ops::CudnnLSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);
@@ -338,7 +349,8 @@ REGISTER_OP_VERSION(cudnn_lstm)
                 "Modify the name of the output from 'last_h' to 'LastH'.")
             .NewOutput("LastH", "The hidden state of the last step.")
             .ModifyAttr("seed",
-                        "Set the default value of seed from '-1' to '0'.", 0)
+                        "Set the default value of seed from '-1' to '0'.",
+                        0)
             .DeleteAttr("max_len",
                         "The length of Inputs is achieved form the input data "
                         "which is difficult to know the information in "

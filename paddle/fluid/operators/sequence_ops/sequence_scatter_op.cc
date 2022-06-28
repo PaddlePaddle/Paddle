@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_scatter_op.h"
+
 #include <memory>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -74,8 +76,8 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
     // Enforce has inputs and outputs
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceScatter");
     OP_INOUT_CHECK(ctx->HasInput("Ids"), "Input", "Ids", "SequenceScatter");
-    OP_INOUT_CHECK(ctx->HasInput("Updates"), "Input", "Updates",
-                   "SequenceScatter");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Updates"), "Input", "Updates", "SequenceScatter");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SequenceScatter");
 
     // Set output dim the same as input
@@ -86,11 +88,13 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
     auto updates_dim = ctx->GetInputDim("Updates");
     auto ids_dim = ctx->GetInputDim("Ids");
     PADDLE_ENFORCE_EQ(
-        updates_dim[0], ids_dim[0],
+        updates_dim[0],
+        ids_dim[0],
         platform::errors::InvalidArgument(
             "The shape of SequenceScatter operator's input Updates and Ids do "
             "not match, receive Updates's shape is [%s], Ids's shape is [%s].",
-            updates_dim, ids_dim));
+            updates_dim,
+            ids_dim));
 
     // Enforce LoD of ids and updates be the same
     if (ctx->IsRuntime()) {
@@ -102,14 +106,16 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
       auto& ids_lod = ids_var->Get<LoDTensor>().lod();
       auto& updates_lod = updates_var->Get<LoDTensor>().lod();
       PADDLE_ENFORCE_EQ(
-          ids_lod.size(), 1,
+          ids_lod.size(),
+          1,
           platform::errors::InvalidArgument(
               "The SequenceScatter operator’s Input Ids holds wrong LoD "
               "information. Currently SequenceScatter operator can only deal "
               "with one level LoD for input Ids, but received LoD level is %d.",
               ids_lod.size()));
       PADDLE_ENFORCE_EQ(
-          updates_lod.size(), 1,
+          updates_lod.size(),
+          1,
           platform::errors::InvalidArgument(
               "The SequenceScatter operator’s Input Updates holds wrong LoD "
               "information. Currently SequenceScatter operator can only deal "
@@ -173,13 +179,16 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceScatterGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_scatter, ops::SequenceScatterOp,
+REGISTER_OPERATOR(sequence_scatter,
+                  ops::SequenceScatterOp,
                   ops::SequenceScatterOpMaker,
                   ops::SequenceScatterGradMaker<paddle::framework::OpDesc>,
                   ops::SequenceScatterGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(sequence_scatter_grad, ops::SequenceScatterGradOp,
+REGISTER_OPERATOR(sequence_scatter_grad,
+                  ops::SequenceScatterGradOp,
                   ops::SequenceScatterGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(sequence_scatter, ops::SequenceScatterOpKernel<float>,
+REGISTER_OP_CPU_KERNEL(sequence_scatter,
+                       ops::SequenceScatterOpKernel<float>,
                        ops::SequenceScatterOpKernel<double>,
                        ops::SequenceScatterOpKernel<int>,
                        ops::SequenceScatterOpKernel<int64_t>);

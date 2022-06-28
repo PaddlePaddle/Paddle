@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
+
 #include <atomic>
 #include <thread>
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
@@ -37,19 +39,21 @@ TEST(WorkQueueUtils, TestEventsWaiter) {
 
 TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   VLOG(1) << "In Test";
-  using paddle::framework::WorkQueueOptions;
-  using paddle::framework::WorkQueue;
   using paddle::framework::CreateSingleThreadedWorkQueue;
   using paddle::framework::EventsWaiter;
+  using paddle::framework::WorkQueue;
+  using paddle::framework::WorkQueueOptions;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kLoopNum = 1000000;
   // CreateSingleThreadedWorkQueue
   EventsWaiter events_waiter;
   WorkQueueOptions options(/*name*/ "SingleThreadedWorkQueueForTesting",
-                           /*num_threads*/ 1, /*allow_spinning*/ true,
+                           /*num_threads*/ 1,
+                           /*allow_spinning*/ true,
                            /*always_spinning*/ true,
-                           /*track_task*/ true, /*detached*/ true,
+                           /*track_task*/ true,
+                           /*detached*/ true,
                            &events_waiter);
   auto work_queue = CreateSingleThreadedWorkQueue(options);
   // NumThreads
@@ -83,10 +87,10 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
 
 TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   VLOG(1) << "In Test";
-  using paddle::framework::WorkQueueOptions;
-  using paddle::framework::WorkQueue;
   using paddle::framework::CreateMultiThreadedWorkQueue;
   using paddle::framework::EventsWaiter;
+  using paddle::framework::WorkQueue;
+  using paddle::framework::WorkQueueOptions;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kExternalLoopNum = 100;
@@ -94,9 +98,11 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   // CreateMultiThreadedWorkQueue
   EventsWaiter events_waiter;
   WorkQueueOptions options(/*name*/ "MultiThreadedWorkQueueForTesting",
-                           /*num_threads*/ 10, /*allow_spinning*/ true,
+                           /*num_threads*/ 10,
+                           /*allow_spinning*/ true,
                            /*always_spinning*/ true,
-                           /*track_task*/ true, /*detached*/ false,
+                           /*track_task*/ true,
+                           /*detached*/ false,
                            &events_waiter);
   auto work_queue = CreateMultiThreadedWorkQueue(options);
   // NumThreads
@@ -128,7 +134,8 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   waiter_thread.join();
   // Forever spin unittest
   WorkQueueOptions default_options("MultiThreadedWorkQueueForTesting",
-                                   /*num_threads*/ 10, /*allow_spinning*/ false,
+                                   /*num_threads*/ 10,
+                                   /*allow_spinning*/ false,
                                    /*track_task*/ false);
   work_queue = CreateMultiThreadedWorkQueue(default_options);
   auto handle = work_queue->AddAwaitableTask([]() { return 5678; });
@@ -136,10 +143,10 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
 }
 
 TEST(WorkQueue, TestWorkQueueGroup) {
-  using paddle::framework::WorkQueueOptions;
-  using paddle::framework::WorkQueueGroup;
   using paddle::framework::CreateWorkQueueGroup;
   using paddle::framework::EventsWaiter;
+  using paddle::framework::WorkQueueGroup;
+  using paddle::framework::WorkQueueOptions;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kExternalLoopNum = 100;
@@ -147,14 +154,18 @@ TEST(WorkQueue, TestWorkQueueGroup) {
   // ThreadedWorkQueueGroup
   EventsWaiter events_waiter;
   WorkQueueOptions sq_options(/*name*/ "SingleThreadedWorkQueueForTesting",
-                              /*num_threads*/ 1, /*allow_spinning*/ true,
+                              /*num_threads*/ 1,
+                              /*allow_spinning*/ true,
                               /*always_spinning*/ true,
-                              /*track_task*/ true, /*detached*/ false,
+                              /*track_task*/ true,
+                              /*detached*/ false,
                               &events_waiter);
   WorkQueueOptions mq_options(/*name*/ "MultiThreadedWorkQueueForTesting",
-                              /*num_threads*/ 10, /*allow_spinning*/ true,
+                              /*num_threads*/ 10,
+                              /*allow_spinning*/ true,
                               /*always_spinning*/ true,
-                              /*track_task*/ true, /*detached*/ false,
+                              /*track_task*/ true,
+                              /*detached*/ false,
                               &events_waiter);
   auto queue_group = CreateWorkQueueGroup({sq_options, mq_options});
   // NumThreads

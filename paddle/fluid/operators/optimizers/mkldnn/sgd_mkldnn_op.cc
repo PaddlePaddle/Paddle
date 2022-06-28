@@ -64,11 +64,13 @@ class SGDOneDNNKernel : public SGDOpKernel<pplat::CPUDeviceContext, T> {
 
     for (size_t i = 0; i < grad_rows.size(); ++i) {
       PADDLE_ENFORCE_LT(
-          grad_rows[i], grad_height,
+          grad_rows[i],
+          grad_height,
           pplat::errors::OutOfRange(
               "Grad rows index value should be less than grad height."
               "Got [%s], but expected less than [%s]",
-              grad_rows[i], grad_height));
+              grad_rows[i],
+              grad_height));
       const int64_t row = grad_rows[i];
       const auto *src = grad_data + i * grad_width;
       auto *dst = out_data + row * grad_width;
@@ -81,5 +83,8 @@ class SGDOneDNNKernel : public SGDOpKernel<pplat::CPUDeviceContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(sgd, MKLDNN, pplat::CPUPlace, ops::SGDOneDNNKernel<float>,
+REGISTER_OP_KERNEL(sgd,
+                   MKLDNN,
+                   pplat::CPUPlace,
+                   ops::SGDOneDNNKernel<float>,
                    ops::SGDOneDNNKernel<pplat::bfloat16>);

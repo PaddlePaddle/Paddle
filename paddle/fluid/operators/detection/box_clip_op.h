@@ -11,6 +11,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -32,7 +33,8 @@ class BoxClipKernel : public framework::OpKernel<T> {
         context.template device_context<platform::CPUDeviceContext>();
     output_box->mutable_data<T>(context.GetPlace());
     if (input_box->lod().size()) {
-      PADDLE_ENFORCE_EQ(input_box->lod().size(), 1UL,
+      PADDLE_ENFORCE_EQ(input_box->lod().size(),
+                        1UL,
                         platform::errors::InvalidArgument(
                             "Input(Input) of BoxClip only supports 1 level "
                             "of LoD. But received the "

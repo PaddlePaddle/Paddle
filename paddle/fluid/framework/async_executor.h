@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <time.h>
+
 #include <map>
 #include <memory>
 #include <mutex>   // NOLINT
@@ -24,6 +25,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <typeinfo>
 #include <vector>
+
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/executor.h"
@@ -51,8 +53,8 @@ inline std::default_random_engine& local_random_engine() {
     std::default_random_engine engine;
     engine_wrapper_t() {
       static std::atomic<uint64_t> x(0);
-      std::seed_seq sseq = {x++, x++, x++,
-                            static_cast<uint64_t>(current_realtime() * 1000)};
+      std::seed_seq sseq = {
+          x++, x++, x++, static_cast<uint64_t>(current_realtime() * 1000)};
       engine.seed(sseq);
     }
   };
@@ -69,12 +71,14 @@ class AsyncExecutor {
                    const std::vector<std::string>& filelist,
                    const int thread_num,
                    const std::vector<std::string>& fetch_var_names,
-                   const std::string& mode, const bool debug);
+                   const std::string& mode,
+                   const bool debug);
 
   // TODO(guru4elephant): make init server decoupled from executor
   void InitServer(const std::string& dist_desc, int index);
   void InitWorker(const std::string& dist_desc,
-                  const std::vector<uint64_t>& host_sign_list, int node_num,
+                  const std::vector<uint64_t>& host_sign_list,
+                  int node_num,
                   int index);
   uint64_t StartServer();
   void StopServer();

@@ -45,7 +45,7 @@ def train_abort(prefix):
 
     if trainer_id == 0:
         try:
-            # train abort 
+            # train abort
             exit(1)
         except SystemExit:
             name = "abort>>> selected_mlus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\

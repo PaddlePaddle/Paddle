@@ -23,18 +23,20 @@
  * **/
 
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/scale.h"
+
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/utils.h"
-
 #include "paddle/phi/api/all.h"
 
 namespace egr {
 
 paddle::experimental::Tensor scale(const paddle::experimental::Tensor& x,
-                                   float scale, float bias,
-                                   bool bias_after_scale, bool trace_backward) {
+                                   float scale,
+                                   float bias,
+                                   bool bias_after_scale,
+                                   bool trace_backward) {
   // 1. Run Forward
   // 1.1 Create outputs
   paddle::experimental::Tensor out;
@@ -78,9 +80,6 @@ paddle::experimental::Tensor scale(const paddle::experimental::Tensor& x,
 
     // Pass Attributes to GradNode
     scale_node->SetAttributes_scale(scale);
-
-    // Set Next Edges
-    scale_node->AddEdges(p_autograd_in, /*slot id*/ 0);
 
     // Set TensorWrappers
     scale_node->SetTensorWrappers_X({x});

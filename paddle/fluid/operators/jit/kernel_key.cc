@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/kernel_key.h"
+
 #include <xxhash.h>  // XXH64: 13.8 GB/s
 
 namespace paddle {
@@ -36,9 +37,11 @@ int64_t JitCodeKey<gru_attr_t>(const gru_attr_t& attr) {
 
 template <>
 int64_t JitCodeKey<lstm_attr_t>(const lstm_attr_t& attr) {
-  int keys[5] = {
-      attr.d, static_cast<int>(attr.act_gate), static_cast<int>(attr.act_cand),
-      static_cast<int>(attr.act_cell), static_cast<int>(attr.use_peephole)};
+  int keys[5] = {attr.d,
+                 static_cast<int>(attr.act_gate),
+                 static_cast<int>(attr.act_cand),
+                 static_cast<int>(attr.act_cell),
+                 static_cast<int>(attr.use_peephole)};
   return XXH64(keys, sizeof(int) * 5, 0);
 }
 

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
@@ -24,7 +25,8 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
                               const std::string& var_name,
                               std::string* new_var_name,
                               std::vector<OpFuncNode>* op_func_nodes,
-                              bool use_local_scope, bool is_fetch_v2) {
+                              bool use_local_scope,
+                              bool is_fetch_v2) {
   bool is_transferred = false;
   auto* src_var_name = &var_name;
 
@@ -33,12 +35,16 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
 
   // 1. layout transform
   if (need_layout_transform(kernel_type_for_var, expected_kernel_key)) {
-    auto op = TransferLayout(
-        *src_var_name, new_var_name, kernel_type_for_var.data_layout_,
-        expected_kernel_key.data_layout_, var_scope_, local_scope, is_fetch_v2);
+    auto op = TransferLayout(*src_var_name,
+                             new_var_name,
+                             kernel_type_for_var.data_layout_,
+                             expected_kernel_key.data_layout_,
+                             var_scope_,
+                             local_scope,
+                             is_fetch_v2);
     if (op) {
-      RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name,
-                                op_func_nodes);
+      RunAndConstructOpFuncNode(
+          op, *src_var_name, *new_var_name, op_func_nodes);
     }
     // update src_var_name
     src_var_name = new_var_name;
@@ -46,12 +52,15 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
   }
   // 2. dype transform
   if (need_dtype_transform(kernel_type_for_var, expected_kernel_key)) {
-    auto op = TransferDtype(
-        *src_var_name, new_var_name, kernel_type_for_var.data_type_,
-        expected_kernel_key.data_type_, var_scope_, local_scope);
+    auto op = TransferDtype(*src_var_name,
+                            new_var_name,
+                            kernel_type_for_var.data_type_,
+                            expected_kernel_key.data_type_,
+                            var_scope_,
+                            local_scope);
     if (op) {
-      RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name,
-                                op_func_nodes);
+      RunAndConstructOpFuncNode(
+          op, *src_var_name, *new_var_name, op_func_nodes);
     }
     // update src_var_name
     src_var_name = new_var_name;
@@ -62,11 +71,15 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
     auto src_place = kernel_type_for_var.place_;
     auto dst_place = expected_kernel_key.place_;
 
-    auto op = TransferDevice(*src_var_name, new_var_name, src_place, dst_place,
-                             var_scope_, local_scope);
+    auto op = TransferDevice(*src_var_name,
+                             new_var_name,
+                             src_place,
+                             dst_place,
+                             var_scope_,
+                             local_scope);
     if (op) {
-      RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name,
-                                op_func_nodes);
+      RunAndConstructOpFuncNode(
+          op, *src_var_name, *new_var_name, op_func_nodes);
     }
     is_transferred = true;
   }
@@ -74,7 +87,8 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
 }
 
 void DataTranferHelper::RunAndConstructShareNode(
-    const std::string& src_var_name, const std::string& dst_var_name,
+    const std::string& src_var_name,
+    const std::string& dst_var_name,
     std::vector<OpFuncNode>* op_func_nodes) {
   VariableNameMap in_name_map = {{"X", {src_var_name}}};
   VariableNameMap out_name_map = {{"Out", {dst_var_name}}};
@@ -85,14 +99,15 @@ void DataTranferHelper::RunAndConstructShareNode(
   auto op = std::shared_ptr<OperatorBase>(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
-  VLOG(3) << string::Sprintf("Insert %s with %s -> %s.", op_type, src_var_name,
-                             dst_var_name);
+  VLOG(3) << string::Sprintf(
+      "Insert %s with %s -> %s.", op_type, src_var_name, dst_var_name);
 
   RunAndConstructOpFuncNode(op, src_var_name, dst_var_name, op_func_nodes);
 }
 
 void DataTranferHelper::RunAndConstructOpFuncNode(
-    const std::shared_ptr<OperatorBase>& op, const std::string& var_name,
+    const std::shared_ptr<OperatorBase>& op,
+    const std::string& var_name,
     const std::string& new_var_name,
     std::vector<OpFuncNode>* new_op_func_nodes) {
   auto& op_type = op->Type();
@@ -107,7 +122,8 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
   op.get()->Info().infer_shape_(&infer_shape_ctx);
   auto kernels_iter = all_op_kernels.find(op_type);
-  PADDLE_ENFORCE_NE(kernels_iter, all_op_kernels.end(),
+  PADDLE_ENFORCE_NE(kernels_iter,
+                    all_op_kernels.end(),
                     platform::errors::Unavailable(
                         "There are no kernels which are registered in "
                         "the %s operator.",
@@ -151,10 +167,13 @@ bool IsTensorOfVarInitialized(Variable* var) {
   return false;
 }
 
-std::shared_ptr<OperatorBase> TransferLayout(
-    const std::string& var_name, std::string* new_var_name,
-    DataLayout in_layout, DataLayout out_layout, VariableScope* var_scope,
-    framework::Scope* local_scope, bool is_fetch_v2) {
+std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
+                                             std::string* new_var_name,
+                                             DataLayout in_layout,
+                                             DataLayout out_layout,
+                                             VariableScope* var_scope,
+                                             framework::Scope* local_scope,
+                                             bool is_fetch_v2) {
 #ifdef PADDLE_WITH_MKLDNN
   // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
   if (in_layout == framework::DataLayout::kMKLDNN &&
@@ -196,7 +215,10 @@ std::shared_ptr<OperatorBase> TransferLayout(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
   VLOG(3) << string::Sprintf("Insert %s for variable %s(%s) -> %s(%s).",
-                             op_type, var_name, in_layout, *new_var_name,
+                             op_type,
+                             var_name,
+                             in_layout,
+                             *new_var_name,
                              out_layout);
   return op;
 }
@@ -242,9 +264,12 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
   auto op = std::shared_ptr<OperatorBase>(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
-  VLOG(3) << string::Sprintf("Insert %s with %s(%s) -> %s(%s).", op_type,
-                             var_name, DataTypeToString(in_dtype),
-                             *new_var_name, DataTypeToString(out_dtype));
+  VLOG(3) << string::Sprintf("Insert %s with %s(%s) -> %s(%s).",
+                             op_type,
+                             var_name,
+                             DataTypeToString(in_dtype),
+                             *new_var_name,
+                             DataTypeToString(out_dtype));
   return op;
 }
 
@@ -276,19 +301,44 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
   VariableNameMap out_name_map = {{"Out", {*new_var_name}}};
-  int dst_place_type = platform::is_cpu_place(dst_place)
-                           ? 0
-                           : platform::is_gpu_place(dst_place) ? 1 : -1;
-  AttributeMap attr_map = {{"dst_place_type", dst_place_type}};
 
   // 3. Create memcpy_d2h_op or memcpy_h2d_op
-  std::string op_type = get_memcpy_type(src_place, dst_place);
+  std::string op_type;
+  AttributeMap attr_map;
+  PADDLE_ENFORCE_EQ(platform::is_same_place(src_place, dst_place),
+                    false,
+                    platform::errors::PreconditionNotMet(
+                        "Required src_place shall be different with dst_place, "
+                        "but received same place: %s",
+                        src_place));
+  if (IsSupportedHetePlace(dst_place)) {
+    op_type = kMemcpyH2D;
+    int dst_place_type = platform::is_gpu_place(dst_place)   ? 0
+                         : platform::is_npu_place(dst_place) ? 1
+                         : platform::is_xpu_place(dst_place) ? 2
+                                                             : -1;
+    attr_map = {{"dst_place_type", dst_place_type}};
+  } else if (IsSupportedHetePlace(src_place)) {
+    op_type = kMemcpyD2H;
+    int dst_place_type = platform::is_cpu_place(dst_place)           ? 0
+                         : platform::is_cuda_pinned_place(dst_place) ? 1
+                                                                     : -1;
+    attr_map = {{"dst_place_type", dst_place_type}};
+  } else {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Not support Memcpy typ : %s -> %s", src_place, dst_place));
+  }
+
   auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
-  VLOG(3) << string::Sprintf("Insert %s with %s(%s) -> %s(%s).", op_type,
-                             var_name, src_place, *new_var_name, dst_place);
+  VLOG(3) << string::Sprintf("Insert %s with %s(%s) -> %s(%s).",
+                             op_type,
+                             var_name,
+                             src_place,
+                             *new_var_name,
+                             dst_place);
   return op;
 }
 
@@ -296,13 +346,15 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         const platform::Place& place,
                         VariableValueMap* ins_map_temp,
                         VariableValueMap* outs_map_temp,
-                        VariableScope* var_scope, OpFuncNode* op_func_node,
+                        VariableScope* var_scope,
+                        OpFuncNode* op_func_node,
                         std::vector<OpFuncNode>* new_op_func_nodes,
                         bool use_local_scope) {
   auto op_base = op_func_node->operator_base_.get();
-  PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
-                                       "op_base is null, please pass a valid "
-                                       "op_base in apply_data_transform."));
+  PADDLE_ENFORCE_NOT_NULL(op_base,
+                          platform::errors::PreconditionNotMet(
+                              "op_base is null, please pass a valid "
+                              "op_base in apply_data_transform."));
 
   VariableNameMap new_ins(op_base->Inputs());
   VariableNameMap new_outs(op_base->Outputs());
@@ -312,8 +364,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   const std::unordered_set<std::string>* no_buffer_ins = nullptr;
   auto& no_buffer_inferer = op_base->Info().NoNeedBufferVarsInferer();
   if (no_buffer_inferer) {
-    no_buffer_ins = &(no_buffer_inferer(op_base->Inputs(), op_base->Outputs(),
-                                        op_base->Attrs()));
+    no_buffer_ins = &(no_buffer_inferer(
+        op_base->Inputs(), op_base->Outputs(), op_base->Attrs()));
     if (no_buffer_ins->empty()) {
       no_buffer_ins = nullptr;
     }
@@ -365,9 +417,13 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
             Scope* local_scope = use_local_scope
                                      ? var_scope->GetMutableLocalScope()
                                      : var_scope->GetMutableScope();
-            auto op = TransferLayout(
-                var_name, &new_var_name, tensor_in->layout(), DataLayout::kNHWC,
-                var_scope, local_scope, op_base->Type() == "fetch_v2");
+            auto op = TransferLayout(var_name,
+                                     &new_var_name,
+                                     tensor_in->layout(),
+                                     DataLayout::kNHWC,
+                                     var_scope,
+                                     local_scope,
+                                     op_base->Type() == "fetch_v2");
             if (op) {
               data_transfer_helper.RunAndConstructOpFuncNode(
                   op, var_name, new_var_name, new_op_func_nodes);
@@ -384,12 +440,17 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       } else {
         auto kernel_type_for_var =
             static_cast<const framework::OperatorWithKernel*>(op_base)
-                ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
-                                      expected_kernel_key);
+                ->GetKernelTypeForVar(
+                    var_name_item.first, *tensor_in, expected_kernel_key);
         // apply data transform
-        is_transferred = data_transfer_helper.apply(
-            kernel_type_for_var, expected_kernel_key, var_name, &new_var_name,
-            new_op_func_nodes, use_local_scope, op_base->Type() == "fetch_v2");
+        is_transferred =
+            data_transfer_helper.apply(kernel_type_for_var,
+                                       expected_kernel_key,
+                                       var_name,
+                                       &new_var_name,
+                                       new_op_func_nodes,
+                                       use_local_scope,
+                                       op_base->Type() == "fetch_v2");
       }
 
       if (is_transferred) {
@@ -433,29 +494,11 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
 
   if (transfered) {
     // NOTE(zhiqiu): UPDATE the corresponding OeratorBase to make it consistent
-    // with instruction. (hot fix, it is not good design here)
-    op_func_node->operator_base_ =
-        std::shared_ptr<OperatorBase>(framework::OpRegistry::CreateOp(
-            op_base->Type(), new_ins, new_outs, op_base->Attrs()));
+    // with instruction.
+    op_base->Inputs() = new_ins;
+    op_base->Outputs() = new_outs;
   }
   op_func_node->no_data_transform_index = std::move(no_data_transform_index);
-}
-
-std::string get_memcpy_type(const platform::Place& src_place,
-                            const platform::Place& dst_place) {
-  PADDLE_ENFORCE_EQ(platform::is_same_place(src_place, dst_place), false,
-                    platform::errors::PreconditionNotMet(
-                        "Required src_place shall be different with dst_place, "
-                        "but received same place: %s",
-                        src_place));
-  if (platform::is_gpu_place(dst_place)) {
-    return kMemcpyH2D;
-  } else if (platform::is_gpu_place(src_place)) {
-    return kMemcpyD2H;
-  } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Not support Memcpy typ : %s -> %s", src_place, dst_place));
-  }
 }
 
 void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
@@ -537,12 +580,12 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
       // NOTE(Aurelius84): Consider to define a complex2real op to deal this
       // case.
       std::string new_var_name;
-      auto op = TransferDtype(var_name, &new_var_name, src_type, dst_type,
-                              var_scope, local_scope);
-      data_transfer_helper.RunAndConstructOpFuncNode(op, var_name, new_var_name,
-                                                     op_func_nodes);
-      data_transfer_helper.RunAndConstructShareNode(new_var_name, var_name,
-                                                    op_func_nodes);
+      auto op = TransferDtype(
+          var_name, &new_var_name, src_type, dst_type, var_scope, local_scope);
+      data_transfer_helper.RunAndConstructOpFuncNode(
+          op, var_name, new_var_name, op_func_nodes);
+      data_transfer_helper.RunAndConstructShareNode(
+          new_var_name, var_name, op_func_nodes);
     }
   }
 }

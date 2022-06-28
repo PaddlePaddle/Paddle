@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/batch_fc_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -29,8 +30,8 @@ static inline int GET_BLOCKS(const int N) {
 }
 
 template <typename T>
-__global__ void add_bias_kernel(T* data, int slot_pairs_num, int ins_num,
-                                int out_dim, const T* bias) {
+__global__ void add_bias_kernel(
+    T* data, int slot_pairs_num, int ins_num, int out_dim, const T* bias) {
   CUDA_KERNEL_LOOP(idx, slot_pairs_num * ins_num * out_dim) {
     int block_len = ins_num * out_dim;
     int slot_index = idx / block_len;
@@ -41,16 +42,24 @@ __global__ void add_bias_kernel(T* data, int slot_pairs_num, int ins_num,
 }
 
 template <typename T>
-void add_bias(gpuStream_t stream, T* data, int slot_pairs_num, int ins_num,
-              int out_dim, const T* bias) {
+void add_bias(gpuStream_t stream,
+              T* data,
+              int slot_pairs_num,
+              int ins_num,
+              int out_dim,
+              const T* bias) {
   add_bias_kernel<<<GET_BLOCKS(slot_pairs_num * ins_num * out_dim),
-                    CUDA_NUM_THREADS, 0, stream>>>(data, slot_pairs_num,
-                                                   ins_num, out_dim, bias);
+                    CUDA_NUM_THREADS,
+                    0,
+                    stream>>>(data, slot_pairs_num, ins_num, out_dim, bias);
 }
 
 template <typename T>
-__global__ void add_bias_grad_kernel(const T* dout_data, int slot_pairs_num,
-                                     int ins_num, int out_dim, T* db_data) {
+__global__ void add_bias_grad_kernel(const T* dout_data,
+                                     int slot_pairs_num,
+                                     int ins_num,
+                                     int out_dim,
+                                     T* db_data) {
   CUDA_KERNEL_LOOP(idx, slot_pairs_num * out_dim) {
     int row = idx / out_dim;
     int col = idx % out_dim;
@@ -64,11 +73,17 @@ __global__ void add_bias_grad_kernel(const T* dout_data, int slot_pairs_num,
 }
 
 template <typename T>
-void add_bias_grad(gpuStream_t stream, const T* dout_data, int slot_pairs_num,
-                   int ins_num, int out_dim, T* db_data) {
-  add_bias_grad_kernel<<<GET_BLOCKS(slot_pairs_num * out_dim), CUDA_NUM_THREADS,
-                         0, stream>>>(dout_data, slot_pairs_num, ins_num,
-                                      out_dim, db_data);
+void add_bias_grad(gpuStream_t stream,
+                   const T* dout_data,
+                   int slot_pairs_num,
+                   int ins_num,
+                   int out_dim,
+                   T* db_data) {
+  add_bias_grad_kernel<<<GET_BLOCKS(slot_pairs_num * out_dim),
+                         CUDA_NUM_THREADS,
+                         0,
+                         stream>>>(
+      dout_data, slot_pairs_num, ins_num, out_dim, db_data);
 }
 
 template <typename DeviceContext, typename T>
@@ -113,10 +128,25 @@ class BatchFCCUDAKernel : public framework::OpKernel<T> {
     int64_t strideB = in_dim * out_dim;
 
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
-    blas.BatchedGEMM(transA, transB, ins_num, out_dim, in_dim, alpha, in_data,
-                     w_data, beta, out_data, slot_pairs_num, strideA, strideB);
-    add_bias<T>(ctx.cuda_device_context().stream(), out_data, slot_pairs_num,
-                ins_num, out_dim, bias_data);
+    blas.BatchedGEMM(transA,
+                     transB,
+                     ins_num,
+                     out_dim,
+                     in_dim,
+                     alpha,
+                     in_data,
+                     w_data,
+                     beta,
+                     out_data,
+                     slot_pairs_num,
+                     strideA,
+                     strideB);
+    add_bias<T>(ctx.cuda_device_context().stream(),
+                out_data,
+                slot_pairs_num,
+                ins_num,
+                out_dim,
+                bias_data);
   }
 };
 
@@ -162,21 +192,45 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
     auto db_eigen = framework::EigenVector<T>::Flatten(*db);
     db_eigen.device(place) = db_eigen.constant(static_cast<T>(0));
     T* db_data = db->data<T>();
-    add_bias_grad<T>(ctx.cuda_device_context().stream(), dout_data,
-                     slot_pairs_num, ins_num, out_dim, db_data);
+    add_bias_grad<T>(ctx.cuda_device_context().stream(),
+                     dout_data,
+                     slot_pairs_num,
+                     ins_num,
+                     out_dim,
+                     db_data);
 
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
     T alpha = 1;
     T beta = 0;
 
     // dx = dout_data * y^T
-    blas.BatchedGEMM(CblasNoTrans, CblasTrans, ins_num, in_dim, out_dim, alpha,
-                     dout_data, w_data, beta, dx_data, slot_pairs_num,
-                     ins_num * out_dim, out_dim * in_dim);
+    blas.BatchedGEMM(CblasNoTrans,
+                     CblasTrans,
+                     ins_num,
+                     in_dim,
+                     out_dim,
+                     alpha,
+                     dout_data,
+                     w_data,
+                     beta,
+                     dx_data,
+                     slot_pairs_num,
+                     ins_num * out_dim,
+                     out_dim * in_dim);
     // dy = x^T * dout_data
-    blas.BatchedGEMM(CblasTrans, CblasNoTrans, in_dim, out_dim, ins_num, alpha,
-                     x_data, dout_data, beta, dw_data, slot_pairs_num,
-                     in_dim * ins_num, ins_num * out_dim);
+    blas.BatchedGEMM(CblasTrans,
+                     CblasNoTrans,
+                     in_dim,
+                     out_dim,
+                     ins_num,
+                     alpha,
+                     x_data,
+                     dout_data,
+                     beta,
+                     dw_data,
+                     slot_pairs_num,
+                     in_dim * ins_num,
+                     ins_num * out_dim);
   }
 };
 
@@ -185,7 +239,8 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 using GPUCtx = paddle::platform::CUDADeviceContext;
-REGISTER_OP_CUDA_KERNEL(batch_fc, ops::BatchFCCUDAKernel<GPUCtx, float>,
+REGISTER_OP_CUDA_KERNEL(batch_fc,
+                        ops::BatchFCCUDAKernel<GPUCtx, float>,
                         ops::BatchFCCUDAKernel<GPUCtx, double>);
 
 REGISTER_OP_CUDA_KERNEL(batch_fc_grad,

@@ -60,7 +60,8 @@ class ForToWhileTransformer(gast.NodeTransformer):
                 i += len(new_stmts)
                 return new_stmts
         raise ValueError(
-            "parent_node doesn't contain the loop_node in ForToWhileTransformer")
+            "parent_node doesn't contain the loop_node in ForToWhileTransformer"
+        )
 
     def get_for_stmt_nodes(self, node):
         assert isinstance(
@@ -74,12 +75,13 @@ class ForToWhileTransformer(gast.NodeTransformer):
         init_stmts, cond_stmt, body_stmts = stmts_tuple
 
         # 2. append break statement
-        new_cond_stmt = gast.BoolOp(
-            op=gast.And(), values=[cond_stmt, self.condition_node])
+        new_cond_stmt = gast.BoolOp(op=gast.And(),
+                                    values=[cond_stmt, self.condition_node])
 
         # 3. construct gast.While node
-        while_node = gast.While(
-            test=new_cond_stmt, body=body_stmts, orelse=node.orelse)
+        while_node = gast.While(test=new_cond_stmt,
+                                body=body_stmts,
+                                orelse=node.orelse)
         init_stmts.append(while_node)
         return init_stmts
 
@@ -141,17 +143,15 @@ class BreakContinueTransformer(BaseNodeVisitor):
         assign_false_node = create_fill_constant_node(variable_name, False)
         self._add_stmt_before_cur_node(loop_node_index, assign_false_node)
 
-        cond_var_node = gast.UnaryOp(
-            op=gast.Not(),
-            operand=gast.Name(
-                id=variable_name,
-                ctx=gast.Load(),
-                annotation=None,
-                type_comment=None))
+        cond_var_node = gast.UnaryOp(op=gast.Not(),
+                                     operand=gast.Name(id=variable_name,
+                                                       ctx=gast.Load(),
+                                                       annotation=None,
+                                                       type_comment=None))
 
         if isinstance(loop_node, gast.While):
-            loop_node.test = gast.BoolOp(
-                op=gast.And(), values=[loop_node.test, cond_var_node])
+            loop_node.test = gast.BoolOp(op=gast.And(),
+                                         values=[loop_node.test, cond_var_node])
         elif isinstance(loop_node, gast.For):
             parent_node = self.ancestor_nodes[loop_node_index - 1]
             for_to_while = ForToWhileTransformer(parent_node, loop_node,
@@ -180,8 +180,9 @@ class BreakContinueTransformer(BaseNodeVisitor):
         assign_false_node = create_fill_constant_node(variable_name, False)
         loop_node.body.insert(0, assign_false_node)
 
-    def _remove_stmts_after_break_continue(
-            self, break_continue_node, break_continue_name, loop_node_index):
+    def _remove_stmts_after_break_continue(self, break_continue_node,
+                                           break_continue_name,
+                                           loop_node_index):
         for first_block_index in range(
                 len(self.ancestor_nodes) - 1, loop_node_index - 1, -1):
             first_block = self.ancestor_nodes[first_block_index]
@@ -214,8 +215,9 @@ class BreakContinueTransformer(BaseNodeVisitor):
                         cur_node.orelse, son_node, break_continue_name):
                 continue
 
-    def _replace_break_continue_in_stmt_list(
-            self, stmt_list, break_continue_node, break_continue_name):
+    def _replace_break_continue_in_stmt_list(self, stmt_list,
+                                             break_continue_node,
+                                             break_continue_name):
         i = index_in_list(stmt_list, break_continue_node)
         if i == -1:
             return False
@@ -233,13 +235,12 @@ class BreakContinueTransformer(BaseNodeVisitor):
             # No need to add, we consider this as added successfully
             return True
 
-        if_stmt = gast.If(test=gast.UnaryOp(
-            op=gast.Not(),
-            operand=gast.Name(
-                id=break_continue_name,
-                ctx=gast.Store(),
-                annotation=None,
-                type_comment=None)),
+        if_stmt = gast.If(test=gast.UnaryOp(op=gast.Not(),
+                                            operand=gast.Name(
+                                                id=break_continue_name,
+                                                ctx=gast.Store(),
+                                                annotation=None,
+                                                type_comment=None)),
                           body=stmt_list[i + 1:],
                           orelse=[])
         stmt_list[i + 1:] = []

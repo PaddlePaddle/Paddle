@@ -18,7 +18,6 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-
 #include "paddle/phi/api/all.h"
 
 namespace egr {
@@ -125,7 +124,7 @@ class EagerUtils {
   static AutogradMeta* nullable_autograd_meta(
       const paddle::experimental::Tensor& target);
   static AutogradMeta* nullable_autograd_meta(
-      paddle::optional<const paddle::experimental::Tensor&> target);
+      const paddle::optional<paddle::experimental::Tensor>& target);
   static std::vector<AutogradMeta*> nullable_autograd_meta(
       const std::vector<paddle::experimental::Tensor>& targets);
   static std::vector<AutogradMeta*> nullable_autograd_meta(
@@ -161,10 +160,11 @@ class EagerUtils {
     if (require_any_grad && autograd_meta) {
       PADDLE_ENFORCE_EQ(!autograd_meta->StopGradient() &&
                             egr::egr_utils_api::IsLeafTensor(target),
-                        false, paddle::platform::errors::InvalidArgument(
-                                   "Leaf Var (%s) that doesn't stop gradient "
-                                   "can't use inplace strategy.",
-                                   target.name()));
+                        false,
+                        paddle::platform::errors::InvalidArgument(
+                            "Leaf Var (%s) that doesn't stop gradient "
+                            "can't use inplace strategy.",
+                            target.name()));
     }
   }
 
@@ -172,6 +172,9 @@ class EagerUtils {
   static void HandleViewBetweenInputAndOutput(
       const std::shared_ptr<EagerVariable>& input_var,
       const std::shared_ptr<EagerVariable>& view_output_var);
+  static void HandleViewBetweenInputAndOutput(
+      const paddle::experimental::Tensor& input_tensor,
+      paddle::experimental::Tensor* view_output_tensor);
 
   // TensorWrapper Utils
   static paddle::experimental::Tensor RecoverTensorWrapper(TensorWrapper* tw);
@@ -231,11 +234,18 @@ class EagerUtils {
       const paddle::experimental::Tensor& tensor);
 
   /**
-    * Fill Zero
-    * **/
-  static void FillZeroForEmptyGradInputs(
-      std::vector<std::vector<paddle::experimental::Tensor>>* out_grads,
-      const std::vector<std::vector<GradSlotMeta>>& grad_out_metas);
+   * Fill Zero
+   * **/
+  static void FillZeroForEmptyOptionalGradInput(
+      std::vector<paddle::experimental::Tensor>* in_grads,
+      const std::vector<GradSlotMeta>& grad_in_metas);
+  static void FillZeroForEmptyGradInput(paddle::experimental::Tensor* in_grad,
+                                        const GradSlotMeta& grad_in_meta);
+  static void FillZeroForEmptyOptionalGradInput(
+      paddle::experimental::Tensor* in_grad, const GradSlotMeta& grad_in_meta);
+  static void FillZeroForEmptyGradInput(
+      std::vector<paddle::experimental::Tensor>* in_grads,
+      const std::vector<GradSlotMeta>& grad_in_metas);
 };
 
 }  // namespace egr

@@ -16,7 +16,6 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
@@ -55,14 +54,15 @@ TEST(AmplifierInterceptor, Amplifier) {
   std::string carrier_id = "0";
   Carrier* carrier =
       GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
-  carrier->Init(0, {{SOURCE_ID, 0},
-                    {0, 0},
-                    {1, 0},
-                    {2, 0},
-                    {3, 0},
-                    {4, 0},
-                    {5, 0},
-                    {SINK_ID, 0}});
+  carrier->Init(0,
+                {{SOURCE_ID, 0},
+                 {0, 0},
+                 {1, 0},
+                 {2, 0},
+                 {3, 0},
+                 {4, 0},
+                 {5, 0},
+                 {SINK_ID, 0}});
   MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
 
