@@ -590,13 +590,18 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
 }
 
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
-                     ssize_t value_idx,
                      PyObject* args,
-                     ssize_t arg_idx) {
+                     const std::map<ssize_t, ssize_t>& inplace_var_idx_map) {
+  if (!inplace_var_idx_map.empty() && inplace_var_idx_map.count(0)) {
+    return ToPyObject(args, inplace_var_idx_map.at(0));
+  } else {
+    return ToPyObject(value);
+  }
+}
+
+PyObject* ToPyObject(PyObject* args, ssize_t arg_idx) {
   // For inplace op, directly return the input PyObject of the inplace tensor.
   // [Parameter]
-  // value: Useless parameter.
-  // value_idx: Useless parameter.
   // args: Input PyObject.
   // arg_idx: Index of inplace PyObject in input args. Used to find the input
   // inplace PyObject.
