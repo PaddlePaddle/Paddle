@@ -28,7 +28,7 @@ class TaskNode:
                  max_slot_times,
                  role=None,
                  node_type=None,
-                 task_id=None,
+                 task_id=0,
                  ops=None,
                  program=None,
                  lazy_initialize=False):
@@ -38,7 +38,7 @@ class TaskNode:
         :param max_slot_times (int): The mas slot times of the task node.
         :param role (int): The role of the task node. (Will be removed in the future)
         :param node_type (str): The type of the task node.
-        :param task_id (int): The id of task node, only need to be set in handly scheduler policy.
+        :param task_id (int): The id of task node.
         :param ops (list): A list of op.desc to init the task node. (Will be removed in the future) 
         :param program (Program): An instance of Program to init the task node.
         :param lazy_initialize (bool): In user-defined task, the program may change adding feed/fetch op. As efficient consideration, the task node will have the C++ object later.
@@ -47,7 +47,7 @@ class TaskNode:
             "Should provide only one of ops or program to task node."
         assert (not ((ops is not None) and lazy_initialize)), \
                 "Lazy initialization doesn't support with ops list"
-        self.id = int(task_id) if task_id is not None else None
+        self.id = int(task_id)
         self.rank = rank
         self.max_run_times = max_run_times
         self.max_slot_times = max_slot_times
@@ -59,9 +59,6 @@ class TaskNode:
         self.node = None
         self.upstreams = []
         self.downstreams = []
-        if self.id is None:
-            assert ops is None, "Doesn't support generate unique id for op list initialized task node"
-            self.id = int(core.unique_task_id())
         if not lazy_initialize:
             if ops is not None:
                 assert role is not None and task_id is not None, \
@@ -420,6 +417,5 @@ def origin(program, rank):
                          node_type="Compute",
                          max_run_times=1,
                          max_slot_times=1)
-    task_id = task_node.task_id()
-    task_id_to_rank = {task_id: rank}
+    task_id_to_rank = {task_node.task_id(): rank}
     return [task_node.task_node()], task_id_to_rank
