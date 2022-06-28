@@ -76,7 +76,7 @@ class AvgPool1D(Layer):
             import paddle
             import paddle.nn as nn
 
-            data = ppaddle.uniform([1, 3, 32], min=-1, max=1, dtype=paddle.float32)
+            data = paddle.uniform([1, 3, 32], min=-1, max=1, dtype=paddle.float32)
             AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
             pool_out = AvgPool1D(data)
             print(pool_out.shape)
@@ -799,7 +799,7 @@ class AdaptiveAvgPool3D(Layer):
             Usually name is no need to set and None by default.
     Shape:
         - x(Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
-          The data type can be float32, float64\.
+          The data type can be float32, float64.
         - output(Tensor): The output tensor of adaptive avg pool3d operator, which is a 5-D tensor.
           The data type is same as input x.
 
