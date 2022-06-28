@@ -226,6 +226,7 @@ REGISTER_OPERATOR(
     ops::BoxDecoderAndAssignOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
 REGISTER_OP_CPU_KERNEL(
     box_decoder_and_assign,
     ops::BoxDecoderAndAssignKernel<paddle::platform::CPUDeviceContext, float>,
