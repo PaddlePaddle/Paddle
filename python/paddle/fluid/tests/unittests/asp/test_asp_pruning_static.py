@@ -43,7 +43,8 @@ class TestASPStaticPruningBase(unittest.TestCase):
                                          padding=2,
                                          act="relu")
             hidden = fluid.layers.fc(input=hidden, size=32, act='softmax')
-            prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+            hidden = fluid.layers.fc(input=hidden, size=3, act='softmax')
+            prediction = fluid.layers.fc(input=hidden, size=3, act='softmax')
             return img, label, prediction
 
         with fluid.program_guard(self.main_program, self.startup_program):
