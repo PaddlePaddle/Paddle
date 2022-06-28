@@ -95,7 +95,7 @@ set(wrapped_infermeta_header_file
 set(wrapped_infermeta_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
-if(NOT PYTHON_EXECUTABLE)
+if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
 endif()
 
