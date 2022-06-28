@@ -491,15 +491,6 @@
   kernel :
     func : diag
 
-- api : diagonal
-  args : (Tensor x, int offset, int axis1, int axis2)
-  output : Tensor
-  infer_meta :
-    func : DiagonalInferMeta
-  kernel :
-    func : diagonal
-  backward : diagonal_grad
-
 - api : digamma
   args : (Tensor x)
   output : Tensor
