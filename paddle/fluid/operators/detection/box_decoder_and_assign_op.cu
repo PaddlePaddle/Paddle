@@ -122,7 +122,7 @@ class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
     int grid = (roi_num * class_num + block - 1) / block;
     auto& device_ctx = context.cuda_device_context();
 
-    const T box_clip = context.Attr<T>("box_clip");
+    const T box_clip = static_cast<T>(context.Attr<float>("box_clip"));
 
     DecodeBoxKernel<T>
         <<<grid, block, 0, device_ctx.stream()>>>(prior_box_data,
