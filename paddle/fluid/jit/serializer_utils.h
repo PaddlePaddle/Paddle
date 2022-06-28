@@ -12,27 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/jit/compilation_unit.h"
+#pragma once
 
-#include "paddle/phi/core/enforce.h"
+#include <string>
+#include <vector>
+
+#include "paddle/fluid/framework/var_desc.h"
 
 namespace paddle {
 namespace jit {
+static const char PDMODEL_SUFFIX[] = ".pdmodel";
+static const char PDPARAMS_SUFFIX[] = ".pdiparams";
 
-std::shared_ptr<BaseFunction> CompilationUnit::Function(
-    const std::string &name) const {
-  PADDLE_ENFORCE_EQ(
-      function_dict_.count(name),
-      1,
-      platform::errors::InvalidArgument(
-          "Funciton name %s is not exist in function_dict_.", name));
-  return function_dict_.at(name);
-}
+namespace utils {
+bool IsPersistable(framework::VarDesc* desc_ptr);
 
-void CompilationUnit::SetFunction(
-    const std::string &name, const std::shared_ptr<BaseFunction> &function) {
-  function_dict_[name] = function;
-}
+bool StartsWith(const std::string& str, const std::string& suffix);
 
+bool EndsWith(const std::string& str, const std::string& suffix);
+
+void ReplaceAll(std::string* str,
+                const std::string& old_value,
+                const std::string& new_value);
+
+bool FileExists(const std::string& file_path);
+
+const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
+    const std::string& path);
+
+}  // namespace utils
 }  // namespace jit
 }  // namespace paddle
