@@ -50,6 +50,7 @@ namespace interpreter {
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 constexpr size_t kPrepareWorkQueueIdx = 2;
+const char blocking_queue_prefix[] = "lod_tensor_blocking_queue";
 
 const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
     size_t host_num_threads, size_t device_num_threads, EventsWaiter* waiter) {
@@ -290,10 +291,18 @@ std::tuple<VariableValueMap, VariableIdMap> build_variable_map(
     vars.reserve(item.second.size());
 
     for (auto& var_name : item.second) {
-      if (!enforce_exist && !local_scope->FindVar(var_name)) {
-        // skip the non-exist variable: such as recurrent_grad
-        VLOG(4) << var_name << " don't exist in variable scope, skip it!";
-        continue;
+      if (!var_scope->HasVar(var_name)) {
+        // Hot fix for variables used in dataloader, like
+        // 'lod_tensor_blocking_queue_0' These variables may be created in
+        // scope, and it is not existed as variable in program.
+        if (var_name.find(blocking_queue_prefix) != std::string::npos &&
+            local_scope->FindVar(var_name)) {
+          var_scope->AddVar(var_name, nullptr);
+        } else if (!enforce_exist) {
+          // skip the non-exist variable: such as recurrent_grad
+          VLOG(4) << var_name << " don't exist in variable scope, skip it!";
+          continue;
+        }
       }
       auto* var = local_scope->FindVar(var_name);
       auto var_id = var_scope->VarId(var_name);
