@@ -107,7 +107,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
 
   // 1. Construct RuntimeContext
   RuntimeContext runtime_context({}, {});
-  runtime_context.inputs["X"] = {scope_->Var(var_name)};
+  runtime_context.inputs["X"] = {scope_->FindVar(var_name)};
   runtime_context.outputs["Out"] = {scope_->Var(new_var_name)};
   InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
 
