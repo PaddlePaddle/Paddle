@@ -183,14 +183,9 @@ fused_gate_attentionGradNodeCompat::operator()(
       &this->default_attr_map_,
       false,
       {});
-  if (outs0.find("GateBias@GRAD") != outs0.end()) {
-    outputs[9] = egr::EagerUtils::GetOutputs(outs0["GateBias@GRAD"]);
-  }
-  if (outs0.find("GateWeight@GRAD") != outs0.end()) {
-    outputs[8] = egr::EagerUtils::GetOutputs(outs0["GateWeight@GRAD"]);
-  }
-  if (outs0.find("NonbatchedBias@GRAD") != outs0.end()) {
-    outputs[6] = egr::EagerUtils::GetOutputs(outs0["NonbatchedBias@GRAD"]);
+
+  if (outs0.find("Query@GRAD") != outs0.end()) {
+    outputs[0] = egr::EagerUtils::GetOutputs(outs0["Query@GRAD"]);
   }
   if (outs0.find("OutLinearBias@GRAD") != outs0.end()) {
     outputs[11] = egr::EagerUtils::GetOutputs(outs0["OutLinearBias@GRAD"]);
@@ -198,11 +193,36 @@ fused_gate_attentionGradNodeCompat::operator()(
   if (outs0.find("OutLinearWeight@GRAD") != outs0.end()) {
     outputs[10] = egr::EagerUtils::GetOutputs(outs0["OutLinearWeight@GRAD"]);
   }
-  if (outs0.find("QKVWeight@GRAD") != outs0.end()) {
-    outputs[5] = egr::EagerUtils::GetOutputs(outs0["QKVWeight@GRAD"]);
+
+  if (merge_qkv) {
+    if (outs0.find("Key@GRAD") != outs0.end()) {
+      outputs[1] = egr::EagerUtils::GetOutputs(outs0["Key@GRAD"]);
+    }
+  } else {
+    if (outs0.find("QueryWeight@GRAD") != outs0.end()) {
+      outputs[2] = egr::EagerUtils::GetOutputs(outs0["QueryWeight@GRAD"]);
+    }
+    if (outs0.find("KeyWeight@GRAD") != outs0.end()) {
+      outputs[3] = egr::EagerUtils::GetOutputs(outs0["KeyWeight@GRAD"]);
+    }
+    if (outs0.find("ValueWeight@GRAD") != outs0.end()) {
+      outputs[4] = egr::EagerUtils::GetOutputs(outs0["ValueWeight@GRAD"]);
+    }
   }
-  if (outs0.find("Query@GRAD") != outs0.end()) {
-    outputs[0] = egr::EagerUtils::GetOutputs(outs0["Query@GRAD"]);
+
+  if (has_gating) {
+    if (outs0.find("GateBias@GRAD") != outs0.end()) {
+      outputs[9] = egr::EagerUtils::GetOutputs(outs0["GateBias@GRAD"]);
+    }
+    if (outs0.find("GateWeight@GRAD") != outs0.end()) {
+      outputs[8] = egr::EagerUtils::GetOutputs(outs0["GateWeight@GRAD"]);
+    }
+  }
+
+  if (NonbatchedBias.defined()) {
+    if (outs0.find("NonbatchedBias@GRAD") != outs0.end()) {
+      outputs[6] = egr::EagerUtils::GetOutputs(outs0["NonbatchedBias@GRAD"]);
+    }
   }
 
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&outputs);
