@@ -2040,12 +2040,12 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     device_types = phi::DeviceManager::GetAllDeviceTypes();
 #else
-          LOG(WARNING) << string::Sprintf(
+          VLOG(1) << string::Sprintf(
               "Cannot use get_all_device_type because you have installed"
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_all_device_type, please try to install"
               "CustomDevice version "
-              "PaddlePaddle by: pip install paddlepaddle-core\n");
+              "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
     return device_types;
   });
@@ -2054,12 +2054,12 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
 #else
-          LOG(WARNING) << string::Sprintf(
+          VLOG(1) << string::Sprintf(
               "Cannot use get_all_custom_device_type because you have installed"
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_all_custom_device_type, please try to "
               "install CustomDevice version "
-              "PaddlePaddle by: pip install paddlepaddle-core\n");
+              "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
     return device_types;
   });
