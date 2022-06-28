@@ -67,7 +67,9 @@ class PSServer {
   PSServer(const PSServer &) = delete;
 
   virtual int32_t Configure(
-      const PSParameter &config, PSEnvironment &env, size_t server_rank,
+      const PSParameter &config,
+      PSEnvironment &env,
+      size_t server_rank,
       const std::vector<framework::ProgramDesc> &server_sub_program = {});
 
   virtual uint64_t Start(const std::string &ip, uint32_t port) = 0;
@@ -108,7 +110,8 @@ class PSServer {
     _msg_handler_map[msg_type] = handler;
     return 0;
   }
-  virtual int HandlePServer2PServerMsg(int msg_type, int from_pserver_id,
+  virtual int HandlePServer2PServerMsg(int msg_type,
+                                       int from_pserver_id,
                                        const std::string &msg) {
     auto itr = _msg_handler_map.find(msg_type);
     if (itr == _msg_handler_map.end()) {
@@ -121,7 +124,8 @@ class PSServer {
     }
     return itr->second(msg_type, from_pserver_id, msg);
   }
-  virtual int32_t ReceiveFromPServer(int msg_type, int pserver_id,
+  virtual int32_t ReceiveFromPServer(int msg_type,
+                                     int pserver_id,
                                      const std::string &msg) {
     LOG(FATAL) << "NotImplementError::PSServer::ReceiveFromPServer";
     return -1;
@@ -182,7 +186,8 @@ class PsBaseService : public PsService {
                        PsResponseMessage *response,
                        ::google::protobuf::Closure *done) override = 0;
 
-  virtual void set_response_code(PsResponseMessage &response, int err_code,
+  virtual void set_response_code(PsResponseMessage &response,
+                                 int err_code,
                                  const char *err_msg) {
     response.set_err_msg(err_msg);
     response.set_err_code(err_code);

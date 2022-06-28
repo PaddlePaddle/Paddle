@@ -88,7 +88,8 @@ struct MatrixBitCodeFunctorSum : public boost::static_visitor<void> {
   framework::Tensor *sum_;
   T scale_sum_;
 
-  MatrixBitCodeFunctorSum(const framework::Tensor &tmat, framework::Tensor *sum,
+  MatrixBitCodeFunctorSum(const framework::Tensor &tmat,
+                          framework::Tensor *sum,
                           T scale_sum)
       : tmat_(tmat), sum_(sum), scale_sum_(scale_sum) {}
 
@@ -117,7 +118,8 @@ struct MatrixBitCodeFunctorSum : public boost::static_visitor<void> {
 
 template <typename T>
 void MatrixBitCodeFunctor<T>::Sum(const framework::Tensor &tmat,
-                                  framework::Tensor *sum, T scale_sum) {
+                                  framework::Tensor *sum,
+                                  T scale_sum) {
   MatrixBitCodeFunctorSum<T> func(tmat, sum, scale_sum);
   code_table_.apply_visitor(func);
 }

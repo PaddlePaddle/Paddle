@@ -25,7 +25,8 @@ class MeshgridMLUKernel : public framework::OpKernel<T> {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
     PADDLE_ENFORCE_EQ(
-        (ins.size() > 1) && (ins.size() < 7), true,
+        (ins.size() > 1) && (ins.size() < 7),
+        true,
         platform::errors::InvalidArgument(
             "Excepted Tensor numbers between 2 and 6, but only received d% .",
             ins.size()));
@@ -59,8 +60,11 @@ class MeshgridMLUKernel : public framework::OpKernel<T> {
       outs[i]->mutable_data<T>(ctx.GetPlace());
 
       MLUCnnlTensorDesc in_desc(size, view_shape.data(), ToCnnlDataType<T>());
-      MLUCnnl::BroadcastTo(ctx, in_desc.get(), GetBasePtr(ins[i]),
-                           out_desc.get(), GetBasePtr(outs[i]));
+      MLUCnnl::BroadcastTo(ctx,
+                           in_desc.get(),
+                           GetBasePtr(ins[i]),
+                           out_desc.get(),
+                           GetBasePtr(outs[i]));
     }
   }
 };
@@ -69,7 +73,8 @@ class MeshgridMLUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_MLU_KERNEL(
-    meshgrid, paddle::operators::MeshgridMLUKernel<int>,
+    meshgrid,
+    paddle::operators::MeshgridMLUKernel<int>,
     paddle::operators::MeshgridMLUKernel<float>,
     paddle::operators::MeshgridMLUKernel<int64_t>,
     paddle::operators::MeshgridMLUKernel<paddle::platform::float16>);

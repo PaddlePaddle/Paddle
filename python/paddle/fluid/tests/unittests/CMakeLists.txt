@@ -60,7 +60,9 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_sharding_parallel)
 list(APPEND DIST_TEST_OPS test_dygraph_sharding_optimizer_stage2)
 list(APPEND DIST_TEST_OPS test_dygraph_sharding_stage2)
 list(APPEND DIST_TEST_OPS test_dygraph_sharding_stage3)
+list(APPEND DIST_TEST_OPS test_dygraph_sharding_stage3_for_eager)
 list(APPEND DIST_TEST_OPS test_dygraph_group_sharded_api)
+list(APPEND DIST_TEST_OPS test_dygraph_group_sharded_api_for_eager)
 list(APPEND DIST_TEST_OPS test_auto_parallel_parallelizer)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mp_layers)
 list(APPEND DIST_TEST_OPS test_hybrid_parallel_inference_helper)
@@ -129,6 +131,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model)
+list(APPEND MIXED_DIST_TEST_OPS test_tcp_store)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -304,13 +307,17 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_dygraph_sharding_optimizer_stage2)
   list(REMOVE_ITEM TEST_OPS test_dygraph_sharding_stage2)
   list(REMOVE_ITEM TEST_OPS test_dygraph_sharding_stage3)
+  list(REMOVE_ITEM TEST_OPS test_dygraph_sharding_stage3_for_eager)
   list(REMOVE_ITEM TEST_OPS test_dygraph_group_sharded_api)
+  list(REMOVE_ITEM TEST_OPS test_dygraph_group_sharded_api_for_eager)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_parallelizer)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mp_layers)
   list(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
+  list(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision_for_eager)
   list(REMOVE_ITEM TEST_OPS test_mixed_precision)
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_dygraph_recompute)
+  list(REMOVE_ITEM TEST_OPS test_dygraph_recompute_for_eager)
   list(REMOVE_ITEM TEST_OPS test_hybrid_parallel_inference_helper)
   list(REMOVE_ITEM TEST_OPS test_parallel_class_center_sample)
   list(REMOVE_ITEM TEST_OPS test_parallel_margin_cross_entropy)
@@ -868,6 +875,7 @@ if(WITH_DISTRIBUTE)
                       test_auto_parallel_reshard_dpmppp ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_cost_model MODULES
                       test_auto_parallel_cost_model ENVS ${dist_ENVS})
+
       if(WITH_GPU
          OR WITH_XPU
          OR WITH_ASCEND
@@ -895,6 +903,21 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_se_resnext_dgc")
   endif()
+
+  # port range (20000, 23000) is reserved for dist-ops
+  set(dist_ut_port 20001)
+  if(NOT WIN32)
+    bash_test_modules(
+      test_tcp_store
+      START_BASH
+      dist_test.sh
+      LABELS
+      "RUN_TYPE=EXCLUSIVE"
+      ENVS
+      "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+    math(EXPR dist_ut_port "${dist_ut_port}+1")
+  endif()
+
   if(NOT APPLE)
     if(WITH_GPU OR WITH_ROCM)
       bash_test_modules(test_c_comm_init_op START_BASH test_c_comm_init_op.sh
@@ -930,7 +953,6 @@ if(WITH_DISTRIBUTE)
     endif()
 
     # port range (20000, 23000) is reserved for dist-ops
-    set(dist_ut_port 20001)
     foreach(TEST_OP ${DIST_TEST_OPS})
       bash_test_modules(
         ${TEST_OP}
@@ -1531,7 +1553,11 @@ if(WITH_DISTRIBUTE
                                                                          120)
   set_tests_properties(test_dygraph_sharding_stage2 PROPERTIES TIMEOUT 200)
   set_tests_properties(test_dygraph_sharding_stage3 PROPERTIES TIMEOUT 350)
+  set_tests_properties(test_dygraph_sharding_stage3_for_eager PROPERTIES TIMEOUT
+                                                                         350)
   set_tests_properties(test_dygraph_group_sharded_api PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_dygraph_group_sharded_api_for_eager
+                       PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_parallelizer PROPERTIES TIMEOUT 120)
   set_tests_properties(test_parallel_dygraph_mp_layers PROPERTIES TIMEOUT 120)
   set_tests_properties(test_hybrid_parallel_inference_helper PROPERTIES TIMEOUT
@@ -1621,6 +1647,8 @@ endif()
 if(WITH_GPU OR WITH_ROCM)
   set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT
                                                                        300)
+  set_tests_properties(test_imperative_auto_mixed_precision_for_eager
+                       PROPERTIES TIMEOUT 300)
   set_tests_properties(test_parallel_dygraph_sync_batch_norm PROPERTIES TIMEOUT
                                                                         120)
   set_tests_properties(test_rank_attention_op PROPERTIES TIMEOUT 120)

@@ -47,7 +47,8 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   ExtraInfo extrainfo;
   for (auto indx = 0; indx < node_trees_proto_->extra_info_size(); indx++) {
     ExtraInfoMap extra_info_map = node_trees_proto_->extra_info(indx);
-    extrainfo.AddExtraInfo(extra_info_map.key(), std::string("%s"),
+    extrainfo.AddExtraInfo(extra_info_map.key(),
+                           std::string("%s"),
                            extra_info_map.value().c_str());
   }
   // restore NodeTrees
@@ -283,11 +284,14 @@ MemcpyEventInfo DeserializationReader::HandleMemcpyEventInfoProto(
       device_event_proto.memcpy_info();
   MemcpyEventInfo memcpy_info;
   memcpy_info.num_bytes = memcpy_info_proto.num_bytes();
-  std::strncpy(memcpy_info.copy_kind, memcpy_info_proto.copy_kind().c_str(),
+  std::strncpy(memcpy_info.copy_kind,
+               memcpy_info_proto.copy_kind().c_str(),
                kMemKindMaxLen - 1);
-  std::strncpy(memcpy_info.src_kind, memcpy_info_proto.src_kind().c_str(),
+  std::strncpy(memcpy_info.src_kind,
+               memcpy_info_proto.src_kind().c_str(),
                kMemKindMaxLen - 1);
-  std::strncpy(memcpy_info.dst_kind, memcpy_info_proto.dst_kind().c_str(),
+  std::strncpy(memcpy_info.dst_kind,
+               memcpy_info_proto.dst_kind().c_str(),
                kMemKindMaxLen - 1);
   return memcpy_info;
 }
@@ -298,7 +302,8 @@ MemsetEventInfo DeserializationReader::HandleMemsetEventInfoProto(
       device_event_proto.memset_info();
   MemsetEventInfo memset_info;
   memset_info.num_bytes = memset_info_proto.num_bytes();
-  std::strncpy(memset_info.memory_kind, memset_info_proto.memory_kind().c_str(),
+  std::strncpy(memset_info.memory_kind,
+               memset_info_proto.memory_kind().c_str(),
                kMemKindMaxLen - 1);
   memset_info.value = memset_info_proto.value();
   return memset_info;

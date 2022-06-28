@@ -68,10 +68,12 @@ class MatrixPowerGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* context) const override {
     OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "matrix_power_grad");
-    OP_INOUT_CHECK(context->HasInput("Out"), "Input", "Out",
+    OP_INOUT_CHECK(
+        context->HasInput("Out"), "Input", "Out", "matrix_power_grad");
+    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
                    "matrix_power_grad");
-    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "matrix_power_grad");
     auto x_dims = context->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
     if (context->HasOutput(x_grad_name)) {
@@ -101,10 +103,13 @@ class MatrixPowerGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(matrix_power, MatrixPowerInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(matrix_power,
+                            MatrixPowerInferShapeFunctor,
                             PD_INFER_META(phi::MatrixPowerInferMeta));
 
-REGISTER_OPERATOR(matrix_power, ops::MatrixPowerOp, ops::MatrixPowerOpMaker,
+REGISTER_OPERATOR(matrix_power,
+                  ops::MatrixPowerOp,
+                  ops::MatrixPowerOpMaker,
                   ops::MatrixPowerOpInferVarType,
                   ops::MatrixPowerGradOpMaker<paddle::framework::OpDesc>,
                   ops::MatrixPowerGradOpMaker<paddle::imperative::OpBase>,

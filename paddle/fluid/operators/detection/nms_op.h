@@ -25,7 +25,8 @@ HOSTDEVICE static inline int64_t CeilDivide(int64_t n, int64_t m) {
 }
 
 template <typename T>
-HOSTDEVICE inline bool CalculateIoU(const T* const box_1, const T* const box_2,
+HOSTDEVICE inline bool CalculateIoU(const T* const box_1,
+                                    const T* const box_2,
                                     const float threshold) {
   auto box_1_x0 = box_1[0], box_1_y0 = box_1[1];
   auto box_1_x1 = box_1[2], box_1_y1 = box_1[3];

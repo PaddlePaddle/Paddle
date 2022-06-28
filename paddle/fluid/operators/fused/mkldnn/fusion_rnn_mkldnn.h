@@ -30,13 +30,22 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
  public:
   RNNMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                    const platform::MKLDNNDeviceContext& dev_ctx,
-                   const dnnl::engine mkldnn_engine, platform::Place cpu_place,
-                   const LoDTensor* input, const Tensor* weight_h,
-                   const Tensor* h0, const bool is_reverse, const int64_t N,
-                   const int64_t Ti, const int64_t IC, const int64_t OC,
-                   const int64_t G, const std::string& unique_name)
+                   const dnnl::engine mkldnn_engine,
+                   platform::Place cpu_place,
+                   const LoDTensor* input,
+                   const Tensor* weight_h,
+                   const Tensor* h0,
+                   const bool is_reverse,
+                   const int64_t N,
+                   const int64_t Ti,
+                   const int64_t IC,
+                   const int64_t OC,
+                   const int64_t G,
+                   const std::string& unique_name)
       : platform::MKLDNNHandlerT<T, T_alg>(
-            dev_ctx, dev_ctx.GetEngine(), cpu_place,
+            dev_ctx,
+            dev_ctx.GetEngine(),
+            cpu_place,
             CreateKey(dev_ctx, unique_name, MKLDNNGetDataType<T>(), Ti)),
         N(N),
         Ti(Ti),
@@ -73,8 +82,10 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
             dnnl::memory::format_tag::ntc);
   }
 
-  void reorderRNNdata(void* input_data, void* output_data,
-                      std::vector<size_t> lod, const bool is_reverse,
+  void reorderRNNdata(void* input_data,
+                      void* output_data,
+                      std::vector<size_t> lod,
+                      const bool is_reverse,
                       platform::RNNReorderType reorder_type) {
     switch (reorder_type) {
       // Reorder input memory [WORDS, C] + LoD -> [N, T, C]
@@ -84,7 +95,8 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
         for (int n = 0; n < N; ++n) {
           const auto num_elements = (lod[n + 1] - lod[n]) * IC;
           const auto offset = is_reverse ? (Ti * IC - num_elements) : 0;
-          memcpy(output_data_iter + n * Ti * IC + offset, input_data_iter,
+          memcpy(output_data_iter + n * Ti * IC + offset,
+                 input_data_iter,
                  sizeof(T) * num_elements);
           input_data_iter += num_elements;
         }
@@ -98,7 +110,8 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
           const auto offset = is_reverse ? (Ti - num_elements) : 0;
           for (size_t t = 0; t < num_elements; ++t) {
             memcpy(output_data_iter + (t + offset) * N * IC + n * IC,
-                   input_data_iter, sizeof(T) * IC);
+                   input_data_iter,
+                   sizeof(T) * IC);
             input_data_iter += IC;
           }
         }
@@ -110,7 +123,8 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
         for (int n = 0; n < N; ++n) {
           const auto num_elements = (lod[n + 1] - lod[n]) * OC;
           const auto offset = is_reverse ? (Ti * OC - num_elements) : 0;
-          memcpy(output_data_iter, input_data_iter + n * Ti * OC + offset,
+          memcpy(output_data_iter,
+                 input_data_iter + n * Ti * OC + offset,
                  sizeof(T_out) * num_elements);
           output_data_iter += num_elements;
         }
@@ -153,10 +167,16 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
 
     if (platform::GetMKLDNNFormat(this->fwd_pd_->src_desc()) ==
         dnnl::memory::format_tag::ntc) {
-      reorderRNNdata(x_data, x_onednn_data, input_lod, is_reverse,
+      reorderRNNdata(x_data,
+                     x_onednn_data,
+                     input_lod,
+                     is_reverse,
                      platform::RNNReorderType::PP_NTC);
     } else {
-      reorderRNNdata(x_data, x_onednn_data, input_lod, is_reverse,
+      reorderRNNdata(x_data,
+                     x_onednn_data,
+                     input_lod,
+                     is_reverse,
                      platform::RNNReorderType::PP_TNC);
     }
     return memory_p;
@@ -189,7 +209,8 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
       if (h0) {
         user_h0_memory = dnnl::memory(
             {{1, 1, N, OC}, MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldnc},
-            this->engine_, to_void_cast(h0->data<U>()));
+            this->engine_,
+            to_void_cast(h0->data<U>()));
       } else {
         user_h0_memory = dnnl::memory(
             {{1, 1, N, OC}, MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldnc},

@@ -27,11 +27,13 @@ class RepeatInterleaveOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::InvalidArgument(
             "Input(X) of RepeatInterleaveOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::InvalidArgument(
             "Output(Out) of RepeatInterleaveOp should not be null."));
 
@@ -39,11 +41,14 @@ class RepeatInterleaveOp : public framework::OperatorWithKernel {
     auto dim = ctx->Attrs().Get<int>("dim");
     auto output_dim = phi::vectorize(input_dim);
     PADDLE_ENFORCE_EQ(
-        dim < input_dim.size() && dim >= (0 - input_dim.size()), true,
+        dim < input_dim.size() && dim >= (0 - input_dim.size()),
+        true,
         platform::errors::OutOfRange(
             "Attr(dim) is out of range, It's expected "
             "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
-            input_dim.size(), input_dim.size() - 1, dim));
+            input_dim.size(),
+            input_dim.size() - 1,
+            dim));
 
     auto repeats = ctx->Attrs().Get<int>("Repeats");
     if (ctx->HasInput("RepeatsTensor")) {
@@ -57,9 +62,11 @@ class RepeatInterleaveOp : public framework::OperatorWithKernel {
               "The 'shape' of Input(RepeatsTensor) must be 1-D tensor. "
               "But received: the 'shape' of Input(Index) is [%s], "
               "the dimension of Input(Index) is [%d].",
-              repeats_dim, repeats_dim.size()));
+              repeats_dim,
+              repeats_dim.size()));
 
-      PADDLE_ENFORCE_EQ(repeats_dim[0] != 0, true,
+      PADDLE_ENFORCE_EQ(repeats_dim[0] != 0,
+                        true,
                         platform::errors::InvalidArgument(
                             "The length of Input(RepeatsTensor) can't be 0."));
 
@@ -91,10 +98,12 @@ class RepeatInterleaveGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(X@GRAD) should be not null."));
 
@@ -155,11 +164,13 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(RepeatInterleaveGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(repeat_interleave, ops::RepeatInterleaveOp,
+REGISTER_OPERATOR(repeat_interleave,
+                  ops::RepeatInterleaveOp,
                   ops::RepeatInterleaveOpMaker,
                   ops::RepeatInterleaveGradMaker<paddle::framework::OpDesc>,
                   ops::RepeatInterleaveGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(repeat_interleave_grad, ops::RepeatInterleaveGradOp,
+REGISTER_OPERATOR(repeat_interleave_grad,
+                  ops::RepeatInterleaveGradOp,
                   ops::RepeatInterleaveGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     repeat_interleave,
