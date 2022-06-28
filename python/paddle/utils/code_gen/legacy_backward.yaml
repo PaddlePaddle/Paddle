@@ -425,16 +425,6 @@
     data_type : softmax
   inplace : (softmax -> input_grad)
 
-- backward_api : cross_grad
-  forward : cross (Tensor x, Tensor y, int axis = 9) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad, int axis)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : cross_grad
-
 - backward_api : cumprod_grad
   forward : cumprod (Tensor x, int dim) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int dim)
