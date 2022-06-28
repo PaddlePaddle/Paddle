@@ -146,8 +146,8 @@ __global__ void dy_mf_update_kernel(Table* table,
   if (i < len) {
     auto it = table->find(keys[i]);
     if (it != table->end()) {
-      FeaturePushValue* cur = \
-        (reinterpret_cast<FeaturePushValue*>)(grads + i * grad_value_size);
+      FeaturePushValue* cur =
+          (reinterpret_cast<FeaturePushValue*>)(grads + i * grad_value_size);
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, *cur);
     } else {
       if (keys[i] != 0) {
@@ -160,8 +160,8 @@ __global__ void dy_mf_update_kernel(Table* table,
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
   container_ = new TableContainer<KeyType, ValType>(capacity);
-  cudaMalloc((reinterpret_cast<void**>)&device_optimizer_config_, \
-              sizeof(OptimizerConfig));
+  cudaMalloc((reinterpret_cast<void**>)&device_optimizer_config_,
+             sizeof(OptimizerConfig));
   cudaMemcpy((reinterpret_cast<void*>)device_optimizer_config_,
              &host_optimizer_config_,
              sizeof(OptimizerConfig),
@@ -373,113 +373,140 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
       push_grad_value_size_);
 }
 
-template class HashTable<unsigned long, paddle::framework::FeatureValue>; // NOLINT
-template class HashTable<unsigned long, paddle::framework::FeatureValue*>; // NOLINT
-template class HashTable<long, int>; // NOLINT
-template class HashTable<unsigned long, int>; // NOLINT
-template class HashTable<unsigned long, unsigned long>; // NOLINT
-template class HashTable<unsigned long, long>; // NOLINT
-template class HashTable<unsigned long, long*>; // NOLINT
-template class HashTable<long, long>; // NOLINT
-template class HashTable<long, unsigned long>; // NOLINT
-template class HashTable<long, unsigned int>; // NOLINT
+template class HashTable<unsigned long,  // NOLINT
+                         paddle::framework::FeatureValue>;
+template class HashTable<unsigned long,  // NOLINT
+                         paddle::framework::FeatureValue*>;
+template class HashTable<long, int>;                     // NOLINT
+template class HashTable<unsigned long, int>;            // NOLINT
+template class HashTable<unsigned long, unsigned long>;  // NOLINT
+template class HashTable<unsigned long, long>;           // NOLINT
+template class HashTable<unsigned long, long*>;          // NOLINT
+template class HashTable<long, long>;                    // NOLINT
+template class HashTable<long, unsigned long>;           // NOLINT
+template class HashTable<long, unsigned int>;            // NOLINT
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue>::get< // NOLINT
-    cudaStream_t>(const unsigned long* d_keys, // NOLINT
+template void
+HashTable<unsigned long, paddle::framework::FeatureValue>::get<  // NOLINT
+    cudaStream_t>(const unsigned long* d_keys,                   // NOLINT
                   paddle::framework::FeatureValue* d_vals,
                   size_t len,
                   cudaStream_t stream);
 
 template void
-HashTable<unsigned long, paddle::framework::FeatureValue*>::get<cudaStream_t>( // NOLINT
-    const unsigned long* d_keys, char* d_vals, size_t len, cudaStream_t stream); // NOLINT
+HashTable<unsigned long, paddle::framework::FeatureValue*>::get<  // NOLINT
+    cudaStream_t>(const unsigned long* d_keys,                    // NOLINT
+                  char* d_vals,
+                  size_t len,
+                  cudaStream_t stream);
 
-template void HashTable<long, int>::get<cudaStream_t>(const long* d_keys, // NOLINT
-                                                      int* d_vals,
-                                                      size_t len,
-                                                      cudaStream_t stream);
+template void HashTable<long, int>::get<cudaStream_t>(  // NOLINT
+    const long* d_keys,                                 // NOLINT
+    int* d_vals,
+    size_t len,
+    cudaStream_t stream);
 
-template void HashTable<unsigned long, int>::get<cudaStream_t>( // NOLINT
-    const unsigned long* d_keys, int* d_vals, size_t len, cudaStream_t stream); // NOLINT
-template void HashTable<long, unsigned long>::get<cudaStream_t>( // NOLINT
-    const long* d_keys, unsigned long* d_vals, size_t len, cudaStream_t stream); // NOLINT
-template void HashTable<long, long>::get<cudaStream_t>(const long* d_keys, // NOLINT
-                                                       long* d_vals, // NOLINT
-                                                       size_t len,
-                                                       cudaStream_t stream);
-template void HashTable<long, unsigned int>::get<cudaStream_t>( // NOLINT
-    const long* d_keys, unsigned int* d_vals, size_t len, cudaStream_t stream); // NOLINT
-template void HashTable<unsigned long, long>::get<cudaStream_t>( // NOLINT
-    const unsigned long* d_keys, long* d_vals, size_t len, cudaStream_t stream); // NOLINT
+template void HashTable<unsigned long, int>::get<cudaStream_t>(  // NOLINT
+    const unsigned long* d_keys,                                 // NOLINT
+    int* d_vals,
+    size_t len,
+    cudaStream_t stream);
+template void HashTable<long, unsigned long>::get<cudaStream_t>(  // NOLINT
+    const long* d_keys,                                           // NOLINT
+    unsigned long* d_vals,                                        // NOLINT
+    size_t len,
+    cudaStream_t stream);
+template void HashTable<long, long>::get<cudaStream_t>(  // NOLINT
+    const long* d_keys,                                  // NOLINT
+    long* d_vals,                                        // NOLINT
+    size_t len,
+    cudaStream_t stream);
+template void HashTable<long, unsigned int>::get<cudaStream_t>(  // NOLINT
+    const long* d_keys,                                          // NOLINT
+    unsigned int* d_vals,
+    size_t len,
+    cudaStream_t stream);
+template void HashTable<unsigned long, long>::get<cudaStream_t>(  // NOLINT
+    const unsigned long* d_keys,                                  // NOLINT
+    long* d_vals,                                                 // NOLINT
+    size_t len,
+    cudaStream_t stream);
 // template void
 // HashTable<unsigned long, paddle::framework::FeatureValue>::get<cudaStream_t>(
 //    const unsigned long* d_keys, char* d_vals, size_t len, cudaStream_t
 //    stream);
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue>::insert< // NOLINT
-    cudaStream_t>(const unsigned long* d_keys, // NOLINT
+template void
+HashTable<unsigned long, paddle::framework::FeatureValue>::insert<  // NOLINT
+    cudaStream_t>(const unsigned long* d_keys,                      // NOLINT
                   const paddle::framework::FeatureValue* d_vals,
                   size_t len,
                   cudaStream_t stream);
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue*>:: // NOLINT
-    insert<cudaStream_t>(const unsigned long* d_keys, // NOLINT
+template void
+    HashTable<unsigned long, paddle::framework::FeatureValue*>::  // NOLINT
+    insert<cudaStream_t>(const unsigned long* d_keys,             // NOLINT
                          size_t len,
                          char* pool,
                          size_t feature_value_size,
                          size_t start_index,
                          cudaStream_t stream);
 
-template void HashTable<long, int>::insert<cudaStream_t>(const long* d_keys, // NOLINT
-                                                         const int* d_vals,
-                                                         size_t len,
-                                                         cudaStream_t stream);
-template void HashTable<long, long>::insert<cudaStream_t>(const long* d_keys, // NOLINT
-                                                          const long* d_vals, // NOLINT
-                                                          size_t len,
-                                                          cudaStream_t stream);
-
-template void HashTable<unsigned long, int>::insert<cudaStream_t>( // NOLINT
-    const unsigned long* d_keys, // NOLINT
+template void HashTable<long, int>::insert<cudaStream_t>(  // NOLINT
+    const long* d_keys,                                    // NOLINT
     const int* d_vals,
     size_t len,
     cudaStream_t stream);
-template void HashTable<long, unsigned long>::insert<cudaStream_t>( // NOLINT
-    const long* d_keys, // NOLINT
-    const unsigned long* d_vals, // NOLINT
+template void HashTable<long, long>::insert<cudaStream_t>(  // NOLINT
+    const long* d_keys,                                     // NOLINT
+    const long* d_vals,                                     // NOLINT
     size_t len,
     cudaStream_t stream);
 
-template void HashTable<long, unsigned int>::insert<cudaStream_t>( // NOLINT
-    const long* d_keys, // NOLINT
+template void HashTable<unsigned long, int>::insert<cudaStream_t>(  // NOLINT
+    const unsigned long* d_keys,                                    // NOLINT
+    const int* d_vals,
+    size_t len,
+    cudaStream_t stream);
+template void HashTable<long, unsigned long>::insert<cudaStream_t>(  // NOLINT
+    const long* d_keys,                                              // NOLINT
+    const unsigned long* d_vals,                                     // NOLINT
+    size_t len,
+    cudaStream_t stream);
+
+template void HashTable<long, unsigned int>::insert<cudaStream_t>(  // NOLINT
+    const long* d_keys,                                             // NOLINT
     const unsigned int* d_vals,
     size_t len,
     cudaStream_t stream);
 
-template void HashTable<unsigned long, long>::insert<cudaStream_t>( // NOLINT
-    const unsigned long* d_keys, // NOLINT
-    const long* d_vals, // NOLINT
+template void HashTable<unsigned long, long>::insert<cudaStream_t>(  // NOLINT
+    const unsigned long* d_keys,                                     // NOLINT
+    const long* d_vals,                                              // NOLINT
     size_t len,
     cudaStream_t stream);
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue>:: // NOLINT
+template void
+    HashTable<unsigned long, paddle::framework::FeatureValue>::  // NOLINT
     dump_to_cpu<cudaStream_t>(int devid, cudaStream_t stream);
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue>::update< // NOLINT
+template void
+HashTable<unsigned long, paddle::framework::FeatureValue>::update<  // NOLINT
     paddle::framework::FeaturePushValue,
     Optimizer<paddle::framework::FeatureValue,
               paddle::framework::FeaturePushValue>,
-    cudaStream_t>(const unsigned long* d_keys, // NOLINT
+    cudaStream_t>(const unsigned long* d_keys,  // NOLINT
                   const paddle::framework::FeaturePushValue* d_grads,
                   size_t len,
                   Optimizer<paddle::framework::FeatureValue,
                             paddle::framework::FeaturePushValue> sgd,
                   cudaStream_t stream);
 
-template void HashTable<unsigned long, paddle::framework::FeatureValue*>:: // NOLINT
+template void
+    HashTable<unsigned long, paddle::framework::FeatureValue*>::  // NOLINT
     update<Optimizer<paddle::framework::FeatureValue,
                      paddle::framework::FeaturePushValue>,
-           cudaStream_t>(const unsigned long* d_keys, // NOLINT
+           cudaStream_t>(const unsigned long* d_keys,  // NOLINT
                          const char* d_grads,
                          size_t len,
                          Optimizer<paddle::framework::FeatureValue,
