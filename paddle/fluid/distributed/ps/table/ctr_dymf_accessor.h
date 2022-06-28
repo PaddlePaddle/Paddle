@@ -57,6 +57,21 @@ class CtrDymfAccessor : public ValueAccessor {
     int EmbedxG2SumIndex() { return MfDimIndex() + 1; }
     int EmbedxWIndex() { return EmbedxG2SumIndex() + embedx_sgd_dim; }
 
+    // 根据mf_dim计算的总长度
+    int Dim(int& mf_dim) {
+      int tmp_embedx_sgd_dim = 1;
+      if (optimizer_name == "SparseAdamSGDRule")  {//adam
+        tmp_embedx_sgd_dim = mf_dim * 2 + 2;
+      } else if (optimizer_name == "SparseSharedAdamSGDRule") { //shared_adam
+        tmp_embedx_sgd_dim = 4;
+      }
+      return 7 + embed_sgd_dim + tmp_embedx_sgd_dim + mf_dim;
+    }
+
+    // 根据mf_dim计算的总byte数
+    int Size(int& mf_dim) { return (Dim(mf_dim)) * sizeof(float); }
+
+
     float& UnseenDays(float* val) { return val[UnseenDaysIndex()]; }
     float& DeltaScore(float* val) { return val[DeltaScoreIndex()]; }
     float& Show(float* val) { return val[ShowIndex()]; }
@@ -71,6 +86,7 @@ class CtrDymfAccessor : public ValueAccessor {
     int embed_sgd_dim;
     int embedx_dim;
     int embedx_sgd_dim;
+    std::string optimizer_name;
   };
 
   struct CtrDymfPushValue {

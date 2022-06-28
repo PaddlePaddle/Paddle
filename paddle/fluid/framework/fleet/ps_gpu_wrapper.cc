@@ -240,7 +240,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
            iter != total_data.begin() + end_index; iter++) {
         uint64_t cur_key = *iter;
         int shard_id = cur_key % thread_keys_shard_num_;
-        // int dim_id = slot_index_vec_[slot_idx];
+        // TODO: feasign <-> slot <-> multi_dim
         this->thread_dim_keys_[i][shard_id][0].insert(cur_key);
       }
     };
@@ -593,9 +593,10 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     // this->HeterPs_->set_accessor(feature_value_accessor_);
     int mf_dim = this->index_dim_vec_[j];
     VLOG(0) << "building table: " << i << "with mf dim: " << mf_dim
-            << " feature_value_DIM:" << feature_value_accessor_.GetAccessorInfo().dim;
+            << " feature_value_dim:" << feature_value_accessor_.common_feature_value.Dim(mf_dim)
+            << " feature_value_size:" << feature_value_accessor_.common_feature_value.Size(mf_dim);
     size_t feature_value_size = 
-        TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().size);
+        TYPEALIGN(8, feature_value_accessor_.common_feature_value.Size(mf_dim));
     auto& device_dim_keys = gpu_task->device_dim_keys_[i][j];
     auto& device_dim_ptrs = gpu_task->device_dim_ptr_[i][j];
     size_t len = device_dim_keys.size();
@@ -658,30 +659,27 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       }
 
       *(reinterpret_cast<uint64_t*>(val + feature_value_accessor_.common_feature_value.CpuPtrIndex())) = (uint64_t)(device_dim_ptrs[k]);
+
       ptr_val[cpu_table_accessor_->common_feature_value.MfDimIndex()] = float(mf_dim);
       val[feature_value_accessor_.common_feature_value.MfDimIndex()] = mf_dim;
       if (dim > cpu_table_accessor_->GetAccessorInfo().dim - 
               cpu_table_accessor_->GetAccessorInfo().mf_size / sizeof(float)) {
         val[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 
-            feature_value_accessor_.GetAccessorInfo().mf_size / sizeof(float);
-        for (int x = 0; x < feature_value_accessor_.common_feature_value.EmbedXDim(); x++) {
-          val[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + x] =
+            feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float);
+
+        for (int x = 0; x < int(feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float));
+                x++) {
+          val[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + x]  =
             ptr_val[cpu_table_accessor_->common_feature_value.EmbedxG2SumIndex() + x];
-        }
-        for (int x = 0; x < mf_dim; x++) {
-          val[feature_value_accessor_.common_feature_value.EmbedxWIndex() + x] =
-            ptr_val[cpu_table_accessor_->common_feature_value.EmbedxWIndex() + x];
         }
       } else {
         val[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 0;
-        for (int x = 0; x < feature_value_accessor_.common_feature_value.EmbedXDim(); x++) {
-          val[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + x] = 0;
-        }
-        for (int x = 0; x < mf_dim; x++) {
-          val[feature_value_accessor_.common_feature_value.EmbedxWIndex() + x] = 0;
+        for (int x = feature_value_accessor_.common_feature_value.EmbedxG2SumIndex(); 
+              x < int(feature_value_accessor_.common_feature_value.Size(mf_dim) / sizeof(float)); x++){
+          val[x] = 0;
         }
       }
-      VLOG(5) << "build "<< k << " : "<< feature_value_accessor_.ParseToString(val, feature_value_accessor_.GetAccessorInfo().dim);
+      VLOG(5) << "build "<< k << " : "<< feature_value_accessor_.ParseToString(val, feature_value_accessor_.common_feature_value.Dim(mf_dim));
     }
 #endif
 
@@ -829,10 +827,10 @@ void PSGPUWrapper::EndPass() {
     auto& device_keys = this->current_task_->device_dim_keys_[i][j];
     size_t len = device_keys.size();
     int mf_dim = this->index_dim_vec_[j];
-    VLOG(0) << "dump pool to cpu table: " << i << "with mf dim: " << mf_dim
-            << " key_len :" << len;
     size_t feature_value_size = 
-        TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().size);
+        TYPEALIGN(8, feature_value_accessor_.common_feature_value.Size(mf_dim));
+    VLOG(0) << "dump pool to cpu table: " << i << "with mf dim: " << mf_dim
+            << " key_len :" << len << " feature_value_size:" << feature_value_size;
 
     char* test_build_values = (char*)malloc(feature_value_size * len);
     cudaMemcpy(test_build_values, hbm_pool->mem(), feature_value_size * len,
@@ -880,8 +878,8 @@ void PSGPUWrapper::EndPass() {
       size_t downpour_value_size = downpour_value->size();
       if (gpu_val[feature_value_accessor_.common_feature_value.MfSizeIndex()] > 0 &&
              downpour_value_size == (cpu_table_accessor_->GetAccessorInfo().dim - 
-              cpu_table_accessor_->GetAccessorInfo().mf_size / sizeof(float))) { // cpu_accessor 
-        downpour_value->resize(cpu_table_accessor_->GetAccessorInfo().dim);
+              int(cpu_table_accessor_->GetAccessorInfo().mf_size / sizeof(float)))) { // cpu_accessor 
+        downpour_value->resize(cpu_table_accessor_->common_feature_value.Dim(mf_dim));
       }
       float* cpu_val = downpour_value->data();
 
@@ -902,16 +900,14 @@ void PSGPUWrapper::EndPass() {
       }
 
       if (gpu_val[feature_value_accessor_.common_feature_value.MfSizeIndex()] > 0) {
-        for (int x = 0; x < feature_value_accessor_.common_feature_value.EmbedXDim(); x++) {
-          cpu_val[cpu_table_accessor_->common_feature_value.EmbedxG2SumIndex() + x]  = 
+        
+        for (int x = 0; x < int(feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float));
+                  x++) {
+            cpu_val[cpu_table_accessor_->common_feature_value.EmbedxG2SumIndex() + x]  = 
               gpu_val[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + x];
         }
-        for (int x = 0; x < feature_value_accessor_.common_feature_value.EmbedWDim(); x++) {
-          cpu_val[cpu_table_accessor_->common_feature_value.EmbedxWIndex() + x] = 
-              gpu_val[feature_value_accessor_.common_feature_value.EmbedxWIndex() + x];
-        }
       }
-      VLOG(5) << "dump to cpu "<< index << " : "<< feature_value_accessor_.ParseToString(gpu_val, feature_value_accessor_.GetAccessorInfo().dim)
+      VLOG(5) << "dump to cpu "<< index << " : "<< feature_value_accessor_.ParseToString(gpu_val, feature_value_accessor_.common_feature_value.Dim(mf_dim))
             << " ===== CPU:" << cpu_table_accessor_->ParseToString(cpu_val, downpour_value->size());
 
     }
@@ -969,8 +965,8 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
       std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
   size_t feature_value_size = 0;
 
-  feature_value_size = TYPEALIGN( 8, feature_value_accessor_.GetAccessorInfo().size);
-  VLOG(5) << "PullSparse feature_value_size:" << feature_value_accessor_.GetAccessorInfo().size;
+  feature_value_size = TYPEALIGN(8, feature_value_accessor_.common_feature_value.Size(max_mf_dim_));
+  VLOG(3) << "PullSparse max_dim:" << max_mf_dim_ << " feature_value_size:" << feature_value_size;
   
 #ifdef PADDLE_WITH_CUDA
   VLOG(3) << "Begine Gpu Ps PullSparse";
@@ -1103,9 +1099,9 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
   // #ifdef PADDLE_WITH_CUDA
   VLOG(3) << "Begin GPUPS PushSparseGrad";
   size_t grad_value_size = 
-        TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().update_size);
+        TYPEALIGN(8, feature_value_accessor_.common_push_value.Size(max_mf_dim_));
   auto buf = memory::Alloc(place, total_length * grad_value_size);
-  VLOG(3) << "Push Sparse Max mf dimention: " << max_mf_dim_;
+  VLOG(3) << "Push Sparse Max mf dimention: " << max_mf_dim_ << "grad_value_size:" << grad_value_size;
   float* total_grad_values_gpu =
       reinterpret_cast<float*>(buf->ptr());
   if (platform::is_cpu_place(place)) {

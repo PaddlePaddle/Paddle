@@ -27,21 +27,6 @@ namespace framework {
 
 typedef uint64_t FeatureKey;
 
-struct GpuAccessorInfo {
-  // value维度
-  size_t dim;
-  // value各个维度的size
-  size_t size;
-  // embedx维度 
-  size_t embedx_dim;
-  // push value维度
-  size_t update_dim;
-  // push value各个维度的size
-  size_t update_size;
-  // value中mf动态长度部分总size大小, sparse下生效
-  size_t mf_size;
-};
-
 class FeatureValueAccessor {
  public:
   __host__ __device__  FeatureValueAccessor() {}
@@ -54,11 +39,8 @@ class FeatureValueAccessor {
   }
   __host__ __device__  virtual int Initialize() = 0;
 
-  __host__ __device__  virtual GpuAccessorInfo GetAccessorInfo() { return _accessor_info; }
-
  protected:
   std::unordered_map<std::string, float> _config;
-  GpuAccessorInfo _accessor_info;
 };
 
 // adagrad: embed_sgd_dim=1, embedx_sgd_dim=1,embedx_dim=n
@@ -81,9 +63,9 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
       std::vector<float> embedx_w;
        */
 
-    __host__ __device__ int Dim() { return 8 + embed_sgd_dim + embedx_sgd_dim + embedx_dim; } // has cpu_ptr(1)
+    __host__ __device__ int Dim() { return 9 + embed_sgd_dim + embedx_sgd_dim + embedx_dim; } // has cpu_ptr(2)
     __host__ __device__ int DimSize(size_t dim, int embedx_dim) { return sizeof(float); }
-    __host__ __device__ int Size() { return (Dim()-1) * sizeof(float) + sizeof(uint64_t); } // cpu_ptr:uint64
+    __host__ __device__ int Size() { return Dim() * sizeof(float); } // cpu_ptr:uint64=2float
     __host__ __device__ int EmbedDim() { return embed_sgd_dim;}
     __host__ __device__ int EmbedXDim() { return embedx_sgd_dim;}
     __host__ __device__ int EmbedWDim() { return embedx_dim;}
@@ -98,6 +80,52 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
     __host__ __device__ int MfSizeIndex() { return MfDimIndex() + 1; } // actual mf size (ex. 0)
     __host__ __device__ int EmbedxG2SumIndex() { return MfSizeIndex() + 1; }
     __host__ __device__ int EmbedxWIndex() { return EmbedxG2SumIndex() + embedx_sgd_dim; }
+    
+
+    // 根据mf_dim计算的总长度
+    __host__ __device__ int Dim(int& mf_dim) {
+      int tmp_embedx_sgd_dim = 1;
+      if (optimizer_type_ == 3) {//adam
+        tmp_embedx_sgd_dim = mf_dim * 2 + 2;
+      } else if (optimizer_type_ == 4) { //shared_adam
+        tmp_embedx_sgd_dim = 4;
+      }
+      return 9 + embed_sgd_dim + tmp_embedx_sgd_dim + mf_dim;
+    }
+
+    // 根据mf_dim 计算的总byte数
+    __host__ __device__ int Size(int& mf_dim) {
+      return Dim(mf_dim) * sizeof(float); // cpu_ptr:2float
+    }
+
+    // 根据mf_dim 计算的 mf_size byte数
+    __host__ __device__ int MFSize(int& mf_dim) {
+      int tmp_embedx_sgd_dim = 1;
+      if (optimizer_type_ == 3) { //adam
+        tmp_embedx_sgd_dim = mf_dim * 2 + 2;
+      } else if (optimizer_type_ == 4) { //shared_adam
+        tmp_embedx_sgd_dim = 4;
+      }
+      return (tmp_embedx_sgd_dim + mf_dim) * sizeof(float);
+    }
+
+    __host__ __device__ int EmbedxG2SumOffsetIndex() { return 0; }
+    __host__ __device__ int EmbedxWOffsetIndex(float* val) {
+      // has mf 
+      int tmp_embedx_sgd_dim = 1;
+      if (int(MfSize(val)) > 0) {
+        if (optimizer_type_ == 3) {//adam
+          tmp_embedx_sgd_dim = int(MfDim(val)) * 2 + 2;
+        } else if (optimizer_type_ == 4) { //shared_adam
+          tmp_embedx_sgd_dim = 4;
+        }
+        return EmbedxG2SumIndex() + tmp_embedx_sgd_dim; 
+      } else {
+        // no mf
+        return 0;
+      }
+    }
+
 
     __host__ __device__ uint64_t CpuPtr(float* val) {return *(reinterpret_cast<uint64_t*>(val)); }
     __host__ __device__ float& DeltaScore(float* val) { return val[DeltaScoreIndex()]; }
@@ -114,6 +142,7 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
     int embed_sgd_dim;
     int embedx_dim;
     int embedx_sgd_dim;
+    int optimizer_type_;
   };
 
   struct CommonPushValue {
@@ -177,28 +206,10 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
       common_feature_value.embed_sgd_dim = 1;
       common_feature_value.embedx_sgd_dim = 1;
     }
-    
+    common_feature_value.optimizer_type_ = optimizer_type;
     common_feature_value.embedx_dim = sparse_embedx_dim;
 
-    // VLOG(0) << " INTO FeatureValueAccessor::Initialize()";
-    InitAccessorInfo();
     return 0;
-  }
-
-  // 初始化AccessorInfo
-  __host__ __device__ virtual void InitAccessorInfo() {
-    _accessor_info.dim = common_feature_value.Dim();
-    _accessor_info.size = common_feature_value.Size();
-
-    int embedx_dim = (_config.find("embedx_dim") == _config.end())
-                                ? 8
-                                : int(_config["embedx_dim"]);
-    // VLOG(0) << "feature value InitAccessorInfo embedx_dim:" << embedx_dim;
-    _accessor_info.embedx_dim = embedx_dim;
-    _accessor_info.update_dim = 5 + embedx_dim;
-    _accessor_info.update_size = _accessor_info.update_dim * sizeof(float);
-    _accessor_info.mf_size =
-        (embedx_dim + common_feature_value.embedx_sgd_dim) * sizeof(float);
   }
 
   __host__ __device__ std::string ParseToString(const float* v, int param_size) {
@@ -223,13 +234,14 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
         i < common_feature_value.SlotIndex(); i++) {
       os << " " << v[i];
     }
+    int mf_dim = int(common_feature_value.MfDim(const_cast<float*>(v)));
     os << " slot: " << common_feature_value.Slot(const_cast<float*>(v)) 
-      << " mf_dim: " << common_feature_value.MfDim(const_cast<float*>(v))
+      << " mf_dim: " << mf_dim
       << " mf_size: " << common_feature_value.MfSize(const_cast<float*>(v))
       << " mf: ";
     if (param_size > common_feature_value.EmbedxG2SumIndex()) {
       for (auto i = common_feature_value.EmbedxG2SumIndex();
-          i < int(common_feature_value.Size() / sizeof(float)); ++i) {
+          i < common_feature_value.Dim(mf_dim); ++i) {
         os << " " << v[i];
       }
     }
