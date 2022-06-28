@@ -23,14 +23,16 @@ TEST(DataTransform, DataLayoutFunction) {
   in.mutable_data<double>(phi::make_ddim({2, 3, 1, 2}), place);
   in.set_layout(paddle::framework::DataLayout::kNHWC);
 
-  auto kernel_nhwc = paddle::framework::OpKernelType(
-      paddle::framework::proto::VarType::FP32, place,
-      paddle::framework::DataLayout::kNHWC,
-      paddle::framework::LibraryType::kPlain);
-  auto kernel_ncwh = paddle::framework::OpKernelType(
-      paddle::framework::proto::VarType::FP32, place,
-      paddle::framework::DataLayout::kNCHW,
-      paddle::framework::LibraryType::kPlain);
+  auto kernel_nhwc =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP32,
+                                      place,
+                                      paddle::framework::DataLayout::kNHWC,
+                                      paddle::framework::LibraryType::kPlain);
+  auto kernel_ncwh =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP32,
+                                      place,
+                                      paddle::framework::DataLayout::kNCHW,
+                                      paddle::framework::LibraryType::kPlain);
 
   paddle::framework::TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out);
 
@@ -52,8 +54,9 @@ TEST(DataTransformBf16, GetDataFromTensorDNNL) {
 
   void* in_data =
       paddle::framework::GetDataFromTensor(in, dnnl::memory::data_type::bf16);
-  EXPECT_EQ(in_data, paddle::platform::to_void_cast(
-                         in.data<paddle::platform::bfloat16>()));
+  EXPECT_EQ(
+      in_data,
+      paddle::platform::to_void_cast(in.data<paddle::platform::bfloat16>()));
 }
 
 TEST(DataTransformInt32, GetDataFromTensorDNNL) {

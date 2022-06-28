@@ -55,7 +55,8 @@ void Tree2ColUtil::construct_tree(const framework::Tensor &EdgeSet,
                                   std::vector<std::vector<int>> *tr,
                                   size_t *node_count) {
   const auto &edge_set_dims = EdgeSet.dims();
-  PADDLE_ENFORCE_EQ(edge_set_dims[1], 2,
+  PADDLE_ENFORCE_EQ(edge_set_dims[1],
+                    2,
                     platform::errors::InvalidArgument(
                         "The second dimension of the EdgeSet shall be 2, but "
                         "got %ld != 2. Please check the input value.",
@@ -88,7 +89,8 @@ class Tree2ColFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext &context,
                   const framework::Tensor &EdgeSet,
                   const framework::Tensor &node_features,
-                  framework::Tensor *patch, int max_depth) {
+                  framework::Tensor *patch,
+                  int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &feature_dims = node_features.dims();
     auto cpu_place = context.GetPlace();
@@ -140,7 +142,8 @@ class Col2TreeFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext &context,
                   const framework::Tensor &EdgeSet,
-                  const framework::Tensor &out_grad, framework::Tensor *in_grad,
+                  const framework::Tensor &out_grad,
+                  framework::Tensor *in_grad,
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &output_dims = out_grad.dims();

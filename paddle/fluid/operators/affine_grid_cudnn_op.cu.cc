@@ -30,7 +30,8 @@ class CUDNNAffineGridOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         platform::errors::InvalidArgument(
             "Only support for CUDAPlace.Please switch your context from "
             "CPUPlace to CUDAPlace or update your cudnn."));
@@ -75,7 +76,8 @@ template <typename T>
 class CUDNNAffineGridGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+                      true,
                       platform::errors::InvalidArgument(
                           "Only "
                           "support for CUDAPlace. Please switch "
@@ -119,10 +121,14 @@ class CUDNNAffineGridGradOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace plat = paddle::platform;
-REGISTER_OP_KERNEL(affine_grid, CUDNN, plat::CUDAPlace,
+REGISTER_OP_KERNEL(affine_grid,
+                   CUDNN,
+                   plat::CUDAPlace,
                    paddle::operators::CUDNNAffineGridOpKernel<float>,
                    paddle::operators::CUDNNAffineGridOpKernel<double>);
-REGISTER_OP_KERNEL(affine_grid_grad, CUDNN, plat::CUDAPlace,
+REGISTER_OP_KERNEL(affine_grid_grad,
+                   CUDNN,
+                   plat::CUDAPlace,
                    paddle::operators::CUDNNAffineGridGradOpKernel<float>,
                    paddle::operators::CUDNNAffineGridGradOpKernel<double>);
 

@@ -66,7 +66,8 @@ static inline int RoundToPowerOfTwo(int n) {
 // The number of threads cannot be assigned 1024 in some cases when the device
 // is nano or tx2 .
 template <typename CUDADeviceContext>
-inline void ChangeThreadNum(const CUDADeviceContext& context, int* num_thread,
+inline void ChangeThreadNum(const CUDADeviceContext& context,
+                            int* num_thread,
                             int alternative_num_thread = 512) {
   if (context.GetComputeCapability() == 53 ||
       context.GetComputeCapability() == 62) {
@@ -99,9 +100,11 @@ struct GpuLaunchConfig {
  * 2x~4x) than number of SMs. Hence, SM count is took into account within
  * this function to determine the right number of threads per block. */
 inline GpuLaunchConfig GetGpuLaunchConfig1D(
-    const platform::CUDADeviceContext& context, int64_t numel,
+    const platform::CUDADeviceContext& context,
+    int64_t numel,
     int vec_size = 1) {
-  PADDLE_ENFORCE_GE(numel, 0,
+  PADDLE_ENFORCE_GE(numel,
+                    0,
                     platform::errors::InvalidArgument(
                         "element quantity should be greater than or equal 0,"
                         " but received value is: %d.",
@@ -146,12 +149,14 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
 inline GpuLaunchConfig GetGpuLaunchConfig2D(
     const platform::CUDADeviceContext& context, int x_dim, int y_dim) {
   PADDLE_ENFORCE_GT(
-      x_dim, 0,
+      x_dim,
+      0,
       platform::errors::InvalidArgument("x dim number should greater than 0,"
                                         " but received value is: %d",
                                         x_dim));
   PADDLE_ENFORCE_GT(
-      y_dim, 0,
+      y_dim,
+      0,
       platform::errors::InvalidArgument("y dim number should greater than 0,"
                                         " but received value is: %d",
                                         y_dim));

@@ -30,7 +30,8 @@ namespace tensorrt {
 class TileOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert a fluid tile op to tensorrt tile layer";
 
@@ -45,7 +46,8 @@ class TileOpConverter : public OpConverter {
     nvinfer1::Dims output_stride;
     // If input_dims.nbDims + 1 < repeat_times.size() means we
     // should expand 1 on batchsize. trt doesn't support this behavior.
-    PADDLE_ENFORCE_GE(input_shape.nbDims + 1, repeat_times.size(),
+    PADDLE_ENFORCE_GE(input_shape.nbDims + 1,
+                      repeat_times.size(),
                       platform::errors::InvalidArgument(
                           "Can't change batchsize, please check repeat_times"));
     int diff = input_shape.nbDims + 1 - repeat_times.size();
@@ -53,7 +55,8 @@ class TileOpConverter : public OpConverter {
 
     // Can't expand on batchsize
     PADDLE_ENFORCE_EQ(
-        repeat_times[0], 1,
+        repeat_times[0],
+        1,
         platform::errors::InvalidArgument(
             "Can't expand on batchsize, please check repeat_times"));
     output_stride.nbDims = input_shape.nbDims;
@@ -62,8 +65,8 @@ class TileOpConverter : public OpConverter {
       output_stride.d[i] = 1;
     }
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, input_shape,
-                                       output_dim, output_stride);
+    auto* layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Slice, *input, input_shape, output_dim, output_stride);
     layer->setMode(nvinfer1::SliceMode::kWRAP);
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);

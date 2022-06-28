@@ -54,8 +54,8 @@ TEST(test_zerocopy_tensor, zerocopy_tensor) {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputTensor(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   out_data.resize(out_num);
   output_t->copy_to_cpu<float>(out_data.data());
 }

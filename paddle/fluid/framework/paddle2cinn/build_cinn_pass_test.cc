@@ -47,16 +47,17 @@ inline bool CheckNodeExisted(const std::unordered_set<Node*>& nodes,
 inline int CountNode(const std::unordered_set<Node*>& nodes,
                      const std::string& op_name) {
   return std::count_if(
-      nodes.begin(), nodes.end(),
-      [&op_name](const Node* node) { return node->Name() == op_name; });
+      nodes.begin(), nodes.end(), [&op_name](const Node* node) {
+        return node->Name() == op_name;
+      });
 }
 
 inline Node* GetNode(const std::unordered_set<Node*>& nodes,
                      const std::string& op_name) {
-  return *std::find_if(nodes.begin(), nodes.end(),
-                       [&op_name](const Node* node) {
-                         return node->Name().find(op_name) != std::string::npos;
-                       });
+  return *std::find_if(
+      nodes.begin(), nodes.end(), [&op_name](const Node* node) {
+        return node->Name().find(op_name) != std::string::npos;
+      });
 }
 
 inline bool CheckGraphIndependence(const std::unordered_set<Node*>& nodes) {

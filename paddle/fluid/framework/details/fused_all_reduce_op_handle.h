@@ -83,7 +83,8 @@ struct FusedAllReduceOpHandle : public AllReduceOpHandle {
   // Check the dtype of the input
   void GetDTypeAndNumel(
       const std::vector<std::pair<std::string, const LoDTensor *>> &g_tensor,
-      proto::VarType::Type *dtype, int64_t *total_num) const;
+      proto::VarType::Type *dtype,
+      int64_t *total_num) const;
 
   // Get gradient's name and LoDTensor
   void GetGradLoDTensor(const size_t &scope_idx,

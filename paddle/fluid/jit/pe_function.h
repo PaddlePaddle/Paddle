@@ -15,42 +15,54 @@
 #pragma once
 
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor_cache.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
+
 #include "paddle/fluid/jit/base_function.h"
+#include "paddle/fluid/jit/function_schema.h"
+#include "paddle/fluid/jit/function_utils.h"
 
 namespace paddle {
 namespace jit {
 
 class PEFunction : public BaseFunction {
  public:
-  PEFunction(const framework::ProgramDesc &program_desc,
-             const std::vector<std::string> param_names,
-             const VariableNameMap &params_dict,
+  PEFunction(const std::shared_ptr<FunctionInfo> &info,
+             const Name2VariableMap &params_dict,
              const phi::Place &place)
-      : BaseFunction(program_desc, param_names, params_dict, place) {}
+      : info_(info), place_(place) {
+    utils::ShareParamsIntoScope(info_->ParamNames(), params_dict, &scope_);
+    VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
+  }
 
-  ~PEFunction() {}
+  ~PEFunction() noexcept {}
 
   std::vector<Variable> operator()(const std::vector<Variable> &inputs) {
     // bool is_test = true;
     std::string prog_string;
     std::hash<std::string> string_hash;
-    program_desc_.Proto()->SerializePartialToString(&prog_string);
+    auto &program_desc = info_->ProgramDesc();
+    const_cast<framework::ProgramDesc *>(&program_desc)
+        ->Proto()
+        ->SerializePartialToString(&prog_string);
+    // program_desc.Proto()->SerializePartialToString(&prog_string);
     int64_t program_id = static_cast<int64_t>(string_hash(prog_string));
-    const framework::BlockDesc &global_block = program_desc_.Block(0);
+    const framework::BlockDesc &global_block = program_desc.Block(0);
     int64_t start_op_index = 0;
     int64_t end_op_index = static_cast<int64_t>(global_block.OpSize());
 
-    ShareInputsIntoScope(inputs);
-    std::vector<std::string> input_var_names = schema_.GetInputArgNames();
-    std::vector<std::string> output_var_names = schema_.GetOutputArgNames();
+    utils::ShareInputsIntoScope(info_->InputArgNames(), inputs, &scope_);
+    std::vector<std::string> input_var_names = info_->InputArgNames();
+    std::vector<std::string> output_var_names = info_->OutputArgNames();
     std::vector<std::string> dout_var_names;
     if (end_op_index > start_op_index) {
-      // TODO(dev): support other devices
-      auto cache_info = framework::GetExecutorInfoFromCache(program_desc_,
+      auto cache_info = framework::GetExecutorInfoFromCache(program_desc,
                                                             place_,
                                                             start_op_index,
                                                             end_op_index,
@@ -70,7 +82,7 @@ class PEFunction : public BaseFunction {
                                       dout_var_names.begin(),
                                       dout_var_names.end());
         framework::details::ParseSafeEagerDeletionSkipVars(
-            program_desc_,
+            program_desc,
             end_op_index,
             output_var_names,
             &skip_eager_delete_vars);
@@ -79,9 +91,14 @@ class PEFunction : public BaseFunction {
     }
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
     std::vector<Variable> res;
-    FetchOutput(&res);
+    utils::FetchVarsByNames(info_->OutputArgNames(), scope_, &res);
     return res;
   }
+
+ private:
+  std::shared_ptr<FunctionInfo> info_;
+  framework::Scope scope_;
+  phi::Place place_;
 };
 
 }  // namespace jit

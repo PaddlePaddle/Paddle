@@ -71,7 +71,8 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
 
   if (platform::is_cpu_place(place)) {
     VLOG(3) << "Loading data for CPU.";
-    std::memcpy(static_cast<void *>(input_tensor_ptr), input_data.data.data(),
+    std::memcpy(static_cast<void *>(input_tensor_ptr),
+                input_data.data.data(),
                 input_data.data.length());
   } else if (platform::is_gpu_place(place)) {
     VLOG(3) << "Loading data for GPU.";
@@ -80,9 +81,12 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     auto *dev_ctx =
         dynamic_cast<const platform::CUDADeviceContext *>(pool.Get(place));
     auto gpu_place = place;
-    memory::Copy(gpu_place, static_cast<void *>(input_tensor_ptr),
-                 platform::CPUPlace(), input_data.data.data(),
-                 input_data.data.length(), dev_ctx->stream());
+    memory::Copy(gpu_place,
+                 static_cast<void *>(input_tensor_ptr),
+                 platform::CPUPlace(),
+                 input_data.data.data(),
+                 input_data.data.length(),
+                 dev_ctx->stream());
 #else
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Paddle wasn't compiled with CUDA, but place is GPU."));
@@ -139,15 +143,17 @@ class DistModelTimer {
 bool DistModel::Init() {
   carrier_id_ = "inference";
   bool init_method = (!config_.model_dir.empty() || config_.program_desc);
-  PADDLE_ENFORCE_EQ(init_method, true,
+  PADDLE_ENFORCE_EQ(init_method,
+                    true,
                     platform::errors::InvalidArgument(
                         "One of model dir or program desc must be provided to "
                         "dist model inference."));
   if (config_.program_desc) {
     PADDLE_ENFORCE_NOT_NULL(
-        config_.scope, platform::errors::InvalidArgument(
-                           "Scope must be provided to dist model inference if "
-                           "program desc has been provided."));
+        config_.scope,
+        platform::errors::InvalidArgument(
+            "Scope must be provided to dist model inference if "
+            "program desc has been provided."));
   }
   if (!PreparePlace()) {
     return false;
@@ -217,8 +223,12 @@ bool DistModel::CommInit() {
       }
       peer_endpoints.emplace_back(config_.trainer_endpoints[rank]);
     }
-    InsertCommOp(var_name_base + std::to_string(order), ranks_in_group,
-                 rank_in_group, peer_endpoints, comm_init_block, ring_id);
+    InsertCommOp(var_name_base + std::to_string(order),
+                 ranks_in_group,
+                 rank_in_group,
+                 peer_endpoints,
+                 comm_init_block,
+                 ring_id);
     order += 1;
   }
   framework::NaiveExecutor e(place_);
@@ -229,9 +239,12 @@ bool DistModel::CommInit() {
   return true;
 }
 
-void DistModel::InsertCommOp(std::string tmp_var_name, int nranks, int rank,
+void DistModel::InsertCommOp(std::string tmp_var_name,
+                             int nranks,
+                             int rank,
                              const std::vector<std::string> &peer_endpoints,
-                             framework::BlockDesc *block, int ring_id) {
+                             framework::BlockDesc *block,
+                             int ring_id) {
   /*
    * tmp_var_name: the var name for var comm_id
    * nranks: number of total ranks
@@ -297,7 +310,8 @@ bool DistModel::PrepareProgram() {
 bool DistModel::LoadProgram() {
   VLOG(3) << "Loading program from " << config_.model_dir;
   PADDLE_ENFORCE_NE(
-      config_.model_dir, "",
+      config_.model_dir,
+      "",
       platform::errors::InvalidArgument("Model dir must be provided."));
   std::string model_path = config_.model_dir + ".pdmodel";
   framework::proto::ProgramDesc program_proto;
@@ -305,7 +319,8 @@ bool DistModel::LoadProgram() {
   // Read binary
   std::ifstream fin(model_path, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fin.is_open()), true,
+      static_cast<bool>(fin.is_open()),
+      true,
       platform::errors::NotFound(
           "Cannot open file %s, please confirm whether the file is normal.",
           model_path));
@@ -387,8 +402,13 @@ bool DistModel::PrepareFleetExe() {
     id_to_rank.insert({i, i});
   }
   fleet_exe.reset(new FleetExecutor(executor_desc_));
-  fleet_exe->Init(carrier_id_, *(program_.get()), scope_.get(), place_, 1,
-                  {task_node_.get()}, id_to_rank);
+  fleet_exe->Init(carrier_id_,
+                  *(program_.get()),
+                  scope_.get(),
+                  place_,
+                  1,
+                  {task_node_.get()},
+                  id_to_rank);
   return true;
 }
 
@@ -490,9 +510,11 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
     int idx = BOOST_GET_CONST(int, fetches_[i]->GetAttr("col"));
     VLOG(3) << "Fetching data for [" << idx_to_fetches_[idx] << "]";
     PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(idx), i,
+        static_cast<size_t>(idx),
+        i,
         platform::errors::InvalidArgument(
-            "Fetch op's col attr(%d) should be equal to the index(%d)", idx,
+            "Fetch op's col attr(%d) should be equal to the index(%d)",
+            idx,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);

@@ -30,8 +30,10 @@ namespace framework {
 namespace details {
 
 ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
-    ExecutionStrategy strategy, std::vector<Scope *> local_scopes,
-    std::vector<Scope *> local_exec_scopes, std::vector<VariableInfo> var_infos,
+    ExecutionStrategy strategy,
+    std::vector<Scope *> local_scopes,
+    std::vector<Scope *> local_exec_scopes,
+    std::vector<VariableInfo> var_infos,
     std::vector<platform::Place> places,
     std::unique_ptr<SSAGraphExecutor> &&underlying_executor)
     : strategy_(std::move(strategy)),
@@ -42,12 +44,14 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
       places_(std::move(places)),
       scope_monitor_(places_, local_exec_scopes_) {
   PADDLE_ENFORCE_EQ(
-      local_scopes_.size(), local_exec_scopes_.size(),
+      local_scopes_.size(),
+      local_exec_scopes_.size(),
       platform::errors::InvalidArgument(
           "The number of local scopes and the number of local execution scopes "
           "should be equal, but got number of local scopes is %d and "
           "number of local execution scopes is %d.",
-          local_scopes_.size(), local_exec_scopes_.size()));
+          local_scopes_.size(),
+          local_exec_scopes_.size()));
   PrepareLocalExeScopes();
 }
 
@@ -75,8 +79,8 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
 #endif
 
   if (drop_scope_counter_ == 0) {
-    platform::RecordEvent e("InitLocalVars",
-                            platform::TracerEventType::UserDefined, 2);
+    platform::RecordEvent e(
+        "InitLocalVars", platform::TracerEventType::UserDefined, 2);
     InitVariables();
   }
 

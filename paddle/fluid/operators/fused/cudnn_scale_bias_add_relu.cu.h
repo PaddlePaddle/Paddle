@@ -37,27 +37,34 @@ struct ScaleBiasAddReluArgs {
     format = CUDNN_TENSOR_NHWC;
   }
 
-  void Set(const std::string &act_type, const std::vector<int> &data_shape,
+  void Set(const std::string &act_type,
+           const std::vector<int> &data_shape,
            const std::vector<int> &param_shape,
            const std::vector<int> &bitmask_shape) {
     PADDLE_ENFORCE_EQ(
-        data_shape.size(), 4U,
+        data_shape.size(),
+        4U,
         platform::errors::InvalidArgument(
             "The size of data_shape is expected to 4. But received "
             "data_shape's size is %d, data_shape is [%s].",
-            data_shape.size(), phi::make_ddim(data_shape)));
+            data_shape.size(),
+            phi::make_ddim(data_shape)));
     PADDLE_ENFORCE_EQ(
-        param_shape.size(), 4U,
+        param_shape.size(),
+        4U,
         platform::errors::InvalidArgument(
             "The size of param_shape is expected to 4. But received "
             "param_shape's size is %d, param_shape is [%s].",
-            param_shape.size(), phi::make_ddim(param_shape)));
+            param_shape.size(),
+            phi::make_ddim(param_shape)));
     PADDLE_ENFORCE_EQ(
-        bitmask_shape.size(), 3U,
+        bitmask_shape.size(),
+        3U,
         platform::errors::InvalidArgument(
             "The size of bitmask_shape is expected to 3. But received "
             "bitmask_shape's size is %d, bitmask_shape is [%s].",
-            bitmask_shape.size(), phi::make_ddim(bitmask_shape)));
+            bitmask_shape.size(),
+            phi::make_ddim(bitmask_shape)));
 
     in_desc.set(data_shape, format, dtype);
     out_desc.set(data_shape, format, dtype);
@@ -68,7 +75,8 @@ struct ScaleBiasAddReluArgs {
     cudnnActivationMode_t mode = CUDNN_ACTIVATION_IDENTITY;
     if (act_type != "") {
       PADDLE_ENFORCE_EQ(
-          act_type, "relu",
+          act_type,
+          "relu",
           platform::errors::InvalidArgument(
               "Only relu activation supported in normalized convolution."));
       mode = CUDNN_ACTIVATION_RELU;
@@ -93,8 +101,10 @@ template <typename T>
 class CudnnScaleBiasAddRelu {
  public:
   CudnnScaleBiasAddRelu(const platform::CUDADeviceContext &ctx,
-                        const std::string &act_type, bool fuse_add,
-                        bool has_shortcut, const std::vector<int> &data_shape,
+                        const std::string &act_type,
+                        bool fuse_add,
+                        bool has_shortcut,
+                        const std::vector<int> &data_shape,
                         const std::vector<int> &param_shape,
                         const std::vector<int> &bitmask_shape)
       : fwd_op_(CUDNN_FUSED_SCALE_BIAS_ADD_ACTIVATION_GEN_BITMASK),
@@ -106,9 +116,14 @@ class CudnnScaleBiasAddRelu {
 
   ~CudnnScaleBiasAddRelu() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx, const Tensor &x,
-               const Tensor &x_scale, const Tensor &x_bias, const Tensor *z,
-               const Tensor *z_scale, const Tensor *z_bias, Tensor *out,
+  void Forward(const platform::CUDADeviceContext &ctx,
+               const Tensor &x,
+               const Tensor &x_scale,
+               const Tensor &x_bias,
+               const Tensor *z,
+               const Tensor *z_scale,
+               const Tensor *z_bias,
+               Tensor *out,
                Tensor *bitmask) {
     ForwardInit(ctx);
     auto handle = ctx.cudnn_handle();
@@ -156,11 +171,19 @@ class CudnnScaleBiasAddRelu {
         fwd_workspace_byte_);
   }
 
-  void Backward(const platform::CUDADeviceContext &ctx, const Tensor &dy,
-                const Tensor &x, const Tensor &scale, const Tensor &bias,
-                const Tensor &saved_mean, const Tensor &saved_invstd,
-                const Tensor *bitmask, Tensor *dx, Tensor *dz, Tensor *dscale,
-                Tensor *dbias, double eps) {
+  void Backward(const platform::CUDADeviceContext &ctx,
+                const Tensor &dy,
+                const Tensor &x,
+                const Tensor &scale,
+                const Tensor &bias,
+                const Tensor &saved_mean,
+                const Tensor &saved_invstd,
+                const Tensor *bitmask,
+                Tensor *dx,
+                Tensor *dz,
+                Tensor *dscale,
+                Tensor *dbias,
+                double eps) {
     BackwardInit(ctx);
     auto handle = ctx.cudnn_handle();
     auto place = ctx.GetPlace();
@@ -216,16 +239,17 @@ class CudnnScaleBiasAddRelu {
  private:
   void ForwardInit(const platform::CUDADeviceContext &ctx) {
     // Set constant_param
-    fwd_op_.SetOpConstParamAttr(
-        {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
-         CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER, CUDNN_PARAM_YDATA_PLACEHOLDER,
-         CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
-        CUDNN_PTR_16B_ALIGNED);
+    fwd_op_.SetOpConstParamAttr({CUDNN_PARAM_XDATA_PLACEHOLDER,
+                                 CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
+                                 CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER,
+                                 CUDNN_PARAM_YDATA_PLACEHOLDER,
+                                 CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
+                                CUDNN_PTR_16B_ALIGNED);
     if (has_shortcut_) {
-      fwd_op_.SetOpConstParamAttr(
-          {CUDNN_PARAM_ZDATA_PLACEHOLDER, CUDNN_PARAM_BN_Z_EQSCALE_PLACEHOLDER,
-           CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER},
-          CUDNN_PTR_16B_ALIGNED);
+      fwd_op_.SetOpConstParamAttr({CUDNN_PARAM_ZDATA_PLACEHOLDER,
+                                   CUDNN_PARAM_BN_Z_EQSCALE_PLACEHOLDER,
+                                   CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER},
+                                  CUDNN_PTR_16B_ALIGNED);
     } else if (fuse_add_) {
       fwd_op_.SetOpConstParamAttr(CUDNN_PARAM_ZDATA_PLACEHOLDER,
                                   CUDNN_PTR_16B_ALIGNED);
@@ -263,14 +287,17 @@ class CudnnScaleBiasAddRelu {
 
   void BackwardInit(const platform::CUDADeviceContext &ctx) {
     // Set constant_param
-    bwd_op_.SetOpConstParamAttr(
-        {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_DYDATA_PLACEHOLDER,
-         CUDNN_PARAM_DXDATA_PLACEHOLDER, CUDNN_PARAM_BN_SCALE_PLACEHOLDER,
-         CUDNN_PARAM_BN_BIAS_PLACEHOLDER, CUDNN_PARAM_BN_SAVED_MEAN_PLACEHOLDER,
-         CUDNN_PARAM_BN_SAVED_INVSTD_PLACEHOLDER,
-         CUDNN_PARAM_BN_DSCALE_PLACEHOLDER, CUDNN_PARAM_BN_DBIAS_PLACEHOLDER,
-         CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
-        CUDNN_PTR_16B_ALIGNED);
+    bwd_op_.SetOpConstParamAttr({CUDNN_PARAM_XDATA_PLACEHOLDER,
+                                 CUDNN_PARAM_DYDATA_PLACEHOLDER,
+                                 CUDNN_PARAM_DXDATA_PLACEHOLDER,
+                                 CUDNN_PARAM_BN_SCALE_PLACEHOLDER,
+                                 CUDNN_PARAM_BN_BIAS_PLACEHOLDER,
+                                 CUDNN_PARAM_BN_SAVED_MEAN_PLACEHOLDER,
+                                 CUDNN_PARAM_BN_SAVED_INVSTD_PLACEHOLDER,
+                                 CUDNN_PARAM_BN_DSCALE_PLACEHOLDER,
+                                 CUDNN_PARAM_BN_DBIAS_PLACEHOLDER,
+                                 CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
+                                CUDNN_PTR_16B_ALIGNED);
     if (has_shortcut_ || fuse_add_) {
       bwd_op_.SetOpConstParamAttr(CUDNN_PARAM_DZDATA_PLACEHOLDER,
                                   CUDNN_PTR_16B_ALIGNED);

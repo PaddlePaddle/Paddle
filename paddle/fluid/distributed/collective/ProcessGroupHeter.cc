@@ -32,8 +32,8 @@ int ProcessGroupHeter::recv_count = 0;
 
 std::shared_ptr<ProcessGroupHeter::HeterTask> ProcessGroupHeter::CreateTask(
     int rank, CommType comm_type, const std::vector<phi::DenseTensor>& inputs) {
-  return std::make_shared<ProcessGroupHeter::HeterTask>(rank, comm_type,
-                                                        inputs);
+  return std::make_shared<ProcessGroupHeter::HeterTask>(
+      rank, comm_type, inputs);
 }
 
 ProcessGroupHeter::HeterTask::HeterTask(
@@ -49,11 +49,19 @@ bool ProcessGroupHeter::HeterTask::Wait(std::chrono::milliseconds timeout) {
   return true;
 }
 
-ProcessGroupHeter::ProcessGroupHeter(
-    const std::shared_ptr<Store>& store, int rank, int size,
-    const platform::Place& place, int gid, int local_rank, int local_size,
-    int gloo_rank, int gloo_size, bool with_switch, std::string switch_endpoint,
-    int src_rank, int dst_rank)
+ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
+                                     int rank,
+                                     int size,
+                                     const platform::Place& place,
+                                     int gid,
+                                     int local_rank,
+                                     int local_size,
+                                     int gloo_rank,
+                                     int gloo_size,
+                                     bool with_switch,
+                                     std::string switch_endpoint,
+                                     int src_rank,
+                                     int dst_rank)
     : ProcessGroup(rank, size, place, gid),
       store_(store),
       local_rank_(local_rank),
@@ -65,15 +73,15 @@ ProcessGroupHeter::ProcessGroupHeter(
       src_rank_(src_rank),
       dst_rank_(dst_rank) {
   return;
-#if defined(PADDLE_WITH_NCCL)
-  inner_pg_ = std::make_shared<ProcessGroupNCCL>(store, local_rank, local_size,
-                                                 place_, IGNORE_ID);
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  inner_pg_ = std::make_shared<ProcessGroupNCCL>(
+      store, local_rank, local_size, place_, IGNORE_ID);
 #elif defined(PADDLE_WITH_ASCEND_CL)
-  inner_pg_ = std::make_shared<ProcessGroupHCCL>(store, local_rank, local_size,
-                                                 place_, IGNORE_ID);
+  inner_pg_ = std::make_shared<ProcessGroupHCCL>(
+      store, local_rank, local_size, place_, IGNORE_ID);
 #else
-  PADDLE_THROW(platform::errors::Fatal(
-      "ProcessGroupHeter only supports NCCL and HCCL now.");
+  PADDLE_THROW(platform::errors::Unavailable(
+      "ProcessGroupHeter only supports NCCL, RCCL and HCCL now."));
 #endif
   if (local_rank_ == 0 && !with_switch_) {
     auto opts = ProcessGroupGloo::GlooOptions::create();
@@ -94,13 +102,16 @@ static void _do_add(T* dst, T* src, size_t size) {
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::AllReduce(
     std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors, const AllreduceOptions& opts) {
-#if defined(PADDLE_WITH_NCCL)
+    std::vector<phi::DenseTensor>& out_tensors,
+    const AllreduceOptions& opts) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(in_tensors), true,
+      CheckTensorsInCudaPlace(in_tensors),
+      true,
       platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
   PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(out_tensors), true,
+      CheckTensorsInCudaPlace(out_tensors),
+      true,
       platform::errors::InvalidArgument("All outputs should be in CudaPlace."));
 #endif
 
@@ -128,10 +139,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::AllReduce(
         std::vector<int64_t> send_size;
         send_size.push_back(dense_cpu_tensor.numel());
         int ret = client_->Send(
-            gid_, {dense_cpu_tensor.name()}, send_size, dense_cpu_tensor.data(),
+            gid_,
+            {dense_cpu_tensor.name()},
+            send_size,
+            dense_cpu_tensor.data(),
             dense_cpu_tensor.numel() *
                 framework::DataTypeSize(dense_cpu_tensor.dtype()));
-        PADDLE_ENFORCE_EQ(ret, 0,
+        PADDLE_ENFORCE_EQ(ret,
+                          0,
                           platform::errors::PreconditionNotMet(
                               "Send to the switch module error."));
         phi::DenseTensor cpu_tensor2;
@@ -139,11 +154,15 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::AllReduce(
             std::make_unique<paddle::experimental::DefaultAllocator>(
                 paddle::platform::CPUPlace())
                 .get(),
-            dense_cpu_tensor.dtype(), dense_cpu_tensor.numel());
+            dense_cpu_tensor.dtype(),
+            dense_cpu_tensor.numel());
         ret = client_->Recv(
-            gid_, {dense_cpu_tensor.name()}, cpu_tensor2.data(),
+            gid_,
+            {dense_cpu_tensor.name()},
+            cpu_tensor2.data(),
             cpu_tensor2.numel() * framework::DataTypeSize(cpu_tensor2.dtype()));
-        PADDLE_ENFORCE_EQ(ret, 0,
+        PADDLE_ENFORCE_EQ(ret,
+                          0,
                           platform::errors::PreconditionNotMet(
                               "Recv from the switch module error."));
 
@@ -192,13 +211,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::AllReduce(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
     std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors, const BroadcastOptions& opts) {
-#if defined(PADDLE_WITH_NCCL)
+    std::vector<phi::DenseTensor>& out_tensors,
+    const BroadcastOptions& opts) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(in_tensors), true,
+      CheckTensorsInCudaPlace(in_tensors),
+      true,
       platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
   PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(out_tensors), true,
+      CheckTensorsInCudaPlace(out_tensors),
+      true,
       platform::errors::InvalidArgument("All outputs should be in CudaPlace."));
 #endif
 
@@ -226,19 +248,25 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
           std::vector<int64_t> send_size;
           send_size.push_back(dense_cpu_tensor.numel());
           int ret = client_->Send(
-              gid_, {dense_cpu_tensor.name()}, send_size,
+              gid_,
+              {dense_cpu_tensor.name()},
+              send_size,
               dense_cpu_tensor.data(),
               dense_cpu_tensor.numel() *
                   framework::DataTypeSize(dense_cpu_tensor.dtype()));
-          PADDLE_ENFORCE_EQ(ret, 0,
+          PADDLE_ENFORCE_EQ(ret,
+                            0,
                             platform::errors::PreconditionNotMet(
                                 "Send to the switch module error."));
         } else {
           int ret = client_->Recv(
-              gid_, {dense_cpu_tensor.name()}, dense_cpu_tensor.data(),
+              gid_,
+              {dense_cpu_tensor.name()},
+              dense_cpu_tensor.data(),
               dense_cpu_tensor.numel() *
                   framework::DataTypeSize(dense_cpu_tensor.dtype()));
-          PADDLE_ENFORCE_EQ(ret, 0,
+          PADDLE_ENFORCE_EQ(ret,
+                            0,
                             platform::errors::PreconditionNotMet(
                                 "Receive from the switch module error."));
         }
@@ -261,7 +289,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
     std::vector<phi::DenseTensor>& in_tensors, int peer) {
   PADDLE_ENFORCE_EQ(
-      in_tensors.size(), 1,
+      in_tensors.size(),
+      1,
       platform::errors::PreconditionNotMet(
           "For each send operation, there can only be one tensor to send."));
   // Copy Tensor to cpu
@@ -269,7 +298,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
   phi::DenseTensor cpu_tensor;
   auto& gpu_tensor = in_tensors[0];
   framework::TensorCopySync(gpu_tensor, platform::CPUPlace(), &cpu_tensor);
-  PADDLE_ENFORCE_EQ(with_switch_, true,
+  PADDLE_ENFORCE_EQ(with_switch_,
+                    true,
                     platform::errors::PreconditionNotMet(
                         "Gloo does not support the send operation."));
   auto end = std::chrono::high_resolution_clock::now();
@@ -289,10 +319,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
   std::string tensor_name = std::to_string(gid_) + "_id_" + std::to_string(id) +
                             std::string("_") + std::to_string(send_count++);
   VLOG(2) << "tensor_name:" << tensor_name;
-  int ret = client_->Send(gid_, {tensor_name}, send_size, cpu_tensor.data(),
-                          tensor_size);
+  int ret = client_->Send(
+      gid_, {tensor_name}, send_size, cpu_tensor.data(), tensor_size);
   PADDLE_ENFORCE_EQ(
-      ret, 0,
+      ret,
+      0,
       platform::errors::PreconditionNotMet("Send to the switch module error."));
   return CreateTask(rank_, CommType::SEND, in_tensors);
 }
@@ -300,7 +331,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
     std::vector<phi::DenseTensor>& out_tensors, int peer) {
   PADDLE_ENFORCE_EQ(
-      out_tensors.size(), 1,
+      out_tensors.size(),
+      1,
       platform::errors::PreconditionNotMet(
           "For each rece operation, there can only be one tensor to receive."));
 
@@ -311,7 +343,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
   cpu_tensor.set_layout(gpu_tensor.layout());
   cpu_tensor.mutable_data(platform::CPUPlace(), gpu_tensor.dtype());
 
-  PADDLE_ENFORCE_EQ(with_switch_, true,
+  PADDLE_ENFORCE_EQ(with_switch_,
+                    true,
                     platform::errors::PreconditionNotMet(
                         "Gloo does not support the send operation."));
   // recv from switch
@@ -323,9 +356,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
   VLOG(2) << "tensor_name: " << tensor_name;
   auto start = std::chrono::high_resolution_clock::now();
   int ret = client_->Recv(
-      gid_, {tensor_name}, cpu_tensor.data(),
+      gid_,
+      {tensor_name},
+      cpu_tensor.data(),
       cpu_tensor.numel() * framework::DataTypeSize(cpu_tensor.dtype()));
-  PADDLE_ENFORCE_EQ(ret, 0,
+  PADDLE_ENFORCE_EQ(ret,
+                    0,
                     platform::errors::PreconditionNotMet(
                         "receive to the switch module error."));
   auto end = std::chrono::high_resolution_clock::now();
