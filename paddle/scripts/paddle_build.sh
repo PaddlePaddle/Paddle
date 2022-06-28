@@ -201,6 +201,7 @@ function cmake_base() {
     if [ "$SYSTEM" == "Darwin" ]; then
         WITH_DISTRIBUTE="OFF"
         WITH_AVX=${WITH_AVX:-ON}
+        WITH_ARM=${WITH_ARM:-OFF}
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
     else
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
@@ -563,6 +564,15 @@ function combine_avx_noavx_build() {
     NOAVX_CORE_FILE=`find ${PADDLE_ROOT}/build.noavx/python/paddle/fluid/ -name "core_noavx.*"`
     WITH_AVX=ON
 
+    cmake_base ${PYTHON_ABI:-""}
+    build_base
+}
+
+function mac_m1_arm_build() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    WITH_AVX=OFF
+    WITH_ARM=ON
     cmake_base ${PYTHON_ABI:-""}
     build_base
 }
@@ -3077,6 +3087,10 @@ function main() {
         ;;
       combine_avx_noavx)
         combine_avx_noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
+        ;;
+      mac_m1_arm)
+        mac_m1_arm_build
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       combine_avx_noavx_build_and_test)
