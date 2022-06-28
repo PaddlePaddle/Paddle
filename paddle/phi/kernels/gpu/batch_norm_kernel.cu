@@ -138,6 +138,62 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
   }
 }
 
+template <typename T>
+__device__ __forceinline__ void merge_block_vertical(
+    BatchNormParamType<T> x_sum,
+    BatchNormParamType<T> x_square_sum,
+    BatchNormParamType<T> *smem_sum,
+    BatchNormParamType<T> *smem_square_sum,
+    BatchNormParamType<T> *x_sum_out,
+    BatchNormParamType<T> *x_square_sum_out) {
+  int tid = threadIdx.x + threadIdx.y * blockDim.x;
+#pragma unroll
+  for (int offset = blockDim.y / 2; offset > 0; offset >>= 1) {
+    if (threadIdx.y < offset * 2) {
+      smem_sum[tid] = x_sum;
+      smem_square_sum[tid] = x_square_sum;
+    }
+    __syncthreads();
+    if (threadIdx.y < offset) {
+      int pair_tid = tid + offset * blockDim.x;
+      x_sum += smem_sum[pair_tid];
+      x_square_sum += smem_square_sum[pair_tid];
+    }
+  }
+  if (threadIdx.y == 0) {
+    *x_sum_out = x_sum;
+    *x_square_sum_out = x_square_sum;
+  }
+}
+
+template <typename T>
+__device__ __forceinline__ void merge_block_horizonal(
+    BatchNormParamType<T> x_sum,
+    BatchNormParamType<T> x_square_sum,
+    BatchNormParamType<T> *smem_sum,
+    BatchNormParamType<T> *smem_square_sum,
+    BatchNormParamType<T> *x_sum_out,
+    BatchNormParamType<T> *x_square_sum_out) {
+  int tid = threadIdx.x + threadIdx.y * blockDim.x;
+#pragma unroll
+  for (int offset = blockDim.x / 2; offset > 0; offset >>= 1) {
+    if (threadIdx.x < offset * 2) {
+      smem_sum[tid] = x_sum;
+      smem_square_sum[tid] = x_square_sum;
+    }
+    __syncthreads();
+    if (threadIdx.x < offset) {
+      int pair_tid = tid + offset;
+      x_sum += smem_sum[pair_tid];
+      x_square_sum += smem_square_sum[pair_tid];
+    }
+  }
+  if (threadIdx.x == 0) {
+    *x_sum_out = x_sum;
+    *x_square_sum_out = x_square_sum;
+  }
+}
+
 template <typename T, int BlockDim>
 static __global__ void BNForwardTraining2DChannelLastCompStat(
     const T *x,
@@ -180,20 +236,8 @@ static __global__ void BNForwardTraining2DChannelLastCompStat(
     }
 
     // vertical block sum
-    int tid = threadIdx.x + threadIdx.y * blockDim.x;
-#pragma unroll
-    for (int offset = blockDim.y / 2; offset > 0; offset >>= 1) {
-      if (threadIdx.y < offset * 2) {
-        smem_sum[tid] = x_sum;
-        smem_square_sum[tid] = x_square_sum;
-      }
-      __syncthreads();
-      if (threadIdx.y < offset && threadIdx.y + offset < blockDim.y) {
-        int pair_tid = tid + offset * blockDim.x;
-        x_sum += smem_sum[pair_tid];
-        x_square_sum += smem_square_sum[pair_tid];
-      }
-    }
+    merge_block_vertical(
+        x_sum, x_square_sum, smem_sum, smem_square_sum, &x_sum, &x_square_sum);
 
     if (gridDim.y > 1) {
       volatile BatchNormParamType<T> *staging_sum = block_data_ptr;
@@ -228,19 +272,12 @@ static __global__ void BNForwardTraining2DChannelLastCompStat(
         }
 
         // vertical block sum
-        int tid = threadIdx.x + threadIdx.y * blockDim.x;
-        for (int offset = blockDim.y / 2; offset > 0; offset >>= 1) {
-          if (threadIdx.y < offset * 2) {
-            smem_sum[tid] = x_sum;
-            smem_square_sum[tid] = x_square_sum;
-          }
-          __syncthreads();
-          if (threadIdx.y < offset && threadIdx.y + offset < blockDim.y) {
-            int pair_tid = tid + offset * blockDim.x;
-            x_sum += smem_sum[pair_tid];
-            x_square_sum += smem_square_sum[pair_tid];
-          }
-        }
+        merge_block_vertical(x_sum,
+                             x_square_sum,
+                             smem_sum,
+                             smem_square_sum,
+                             &x_sum,
+                             &x_square_sum);
 
         // final compute
         if (threadIdx.y == 0) {
@@ -363,19 +400,8 @@ static __global__ void BNForwardTraining2DCompStat(
     }
 
     // horizonal block sum
-    int tid = threadIdx.x + threadIdx.y * blockDim.x;
-    for (int offset = blockDim.x / 2; offset > 0; offset >>= 1) {
-      if (threadIdx.x < offset * 2) {
-        smem_sum[tid] = x_sum;
-        smem_square_sum[tid] = x_square_sum;
-      }
-      __syncthreads();
-      if (threadIdx.x < offset && threadIdx.x + offset < blockDim.x) {
-        int pair_tid = tid + offset;
-        x_sum += smem_sum[pair_tid];
-        x_square_sum += smem_square_sum[pair_tid];
-      }
-    }
+    merge_block_horizonal(
+        x_sum, x_square_sum, smem_sum, smem_square_sum, &x_sum, &x_square_sum);
 
     if (gridDim.x > 1) {
       volatile BatchNormParamType<T> *staging_sum = block_data_ptr;
@@ -409,20 +435,13 @@ static __global__ void BNForwardTraining2DCompStat(
           x_square_sum += staging_square_sum[i + x * C];
         }
 
-        // vertical block sum
-        int tid = threadIdx.x + threadIdx.y * blockDim.x;
-        for (int offset = blockDim.x / 2; offset > 0; offset >>= 1) {
-          if (threadIdx.x < offset * 2) {
-            smem_sum[tid] = x_sum;
-            smem_square_sum[tid] = x_square_sum;
-          }
-          __syncthreads();
-          if (threadIdx.x < offset && threadIdx.x + offset < blockDim.y) {
-            int pair_tid = tid + offset;
-            x_sum += smem_sum[pair_tid];
-            x_square_sum += smem_square_sum[pair_tid];
-          }
-        }
+        // horizonal block sum
+        merge_block_horizonal(x_sum,
+                              x_square_sum,
+                              smem_sum,
+                              smem_square_sum,
+                              &x_sum,
+                              &x_square_sum);
 
         // final compute
         if (threadIdx.x == 0) {
