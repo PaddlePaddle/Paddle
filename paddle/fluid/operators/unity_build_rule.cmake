@@ -61,6 +61,7 @@ register_unity_group(cc
     cudnn_lstm_op.cc
     cumsum_op.cc
     cvm_op.cc
+    cvm_op_xpu.cc
     data_norm_op.cc
     deformable_conv_op.cc
     deformable_conv_v1_op.cc
