@@ -201,6 +201,8 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
         args_def->AppendAttribute(AttributeType::DATA_LAYOUT);
       } else if (arg_type == std::type_index(typeid(Place))) {
         args_def->AppendAttribute(AttributeType::PLACE);
+      } else if (arg_type == std::type_index(typeid(RuntimeConfig))) {
+        // do nothing
       } else {
         PADDLE_THROW(phi::errors::Unavailable(
             "Unsupported kernel argument type `%s`.", arg_type.name()));
