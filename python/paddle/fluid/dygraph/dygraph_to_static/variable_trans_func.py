@@ -22,6 +22,7 @@ from paddle.fluid import core
 from paddle.fluid import unique_name
 from paddle.fluid.framework import Variable
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
 
 __all__ = [
     'create_bool_as_type',
@@ -71,14 +72,14 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
         if shape[i] is None:
             shape[i] = -1
 
-    return helper.create_global_variable(name=name,
-                                         shape=shape,
-                                         dtype=dtype,
-                                         type=core.VarDesc.VarType.LOD_TENSOR,
-                                         stop_gradient=True,
-                                         lod_level=lod_level,
-                                         is_data=True,
-                                         need_check_feed=False)
+    return helper.create_variable(name=name,
+                                  shape=shape,
+                                  dtype=dtype,
+                                  type=core.VarDesc.VarType.LOD_TENSOR,
+                                  stop_gradient=True,
+                                  lod_level=lod_level,
+                                  is_data=True,
+                                  need_check_feed=False)
 
 
 def create_undefined_var(name):
@@ -137,10 +138,11 @@ def to_static_variable(x):
         return paddle.full(shape=[1], dtype='bool', fill_value=x)
     if isinstance(x, float):
         return paddle.full(shape=[1], dtype='float64', fill_value=x)
-
     if isinstance(x, six.integer_types):
         return paddle.full(shape=[1], dtype='int64', fill_value=x)
-
+    if isinstance(x, UndefinedVar):
+        return data_layer_not_check(unique_name.generator("loop_undefined_var"),
+                                    [-1])
     return x
 
 
@@ -185,7 +187,7 @@ def create_get_args_node(names):
     template = """
     def {func_name}():
         nonlocal {nonlocal_vars}
-        return {vars}
+        return {vars},
     """
     func_def = template.format(
         func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
@@ -231,7 +233,7 @@ def create_set_args_node(names):
     template = """
     def {func_name}({args}):
         nonlocal {nonlocal_vars}
-        {vars} = {args}
+        {vars}, = {args}
     """
     func_def = template.format(
         func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),

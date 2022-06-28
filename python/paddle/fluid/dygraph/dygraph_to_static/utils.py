@@ -842,6 +842,16 @@ class NameNodeReplaceTransformer(gast.NodeTransformer):
             return self.replace_node
         return node
 
+    def visit_Nonlocal(self, node):
+        names = node.names
+
+        def replace(s):
+            if s == self.target_name: return self.replace_node.id
+            return s
+
+        node.names = list(map(replace, names))
+        return node
+
 
 class ForLoopTuplePreTransformer(gast.NodeTransformer):
     """

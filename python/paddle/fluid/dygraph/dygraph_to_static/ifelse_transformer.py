@@ -420,13 +420,14 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
     modified_vars = body_modified_vars | orelse_modified_vars
 
     # new vars
+    # TODO(remove __args when new FunctionScopeAnalysis has been used.)
     body_new_vars = set([
         var for var in _vars_with_store(if_vars_dict)
-        if var not in parent_vars_dict
+        if var not in parent_vars_dict and var != "__args"
     ])
     orelse_new_vars = set([
         var for var in _vars_with_store(else_vars_dict)
-        if var not in parent_vars_dict
+        if var not in parent_vars_dict and var != "__args"
     ])
     new_vars_in_body_or_orelse = body_new_vars | orelse_new_vars
     new_vars_in_one_of_body_or_orelse = body_new_vars ^ orelse_new_vars

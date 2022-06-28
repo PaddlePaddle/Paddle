@@ -177,7 +177,6 @@ def test_list_pop_in_for_loop(x, iter_num):
     one = fluid.layers.ones(shape=[1], dtype="int32")
     for i in range(one.numpy()[0]):
         item = a.pop()
-
     return a[0], item, b[1]
 
 

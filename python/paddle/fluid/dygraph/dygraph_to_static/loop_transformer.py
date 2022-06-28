@@ -103,8 +103,10 @@ class NameScope:
         self.globals = set()
         self.nonlocals = set()
         self.args = set()
-        self.w_vars = set()  # all vars been stored,
+        # all vars been stored,
         # may be globals or non-locals
+        self.w_vars = set()
+
     def created_vars(self):
         return self.w_vars - self.globals - self.nonlocals - self.args
 
@@ -629,7 +631,6 @@ class LoopTransformer(gast.NodeTransformer):
         if stmts_tuple is None:
             return [node]
         init_stmts, cond_stmt, body_stmts = stmts_tuple
-
         # 2. get original loop vars
         loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
             node)
@@ -675,7 +676,7 @@ class LoopTransformer(gast.NodeTransformer):
             name=unique_name.generate(FOR_CONDITION_PREFIX),
             args=gast.arguments(args=[],
                                 posonlyargs=[],
-                                vararg=gast.Name(id="args",
+                                vararg=gast.Name(id=ARGS_NAME,
                                                  ctx=gast.Param(),
                                                  annotation=None,
                                                  type_comment=None),
@@ -704,7 +705,7 @@ class LoopTransformer(gast.NodeTransformer):
             name=unique_name.generate(FOR_BODY_PREFIX),
             args=gast.arguments(args=[],
                                 posonlyargs=[],
-                                vararg=gast.Name(id="args",
+                                vararg=gast.Name(id=ARGS_NAME,
                                                  ctx=gast.Param(),
                                                  annotation=None,
                                                  type_comment=None),
@@ -766,7 +767,7 @@ class LoopTransformer(gast.NodeTransformer):
             name=unique_name.generate(WHILE_CONDITION_PREFIX),
             args=gast.arguments(args=[],
                                 posonlyargs=[],
-                                vararg=gast.Name(id="args",
+                                vararg=gast.Name(id=ARGS_NAME,
                                                  ctx=gast.Param(),
                                                  annotation=None,
                                                  type_comment=None),
@@ -794,7 +795,7 @@ class LoopTransformer(gast.NodeTransformer):
             name=unique_name.generate(WHILE_BODY_PREFIX),
             args=gast.arguments(args=[],
                                 posonlyargs=[],
-                                vararg=gast.Name(id="args",
+                                vararg=gast.Name(id=ARGS_NAME,
                                                  ctx=gast.Param(),
                                                  annotation=None,
                                                  type_comment=None),

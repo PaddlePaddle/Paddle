@@ -50,6 +50,7 @@ def convert_while_loop(cond, body, getter, setter):
 
 def _run_paddle_while_loop(cond, body, getter, setter):
     # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
+    # UndefinedVar will become data layer not check.
     loop_vars = [to_static_variable(var) for var in getter()]
     setter(loop_vars)  # change the non-local var to variable
     # variable maybe modified to inner var. change it into
@@ -59,6 +60,7 @@ def _run_paddle_while_loop(cond, body, getter, setter):
 
 
 def _run_py_while(cond, body, getter, setter):
+    loop_vars = getter()
     while cond():
         loop_vars = body()
     return loop_vars
