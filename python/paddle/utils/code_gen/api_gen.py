@@ -120,16 +120,16 @@ class ForwardAPI(BaseAPI):
             return 'return {' + ", ".join(selected_code) + '};'
 
     def gene_output(self,
-                    output_type_list,
-                    set_out_func,
-                    code_indent,
+                    out_dtype_list,
+                    out_tensor_type_list=None,
+                    code_indent='',
                     inplace_flag=False):
         kernel_output = ""
         output_names = []
         output_create = ""
         return_type = self.get_return_type_with_intermediate(inplace_flag)
 
-        if len(output_type_list) == 1:
+        if len(out_dtype_list) == 1:
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
             inplace_assign = " = " + self.inplace_map[
@@ -137,7 +137,8 @@ class ForwardAPI(BaseAPI):
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
 {code_indent}  {return_type} api_output{inplace_assign};"""
-
+            set_out_func = 'SetKernelOutput' if out_tensor_type_list is None or out_tensor_type_list[
+                0] == 'dense' else 'SetSelectedRowsKernelOutput'
             if return_type == 'std::vector<Tensor>':
                 assert self.outputs['out_size_expr'][0] is not None, \
                      f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
@@ -155,7 +156,7 @@ class ForwardAPI(BaseAPI):
 {code_indent}  kernel_out->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
 {code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
 
-        elif len(output_type_list) > 1:
+        elif len(out_dtype_list) > 1:
             output_create = f"""
 {code_indent}  {return_type} api_output;"""
 
@@ -171,11 +172,13 @@ class ForwardAPI(BaseAPI):
                         output_create += 'Tensor(), '
                 output_create = output_create[:-2] + '};'
 
-            for i in range(len(output_type_list)):
+            for i in range(len(out_dtype_list)):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
+                set_out_func = 'SetKernelOutput' if out_tensor_type_list is None or out_tensor_type_list[
+                    i] == 'dense' else 'SetSelectedRowsKernelOutput'
 
-                if output_type_list[i] == 'std::vector<Tensor>':
+                if out_dtype_list[i] == 'std::vector<Tensor>':
                     assert self.outputs['out_size_expr'][i] is not None, \
                         f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
                     output_create = output_create + f"""
