@@ -41,7 +41,8 @@ class TopKOpConverter : public OpConverter {
  public:
   TopKOpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
@@ -55,8 +56,12 @@ class TopKOpConverter : public OpConverter {
     nvinfer1::Dims input_dims = input_tensor->getDimensions();
     int axis = input_dims.nbDims;
     nvinfer1::ITopKLayer* layer =
-        TRT_ENGINE_ADD_LAYER(engine_, TopK, *input_tensor,
-                             nvinfer1::TopKOperation::kMAX, k, 1 << (axis - 1));
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             TopK,
+                             *input_tensor,
+                             nvinfer1::TopKOperation::kMAX,
+                             k,
+                             1 << (axis - 1));
 
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Out").front());
@@ -69,7 +74,8 @@ class TopKv2OpConverter : public OpConverter {
  public:
   TopKv2OpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
@@ -90,15 +96,15 @@ class TopKv2OpConverter : public OpConverter {
     nvinfer1::ITopKLayer* layer = nullptr;
     if (axis == -1) {
       nvinfer1::Dims input_dims = input_tensor->getDimensions();
-      layer = TRT_ENGINE_ADD_LAYER(engine_, TopK, *input_tensor, flag, k,
-                                   1 << (input_dims.nbDims - 1));
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, TopK, *input_tensor, flag, k, 1 << (input_dims.nbDims - 1));
     } else {
       if (engine_->with_dynamic_shape()) {
-        layer = TRT_ENGINE_ADD_LAYER(engine_, TopK, *input_tensor, flag, k,
-                                     1 << axis);
+        layer = TRT_ENGINE_ADD_LAYER(
+            engine_, TopK, *input_tensor, flag, k, 1 << axis);
       } else {
-        layer = TRT_ENGINE_ADD_LAYER(engine_, TopK, *input_tensor, flag, k,
-                                     1 << (axis - 1));
+        layer = TRT_ENGINE_ADD_LAYER(
+            engine_, TopK, *input_tensor, flag, k, 1 << (axis - 1));
       }
     }
     std::vector<std::string> output_names;

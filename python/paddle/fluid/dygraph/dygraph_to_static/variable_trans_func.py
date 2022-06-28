@@ -25,7 +25,7 @@ from paddle.fluid.layer_helper import LayerHelper
 __all__ = [
     'create_bool_as_type', 'create_fill_constant_node',
     'create_static_variable_gast_node', 'data_layer_not_check',
-    'to_static_variable', 'to_static_variable_gast_node'
+    'to_static_variable', 'to_static_variable_gast_node', 'create_undefined_var'
 ]
 
 
@@ -72,6 +72,17 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
                                          lod_level=lod_level,
                                          is_data=True,
                                          need_check_feed=False)
+
+
+def create_undefined_var(name):
+    func_code = "{} = _jst.UndefinedVar('{}')".format(name, name)
+    return gast.parse(func_code).body[0]
+
+
+def create_nonlocal_stmt_node(names):
+    assert isinstance(names, (list, tuple))
+    func_code = "nonlocal {}".format(','.join(names))
+    return gast.parse(func_code).body[0]
 
 
 def to_static_variable_gast_node(name):

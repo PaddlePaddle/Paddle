@@ -54,7 +54,8 @@ class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
     int nranks = comm->nranks();
     int peer = ctx.Attr<int>("peer");
 
-    PADDLE_ENFORCE_EQ(nranks, 2,
+    PADDLE_ENFORCE_EQ(nranks,
+                      2,
                       platform::errors::InvalidArgument(
                           "The nranks must be 2, but (%d)", nranks));
 
@@ -82,7 +83,8 @@ class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(partial_recv, ops::PartialRecvOpASCENDKernel<int>,
+REGISTER_OP_NPU_KERNEL(partial_recv,
+                       ops::PartialRecvOpASCENDKernel<int>,
                        ops::PartialRecvOpASCENDKernel<int8_t>,
                        ops::PartialRecvOpASCENDKernel<float>,
                        ops::PartialRecvOpASCENDKernel<plat::float16>);

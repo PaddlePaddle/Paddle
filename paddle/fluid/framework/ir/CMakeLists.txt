@@ -157,7 +157,6 @@ pass_library(layer_norm_fuse_pass inference)
 pass_library(add_support_int8_pass inference)
 pass_library(matmul_scale_fuse_pass inference)
 pass_library(gpu_cpu_map_matmul_to_mul_pass inference)
-pass_library(mixed_precision_configure_pass inference)
 pass_library(dense_fc_to_sparse_pass inference)
 pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
@@ -202,6 +201,7 @@ if(WITH_MKLDNN)
   pass_library(conv_concat_relu_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(int8_scale_calculation_mkldnn_pass inference DIR mkldnn)
+  pass_library(params_quantization_mkldnn_pass inference DIR mkldnn)
   pass_library(fc_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(scale_matmul_fuse_pass inference DIR mkldnn)
   pass_library(cpu_bfloat16_placement_pass inference DIR mkldnn)
@@ -417,6 +417,10 @@ if(WITH_MKLDNN)
     test_int8_scale_calculation_mkldnn_pass
     SRCS mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc
     DEPS int8_scale_calculation_mkldnn_pass pass_test_util)
+  cc_test(
+    test_params_quantization_mkldnn_pass
+    SRCS mkldnn/params_quantization_mkldnn_pass_tester.cc
+    DEPS params_quantization_mkldnn_pass)
   cc_test(
     test_fc_elementwise_add_mkldnn_fuse_pass
     SRCS mkldnn/fc_elementwise_add_mkldnn_fuse_pass_tester.cc

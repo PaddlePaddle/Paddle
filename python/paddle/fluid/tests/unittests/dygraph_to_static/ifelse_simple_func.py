@@ -28,6 +28,18 @@ def loss_fn(x, lable):
     return loss
 
 
+def dyfunc_empty_nonlocal(x):
+    flag = True
+    if flag:
+        print("It's a test for empty nonlocal stmt")
+
+    if paddle.mean(x) < 0:
+        x + 1
+
+    out = x * 2
+    return out
+
+
 def dyfunc_with_if_else(x_v, label=None):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1

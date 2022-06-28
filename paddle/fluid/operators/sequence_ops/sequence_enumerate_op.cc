@@ -43,7 +43,8 @@ class SequenceEnumerateOpMaker : public framework::OpProtoAndCheckerMaker {
               "Output LoDTensor of SequenceEnumerate operator.");
     AddAttr<int>("win_size", "(int) The enumerate sequence window size.")
         .AddCustomChecker([](const int& win_size) {
-          PADDLE_ENFORCE_GE(win_size, 2,
+          PADDLE_ENFORCE_GE(win_size,
+                            2,
                             platform::errors::InvalidArgument(
                                 "The window size should be not less than 2."
                                 "Received window size is %d",
@@ -84,7 +85,8 @@ Case 1:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(sequence_enumerate, ops::SequenceEnumerateOp,
+REGISTER_OP_WITHOUT_GRADIENT(sequence_enumerate,
+                             ops::SequenceEnumerateOp,
                              ops::SequenceEnumerateOpMaker);
 REGISTER_OP_CPU_KERNEL(
     sequence_enumerate,

@@ -38,7 +38,10 @@ class GPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
     phi::FullKernel<T>(
         static_cast<const typename paddle::framework::ConvertToPhiContext<
             paddle::platform::CUDADeviceContext>::TYPE&>(dev_cxt),
-        dims, value, phi::DataType::UNDEFINED, dx);
+        dims,
+        value,
+        phi::DataType::UNDEFINED,
+        dx);
   }
 };
 

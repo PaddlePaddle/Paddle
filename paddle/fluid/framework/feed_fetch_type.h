@@ -23,10 +23,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-using FeedType = boost::variant<LoDTensor, Strings>;
+using FeedType = paddle::variant<LoDTensor, Strings>;
 using FeedList = std::vector<FeedType>;
 
-using FetchType = boost::variant<LoDTensor, LoDTensorArray>;
+using FetchType = paddle::variant<LoDTensor, LoDTensorArray, framework::Vocab>;
 using FetchList = std::vector<FetchType>;
 
 using FetchUnmergedList = std::vector<std::vector<FetchType>>;

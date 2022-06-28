@@ -34,7 +34,10 @@ class ClipMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
 
     paddle::platform::ActivationMKLDNNHandler<T> handler(
-        dnnl::algorithm::eltwise_clip_v2, ctx, mkldnn_engine, ctx.GetPlace(),
+        dnnl::algorithm::eltwise_clip_v2,
+        ctx,
+        mkldnn_engine,
+        ctx.GetPlace(),
         x);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
@@ -42,8 +45,9 @@ class ClipMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto activation_p = handler.AcquireForwardPrimitive();
 
     auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
-    activation_p->execute(astream, {{DNNL_ARG_FROM, *src_memory_p},
-                                    {DNNL_ARG_TO, *dst_memory_p}});
+    activation_p->execute(
+        astream,
+        {{DNNL_ARG_FROM, *src_memory_p}, {DNNL_ARG_TO, *dst_memory_p}});
     astream.wait();
 
     out->set_mem_desc(dst_memory_p->get_desc());
@@ -67,7 +71,11 @@ class ClipGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto* dout = ctx.Input<Tensor>(paddle::framework::GradVarName("Out"));
 
     paddle::platform::ActivationMKLDNNHandler<T> handler(
-        dnnl::algorithm::eltwise_clip_v2, ctx, mkldnn_engine, ctx.GetPlace(), x,
+        dnnl::algorithm::eltwise_clip_v2,
+        ctx,
+        mkldnn_engine,
+        ctx.GetPlace(),
+        x,
         dout);
 
     auto src_memory_p = handler.AcquireBackwardSrcMemory(x);
@@ -88,10 +96,14 @@ class ClipGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
 }  // anonymous namespace
 
-REGISTER_OP_KERNEL(clip, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(clip,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ClipMKLDNNKernel<float>,
                    ClipMKLDNNKernel<paddle::platform::bfloat16>);
 
-REGISTER_OP_KERNEL(clip_grad, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(clip_grad,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ClipGradMKLDNNKernel<float>,
                    ClipGradMKLDNNKernel<paddle::platform::bfloat16>);

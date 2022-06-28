@@ -85,7 +85,8 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   res_var->GetMutable<framework::LoDTensor>();
 }
 
-void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnClient(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto ids_var = scope->Var("ids")->GetMutable<framework::LoDTensor>();
@@ -110,7 +111,8 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
-void InitTensorsOnClient2(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnClient2(framework::Scope* scope,
+                          platform::CPUPlace* place,
                           int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto ids_var = scope->Var("ids")->GetMutable<framework::LoDTensor>();
@@ -135,7 +137,8 @@ void InitTensorsOnClient2(framework::Scope* scope, platform::CPUPlace* place,
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
-void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnServer(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto w = scope->Var("w")->GetMutable<phi::SelectedRows>();
@@ -181,18 +184,20 @@ void StartSendAndRecvServer(std::string endpoint) {
       distributed::HeterServer::GetInstance();
   heter_server_ptr_->SetEndPoint(endpoint);
   LOG(INFO) << "before HeterServer::RegisterServiceHandler";
-  heter_server_ptr_->RegisterServiceHandler(
-      in_var_name,
-      [&](const MultiVarMsg* request, MultiVarMsg* response,
-          brpc::Controller* cntl) -> int {
-        return b_req_handler->Handle(request, response, cntl);
-      });
-  heter_server_ptr_->RegisterServiceHandler(
-      in_var_name2,
-      [&](const MultiVarMsg* request, MultiVarMsg* response,
-          brpc::Controller* cntl) -> int {
-        return b_req_handler->Handle(request, response, cntl);
-      });
+  heter_server_ptr_->RegisterServiceHandler(in_var_name,
+                                            [&](const MultiVarMsg* request,
+                                                MultiVarMsg* response,
+                                                brpc::Controller* cntl) -> int {
+                                              return b_req_handler->Handle(
+                                                  request, response, cntl);
+                                            });
+  heter_server_ptr_->RegisterServiceHandler(in_var_name2,
+                                            [&](const MultiVarMsg* request,
+                                                MultiVarMsg* response,
+                                                brpc::Controller* cntl) -> int {
+                                              return b_req_handler->Handle(
+                                                  request, response, cntl);
+                                            });
 
   heter_server_ptr_->SetServiceHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
@@ -233,9 +238,10 @@ TEST(SENDANDRECV, CPU) {
       std::unordered_map<int,
                          std::shared_ptr<::paddle::framework::BlockingQueue<
                              std::pair<std::string, int>>>>;
-  using SharedTaskQueue = std::shared_ptr<std::unordered_map<
-      int, std::shared_ptr<::paddle::framework::BlockingQueue<
-               std::pair<std::string, int>>>>>;
+  using SharedTaskQueue = std::shared_ptr<
+      std::unordered_map<int,
+                         std::shared_ptr<::paddle::framework::BlockingQueue<
+                             std::pair<std::string, int>>>>>;
   SharedTaskQueue task_queue_(new TaskQueue{});
   (*task_queue_)[0] = std::make_shared<
       ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>();
@@ -261,27 +267,29 @@ TEST(SENDANDRECV, CPU) {
   std::vector<std::string> recv_var = {};
 
   LOG(INFO) << "before SendAndRecvAsync";
-  heter_client_ptr_->SendAndRecvAsync(ctx, *scope, in_var_name, send_var,
-                                      recv_var, "forward");
+  heter_client_ptr_->SendAndRecvAsync(
+      ctx, *scope, in_var_name, send_var, recv_var, "forward");
 
   LOG(INFO) << "client wait for Pop";
   auto task = (*task_queue_)[0]->Pop();
   LOG(INFO) << "client get from task queue";
   PADDLE_ENFORCE_EQ(
-      task.first, "x",
+      task.first,
+      "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   InitTensorsOnClient2((*micro_scope)[1], &place, rows_numel);
   LOG(INFO) << "before SendAndRecvAsync 2";
   std::string in_var_name2("y");
-  heter_client_ptr_->SendAndRecvAsync(ctx, *((*micro_scope)[1]), in_var_name2,
-                                      send_var, recv_var, "backward");
+  heter_client_ptr_->SendAndRecvAsync(
+      ctx, *((*micro_scope)[1]), in_var_name2, send_var, recv_var, "backward");
   LOG(INFO) << "after SendAndRecvAsync 2";
 
   auto task2 = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
-      task2.first, "y",
+      task2.first,
+      "y",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
