@@ -28,5 +28,7 @@ from .convert_operators import convert_shape as Shape  # noqa: F401
 from .convert_operators import convert_while_loop as While  # noqa: F401
 
 from .variable_trans_func import create_bool_as_type  # noqa: F401
+from .variable_trans_func import to_static_variable  # noqa: F401
+from .convert_operators import convert_shape_compare  # noqa: F401
 
 __all__ = []
