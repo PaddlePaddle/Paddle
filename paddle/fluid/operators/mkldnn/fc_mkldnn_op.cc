@@ -197,14 +197,13 @@ class FCPrimitiveFactory {
   dnnl::inner_product_forward::primitive_desc Create2DFcPrimDescriptor(
       const LoDTensor* input, const Tensor* weights, const Tensor* bias,
       LoDTensor* output, const ExecutionContext& ctx) {
-    auto src_desc = CreateMemDescriptor<T_in>(input, input->format());
     auto weight_dims = Get2DWeightDimsForDNNL(weights);
     auto weights_desc =
         CreateMemDescriptor<T_w>(weight_dims, MKLDNNMemoryFormat::any);
     auto bias_desc = CreateMemDescriptor<float>(bias, MKLDNNMemoryFormat::x);
     auto dst_desc = CreateMemDescriptor<T_out>(output, MKLDNNMemoryFormat::any);
     const auto attrs = CreateFCAttrs(ctx);
-    return CreateFcPrimDesc(src_desc, weights_desc, bias_desc, dst_desc, attrs);
+    return CreateFcPrimDesc(input->mem_desc(), weights_desc, bias_desc, dst_desc, attrs);
   }
 
   std::vector<int64_t> Get2DWeightDimsForDNNL(const Tensor* weights) {
@@ -249,7 +248,6 @@ class FCPrimitiveFactory {
   dnnl::inner_product_forward::primitive_desc Create4DFcPrimDescriptor(
       const LoDTensor* input, const Tensor* weights, const Tensor* bias,
       LoDTensor* output, const ExecutionContext& ctx) {
-    auto src_desc = CreateMemDescriptor<T_in>(input, input->format());
     // Since MKL-DNN doesn't support 4D column-major data formats in
     // inner_product primitive, transpose the weights to be in
     // row-major format
@@ -258,7 +256,7 @@ class FCPrimitiveFactory {
     auto bias_desc = CreateMemDescriptor<float>(bias, MKLDNNMemoryFormat::x);
     auto dst_desc = CreateMemDescriptor<T_out>(output, MKLDNNMemoryFormat::any);
     const auto attrs = CreateFCAttrs(ctx);
-    return CreateFcPrimDesc(src_desc, weights_desc, bias_desc, dst_desc, attrs);
+    return CreateFcPrimDesc(input->mem_desc(), weights_desc, bias_desc, dst_desc, attrs);
   }
 
   std::vector<int64_t> Get4DWeightDimsForDNNL(const LoDTensor* input,
