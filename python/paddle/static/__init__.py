@@ -85,5 +85,6 @@ __all__ = [  #noqa
     'deserialize_persistables', 'load_from_file', 'normalize_program',
     'load_program_state', 'set_program_state', 'cpu_places', 'cuda_places',
     'xpu_places', 'npu_places', 'mlu_places', 'Variable', 'create_global_var',
-    'accuracy', 'auc', 'device_guard', 'create_parameter', 'set_ipu_shard'
+    'accuracy', 'auc', 'device_guard', 'create_parameter', 'set_ipu_shard',
+    'ctr_metric_bundle', 'exponential_decay'
 ]
