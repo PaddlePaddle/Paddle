@@ -1607,12 +1607,11 @@ class MLUCnnl {
   static void Where(const ExecutionContext& ctx,
                     const cnnlTensorDescriptor_t x_desc,
                     const void* x,
-                    const uint32_t* strides,
-                    const uint32_t* index,
+                    const cnnlTensorDescriptor_t num_true_desc,
+                    const void* num_true,
+                    const bool as_tuple,
                     const cnnlTensorDescriptor_t y_desc,
-                    int* y,
-                    const bool as_tuple);
-
+                    void* y);
   static void Conv2D(const ExecutionContext& ctx,
                      const cnnlConvolutionDescriptor_t conv_desc,
                      const cnnlDataType_t tensor_dtype,
