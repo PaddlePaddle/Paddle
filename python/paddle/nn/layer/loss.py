@@ -295,7 +295,7 @@ class CrossEntropyLoss(Layer):
         - **input** (Tensor)
 
             Input tensor, the data type is float32, float64. Shape is
-	    :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
+        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
 
             Note: 
 
@@ -303,7 +303,7 @@ class CrossEntropyLoss(Layer):
                 output of softmax operator, which will produce incorrect results.
 
                 2. when use_softmax=False, it expects the output of softmax operator.
- 
+
 
         - **label** (Tensor)
 
@@ -313,7 +313,7 @@ class CrossEntropyLoss(Layer):
 
             2. If soft_label=True, the shape and data type should be same with ``input`` , 
             and the sum of the labels for each sample should be 1.
- 
+
         - **output** (Tensor)
 
             Return the softmax cross_entropy loss of ``input`` and ``label``.
@@ -328,7 +328,7 @@ class CrossEntropyLoss(Layer):
 
             2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
 
-     Example1(hard labels):
+    Example1(hard labels):
 
         .. code-block:: python
             
@@ -1226,7 +1226,7 @@ class MultiLabelSoftMarginLoss(Layer):
         :math:`y` and :math:`x` must have the same size.
 
         Parameters:
-	        weight (Tensor,optional): a manual rescaling weight given to each class.
+            weight (Tensor,optional): a manual rescaling weight given to each class.
                     If given, has to be a Tensor of size C and the data type is float32, float64.
                     Default is ``'None'`` .
             reduction (str, optional): Indicate how to average the loss by batch_size,
@@ -1490,7 +1490,7 @@ class TripletMarginWithDistanceLoss(Layer):
     where the default `distance_function`
     
     .. math::
-    	d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_2
+        d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_2
     
     or user can define their own distance function. `margin` is a nonnegative margin representing the minimum difference 
     between the positive and negative distances that is required for the loss to be 0. If `swap` is true, it will compare distance of (input, negative) with
@@ -1498,12 +1498,12 @@ class TripletMarginWithDistanceLoss(Layer):
 
     Parameters:
         distance_function (Callable, Optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
-	
+
         margin (float, Optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
                 between the positive and negative distances required for the loss to be 0. Larger
                 margins penalize cases where the negative examples are not distant enough from the
                 anchors, relative to the positives.
-		
+
         swap (bool, Optional):The distance swap changes the negative distance to the swap distance (distance between positive samples
                 and negative samples) if swap distance smaller than negative distance. Default: ``False``.
 
@@ -1515,18 +1515,18 @@ class TripletMarginWithDistanceLoss(Layer):
                 Default: ``'mean'``
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-	    
+
     Shapes:
         input (Tensor):Input tensor, the data type is float32 or float64.
-	the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+    the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
 
         positive (Tensor):Positive tensor, the data type is float32 or float64.
-	The shape of label is the same as the shape of input.
+    The shape of label is the same as the shape of input.
 
         negative (Tensor):Negative tensor, the data type is float32 or float64.
-	The shape of label is the same as the shape of input.
-	
-	    output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
+    The shape of label is the same as the shape of input.
+
+        output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
     Return：
         A callable object of TripletMarginWithDistanceLoss
@@ -1647,7 +1647,7 @@ class TripletMarginLoss(Layer):
             loss = triplet_margin_loss(input, positive, negative)
             print(loss)
             # Tensor([0.        , 0.57496738, 0.        ])
-	    
+
             triplet_margin_loss = paddle.nn.TripletMarginLoss(margin=1.0, swap=True, reduction='mean', )
             loss = triplet_margin_loss(input, positive, negative,)
             print(loss)

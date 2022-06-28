@@ -477,7 +477,7 @@ def edit_distance(input,
         NOTE: This Api is different from fluid.metrics.EditDistance
 
     Returns:
-	Tuple:
+    Tuple:
 
         distance(Tensor): edit distance result, its data type is float32, and its shape is (batch_size, 1).
         sequence_num(Tensor): sequence number, its data type is float32, and its shape is (1,).
@@ -2102,14 +2102,14 @@ def cross_entropy(input,
 
              .. math::
                 \\loss=\sum_{j}loss_j/\sum_{j}\left(\sum_{i}weight[label_i]\right)
- 
- 
+
+
     Parameters:
 
         - **input** (Tensor)
 
             Input tensor, the data type is float32, float64. Shape is
-	    :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
+        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
 
             Note: 
 
@@ -2117,7 +2117,7 @@ def cross_entropy(input,
                 output of softmax operator, which will produce incorrect results.
 
                 2. when use_softmax=False, it expects the output of softmax operator.
- 
+
         - **label** (Tensor)
 
             1. If soft_label=False, the shape is
@@ -2674,16 +2674,16 @@ def multi_label_soft_margin_loss(input,
             name (str, optional): Name for the operation (optional, default is None).
                     For more information, please refer to :ref:`api_guide_Name`.
 
-	Shape:
+    Shape:
             input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
             label: N-D Tensor, same shape as the input.
             weight:N-D Tensor, the shape is [N,1]
             output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
 
-	Returns:
+    Returns:
             Tensor, The tensor variable storing the multi_label_soft_margin_loss of input and label.
 
-	Examples:
+    Examples:
             .. code-block:: python
 
                 import paddle
@@ -2981,10 +2981,10 @@ def triplet_margin_with_distance_loss(input,
             The shape of label is the same as the shape of input.
 
         distance_function (callable, optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
-	
-	    margin (float, optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
+
+        margin (float, optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
             between the positive and negative distances required for the loss to be 0.
-	
+
         swap (bool, optional):The distance swap changes the negative distance to the swap distance (distance between positive samples
                 and negative samples) if swap distance smaller than negative distance. Default: ``False``.
 
@@ -2996,7 +2996,7 @@ def triplet_margin_with_distance_loss(input,
             Default: ``'mean'``
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-	    
+
     Returns:
         Output: Tensor. The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
