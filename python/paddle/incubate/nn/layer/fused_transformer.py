@@ -18,6 +18,7 @@ from paddle.framework import ParamAttr
 import paddle
 from paddle.nn.layer.transformer import _convert_attention_mask, _convert_param_attr_to_list
 from paddle.nn.initializer import Constant
+from paddle.fluid.dygraph import no_grad
 
 import collections
 
@@ -287,9 +288,15 @@ class FusedMultiHeadAttention(Layer):
                 attr=pre_ln_scale_attr,
                 shape=[embed_dim],
                 default_initializer=Constant(value=1.0))
+            if self.pre_ln_scale.name is None:
+                self.pre_ln_scale.name = ""
+            self.pre_ln_scale.name = self.pre_ln_scale.name + "_layer_norm_scale"
             self.pre_ln_bias = self.create_parameter(attr=pre_ln_bias_attr,
                                                      shape=[embed_dim],
                                                      is_bias=True)
+            if self.pre_ln_bias.name is None:
+                self.pre_ln_bias.name = ""
+            self.pre_ln_bias.name = self.pre_ln_bias.name + "_layer_norm_bias"
             self.ln_scale = None
             self.ln_bias = None
         else:
@@ -299,9 +306,15 @@ class FusedMultiHeadAttention(Layer):
                 attr=ln_scale_attr,
                 shape=[embed_dim],
                 default_initializer=Constant(value=1.0))
+            if self.ln_scale.name is None:
+                self.ln_scale.name = ""
+            self.ln_scale.name = self.ln_scale.name + "_layer_norm_scale"
             self.ln_bias = self.create_parameter(attr=ln_bias_attr,
                                                  shape=[embed_dim],
                                                  is_bias=True)
+            if self.ln_bias.name is None:
+                self.ln_bias.name = ""
+            self.ln_bias.name = self.ln_bias.name + "_layer_norm_bias"
 
         self.dropout_rate = dropout_rate
         self.attn_dropout_rate = attn_dropout_rate
@@ -374,6 +387,17 @@ class FusedMultiHeadAttention(Layer):
             self.embed_dim, self.num_heads, self.dropout_rate,
             self.attn_dropout_rate, self._epsilon, self.kdim, self.vdim,
             self.normalize_before, self.need_weights, self._dtype, name_str)
+
+    def _apply(self, func, device, dtype, blocking, include_sublayers=True):
+        # tmp fix for amp.decorator(O2)
+        for key, param in self._parameters.items():
+            if 'layer_norm' in param.name:
+                continue
+            if param is not None:
+                with no_grad():
+                    param_applied = func(param, device, dtype, blocking)
+
+        self._dtype = dtype
 
 
 class FusedFeedForward(Layer):
@@ -512,9 +536,15 @@ class FusedFeedForward(Layer):
                 attr=ln1_scale_attr,
                 is_bias=False,
                 default_initializer=Constant(1.0))
+            if self._ln1_scale.name is None:
+                self._ln1_scale.name = ""
+            self._ln1_scale.name = self._ln1_scale.name + "_layer_norm_scale"
             self._ln1_bias = self.create_parameter(shape=[d_model],
                                                    attr=ln1_bias_attr,
                                                    is_bias=True)
+            if self._ln1_bias.name is None:
+                self._ln1_bias.name = ""
+            self._ln1_bias.name = self._ln1_bias.name + "_layer_norm_bias"
             self._ln2_scale = None
             self._ln2_bias = None
         else:
@@ -525,9 +555,15 @@ class FusedFeedForward(Layer):
                 attr=ln2_scale_attr,
                 is_bias=False,
                 default_initializer=Constant(1.0))
+            if self._ln2_scale.name is None:
+                self._ln2_scale.name = ""
+            self._ln2_scale.name = self._ln2_scale.name + "_layer_norm_scale"
             self._ln2_bias = self.create_parameter(shape=[d_model],
                                                    attr=ln2_bias_attr,
                                                    is_bias=True)
+            if self._ln2_bias.name is None:
+                self._ln2_bias.name = ""
+            self._ln2_bias.name = self._ln2_bias.name + "_layer_norm_bias"
 
         self.name = name
 
@@ -559,6 +595,17 @@ class FusedFeedForward(Layer):
             self._d_model, self._dim_feedforward, self._dropout_rate,
             self._epsilon, self._act_method, self._act_dropout_rate,
             self._normalize_before, self._dtype, name_str)
+
+    def _apply(self, func, device, dtype, blocking, include_sublayers=True):
+        # tmp fix for amp.decorator(O2)
+        for key, param in self._parameters.items():
+            if 'layer_norm' in param.name:
+                continue
+            if param is not None:
+                with no_grad():
+                    param_applied = func(param, device, dtype, blocking)
+
+        self._dtype = dtype
 
 
 class FusedTransformerEncoderLayer(Layer):
