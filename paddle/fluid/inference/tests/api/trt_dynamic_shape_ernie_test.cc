@@ -82,13 +82,15 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data, int bs) {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputTensor(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   out_data->resize(out_num);
   output_t->copy_to_cpu(out_data->data());
 }
 
-void trt_ernie(bool with_fp16, std::vector<float> result, float near_tolerance,
+void trt_ernie(bool with_fp16,
+               std::vector<float> result,
+               float near_tolerance,
                int batch_size = 1) {
   AnalysisConfig config;
   std::string model_dir = FLAGS_infer_model;
@@ -126,8 +128,8 @@ void trt_ernie(bool with_fp16, std::vector<float> result, float near_tolerance,
     precision = AnalysisConfig::Precision::kHalf;
   }
   config.EnableTensorRtEngine(1 << 30, 1, 5, precision, false, false);
-  config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
-                                opt_input_shape);
+  config.SetTRTDynamicShapeInfo(
+      min_input_shape, max_input_shape, opt_input_shape);
   std::vector<float> out_data;
   run(config, &out_data, batch_size);
 
@@ -149,8 +151,8 @@ TEST(AnalysisPredictor, fp16) {
 }
 
 TEST(AnalysisPredictor, no_fp16_bs2) {
-  std::vector<float> result = {0.597841, 0.219972, 0.182187,
-                               0.597841, 0.219972, 0.182187};
+  std::vector<float> result = {
+      0.597841, 0.219972, 0.182187, 0.597841, 0.219972, 0.182187};
   trt_ernie(false, result, 1e-5, 2);
 }
 
@@ -207,8 +209,8 @@ std::shared_ptr<paddle_infer::Predictor> InitPredictor() {
   config.EnableTensorRtEngine(
       1 << 30, 1, 5, paddle_infer::Config::Precision::kHalf, false, false);
   // erinie varlen must be used with dynamic shape
-  config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
-                                opt_input_shape);
+  config.SetTRTDynamicShapeInfo(
+      min_input_shape, max_input_shape, opt_input_shape);
   // erinie varlen must be used with oss
   config.EnableVarseqlen();
   paddle_infer::experimental::InternalUtils::SetTransformerPosid(&config,
@@ -299,13 +301,79 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
       1012,
       102,
   };
-  int32_t i2[run_seq_len] = {
-      // sentence 1
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-      // sentence 2
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-      1, 1, 1, 1, 1, 1};
+  int32_t i2[run_seq_len] = {// sentence 1
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             // sentence 2
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1,
+                             1};
   // shape info of this batch
   int32_t i3[3] = {0, 40, 71};
   // max_seq_len represents the max sentence length of all the sentences, only
@@ -339,8 +407,8 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputHandle(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   out_data->resize(out_num);
   output_t->CopyToCpu(out_data->data());
 
@@ -353,8 +421,8 @@ TEST(AnalysisPredictor, ernie_varlen) {
     auto predictor = InitPredictor();
     std::vector<float> out_data;
     run(predictor.get(), &out_data);
-    std::vector<float> ref_data{0.59814,  0.219882, 0.181978,
-                                0.359796, 0.577414, 0.0627908};
+    std::vector<float> ref_data{
+        0.59814, 0.219882, 0.181978, 0.359796, 0.577414, 0.0627908};
     float near_tolerance = 1e-3;
     for (size_t i = 0; i < out_data.size(); i++) {
       EXPECT_NEAR(ref_data[i], out_data[i], near_tolerance);

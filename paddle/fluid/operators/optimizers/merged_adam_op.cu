@@ -9,18 +9,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/optimizers/merged_adam_op.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T, typename MT>
-__global__ void AdamKernelREG(MT beta1, MT beta2, MT epsilon, MT beta1_pow_,
-                              MT beta2_pow_, const MT* moment1, MT* moment1_out,
-                              const MT* moment2, MT* moment2_out, const MT* lr_,
-                              const T* grad, const T* param, T* param_out,
-                              const MT* master_param, MT* master_param_out,
+__global__ void AdamKernelREG(MT beta1,
+                              MT beta2,
+                              MT epsilon,
+                              MT beta1_pow_,
+                              MT beta2_pow_,
+                              const MT* moment1,
+                              MT* moment1_out,
+                              const MT* moment2,
+                              MT* moment2_out,
+                              const MT* lr_,
+                              const T* grad,
+                              const T* param,
+                              T* param_out,
+                              const MT* master_param,
+                              MT* master_param_out,
                               int ndim) {
   MT lr = *lr_;
   MT beta1_pow = beta1_pow_;
@@ -49,12 +59,21 @@ __global__ void AdamKernelREG(MT beta1, MT beta2, MT epsilon, MT beta1_pow_,
 }
 
 template <typename T, typename MT>
-__global__ void AdamKernelMEM(MT beta1, MT beta2, MT epsilon,
-                              const MT* beta1_pow_, const MT* beta2_pow_,
-                              const MT* moment1, MT* moment1_out,
-                              const MT* moment2, MT* moment2_out, const MT* lr_,
-                              const T* grad, const T* param, T* param_out,
-                              const MT* master_param, MT* master_param_out,
+__global__ void AdamKernelMEM(MT beta1,
+                              MT beta2,
+                              MT epsilon,
+                              const MT* beta1_pow_,
+                              const MT* beta2_pow_,
+                              const MT* moment1,
+                              MT* moment1_out,
+                              const MT* moment2,
+                              MT* moment2_out,
+                              const MT* lr_,
+                              const T* grad,
+                              const T* param,
+                              T* param_out,
+                              const MT* master_param,
+                              MT* master_param_out,
                               int ndim) {
   MT lr = *lr_;
   MT beta1_pow = *beta1_pow_;
@@ -83,8 +102,11 @@ __global__ void AdamKernelMEM(MT beta1, MT beta2, MT epsilon,
 }
 
 template <typename T>
-__global__ void UpdateBetaPow(T beta1, T beta2, const T* beta1_pow_,
-                              const T* beta2_pow_, T* beta1_pow_out,
+__global__ void UpdateBetaPow(T beta1,
+                              T beta2,
+                              const T* beta1_pow_,
+                              const T* beta2_pow_,
+                              T* beta1_pow_out,
                               T* beta2_pow_out) {
   *beta1_pow_out = beta1 * beta1_pow_[0];
   *beta2_pow_out = beta2 * beta2_pow_[0];
@@ -140,15 +162,22 @@ class MergedAdamOpCUDAKernel : public framework::OpKernel<T> {
           beta2_pow[idx]->place() == platform::CPUPlace()) {
         // Compute with betapow in REG
         AdamKernelREG<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1, beta2, epsilon, *beta1_pow[idx]->data<MPDType>(),
-            *beta2_pow[idx]->data<MPDType>(), mom1[idx]->data<MPDType>(),
+            beta1,
+            beta2,
+            epsilon,
+            *beta1_pow[idx]->data<MPDType>(),
+            *beta2_pow[idx]->data<MPDType>(),
+            mom1[idx]->data<MPDType>(),
             mom1_out[idx]->mutable_data<MPDType>(ctx.GetPlace()),
             mom2[idx]->data<MPDType>(),
             mom2_out[idx]->mutable_data<MPDType>(ctx.GetPlace()),
-            lr[idx]->data<MPDType>(), grad[idx]->data<T>(),
+            lr[idx]->data<MPDType>(),
+            grad[idx]->data<T>(),
             param[idx]->data<T>(),
-            param_out[idx]->mutable_data<T>(ctx.GetPlace()), master_in_data,
-            master_out_data, param[idx]->numel());
+            param_out[idx]->mutable_data<T>(ctx.GetPlace()),
+            master_in_data,
+            master_out_data,
+            param[idx]->numel());
         if (!use_global_beta_pow) {
           // Cpu update
           beta1_pow_out[idx]->mutable_data<MPDType>(platform::CPUPlace())[0] =
@@ -158,19 +187,28 @@ class MergedAdamOpCUDAKernel : public framework::OpKernel<T> {
         }
       } else {
         AdamKernelMEM<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1, beta2, epsilon, beta1_pow[idx]->data<MPDType>(),
-            beta2_pow[idx]->data<MPDType>(), mom1[idx]->data<MPDType>(),
+            beta1,
+            beta2,
+            epsilon,
+            beta1_pow[idx]->data<MPDType>(),
+            beta2_pow[idx]->data<MPDType>(),
+            mom1[idx]->data<MPDType>(),
             mom1_out[idx]->mutable_data<MPDType>(ctx.GetPlace()),
             mom2[idx]->data<MPDType>(),
             mom2_out[idx]->mutable_data<MPDType>(ctx.GetPlace()),
-            lr[idx]->data<MPDType>(), grad[idx]->data<T>(),
+            lr[idx]->data<MPDType>(),
+            grad[idx]->data<T>(),
             param[idx]->data<T>(),
-            param_out[idx]->mutable_data<T>(ctx.GetPlace()), master_in_data,
-            master_out_data, param[idx]->numel());
+            param_out[idx]->mutable_data<T>(ctx.GetPlace()),
+            master_in_data,
+            master_out_data,
+            param[idx]->numel());
         if (!use_global_beta_pow) {
           // Update with gpu
           UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
-              beta1, beta2, beta1_pow[idx]->data<MPDType>(),
+              beta1,
+              beta2,
+              beta1_pow[idx]->data<MPDType>(),
               beta2_pow[idx]->data<MPDType>(),
               beta1_pow_out[idx]->mutable_data<MPDType>(ctx.GetPlace()),
               beta2_pow_out[idx]->mutable_data<MPDType>(ctx.GetPlace()));
@@ -186,6 +224,7 @@ class MergedAdamOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(merged_adam, ops::MergedAdamOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(merged_adam,
+                        ops::MergedAdamOpCUDAKernel<float>,
                         ops::MergedAdamOpCUDAKernel<double>,
                         ops::MergedAdamOpCUDAKernel<plat::float16>);

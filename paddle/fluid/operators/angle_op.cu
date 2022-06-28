@@ -19,13 +19,15 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    angle, ops::AngleKernel<plat::CUDADeviceContext, float>,
+    angle,
+    ops::AngleKernel<plat::CUDADeviceContext, float>,
     ops::AngleKernel<plat::CUDADeviceContext, double>,
     ops::AngleKernel<plat::CUDADeviceContext, plat::complex<float>>,
     ops::AngleKernel<plat::CUDADeviceContext, plat::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
-    angle_grad, ops::AngleGradKernel<plat::CUDADeviceContext, float>,
+    angle_grad,
+    ops::AngleGradKernel<plat::CUDADeviceContext, float>,
     ops::AngleGradKernel<plat::CUDADeviceContext, double>,
     ops::AngleGradKernel<plat::CUDADeviceContext, plat::complex<float>>,
     ops::AngleGradKernel<plat::CUDADeviceContext, plat::complex<double>>);

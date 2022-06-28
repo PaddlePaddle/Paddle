@@ -79,11 +79,14 @@ struct BaseSampler {
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-template <typename ScalarT, typename AccscalarT, typename UniformSamplerT,
+template <typename ScalarT,
+          typename AccscalarT,
+          typename UniformSamplerT,
           typename NormalSamplerT>
-HOSTDEVICE ScalarT sample_gamma(
-    ScalarT alpha, BaseSampler<AccscalarT, UniformSamplerT> standard_uniform,
-    BaseSampler<AccscalarT, NormalSamplerT> standard_normal) {
+HOSTDEVICE ScalarT
+sample_gamma(ScalarT alpha,
+             BaseSampler<AccscalarT, UniformSamplerT> standard_uniform,
+             BaseSampler<AccscalarT, NormalSamplerT> standard_normal) {
   AccscalarT scale = 1.0f;
 
   // Boost alpha for higher acceptance probability.

@@ -21,7 +21,7 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/jit/layer.h"

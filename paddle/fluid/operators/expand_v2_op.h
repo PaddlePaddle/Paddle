@@ -33,28 +33,28 @@ inline std::vector<int> get_expand_shape(
     auto* shape_data = shape_tensor->data<int>();
     framework::Tensor cpu_shape_tensor;
     if (platform::is_gpu_place(shape_tensor->place())) {
-      paddle::framework::TensorCopySync(*shape_tensor, platform::CPUPlace(),
-                                        &cpu_shape_tensor);
+      paddle::framework::TensorCopySync(
+          *shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
       shape_data = cpu_shape_tensor.data<int>();
     }
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(shape_tensor->place())) {
-      paddle::framework::TensorCopySync(*shape_tensor, platform::CPUPlace(),
-                                        &cpu_shape_tensor);
+      paddle::framework::TensorCopySync(
+          *shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
       shape_data = cpu_shape_tensor.data<int>();
     }
 #endif
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(shape_tensor->place())) {
-      paddle::framework::TensorCopySync(*shape_tensor, platform::CPUPlace(),
-                                        &cpu_shape_tensor);
+      paddle::framework::TensorCopySync(
+          *shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
       shape_data = cpu_shape_tensor.data<int>();
     }
 #endif
 #ifdef PADDLE_WITH_MLU
     if (platform::is_mlu_place(shape_tensor->place())) {
-      paddle::framework::TensorCopySync(*shape_tensor, platform::CPUPlace(),
-                                        &cpu_shape_tensor);
+      paddle::framework::TensorCopySync(
+          *shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
       shape_data = cpu_shape_tensor.data<int>();
     }
 #endif

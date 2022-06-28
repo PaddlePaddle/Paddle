@@ -35,7 +35,8 @@ namespace tensorrt {
 class HardSwishOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert fluid HardSwish op to tensorrt HardSwish plugin";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -59,9 +60,12 @@ class HardSwishOpConverter : public OpConverter {
           engine_, Activation, *input, nvinfer1::ActivationType::kHARD_SIGMOID);
       hsig_layer->setAlpha(1.0 / scale);
       hsig_layer->setBeta(offset / scale);
-      nvinfer1::IElementWiseLayer* eltwise_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, ElementWise, *input, *(hsig_layer->getOutput(0)),
-          nvinfer1::ElementWiseOperation::kPROD);
+      nvinfer1::IElementWiseLayer* eltwise_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               ElementWise,
+                               *input,
+                               *(hsig_layer->getOutput(0)),
+                               nvinfer1::ElementWiseOperation::kPROD);
       layer = eltwise_layer;
     } else {
       if (engine_->with_dynamic_shape()) {

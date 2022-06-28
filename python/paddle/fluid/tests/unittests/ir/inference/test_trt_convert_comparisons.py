@@ -30,7 +30,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
         if attrs[0]['axis'] == 0:
             return false
         ver = paddle_infer.get_trt_compile_version()
-        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 7000:
+        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8415:
             return False
         return True
 
