@@ -65,17 +65,18 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 
 - [使用指南](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html)
 
-   或许您想从深度学习基础开始学习飞桨
+    或许您想从深度学习基础开始学习飞桨。
   
-- [应用实践](https://www.paddlepaddle.org.cn/documentation/docs/zh/tutorial/index_cn.html)
+- [应用实践](https://www.paddlepaddle.org.cn/documentation/docs/zh/practices/index_cn.html)
 
-  
+    包含了丰富的应用实践。
+
 - [API Reference](https://www.paddlepaddle.org.cn/documentation/docs/zh/api/index_cn.html)
 
-   新的API支持代码更少更简洁的程序
+   新的API支持代码更少更简洁的程序。
    
 
-- [贡献方式](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/08_contribution/index_cn.html)
+- [贡献方式](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/10_contribution/index_cn.html)
 
    欢迎您的贡献!
 
