@@ -1763,8 +1763,8 @@ int GraphTable::parse_feature(int idx, const std::string& feat_str,
   return -1;
 }
 
-std::vector<std::vector<uint64_t>> GraphTable::get_all_id(int type_id, int slice_num) {
-  std::vector<std::vector<uint64_t>> res(slice_num);
+int GraphTable::get_all_id(int type_id, int slice_num, std::vector<std::vector<uint64_t>> *output) {
+  output->resize(slice_num); 
   auto &search_shards = type_id == 0 ? edge_shards : feature_shards;
   std::vector<std::future<std::vector<uint64_t>>> tasks;
   for (int idx = 0; idx < search_shards.size(); idx++) {
@@ -1781,14 +1781,14 @@ std::vector<std::vector<uint64_t>> GraphTable::get_all_id(int type_id, int slice
   for (size_t i = 0; i < tasks.size(); i++) {
     auto ids = tasks[i].get();
     for (auto &id : ids) {
-      res[(uint64_t)(id) % slice_num].push_back(id);
+      (*output)[(uint64_t)(id) % slice_num].push_back(id);
     }
   }
-  return res;
+  return 0;
 }
 
-std::vector<std::vector<uint64_t>> GraphTable::get_all_neighbor_id(int type_id, int slice_num) {
-  std::vector<std::vector<uint64_t>> res(slice_num);
+int GraphTable::get_all_neighbor_id(int type_id, int slice_num, std::vector<std::vector<uint64_t>> *output) {
+  output->resize(slice_num); 
   auto &search_shards = type_id == 0 ? edge_shards : feature_shards;
   std::vector<std::future<std::vector<uint64_t>>> tasks;
   for (int idx = 0; idx < search_shards.size(); idx++) {
@@ -1805,15 +1805,15 @@ std::vector<std::vector<uint64_t>> GraphTable::get_all_neighbor_id(int type_id, 
   for (size_t i = 0; i < tasks.size(); i++) {
     auto ids = tasks[i].get();
     for (auto &id : ids) {
-      res[(uint64_t)(id) % slice_num].push_back(id);
+      (*output)[(uint64_t)(id) % slice_num].push_back(id);
     }
   }
-  return res;
+  return 0;
 }
 
-std::vector<std::vector<uint64_t>> GraphTable::get_all_id(int type_id, int idx,
-                                                          int slice_num) {
-  std::vector<std::vector<uint64_t>> res(slice_num);
+int GraphTable::get_all_id(int type_id, int idx,
+                           int slice_num, std::vector<std::vector<uint64_t>> *output) {
+  output->resize(slice_num);
   auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
   std::vector<std::future<std::vector<uint64_t>>> tasks;
   VLOG(0) << "begin task, task_pool_size_[" << task_pool_size_ << "]";
@@ -1829,14 +1829,14 @@ std::vector<std::vector<uint64_t>> GraphTable::get_all_id(int type_id, int idx,
   VLOG(0) << "end task, task_pool_size_[" << task_pool_size_ << "]";
   for (size_t i = 0; i < tasks.size(); i++) {
     auto ids = tasks[i].get();
-    for (auto &id : ids) res[id % slice_num].push_back(id);
+    for (auto &id : ids) (*output)[id % slice_num].push_back(id);
   }
-  return res;
+  return 0;
 }
 
-std::vector<std::vector<uint64_t>> GraphTable::get_all_neighbor_id(int type_id, int idx,
-                                                          int slice_num) {
-  std::vector<std::vector<uint64_t>> res(slice_num);
+int GraphTable::get_all_neighbor_id(int type_id, int idx,
+                                    int slice_num, std::vector<std::vector<uint64_t>> *output) {
+  output->resize(slice_num);
   auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
   std::vector<std::future<std::vector<uint64_t>>> tasks;
   VLOG(0) << "begin task, task_pool_size_[" << task_pool_size_ << "]";
@@ -1852,9 +1852,9 @@ std::vector<std::vector<uint64_t>> GraphTable::get_all_neighbor_id(int type_id, 
   VLOG(0) << "end task, task_pool_size_[" << task_pool_size_ << "]";
   for (size_t i = 0; i < tasks.size(); i++) {
     auto ids = tasks[i].get();
-    for (auto &id : ids) res[id % slice_num].push_back(id);
+    for (auto &id : ids) (*output)[id % slice_num].push_back(id);
   }
-  return res;
+  return 0;
 }
 
 int GraphTable::get_all_feature_ids(int type_id, int idx, int slice_num,
