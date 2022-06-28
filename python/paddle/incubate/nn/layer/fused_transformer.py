@@ -288,15 +288,15 @@ class FusedMultiHeadAttention(Layer):
                 attr=pre_ln_scale_attr,
                 shape=[embed_dim],
                 default_initializer=Constant(value=1.0))
-            if self.pre_ln_scale.name is None:
-                self.pre_ln_scale.name = ""
-            self.pre_ln_scale.name = self.pre_ln_scale.name + "_layer_norm_scale"
+            self.pre_ln_scale.name = (
+                self.pre_ln_scale.name + "_layer_norm_scale"
+            ) if self.pre_ln_scale.name else "layer_norm_scale"
             self.pre_ln_bias = self.create_parameter(attr=pre_ln_bias_attr,
                                                      shape=[embed_dim],
                                                      is_bias=True)
-            if self.pre_ln_bias.name is None:
-                self.pre_ln_bias.name = ""
-            self.pre_ln_bias.name = self.pre_ln_bias.name + "_layer_norm_bias"
+            self.pre_ln_bias.name = (
+                self.pre_ln_bias.name + "_layer_norm_bias"
+            ) if self.pre_ln_bias.name else "layer_norm_bias"
             self.ln_scale = None
             self.ln_bias = None
         else:
@@ -306,15 +306,15 @@ class FusedMultiHeadAttention(Layer):
                 attr=ln_scale_attr,
                 shape=[embed_dim],
                 default_initializer=Constant(value=1.0))
-            if self.ln_scale.name is None:
-                self.ln_scale.name = ""
-            self.ln_scale.name = self.ln_scale.name + "_layer_norm_scale"
+            self.ln_scale.name = (
+                self.ln_scale.name + "_layer_norm_scale"
+            ) if self.ln_scale.name else "layer_norm_scale"
             self.ln_bias = self.create_parameter(attr=ln_bias_attr,
                                                  shape=[embed_dim],
                                                  is_bias=True)
-            if self.ln_bias.name is None:
-                self.ln_bias.name = ""
-            self.ln_bias.name = self.ln_bias.name + "_layer_norm_bias"
+            self.ln_bias.name = (
+                self.ln_bias.name +
+                "_layer_norm_bias") if self.ln_bias.name else "layer_norm_bias"
 
         self.dropout_rate = dropout_rate
         self.attn_dropout_rate = attn_dropout_rate
@@ -536,15 +536,15 @@ class FusedFeedForward(Layer):
                 attr=ln1_scale_attr,
                 is_bias=False,
                 default_initializer=Constant(1.0))
-            if self._ln1_scale.name is None:
-                self._ln1_scale.name = ""
-            self._ln1_scale.name = self._ln1_scale.name + "_layer_norm_scale"
+            self._ln1_scale.name = (
+                self._ln1_scale.name + "_layer_norm_scale"
+            ) if self._ln1_scale.name else "layer_norm_scale"
             self._ln1_bias = self.create_parameter(shape=[d_model],
                                                    attr=ln1_bias_attr,
                                                    is_bias=True)
-            if self._ln1_bias.name is None:
-                self._ln1_bias.name = ""
-            self._ln1_bias.name = self._ln1_bias.name + "_layer_norm_bias"
+            self._ln1_bias.name = (
+                self._ln1_bias.name + "_layer_norm_bias"
+            ) if self._ln1_bias.name else "layer_norm_bias"
             self._ln2_scale = None
             self._ln2_bias = None
         else:
@@ -555,15 +555,15 @@ class FusedFeedForward(Layer):
                 attr=ln2_scale_attr,
                 is_bias=False,
                 default_initializer=Constant(1.0))
-            if self._ln2_scale.name is None:
-                self._ln2_scale.name = ""
-            self._ln2_scale.name = self._ln2_scale.name + "_layer_norm_scale"
+            self._ln2_scale.name = (
+                self._ln2_scale.name + "_layer_norm_scale"
+            ) if self._ln2_scale.name else "layer_norm_scale"
             self._ln2_bias = self.create_parameter(shape=[d_model],
                                                    attr=ln2_bias_attr,
                                                    is_bias=True)
-            if self._ln2_bias.name is None:
-                self._ln2_bias.name = ""
-            self._ln2_bias.name = self._ln2_bias.name + "_layer_norm_bias"
+            self._ln2_bias.name = (
+                self._ln2_bias.name + "_layer_norm_bias"
+            ) if self._ln2_bias.name else "layer_norm_bias"
 
         self.name = name
 
