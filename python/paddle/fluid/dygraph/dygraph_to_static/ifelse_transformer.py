@@ -361,8 +361,8 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
         After transformed, q and z are created in parent scope. For example,
 
         x, y = 5, 10
-        q = paddle.jit.dy2static.data_layer_not_check(name='q', shape=[-1], dtype='float32')
-        z = paddle.jit.dy2static.data_layer_not_check(name='z', shape=[-1], dtype='float32')
+        q = paddle.jit.dy2static.UndefindVar('q')
+        z = paddle.jit.dy2static.UndefindVar('z')
 
         def true_func(x, y, q):
             x = x+1
@@ -647,7 +647,7 @@ def create_convert_ifelse_node(return_name_ids,
         false_func_source = false_func.name
 
     convert_ifelse_layer = gast.parse(
-        '_jst.convert_ifelse('
+        '_jst.IfElse('
         '{pred}, {true_fn}, {false_fn}, {get_args}, {set_args}, {return_name_ids})'
         .format(
             pred=ast_to_source_code(pred),
