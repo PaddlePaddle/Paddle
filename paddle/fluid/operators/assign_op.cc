@@ -34,14 +34,16 @@ namespace operators {
 
 class AssignOp : public framework::OperatorWithKernel {
  public:
-  AssignOp(const std::string &type, const framework::VariableNameMap &inputs,
+  AssignOp(const std::string &type,
+           const framework::VariableNameMap &inputs,
            const framework::VariableNameMap &outputs,
            const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -113,10 +115,14 @@ DECLARE_INPLACE_OP_INFERER(AssignOpInplaceInferer, {"X", "Out"});
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-DECLARE_INFER_SHAPE_FUNCTOR(assign, AssignInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(assign,
+                            AssignInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
-REGISTER_OPERATOR(assign, ops::AssignOp,
+REGISTER_OPERATOR(assign,
+                  ops::AssignOp,
                   ops::AssignGradMaker<paddle::framework::OpDesc>,
                   ops::AssignGradMaker<paddle::imperative::OpBase>,
-                  ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer,
-                  ops::AssignInferVarType, AssignInferShapeFunctor);
+                  ops::AssignOpProtoMaker,
+                  ops::AssignOpInplaceInferer,
+                  ops::AssignInferVarType,
+                  AssignInferShapeFunctor);

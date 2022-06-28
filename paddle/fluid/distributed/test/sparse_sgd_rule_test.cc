@@ -58,8 +58,16 @@ TEST(sparse_value_naive_sgd_test, init_and_update) {
   for (auto i = 0u; i < kItemSize; ++i) {
     grad[i] = (i + 1) * 1.0;
   }
-  float label[] = {-0.100000, -0.200000, -0.300000, -0.400000, -0.500000,
-                   -0.600000, -0.700000, -0.800000, -0.900000, -1.000000};
+  float label[] = {-0.100000,
+                   -0.200000,
+                   -0.300000,
+                   -0.400000,
+                   -0.500000,
+                   -0.600000,
+                   -0.700000,
+                   -0.800000,
+                   -0.900000,
+                   -1.000000};
   const float* ptr_grad = grad;
   rule.UpdateValue(w, w + 9, ptr_grad);
 
@@ -113,9 +121,17 @@ TEST(downpour_sparse_adagrad_test, test_init_and_update) {
 
   const float* ptr_grad = grad;
   rule.UpdateValue(w, w + 10, ptr_grad);
-  float label[] = {-0.100000, -0.200000, -0.300000, -0.400000,
-                   -0.500000, -0.600000, -0.700000, -0.800000,
-                   -0.900000, -1.000000, 38.500000};
+  float label[] = {-0.100000,
+                   -0.200000,
+                   -0.300000,
+                   -0.400000,
+                   -0.500000,
+                   -0.600000,
+                   -0.700000,
+                   -0.800000,
+                   -0.900000,
+                   -1.000000,
+                   38.500000};
   for (auto i = 0u; i < kValueSize; ++i) {
     ASSERT_FLOAT_EQ(w[i], label[i]);
   }

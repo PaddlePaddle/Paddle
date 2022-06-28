@@ -77,7 +77,8 @@ class CostModel {
   ~CostModel() {}
 
   CostData ProfileMeasure(
-      const ProgramDesc& main_program, const ProgramDesc& startup_program,
+      const ProgramDesc& main_program,
+      const ProgramDesc& startup_program,
       const std::string& device,
       const std::vector<std::string>& fetch_cost_list) const;
 };

@@ -38,9 +38,9 @@ namespace paddle {
 namespace imperative {
 namespace jit {
 
-using VarDescMetaMap =
-    std::map<std::weak_ptr<VarBase>, std::unique_ptr<framework::VarDesc>,
-             std::owner_less<std::weak_ptr<VarBase>>>;
+using VarDescMetaMap = std::map<std::weak_ptr<VarBase>,
+                                std::unique_ptr<framework::VarDesc>,
+                                std::owner_less<std::weak_ptr<VarBase>>>;
 
 using VarBaseSet = std::set<std::shared_ptr<VarBase>,
                             std::owner_less<std::shared_ptr<VarBase>>>;
@@ -57,11 +57,13 @@ class ProgramDescTracer {
  public:
   ProgramDescTracer() = default;
 
-  void InsertOp(const std::string &type, const NameVarBaseMap &inputs,
+  void InsertOp(const std::string &type,
+                const NameVarBaseMap &inputs,
                 const NameVarBaseMap &outputs,
                 const framework::AttributeMap &attrs);
 
-  void InsertOp(const std::string &type, const NameTensorMap &inputs,
+  void InsertOp(const std::string &type,
+                const NameTensorMap &inputs,
                 const NameTensorMap &outputs,
                 const framework::AttributeMap &attrs);
 
@@ -69,7 +71,8 @@ class ProgramDescTracer {
       const std::vector<std::shared_ptr<VarBase>> &feed_vars,
       const std::string &feed_prefix,
       const std::vector<std::shared_ptr<VarBase>> &fetch_vars,
-      const std::string &fetch_prefix, const std::string &tmp_prefix) const;
+      const std::string &fetch_prefix,
+      const std::string &tmp_prefix) const;
   bool ContainVar(const std::weak_ptr<VarBase> &var) const;
   void Reset();
 

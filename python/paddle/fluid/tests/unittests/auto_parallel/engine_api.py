@@ -90,7 +90,7 @@ class MLPLayer(nn.Layer):
     def forward(self, input):
         out = auto.shard_op(self.norm, dist_attr={"process_mesh":
                                                   PP_MESH_0})(input)[0]
-        out = self.linear0(input)
+        out = self.linear0(out)
         out = F.gelu(out, approximate=True)
         out = auto.shard_op(self.linear1, dist_attr={"process_mesh":
                                                      PP_MESH_1})(out)[0]

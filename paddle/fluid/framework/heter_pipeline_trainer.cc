@@ -28,8 +28,9 @@ using MiniScope = std::unordered_map<int, Scope*>;
 using MicroScope =
     std::unordered_map<int, std::shared_ptr<std::vector<Scope*>>>;
 using TaskQueue =
-    std::unordered_map<int, std::shared_ptr<::paddle::framework::BlockingQueue<
-                                std::pair<std::string, int>>>>;
+    std::unordered_map<int,
+                       std::shared_ptr<::paddle::framework::BlockingQueue<
+                           std::pair<std::string, int>>>>;
 
 void HeterPipelineTrainer::ResetDataset(Dataset* dataset) {
 #ifndef PADDLE_WITH_FLPS
@@ -40,7 +41,8 @@ void HeterPipelineTrainer::ResetDataset(Dataset* dataset) {
         dataset->GetReaders();
     VLOG(3) << "readers num: " << readers.size();
     // change thread num is not supported
-    PADDLE_ENFORCE_EQ(thread_num_, readers.size(),
+    PADDLE_ENFORCE_EQ(thread_num_,
+                      readers.size(),
                       platform::errors::InvalidArgument(
                           "change Dataset thread_num is not supported"));
     int cnt = -1;
@@ -159,8 +161,9 @@ void HeterPipelineTrainer::InitDumpEnv() {
 void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                           const platform::Place& place) {
   place_ = place;
-  PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
-                                           "root_scope_ can not be nullptr"));
+  PADDLE_ENFORCE_NOT_NULL(
+      root_scope_,
+      platform::errors::InvalidArgument("root_scope_ can not be nullptr"));
   // initialize mini_scopes & micro_scopes
   mini_scopes_.reset(new MiniScope{});
   micro_scopes_.reset(new MicroScope{});

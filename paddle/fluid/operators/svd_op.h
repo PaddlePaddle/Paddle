@@ -21,6 +21,7 @@
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -39,7 +40,12 @@ class SvdCPUKernel : public framework::OpKernel<T> {
 
     /*Create Tensors and output, set the dim ...*/
     auto numel = x->numel();
-    auto* x_data = x->data<T>();
+    auto& orig_dev_ctx =
+        context.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = static_cast<const typename framework::ConvertToPhiContext<
+        platform::CPUDeviceContext>::TYPE&>(orig_dev_ctx);
+    Tensor trans_x = ::phi::TransposeLast2Dim<T>(dev_ctx, *x);
+    auto* x_data = trans_x.data<T>();
     auto x_dims = x->dims();
     int rows = x_dims[x_dims.size() - 2];
     int cols = x_dims[x_dims.size() - 1];
@@ -57,6 +63,20 @@ class SvdCPUKernel : public framework::OpKernel<T> {
         context.GetPlace(), size_t(batches * k * sizeof(phi::dtype::Real<T>)));
     /*SVD Use the Eigen Library*/
     math::BatchSvd<T>(x_data, U_out, VH_out, S_out, rows, cols, batches, full);
+    /* let C[m, n] as a col major matrix with m rows and n cols.
+     * let R[m, n] is row major matrix with m rows and n cols.
+     * then we have: R[m,n] = C[m, n].resize((n,m)).tranpose_last_two()
+     * */
+    auto col_major_to_row_major = [&dev_ctx](Tensor* out) {
+      auto origin_dim = out->dims();
+      int64_t& x = origin_dim[origin_dim.size() - 1];
+      int64_t& y = origin_dim[origin_dim.size() - 2];
+      std::swap(x, y);
+      out->Resize(origin_dim);
+      return ::phi::TransposeLast2Dim<T>(dev_ctx, *out);
+    };
+    *U = col_major_to_row_major(U);
+    *VH = col_major_to_row_major(VH);
   }
 };
 
@@ -116,8 +136,9 @@ class SvdGradKernel : public framework::OpKernel<T> {
       u_term = dito.Matmul(U, u_term);
       if (m > k) {
         auto project = dito.Sub(dito.Eye(m), dito.Matmul(U, U, false, true));
-        u_term = dito.Add(u_term, dito.Mul(dito.Matmul(project, dU),
-                                           dito.Unsqueeze(s_inverse, -2)));
+        u_term = dito.Add(
+            u_term,
+            dito.Mul(dito.Matmul(project, dU), dito.Unsqueeze(s_inverse, -2)));
       }
       u_term = dito.Matmul(u_term, VH);
     }
@@ -129,8 +150,9 @@ class SvdGradKernel : public framework::OpKernel<T> {
                         dito.Unsqueeze(S, -1));
       if (n > k) {
         auto project = dito.Sub(dito.Eye(n), dito.Matmul(VH, VH, true, false));
-        v_term = dito.Add(v_term, dito.Mul(dito.Matmul(dVH, project),
-                                           dito.Unsqueeze(s_inverse, -1)));
+        v_term = dito.Add(
+            v_term,
+            dito.Mul(dito.Matmul(dVH, project), dito.Unsqueeze(s_inverse, -1)));
       }
       v_term = dito.Matmul(U, v_term);
     }

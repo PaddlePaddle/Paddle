@@ -20,10 +20,6 @@ cc_library(
   SRCS ${C_API_SRCS}
   DEPS paddle_inference)
 
-if(NOT ON_INFER)
-  return()
-endif()
-
 # Create inference capi shared library
 cc_library(
   paddle_inference_c_shared SHARED

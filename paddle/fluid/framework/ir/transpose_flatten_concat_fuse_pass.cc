@@ -123,9 +123,10 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
                 ->Op()
                 ->GetAttr("axis"));
         flatten_axis0 = BOOST_GET_CONST(
-            int, subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
-                     ->Op()
-                     ->GetAttr("axis"));
+            int,
+            subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
+                ->Op()
+                ->GetAttr("axis"));
       } else {
         std::vector<int> trans_axis = BOOST_GET_CONST(
             std::vector<int>,
@@ -136,9 +137,10 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
         if (trans_axis0 != trans_axis) return;
 
         int flatten_axis = BOOST_GET_CONST(
-            int, subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
-                     ->Op()
-                     ->GetAttr("axis"));
+            int,
+            subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
+                ->Op()
+                ->GetAttr("axis"));
         // All axis of flatten should be the same
         if (flatten_axis0 != flatten_axis) return;
       }

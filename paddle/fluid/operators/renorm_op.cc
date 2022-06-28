@@ -71,10 +71,14 @@ class RenormGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "AbsGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@Grad", "AbsGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@Grad",
+                   "AbsGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@Grad",
+                   "AbsGrad");
 
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
@@ -106,14 +110,18 @@ class RenormGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(renorm, ops::RenormOp, ops::RenormOpMaker,
+REGISTER_OPERATOR(renorm,
+                  ops::RenormOp,
+                  ops::RenormOpMaker,
                   ops::RenormGradMaker<paddle::framework::OpDesc>,
                   ops::RenormGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(renorm_grad, ops::RenormGradOp);
 
-REGISTER_OP_CPU_KERNEL(renorm, ops::CPURenormKernel<float>,
+REGISTER_OP_CPU_KERNEL(renorm,
+                       ops::CPURenormKernel<float>,
                        ops::CPURenormKernel<double>);
 
-REGISTER_OP_CPU_KERNEL(renorm_grad, ops::CPURenormGradKernel<float>,
+REGISTER_OP_CPU_KERNEL(renorm_grad,
+                       ops::CPURenormGradKernel<float>,
                        ops::CPURenormGradKernel<double>);

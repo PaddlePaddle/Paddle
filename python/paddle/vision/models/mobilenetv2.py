@@ -75,14 +75,17 @@ class MobileNetV2(nn.Layer):
     `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
 
     Args:
-        scale (float, optional): scale of channels in each layer. Default: 1.0.
-        num_classes (int, optional): output dim of last fc layer. If num_classes <=0, last fc layer 
+        scale (float, optional): Scale of channels in each layer. Default: 1.0.
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
                             will not be defined. Default: 1000.
-        with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
+        with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV2 model.
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+
             import paddle
             from paddle.vision.models import MobileNetV2
 
@@ -181,11 +184,17 @@ def _mobilenet(arch, pretrained=False, **kwargs):
 
 
 def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
-    """MobileNetV2
+    """MobileNetV2 from
+    `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
-        scale: (float): scale of channels in each layer. Default: 1.0.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        scale (float, optional): Scale of channels in each layer. Default: 1.0.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV2 <api_paddle_vision_MobileNetV2>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV2 model.
 
     Examples:
         .. code-block:: python
@@ -206,6 +215,7 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     model = _mobilenet('mobilenetv2_' + str(scale),
                        pretrained,

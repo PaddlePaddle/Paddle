@@ -4,20 +4,38 @@ cc_library(
   DEPS lod_tensor device_context)
 
 cc_library(
-  jit_layer
-  SRCS layer.cc
-  DEPS executor parallel_executor executor_cache)
+  jit_function_utils
+  SRCS function_utils.cc
+  DEPS lod_tensor scope proto_desc)
 
 cc_library(
-  jit_base_function
-  SRCS base_function.cc
-  DEPS scope proto_desc)
+  jit_serializer_utils
+  SRCS serializer_utils.cc
+  DEPS proto_desc)
 
-if(WITH_TESTING AND NOT WIN32)
+cc_library(
+  jit_compilation_unit
+  SRCS compilation_unit.cc
+  DEPS proto_desc executor parallel_executor executor_cache)
+
+cc_library(
+  jit_function_schema
+  SRCS function_schema.cc
+  DEPS jit_function_utils)
+
+cc_library(
+  jit_layer
+  SRCS layer.cc
+  DEPS jit_compilation_unit)
+
+if(WITH_TESTING
+   AND NOT WIN32
+   AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
   add_custom_target(
     jit_download_program
-    COMMAND wget -nc https://paddle-ci.gz.bcebos.com/dy2st/Testing.tar.gz
-    COMMAND tar zxvf Testing.tar.gz)
+    COMMAND wget -nc
+            https://paddle-ci.gz.bcebos.com/dy2st/multi_program_load.tar.gz
+    COMMAND tar zxvf multi_program_load.tar.gz)
   set(JIT_DEPS
       phi
       elementwise_add_op
@@ -29,7 +47,10 @@ if(WITH_TESTING AND NOT WIN32)
       scale_op
       jit_serializer
       jit_layer
-      jit_base_function)
+      jit_function_utils
+      jit_function_schema
+      jit_compilation_unit
+      jit_serializer_utils)
   cc_test(
     layer_test
     SRCS layer_test.cc

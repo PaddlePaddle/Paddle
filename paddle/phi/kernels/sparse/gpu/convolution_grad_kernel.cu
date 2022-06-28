@@ -12,18 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
+
 #include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
-#include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
 namespace phi {

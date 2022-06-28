@@ -26,7 +26,8 @@ namespace paddle {
 namespace operators {
 class TanhPrimOp : public framework::OperatorBase {
  public:
-  TanhPrimOp(const std::string &type, const framework::VariableNameMap &inputs,
+  TanhPrimOp(const std::string &type,
+             const framework::VariableNameMap &inputs,
              const framework::VariableNameMap &outputs,
              const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
@@ -74,7 +75,8 @@ class TanhPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(tanh_p, paddle::operators::TanhPrimOp,
+REGISTER_OPERATOR(tanh_p,
+                  paddle::operators::TanhPrimOp,
                   paddle::operators::TanhPrimOpMaker,
                   paddle::operators::TanhPrimOpShapeInference,
                   paddle::operators::TanhPrimOpVarTypeInference);

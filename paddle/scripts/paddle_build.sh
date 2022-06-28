@@ -199,6 +199,7 @@ function cmake_base() {
     if [ "$SYSTEM" == "Darwin" ]; then
         WITH_DISTRIBUTE="OFF"
         WITH_AVX=${WITH_AVX:-ON}
+        WITH_ARM=${WITH_ARM:-OFF}
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
     else
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
@@ -567,6 +568,15 @@ function combine_avx_noavx_build() {
     NOAVX_CORE_FILE=`find ${PADDLE_ROOT}/build.noavx/python/paddle/fluid/ -name "core_noavx.*"`
     WITH_AVX=ON
 
+    cmake_base ${PYTHON_ABI:-""}
+    build_base
+}
+
+function mac_m1_arm_build() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    WITH_AVX=OFF
+    WITH_ARM=ON
     cmake_base ${PYTHON_ABI:-""}
     build_base
 }
@@ -2024,6 +2034,26 @@ function get_failedUts_precise_map_file {
     fi
 }
 
+function parallel_test_base_gpups() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit GpuPS tests ...
+    ========================================
+EOF
+        ut_startTime_s=`date +%s`
+        ctest -L "RUN_TYPE=GPUPS" --timeout 120
+        ut_endTime_s=`date +%s`
+        echo "GPUPS testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi
+}
+
 function parallel_test_base_xpu() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -2720,6 +2750,8 @@ function parallel_test() {
     ut_total_startTime_s=`date +%s`
     if [ "$WITH_CINN" == "ON" ];then
         parallel_test_base_cinn
+    elif [ "$WITH_GPU" == "ON" ] && [ "$WITH_HETERPS" == "ON" ];then
+        parallel_test_base_gpups
     elif [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu_test
     elif [ "$WITH_XPU" == "ON" ];then
@@ -3118,6 +3150,7 @@ function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
 }
 
+
 # origin name: example
 function exec_samplecode_test() {
     if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
@@ -3382,6 +3415,10 @@ function main() {
         ;;
       combine_avx_noavx)
         combine_avx_noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
+        ;;
+      mac_m1_arm)
+        mac_m1_arm_build
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       combine_avx_noavx_build_and_test)

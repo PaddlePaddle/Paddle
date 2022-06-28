@@ -31,12 +31,14 @@ class LookupTableV2XPUKernel : public framework::OpKernel<T> {
     auto *output_t = context.Output<LoDTensor>("Out");  // float
     auto *table_var = context.InputVar("W");
     PADDLE_ENFORCE_EQ(
-        (std::is_same<DeviceContext, platform::XPUDeviceContext>::value), true,
+        (std::is_same<DeviceContext, platform::XPUDeviceContext>::value),
+        true,
         platform::errors::PreconditionNotMet("Unsupported place! only support "
                                              "xpu place , please check your "
                                              "place."));
 
-    PADDLE_ENFORCE_EQ(table_var->IsType<LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(table_var->IsType<LoDTensor>(),
+                      true,
                       platform::errors::PermissionDenied(
                           "Unsupported Variable Type , idx in "
                           "LookupTableV2XPUKernel should be LoDTensor."));
@@ -53,7 +55,8 @@ class LookupTableV2XPUKernel : public framework::OpKernel<T> {
     const int64_t *ids = ids_t->data<int64_t>();
 
     PADDLE_ENFORCE_EQ(
-        ids_numel <= std::numeric_limits<int32_t>::max(), true,
+        ids_numel <= std::numeric_limits<int32_t>::max(),
+        true,
         platform::errors::OutOfRange(
             "Number of ids greater than int32_t::max , please check "
             "number of ids in LookupTableV2XPUKernel."));
@@ -63,9 +66,14 @@ class LookupTableV2XPUKernel : public framework::OpKernel<T> {
     size_t xm = table_t->dims()[0];
     size_t n = table_t->dims()[1];
 
-    int r =
-        xpu::embedding<T, int64_t>(dev_ctx.x_context(), table, ids, output, xm,
-                                   n, ym, static_cast<int>(padding_idx));
+    int r = xpu::embedding<T, int64_t>(dev_ctx.x_context(),
+                                       table,
+                                       ids,
+                                       output,
+                                       xm,
+                                       n,
+                                       ym,
+                                       static_cast<int>(padding_idx));
 
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding");
   }
@@ -77,7 +85,8 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *table_var = context.InputVar("W");
     DDim table_dim;
-    PADDLE_ENFORCE_EQ(table_var->IsType<LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(table_var->IsType<LoDTensor>(),
+                      true,
                       platform::errors::PermissionDenied(
                           "Unsupported Variable Type , idx in "
                           "LookupTableV2GradXPUKernel should be LoDTensor."));
@@ -85,7 +94,8 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
 
     bool is_sparse = context.Attr<bool>("is_sparse");
     PADDLE_ENFORCE_EQ(
-        is_sparse, false,
+        is_sparse,
+        false,
         platform::errors::InvalidArgument(
             "LookupTableV2GradXPUKernel dose NOT support is_sparse = True."));
 
@@ -95,7 +105,8 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
 
     int64_t ids_numel = ids_t->numel();
     PADDLE_ENFORCE_EQ(
-        ids_numel <= std::numeric_limits<int32_t>::max(), true,
+        ids_numel <= std::numeric_limits<int32_t>::max(),
+        true,
         platform::errors::OutOfRange(
             "Number of ids greater than int32_t::max , please check "
             "number of ids in LookupTableV2GradXPUKernel."));
@@ -109,8 +120,13 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
     int n = d_table_t->dims()[1];
     int padding_idx = context.Attr<int64_t>("padding_idx");
 
-    int r = xpu::embedding_grad<T, int64_t>(dev_ctx.x_context(), d_output_data,
-                                            ids_data, d_table_data, xm, n, ym,
+    int r = xpu::embedding_grad<T, int64_t>(dev_ctx.x_context(),
+                                            d_output_data,
+                                            ids_data,
+                                            d_table_data,
+                                            xm,
+                                            n,
+                                            ym,
                                             padding_idx);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding_grad");
   }

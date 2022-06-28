@@ -22,17 +22,20 @@ namespace plugin {
 inline void Seria(void*& buffer,  // NOLINT
                   const std::vector<nvinfer1::Dims>& input_dims,
                   nvinfer1::DataType data_type,
-                  nvinfer1::PluginFormat data_format, bool with_fp16) {
+                  nvinfer1::PluginFormat data_format,
+                  bool with_fp16) {
   SerializeValue(&buffer, input_dims);
   SerializeValue(&buffer, data_type);
   SerializeValue(&buffer, data_format);
   SerializeValue(&buffer, with_fp16);
 }
 
-inline void Deseria(void const*& serial_data, size_t& serial_length,  // NOLINT
+inline void Deseria(void const*& serial_data,
+                    size_t& serial_length,  // NOLINT
                     std::vector<nvinfer1::Dims>* input_dims,
                     nvinfer1::DataType* data_type,
-                    nvinfer1::PluginFormat* data_format, bool* with_fp16) {
+                    nvinfer1::PluginFormat* data_format,
+                    bool* with_fp16) {
   DeserializeValue(&serial_data, &serial_length, input_dims);
   DeserializeValue(&serial_data, &serial_length, data_type);
   DeserializeValue(&serial_data, &serial_length, data_format);
@@ -41,7 +44,8 @@ inline void Deseria(void const*& serial_data, size_t& serial_length,  // NOLINT
 
 inline size_t SeriaSize(const std::vector<nvinfer1::Dims>& input_dims,
                         nvinfer1::DataType data_type,
-                        nvinfer1::PluginFormat data_format, bool with_fp16) {
+                        nvinfer1::PluginFormat data_format,
+                        bool with_fp16) {
   return (SerializedSize(input_dims) + SerializedSize(data_type) +
           SerializedSize(data_format) + SerializedSize(with_fp16));
 }
@@ -52,7 +56,11 @@ void PluginTensorRT::serializeBase(void*& buffer) const {
 
 void PluginTensorRT::deserializeBase(void const*& serial_data,
                                      size_t& serial_length) {
-  Deseria(serial_data, serial_length, &input_dims_, &data_type_, &data_format_,
+  Deseria(serial_data,
+          serial_length,
+          &input_dims_,
+          &data_type_,
+          &data_format_,
           &with_fp16_);
 }
 
@@ -66,10 +74,13 @@ bool PluginTensorRT::supportsFormat(
           (format == nvinfer1::PluginFormat::kLINEAR));
 }
 
-void PluginTensorRT::configureWithFormat(
-    const nvinfer1::Dims* input_dims, int num_inputs,
-    const nvinfer1::Dims* output_dims, int num_outputs, nvinfer1::DataType type,
-    nvinfer1::PluginFormat format, int max_batch_size) TRT_NOEXCEPT {
+void PluginTensorRT::configureWithFormat(const nvinfer1::Dims* input_dims,
+                                         int num_inputs,
+                                         const nvinfer1::Dims* output_dims,
+                                         int num_outputs,
+                                         nvinfer1::DataType type,
+                                         nvinfer1::PluginFormat format,
+                                         int max_batch_size) TRT_NOEXCEPT {
   data_type_ = type;
   data_format_ = format;
   input_dims_.assign(input_dims, input_dims + num_inputs);
@@ -81,7 +92,11 @@ void PluginTensorRTV2Ext::serializeBase(void*& buffer) const {
 
 void PluginTensorRTV2Ext::deserializeBase(void const*& serial_data,
                                           size_t& serial_length) {
-  Deseria(serial_data, serial_length, &input_dims_, &data_type_, &data_format_,
+  Deseria(serial_data,
+          serial_length,
+          &input_dims_,
+          &data_type_,
+          &data_format_,
           &with_fp16_);
 }
 
@@ -90,11 +105,15 @@ size_t PluginTensorRTV2Ext::getBaseSerializationSize() const {
 }
 
 void PluginTensorRTV2Ext::configurePlugin(
-    const nvinfer1::Dims* input_dims, int32_t nb_inputs,
-    const nvinfer1::Dims* output_dims, int32_t nb_outputs,
+    const nvinfer1::Dims* input_dims,
+    int32_t nb_inputs,
+    const nvinfer1::Dims* output_dims,
+    int32_t nb_outputs,
     const nvinfer1::DataType* input_types,
-    const nvinfer1::DataType* output_types, const bool* input_is_broadcast,
-    const bool* output_is_broadcast, nvinfer1::PluginFormat float_format,
+    const nvinfer1::DataType* output_types,
+    const bool* input_is_broadcast,
+    const bool* output_is_broadcast,
+    nvinfer1::PluginFormat float_format,
     int32_t max_batch_size) TRT_NOEXCEPT {
   input_dims_.assign(input_dims, input_dims + nb_inputs);
   data_format_ = float_format;

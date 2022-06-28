@@ -53,8 +53,10 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
     }
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
+        *in,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
 
@@ -65,7 +67,8 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
     std::vector<int64_t> output_shape(output_size, 0);
 
     // Validity Check: rank range.
-    PADDLE_ENFORCE_LE(output_size, 6,
+    PADDLE_ENFORCE_LE(output_size,
+                      6,
                       platform::errors::InvalidArgument(
                           "The output "
                           "tensor's rank should be less than 6."));
@@ -74,10 +77,12 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
       int cur = axis < 0 ? axis + cur_output_size + 1 : axis;
       // Vaildity Check: the axis bound
       PADDLE_ENFORCE_GE(
-          cur, 0,
+          cur,
+          0,
           platform::errors::InvalidArgument("The insert dimension value should "
                                             "not be less than 0"));
-      PADDLE_ENFORCE_LE(cur, cur_output_size,
+      PADDLE_ENFORCE_LE(cur,
+                        cur_output_size,
                         platform::errors::InvalidArgument(
                             "The insert dimension value shoule not be larger "
                             "than the dimension size of input tensor"));

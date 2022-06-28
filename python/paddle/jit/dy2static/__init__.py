@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .base import saw
+from .base import UndefinedVar
 from .convert_call_func import convert_call  # noqa: F401
 from .convert_operators import cast_bool_if_necessary  # noqa: F401
 from .convert_operators import convert_assert  # noqa: F401
@@ -24,10 +26,7 @@ from .convert_operators import convert_pop  # noqa: F401
 from .convert_operators import convert_print  # noqa: F401
 from .convert_operators import convert_shape_compare  # noqa: F401
 from .convert_operators import convert_var_dtype  # noqa: F401
-from .convert_operators import convert_var_shape  # noqa: F401
-from .convert_operators import convert_var_shape_simple  # noqa: F401
-from .convert_operators import eval_if_exist_else_none  # noqa: F401
-from .convert_operators import choose_shape_attr_or_api  # noqa: F401
+from .convert_operators import convert_shape  # noqa: F401
 from .convert_operators import convert_while_loop  # noqa: F401
 from .variable_trans_func import create_bool_as_type  # noqa: F401
 from .variable_trans_func import create_fill_constant_node  # noqa: F401

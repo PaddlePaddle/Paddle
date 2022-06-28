@@ -25,31 +25,39 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Inference"), "Input", "Inference",
-                   "chunk_eval");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Inference"), "Input", "Inference", "chunk_eval");
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "chunk_eval");
 
-    OP_INOUT_CHECK(ctx->HasOutput("Precision"), "Output", "Precision",
-                   "chunk_eval");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Precision"), "Output", "Precision", "chunk_eval");
     OP_INOUT_CHECK(ctx->HasOutput("Recall"), "Output", "Recall", "chunk_eval");
-    OP_INOUT_CHECK(ctx->HasOutput("F1-Score"), "Output", "F1-Score",
+    OP_INOUT_CHECK(
+        ctx->HasOutput("F1-Score"), "Output", "F1-Score", "chunk_eval");
+    OP_INOUT_CHECK(ctx->HasOutput("NumInferChunks"),
+                   "Output",
+                   "NumInferChunks",
                    "chunk_eval");
-    OP_INOUT_CHECK(ctx->HasOutput("NumInferChunks"), "Output", "NumInferChunks",
+    OP_INOUT_CHECK(ctx->HasOutput("NumLabelChunks"),
+                   "Output",
+                   "NumLabelChunks",
                    "chunk_eval");
-    OP_INOUT_CHECK(ctx->HasOutput("NumLabelChunks"), "Output", "NumLabelChunks",
+    OP_INOUT_CHECK(ctx->HasOutput("NumCorrectChunks"),
+                   "Output",
+                   "NumCorrectChunks",
                    "chunk_eval");
-    OP_INOUT_CHECK(ctx->HasOutput("NumCorrectChunks"), "Output",
-                   "NumCorrectChunks", "chunk_eval");
 
     auto inference_dim = ctx->GetInputDim("Inference");
     auto label_dim = ctx->GetInputDim("Label");
 
     PADDLE_ENFORCE_EQ(
-        inference_dim, label_dim,
+        inference_dim,
+        label_dim,
         platform::errors::InvalidArgument(
             "Input(Inference)'s shape must be the same as Input(Label)'s "
             "shape, but received [%s] (Inference) vs [%s] (Label).",
-            inference_dim, label_dim));
+            inference_dim,
+            label_dim));
 
     bool use_padding = ctx->HasInput("SeqLength");
     if (use_padding) {
@@ -63,7 +71,8 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
               "(batch_size, bucket), but received [%s].",
               inference_dim));
       auto seq_length_dim = ctx->GetInputDim("SeqLength");
-      PADDLE_ENFORCE_LE(seq_length_dim.size(), 2,
+      PADDLE_ENFORCE_LE(seq_length_dim.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "Input(SeqLength)'s rank should not be greater "
                             "than 2, but received %d.",
@@ -185,7 +194,8 @@ I-LOC is 2, which consistent with the results from the equations.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(chunk_eval, ops::ChunkEvalOp,
+REGISTER_OP_WITHOUT_GRADIENT(chunk_eval,
+                             ops::ChunkEvalOp,
                              ops::ChunkEvalOpMaker);
 REGISTER_OP_CPU_KERNEL(chunk_eval,
                        ops::ChunkEvalKernel<paddle::platform::CPUPlace, float>);
