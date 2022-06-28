@@ -311,357 +311,324 @@ __global__ void dy_mf_fill_dvals_kernel<FeatureValue, int>(FeatureValue* d_shard
   }
 }
 
-    // cuda implemention of  heter_comm_kernel.h
-    template <typename T, typename StreamType>
-    void HeterCommKernel::fill_idx(
-        T * idx, long long len, const StreamType& stream) {
-      int grid_size = (len - 1) / block_size_ + 1;
-      size_t c_len = (size_t)len;
-      fill_idx_kernel<<<grid_size, block_size_, 0, stream>>>(idx, c_len);
-    }
+// cuda implemention of  heter_comm_kernel.h
+template <typename T, typename StreamType>
+void HeterCommKernel::fill_idx(T* idx,
+                               long long len,
+                               const StreamType& stream) {
+  int grid_size = (len - 1) / block_size_ + 1;
+  size_t c_len = (size_t)len;
+  fill_idx_kernel<<<grid_size, block_size_, 0, stream>>>(idx, c_len);
+}
 
-    template <typename T, typename StreamType>
-    void HeterCommKernel::calc_shard_offset(T * idx,
-                                            T * left,
-                                            T * right,
-                                            long long len,
-                                            int total_devs,
-                                            const StreamType& stream) {
-      int grid_size = (len - 1) / block_size_ + 1;
-      size_t c_len = (size_t)len;
-      calc_shard_offset_kernel<<<grid_size, block_size_, 0, stream>>>(
-          idx, left, right, c_len);
-    }
+template <typename T, typename StreamType>
+void HeterCommKernel::calc_shard_offset(T* idx,
+                                        T* left,
+                                        T* right,
+                                        long long len,
+                                        int total_devs,
+                                        const StreamType& stream) {
+  int grid_size = (len - 1) / block_size_ + 1;
+  size_t c_len = (size_t)len;
+  calc_shard_offset_kernel<<<grid_size, block_size_, 0, stream>>>(
+      idx, left, right, c_len);
+}
 
-    template <typename KeyType, typename T, typename StreamType>
-    void HeterCommKernel::calc_shard_index(KeyType * d_keys,
-                                           long long len,
-                                           T* shard_index,
-                                           int total_gpu,
-                                           const StreamType& stream) {
-      int grid_size = (len - 1) / block_size_ + 1;
-      size_t c_len = (size_t)len;
-      calc_shard_index_kernel<<<grid_size, block_size_, 0, stream>>>(
-          d_keys, c_len, shard_index, total_gpu);
-    }
+template <typename KeyType, typename T, typename StreamType>
+void HeterCommKernel::calc_shard_index(KeyType* d_keys,
+                                       long long len,
+                                       T* shard_index,
+                                       int total_gpu,
+                                       const StreamType& stream) {
+  int grid_size = (len - 1) / block_size_ + 1;
+  size_t c_len = (size_t)len;
+  calc_shard_index_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_keys, c_len, shard_index, total_gpu);
+}
 
-    template <typename KeyType, typename T, typename StreamType>
-    void HeterCommKernel::fill_shard_key(KeyType * d_shard_keys,
-                                         KeyType * d_keys,
-                                         T * idx,
-                                         long long len,
-                                         const StreamType& stream) {
-      int grid_size = (len - 1) / block_size_ + 1;
-      size_t c_len = (size_t)len;
-      fill_shard_key_kernel<<<grid_size, block_size_, 0, stream>>>(
-          d_shard_keys, d_keys, idx, c_len);
-    }
-
-    template <typename KeyType,
-              typename GradType,
-              typename T,
-              typename StreamType>
-    void HeterCommKernel::fill_shard_grads(KeyType * d_shard_keys,
-                                           KeyType * d_keys,
-                                           GradType * d_shard_grads,
-                                           GradType * d_grads,
-                                           T * idx,
-                                           long long len,
-                                           const StreamType& stream) {
-      int grid_size = (len - 1) / block_size_ + 1;
-      size_t c_len = (size_t)len;
-      fill_shard_grads_kernel<<<grid_size, block_size_, 0, stream>>>(
-          d_shard_keys, d_keys, d_shard_grads, d_grads, idx, c_len);
-    }
-
-    template <typename ValType, typename T, typename StreamType>
-    void HeterCommKernel::fill_dvals(ValType * d_shard_vals,
-                                     ValType * d_vals,
-                                     T * idx,
+template <typename KeyType, typename T, typename StreamType>
+void HeterCommKernel::fill_shard_key(KeyType* d_shard_keys,
+                                     KeyType* d_keys,
+                                     T* idx,
                                      long long len,
                                      const StreamType& stream) {
-      int grid_size = (len - 1) / block_size_ + 1;
-      size_t c_len = (size_t)len;
-      fill_dvals_kernel<<<grid_size, block_size_, 0, stream>>>(
-          d_shard_vals, d_vals, idx, c_len);
-    }
+  int grid_size = (len - 1) / block_size_ + 1;
+  size_t c_len = (size_t)len;
+  fill_shard_key_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_shard_keys, d_keys, idx, c_len);
+}
 
-    template <typename KeyT, typename ValueT, typename StreamType>
-    void HeterCommKernel::sort_pairs(void* d_temp_storage,
-                                     size_t& temp_storage_bytes,  // NOLINT
-                                     const KeyT* d_keys_in,       // NOLINT
-                                     KeyT* d_keys_out,
-                                     const ValueT* d_values_in,
-                                     ValueT* d_values_out,
-                                     int num_items,
-                                     int begin_bit,
-                                     int end_bit,
-                                     StreamType stream,
-                                     bool debug_synchronous) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          cub::DeviceRadixSort::SortPairs(d_temp_storage,
-                                          temp_storage_bytes,
-                                          d_keys_in,
-                                          d_keys_out,
-                                          d_values_in,
-                                          d_values_out,
-                                          num_items,
-                                          begin_bit,
-                                          end_bit,
-                                          stream,
-                                          debug_synchronous));
-    }
+template <typename KeyType, typename GradType, typename T, typename StreamType>
+void HeterCommKernel::fill_shard_grads(KeyType* d_shard_keys,
+                                       KeyType* d_keys,
+                                       GradType* d_shard_grads,
+                                       GradType* d_grads,
+                                       T* idx,
+                                       long long len,
+                                       const StreamType& stream) {
+  int grid_size = (len - 1) / block_size_ + 1;
+  size_t c_len = (size_t)len;
+  fill_shard_grads_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_shard_keys, d_keys, d_shard_grads, d_grads, idx, c_len);
+}
 
-    template <typename KeysInputIteratorT,
-              typename UniqueOutputIteratorT,
-              typename ValuesInputIteratorT,
-              typename AggregatesOutputIteratorT,
-              typename NumRunsOutputIteratorT,
-              typename StreamType>
-    void HeterCommKernel::reduce_by_key(
-        void* d_temp_storage,
-        size_t& temp_storage_bytes,  // NOLINT
-        KeysInputIteratorT d_keys_in,
-        UniqueOutputIteratorT d_unique_out,
-        ValuesInputIteratorT d_values_in,
-        AggregatesOutputIteratorT d_aggregates_out,
-        NumRunsOutputIteratorT d_num_runs_out,
-        int num_items,
-        StreamType stream,
-        bool debug_synchronous) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          cub::DeviceReduce::ReduceByKey(d_temp_storage,
-                                         temp_storage_bytes,
-                                         d_keys_in,
-                                         d_unique_out,
-                                         d_values_in,
-                                         d_aggregates_out,
-                                         d_num_runs_out,
-                                         gpu_merger,
-                                         num_items,
-                                         stream,
-                                         debug_synchronous));
-    }
+template <typename ValType, typename T, typename StreamType>
+void HeterCommKernel::fill_dvals(ValType* d_shard_vals,
+                                 ValType* d_vals,
+                                 T* idx,
+                                 long long len,
+                                 const StreamType& stream) {
+  int grid_size = (len - 1) / block_size_ + 1;
+  size_t c_len = (size_t)len;
+  fill_dvals_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_shard_vals, d_vals, idx, c_len);
+}
 
-    template <typename KeyType,
-              typename GradType,
-              typename T,
-              typename StreamType>
-    void HeterCommKernel::dy_mf_fill_shard_grads(KeyType * d_shard_keys,
-                                                 KeyType * d_keys,
-                                                 GradType * d_shard_grads,
-                                                 GradType * d_grads,
-                                                 T * idx,
-                                                 long long len,
-                                                 size_t grad_value_size,
-                                                 const StreamType& stream) {
-      // int grid_size = (len - 1) / block_size_ + 1;
-      size_t c_len = (size_t)len;
+template <typename KeyT, typename ValueT, typename StreamType>
+void HeterCommKernel::sort_pairs(void* d_temp_storage,
+                                 size_t& temp_storage_bytes,  // NOLINT
+                                 const KeyT* d_keys_in,       // NOLINT
+                                 KeyT* d_keys_out,
+                                 const ValueT* d_values_in,
+                                 ValueT* d_values_out,
+                                 int num_items,
+                                 int begin_bit,
+                                 int end_bit,
+                                 StreamType stream,
+                                 bool debug_synchronous) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cub::DeviceRadixSort::SortPairs(d_temp_storage,
+                                      temp_storage_bytes,
+                                      d_keys_in,
+                                      d_keys_out,
+                                      d_values_in,
+                                      d_values_out,
+                                      num_items,
+                                      begin_bit,
+                                      end_bit,
+                                      stream,
+                                      debug_synchronous));
+}
 
-      dim3 block_dims(32, 32);
-      const size_t grid_size = (len - 1) / 32 + 1;
-      dim3 grid_dims(grid_size);
-      dy_mf_fill_shard_grads_kernel<<<grid_dims, block_dims, 0, stream>>>(
-          d_shard_keys,
-          d_keys,
-          d_shard_grads,
-          d_grads,
-          idx,
-          c_len,
-          grad_value_size);
-    }
+template <typename KeysInputIteratorT,
+          typename UniqueOutputIteratorT,
+          typename ValuesInputIteratorT,
+          typename AggregatesOutputIteratorT,
+          typename NumRunsOutputIteratorT,
+          typename StreamType>
+void HeterCommKernel::reduce_by_key(void* d_temp_storage,
+                                    size_t& temp_storage_bytes,  // NOLINT
+                                    KeysInputIteratorT d_keys_in,
+                                    UniqueOutputIteratorT d_unique_out,
+                                    ValuesInputIteratorT d_values_in,
+                                    AggregatesOutputIteratorT d_aggregates_out,
+                                    NumRunsOutputIteratorT d_num_runs_out,
+                                    int num_items,
+                                    StreamType stream,
+                                    bool debug_synchronous) {
+  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::ReduceByKey(d_temp_storage,
+                                                            temp_storage_bytes,
+                                                            d_keys_in,
+                                                            d_unique_out,
+                                                            d_values_in,
+                                                            d_aggregates_out,
+                                                            d_num_runs_out,
+                                                            gpu_merger,
+                                                            num_items,
+                                                            stream,
+                                                            debug_synchronous));
+}
 
-    template <typename StreamType>
-    void HeterCommKernel::merge_gradient(const uint32_t* offset,
-                                         const uint32_t* fea_num,
-                                         const uint32_t* index,
-                                         const char* input,
-                                         char* output,
-                                         int n,
-                                         size_t grad_dim,
-                                         size_t grad_value_size,
-                                         DynamicGradMerger& merger_,
-                                         const StreamType& stream) {
-      int grid_size = (n - 1) / block_size_ + 1;
-      merge_gradients_basic_kernel<<<grid_size, block_size_, 0, stream>>>(
-          offset, fea_num, index, input, output, n, grad_value_size, merger_);
+template <typename KeyType, typename GradType, typename T, typename StreamType>
+void HeterCommKernel::dy_mf_fill_shard_grads(KeyType* d_shard_keys,
+                                             KeyType* d_keys,
+                                             GradType* d_shard_grads,
+                                             GradType* d_grads,
+                                             T* idx,
+                                             long long len,
+                                             size_t grad_value_size,
+                                             const StreamType& stream) {
+  int grid_size = (len - 1) / block_size_ + 1;
+  size_t c_len = (size_t)len;
+  dy_mf_fill_shard_grads_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_shard_keys,
+      d_keys,
+      d_shard_grads,
+      d_grads,
+      idx,
+      c_len,
+      grad_value_size);
+}
 
-      if (grad_dim > 0) {
-        int grid_size2 = (n * grad_dim - 1) / block_size_ + 1;
-        merge_gradients_embedx_kernel<<<grid_size2, block_size_, 0, stream>>>(
-            offset,
-            fea_num,
-            index,
-            input,
-            output,
-            n * grad_dim,
-            grad_dim,
-            grad_value_size,
-            merger_);
-      }
-    }
+template <typename StreamType>
+void HeterCommKernel::merge_gradient(const uint32_t* offset,
+                                     const uint32_t* fea_num,
+                                     const uint32_t* index,
+                                     const char* input,
+                                     char* output,
+                                     int n,
+                                     size_t grad_value_size,
+                                     DynamicGradMerger& merger_,
+                                     const StreamType& stream) {
+  int grid_size = (n - 1) / block_size_ + 1;
+  merge_gradients_kernel<<<grid_size, block_size_, 0, stream>>>(
+      offset, fea_num, index, input, output, n, grad_value_size, merger_);
+}
 
-    template <typename ValType, typename T, typename StreamType>
-    void HeterCommKernel::dy_mf_fill_dvals(ValType * d_shard_vals,
-                                           ValType * d_vals,
-                                           T * idx,
-                                           long long len,
-                                           size_t val_size,
-                                           const StreamType& stream) {
-      // int grid_size = (len - 1) / block_size_ + 1;
-      size_t c_len = (size_t)len;
+template <typename ValType, typename T, typename StreamType>
+void HeterCommKernel::dy_mf_fill_dvals(ValType* d_shard_vals,
+                                       ValType* d_vals,
+                                       T* idx,
+                                       long long len,
+                                       size_t val_size,
+                                       const StreamType& stream) {
+  int grid_size = (len - 1) / block_size_ + 1;
+  size_t c_len = (size_t)len;
+  dy_mf_fill_dvals_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_shard_vals, d_vals, idx, c_len, val_size);
+}
 
-      dim3 block_dims(32, 32);
-      const size_t grid_size_ = (len - 1) / 32 + 1;
-      dim3 grid_dims(grid_size_);
-      dy_mf_fill_dvals_kernel<<<grid_dims, block_dims, 0, stream>>>(
-          d_shard_vals, d_vals, idx, c_len, val_size);
-    }
+template void HeterCommKernel::fill_idx<int, cudaStream_t>(
+    int* idx, long long len, const cudaStream_t& stream);
+template void HeterCommKernel::fill_idx<uint32_t, cudaStream_t>(
+    uint32_t* idx, long long len, const cudaStream_t& stream);
 
-    template void HeterCommKernel::fill_idx<int, cudaStream_t>(
-        int* idx, long long len, const cudaStream_t& stream);
-    template void HeterCommKernel::fill_idx<uint32_t, cudaStream_t>(
-        uint32_t * idx, long long len, const cudaStream_t& stream);
+template void HeterCommKernel::calc_shard_offset<int, cudaStream_t>(
+    int* idx,
+    int* left,
+    int* right,
+    long long len,
+    int total_devs,
+    const cudaStream_t& stream);
+template void
+HeterCommKernel::calc_shard_index<unsigned long, int, cudaStream_t>(
+    unsigned long* d_keys,
+    long long len,
+    int* shard_index,
+    int total_devs,
+    const cudaStream_t& stream);
 
-    template void HeterCommKernel::calc_shard_offset<int, cudaStream_t>(
+template void HeterCommKernel::calc_shard_index<long, int, cudaStream_t>(
+    long* d_keys,
+    long long len,
+    int* shard_index,
+    int total_devs,
+    const cudaStream_t& stream);
+
+template void HeterCommKernel::fill_shard_key<long, int, cudaStream_t>(
+    long* d_shard_keys,
+    long* d_keys,
+    int* idx,
+    long long len,
+    const cudaStream_t& stream);
+
+template void HeterCommKernel::fill_shard_key<unsigned long, int, cudaStream_t>(
+    unsigned long* d_shard_keys,
+    unsigned long* d_keys,
+    int* idx,
+    long long len,
+    const cudaStream_t& stream);
+
+template void HeterCommKernel::fill_shard_grads<
+    unsigned long,
+    paddle::framework::FeaturePushValue,
+    int,
+    cudaStream_t>(unsigned long* d_shard_keys,
+                  unsigned long* d_keys,
+                  paddle::framework::FeaturePushValue* d_shard_grads,
+                  paddle::framework::FeaturePushValue* d_grads,
+                  int* idx,
+                  long long len,
+                  const cudaStream_t& stream);
+
+template void
+HeterCommKernel::fill_dvals<paddle::framework::FeatureValue, int, cudaStream_t>(
+    paddle::framework::FeatureValue* d_shard_vals,
+    paddle::framework::FeatureValue* d_vals,
+    int* idx,
+    long long len,
+    const cudaStream_t& stream);
+
+template void HeterCommKernel::sort_pairs<unsigned long,
+                                          paddle::framework::FeaturePushValue,
+                                          cudaStream_t>(
+    void* d_temp_storage,
+    size_t& temp_storage_bytes,      // NOLINT
+    const unsigned long* d_keys_in,  // NOLINT
+    unsigned long* d_keys_out,
+    const paddle::framework::FeaturePushValue* d_values_in,
+    paddle::framework::FeaturePushValue* d_values_out,
+    int num_items,
+    int begin_bit,
+    int end_bit,
+    cudaStream_t stream,
+    bool debug_synchronous);
+
+template void HeterCommKernel::sort_pairs<int, int, cudaStream_t>(
+    void* d_temp_storage,
+    size_t& temp_storage_bytes,  // NOLINT
+    const int* d_keys_in,        // NOLINT
+    int* d_keys_out,
+    const int* d_values_in,
+    int* d_values_out,
+    int num_items,
+    int begin_bit,
+    int end_bit,
+    cudaStream_t stream,
+    bool debug_synchronous);
+
+template void HeterCommKernel::reduce_by_key<
+    unsigned long*,
+    unsigned long*,
+    paddle::framework::FeaturePushValue*,
+    paddle::framework::FeaturePushValue*,
+    int*,
+    cudaStream_t>(void* d_temp_storage,
+                  size_t& temp_storage_bytes,  // NOLINT
+                  unsigned long* d_keys_in,
+                  unsigned long* d_unique_out,
+                  paddle::framework::FeaturePushValue* d_values_in,
+                  paddle::framework::FeaturePushValue* d_aggregates_out,
+                  int* d_num_runs_out,
+                  int num_items,
+                  cudaStream_t stream,
+                  bool debug_synchronous);
+
+template void HeterCommKernel::dy_mf_fill_shard_grads<
+    unsigned long,
+    paddle::framework::FeaturePushValue,
+    int,
+    cudaStream_t>(unsigned long* d_shard_keys,
+                  unsigned long* d_keys,
+                  paddle::framework::FeaturePushValue* d_shard_grads,
+                  paddle::framework::FeaturePushValue* d_grads,
+                  int* idx,
+                  long long len,
+                  size_t grad_value_size,
+                  const cudaStream_t& stream);
+
+template void HeterCommKernel::merge_gradient<cudaStream_t>(
+    const uint32_t* offset,
+    const uint32_t* fea_num,
+    const uint32_t* index,
+    const char* input,
+    char* output,
+    int n, size_t grad_dim,
+    size_t grad_value_size,
+    DynamicGradMerger& merger_,
+    const cudaStream_t& stream);
+
+template void HeterCommKernel::
+    dy_mf_fill_dvals<paddle::framework::FeatureValue, int, cudaStream_t>(
+        paddle::framework::FeatureValue* d_shard_vals,
+        paddle::framework::FeatureValue* d_vals,
         int* idx,
-        int* left,
-        int* right,
         long long len,
-        int total_devs,
-        const cudaStream_t& stream);
-    template void
-    HeterCommKernel::calc_shard_index<unsigned long, int, cudaStream_t>(
-        unsigned long* d_keys,
-        long long len,
-        int* shard_index,
-        int total_devs,
+        size_t val_size,
         const cudaStream_t& stream);
 
-    template void HeterCommKernel::calc_shard_index<long, int, cudaStream_t>(
-        long* d_keys,
-        long long len,
-        int* shard_index,
-        int total_devs,
-        const cudaStream_t& stream);
 
-    template void HeterCommKernel::fill_shard_key<long, int, cudaStream_t>(
-        long* d_shard_keys,
-        long* d_keys,
-        int* idx,
-        long long len,
-        const cudaStream_t& stream);
 
-    template void
-    HeterCommKernel::fill_shard_key<unsigned long, int, cudaStream_t>(
-        unsigned long* d_shard_keys,
-        unsigned long* d_keys,
-        int* idx,
-        long long len,
-        const cudaStream_t& stream);
-
-    template void
-    HeterCommKernel::fill_shard_grads<unsigned long,
-                                      paddle::framework::FeaturePushValue,
-                                      int,
-                                      cudaStream_t>(
-        unsigned long* d_shard_keys,
-        unsigned long* d_keys,
-        paddle::framework::FeaturePushValue* d_shard_grads,
-        paddle::framework::FeaturePushValue* d_grads,
-        int* idx,
-        long long len,
-        const cudaStream_t& stream);
-
-    template void HeterCommKernel::
-        fill_dvals<paddle::framework::FeatureValue, int, cudaStream_t>(
-            paddle::framework::FeatureValue * d_shard_vals,
-            paddle::framework::FeatureValue * d_vals,
-            int* idx,
-            long long len,
-            const cudaStream_t& stream);
-
-    template void
-    HeterCommKernel::sort_pairs<unsigned long,
-                                paddle::framework::FeaturePushValue,
-                                cudaStream_t>(
-        void* d_temp_storage,
-        size_t& temp_storage_bytes,      // NOLINT
-        const unsigned long* d_keys_in,  // NOLINT
-        unsigned long* d_keys_out,
-        const paddle::framework::FeaturePushValue* d_values_in,
-        paddle::framework::FeaturePushValue* d_values_out,
-        int num_items,
-        int begin_bit,
-        int end_bit,
-        cudaStream_t stream,
-        bool debug_synchronous);
-
-    template void HeterCommKernel::sort_pairs<int, int, cudaStream_t>(
-        void* d_temp_storage,
-        size_t& temp_storage_bytes,  // NOLINT
-        const int* d_keys_in,        // NOLINT
-        int* d_keys_out,
-        const int* d_values_in,
-        int* d_values_out,
-        int num_items,
-        int begin_bit,
-        int end_bit,
-        cudaStream_t stream,
-        bool debug_synchronous);
-
-    template void
-    HeterCommKernel::reduce_by_key<unsigned long*,
-                                   unsigned long*,
-                                   paddle::framework::FeaturePushValue*,
-                                   paddle::framework::FeaturePushValue*,
-                                   int*,
-                                   cudaStream_t>(
-        void* d_temp_storage,
-        size_t& temp_storage_bytes,  // NOLINT
-        unsigned long* d_keys_in,
-        unsigned long* d_unique_out,
-        paddle::framework::FeaturePushValue* d_values_in,
-        paddle::framework::FeaturePushValue* d_aggregates_out,
-        int* d_num_runs_out,
-        int num_items,
-        cudaStream_t stream,
-        bool debug_synchronous);
-
-    template void
-    HeterCommKernel::dy_mf_fill_shard_grads<unsigned long,
-                                            paddle::framework::FeaturePushValue,
-                                            int,
-                                            cudaStream_t>(
-        unsigned long* d_shard_keys,
-        unsigned long* d_keys,
-        paddle::framework::FeaturePushValue* d_shard_grads,
-        paddle::framework::FeaturePushValue* d_grads,
-        int* idx,
-        long long len,
-        size_t grad_value_size,
-        const cudaStream_t& stream);
-
-    template void HeterCommKernel::merge_gradient<cudaStream_t>(
-        const uint32_t* offset,
-        const uint32_t* fea_num,
-        const uint32_t* index,
-        const char* input,
-        char* output,
-        int n,
-        size_t grad_dim,
-        size_t grad_value_size,
-        DynamicGradMerger& merger_,
-        const cudaStream_t& stream);
-
-    template void HeterCommKernel::
-        dy_mf_fill_dvals<paddle::framework::FeatureValue, int, cudaStream_t>(
-            paddle::framework::FeatureValue * d_shard_vals,
-            paddle::framework::FeatureValue * d_vals,
-            int* idx,
-            long long len,
-            size_t val_size,
-            const cudaStream_t& stream);
 #endif
 
   }  // namespace framework
