@@ -860,10 +860,10 @@ def relu6(x, name=None):
             out = F.relu6(x) # [0, 0.3, 6]
     """
     threshold = 6.0
-    if _in_legacy_dygraph():
-        return _C_ops.relu6(x, 'threshold', threshold)
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_relu6(x, threshold)
+    if in_dynamic_mode():
+        return _C_ops.relu6(x, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu6')
     helper = LayerHelper('relu6', **locals())
