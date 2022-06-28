@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 import paddle.fluid.layers as layers
@@ -47,7 +48,7 @@ class TestShrinkRNNMemoryBase(unittest.TestCase):
         i = layers.increment(x=i)
         i.stop_gradient = True
         self.mem3 = shrink_memory(x=self.mem2, i=i, table=table)
-        mem3_mean = layers.mean(self.mem3)
+        mem3_mean = paddle.mean(self.mem3)
         append_backward(loss=mem3_mean)
         self.x_grad = self.main_program.global_block().var('x@GRAD')
 

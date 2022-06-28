@@ -143,7 +143,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                                                               label=label)
 
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         self.feeds = datas
         self.train_file_path = ["fake1", "fake2"]

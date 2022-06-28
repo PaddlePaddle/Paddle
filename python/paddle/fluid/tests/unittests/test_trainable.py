@@ -16,6 +16,7 @@ from __future__ import print_function
 
 from collections import Counter
 import unittest
+import paddle
 import paddle.fluid as fluid
 from simple_nets import init_data
 
@@ -27,7 +28,7 @@ def test_trainable():
                               size=10,
                               param_attr=fluid.ParamAttr(trainable=False))
     loss = fluid.layers.cross_entropy(input=feature, label=label)
-    loss = fluid.layers.mean(loss)
+    loss = paddle.mean(loss)
     return loss
 
 

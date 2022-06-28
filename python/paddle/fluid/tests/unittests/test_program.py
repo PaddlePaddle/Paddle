@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 
 from paddle.fluid.framework import Program, default_main_program, program_guard, grad_var_name
+import paddle
 import paddle.fluid.layers as layers
 import paddle.fluid as fluid
 
@@ -120,7 +121,7 @@ class TestProgram(unittest.TestCase):
                                             use_double_buffer=True)
             in_data, label = fluid.layers.read_file(reader)
             predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
-            loss = fluid.layers.mean(
+            loss = paddle.mean(
                 fluid.layers.cross_entropy(input=predict_label, label=label))
 
             optimizer = fluid.optimizer.Adam()
@@ -146,7 +147,7 @@ class TestProgram(unittest.TestCase):
         program = fluid.default_main_program()
         data = fluid.data(name='x', shape=[None, 13], dtype='float32')
         hidden = fluid.layers.fc(input=data, size=10)
-        loss = fluid.layers.mean(hidden)
+        loss = paddle.mean(hidden)
         fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
         # NOTE: here the parameters are fc_0.w_0 and fc_0.b_0
@@ -182,7 +183,7 @@ class TestProgram(unittest.TestCase):
                                             use_double_buffer=True)
             in_data, label = fluid.layers.read_file(reader)
             predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
-            loss = fluid.layers.mean(
+            loss = paddle.mean(
                 fluid.layers.cross_entropy(input=predict_label, label=label))
 
             optimizer = fluid.optimizer.Adam()

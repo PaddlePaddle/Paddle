@@ -105,7 +105,7 @@ class TestCompiledProgramError(unittest.TestCase):
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         prediction = fluid.layers.fc(input=img, size=10, act='softmax')
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
 
     def compile_program_not_compiled(self):
         with fluid.program_guard(fluid.Program()):

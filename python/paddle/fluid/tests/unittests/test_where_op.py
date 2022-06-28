@@ -97,7 +97,7 @@ class TestWhereAPI(unittest.TestCase):
                     x.stop_gradient = x_stop_gradient
                     y.stop_gradient = y_stop_gradient
                     result = paddle.where(cond, x, y)
-                    append_backward(layers.mean(result))
+                    append_backward(paddle.mean(result))
                     for use_cuda in [False, True]:
                         if (use_cuda
                                 and (not fluid.core.is_compiled_with_cuda())):

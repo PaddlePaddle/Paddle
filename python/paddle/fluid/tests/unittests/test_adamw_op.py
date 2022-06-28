@@ -584,7 +584,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 fc2_b_mon2 = np.zeros((linear2.bias.shape)).astype("float32")
 
                 cost = fluid.layers.square_error_cost(input=out, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 simple_lr_fun = partial(simple_lr_setting,
                                         decay_rate=0.8,

@@ -68,7 +68,7 @@ def train_lenet(lenet, reader, optimizer):
 
         out = lenet(img)
         loss = fluid.layers.cross_entropy(out, label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         avg_loss.backward()
 
         optimizer.minimize(avg_loss)

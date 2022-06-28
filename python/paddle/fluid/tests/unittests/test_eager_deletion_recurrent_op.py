@@ -140,7 +140,7 @@ class EagerDeletionRecurrentOpTest1(unittest.TestCase):
         self.py_rnn = PySimpleRNN1(self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -274,7 +274,7 @@ class EagerDeletionRecurrentOpTest2(EagerDeletionRecurrentOpTest1):
         self.py_rnn = PySimpleRNN2(self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -375,7 +375,7 @@ class EagerDeletionRecurrentOpMultipleMemoryTest(EagerDeletionRecurrentOpTest1):
             self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -456,7 +456,7 @@ class EagerDeletionRecurrentOpNoMemBootTest(EagerDeletionRecurrentOpTest1):
             self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -533,7 +533,7 @@ class EagerDeletionTwoRecurrentOpsTest(EagerDeletionRecurrentOpTest1):
             self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -654,7 +654,7 @@ class EagerDeletionFarwardOnlyRnnAndBackwardRnnTest(
                 forward_only_rnn.output(h)
             forward_only_output = forward_only_rnn()
             forward_only_output.stop_gradient = True
-            self.forward_only_output = layers.mean(forward_only_output)
+            self.forward_only_output = paddle.mean(forward_only_output)
 
             rnn = layers.StaticRNN()
             with rnn.step():
@@ -667,7 +667,7 @@ class EagerDeletionFarwardOnlyRnnAndBackwardRnnTest(
                 rnn.update_memory(h_pre, h)
                 rnn.output(h)
 
-            self.output = layers.mean(rnn())
+            self.output = paddle.mean(rnn())
 
     def forward_two_rnn(self):
         self.feed_map = {

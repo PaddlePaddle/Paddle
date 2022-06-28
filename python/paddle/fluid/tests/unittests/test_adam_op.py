@@ -932,7 +932,7 @@ class TestAdamOptimizer(unittest.TestCase):
                                         act=None,
                                         param_attr=weight_attr)
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             adam = fluid.optimizer.AdamOptimizer(0.01,
                                                  flatten_param_grads=True,
@@ -1149,7 +1149,7 @@ class TestMultiTensorAdam(unittest.TestCase):
                                           name='X',
                                           dtype='float32')
             hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.fluid.layers.mean(hidden)
+            loss = paddle.mean(hidden)
             optimizer.minimize(loss)
         exe.run(startup_program)
         if use_amp:

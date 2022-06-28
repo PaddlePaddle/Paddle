@@ -115,7 +115,7 @@ class TestXPUWhereAPI(unittest.TestCase):
                     y.stop_gradient = y_stop_gradient
 
                     result = paddle.where(cond, x, y)
-                    append_backward(fluid.layers.mean(result))
+                    append_backward(paddle.mean(result))
 
                     exe = fluid.Executor(self.place)
                     exe.run(startup)

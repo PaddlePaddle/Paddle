@@ -141,7 +141,7 @@ class TestASPStaticOptimize(unittest.TestCase):
 
         with fluid.program_guard(self.main_program, self.startup_program):
             self.img, self.label, predict = build_model()
-            self.loss = fluid.layers.mean(
+            self.loss = paddle.mean(
                 fluid.layers.cross_entropy(input=predict, label=self.label))
             self.optimizer = fluid.optimizer.SGD(learning_rate=0.01)
             self.optimizer = paddle.incubate.asp.decorate(self.optimizer)

@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 from quant_dequant_test import QuantDequantTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
@@ -44,7 +45,7 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
                                      act=None)
             result = fluid.layers.relu(fc_out)
             loss = fluid.layers.cross_entropy(input=result, label=self.label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             return avg_loss, result
 
         self.main_program.random_seed = 2
@@ -136,7 +137,7 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
                                      act=None)
             result = fluid.layers.relu(fc_out)
             loss = fluid.layers.cross_entropy(input=result, label=self.label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             return avg_loss, result
 
         self.main_program.random_seed = 2
@@ -227,7 +228,7 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
                                      act=None)
             result = fluid.layers.relu(fc_out)
             loss = fluid.layers.cross_entropy(input=result, label=self.label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             return avg_loss, result
 
         self.main_program.random_seed = 2

@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from collections import Counter
-
+import paddle
 import paddle.fluid as fluid
 
 from paddle.fluid.dygraph.jit import declarative
@@ -113,7 +113,7 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
 
 def simple_func(x):
     inputs = fluid.dygraph.to_variable(x)
-    mean = fluid.layers.mean(inputs)
+    mean = paddle.mean(inputs)
     return mean
 
 

@@ -86,7 +86,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
         pred = while_softmax_regression(img)
 
         loss = fluid.layers.cross_entropy(input=pred, label=label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
 
         optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         optimizer.minimize(avg_loss)
@@ -144,7 +144,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
                 cost = while_net(img)
 
                 loss = fluid.layers.cross_entropy(cost, label)
-                avg_loss = fluid.layers.mean(loss)
+                avg_loss = paddle.mean(loss)
 
                 avg_loss.backward()
                 sgd.minimize(avg_loss)
@@ -169,7 +169,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
             pred = while_softmax_regression(img)
 
             loss = fluid.layers.cross_entropy(input=pred, label=label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
 
             optimizer = fluid.optimizer.SGD(learning_rate=0.001)
             optimizer.minimize(avg_loss)

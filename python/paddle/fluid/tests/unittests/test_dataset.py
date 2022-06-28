@@ -943,7 +943,7 @@ class TestDataset2(unittest.TestCase):
                 slots_vars.append(var)
             fake_cost = \
                 fluid.layers.elementwise_sub(slots_vars[0], slots_vars[-1])
-            fake_cost = fluid.layers.mean(fake_cost)
+            fake_cost = paddle.mean(fake_cost)
         with fluid.scope_guard(scope):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -1008,7 +1008,7 @@ class TestDataset2(unittest.TestCase):
                 slots_vars.append(var)
             fake_cost = \
                 fluid.layers.elementwise_sub(slots_vars[0], slots_vars[-1])
-            fake_cost = fluid.layers.mean(fake_cost)
+            fake_cost = paddle.mean(fake_cost)
         with fluid.scope_guard(scope):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -1136,7 +1136,7 @@ class TestDataset2(unittest.TestCase):
                 slots_vars.append(var)
             fake_cost = \
                 fluid.layers.elementwise_sub(slots_vars[0], slots_vars[-1])
-            fake_cost = fluid.layers.mean(fake_cost)
+            fake_cost = paddle.mean(fake_cost)
         with fluid.scope_guard(scope):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)

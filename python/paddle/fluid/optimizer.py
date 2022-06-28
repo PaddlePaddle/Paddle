@@ -913,7 +913,7 @@ class Optimizer(object):
             program = loss.block.program
             assert len(loss.shape) == 1 and loss.shape[0] == 1, \
                 "The loss.shape should be (1L,), but the current loss.shape is {}. " \
-                "Maybe that you should call fluid.layers.mean to process the current loss.".format(
+                "Maybe that you should call paddle.mean to process the current loss.".format(
                     loss.shape)
             parameter_list = parameter_list if parameter_list \
                 else self._parameter_list
@@ -1286,7 +1286,7 @@ class SGDOptimizer(Optimizer):
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
                 sgd_optimizer.minimize(avg_cost)
@@ -1458,7 +1458,7 @@ class MomentumOptimizer(Optimizer):
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 moment_optimizer = fluid.optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
                 moment_optimizer.minimize(avg_cost)
@@ -2381,7 +2381,7 @@ class AdamOptimizer(Optimizer):
                 y = fluid.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 adam_optimizer = fluid.optimizer.AdamOptimizer(0.01)
                 adam_optimizer.minimize(avg_cost)
@@ -2409,7 +2409,7 @@ class AdamOptimizer(Optimizer):
                 y = fluid.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 # define beta decay variable
                 def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate, epsilon_init):
@@ -2741,7 +2741,7 @@ class AdamaxOptimizer(Optimizer):
           with fluid.program_guard(train_program, startup_program):
               data = fluid.data(name='X', shape=[None, 1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
+              loss = paddle.mean(hidden)
               adam = fluid.optimizer.AdamaxOptimizer(learning_rate=0.2)
               adam.minimize(loss)
 
@@ -2876,7 +2876,7 @@ class DpsgdOptimizer(Optimizer):
           with fluid.program_guard(train_program, startup_program):
               data = fluid.layers.data(name='X', shape=[1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
+              loss = paddle.mean(hidden)
               optimizer = fluid.optimizer.Dpsgd(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
               optimizer.minimize(loss)
 
@@ -3305,7 +3305,7 @@ class RMSPropOptimizer(Optimizer):
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 rms_optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
                 rms_optimizer.minimize(avg_cost)
@@ -3487,7 +3487,7 @@ class FtrlOptimizer(Optimizer):
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 ftrl_optimizer = fluid.optimizer.Ftrl(learning_rate=0.1)
                 ftrl_optimizer.minimize(avg_cost)
@@ -3646,7 +3646,7 @@ class LambOptimizer(AdamOptimizer):
 
             data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
-            cost = fluid.layers.mean(hidden)
+            cost = paddle.mean(hidden)
 
             def exclude_fn(param):
                 return param.name.endswith('.b_0')
@@ -3831,7 +3831,7 @@ class ModelAverage(Optimizer):
             # build net
             data = fluid.data(name='X', shape=[None, 1], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
-            loss = fluid.layers.mean(hidden)
+            loss = paddle.mean(hidden)
             optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
             optimizer.minimize(loss)
 
@@ -4001,7 +4001,7 @@ class ModelAverage(Optimizer):
                 # build net
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
-                loss = fluid.layers.mean(hidden)
+                loss = paddle.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
                 optimizer.minimize(loss)
 
@@ -4055,7 +4055,7 @@ class ModelAverage(Optimizer):
                 # build net
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
-                loss = fluid.layers.mean(hidden)
+                loss = paddle.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
                 optimizer.minimize(loss)
 
@@ -6834,7 +6834,7 @@ class LookaheadOptimizer(object):
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
             y = fluid.layers.fc(input=[x], size=2, act="softmax")
             loss = fluid.layers.cross_entropy(input=y, label=label)
-            loss = fluid.layers.mean(x=loss)
+            loss = paddle.mean(x=loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
                                                 alpha=0.5,

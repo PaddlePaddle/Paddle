@@ -38,7 +38,7 @@ class TestModelAverage(unittest.TestCase):
             with fluid.unique_name.guard():
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
-                loss = fluid.layers.mean(hidden)
+                loss = paddle.mean(hidden)
                 test_program = train_program.clone()
                 optimizer = paddle.optimizer.Momentum(learning_rate=0.2,
                                                       momentum=0.1)

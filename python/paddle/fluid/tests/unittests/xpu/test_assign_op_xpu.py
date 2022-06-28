@@ -58,7 +58,7 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
             init_array = fluid.layers.array_write(x=z, i=i)
             array = fluid.layers.assign(init_array)
             sums = fluid.layers.array_read(array=init_array, i=i)
-            mean = fluid.layers.mean(sums)
+            mean = paddle.mean(sums)
             append_backward(mean)
 
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(

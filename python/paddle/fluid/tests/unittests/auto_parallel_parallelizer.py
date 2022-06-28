@@ -96,7 +96,7 @@ def mlp_pretrain_forward(train_program, start_program):
         predict = mlp(input)
 
         cost = layers.cross_entropy(input=predict, label=label)
-        avg_cost = layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
     return avg_cost, train_program, start_program
 

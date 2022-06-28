@@ -33,7 +33,7 @@ def nested_input(x, y):
     sub_res = z_elem[0] - z_elem[1]
 
     mul_res = y[-1]['d']['da'] * y[-1]['d']['dc']
-    mean_func = fluid.layers.mean
+    mean_func = paddle.mean
     out = mean_func(sub_res) + mean_func(sum_res) + mean_func(mul_res)
     return out
 

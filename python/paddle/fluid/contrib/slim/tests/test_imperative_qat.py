@@ -118,7 +118,7 @@ class TestImperativeQat(unittest.TestCase):
                     out = lenet(img)
                     acc = fluid.layers.accuracy(out, label)
                     loss = fluid.layers.cross_entropy(out, label)
-                    avg_loss = fluid.layers.mean(loss)
+                    avg_loss = paddle.mean(loss)
                     avg_loss.backward()
                     adam.minimize(avg_loss)
                     lenet.clear_gradients()

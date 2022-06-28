@@ -112,7 +112,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
 
                 out = resnet(img)
                 loss = fluid.layers.cross_entropy(input=out, label=label)
-                avg_loss = fluid.layers.mean(x=loss)
+                avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
 
@@ -161,7 +161,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = resnet(img)
             loss = fluid.layers.cross_entropy(input=out, label=label)
-            avg_loss = fluid.layers.mean(x=loss)
+            avg_loss = paddle.mean(x=loss)
             optimizer.minimize(avg_loss)
 
             # initialize params and fetch them

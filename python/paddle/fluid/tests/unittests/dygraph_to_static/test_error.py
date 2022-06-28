@@ -33,7 +33,7 @@ def inner_func():
 def func_error_in_compile_time(x):
     x = fluid.dygraph.to_variable(x)
     inner_func()
-    if fluid.layers.mean(x) < 0:
+    if paddle.mean(x) < 0:
         x_v = x - 1
     else:
         x_v = x + 1
@@ -78,7 +78,7 @@ class LayerErrorInCompiletime(fluid.dygraph.Layer):
     def forward(self, x):
         y = self._linear(x)
         z = fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")
-        out = fluid.layers.mean(y[z])
+        out = paddle.mean(y[z])
         return out
 
 
@@ -386,7 +386,7 @@ class TestJitSaveInCompiletime(TestErrorBase):
              'y = self._linear(x)',
              'z = fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
              '<--- HERE',
-             'out = fluid.layers.mean(y[z])',
+             'out = paddle.mean(y[z])',
              'return out'
              ]
 

@@ -479,7 +479,7 @@ def train_mobilenet(args, to_static):
                 softmax_out = fluid.layers.softmax(out, use_cudnn=False)
                 loss = fluid.layers.cross_entropy(input=softmax_out,
                                                   label=label)
-                avg_loss = fluid.layers.mean(x=loss)
+                avg_loss = paddle.mean(x=loss)
                 acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
                 acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
                 t_start_back = time.time()

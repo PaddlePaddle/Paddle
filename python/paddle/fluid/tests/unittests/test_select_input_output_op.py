@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
@@ -43,7 +44,7 @@ class TestSplitMergeSelectedVarOps(unittest.TestCase):
 
                 select_output(x, outputs, mask)
                 y = select_input(outputs, mask)
-                mean = layers.mean(y)
+                mean = paddle.mean(y)
                 append_backward(mean)
 
             place = fluid.CUDAPlace(

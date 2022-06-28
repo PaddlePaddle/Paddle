@@ -102,7 +102,7 @@ def run_check():
                     exe = executor.Executor(
                         core.CUDAPlace(0) if core.is_compiled_with_cuda() and
                         (core.get_cuda_device_count() > 0) else core.CPUPlace())
-                    loss = layers.mean(out)
+                    loss = paddle.mean(out)
                     loss.persistable = True
                     optimizer.SGD(learning_rate=0.01).minimize(loss)
                     startup_prog.random_seed = 1

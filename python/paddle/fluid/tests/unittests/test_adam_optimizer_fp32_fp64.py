@@ -33,7 +33,7 @@ def main_test_func(place, dtype):
             y = fluid.data(name='y', shape=[None, 1], dtype=dtype)
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             adam_optimizer = fluid.optimizer.AdamOptimizer(0.01)
             adam_optimizer.minimize(avg_cost)

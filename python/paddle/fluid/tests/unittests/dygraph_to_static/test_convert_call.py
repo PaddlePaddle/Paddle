@@ -37,7 +37,7 @@ np.random.seed(SEED)
 # Use a decorator to test exception
 @paddle.jit.to_static
 def dyfunc_with_if(x_v):
-    if fluid.layers.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -58,7 +58,7 @@ def nested_func(x_v):
 @paddle.jit.to_static
 def dyfunc_with_third_library_logging(x_v):
     logging.info('test dyfunc_with_third_library_logging')
-    if fluid.layers.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1

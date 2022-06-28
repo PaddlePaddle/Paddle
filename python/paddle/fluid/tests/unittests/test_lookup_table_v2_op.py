@@ -222,7 +222,7 @@ class TestLookupTableIsSparse(unittest.TestCase):
             y = fluid.layers.reduce_sum(emb, dim=-1)
 
             loss = fluid.layers.square_error_cost(input=y, label=y_)
-            loss = fluid.layers.mean(loss)
+            loss = paddle.mean(loss)
 
             sgd_optimizer = fluid.optimizer.SGD(learning_rate=1e-4)
             sgd_optimizer.minimize(loss)

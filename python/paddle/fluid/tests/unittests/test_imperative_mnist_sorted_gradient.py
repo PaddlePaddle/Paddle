@@ -63,7 +63,7 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
 
                     cost2 = mnist2(img2)
                     loss2 = fluid.layers.cross_entropy(cost2, label2)
-                    avg_loss2 = fluid.layers.mean(loss2)
+                    avg_loss2 = paddle.mean(loss2)
 
                     dy_out2 = avg_loss2.numpy()
 
@@ -100,7 +100,7 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
             loss = fluid.layers.cross_entropy(cost, label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             sgd.minimize(avg_loss)
 
             # initialize params and fetch them
