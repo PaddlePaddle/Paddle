@@ -41,6 +41,9 @@ from .collective import recv  # noqa: F401
 from .collective import get_group  # noqa: F401
 from .collective import send  # noqa: F401
 from .collective import wait  # noqa: F401
+from .collective import is_initialized  # noqa: F401
+from .collective import destroy_process_group  # noqa: F401
+from .collective import alltoall_single  # noqa: F401
 
 from .auto_parallel import shard_op  # noqa: F401
 from .auto_parallel import shard_tensor  # noqa: F401
@@ -59,33 +62,11 @@ from . import utils  # noqa: F401
 from .sharding import *  # noqa: F401
 
 __all__ = [  # noqa
-    "spawn",
-    "launch",
-    "scatter",
-    "broadcast",
-    "ParallelEnv",
-    "new_group",
-    "init_parallel_env",
-    "gloo_init_parallel_env",
-    "gloo_barrier",
-    "gloo_release",
-    "QueueDataset",
-    "split",
-    "CountFilterEntry",
-    "ShowClickEntry",
-    "get_world_size",
-    "get_group",
-    "all_gather",
-    "InMemoryDataset",
-    "barrier",
-    "all_reduce",
-    "alltoall",
-    "send",
-    "reduce",
-    "recv",
-    "ReduceOp",
-    "wait",
-    "get_rank",
-    "ProbabilityEntry",
-    "ParallelMode",
+    "spawn", "launch", "scatter", "broadcast", "ParallelEnv", "new_group",
+    "init_parallel_env", "gloo_init_parallel_env", "gloo_barrier",
+    "gloo_release", "QueueDataset", "split", "CountFilterEntry",
+    "ShowClickEntry", "get_world_size", "get_group", "all_gather",
+    "InMemoryDataset", "barrier", "all_reduce", "alltoall", "send", "reduce",
+    "recv", "ReduceOp", "wait", "get_rank", "ProbabilityEntry", "ParallelMode",
+    "is_initialized", "destroy_process_group", "alltoall_single"
 ]

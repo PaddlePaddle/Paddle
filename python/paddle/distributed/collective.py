@@ -175,9 +175,8 @@ def _get_group_map_by_name():
 
 def _get_default_group():
     global _group_map_by_name
-    assert _default_group_name in _group_map_by_name, (
-        "Call paddle.distributed.init_parallel_env first "
-        "to initialize the distributed environment.")
+    assert is_initialized(), ("Call paddle.distributed.init_parallel_env first "
+                              "to initialize the distributed environment.")
     return _get_group_map_by_name()[_default_group_name]
 
 
@@ -460,6 +459,71 @@ def new_group(ranks=None, backend=None):
     paddle.distributed.all_reduce(tmp, use_calc_stream=True)
     paddle.distributed.wait(tmp)
     return gp
+
+
+def is_initialized():
+    """
+
+    Check whether the distributed environment has been initialized
+
+    Returns (bool): `True` if distributed environment has been initialized, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            print(paddle.distributed.is_initialized())
+            # False
+
+            paddle.distributed.init_parallel_env()
+            print(paddle.distributed.is_initialized())
+            # True
+
+    """
+    global _group_map_by_name
+    return _default_group_name in _group_map_by_name
+
+
+def destroy_process_group(group=None):
+    """
+    Destroy a given group for communication
+
+    Args:
+        group (ProcessGroup, optional): The group to be destroyed. All of process groups, including 
+                                        the default group, will be destroyed and the distributed 
+                                        environment will be deinitialized.
+    
+    Returns : None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.distributed.init_parallel_env()
+            group = paddle.distributed.new_group([0, 1])
+
+            paddle.distributed.destroy_process_group(group)
+            print(paddle.distributed.is_initialized())
+            # True
+            paddle.distributed.destroy_process_group()
+            print(paddle.distributed.is_initialized())
+            # False
+
+    """
+    global _group_map
+    global _group_map_by_name
+
+    pg = _get_default_group() if group is None else group
+    assert _group_map.get(pg.id, None) is not None, "Invalid group."
+
+    if group is None:
+        _group_map.clear()
+        _group_map_by_name.clear()
+    else:
+        del _group_map[pg.id]
+        del _group_map_by_name[pg.name]
 
 
 def wait(tensor, group=None, use_calc_stream=True):
@@ -1865,6 +1929,31 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
                              'use_calc_stream': use_calc_stream,
                          })
     out_tensor_list.extend(paddle.split(out, nranks, 0))
+
+
+def alltoall_single(in_tensor,
+                    out_tensor,
+                    in_split_sizes=None,
+                    out_split_sizes=None,
+                    group=None,
+                    use_calc_stream=True):
+    if group is not None and not group.is_member():
+        return
+
+    assert in_dygraph_mode(), "Only suppport alltoall_single in eager mode."
+    # _check_single_tensor
+
+    group = _get_default_group() if group is None else group
+    in_split_sizes = [] if in_split_sizes is None else in_split_sizes
+    out_split_sizes = [] if out_split_sizes is None else out_split_sizes
+
+    task = group.process_group.alltoall_single(in_tensor, out_tensor,
+                                               in_split_sizes, out_split_sizes)
+    if use_calc_stream:
+        task.wait()
+        return
+    else:
+        return task
 
 
 def send(tensor, dst=0, group=None, use_calc_stream=True):
