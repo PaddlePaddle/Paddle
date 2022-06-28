@@ -42,8 +42,10 @@ namespace allocation {
 class CUDADeviceContextAllocation : public Allocation {
  public:
   explicit CUDADeviceContextAllocation(DecoratedAllocationPtr allocation)
-      : Allocation(allocation->ptr(), allocation->base_ptr(),
-                   allocation->size(), allocation->place()),
+      : Allocation(allocation->ptr(),
+                   allocation->base_ptr(),
+                   allocation->size(),
+                   allocation->place()),
         underlying_allocation_(std::move(allocation)) {}
 
   ~CUDADeviceContextAllocation() {
@@ -147,7 +149,8 @@ class CUDADeviceContextAllocatorPool {
     auto iter =
         allocators_.find(platform::CUDAPlace(dev_ctx.GetPlace().GetDeviceId()));
     PADDLE_ENFORCE_NE(
-        iter, allocators_.end(),
+        iter,
+        allocators_.end(),
         platform::errors::NotFound("No allocator found for CUDAPlace."));
     auto &allocator = iter->second;
     AllocationPtr allocation = allocator->Allocate(size);

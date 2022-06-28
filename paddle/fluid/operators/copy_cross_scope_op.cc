@@ -52,11 +52,13 @@ class CopyCrossScopeOp : public framework::OperatorBase {
     int num_micro_scopes = scope.kids().size();
     int num_micro_batches = Attr<int>("num_micro_batches");
     bool ToM = Attr<bool>("to_main_scope");
-    PADDLE_ENFORCE_EQ(num_micro_scopes, num_micro_batches,
+    PADDLE_ENFORCE_EQ(num_micro_scopes,
+                      num_micro_batches,
                       platform::errors::InvalidArgument(
                           "For pipeline, number of micro scopes (%d) should "
                           "be equal to number of micro batches (%d).",
-                          num_micro_scopes, num_micro_batches));
+                          num_micro_scopes,
+                          num_micro_batches));
     const std::string& id_name = Input("Id");
     auto* id_var = scope.FindVar(id_name);
     PADDLE_ENFORCE_NOT_NULL(
@@ -65,8 +67,8 @@ class CopyCrossScopeOp : public framework::OperatorBase {
     auto id_tensor = id_var->GetMutable<LoDTensor>();
     auto it = scope.kids().begin();
     framework::Tensor cpu_id_tensor;
-    paddle::framework::TensorCopySync(*id_tensor, platform::CPUPlace(),
-                                      &cpu_id_tensor);
+    paddle::framework::TensorCopySync(
+        *id_tensor, platform::CPUPlace(), &cpu_id_tensor);
     auto id_value = cpu_id_tensor.data<int64_t>();
     for (auto i = 0; i < *id_value; i++) {
       it++;
@@ -88,8 +90,8 @@ class CopyCrossScopeOp : public framework::OperatorBase {
                 x_name));
         auto dst_tensor = dst_var->GetMutable<LoDTensor>();
         auto main_tensor = main_var->GetMutable<LoDTensor>();
-        paddle::framework::TensorCopySync(*dst_tensor, main_tensor->place(),
-                                          main_tensor);
+        paddle::framework::TensorCopySync(
+            *dst_tensor, main_tensor->place(), main_tensor);
       }
       return;
     }
@@ -109,8 +111,8 @@ class CopyCrossScopeOp : public framework::OperatorBase {
             "No variable with name %s found in destination scope.", x_name));
     auto src_tensor = source_var->GetMutable<LoDTensor>();
     auto dst_tensor = dst_var->GetMutable<LoDTensor>();
-    paddle::framework::TensorCopySync(*src_tensor, dst_tensor->place(),
-                                      dst_tensor);
+    paddle::framework::TensorCopySync(
+        *src_tensor, dst_tensor->place(), dst_tensor);
 
     if (ToM) {
       auto* main_var = scope.FindVar(x_name);
@@ -119,8 +121,8 @@ class CopyCrossScopeOp : public framework::OperatorBase {
           platform::errors::NotFound(
               "No variable with name %s found in destination scope.", x_name));
       auto main_tensor = main_var->GetMutable<LoDTensor>();
-      paddle::framework::TensorCopySync(*dst_tensor, main_tensor->place(),
-                                        main_tensor);
+      paddle::framework::TensorCopySync(
+          *dst_tensor, main_tensor->place(), main_tensor);
     }
   }
 };
@@ -151,5 +153,6 @@ class CopyCrossScopeOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_WITHOUT_GRADIENT(copy_cross_scope, ops::CopyCrossScopeOp,
+REGISTER_OP_WITHOUT_GRADIENT(copy_cross_scope,
+                             ops::CopyCrossScopeOp,
                              ops::CopyCrossScopeOpMaker);

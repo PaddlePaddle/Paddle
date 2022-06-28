@@ -48,7 +48,8 @@ T GetSingleVarFromScope(const Scope* scope, const std::string& var_name) {
 struct IpuCustomOpIdentifier {
   IpuCustomOpIdentifier(const std::string& _paddle_op,
                         const std::string& _popart_op,
-                        const std::string& _domain, unsigned int _version)
+                        const std::string& _domain,
+                        unsigned int _version)
       : paddle_op(_paddle_op), popart_op(_domain, _popart_op, _version) {}
 
   std::string repr() {

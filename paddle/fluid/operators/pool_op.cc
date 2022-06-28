@@ -63,7 +63,8 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
 }
 
 framework::OpKernelType PoolOp::GetKernelTypeForVar(
-    const std::string& var_name, const Tensor& tensor,
+    const std::string& var_name,
+    const Tensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
@@ -75,13 +76,13 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != framework::DataLayout::kAnyLayout) {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), dl);
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), dl);
     }
   }
 #endif
-  return framework::OpKernelType(expected_kernel_type.data_type_,
-                                 tensor.place(), tensor.layout());
+  return framework::OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
 
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
@@ -105,12 +106,13 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
-                                 library_);
+  return framework::OpKernelType(
+      input_data_type, ctx.GetPlace(), layout_, library_);
 }
 
 framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
-    const std::string& var_name, const Tensor& tensor,
+    const std::string& var_name,
+    const Tensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
@@ -123,8 +125,8 @@ framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
                                    framework::StringToDataLayout(data_format));
   }
 #endif
-  return framework::OpKernelType(expected_kernel_type.data_type_,
-                                 tensor.place(), tensor.layout());
+  return framework::OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
 
 void Pool2dOpMaker::Make() {
@@ -550,33 +552,45 @@ Example:
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(pool2d, Pool2dInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pool2d,
+                            Pool2dInferShapeFunctor,
                             PD_INFER_META(phi::PoolInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(pool2d_grad, Pool2dGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pool2d_grad,
+                            Pool2dGradInferShapeFunctor,
                             PD_INFER_META(phi::PoolGradInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(pool2d_double_grad,
                             Pool2dDoubleGradInferShapeFunctor,
                             PD_INFER_META(phi::PoolInferMeta));
 
 REGISTER_OPERATOR(
-    pool2d, ops::PoolOp, ops::Pool2dOpMaker, ops::PoolOpInferVarType,
+    pool2d,
+    ops::PoolOp,
+    ops::Pool2dOpMaker,
+    ops::PoolOpInferVarType,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     Pool2dInferShapeFunctor);
-REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad,
+REGISTER_OPERATOR(pool2d_grad,
+                  ops::PoolOpGrad,
                   ops::Pool2dOpGradGradMaker<paddle::framework::OpDesc>,
                   ops::Pool2dOpGradGradMaker<paddle::imperative::OpBase>,
                   Pool2dGradInferShapeFunctor);
-REGISTER_OPERATOR(pool2d_double_grad, ops::PoolOp,
+REGISTER_OPERATOR(pool2d_double_grad,
+                  ops::PoolOp,
                   Pool2dDoubleGradInferShapeFunctor);
 
-DECLARE_INFER_SHAPE_FUNCTOR(pool3d, Pool3dInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pool3d,
+                            Pool3dInferShapeFunctor,
                             PD_INFER_META(phi::PoolInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(pool3d_grad, Pool3dGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pool3d_grad,
+                            Pool3dGradInferShapeFunctor,
                             PD_INFER_META(phi::PoolGradInferMeta));
 
 REGISTER_OPERATOR(
-    pool3d, ops::PoolOp, ops::Pool3dOpMaker, ops::PoolOpInferVarType,
+    pool3d,
+    ops::PoolOp,
+    ops::Pool3dOpMaker,
+    ops::PoolOpInferVarType,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     Pool3dInferShapeFunctor);

@@ -26,7 +26,8 @@ namespace paddle {
 namespace operators {
 class SplitPrimOp : public framework::OperatorBase {
  public:
-  SplitPrimOp(const std::string &type, const framework::VariableNameMap &inputs,
+  SplitPrimOp(const std::string &type,
+              const framework::VariableNameMap &inputs,
               const framework::VariableNameMap &outputs,
               const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
@@ -71,11 +72,13 @@ class SplitPrimOpShapeInference : public framework::InferShapeBase {
         ctx->Attrs().Get<std::vector<int64_t>>("num_or_sections");
     std::vector<int64_t> y_shape(x_shape);
     if (num_or_sections.size() == 1) {
-      PADDLE_ENFORCE_EQ(x_shape[axis] % num_or_sections[0], 0,
+      PADDLE_ENFORCE_EQ(x_shape[axis] % num_or_sections[0],
+                        0,
                         platform::errors::InvalidArgument(
                             "The input tensor can't be devided equally into %d "
                             "parts equally along axis %d",
-                            num_or_sections[0], axis));
+                            num_or_sections[0],
+                            axis));
       y_shape[axis] = x_shape[axis] / num_or_sections[0];
       for (size_t i = 0; i < size_t(num_or_sections[0]); ++i) {
         BOOST_GET(framework::VarDesc *, y_var_ptrs[i])->SetShape(y_shape);
@@ -88,11 +91,15 @@ class SplitPrimOpShapeInference : public framework::InferShapeBase {
         BOOST_GET(framework::VarDesc *, y_var_ptrs[i])->SetShape(y_shape);
       }
       PADDLE_ENFORCE_EQ(
-          x_shape[axis], cnt_along_axis,
+          x_shape[axis],
+          cnt_along_axis,
           platform::errors::InvalidArgument(
               "The input tensor has %d elements along axis %d, thus can't be "
               "devided into %d tensor with %d elements totally.",
-              x_shape[axis], axis, num_or_sections.size(), cnt_along_axis));
+              x_shape[axis],
+              axis,
+              num_or_sections.size(),
+              cnt_along_axis));
     }
   }
 };
@@ -113,7 +120,8 @@ class SplitPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(split_p, paddle::operators::SplitPrimOp,
+REGISTER_OPERATOR(split_p,
+                  paddle::operators::SplitPrimOp,
                   paddle::operators::SplitPrimOpMaker,
                   paddle::operators::SplitPrimOpShapeInference,
                   paddle::operators::SplitPrimOpVarTypeInference);

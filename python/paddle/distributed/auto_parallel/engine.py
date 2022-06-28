@@ -44,7 +44,7 @@ from .dist_saver import DistributedSaver
 from .dist_loader import NonIterableGeneratorLoader
 from .utils import make_data_unshard, set_grad_var_shape
 from .utils import print_program_with_dist_attr, to_list
-from .process_group import get_all_process_groups, get_world_process_group
+from .process_group import new_process_group, get_all_process_groups, get_world_process_group
 from .dist_context import DistributedContext, get_default_distributed_context
 
 
@@ -155,8 +155,10 @@ class Engine:
 
             default_ctx = get_default_distributed_context()
             if not default_ctx.has_annotation or self._default_strategy:
-                inputs = [self._set_data_parallel(var) for var in inputs]
-                labels = [self._set_data_parallel(var) for var in labels]
+                # We build the world process group because the data parallel
+                # needs all ranks by default.
+                new_process_group(list(range(self._nranks)))
+                default_ctx.data_parallel = True
 
             # self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
             feed_vars = {"inputs": inputs, "labels": labels}

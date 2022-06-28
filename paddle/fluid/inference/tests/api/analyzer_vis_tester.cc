@@ -62,7 +62,8 @@ void SetConfig(AnalysisConfig *cfg) {
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   PADDLE_ENFORCE_EQ(
-      FLAGS_test_all_data, 0,
+      FLAGS_test_all_data,
+      0,
       paddle::platform::errors::Fatal("Only have single batch of data."));
   std::string line;
   std::ifstream file(FLAGS_infer_data);
@@ -96,7 +97,9 @@ void profile(bool use_mkldnn = false) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+                 input_slots_all,
+                 &outputs,
+                 FLAGS_num_threads);
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     std::string line;
     std::ifstream file(FLAGS_refer_result);
@@ -104,15 +107,16 @@ void profile(bool use_mkldnn = false) {
     auto refer = ProcessALine(line);
     file.close();
 
-    PADDLE_ENFORCE_GT(outputs.size(), 0,
+    PADDLE_ENFORCE_GT(outputs.size(),
+                      0,
                       paddle::platform::errors::Fatal(
                           "The size of output should be greater than 0."));
     auto &output = outputs.back().front();
     size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
     CHECK_EQ(numel, refer.data.size());
     for (size_t i = 0; i < numel; ++i) {
-      EXPECT_NEAR(static_cast<float *>(output.data.data())[i], refer.data[i],
-                  1e-5);
+      EXPECT_NEAR(
+          static_cast<float *>(output.data.data())[i], refer.data[i], 1e-5);
     }
   }
 }

@@ -23,11 +23,13 @@ class DiagEmbedOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Input"), true,
+        ctx->HasInput("Input"),
+        true,
         platform::errors::NotFound("Input of DiagEmbedOp is not found."));
 
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::NotFound("Output of DiagEmbedOp is not found."));
 
     int offset = ctx->Attrs().Get<int>("offset");
@@ -37,40 +39,54 @@ class DiagEmbedOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("Input");
 
     PADDLE_ENFORCE_GE(
-        dim1, -(x_dims.size() + 1),
+        dim1,
+        -(x_dims.size() + 1),
         platform::errors::OutOfRange(
             "Dim1 is out of range (expected to be in range of [%ld, "
             "%ld], but got %ld).",
-            -(x_dims.size() + 1), x_dims.size(), dim1));
+            -(x_dims.size() + 1),
+            x_dims.size(),
+            dim1));
     PADDLE_ENFORCE_LE(
-        dim1, x_dims.size(),
+        dim1,
+        x_dims.size(),
         platform::errors::OutOfRange(
             "Dim1 is out of range (expected to be in range of [%ld, "
             "%ld], but got %ld).",
-            -(x_dims.size() + 1), x_dims.size(), dim1));
+            -(x_dims.size() + 1),
+            x_dims.size(),
+            dim1));
 
     PADDLE_ENFORCE_GE(
-        dim2, -(x_dims.size() + 1),
+        dim2,
+        -(x_dims.size() + 1),
         platform::errors::OutOfRange(
             "Dim2 is out of range (expected to be in range of [%ld, "
             "%ld], but got %ld).",
-            -(x_dims.size() + 1), x_dims.size(), dim2));
+            -(x_dims.size() + 1),
+            x_dims.size(),
+            dim2));
     PADDLE_ENFORCE_LE(
-        dim2, x_dims.size(),
+        dim2,
+        x_dims.size(),
         platform::errors::OutOfRange(
             "Dim2 is out of range (expected to be in range of [%ld, "
             "%ld], but got %ld).",
-            -(x_dims.size() + 1), x_dims.size(), dim2));
+            -(x_dims.size() + 1),
+            x_dims.size(),
+            dim2));
 
     int dim1_ = dim1 < 0 ? x_dims.size() + dim1 + 1 : dim1;
     int dim2_ = dim2 < 0 ? x_dims.size() + dim2 + 1 : dim2;
     int offset_ = std::abs(offset);
 
-    PADDLE_ENFORCE_NE(dim1_, dim2_,
+    PADDLE_ENFORCE_NE(dim1_,
+                      dim2_,
                       platform::errors::InvalidArgument(
                           "diagonal dimensions should not be identical "
                           "%ld vs %ld.",
-                          dim1, dim2));
+                          dim1,
+                          dim2));
 
     int new_dim_len = offset_ + x_dims[x_dims.size() - 1];
     auto sizes = vectorize(x_dims);
@@ -117,11 +133,14 @@ class DiagEmbedOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 namespace platform = paddle::platform;
 REGISTER_OPERATOR(
-    diag_embed, ops::DiagEmbedOp, ops::DiagEmbedOpMaker,
+    diag_embed,
+    ops::DiagEmbedOp,
+    ops::DiagEmbedOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
-    diag_embed, ops::DiagEmbedKernel<paddle::platform::CPUDeviceContext, int>,
+    diag_embed,
+    ops::DiagEmbedKernel<paddle::platform::CPUDeviceContext, int>,
     ops::DiagEmbedKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DiagEmbedKernel<paddle::platform::CPUDeviceContext, double>,
     ops::DiagEmbedKernel<paddle::platform::CPUDeviceContext, int64_t>);

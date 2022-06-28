@@ -34,8 +34,8 @@ inline std::vector<size_t> GetLodFromRoisNum(
   auto* rois_num_data = rois_num->data<int>();
   framework::Tensor cpu_tensor;
   if (platform::is_gpu_place(rois_num->place())) {
-    paddle::framework::TensorCopySync(*rois_num, platform::CPUPlace(),
-                                      &cpu_tensor);
+    paddle::framework::TensorCopySync(
+        *rois_num, platform::CPUPlace(), &cpu_tensor);
     rois_num_data = cpu_tensor.data<int>();
   }
   rois_lod.push_back(static_cast<size_t>(0));
@@ -84,7 +84,8 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     // check that the fpn_rois is not empty
     if (!context.HasInput("RoisNum")) {
-      PADDLE_ENFORCE_EQ(fpn_rois->lod().size(), 1UL,
+      PADDLE_ENFORCE_EQ(fpn_rois->lod().size(),
+                        1UL,
                         platform::errors::InvalidArgument(
                             "DistributeFpnProposalsOp needs LoD "
                             "with one level. But received level is %d",
@@ -151,7 +152,8 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
       }
       for (int j = 0; j < fpn_rois_slice.dims()[0]; ++j) {
         int lvl = target_level[cur_offset + j];
-        memcpy(multi_fpn_rois_data[lvl - min_level], rois_data,
+        memcpy(multi_fpn_rois_data[lvl - min_level],
+               rois_data,
                kBoxDim * sizeof(T));
         multi_fpn_rois_data[lvl - min_level] += kBoxDim;
         int index_in_shuffle = num_rois_level_integral[lvl - min_level] +

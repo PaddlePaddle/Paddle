@@ -27,7 +27,7 @@ repos:
         files: (api|backward)\.yaml$
 -   repo: local
     hooks:
-    -   id: clang-format-with-version-check
+    -   id: clang-format
         name: clang-format
         description: Format files with ClangFormat.
         entry: bash ./tools/codestyle/clang_format.hook -i
@@ -80,4 +80,3 @@ repos:
     hooks:
     -   id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]
-        # exclude files which need to be fixed

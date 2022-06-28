@@ -154,14 +154,14 @@ class TestPsTrainerPass(PsPassTestBase):
         self.config['debug_new_minimize'] = '1'
         self.config['log_dir'] = ps_log_root_dir + "gpubox_log_new_minimize"
         remove_path_if_exists(self.config['log_dir'])
-        self.ps_launch("gpu-ps")
+        # self.ps_launch("gpu-ps")
 
-        file1 = './ps_log/gpubox_run_minimize_debug:_0_worker_main.prototxt'
-        file2 = './ps_log/gpubox_run_minimize_debug:_1_worker_main.prototxt'
-        if self.check(file1, file2):
-            logger.info('test_ps_optimizer_minimize_gpu passed!')
-        else:
-            logger.error('test_ps_optimizer_minimize_gpu failed!')
+        # file1 = './ps_log/gpubox_run_minimize_debug:_0_worker_main.prototxt'
+        # file2 = './ps_log/gpubox_run_minimize_debug:_1_worker_main.prototxt'
+        # if self.check(file1, file2):
+        #     logger.info('test_ps_optimizer_minimize_gpu passed!')
+        # else:
+        #     logger.error('test_ps_optimizer_minimize_gpu failed!')
 
     def test_append_send_ops_pass(self):
         self.init()

@@ -89,8 +89,8 @@ static std::tuple<int, int, int> GetTrtRuntimeVersion() {
 }
 
 static std::tuple<int, int, int> GetTrtCompileVersion() {
-  return std::tuple<int, int, int>{NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR,
-                                   NV_TENSORRT_PATCH};
+  return std::tuple<int, int, int>{
+      NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR, NV_TENSORRT_PATCH};
 }
 
 // A logger for create TensorRT infer builder.
@@ -132,8 +132,9 @@ class NaiveProfiler : public nvinfer1::IProfiler {
 
   virtual void reportLayerTime(const char* layerName, float ms) TRT_NOEXCEPT {
     auto record =
-        std::find_if(mProfile.begin(), mProfile.end(),
-                     [&](const Record& r) { return r.first == layerName; });
+        std::find_if(mProfile.begin(), mProfile.end(), [&](const Record& r) {
+          return r.first == layerName;
+        });
     if (record == mProfile.end())
       mProfile.push_back(std::make_pair(layerName, ms));
     else
@@ -143,8 +144,8 @@ class NaiveProfiler : public nvinfer1::IProfiler {
   void printLayerTimes() {
     float totalTime = 0;
     for (size_t i = 0; i < mProfile.size(); i++) {
-      printf("%-40.40s %4.3fms\n", mProfile[i].first.c_str(),
-             mProfile[i].second);
+      printf(
+          "%-40.40s %4.3fms\n", mProfile[i].first.c_str(), mProfile[i].second);
       totalTime += mProfile[i].second;
     }
     printf("Time over all layers: %4.3f\n", totalTime);

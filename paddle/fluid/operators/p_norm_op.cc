@@ -114,12 +114,16 @@ class PnormOpGradOpMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
-DECLARE_INFER_SHAPE_FUNCTOR(p_norm, PNormInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(p_norm,
+                            PNormInferShapeFunctor,
                             PD_INFER_META(phi::PNormInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(p_norm_grad, PNormGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(p_norm_grad,
+                            PNormGradInferShapeFunctor,
                             PD_INFER_META(phi::GeneralUnaryGradInferMeta));
 
-REGISTER_OPERATOR(p_norm, ops::PnormOp, ops::PnormOpMaker,
+REGISTER_OPERATOR(p_norm,
+                  ops::PnormOp,
+                  ops::PnormOpMaker,
                   ops::PnormOpGradOpMaker<paddle::framework::OpDesc>,
                   ops::PnormOpGradOpMaker<paddle::imperative::OpBase>,
                   PNormInferShapeFunctor);
@@ -130,5 +134,6 @@ REGISTER_OP_VERSION(p_norm).AddCheckpoint(
         Upgrade p_norm, add 1 attribute [asvector].
       )ROC",
     paddle::framework::compatible::OpVersionDesc().NewAttr(
-        "asvector", "Compute as vector when axis is None and input is matrix",
+        "asvector",
+        "Compute as vector when axis is None and input is matrix",
         false));

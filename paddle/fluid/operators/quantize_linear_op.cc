@@ -26,14 +26,17 @@ namespace operators {
 
 template <typename T>
 struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& dev_ctx,
-                  const framework::Tensor* in, const framework::Tensor* scale,
-                  T max_range, const int quant_axis, framework::Tensor* out) {
+  void operator()(const platform::CPUDeviceContext &dev_ctx,
+                  const framework::Tensor *in,
+                  const framework::Tensor *scale,
+                  T max_range,
+                  const int quant_axis,
+                  framework::Tensor *out) {
     // Dequant op is before quantized op
     // Dequantize the weight of quantized op
     auto in_dims = in->dims();
     const int64_t channel = in_dims[quant_axis];
-    const T* scale_factor = scale->data<T>();
+    const T *scale_factor = scale->data<T>();
     if (quant_axis == 0) {
       for (int64_t i = 0; i < channel; i++) {
         T s = scale_factor[i];
@@ -41,7 +44,7 @@ struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, T> {
         framework::Tensor one_channel_out = out->Slice(i, i + 1);
         auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
         auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
-        auto& dev = *dev_ctx.eigen_device();
+        auto &dev = *dev_ctx.eigen_device();
         out_e.device(dev) = in_e * s / max_range;
       }
     } else if (quant_axis == 1) {
@@ -51,12 +54,12 @@ struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, T> {
       }
       int64_t step_i = in->numel() / out_iter;
       int64_t step_j = in->numel() / (out_iter * channel);
-      auto* in_data = in->data<T>();
-      auto* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+      auto *in_data = in->data<T>();
+      auto *out_data = out->mutable_data<T>(dev_ctx.GetPlace());
       for (int64_t i = 0; i < out_iter; i++) {
         for (int64_t j = 0; j < channel; j++) {
-          auto* cur_in = in_data + i * step_i + j * step_j;
-          auto* cur_out = out_data + i * step_i + j * step_j;
+          auto *cur_in = in_data + i * step_i + j * step_j;
+          auto *cur_out = out_data + i * step_i + j * step_j;
           T s = scale_factor[j];
           for (int64_t k = 0; k < step_j; k++) {
             *cur_out = (*cur_in) * s / max_range;
@@ -69,19 +72,17 @@ struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct DequantizeFunctor<platform::CPUDeviceContext, float>;
-template struct DequantizeFunctor<platform::CPUDeviceContext, double>;
 template struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, float>;
 template struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, double>;
 
 class QuantizeLinearOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "QuantizeLinear");
     OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "QuantizeLinear");
-    OP_INOUT_CHECK(ctx->HasInput("ZeroPoint"), "Input", "ZeroPoint",
-                   "QuantizeLinear");
+    OP_INOUT_CHECK(
+        ctx->HasInput("ZeroPoint"), "Input", "ZeroPoint", "QuantizeLinear");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "QuantizeLinear");
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
     int quant_axis = ctx->Attrs().Get<int>("quant_axis");
@@ -97,7 +98,7 @@ class QuantizeLinearOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
@@ -118,9 +119,10 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
                  "For conv2d, depthwise_conv2d, conv2d_transpose "
                  "and mul, the quant_axis is equal to the cout axis.")
         .SetDefault(0)
-        .AddCustomChecker([](const int& quant_axis) {
+        .AddCustomChecker([](const int &quant_axis) {
           PADDLE_ENFORCE_EQ(
-              quant_axis == 0 || quant_axis == 1 || quant_axis == -1, true,
+              quant_axis == 0 || quant_axis == 1 || quant_axis == -1,
+              true,
               platform::errors::InvalidArgument(
                   "'quant_axis' should be 0 or 1, but "
                   "the received is %d",
@@ -128,13 +130,32 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
-        .AddCustomChecker([](const int& bit_length) {
-          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
+        .AddCustomChecker([](const int &bit_length) {
+          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
         });
+    AddAttr<int>(
+        "round_type",
+        "(int, default 0) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(2.5)=3")
+        .SetDefault(0)
+        .AddCustomChecker([](const int &round_type) {
+          PADDLE_ENFORCE_EQ(
+              round_type == 0 || round_type == 1,
+              true,
+              platform::errors::InvalidArgument(
+                  "'round_type' should be 0 or 1, 0 rounding to "
+                  "nearest ties to even and 1 is rounding to nearest "
+                  "ties away from zero.but the received is %d",
+                  round_type));
+        })
+        .AsExtra();
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
@@ -158,14 +179,18 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(
-    quantize_linear, ops::QuantizeLinearOp, ops::QuantizeLinearOpMaker,
+    quantize_linear,
+    ops::QuantizeLinearOp,
+    ops::QuantizeLinearOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(quantize_linear, ops::QuantizeLinearKernel<CPU, float>);
 
 REGISTER_OPERATOR(
-    dequantize_linear, ops::QuantizeLinearOp, ops::QuantizeLinearOpMaker,
+    dequantize_linear,
+    ops::QuantizeLinearOp,
+    ops::QuantizeLinearOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 

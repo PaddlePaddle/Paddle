@@ -34,8 +34,12 @@ inline int DivUp(int x, int y) { return (x + y - 1) / y; }
 // y is fairly small. For large y, it would probably be more efficient
 // to also tile across y.
 template <typename T>
-__global__ void ConvShiftForward(const T *x, const T *y, int x_width,
-                                 int y_width, int y_half_width, int batch_size,
+__global__ void ConvShiftForward(const T *x,
+                                 const T *y,
+                                 int x_width,
+                                 int y_width,
+                                 int y_half_width,
+                                 int batch_size,
                                  T *out) {
   extern __shared__ T mem[];
 
@@ -80,8 +84,12 @@ __global__ void ConvShiftForward(const T *x, const T *y, int x_width,
 
 // Compute x gradient - initial naive implementation with atomic add.
 template <typename T>
-__global__ void ConvShiftGradX(const T *dout, const T *y, int x_width,
-                               int y_width, int y_half_width, int batch_size,
+__global__ void ConvShiftGradX(const T *dout,
+                               const T *y,
+                               int x_width,
+                               int y_width,
+                               int y_half_width,
+                               int batch_size,
                                T *dx) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;  // x index
   int j = blockIdx.y;                             // y index
@@ -96,8 +104,13 @@ __global__ void ConvShiftGradX(const T *dout, const T *y, int x_width,
 
 // Compute y gradient - initial naive implementation with atomic add.
 template <typename T>
-__global__ void ConvShiftDy(const T *x, const T *dout, int x_width, int y_width,
-                            int y_half_width, int batch_size, T *dy) {
+__global__ void ConvShiftDy(const T *x,
+                            const T *dout,
+                            int x_width,
+                            int y_width,
+                            int y_half_width,
+                            int batch_size,
+                            T *dy) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;  // x index
   int j = blockIdx.y;                             // y index
   int k = blockIdx.z;                             // batch index
@@ -172,16 +185,26 @@ class ConvShiftGradKernel<platform::CUDADeviceContext, T>
     if (dX) {
       T *dx_data = dX->mutable_data<T>(context.GetPlace());
       zero(device_ctx, dX, static_cast<T>(0.0));
-      ConvShiftGradX<T><<<grid_dim, x_per_block, 0, device_ctx.stream()>>>(
-          dout_data, y_data, x_width, y_width, y_half_width, batch_size,
-          dx_data);
+      ConvShiftGradX<T>
+          <<<grid_dim, x_per_block, 0, device_ctx.stream()>>>(dout_data,
+                                                              y_data,
+                                                              x_width,
+                                                              y_width,
+                                                              y_half_width,
+                                                              batch_size,
+                                                              dx_data);
     }
     if (dY) {
       T *dy_data = dY->mutable_data<T>(context.GetPlace());
       zero(device_ctx, dY, static_cast<T>(0.0));
-      ConvShiftDy<T><<<grid_dim, x_per_block, 0, device_ctx.stream()>>>(
-          x_data, dout_data, x_width, y_width, y_half_width, batch_size,
-          dy_data);
+      ConvShiftDy<T>
+          <<<grid_dim, x_per_block, 0, device_ctx.stream()>>>(x_data,
+                                                              dout_data,
+                                                              x_width,
+                                                              y_width,
+                                                              y_half_width,
+                                                              batch_size,
+                                                              dy_data);
     }
   }
 };

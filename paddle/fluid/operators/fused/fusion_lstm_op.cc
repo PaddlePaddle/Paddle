@@ -37,85 +37,106 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasOutput("Cell"), "Output", "Cell", "fusion_lstm");
 
   auto x_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_EQ(x_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "Input(X)'s rank must be 2, but received x's rank "
                         "is:%d, x dim is:[%s]",
-                        x_dims.size(), x_dims));
+                        x_dims.size(),
+                        x_dims));
 
   if (ctx->HasInput("H0")) {
     OP_INOUT_CHECK(ctx->HasInput("C0"), "Input", "C0", "fusion_lstm");
     auto h_dims = ctx->GetInputDim("H0");
     auto c_dims = ctx->GetInputDim("C0");
-    PADDLE_ENFORCE_EQ(h_dims, c_dims,
+    PADDLE_ENFORCE_EQ(h_dims,
+                      c_dims,
                       platform::errors::InvalidArgument(
                           "The dimension of Input(H0) and Input(C0) should be "
                           "same, but received h0 dims is:[%s], c0 dims is:[%s]",
-                          h_dims, c_dims));
+                          h_dims,
+                          c_dims));
   }
 
   auto wx_dims = ctx->GetInputDim("WeightX");
-  PADDLE_ENFORCE_EQ(wx_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(wx_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "The rank of Input(WeightX) should be 2, but received "
                         "WeightX's rank is:%d, WeightX dim is:[%s]",
-                        wx_dims.size(), wx_dims));
-  PADDLE_ENFORCE_EQ(wx_dims[0], x_dims[1],
+                        wx_dims.size(),
+                        wx_dims));
+  PADDLE_ENFORCE_EQ(wx_dims[0],
+                    x_dims[1],
                     platform::errors::InvalidArgument(
                         "The first dimension of Input(WeightX) "
                         "should equal to second dimension of Input(X), but "
                         "received WeightX first dim is:%d, X second dim is:%d",
-                        wx_dims[0], x_dims[1]));
+                        wx_dims[0],
+                        x_dims[1]));
 
   int frame_size = wx_dims[1] / 4;
   auto wh_dims = ctx->GetInputDim("WeightH");
 
-  PADDLE_ENFORCE_EQ(wh_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(wh_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "The rank of Input(WeightH) should be 2, but received "
                         "WeightH rank is:%d, WeightH dim is:[%s]",
-                        wh_dims.size(), wh_dims));
-  PADDLE_ENFORCE_EQ(wh_dims[0], frame_size,
+                        wh_dims.size(),
+                        wh_dims));
+  PADDLE_ENFORCE_EQ(wh_dims[0],
+                    frame_size,
                     platform::errors::InvalidArgument(
                         "The first dimension of Input(WeightH) "
                         "should equal to frame size, but received WeightH "
                         "first dim is:%d, frame size is:%d.",
-                        wh_dims[0], frame_size));
+                        wh_dims[0],
+                        frame_size));
 
-  PADDLE_ENFORCE_EQ(wh_dims[1], 4 * frame_size,
+  PADDLE_ENFORCE_EQ(wh_dims[1],
+                    4 * frame_size,
                     platform::errors::InvalidArgument(
                         "The second dimension of Input(WeightH) "
                         "should equal to 4 * frame_size, but received WeightH "
                         "second dimension is:%d, frame size is:%d.",
-                        wh_dims[1], frame_size));
+                        wh_dims[1],
+                        frame_size));
 
   auto b_dims = ctx->GetInputDim("Bias");
-  PADDLE_ENFORCE_EQ(b_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(b_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "The rank of Input(Bias) should be 2, but received "
                         "Bias rank is:%d, Bias dim is:[%s]",
-                        b_dims.size(), b_dims));
-  PADDLE_ENFORCE_EQ(b_dims[0], 1,
+                        b_dims.size(),
+                        b_dims));
+  PADDLE_ENFORCE_EQ(b_dims[0],
+                    1,
                     platform::errors::InvalidArgument(
                         "The first dimension of Input(Bias) should be 1, but "
                         "received Bias's dimension is:[%s]",
                         b_dims));
 
   if (ctx->Attrs().Get<bool>("use_peepholes")) {
-    PADDLE_ENFORCE_EQ(b_dims[1], 7 * frame_size,
+    PADDLE_ENFORCE_EQ(b_dims[1],
+                      7 * frame_size,
                       platform::errors::InvalidArgument(
                           "The second dimension of Input(Bias) should be "
                           "7 * %d if enable peepholes connection, but received "
                           "Bias dim is:[%s]",
-                          frame_size, b_dims));
+                          frame_size,
+                          b_dims));
     ctx->SetOutputDim("CheckedCell", {2, frame_size});
   } else {
     PADDLE_ENFORCE_EQ(
-        b_dims[1], 4 * frame_size,
+        b_dims[1],
+        4 * frame_size,
         platform::errors::InvalidArgument(
             "The second dimension of Input(Bias) should be "
             "4 * %d if disable peepholes, but received Bias dim is:[%s]",
-            frame_size, b_dims));
+            frame_size,
+            b_dims));
   }
 
   framework::DDim out_dims({x_dims[0], frame_size});
@@ -129,16 +150,20 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   } else {
     xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
 
-    OP_INOUT_CHECK(ctx->HasOutput("BatchedInput"), "Output", "BatchedInput",
+    OP_INOUT_CHECK(ctx->HasOutput("BatchedInput"),
+                   "Output",
+                   "BatchedInput",
                    "fusion_lstm");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchedHidden"), "Output", "BatchedHidden",
+    OP_INOUT_CHECK(ctx->HasOutput("BatchedHidden"),
+                   "Output",
+                   "BatchedHidden",
                    "fusion_lstm");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchedCell"), "Output", "BatchedCell",
-                   "fusion_lstm");
-    OP_INOUT_CHECK(ctx->HasOutput("ReorderedH0"), "Output", "ReorderedH0",
-                   "fusion_lstm");
-    OP_INOUT_CHECK(ctx->HasOutput("ReorderedC0"), "Output", "ReorderedC0",
-                   "fusion_lstm");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("BatchedCell"), "Output", "BatchedCell", "fusion_lstm");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("ReorderedH0"), "Output", "ReorderedH0", "fusion_lstm");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("ReorderedC0"), "Output", "ReorderedC0", "fusion_lstm");
 
     ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
     ctx->SetOutputDim("BatchedHidden", out_dims);
@@ -315,7 +340,8 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     checked_cell_data = checked_cell->mutable_data<T>(place);                  \
   }                                                                            \
   const jit::lstm_attr_t attr(                                                 \
-      D, jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),         \
+      D,                                                                       \
+      jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),            \
       jit::to_kerneltype(ctx.Attr<std::string>("candidate_activation")),       \
       jit::to_kerneltype(ctx.Attr<std::string>("cell_activation")),            \
       use_peepholes);                                                          \
@@ -330,9 +356,20 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
           attr)
 
 // Wh GEMM
-#define GEMM_WH_ADDON(bs, prev, out)                                           \
-  blas.GEMM(CblasNoTrans, CblasNoTrans, bs, D4, D, static_cast<T>(1), prev, D, \
-            wh_data, D4, static_cast<T>(1), out, D4)
+#define GEMM_WH_ADDON(bs, prev, out) \
+  blas.GEMM(CblasNoTrans,            \
+            CblasNoTrans,            \
+            bs,                      \
+            D4,                      \
+            D,                       \
+            static_cast<T>(1),       \
+            prev,                    \
+            D,                       \
+            wh_data,                 \
+            D4,                      \
+            static_cast<T>(1),       \
+            out,                     \
+            D4)
 
   void SeqCompute(const framework::ExecutionContext& ctx) const {
     INIT_BASE_DEFINES;
@@ -433,7 +470,13 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     } else {
       to_batch(dev_ctx, *x, xx, true, is_reverse);
       batched_input->set_lod(xx->lod());
-      fc(dev_ctx, x_dims[0], D4, M, xx_data, wx_data, batched_input_data,
+      fc(dev_ctx,
+         x_dims[0],
+         D4,
+         M,
+         xx_data,
+         wx_data,
+         batched_input_data,
          bias->data<T>());
     }
 
@@ -542,5 +585,6 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_lstm, ops::FusionLSTMOp, ops::FusionLSTMOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_lstm, ops::FuisonLSTMKernel<float>,
+REGISTER_OP_CPU_KERNEL(fusion_lstm,
+                       ops::FuisonLSTMKernel<float>,
                        ops::FuisonLSTMKernel<double>);

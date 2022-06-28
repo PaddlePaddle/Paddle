@@ -36,7 +36,8 @@ class OneHotXPUKernel : public framework::OpKernel<T> {
       auto* depth_data = depth_tensor->data<int32_t>();
       if (platform::is_xpu_place(depth_tensor->place())) {
         xpu_memcpy(static_cast<void*>(&depth),
-                   static_cast<const void*>(depth_data), sizeof(int32_t),
+                   static_cast<const void*>(depth_data),
+                   sizeof(int32_t),
                    XPU_DEVICE_TO_HOST);
       } else {
         depth = depth_data[0];
@@ -49,13 +50,17 @@ class OneHotXPUKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int len = in->numel();
-    int ret = xpu::one_hot<T>(dev_ctx.x_context(), in->data<T>(),
-                              out->mutable_data<float>(context.GetPlace()), len,
+    int ret = xpu::one_hot<T>(dev_ctx.x_context(),
+                              in->data<T>(),
+                              out->mutable_data<float>(context.GetPlace()),
+                              len,
                               depth);
 
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+    PADDLE_ENFORCE_EQ(ret,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU one_hot kernel return wrong value[%d %s]", ret,
+                          "XPU one_hot kernel return wrong value[%d %s]",
+                          ret,
                           XPUAPIErrorMsg[ret]));
   }
 };
@@ -65,6 +70,7 @@ class OneHotXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    one_hot, ops::OneHotXPUKernel<paddle::platform::XPUDeviceContext, int>,
+    one_hot,
+    ops::OneHotXPUKernel<paddle::platform::XPUDeviceContext, int>,
     ops::OneHotXPUKernel<paddle::platform::XPUDeviceContext, int64_t>);
 #endif

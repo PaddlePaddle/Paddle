@@ -120,18 +120,22 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterNdAddGradNoNeedBufferVarsInferer,
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(scatter_nd_add, ScatterNdAddInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(scatter_nd_add,
+                            ScatterNdAddInferShapeFunctor,
                             PD_INFER_META(phi::ScatterNdAddInferMeta));
 
 DECLARE_INFER_SHAPE_FUNCTOR(scatter_nd_add_grad,
                             ScatterNdAddGradInferShapeFunctor,
                             PD_INFER_META(phi::ScatterNdAddGradInferMeta));
 
-REGISTER_OPERATOR(scatter_nd_add, ops::ScatterNdAddOp, ops::ScatterNdAddOpMaker,
+REGISTER_OPERATOR(scatter_nd_add,
+                  ops::ScatterNdAddOp,
+                  ops::ScatterNdAddOpMaker,
                   ops::ScatterNdAddGradMaker<paddle::framework::OpDesc>,
                   ops::ScatterNdAddGradMaker<paddle::imperative::OpBase>,
                   ScatterNdAddInferShapeFunctor);
 
-REGISTER_OPERATOR(scatter_nd_add_grad, ops::ScatterNdAddGradOp,
+REGISTER_OPERATOR(scatter_nd_add_grad,
+                  ops::ScatterNdAddGradOp,
                   ops::ScatterNdAddGradNoNeedBufferVarsInferer,
                   ScatterNdAddGradInferShapeFunctor);

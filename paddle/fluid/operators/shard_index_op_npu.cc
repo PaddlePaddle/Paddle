@@ -33,28 +33,33 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
     int ignore_value = context.Attr<int>("ignore_value");
 
     PADDLE_ENFORCE_GT(
-        index_num, 0,
+        index_num,
+        0,
         platform::errors::InvalidArgument(
             "The value 'index_num' for Op(shard_index) must be greater than 0, "
             "but the value given is %d.",
             index_num));
-    PADDLE_ENFORCE_GT(nshards, 0,
+    PADDLE_ENFORCE_GT(nshards,
+                      0,
                       platform::errors::InvalidArgument(
                           "The value 'nshard' for Op(shard_index) must be "
                           "greater than 0, but the value given is %d.",
                           nshards));
     PADDLE_ENFORCE_GE(
-        shard_id, 0,
+        shard_id,
+        0,
         platform::errors::InvalidArgument(
             "The value 'shard_id' for Op(shard_index) must be greater or "
             "equal to 0, but the value given is %d.",
             shard_id));
     PADDLE_ENFORCE_LT(
-        shard_id, nshards,
+        shard_id,
+        nshards,
         platform::errors::InvalidArgument(
             "The value 'shard_id' for Op(shard_index) must be less than "
             "nshards (%d), but the value given is %d.",
-            nshards, shard_id));
+            nshards,
+            shard_id));
 
     int shard_size = (index_num + nshards - 1) / nshards;
 
@@ -114,5 +119,6 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(shard_index, ops::ShardIndexNPUKernel<int>,
+REGISTER_OP_NPU_KERNEL(shard_index,
+                       ops::ShardIndexNPUKernel<int>,
                        ops::ShardIndexNPUKernel<int64_t>);
