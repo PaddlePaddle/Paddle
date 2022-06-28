@@ -253,10 +253,12 @@ class FleetExecutorUtils:
 
         # add dependency intra stage
         cur_start_id = self.rank * self.num_of_functionality
+        pp_buff_size = int(self.dist_strategy['pp_degree'] -
+                           self.coord['pp_idx'])
         task_node_map["lr"].add_downstream_task(cur_start_id + 1)
         task_node_map["fwd"].add_upstream_task(cur_start_id)
-        task_node_map["fwd"].add_downstream_task(cur_start_id + 2)
-        task_node_map["bwd"].add_upstream_task(cur_start_id + 1)
+        task_node_map["fwd"].add_downstream_task(cur_start_id + 2, pp_buff_size)
+        task_node_map["bwd"].add_upstream_task(cur_start_id + 1, pp_buff_size)
         task_node_map["bwd"].add_downstream_task(cur_start_id + 3)
         task_node_map["opt"].add_upstream_task(cur_start_id + 2)
         # add dependency inter stage
