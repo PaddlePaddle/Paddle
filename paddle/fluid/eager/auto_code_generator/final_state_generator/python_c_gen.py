@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -77,9 +77,7 @@ RECORD_EVENT_TEMPLATE = \
 
 RETURN_INPLACE_PYOBJECT_TEMPLATE = \
 """
-    ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_final_state_args_info, \"final_state_{}\", \"{}\");
-    ssize_t return_id = GetIdxFromCoreOpsInfoMap(core_ops_final_state_returns_info, \"final_state_{}\", \"{}\");
-    return ToPyObject(out, return_id, args, arg_id);
+    inplace_var_idx_map[{}] = {};
 """
 
 
@@ -246,6 +244,7 @@ NAMESPACE_WRAPPER_TEMPLATE = \
 ## Generator Classes ##
 #######################
 class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
+
     def __init__(self, forward_api_contents, namespace):
         # Members from Parent:
         #self.namespace
@@ -258,7 +257,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         #self.forward_outputs_position_map
         #self.optional_inputs
         #self.no_need_buffers
-        #self.intermediate_outputs   
+        #self.intermediate_outputs
         #self.forward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
@@ -283,9 +282,13 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         optional_inputs = self.optional_inputs
         is_forward_only = self.is_forward_only
 
+        inplace_args_pos_map = {}
+        inplace_returns_pos_map = {}
         # Generate Python-C Tensors Parsing Logic
         get_eager_tensor_str = ""
         for name, (ttype, pos) in forward_inputs_position_map.items():
+            if forward_inplace_map and name in forward_inplace_map.keys():
+                inplace_args_pos_map[name] = pos
             is_optional = (name in optional_inputs)
             if IsVectorTensorType(ttype):
                 get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
@@ -300,6 +303,11 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
                         name, "GetTensorFromArgs", forward_api_name, name, pos,
                         "false")
+
+        if forward_inplace_map:
+            for name, (ttype, pos) in forward_outputs_position_map.items():
+                if name in forward_inplace_map.values():
+                    inplace_returns_pos_map[name] = pos
 
         parse_attributes_str = ""
         expected_place_str = "    auto place = egr::Controller::Instance().GetExpectedPlace();\n"
@@ -320,8 +328,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         set_device_str = FUNCTION_SET_DEVICE_TEMPLATE.format(expected_place_str)
 
         # Generate Dygraph Function Call Logic
-        num_args = len(forward_inputs_position_map.keys()) + len(
-            orig_forward_attrs_list)
+        num_args = len(
+            forward_inputs_position_map.keys()) + len(orig_forward_attrs_list)
         dygraph_function_call_list = ["" for i in range(num_args)]
         for name, (_, pos) in forward_inputs_position_map.items():
             dygraph_function_call_list[pos] = f"{name}"
@@ -371,14 +379,12 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     "::", namespace,
                     GetForwardFunctionName(inplaced_forward_api_name))
 
-            assert len(
-                forward_inplace_map
-            ) == 1, f"size of inplace_map must be 1, but inplace_map of \"{forward_api_name}\" op got {len(forward_inplace_map)}"
+            return_str = "    std::map<ssize_t, ssize_t> inplace_var_idx_map;"
             for inplace_input, inplace_output in forward_inplace_map.items():
-                return_str = RETURN_INPLACE_PYOBJECT_TEMPLATE.format(
-                    inplaced_forward_api_name, inplace_input,
-                    inplaced_forward_api_name, inplace_output)
-                break
+                return_str += RETURN_INPLACE_PYOBJECT_TEMPLATE.format(
+                    inplace_returns_pos_map[inplace_output],
+                    inplace_args_pos_map[inplace_input])
+            return_str += "    return ToPyObject(out, args, inplace_var_idx_map);"
 
             # Generate Python-C Function Definetion
             python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
@@ -429,8 +435,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
 
 class PythonCGenerator(GeneratorBase):
+
     def __init__(self, path):
-        # Parent members: 
+        # Parent members:
         # self.namespace
         # self.api_yaml_path
         # self.forward_api_list
@@ -445,8 +452,8 @@ class PythonCGenerator(GeneratorBase):
         forward_api_list = self.forward_api_list
 
         for forward_api_content in forward_api_list:
-            f_generator = PythonCSingleFunctionGenerator(forward_api_content,
-                                                         namespace)
+            f_generator = PythonCSingleFunctionGenerator(
+                forward_api_content, namespace)
             status = f_generator.run()
 
             if status == True:
