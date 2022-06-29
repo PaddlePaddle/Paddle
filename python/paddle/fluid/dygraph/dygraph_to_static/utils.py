@@ -30,6 +30,7 @@ import numpy as np
 import paddle
 from paddle.fluid import unique_name
 from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.layer_helper import LayerHelper
 
 # Note(Aurelius): Do not forget the dot `.` to distinguish other
 # module such as paddlenlp.

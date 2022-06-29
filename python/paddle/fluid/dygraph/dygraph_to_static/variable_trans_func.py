@@ -21,7 +21,6 @@ from paddle.utils import gast
 from paddle.fluid import core
 from paddle.fluid import unique_name
 from paddle.fluid.framework import Variable
-from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, data_layer_not_check
 
 __all__ = [
