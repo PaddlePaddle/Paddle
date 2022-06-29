@@ -25,7 +25,7 @@ from paddle.fluid.core import PassVersionChecker
 class ElementwiseActivationMkldnnFusePassTest(InferencePassTest):
     act_alpha = None
     act_beta = None
-    pass_name = 'elt_act_mkldnn_fuse_pass'
+    pass_name = 'operator_activation_mkldnn_fuse_pass'
 
     def setUp(self):
         self.set_params()

@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <string>
-
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -23,17 +21,16 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class MatmulActivationMkldnnFusePass : public FusePassBase {
+class OperatorActivationMkldnnFusePass : public FusePassBase {
  public:
-  MatmulActivationMkldnnFusePass();
-  virtual ~MatmulActivationMkldnnFusePass() {}
+  virtual ~OperatorActivationMkldnnFusePass() {}
 
  protected:
   void ApplyImpl(Graph *graph) const override;
 
-  void FuseMatmulAct(
+  void FuseOperatorAct(
       Graph *graph,
-      const std::string &matmul_type,
+      const std::string &op_type,
       std::string &act_type,
       const std::unordered_map<std::string, std::string> &attrs_map) const;
 };
