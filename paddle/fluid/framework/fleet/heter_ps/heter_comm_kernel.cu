@@ -161,8 +161,9 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
     int ori_index = index[start];
     FeaturePushValue& out =
         *(reinterpret_cast<FeaturePushValue*>(output + i * grad_value_size));
-    FeaturePushValue& in = *(reinterpret_cast<FeaturePushValue*>(
-        input + size_t(ori_index) * grad_value_size));
+    FeaturePushValue& in =
+        *(FeaturePushValue*)(input +
+                             size_t(ori_index) * grad_value_size);  // NOLINT
     merger_.update_one(out, in);
     for (int j = 1; j < num; ++j) {
       ori_index = index[start + j];
