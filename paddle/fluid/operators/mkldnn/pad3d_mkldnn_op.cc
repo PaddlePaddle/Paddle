@@ -72,13 +72,18 @@ class Pad3dMKLDNNKernel : public framework::OpKernel<T> {
 
     auto* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
-
     std::vector<int> paddings(ctx.Attr<std::vector<int>>("paddings"));
-
     T pad_value = static_cast<T>(ctx.Attr<float>("value"));
 
-    auto x_tz = phi::vectorize(x->dims());
-    auto out_tz = phi::vectorize(out->dims());
+    std::vector<int64_t> x_tz = phi::vectorize(x->dims());
+    // due to the need of supporting NDHWC, inferring out shape
+    // must be done inside the kernel
+    std::vector<int64_t> out_tz(x_tz);
+
+    for(int i = 0; i < paddings.size() / 2; ++i) {
+      out_tz[out_tz.size() - 1 - i] += paddings[2 * i] + paddings[2 * i + 1];
+    }
+    out->Resize(phi::make_ddim(out_tz));
 
     auto paddle_dtype = framework::TransToProtoVarType(x->dtype());
 
@@ -89,29 +94,32 @@ class Pad3dMKLDNNKernel : public framework::OpKernel<T> {
       onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(x->mem_desc(), platform::to_void_cast(x->data<T>()));
-    auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(out, out_tz, platform::GetPlainMKLDNNFormat(5), ctx.GetPlace());
+    auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(out, out_tz, platform::GetPlainMKLDNNFormat(out_tz.size()), ctx.GetPlace());
 
+    // to avoid allocating new temporary memory, Out's memory is used as a tmp
+    // buffer for storing a contignuous memory consisting of pad_value, which
+    // later is used as a SRC for reorders that are filling Out with padding
     T* out_ptr = out->data<T>();
     std::fill(out_ptr, out_ptr+CalculatePrefillElems(out_tz, paddings), pad_value);
 
     // paddings are in order: left, right, top, bottom, front, back
-    for(int i = 0; i < 6; ++i) {
+    for(int i = 0; i < paddings.size(); ++i) {
       if(paddings[i] != 0) {
-        std::vector<int64_t> offsets(5, 0);
+        std::vector<int64_t> offsets(out_tz.size(), 0);
         std::vector<int64_t> chunk_tz(out_tz.begin(), out_tz.end());
 
-        chunk_tz[4 - i / 2] = paddings[i];
+        chunk_tz[out_tz.size() - 1 - i / 2] = paddings[i];
         if (i % 2 == 1) {
-          offsets[4 - i / 2] = paddings[i - 1] + x_tz[4 - i / 2];
+          offsets[out_tz.size() - 1 - i / 2] = paddings[i - 1] + x_tz[out_tz.size() - 1 - i / 2];
         }
 
         FillPartOfPadding(paddle_dtype, onednn_engine, out_ptr, reorder_dst_memory_p, chunk_tz, offsets);
       }
     }
     
-    std::vector<int64_t> offsets(5, 0); // NCDHW     
-    for(int i=0; i<3; ++i) {
-      offsets[4-i] = paddings[2*i];
+    std::vector<int64_t> offsets(out_tz.size(), 0); 
+    for(int i=0; i<paddings.size() / 2; ++i) {
+      offsets[out_tz.size() - 1 -i] = paddings[2*i];
     }
     
     auto slice_mem_p = reorder_handler.AcquireSubmemory(x_tz, offsets, reorder_dst_memory_p);
@@ -129,11 +137,11 @@ class Pad3dMKLDNNKernel : public framework::OpKernel<T> {
 
     int64_t independent_dims = out_tz[0] * out_tz[1];
 
-    for(int i = 0; i < 3; ++i) {
+    for(int i = 0; i < paddings.size() / 2; ++i) {
       int64_t elems = std::max(paddings[2*i], paddings[2*i+1]);
-      for(int j = 0; j < 3; ++j) {
+      for(int j = 0; j < paddings.size() / 2; ++j) {
         if(j != i) {
-          elems *= out_tz[4 - j];
+          elems *= out_tz[out_tz.size() - 1 - j];
         }
       }
 
