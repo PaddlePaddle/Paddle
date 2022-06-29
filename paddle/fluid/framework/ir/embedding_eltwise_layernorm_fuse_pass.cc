@@ -64,6 +64,7 @@ void Embedding2Eltwise1Pattern::operator()() {
       create_emb_vars(pattern, lookup_table2_w_repr(), "W", true);
   std::unordered_set<std::string> embedding_ops{"lookup_table",
                                                 "lookup_table_v2"};
+
   auto* feed1 = pattern->NewNode(feed1_repr())->assert_is_op("feed");
   auto* feed2 = pattern->NewNode(feed2_repr())->assert_is_op("feed");
   auto* lookup_table1 =

@@ -48,7 +48,6 @@ namespace patterns {
 struct Embedding2Eltwise1Pattern : public PatternBase {
   Embedding2Eltwise1Pattern(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "embedding2_eltwise1") {}
-
   void operator()();
   PATTERN_DECL_NODE(feed1);
   PATTERN_DECL_NODE(feed2);
