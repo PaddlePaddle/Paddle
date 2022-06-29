@@ -21,7 +21,15 @@ set(CUB_PATH        "${THIRD_PARTY_PATH}/cub" CACHE STRING "A path setting for e
 set(CUB_PREFIX_DIR  ${CUB_PATH})
 
 set(CUB_REPOSITORY  ${GIT_URL}/NVlabs/cub.git)
-set(CUB_TAG         1.8.0)
+
+if(WIN32 AND ${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6)
+  # cuda_11.6.2_511.65‘s own cub is 1.15.0, which will cause compiling error in windows.
+  set(CUB_TAG 1.16.0)
+  # cub 1.16.0 is not compitable with current thrust version
+  add_definitions(-DTHRUST_IGNORE_CUB_VERSION_CHECK)
+else()
+  set(CUB_TAG 1.8.0)
+endif()
 
 SET(CUB_INCLUDE_DIR  ${CUB_PREFIX_DIR}/src/extern_cub)
 message("CUB_INCLUDE_DIR is ${CUB_INCLUDE_DIR}")
