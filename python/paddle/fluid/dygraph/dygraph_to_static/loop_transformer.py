@@ -31,6 +31,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_node, create_get_args_node, create_set_args_node
+from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import ARGS_NAME
 
 __all__ = ['LoopTransformer', 'NameVisitor']
 
@@ -39,8 +40,6 @@ WHILE_BODY_PREFIX = 'while_body'
 
 FOR_CONDITION_PREFIX = 'for_loop_condition'
 FOR_BODY_PREFIX = 'for_loop_body'
-
-ARGS_NAME = '__args'
 
 
 def create_while_nodes(condition_name, body_name, loop_var_names, getter_name,

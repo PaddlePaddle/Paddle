@@ -416,22 +416,22 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
 
     # modified vars
     body_modified_vars = _modified_vars(if_vars_dict, parent_vars_dict)
-    body_modified_vars = set(filter(lambda x: x != "__args",
-                                    body_modified_vars))
+    body_modified_vars = set(
+        filter(lambda x: x != ARGS_NAME, body_modified_vars))
     orelse_modified_vars = _modified_vars(else_vars_dict, parent_vars_dict)
     orelse_modified_vars = set(
-        filter(lambda x: x != "__args", orelse_modified_vars))
+        filter(lambda x: x != ARGS_NAME, orelse_modified_vars))
     modified_vars = body_modified_vars | orelse_modified_vars
 
     # new vars
     # TODO(remove __args when new FunctionScopeAnalysis has been used.)
     body_new_vars = set([
         var for var in _vars_with_store(if_vars_dict)
-        if var not in parent_vars_dict and var != "__args"
+        if var not in parent_vars_dict and var != ARGS_NAME
     ])
     orelse_new_vars = set([
         var for var in _vars_with_store(else_vars_dict)
-        if var not in parent_vars_dict and var != "__args"
+        if var not in parent_vars_dict and var != ARGS_NAME
     ])
     new_vars_in_body_or_orelse = body_new_vars | orelse_new_vars
     new_vars_in_one_of_body_or_orelse = body_new_vars ^ orelse_new_vars

@@ -41,14 +41,14 @@ def convert_while_loop(cond, body, getter, setter):
     # If loop_vars is changed during cond callable, then it causes bug, but current logical_and/logical_not/... doesn't change the loop_vars.
     pred = cond()
     if isinstance(pred, Variable):
-        loop_vars = _run_paddle_while_loop(cond, body, getter, setter)
+        loop_vars = _run_paddle_while(cond, body, getter, setter)
     else:
         loop_vars = _run_py_while(cond, body, getter, setter)
 
     return loop_vars
 
 
-def _run_paddle_while_loop(cond, body, getter, setter):
+def _run_paddle_while(cond, body, getter, setter):
     # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
     def to_list(x):
         if isinstance(x, (tuple, list)): return x
