@@ -1845,10 +1845,10 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     Args:
         in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
-        out_tensor_list (Tensor): A list of output Tensors. The data type of its elements should be the same as the
+        out_tensor_list (list): A list of output Tensors. The data type of its elements should be the same as the
             data type of the input Tensors.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-        use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
+        use_calc_stream (bool, optional): Whether to use calculation stream (True) or communication stream. Default: True.
     
     Returns:
         None.
@@ -1937,6 +1937,69 @@ def alltoall_single(in_tensor,
                     out_split_sizes=None,
                     group=None,
                     use_calc_stream=True):
+    """
+    Scatter a single input tensor to all participators and gather the received tensors in out_tensor.
+
+    .. note::
+        ``alltoall_single`` is only supported in eager mode.
+
+    Args:
+        in_tensor (Tensor): Input tensor. The data type should be float16, float32, float64, int32 or int64.
+        out_tensor (Tensor): Output Tensor. The data type should be the same as the data type of the input Tensor.
+        in_split_sizes (list[int], optional): Split sizes of ``in_tensor`` for dim[0]. If not given, dim[0] of ``in_tensor`` 
+            must be divisible by group size and ``in_tensor`` will be scattered averagely to all participators. Default: None.
+        out_split_sizes (list[int], optional): Split sizes of ``out_tensor`` for dim[0]. If not given, dim[0] of ``out_tensor`` 
+            must be divisible by group size and ``out_tensor`` will be gathered averagely from all participators. Default: None.
+        group (Group, optional): The group instance return by ``new_group`` or None for global default group. Default: None.
+        use_calc_stream (bool, optional): Whether to use calculation stream (True) or communication stream. Default: True.
+    
+    Returns:
+        None, if ``use_calc_stream`` is set to ``True``; ``Task`` of ``group``, if ``use_calc_stream`` is set to ``False``.
+    
+    Examples:
+        .. code-block:: python
+
+            # required: distributed
+            import paddle
+            import paddle.distributed as dist
+
+            dist.init_parallel_env()
+            rank = dist.get_rank()
+            size = dist.get_world_size()
+
+            # case 1
+            input = paddle.arange(2, dtype='int64') + rank * 2
+            # input for rank 0: [0, 1]
+            # input for rank 1: [2, 3]
+            
+            output = paddle.empty([2], dtype='int64')
+            dist.alltoall_single(input, output)
+            # output for rank 0: [0, 2]
+            # output for rank 1: [1, 3]
+
+            # case 2
+            in_split_sizes = [i + 1 for i in range(size)]
+            # in_split_sizes for rank 0: [1, 2] and for rank 1: [1, 2]
+            out_split_sizes = [rank + 1 for i in range(size)]
+            # out_split_sizes for rank 0: [1, 1] and for rank 1: [2, 2]
+
+            input = paddle.ones([sum(in_split_sizes), size], dtype='float32') * rank
+            # input for rank 0: [[0., 0.], [0., 0.], [0., 0.]]
+            # input for rank 1: [[1., 1.], [1., 1.], [1., 1.]]
+            output = paddle.empty([(rank + 1) * size, size], dtype='float32')
+
+            group = dist.new_group([0, 1])
+            task = dist.alltoall_single(input,
+                                        output,
+                                        in_split_sizes,
+                                        out_split_sizes,
+                                        use_calc_stream=False,
+                                        group=group)
+            task.wait()
+            # output for rank 0: [[0., 0.], [1., 1.]]
+            # output for rank 1: [[0., 0.], [0., 0.], [1., 1.], [1., 1.]]
+
+    """
     if group is not None and not group.is_member():
         return
 
