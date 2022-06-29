@@ -33,13 +33,17 @@ void CacheManager::init(int thread_num, int batch_sz, int worker_num) {
   batch_sz_ = batch_sz;
   worker_num_ = worker_num;
   clear_sign2fids();
+  dev_feasign_cnts_.resize(worker_num, nullptr);
+  for (int i = 0; i < worker_num; i++) {
+    dev_feasign_cnts_[i] = std::make_shared<std::atomic<int>>(0);
+  }
   VLOG(0) << "CacheManager init:" << thread_num << "|" << batch_sz << "|" << worker_num;
 }
 
 void CacheManager::clear_sign2fids() {
   sign2fid_.clear();
   fid2meta_.clear();
-  feasign_cnt_ = 0;
+  dev_feasign_cnts_.resize(0);
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   current_batch_fid2bfid_.clear();
@@ -50,12 +54,15 @@ void CacheManager::clear_sign2fids() {
 void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
   VLOG(0) << "build_sign2fids: keylen:" << len;
   // pre-build the sign2fid_, in order not to use mutex
+  CHECK(dev_feasign_cnts_.size() > 0) << "maybe not call CacheManager::init()";
   if (sign2fid_.find(0) == sign2fid_.end()) {
     // padding feasign 0, set fid 0, to be processed specially later in pull/push
-    sign2fid_[0] = feasign_cnt_++;
+    sign2fid_[0] = (*(dev_feasign_cnts_[0]))++;
     fid2meta_.resize(1);
     fid2meta_[0] = {0};
   }
+  std::vector<int> fea_cnts;
+  fea_cnts.resize(worker_num_, 0);
   for (size_t i = 0; i < len; ++i) {
     if (d_keys[i] == 0) {
       continue;
@@ -63,9 +70,24 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
     CHECK(sign2fid_.find(d_keys[i]) == sign2fid_.end()) 
         << "build_sign2fids: error, the same key found:" << d_keys[i];
     sign2fid_[d_keys[i]] = 0;
+    fea_cnts[d_keys[i] % worker_num_]++;
   }
-  size_t origin_size = fid2meta_.size();
-  fid2meta_.resize(sign2fid_.size());
+  int need_resize = 0;
+  int origin_size = fid2meta_.size();
+  int curr_reserve_size = int(origin_size / worker_num_); 
+  for (int i = 0; i < worker_num_; i++) {
+    int inc_cnt = fea_cnts[i];
+    int curr_cnt = *(dev_feasign_cnts_[i]);
+    if (curr_reserve_size - curr_cnt - inc_cnt < 0) {
+      need_resize = (need_resize > (curr_cnt + inc_cnt)) ? need_resize : (curr_cnt + inc_cnt);
+    }
+  }
+  if (need_resize > 0) {
+    fid2meta_.resize(need_resize * worker_num_); 
+  }
+  VLOG(0) << "build_sign2fids: worker_num:" << worker_num_
+          << ", curr_reserve_size:" << curr_reserve_size
+          << ", need_resize:" << need_resize;
   VLOG(0) << "build_sign2fids: resize fid2meta from " << origin_size << " to " << fid2meta_.size();
   // build sign 2 fids
   std::vector<std::thread> threads(thread_num_);
@@ -76,9 +98,12 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
         if (keys[j] == 0) {
           continue;
         }
-        int tmp = feasign_cnt_++;
-        sign2fid_[keys[j]] = tmp;
-        fid2meta_[tmp] = {keys[j]};
+        int dev_id = keys[j] % worker_num_;
+        int tmp = (*(dev_feasign_cnts_[dev_id]))++;
+        int tmp_fid = dev_id + tmp * worker_num_;  
+        sign2fid_[keys[j]] = tmp_fid;
+        CHECK(tmp_fid < (int)fid2meta_.size()) << "tmp_fid" << tmp_fid << ", fid2meta.size:" << fid2meta_.size();
+        fid2meta_[tmp_fid] = {keys[j]};
       }
     }, &d_keys[i * split_len], std::min(split_len, len - i * split_len));
   }
@@ -97,6 +122,12 @@ void CacheManager::dump_to_file() {
   std::ofstream ofs;
   ofs.open("cache_manager.dump", std::ios::app);
   for (size_t i = 0; i < fid2meta_.size(); i++) {
+    int dev_id = i % worker_num_;
+    int offset = int(i / worker_num_);
+    if (offset >= *(dev_feasign_cnts_[dev_id])) {
+      ofs << "fid2meta:" << i << " EMPTY EMPTY" << std::endl;
+      continue;
+    }
     ofs << "fid2meta:" << i << " " << fid2meta_[i].sign_;
     if (sign2fid_.find(fid2meta_[i].sign_) != sign2fid_.end()) {
       ofs << " " << sign2fid_[fid2meta_[i].sign_] << std::endl;

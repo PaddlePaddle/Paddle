@@ -63,7 +63,7 @@ class CacheManager {
   void dump_to_file();
 
  private:
-  std::atomic<int> feasign_cnt_;
+  std::vector<std::shared_ptr<std::atomic<int>>> dev_feasign_cnts_;
   std::unordered_map<FeatureKey, uint32_t> sign2fid_;
   std::vector<CacheMeta> fid2meta_;
 
