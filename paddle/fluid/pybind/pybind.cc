@@ -4606,16 +4606,18 @@ All parameter, weight, gradient are variables in Paddle.
               const std::vector<std::string> &fetch_tensors,
               bool return_merged) -> py::object {
              if (return_merged) {
-               pybind11::gil_scoped_release release;
-               paddle::framework::FetchList ret =
-                   self.RunAndMerge(fetch_tensors);
-
+               paddle::framework::FetchList ret;
+               /*gil_scoped_release*/ {
+                 pybind11::gil_scoped_release release;
+                 ret = self.RunAndMerge(fetch_tensors);
+               }
                return py::cast(std::move(ret));
              } else {
-               pybind11::gil_scoped_release release;
-               paddle::framework::FetchUnmergedList ret =
-                   self.Run(fetch_tensors);
-
+               paddle::framework::FetchUnmergedList ret;
+               /*gil_scoped_release*/ {
+                 pybind11::gil_scoped_release release;
+                 ret = self.Run(fetch_tensors);
+               }
                return py::cast(std::move(ret));
              }
            })
