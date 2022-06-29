@@ -833,3 +833,24 @@ PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
  * Example:
  */
 PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
+
+#if defined(PADDLE_WITH_XPU_KP)
+/**
+ * XPUPS related debug FLAG
+ * Name: FLAGS_dump_cache_array
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_bool(dump_cache_array, false, "Whether dump cache array data.");
+
+/**
+ * XPUPS related debug FLAG
+ * Name: FLAGS_dump_cache_manager
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_bool(dump_cache_manager, false, "Whether dump cache manager data.");
+#endif
+

@@ -18,6 +18,8 @@ limitations under the License. */
 #include <limits>
 #include <memory>
 #include <vector>
+#include <fstream>
+#include <sstream>
 
 #ifdef PADDLE_WITH_PSLIB
 #include "common_value.h"  // NOLINT
@@ -79,7 +81,28 @@ class XPUCacheArray {
     free(cpu_vals_);
   }
 
-  void print() {}
+  void print() {
+    KeyType* keys = get_cpu_keys();
+    ValType* vals = get_cpu_vals();
+
+    std::stringstream name_ss;
+    name_ss << "cache_array-" << xpu_id_ << ".dump";
+    
+    std::stringstream data_ss;
+    data_ss << "xpu_id/num:" << xpu_id_ << "/" << xpu_num_ << "\n";
+    data_ss << "size:" << size_ << "\n";
+    for (long long i = 0; i < size_; i++) {
+      data_ss << i << "\t" << keys[i] 
+              << "\t" << vals[i] << "\n";
+    }
+    data_ss << "------------------------------------\n";
+
+    std::ofstream ofs;
+    ofs.open(name_ss.str(), std::ios::app);
+    ofs << data_ss.str();
+    ofs.close();    
+  }
+
   void set_xpu_id(uint32_t xpu_id) { xpu_id_ = xpu_id; }
   void set_xpu_num(uint32_t xpu_num) { xpu_num_ = xpu_num; }
   void set_size(long long size) { size_ = size; }

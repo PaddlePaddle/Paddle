@@ -44,7 +44,6 @@ void CacheManager::clear_sign2fids() {
   sign2fid_.clear();
   fid2meta_.clear();
   dev_feasign_cnts_.resize(0);
-
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   current_batch_fid2bfid_.clear();
   current_batch_fid_seq_ref_ = 0;
@@ -54,7 +53,8 @@ void CacheManager::clear_sign2fids() {
 void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
   VLOG(0) << "build_sign2fids: keylen:" << len;
   // pre-build the sign2fid_, in order not to use mutex
-  CHECK(dev_feasign_cnts_.size() > 0) << "maybe not call CacheManager::init()";
+  PADDLE_ENFORCE_GT(dev_feasign_cnts_.size(), 0,  
+      platform::errors::External("maybe not call CacheManager::init()"));
   if (sign2fid_.find(0) == sign2fid_.end()) {
     // padding feasign 0, set fid 0, to be processed specially later in pull/push
     sign2fid_[0] = (*(dev_feasign_cnts_[0]))++;
@@ -67,8 +67,8 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
     if (d_keys[i] == 0) {
       continue;
     }
-    CHECK(sign2fid_.find(d_keys[i]) == sign2fid_.end()) 
-        << "build_sign2fids: error, the same key found:" << d_keys[i];
+    PADDLE_ENFORCE(sign2fid_.find(d_keys[i]) == sign2fid_.end(),
+        platform::errors::External("the same key found:%llu", (unsigned long long)d_keys[i]));
     sign2fid_[d_keys[i]] = 0;
     fea_cnts[d_keys[i] % worker_num_]++;
   }
@@ -102,7 +102,8 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
         int tmp = (*(dev_feasign_cnts_[dev_id]))++;
         int tmp_fid = dev_id + tmp * worker_num_;  
         sign2fid_[keys[j]] = tmp_fid;
-        CHECK(tmp_fid < (int)fid2meta_.size()) << "tmp_fid" << tmp_fid << ", fid2meta.size:" << fid2meta_.size();
+        PADDLE_ENFORCE_LT(tmp_fid, (int)fid2meta_.size(),
+            platform::errors::External("fid2meta_ size too small"));
         fid2meta_[tmp_fid] = {keys[j]};
       }
     }, &d_keys[i * split_len], std::min(split_len, len - i * split_len));
@@ -160,12 +161,11 @@ void CacheManager::dump_to_file() {
 void CacheManager::build_batch_fid_seq(
     std::vector<std::deque<Record> *> & all_chan_recs, 
                const std::vector<bool> & slot_is_dense) {
-  CHECK(all_chan_recs.size() > 0);
+  PADDLE_ENFORCE_GT(all_chan_recs.size(), 0,
+      platform::errors::External("all_chan_recs size error"));
   size_t expected_chan_size = all_chan_recs[0]->size();
   for (auto & chan_recs : all_chan_recs) {
-    CHECK(chan_recs->size() == expected_chan_size) 
-        << "expected:" << expected_chan_size
-        << ", now:" << chan_recs->size();  
+    PADDLE_ENFORCE_EQ(chan_recs->size(), expected_chan_size);
   }
   
   int size = expected_chan_size;
@@ -195,7 +195,7 @@ void CacheManager::build_batch_fid_seq(
             const Record & cur_rec = *(it + j);
             for (auto & fea : cur_rec.uint64_feasigns_) {
               slot_has_val.insert(fea.slot());
-              CHECK(fea.slot() < slot_is_dense.size());
+              PADDLE_ENFORCE_LT(fea.slot(), slot_is_dense.size());
               if (slot_is_dense[fea.slot()]) {
                 continue;
               }
@@ -218,7 +218,8 @@ void CacheManager::build_batch_fid_seq(
   }
   // check for debug
   for (auto group_bfid_ptr : n_batch_bfidseq) {
-    CHECK(group_bfid_ptr != nullptr) << "err: bfid_ptr is nullptr";
+    PADDLE_ENFORCE_NOT_NULL(group_bfid_ptr, 
+        platform::errors::NotFound("batch fid sequence has nullptr item"));
     VLOG(0) << "group size: " << group_bfid_ptr->size();
   }
   // write n_batch_bfidseq to channel
@@ -246,15 +247,15 @@ void CacheManager::prepare_current_batch_fid_seq() {
 }
 
 std::shared_ptr<std::vector<uint32_t>>  CacheManager::get_current_batch_fid_seq() {
-  CHECK(current_batch_fid_seq_ != nullptr) << "current_batch_fid_seq_ is nullptr";
+  PADDLE_ENFORCE_NOT_NULL(current_batch_fid_seq_);
   return current_batch_fid_seq_; 
 }
 
 void CacheManager::convert_fid2bfid(const uint32_t * fids, int * out_bfids, int size) {
   std::lock_guard<std::mutex> lock(*current_batch_fid_seq_lock);
   for (int i = 0; i < size; ++i) {
-    CHECK(current_batch_fid2bfid_.find(fids[i]) != current_batch_fid2bfid_.end()) 
-      << "fid not found while convert_fid2bfid:" << fids[i];
+    PADDLE_ENFORCE(current_batch_fid2bfid_.find(fids[i]) != current_batch_fid2bfid_.end(),
+        platform::errors::External("fid not found:%ul", (unsigned long)fids[i])); 
     out_bfids[i] = current_batch_fid2bfid_[fids[i]];
   }
 }

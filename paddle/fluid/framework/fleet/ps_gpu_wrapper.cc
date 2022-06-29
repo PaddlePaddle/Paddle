@@ -30,12 +30,18 @@ limitations under the License. */
 
 #include <algorithm>
 #include <deque>
+#include <gflags/gflags.h>
 
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/platform/timer.h"
 
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps.h"
+
+#if defined(PADDLE_WITH_XPU_KP)
+DECLARE_bool(dump_cache_array);
+DECLARE_bool(dump_cache_manager);
+#endif
 
 namespace paddle {
 namespace framework {
@@ -840,9 +846,9 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], 500000, 2);
 #endif
-    // if (feature_keys_count[i] > 0) {
-    //   HeterPs_->show_one_table(i);
-    // }
+    if (FLAGS_dump_cache_array && feature_keys_count[i] > 0) {
+       HeterPs_->show_one_table(i);
+    }
   };
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(build_func, i);
@@ -983,8 +989,10 @@ void PSGPUWrapper::build_batch_fid_seq(
   std::vector<std::deque<Record> *> & all_chan_recs, const std::vector<bool> & slot_is_dense) {
   VLOG(0) << "PSGPUWrapper::build_batch_fid_seq called"; 
   auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
-  cache_manager->build_batch_fid_seq(all_chan_recs, slot_is_dense); 
-  //cache_manager->dump_to_file();
+  cache_manager->build_batch_fid_seq(all_chan_recs, slot_is_dense);
+  if (FLAGS_dump_cache_manager) {
+    cache_manager->dump_to_file();
+  }
 }
 #endif
 
