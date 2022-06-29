@@ -307,11 +307,11 @@ def _recover_args_state(outs, get_args, set_args, return_name_ids):
     init_args = get_args()
     # recover args state
     num_outs = len(return_name_ids)
-    num_args = 1 if not isinstance(init_args, tuple) else len(init_args)
+    num_args = len(init_args)
     assert num_outs <= num_args
 
     if num_args == 1:
-        final_outs = outs
+        final_outs = (outs,)
     else:
         outs = (outs, ) if num_outs == 1 else outs
         final_outs = outs + init_args[num_outs:]

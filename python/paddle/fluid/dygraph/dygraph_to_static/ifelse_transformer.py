@@ -575,7 +575,7 @@ def create_get_args_node(names):
     template = """
     def {func_name}():
         nonlocal {vars}
-        return {vars}
+        return {vars},
     """
     func_def = template.format(
         func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
@@ -607,7 +607,7 @@ def create_set_args_node(names):
     template = """
     def {func_name}({args}):
         nonlocal {vars}
-        {vars} = {args}
+        {vars}, = {args}
     """
     func_def = template.format(
         func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
