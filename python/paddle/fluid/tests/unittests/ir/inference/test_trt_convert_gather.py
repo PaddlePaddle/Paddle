@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,11 +23,11 @@ import unittest
 
 
 class TrtConvertGatherTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         if len(inputs['input_data'].shape) <= attrs[0]['axis']:
             return False
@@ -35,6 +35,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -74,16 +75,21 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
                                 ops=ops,
                                 weights={},
                                 inputs={
-                                    "input_data": TensorConfig(data_gen=partial(
+                                    "input_data":
+                                    TensorConfig(data_gen=partial(
                                         generate_input1, shape)),
-                                    "index_data": TensorConfig(data_gen=partial(
+                                    "index_data":
+                                    TensorConfig(data_gen=partial(
                                         generate_input2, index)),
                                 } if len(input) == 2 else {
-                                    "input_data": TensorConfig(data_gen=partial(
+                                    "input_data":
+                                    TensorConfig(data_gen=partial(
                                         generate_input1, shape)),
-                                    "index_data": TensorConfig(data_gen=partial(
+                                    "index_data":
+                                    TensorConfig(data_gen=partial(
                                         generate_input2, index)),
-                                    "axis_data": TensorConfig(data_gen=partial(
+                                    "axis_data":
+                                    TensorConfig(data_gen=partial(
                                         generate_input3, axis)),
                                 },
                                 outputs=["output_data"])
@@ -92,6 +98,13 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+        # in trt8.4 cuda 11.6 we need so much space to avoiding failing
+        # see issue https://github.com/NVIDIA/TensorRT/issues/2099
+        ver = paddle_infer.get_trt_compile_version()
+        trt_version = ver[0] * 1000 + ver[1] * 100 + ver[2] * 10
+        if trt_version >= 8400:
+            self.trt_param.workspace_size = 1073741824
+
         def generate_dynamic_shape(attrs):
             if len(self.shape) == 1:
                 self.dynamic_shape.min_input_shape = {
@@ -133,18 +146,33 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
                     "index_data": [2]
                 }
             elif len(self.shape) == 4:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [2, 4, 4, 2],
-                    "index_data": [1]
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [128, 256, 64, 128],
-                    "index_data": [4]
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [16, 64, 16, 32],
-                    "index_data": [2]
-                }
+                # in trt 8.4 , we can't allow multiple dynamic values
+                if trt_version >= 8400:
+                    self.dynamic_shape.min_input_shape = {
+                        "input_data": [2, 4, 16, 32],
+                        "index_data": [2]
+                    }
+                    self.dynamic_shape.max_input_shape = {
+                        "input_data": [128, 256, 16, 32],
+                        "index_data": [2]
+                    }
+                    self.dynamic_shape.opt_input_shape = {
+                        "input_data": [16, 64, 16, 32],
+                        "index_data": [2]
+                    }
+                else:
+                    self.dynamic_shape.min_input_shape = {
+                        "input_data": [2, 4, 4, 2],
+                        "index_data": [1]
+                    }
+                    self.dynamic_shape.max_input_shape = {
+                        "input_data": [128, 256, 64, 128],
+                        "index_data": [4]
+                    }
+                    self.dynamic_shape.opt_input_shape = {
+                        "input_data": [16, 64, 16, 32],
+                        "index_data": [2]
+                    }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -161,8 +189,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
                     return 0, 4
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape
@@ -188,8 +215,8 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             def teller1(program_config, predictor_config):
                 if len(self.dynamic_shape.min_input_shape) != 0:
                     inputs = program_config.inputs
-                    if len(inputs['input_data'].shape) == 1 or len(inputs[
-                            'index_data'].shape) == 1:
+                    if len(inputs['input_data'].shape) == 1 or len(
+                            inputs['index_data'].shape) == 1:
                         return True
                 return False
 
