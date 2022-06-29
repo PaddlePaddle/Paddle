@@ -147,7 +147,7 @@ __global__ void dy_mf_update_kernel(Table* table,
     auto it = table->find(keys[i]);
     if (it != table->end()) {
       FeaturePushValue* cur =
-          reinterpret_cast<FeaturePushValue*>(grads + i * grad_value_size);
+          (FeaturePushValue*)(grads + i * grad_value_size);  // NOLINT
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, *cur);
     } else {
       if (keys[i] != 0) {

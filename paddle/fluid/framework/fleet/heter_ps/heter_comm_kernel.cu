@@ -166,8 +166,9 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
     merger_.update_one(out, in);
     for (int j = 1; j < num; ++j) {
       ori_index = index[start + j];
-      FeaturePushValue& rhs = *(reinterpret_cast<FeaturePushValue*>(
-          input + size_t(ori_index) * grad_value_size));
+      FeaturePushValue& rhs =
+          *(FeaturePushValue*)(input +  // NOLINT
+                               size_t(ori_index) * grad_value_size);
       merger_.merge_one(out, rhs);
     }
   }
@@ -231,7 +232,7 @@ void HeterCommKernel::fill_shard_key(KeyType* d_shard_keys,
                                      long long len,  // NOLINT
                                      const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
-  size_t c_len = (tatic_cast<size_t>(len);
+  size_t c_len = static_cast<size_t>(len);
   fill_shard_key_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_shard_keys, d_keys, idx, c_len);
 }
@@ -361,7 +362,7 @@ void HeterCommKernel::dy_mf_fill_dvals(ValType* d_shard_vals,
                                        size_t val_size,
                                        const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
-  size_t c_len = (static_cast<size_t>)len;
+  size_t c_len = static_cast<size_t>(len);
   dy_mf_fill_dvals_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_shard_vals, d_vals, idx, c_len, val_size);
 }
