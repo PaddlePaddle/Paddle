@@ -139,10 +139,10 @@ __global__ void dy_mf_fill_shard_grads_kernel(KeyType* d_shard_keys,
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     d_shard_keys[i] = d_keys[idx[i]];
-    *(reinterpret_cast<GradType*>)((reinterpret_cast<char*>)d_shard_grads +
-                                   i * grad_value_size) =
-        *(reinterpret_cast<GradType*>)((reinterpret_cast<char*>)d_grads +
-                                       uint64_t(idx[i]) * grad_value_size);
+    *(reinterpret_cast<GradType*>(reinterpret_cast<char*>(d_shard_grads) +
+                                  i * grad_value_size)) =
+        *(reinterpret_cast<GradType*>(reinterpret_cast<char*>(d_grads) +
+                                      uint64_t(idx[i]) * grad_value_size));
   }
 }
 
@@ -153,23 +153,21 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
                                        char* output,
                                        int n,
                                        size_t grad_value_size,
-                                       const DynamicGradMerger& merger_) {
+                                       DynamicGradMerger& merger_) {  // NOLINT
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < n) {
     uint32_t start = offset[i];
     uint32_t num = fea_num[i];
     int ori_index = index[start];
     FeaturePushValue& out =
-        *(reinterpret_cast<FeaturePushValue*>)(output + i * grad_value_size);
-    FeaturePushValue& in =
-        *(reinterpret_cast<FeaturePushValue*>)(input + size_t(ori_index) *
-                                                           grad_value_size);
+        *(reinterpret_cast<FeaturePushValue*>(output + i * grad_value_size));
+    FeaturePushValue& in = *(reinterpret_cast<FeaturePushValue*>(
+        input + size_t(ori_index) * grad_value_size));
     merger_.update_one(out, in);
     for (int j = 1; j < num; ++j) {
       ori_index = index[start + j];
-      FeaturePushValue& rhs =
-          *(reinterpret_cast<FeaturePushValue*>)(input + size_t(ori_index) *
-                                                             grad_value_size);
+      FeaturePushValue& rhs = *(reinterpret_cast<FeaturePushValue*>(
+          input + size_t(ori_index) * grad_value_size));
       merger_.merge_one(out, rhs);
     }
   }
@@ -184,8 +182,10 @@ __global__ void dy_mf_fill_dvals_kernel(ValType* d_shard_vals,
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     uint64_t new_offset = uint64_t(idx[i]) * val_size;
-    *(reinterpret_cast<ValType*>((reinterpret_cast<char*>)d_vals + new_offset) =
-        *(reinterpret_cast<ValType*>)((reinterpret_cast<char*>)d_shard_vals + i * val_size);  // NOLINT
+    *(reinterpret_cast<ValType*>(reinterpret_cast<char*>(d_vals) +
+                                 new_offset)) =  // NOLINT
+        *(reinterpret_cast<ValType*>(reinterpret_cast<char*>(d_shard_vals) +
+                                     i * val_size));  // NOLINT
   }
 }
 
@@ -195,7 +195,7 @@ void HeterCommKernel::fill_idx(T* idx,
                                long long len,  // NOLINT
                                const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
-  size_t c_len = (static_cast<size_t>)len;
+  size_t c_len = static_cast<size_t>(len);
   fill_idx_kernel<<<grid_size, block_size_, 0, stream>>>(idx, c_len);
 }
 
@@ -207,7 +207,7 @@ void HeterCommKernel::calc_shard_offset(T* idx,
                                         int total_devs,
                                         const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
-  size_t c_len = (static_cast<size_t>)len;
+  size_t c_len = static_cast<size_t>(len);
   calc_shard_offset_kernel<<<grid_size, block_size_, 0, stream>>>(
       idx, left, right, c_len);
 }
@@ -219,7 +219,7 @@ void HeterCommKernel::calc_shard_index(KeyType* d_keys,
                                        int total_gpu,
                                        const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
-  size_t c_len = (static_cast<size_t>)len;
+  size_t c_len = static_cast<size_t>(len);
   calc_shard_index_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_keys, c_len, shard_index, total_gpu);
 }
@@ -231,7 +231,7 @@ void HeterCommKernel::fill_shard_key(KeyType* d_shard_keys,
                                      long long len,  // NOLINT
                                      const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
-  size_t c_len = (static_cast<size_t>)len;
+  size_t c_len = (tatic_cast<size_t>(len);
   fill_shard_key_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_shard_keys, d_keys, idx, c_len);
 }
@@ -245,7 +245,7 @@ void HeterCommKernel::fill_shard_grads(KeyType* d_shard_keys,
                                        long long len,  // NOLINT
                                        const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
-  size_t c_len = (static_cast<size_t>)len;
+  size_t c_len = static_cast<size_t>(len);
   fill_shard_grads_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_shard_keys, d_keys, d_shard_grads, d_grads, idx, c_len);
 }
@@ -257,7 +257,7 @@ void HeterCommKernel::fill_dvals(ValType* d_shard_vals,
                                  long long len,  // NOLINT
                                  const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
-  size_t c_len = (static_cast<size_t>)len;
+  size_t c_len = static_cast<size_t>(len);
   fill_dvals_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_shard_vals, d_vals, idx, c_len);
 }
@@ -327,7 +327,7 @@ void HeterCommKernel::dy_mf_fill_shard_grads(KeyType* d_shard_keys,
                                              size_t grad_value_size,
                                              const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
-  size_t c_len = (static_cast<size_t>)len;
+  size_t c_len = static_cast<size_t>(len);
   dy_mf_fill_shard_grads_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_shard_keys,
       d_keys,
@@ -496,7 +496,7 @@ template void HeterCommKernel::merge_gradient<cudaStream_t>(
     char* output,
     int n,
     size_t grad_value_size,
-    const DynamicGradMerger& merger_,
+    DynamicGradMerger& merger_,  // NOLINT
     const cudaStream_t& stream);
 
 template void HeterCommKernel::

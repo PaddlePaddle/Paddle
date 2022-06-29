@@ -28,9 +28,9 @@
 #include <iterator>
 #include <type_traits>
 
-#include "cudf/hash_functions.cuh"
-#include "cudf/managed.cuh"
-#include "cudf/managed_allocator.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/cudf/hash_functions.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/cudf/managed.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/cudf/managed_allocator.cuh"
 
 // TODO(Thunderbrook): replace this with CUDA_TRY and propagate the error
 #ifndef CUDA_RT_CALL
@@ -55,12 +55,11 @@
 __inline__ __device__ int8_t atomicCAS(int8_t* address,
                                        int8_t compare,
                                        int8_t val) {
-  int32_t* base_address =
-      (reinterpret_cast<int32_t*>)((reinterpret_cast<char*>)address -
-                                   ((static_cast<size_t>)address & 3));
-  int32_t int_val = (int32_t)val << (((static_cast<size_t>)address & 3) * 8);
+  int32_t* base_address = reinterpret_cast<int32_t*>(
+      reinterpret_cast<char*>(address) - (static_cast<size_t>(address) & 3));
+  int32_t int_val = (int32_t)val << ((static_cast<size_t>(address) & 3) * 8);
   int32_t int_comp = (int32_t)compare
-                     << (((static_cast<size_t>)address & 3) * 8);
+                     << ((static_cast<size_t>(address) & 3) * 8);
   return (int8_t)atomicCAS(base_address, int_comp, int_val);
 }
 
@@ -68,12 +67,11 @@ __inline__ __device__ int8_t atomicCAS(int8_t* address,
 __inline__ __device__ int16_t atomicCAS(int16_t* address,
                                         int16_t compare,
                                         int16_t val) {
-  int32_t* base_address =
-      (reinterpret_cast<int32_t*>)((reinterpret_cast<char*>)address -
-                                   ((static_cast<size_t>)address & 2));
-  int32_t int_val = (int32_t)val << (((static_cast<size_t>)address & 2) * 8);
+  int32_t* base_address = reinterpret_cast<int32_t*>(
+      reinterpret_cast<char*>(address) - (static_cast<size_t>(address) & 2));
+  int32_t int_val = (int32_t)val << ((static_cast<size_t>(address) & 2) * 8);
   int32_t int_comp = (int32_t)compare
-                     << (((static_cast<size_t>)address & 2) * 8);
+                     << ((static_cast<size_t>(address) & 2) * 8);
   return (int16_t)atomicCAS(base_address, int_comp, int_val);
 }
 
@@ -113,7 +111,7 @@ __inline__ __device__ double atomicCAS(double* address,
 __inline__ __device__ float atomicCAS(float* address,
                                       float compare,
                                       float val) {
-  return __int_as_float(atomicCAS((reinterpret_cast<int*>)address,
+  return __int_as_float(atomicCAS(reinterpret_cast<int*>(address),
                                   __float_as_int(compare),
                                   __float_as_int(val)));
 }

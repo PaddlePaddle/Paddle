@@ -28,7 +28,7 @@ void GraphGpuWrapper::set_device(std::vector<int> ids) {
 std::vector<std::vector<int64_t>> GraphGpuWrapper::get_all_id(int type,
                                                               int idx,
                                                               int slice_num) {
-  return ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+  return (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->cpu_graph_table->get_all_id(type, idx, slice_num);
 }
 void GraphGpuWrapper::set_up_types(std::vector<std::string> &edge_types,
@@ -52,29 +52,29 @@ void GraphGpuWrapper::set_up_types(std::vector<std::string> &edge_types,
 void GraphGpuWrapper::make_partitions(int idx,
                                       int64_t byte_size,
                                       int device_len) {
-  ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+  (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->cpu_graph_table->make_partitions(idx, byte_size, device_len);
 }
 int32_t GraphGpuWrapper::load_next_partition(int idx) {
-  return ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+  return (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->cpu_graph_table->load_next_partition(idx);
 }
 
 void GraphGpuWrapper::set_search_level(int level) {
-  ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+  (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->cpu_graph_table->set_search_level(level);  // NOLINT
 }
 
 std::vector<int64_t> GraphGpuWrapper::get_partition(int idx, int num) {
-  return ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+  return (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->cpu_graph_table->get_partition(idx, num);
 }
 int32_t GraphGpuWrapper::get_partition_num(int idx) {
-  return ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+  return (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->cpu_graph_table->get_partition_num(idx);
 }
 void GraphGpuWrapper::make_complementary_graph(int idx, int64_t byte_size) {
-  ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+  (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->cpu_graph_table->make_complementary_graph(idx, byte_size);
 }
 void GraphGpuWrapper::load_edge_file(std::string name,
@@ -90,7 +90,7 @@ void GraphGpuWrapper::load_edge_file(std::string name,
     params += ">" + name;
   }
   if (edge_to_id.find(name) != edge_to_id.end()) {
-    ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+    (reinterpret_cast<GpuPsGraphTable *>(graph_table))
         ->cpu_graph_table->Load(std::string(filepath), params);
   }
 }
@@ -101,7 +101,7 @@ void GraphGpuWrapper::load_node_file(std::string name, std::string filepath) {
   std::string params = "n" + name;
 
   if (feature_to_id.find(name) != feature_to_id.end()) {
-    ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+    (reinterpret_cast<GpuPsGraphTable *>(graph_table))
         ->cpu_graph_table->Load(std::string(filepath), params);
   }
 }
@@ -114,7 +114,7 @@ void GraphGpuWrapper::add_table_feat_conf(std::string table_name,
     int idx = feature_to_id[table_name];
     if (table_feat_mapping[idx].find(feat_name) ==
         table_feat_mapping[idx].end()) {
-      int res = (static_cast<int>)table_feat_mapping[idx].size();
+      int res = static_cast<int>(table_feat_mapping[idx].size());
       table_feat_mapping[idx][feat_name] = res;
     }
     int feat_idx = table_feat_mapping[idx][feat_name];
@@ -163,7 +163,7 @@ void GraphGpuWrapper::init_service() {
 
 void GraphGpuWrapper::upload_batch(int idx,
                                    std::vector<std::vector<int64_t>> &ids) {
-  GpuPsGraphTable *g = (reinterpret_cast<GpuPsGraphTable *>)graph_table;
+  GpuPsGraphTable *g = reinterpret_cast<GpuPsGraphTable *>(graph_table);
   // std::vector<paddle::framework::GpuPsCommGraph> vec;
   for (int i = 0; i < ids.size(); i++) {
     // vec.push_back(g->cpu_graph_table->make_gpu_ps_graph(idx, ids[i]));
@@ -207,7 +207,7 @@ void GraphGpuWrapper::upload_batch(int idx,
 // }
 NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
     NeighborSampleQuery q, bool cpu_switch) {
-  return ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+  return (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->graph_neighbor_sample_v3(q, cpu_switch);
 }
 
@@ -224,7 +224,7 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
              cudaMemcpyHostToDevice);
 
   auto neighbor_sample_res =
-      ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+      (reinterpret_cast<GpuPsGraphTable *>(graph_table))
           ->graph_neighbor_sample(gpu_id, cuda_key, sample_size, key.size());
   int *actual_sample_size = new int[key.size()];
   cudaMemcpy(actual_sample_size,
@@ -258,25 +258,25 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
 }
 
 void GraphGpuWrapper::init_sample_status() {
-  ((reinterpret_cast<GpuPsGraphTable *>)graph_table)->init_sample_status();
+  (reinterpret_cast<GpuPsGraphTable *>(graph_table))->init_sample_status();
 }
 
 void GraphGpuWrapper::free_sample_status() {
-  ((reinterpret_cast<GpuPsGraphTable *>)graph_table)->free_sample_status();
+  (reinterpret_cast<GpuPsGraphTable *>(graph_table))->free_sample_status();
 }
 NodeQueryResult GraphGpuWrapper::query_node_list(int gpu_id,
                                                  int start,
                                                  int query_size) {
-  return ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+  return (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->query_node_list(gpu_id, start, query_size);
 }
 void GraphGpuWrapper::load_node_weight(int type_id, int idx, std::string path) {
-  return ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+  return (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->cpu_graph_table->load_node_weight(type_id, idx, path);
 }
 
 void GraphGpuWrapper::export_partition_files(int idx, std::string file_path) {
-  return ((reinterpret_cast<GpuPsGraphTable *>)graph_table)
+  return (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->cpu_graph_table->export_partition_files(idx, file_path);
 }
 #endif

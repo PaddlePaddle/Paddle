@@ -96,8 +96,8 @@ __global__ void dy_mf_search_kernel(Table* table,
 
     if (it != table->end()) {
       uint64_t offset = i * pull_feature_value_size;
-      FeatureValue* cur = (reinterpret_cast<FeatureValue*>)(vals + offset);
-      FeatureValue& input = *(reinterpret_cast<FeatureValue*>)(it->second);
+      FeatureValue* cur = reinterpret_cast<FeatureValue*>(vals + offset);
+      FeatureValue& input = *(reinterpret_cast<FeatureValue*>(it->second));
       cur->slot = input.slot;
       cur->show = input.show;
       cur->clk = input.clk;
@@ -147,7 +147,7 @@ __global__ void dy_mf_update_kernel(Table* table,
     auto it = table->find(keys[i]);
     if (it != table->end()) {
       FeaturePushValue* cur =
-          (reinterpret_cast<FeaturePushValue*>)(grads + i * grad_value_size);
+          reinterpret_cast<FeaturePushValue*>(grads + i * grad_value_size);
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, *cur);
     } else {
       if (keys[i] != 0) {
@@ -160,9 +160,9 @@ __global__ void dy_mf_update_kernel(Table* table,
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
   container_ = new TableContainer<KeyType, ValType>(capacity);
-  cudaMalloc((reinterpret_cast<void**>)&device_optimizer_config_,
+  cudaMalloc(reinterpret_cast<void**>(&device_optimizer_config_),
              sizeof(OptimizerConfig));
-  cudaMemcpy((reinterpret_cast<void*>)device_optimizer_config_,
+  cudaMemcpy(reinterpret_cast<void*>(device_optimizer_config_),
              &host_optimizer_config_,
              sizeof(OptimizerConfig),
              cudaMemcpyHostToDevice);
@@ -178,7 +178,7 @@ template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::set_sparse_sgd(
     const OptimizerConfig& optimizer_config) {
   host_optimizer_config_.set_sparse_sgd(optimizer_config);
-  cudaMemcpy((reinterpret_cast<void*>)device_optimizer_config_,
+  cudaMemcpy(reinterpret_cast<void*>(device_optimizer_config_),
              &host_optimizer_config_,
              sizeof(OptimizerConfig),
              cudaMemcpyHostToDevice);
@@ -188,7 +188,7 @@ template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::set_embedx_sgd(
     const OptimizerConfig& optimizer_config) {
   host_optimizer_config_.set_embedx_sgd(optimizer_config);
-  cudaMemcpy((reinterpret_cast<void*>)device_optimizer_config_,
+  cudaMemcpy(reinterpret_cast<void*>(device_optimizer_config_),
              &host_optimizer_config_,
              sizeof(OptimizerConfig),
              cudaMemcpyHostToDevice);
