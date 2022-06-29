@@ -26,6 +26,12 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void OperatorActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
+  std::vector<std::string> op_types = {"conv2d",
+                                       "elementwise_add",
+                                       "elementwise_sub",
+                                       "elementwise_mul",
+                                       "matmul",
+                                       "softplus"};
   std::vector<std::string> act_types = {"relu",
                                         "mish",
                                         "swish",
@@ -39,14 +45,6 @@ void OperatorActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
                                         "tanh",
                                         "hard_sigmoid",
                                         "leaky_relu"};
-
-  std::vector<std::string> op_types = {"conv2d",
-                                       "elementwise_add",
-                                       "elementwise_sub",
-                                       "elementwise_mul",
-                                       "matmul",
-                                       "softplus"};
-
   for (const auto& op_type : op_types)
     for (auto& act_type : act_types) {
       std::unordered_map<std::string, std::string> attrs_map;
