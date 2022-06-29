@@ -10,6 +10,10 @@ cc_library(
   infer_io_utils
   SRCS io_utils.cc
   DEPS paddle_inference_api lod_tensor shape_range_info_proto)
+cc_library(
+  model_utils
+  SRCS model_utils.cc
+  DEPS proto_desc enforce)
 cc_test(
   infer_io_utils_tester
   SRCS io_utils_tester.cc

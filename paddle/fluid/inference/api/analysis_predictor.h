@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/phi/common/data_type.h"
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #endif
@@ -477,6 +478,8 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
+
+  phi::DataType model_precision_{phi::DataType::FLOAT32};
 
 #if PADDLE_WITH_MKLDNN
   // Helper class to perform quantization
