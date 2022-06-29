@@ -320,7 +320,7 @@ void CPUQuantizeSquashPass::RequantOpSquash(Graph* graph) const {
                             "should have requantize output as input.",
                             requant_out->Name()));
       float requant_scale_in =
-          boost::get<float>(requant_op->Op()->GetAttr("Scale_in"));
+          paddle::get<float>(requant_op->Op()->GetAttr("Scale_in"));
 
       auto scale_name = "Scale_in";
       if (any_op->Op()->Type() == "matmul")

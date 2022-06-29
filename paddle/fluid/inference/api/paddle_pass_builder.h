@@ -16,6 +16,7 @@
 
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle_infer_declare.h"  // NOLINT
@@ -106,6 +107,10 @@ class PD_INFER_DECL PaddlePassBuilder {
     return passes;
   }
 
+  const std::unordered_set<std::string> &GetAllDeletedPasses() const {
+    return deleted_passes_;
+  }
+
  protected:
   /// \cond Protected
   std::vector<std::string> analysis_passes_{
@@ -116,6 +121,7 @@ class PD_INFER_DECL PaddlePassBuilder {
        "adjust_cudnn_workspace_size_pass",
        "inference_op_replace_pass"}};
   std::vector<std::string> passes_;
+  std::unordered_set<std::string> deleted_passes_;
   /// \endcond
 };
 
@@ -177,6 +183,8 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   bool use_ipu_{false};
   bool use_mkldnn_{false};
   bool use_custom_device_{false};
+
+  bool use_gpu_low_precision_{false};
   /// \endcond
 };
 
@@ -327,5 +335,11 @@ PD_INFER_DECL extern const std::vector<std::string> kDlnneSubgraphPasses;
 
 /// \brief List of lite subgraph passes.
 PD_INFER_DECL extern const std::vector<std::string> kLiteSubgraphPasses;
+
+/// \brief TODO(inference): Most of the existing pass fusion operators do not
+/// support fp16/bf16 precision, temporarily use low precision pass to prevent
+/// running errors. After fusion operator supports low precision, delete this.
+PD_INFER_DECL extern const std::vector<std::string> kGpuLowerPrecisionPasses;
+PD_INFER_DECL extern const std::vector<std::string> kTrtLowerPrecisionPasses;
 
 }  // namespace paddle

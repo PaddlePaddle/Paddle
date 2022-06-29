@@ -25,6 +25,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -46,6 +47,7 @@ namespace paddle_infer {
 using PrecisionType = paddle::AnalysisConfig::Precision;
 using Config = paddle::AnalysisConfig;
 using DistConfig = paddle::DistConfig;
+using BackendType = paddle::AnalysisConfig::Backend;
 
 ///
 /// \class Predictor
@@ -182,6 +184,16 @@ PD_INFER_DECL std::string GetVersion();
 PD_INFER_DECL std::tuple<int, int, int> GetTrtCompileVersion();
 PD_INFER_DECL std::tuple<int, int, int> GetTrtRuntimeVersion();
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
+
+PD_INFER_DECL void ConvertToMixedPrecision(
+    const std::string& model_file,
+    const std::string& params_file,
+    const std::string& mixed_model_file,
+    const std::string& mixed_params_file,
+    PrecisionType mixed_precision,
+    BackendType backend,
+    bool keep_io_types = true,
+    std::unordered_set<std::string> black_list = {});
 
 namespace services {
 ///

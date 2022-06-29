@@ -526,8 +526,10 @@ def fused_multi_head_attention(x,
             0] == 3, "The shape of qkv_weight should be [3, num_head, head_dim, embed_dim]."
         assert qkv_weight.shape[3] == x.shape[
             2], "The 3rd dim of qkv_weight and 2nd dim of x should be the same, i.e., embed_dim."
-        assert qkv_weight.shape[1] * qkv_weight.shape[2] == qkv_weight.shape[
-            3], "embed_dim must be divisible by num_heads."
+        if ring_id == -1:
+            # under mp, the num head will be split, this equation will not hold
+            assert qkv_weight.shape[1] * qkv_weight.shape[2] == qkv_weight.shape[
+                3], "embed_dim must be divisible by num_heads."
 
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, cache_kv_out, final_out = _C_ops.fused_attention(
             x, pre_ln_scale, pre_ln_bias, qkv_weight, qkv_bias, cache_kv,

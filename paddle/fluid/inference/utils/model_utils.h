@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-namespace phi {
+#include <cstddef>
+#include <memory>
+#include <string>
+#include <vector>
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/phi/common/data_type.h"
 
-KernelSignature CrossOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("cross", {"X", "Y"}, {"dim"}, {"Out"});
-}
+namespace paddle {
+namespace inference {
 
-KernelSignature CrossGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "cross_grad", {"X", "Y", "Out@GRAD"}, {"dim"}, {"X@GRAD", "Y@GRAD"});
-}
+// Get all model's weights and return the data_type, e.g., fp16/bf16 or fp32.
+phi::DataType GetModelPrecision(const framework::ProgramDesc& program);
 
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(cross, phi::CrossOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(cross_grad, phi::CrossGradOpArgumentMapping);
+}  // namespace inference
+}  // namespace paddle

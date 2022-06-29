@@ -14,10 +14,16 @@
 
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
 
+#include <unordered_set>
+
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace inference {
@@ -106,34 +112,63 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
   if (with_dynamic_shape) {
     reserve_cpu_weights = true;
   }
-  for (auto &var_name : all_vars) {
-    if (std::count(
-            repetitive_params.begin(), repetitive_params.end(), var_name)) {
-      if (!reserve_cpu_weights) {
-        scope->EraseVars({var_name});
+
+  for (auto *node : paddle::framework::ir::TopologySortOperations(graph)) {
+    if (!node->IsOp()) continue;
+    if (node->Op()->Type() == "feed" || node->Op()->Type() == "fetch") continue;
+    for (auto *var_node : node->inputs) {
+      if (!var_node->Var()->Persistable()) continue;
+      auto var_name = var_node->Var()->Name();
+      if (std::count(
+              repetitive_params.begin(), repetitive_params.end(), var_name)) {
+        if (!reserve_cpu_weights) {
+          scope->EraseVars({var_name});
+        }
+        continue;
       }
-      continue;
-    }
-    auto *var = scope->FindLocalVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var,
-        platform::errors::PreconditionNotMet("The var should not be nullptr"));
-    if (var->IsType<framework::LoDTensor>() ||
-        var->IsType<framework::Tensor>()) {
-      auto *t = var->GetMutable<framework::LoDTensor>();
-
-      platform::CPUPlace cpu_place;
-      framework::LoDTensor temp_tensor;
-      temp_tensor.Resize(t->dims());
-      temp_tensor.mutable_data<float>(cpu_place);
-
-      // Copy the parameter data to a tmp tensor.
-      paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
-      // Reallocation the space on GPU
-      t->clear();
-
-      // Copy parameter data to newly allocated GPU space.
-      paddle::framework::TensorCopySync(temp_tensor, place, t);
+      auto *var = scope->FindLocalVar(var_name);
+      PADDLE_ENFORCE_NOT_NULL(var,
+                              platform::errors::PreconditionNotMet(
+                                  "The var should not be nullptr"));
+      if (var->IsType<framework::LoDTensor>() ||
+          var->IsType<framework::Tensor>()) {
+        auto *t = var->GetMutable<framework::LoDTensor>();
+        auto var_data_type = var_node->Var()->GetDataType();
+        VLOG(5) << "var_name is " << var_name << ", data type is "
+                << var_data_type;
+        if (var_data_type == paddle::framework::proto::VarType::FP16) {
+          framework::Tensor half_tensor;
+          half_tensor.set_type(paddle::experimental::DataType::FLOAT16);
+          half_tensor.Resize(t->dims());
+          auto *half_data =
+              half_tensor.mutable_data<float16>(platform::CPUPlace());
+          for (int i = 0; i < t->numel(); i++) {
+            auto *data = t->mutable_data<float16>(platform::CPUPlace());
+            half_data[i] = static_cast<float16>(data[i]);
+          }
+          t->clear();
+          paddle::framework::TensorCopySync(half_tensor, place, t);
+        } else if (var_data_type == paddle::framework::proto::VarType::BF16) {
+          framework::Tensor bf16_tensor;
+          bf16_tensor.set_type(paddle::experimental::DataType::BFLOAT16);
+          bf16_tensor.Resize(t->dims());
+          auto *bf16_data = bf16_tensor.mutable_data<platform::bfloat16>(
+              platform::CPUPlace());
+          for (int i = 0; i < t->numel(); i++) {
+            auto *data = t->mutable_data<bfloat16>(platform::CPUPlace());
+            bf16_data[i] = static_cast<platform::bfloat16>(data[i]);
+          }
+          t->clear();
+          paddle::framework::TensorCopySync(bf16_tensor, place, t);
+        } else {
+          platform::CPUPlace cpu_place;
+          framework::LoDTensor temp_tensor;
+          temp_tensor.Resize(t->dims());
+          paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
+          t->clear();
+          paddle::framework::TensorCopySync(temp_tensor, place, t);
+        }
+      }
     }
   }
 }
