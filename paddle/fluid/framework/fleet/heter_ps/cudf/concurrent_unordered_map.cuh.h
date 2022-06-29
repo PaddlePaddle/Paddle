@@ -18,8 +18,8 @@
  * in the root directory of this source tree.
  */
 
-#ifndef PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_CONCURRENT_UNORDERED_MAP_CUH_H_
-#define PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_CONCURRENT_UNORDERED_MAP_CUH_H_
+#ifndef CONCURRENT_UNORDERED_MAP_CUH  // NOLINT
+#define CONCURRENT_UNORDERED_MAP_CUH  // NOLINT
 
 #include <thrust/pair.h>
 
@@ -28,9 +28,9 @@
 #include <iterator>
 #include <type_traits>
 
-#include "paddle/fluid/framework/fleet/heter_ps/cudf/hash_functions.cuh"
-#include "paddle/fluid/framework/fleet/heter_ps/cudf/managed.cuh"
-#include "paddle/fluid/framework/fleet/heter_ps/cudf/managed_allocator.cuh"
+#include "hash_functions.cuh"  // NOLINT
+#include "managed.cuh"  // NOLINT
+#include "managed_allocator.cuh"  // NOLINT
 
 // TODO(Thunderbrook): replace this with CUDA_TRY and propagate the error
 #ifndef CUDA_RT_CALL
@@ -55,11 +55,9 @@
 __inline__ __device__ int8_t atomicCAS(int8_t* address,
                                        int8_t compare,
                                        int8_t val) {
-  int32_t* base_address = reinterpret_cast<int32_t*>(
-      reinterpret_cast<char*>(address) - (static_cast<size_t>(address) & 3));
-  int32_t int_val = (int32_t)val << ((static_cast<size_t>(address) & 3) * 8);
-  int32_t int_comp = (int32_t)compare
-                     << ((static_cast<size_t>(address) & 3) * 8);
+  int32_t* base_address = (int32_t*)((char*)address - ((size_t)address & 3));  // NOLINT
+  int32_t int_val = (int32_t)val << (((size_t)address & 3) * 8);  // NOLINT
+  int32_t int_comp = (int32_t)compare << (((size_t)address & 3) * 8);  // NOLINT
   return (int8_t)atomicCAS(base_address, int_comp, int_val);
 }
 
@@ -67,11 +65,9 @@ __inline__ __device__ int8_t atomicCAS(int8_t* address,
 __inline__ __device__ int16_t atomicCAS(int16_t* address,
                                         int16_t compare,
                                         int16_t val) {
-  int32_t* base_address = reinterpret_cast<int32_t*>(
-      reinterpret_cast<char*>(address) - (static_cast<size_t>(address) & 2));
-  int32_t int_val = (int32_t)val << ((static_cast<size_t>(address) & 2) * 8);
-  int32_t int_comp = (int32_t)compare
-                     << ((static_cast<size_t>(address) & 2) * 8);
+  int32_t* base_address = (int32_t*)((char*)address - ((size_t)address & 2));  // NOLINT
+  int32_t int_val = (int32_t)val << (((size_t)address & 2) * 8);  // NOLINT
+  int32_t int_comp = (int32_t)compare << (((size_t)address & 2) * 8);  // NOLINT
   return (int16_t)atomicCAS(base_address, int_comp, int_val);
 }
 
@@ -111,9 +107,8 @@ __inline__ __device__ double atomicCAS(double* address,
 __inline__ __device__ float atomicCAS(float* address,
                                       float compare,
                                       float val) {
-  return __int_as_float(atomicCAS(reinterpret_cast<int*>(address),
-                                  __float_as_int(compare),
-                                  __float_as_int(val)));
+  return __int_as_float(
+      atomicCAS((int*)address, __float_as_int(compare), __float_as_int(val)));  // NOLINT
 }
 
 __inline__ __device__ int64_t atomicAdd(int64_t* address, int64_t val) {
@@ -870,4 +865,4 @@ x.second );
   unsigned long long m_collisions;  // NOLINT
 };
 
-#endif  // PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_CONCURRENT_UNORDERED_MAP_CUH_H_
+#endif  // CONCURRENT_UNORDERED_MAP_CUH
