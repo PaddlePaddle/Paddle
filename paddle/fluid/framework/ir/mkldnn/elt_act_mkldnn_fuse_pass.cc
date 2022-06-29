@@ -69,28 +69,22 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
   FusePassBase::Init(elt_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
-  auto *elementwise_input = gpd.mutable_pattern()
-                                ->NewNode(elt_type + "_act/elementwise_input")
-                                ->AsInput()
-                                ->assert_is_op_input(elt_type, "X");
-  patterns::ElementwiseActivation elementwise_act_pattern(gpd.mutable_pattern(),
-                                                          elt_type + "_act");
-  elementwise_act_pattern(elementwise_input, elt_type, act_type);
+  patterns::OperatorActivation elementwise_act_pattern(gpd.mutable_pattern(),
+                                                       elt_type + "_act");
+  elementwise_act_pattern(elt_type, act_type);
 
   int found_elementwise_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     VLOG(4) << "Fuse " << elt_type << " with activation op.";
-    // Elementwise output
+
     GET_IR_NODE_FROM_SUBGRAPH(
-        elementwise_out, elementwise_out, elementwise_act_pattern);
-    // ACT output
+        elementwise, preceding_op, elementwise_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_out, preceding_op_out, elementwise_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(activation, activation, elementwise_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         activation_out, activation_out, elementwise_act_pattern);
-    // ops
-    GET_IR_NODE_FROM_SUBGRAPH(
-        elementwise, elementwise, elementwise_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(activation, activation, elementwise_act_pattern);
 
     auto *elementwise_op = elementwise->Op();
 

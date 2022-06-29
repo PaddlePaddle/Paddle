@@ -72,7 +72,7 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
   FusePassBase::Init(matmul_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
-  patterns::MatmulActivation matmul_act_pattern(
+  patterns::OperatorActivation matmul_act_pattern(
       gpd.mutable_pattern(), "matmul_activation_mkldnn_fuse");
   matmul_act_pattern(matmul_type, act_type);
 
@@ -86,9 +86,9 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
       return;
     }
 
-    GET_IR_NODE_FROM_SUBGRAPH(matmul, matmul_op, matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(activation, activation_op, matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul, preceding_op, matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_out, preceding_op_out, matmul_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(activation, activation, matmul_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         activation_out, activation_out, matmul_act_pattern);
 

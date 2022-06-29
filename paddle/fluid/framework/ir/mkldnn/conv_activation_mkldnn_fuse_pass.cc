@@ -72,13 +72,9 @@ void ConvActivationMkldnnFusePass::FuseConvAct(
   FusePassBase::Init(conv_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
-  auto* conv_input = gpd.mutable_pattern()
-                         ->NewNode("conv_activation_mkldnn_fuse/conv_input")
-                         ->AsInput()
-                         ->assert_is_op_input(conv_type, "Input");
-  patterns::ConvActivation conv_act_pattern(gpd.mutable_pattern(),
-                                            "conv_activation_mkldnn_fuse");
-  conv_act_pattern(conv_input, conv_type, act_type);
+  patterns::OperatorActivation conv_act_pattern(gpd.mutable_pattern(),
+                                                "conv_activation_mkldnn_fuse");
+  conv_act_pattern(conv_type, act_type);
 
   int found_conv_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -90,11 +86,10 @@ void ConvActivationMkldnnFusePass::FuseConvAct(
       return;
     }
 
-    GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight, conv_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out, conv_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(conv, conv, conv_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out, conv_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(conv, preceding_op, conv_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(conv_out, preceding_op_out, conv_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(activation, activation, conv_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out, conv_act_pattern);
 
     OpDesc* conv_op = conv->Op();
     OpDesc* act_op = activation->Op();

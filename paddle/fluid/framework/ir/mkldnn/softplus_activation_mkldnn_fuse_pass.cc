@@ -65,22 +65,23 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
   FusePassBase::Init("softplus_activation", graph);
 
   GraphPatternDetector gpd;
-  patterns::SoftplusActivation softplus_activation_pattern(
+  patterns::OperatorActivation softplus_activation_pattern(
       gpd.mutable_pattern(), "softplus_activation");
-  softplus_activation_pattern(fuse_activation_type);
+  softplus_activation_pattern("softplus", fuse_activation_type);
 
   int found_softplus_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     VLOG(4) << "Fuse softplus with activation op.";
-    GET_IR_NODE_FROM_SUBGRAPH(
-        softplus_out, softplus_out, softplus_activation_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(
-        activation_out, activation_out, softplus_activation_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(softplus, softplus, softplus_activation_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        softplus, preceding_op, softplus_activation_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        softplus_out, preceding_op_out, softplus_activation_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         activation, activation, softplus_activation_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        activation_out, activation_out, softplus_activation_pattern);
 
     auto *softplus_op = softplus->Op();
 
