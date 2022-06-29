@@ -1022,6 +1022,8 @@ def dot(x, y, name=None):
     if _in_legacy_dygraph():
         return _C_ops.dot(x, y)
 
+    op_type = 'dot'
+
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
 
