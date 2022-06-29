@@ -80,8 +80,8 @@ ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
   } else {
 #endif
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  inner_pg_ = std::make_shared<ProcessGroupNCCL>(
-      store, local_rank, local_size, place_, IGNORE_ID);
+    inner_pg_ = std::make_shared<ProcessGroupNCCL>(
+        store, local_rank, local_size, place_, IGNORE_ID);
 #elif defined(PADDLE_WITH_ASCEND_CL)
   inner_pg_ = std::make_shared<ProcessGroupHCCL>(
       store, local_rank, local_size, place_, IGNORE_ID);

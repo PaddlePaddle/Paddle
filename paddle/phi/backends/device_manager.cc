@@ -25,6 +25,7 @@
 #include <regex>
 
 #include "glog/logging.h"
+#include "paddle/utils/string/split.h"
 
 namespace phi {
 
