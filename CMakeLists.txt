@@ -475,18 +475,14 @@ if(WITH_DISTRIBUTE)
         OFF
         CACHE BOOL "Disable WITH_PSCORE when compiling with NPU" FORCE)
   endif()
-  if(WITH_ROCM AND HIP_VERSION LESS_EQUAL 40020496)
-    # TODO(qili93): third-party rocksdb throw Illegal instruction with HIP version 40020496
+  if(WITH_ROCM)
+    # TODO(qili93): third-party rocksdb throw Illegal instruction with HIP
     message(
       WARNING
-        "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496. Force WITH_PSCORE=OFF."
-    )
+        "Disable WITH_PSCORE when compiling with ROCm. Force WITH_PSCORE=OFF.")
     set(WITH_PSCORE
         OFF
-        CACHE
-          BOOL
-          "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496"
-          FORCE)
+        CACHE BOOL "Disable WITH_PSCORE when compiling with ROCm" FORCE)
   endif()
 endif()
 
