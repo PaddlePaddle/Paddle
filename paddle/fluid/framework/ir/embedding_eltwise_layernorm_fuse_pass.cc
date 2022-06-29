@@ -64,6 +64,8 @@ void Embedding2Eltwise1Pattern::operator()() {
       create_emb_vars(pattern, lookup_table2_w_repr(), "W", true);
   std::unordered_set<std::string> embedding_ops{"lookup_table",
                                                 "lookup_table_v2"};
+  auto* feed1 = pattern->NewNode(feed1_repr())->assert_is_op("feed");
+  auto* feed2 = pattern->NewNode(feed2_repr())->assert_is_op("feed");
   auto* lookup_table1 =
       pattern->NewNode(lookup_table1_repr())->assert_is_ops(embedding_ops);
   auto* lookup_table2 =
@@ -76,8 +78,10 @@ void Embedding2Eltwise1Pattern::operator()() {
       pattern->NewNode(eltwise_add_repr())->assert_is_op("elementwise_add");
   auto* eltwise_add_out = pattern->NewNode(eltwise_add_out_repr())
                               ->assert_is_op_output("elementwise_add");
+  feed1->LinksTo({lookup_table1_x});
   lookup_table1->LinksFrom({lookup_table1_x, lookup_table1_w})
       .LinksTo({lookup_table1_out});
+  feed2->LinksTo({lookup_table2_x});
   lookup_table2->LinksFrom({lookup_table2_x, lookup_table2_w})
       .LinksTo({lookup_table2_out});
   eltwise_add->LinksFrom({lookup_table1_out, lookup_table2_out})
@@ -90,6 +94,7 @@ void Embedding1Eltwise1Pattern::operator()() {
       create_emb_vars(pattern, lookup_table1_w_repr(), "W", true);
   std::unordered_set<std::string> embedding_ops{"lookup_table",
                                                 "lookup_table_v2"};
+  auto* feed1 = pattern->NewNode(feed1_repr())->assert_is_op("feed");
   auto* lookup_table1 =
       pattern->NewNode(lookup_table1_repr())->assert_is_ops(embedding_ops);
   auto* lookup_table1_out =
@@ -101,6 +106,7 @@ void Embedding1Eltwise1Pattern::operator()() {
                              ->assert_is_op_output("elementwise_add");
   auto* eltwise_add_out = pattern->NewNode(eltwise_add_out_repr())
                               ->assert_is_op_output("elementwise_add");
+  feed1->LinksTo({lookup_table1_x});
   lookup_table1->LinksFrom({lookup_table1_x, lookup_table1_w})
       .LinksTo({lookup_table1_out});
   eltwise_add->LinksFrom({lookup_table1_out, eltwise_add_in})
