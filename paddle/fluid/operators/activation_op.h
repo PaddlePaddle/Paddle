@@ -61,9 +61,10 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
                               "Cannot get input Variable X, variable name = %s",
                               context.InputName("X")));
   PADDLE_ENFORCE_NOT_NULL(
-      out_var, platform::errors::NotFound(
-                   "Cannot get output Variable Out, variable name = %s",
-                   context.OutputName("Out")));
+      out_var,
+      platform::errors::NotFound(
+          "Cannot get output Variable Out, variable name = %s",
+          context.OutputName("Out")));
   if (CanBeUsedBySelectedRows.count(context.Type())) {
     *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
     *Out = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
@@ -73,16 +74,19 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
     *Out = context.Output<framework::Tensor>("Out");
   }
 
-  PADDLE_ENFORCE_NOT_NULL(*Out, platform::errors::NotFound(
-                                    "Cannot get the tensor from the Variable "
-                                    "Output(Out), variable name = %s",
-                                    context.OutputName("Out")));
+  PADDLE_ENFORCE_NOT_NULL(
+      *Out,
+      platform::errors::NotFound("Cannot get the tensor from the Variable "
+                                 "Output(Out), variable name = %s",
+                                 context.OutputName("Out")));
 }
 
 template <ActBwdOpFwdDeps kDepValue>
 inline void ExtractActivationGradTensor(
-    const framework::ExecutionContext& context, const framework::Tensor** X,
-    const framework::Tensor** Out, const framework::Tensor** dOut,
+    const framework::ExecutionContext& context,
+    const framework::Tensor** X,
+    const framework::Tensor** Out,
+    const framework::Tensor** dOut,
     framework::Tensor** dX) {
   auto out_grad_var = context.InputVar(framework::GradVarName("Out"));
   auto x_grad_var = context.OutputVar(framework::GradVarName("X"));
@@ -92,21 +96,24 @@ inline void ExtractActivationGradTensor(
       static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
     out_var = context.InputVar("Out");
     PADDLE_ENFORCE_NOT_NULL(
-        out_var, platform::errors::NotFound(
-                     "Cannot get input Variable Out, variable name = %s",
-                     context.InputName("Out")));
+        out_var,
+        platform::errors::NotFound(
+            "Cannot get input Variable Out, variable name = %s",
+            context.InputName("Out")));
   }
 
   PADDLE_ENFORCE_NOT_NULL(
-      out_grad_var, platform::errors::NotFound(
-                        "Cannot get input Variable %s, variable name = %s",
-                        framework::GradVarName("Out"),
-                        context.InputName(framework::GradVarName("Out"))));
+      out_grad_var,
+      platform::errors::NotFound(
+          "Cannot get input Variable %s, variable name = %s",
+          framework::GradVarName("Out"),
+          context.InputName(framework::GradVarName("Out"))));
   PADDLE_ENFORCE_NOT_NULL(
-      x_grad_var, platform::errors::NotFound(
-                      "Cannot get output Variable %s, variable name = %s",
-                      framework::GradVarName("X"),
-                      context.OutputName(framework::GradVarName("X"))));
+      x_grad_var,
+      platform::errors::NotFound(
+          "Cannot get output Variable %s, variable name = %s",
+          framework::GradVarName("X"),
+          context.OutputName(framework::GradVarName("X"))));
 
   if (CanBeUsedBySelectedRows.count(context.Type())) {
     *dOut = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(
@@ -141,10 +148,11 @@ inline void ExtractActivationGradTensor(
 
   if (static_cast<int>(kDepValue) & static_cast<int>(ActBwdOpFwdDeps::kDepX)) {
     auto x_var = context.InputVar("X");
-    PADDLE_ENFORCE_NOT_NULL(x_var, platform::errors::NotFound(
-                                       "Cannot get the tensor from the "
-                                       "Variable Input(X), variable name = %s",
-                                       context.InputName("X")));
+    PADDLE_ENFORCE_NOT_NULL(
+        x_var,
+        platform::errors::NotFound("Cannot get the tensor from the "
+                                   "Variable Input(X), variable name = %s",
+                                   context.InputName("X")));
     if (CanBeUsedBySelectedRows.count(context.Type())) {
       *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
     } else {
@@ -200,8 +208,8 @@ class ActivationGradKernel
     const framework::Tensor *X, *Out, *dOut;
     framework::Tensor* dX = nullptr;
     X = Out = dOut = nullptr;
-    ExtractActivationGradTensor<Functor::FwdDeps()>(context, &X, &Out, &dOut,
-                                                    &dX);
+    ExtractActivationGradTensor<Functor::FwdDeps()>(
+        context, &X, &Out, &dOut, &dX);
     dX->mutable_data<T>(context.GetPlace());
     auto dout = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dOut, "Input", "Out@GRAD", "ActivationGrad"));
@@ -222,7 +230,10 @@ class ActivationGradKernel
     bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
     bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
     if (use_32bit_index && is_gpu_place) {
-      functor(*place, To32BitIndex(x), To32BitIndex(out), To32BitIndex(dout),
+      functor(*place,
+              To32BitIndex(x),
+              To32BitIndex(out),
+              To32BitIndex(dout),
               To32BitIndex(dx));
     } else {
       functor(*place, x, out, dout, dx);
@@ -359,7 +370,10 @@ struct Relu6GradFunctor : public BaseActivationFunctor<T> {
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"threshold", &threshold}};
   }
-  template <typename Device, typename X, typename Out, typename dOut,
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) =
@@ -393,7 +407,10 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"threshold", &threshold}};
   }
-  template <typename Device, typename X, typename Out, typename dOut,
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     auto tmp = static_cast<T>(threshold);
@@ -444,9 +461,12 @@ class ELUGradKernel : public framework::OpKernel<T> {
 template <typename T>
 struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device>
-  void operator()(const Device& dev, const framework::Tensor* X,
-                  const framework::Tensor* Out, const framework::Tensor* ddX,
-                  framework::Tensor* ddOut, framework::Tensor* dOut,
+  void operator()(const Device& dev,
+                  const framework::Tensor* X,
+                  const framework::Tensor* Out,
+                  const framework::Tensor* ddX,
+                  framework::Tensor* ddOut,
+                  framework::Tensor* dOut,
                   framework::Tensor* dX) const {
     auto* d = dev.eigen_device();
     auto ddx = framework::EigenVector<T>::Flatten(
@@ -466,16 +486,20 @@ struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
 // DOut(dy) as input(not output), tensor extraction is different from
 // others. Impliment extraction kernel separately here.
 inline void ExtractDoubleGradTensorWithInputDOut(
-    const framework::ExecutionContext& ctx, const framework::Tensor** X,
-    const framework::Tensor** ddX, framework::Tensor** dX,
-    const framework::Tensor** dOut, framework::Tensor** ddOut) {
+    const framework::ExecutionContext& ctx,
+    const framework::Tensor** X,
+    const framework::Tensor** ddX,
+    framework::Tensor** dX,
+    const framework::Tensor** dOut,
+    framework::Tensor** ddOut) {
   // extract ddX(output), ddOut(input)
   auto ddx_var = ctx.InputVar("DDX");
   auto ddo_var = ctx.OutputVar("DDOut");
   PADDLE_ENFORCE_NOT_NULL(
-      ddx_var, platform::errors::NotFound(
-                   "Cannot get input Variable Out, variable name = %s",
-                   ctx.InputName("DDX")));
+      ddx_var,
+      platform::errors::NotFound(
+          "Cannot get input Variable Out, variable name = %s",
+          ctx.InputName("DDX")));
   *ddX = ctx.Input<framework::Tensor>("DDX");
   if (ddo_var) {
     *ddOut = ctx.Output<framework::Tensor>("DDOut");
@@ -489,9 +513,10 @@ inline void ExtractDoubleGradTensorWithInputDOut(
   // extract x(input), dx(output)
   auto x_var = ctx.InputVar("X");
   PADDLE_ENFORCE_NOT_NULL(
-      x_var, platform::errors::NotFound(
-                 "Cannot get input Variable Out, variable name = %s",
-                 ctx.InputName("X")));
+      x_var,
+      platform::errors::NotFound(
+          "Cannot get input Variable Out, variable name = %s",
+          ctx.InputName("X")));
   auto dx_var = ctx.OutputVar("DX");
   *X = ctx.Input<framework::Tensor>("X");
   if (dx_var) {
@@ -518,7 +543,10 @@ struct SoftsignFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct SoftsignGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) =

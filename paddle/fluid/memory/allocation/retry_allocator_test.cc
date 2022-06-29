@@ -87,7 +87,8 @@ TEST(RetryAllocator, RetryAllocator) {
     }
 
     void *val = cpu_allocation->ptr();
-    bool is_all_equal = std::all_of(addresses.begin(), addresses.end(),
+    bool is_all_equal = std::all_of(addresses.begin(),
+                                    addresses.end(),
                                     [val](void *p) { return p == val; });
     ASSERT_TRUE(is_all_equal);
     allocator->Release(platform::CPUPlace());

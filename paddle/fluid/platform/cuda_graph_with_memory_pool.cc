@@ -24,7 +24,8 @@ namespace platform {
 
 #ifdef PADDLE_WITH_CUDA
 void BeginCUDAGraphCapture(platform::CUDAPlace place,
-                           cudaStreamCaptureMode mode, int64_t pool_id) {
+                           cudaStreamCaptureMode mode,
+                           int64_t pool_id) {
   auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
 

@@ -46,13 +46,14 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
         ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "depth_tensor") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -71,7 +72,8 @@ class SequenceMaskOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(-1)
         .AddCustomChecker([](const int& v) {
           PADDLE_ENFORCE_EQ(
-              v < 0 || v >= 1, true,
+              v < 0 || v >= 1,
+              true,
               platform::errors::InvalidArgument(
                   "Attr(maxlen) must be less than 0 or larger than 1"));
         });
@@ -93,7 +95,8 @@ If maxlen < 0, maxlen = max(X)
 }  // namespace paddle
 
 REGISTER_OPERATOR(
-    sequence_mask, paddle::operators::SequenceMaskOp,
+    sequence_mask,
+    paddle::operators::SequenceMaskOp,
     paddle::operators::SequenceMaskOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

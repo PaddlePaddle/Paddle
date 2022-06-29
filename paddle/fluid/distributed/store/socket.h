@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,18 +14,13 @@
 
 #pragma once
 
-#include "paddle/phi/core/selected_rows.h"
-#include "paddle/phi/core/sparse_csr_tensor.h"
+#include <string>
 
-namespace phi {
-namespace sr {
+namespace paddle {
+namespace distributed {
 
-template <typename Context>
-void Copy(const Context& dev_ctx,
-          const SelectedRows& src,
-          Place dst_place,
-          bool blocking,
-          SelectedRows* dst);
+int GetSockName(int fd, char* out, int out_len);
 
-}  // namespace sr
-}  // namespace phi
+std::string GetSockName(int fd);
+};  // namespace distributed
+};  // namespace paddle

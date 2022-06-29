@@ -36,8 +36,10 @@ class SizeMLUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_MLU_KERNEL(size, ops::SizeMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(size,
+                       ops::SizeMLUKernel<int>,
                        ops::SizeMLUKernel<int64_t>,
                        ops::SizeMLUKernel<paddle::platform::float16>,
-                       ops::SizeMLUKernel<float>, ops::SizeMLUKernel<double>,
+                       ops::SizeMLUKernel<float>,
+                       ops::SizeMLUKernel<double>,
                        ops::SizeMLUKernel<bool>);

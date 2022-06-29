@@ -38,11 +38,13 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
     int nranks = comm->nranks();
 
     auto out_dims = in->dims();
-    PADDLE_ENFORCE_EQ(out_dims[0] % nranks, 0,
+    PADDLE_ENFORCE_EQ(out_dims[0] % nranks,
+                      0,
                       platform::errors::InvalidArgument(
                           "The input tensor X's "
                           "dim[0] (%d) should be divisible by nranks(%d)",
-                          out_dims[0], nranks));
+                          out_dims[0],
+                          nranks));
 
     out_dims[0] = out_dims[0] / nranks;
     out->mutable_data<T>(out_dims, place);
@@ -65,9 +67,14 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
             << "recv_numel: " << recv_numel << "dtype: " << dtype
             << "hccl_red_type: " << HCCL_REDUCE_SUM << ", group is: " << group;
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclReduceScatter(
-        inputPtr, outputPtr, recv_numel, dtype, HCCL_REDUCE_SUM, comm->comm(),
-        reinterpret_cast<void*>(stream)));
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        platform::dynload::HcclReduceScatter(inputPtr,
+                                             outputPtr,
+                                             recv_numel,
+                                             dtype,
+                                             HCCL_REDUCE_SUM,
+                                             comm->comm(),
+                                             reinterpret_cast<void*>(stream)));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with NPU."));

@@ -73,12 +73,14 @@ class CTCAlignKernel : public framework::OpKernel<T> {
 
       // check input dims and lod
       PADDLE_ENFORCE_EQ(
-          input_dims[0], static_cast<int64_t>(input_lod[level].back()),
+          input_dims[0],
+          static_cast<int64_t>(input_lod[level].back()),
           platform::errors::InvalidArgument(
               "The first dimension %d of CTCAlign operator Input(Input) should "
               "be equal to "
               "the sum of all sequences' lengths %d.",
-              input_dims[0], static_cast<int64_t>(input_lod[level].back())));
+              input_dims[0],
+              static_cast<int64_t>(input_lod[level].back())));
 
       const size_t num_sequences = input_lod[level].size() - 1;
 
@@ -88,7 +90,8 @@ class CTCAlignKernel : public framework::OpKernel<T> {
       for (size_t seq_idx = 0; seq_idx < num_sequences; ++seq_idx) {
         T prev_token = -1;
         for (size_t i = input_lod[level][seq_idx];
-             i < input_lod[level][seq_idx + 1]; ++i) {
+             i < input_lod[level][seq_idx + 1];
+             ++i) {
           if ((unsigned)input_data[i] != blank &&
               !(merge_repeated && input_data[i] == prev_token)) {
             output_data[output_idx] = input_data[i];

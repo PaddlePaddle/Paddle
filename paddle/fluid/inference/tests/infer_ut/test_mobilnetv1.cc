@@ -56,8 +56,8 @@ TEST(tensorrt_tester_mobilenetv1, tuned_dynamic_trt_fp32_bz2) {
     tune_config.CollectShapeRangeInfo(shape_range_info);
 
     auto predictor_tune = paddle_infer::CreatePredictor(tune_config);
-    SingleThreadPrediction(predictor_tune.get(), &my_input_data_map,
-                           &truth_output_data, 1);
+    SingleThreadPrediction(
+        predictor_tune.get(), &my_input_data_map, &truth_output_data, 1);
   }
 
   // prepare inference config
@@ -70,8 +70,8 @@ TEST(tensorrt_tester_mobilenetv1, tuned_dynamic_trt_fp32_bz2) {
   config.EnableTunedTensorRtDynamicShape(shape_range_info, true);
   LOG(INFO) << config.Summary();
   paddle_infer::services::PredictorPool pred_pool(config, 1);
-  SingleThreadPrediction(pred_pool.Retrive(0), &my_input_data_map,
-                         &infer_output_data);
+  SingleThreadPrediction(
+      pred_pool.Retrive(0), &my_input_data_map, &infer_output_data);
   // check outputs
   CompareRecord(&truth_output_data, &infer_output_data);
   VLOG(1) << "finish test";

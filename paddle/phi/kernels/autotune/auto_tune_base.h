@@ -14,11 +14,8 @@
 
 #pragma once
 
-#include <mutex>
 #include <type_traits>
-
 #include "glog/logging.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
@@ -52,13 +49,14 @@ class AutoTuneBase {
  public:
   AutoTuneBase() {}
   virtual ~AutoTuneBase() {}
-  explicit AutoTuneBase(KernelType kernel) { kernels_.push_back(kernel); }
 
-  template <typename Type>
-  void AddCallBack(Type kernel) {
+  explicit AutoTuneBase(KernelType kernel) {
+    kernels_.push_back(/*default=*/kernel);
+  }
+
+  void AddCallBack(KernelType kernel) {
     if (!is_init_) {
-      static_assert(std::is_same<Type, KernelType>::value,
-                    "Type must be the same");
+      std::lock_guard<std::mutex> lock(mutex_);
       kernels_.push_back(kernel);
     }
   }
@@ -95,9 +93,11 @@ class AutoTuneBase {
  private:
   bool is_init_{false};
   std::vector<KernelType> kernels_;
+  mutable std::mutex mutex_;
 
   template <typename Context, typename... Args>
   size_t PickBestKernel(const Context& ctx, Args&&... args) {
+    std::lock_guard<std::mutex> lock(mutex_);
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,

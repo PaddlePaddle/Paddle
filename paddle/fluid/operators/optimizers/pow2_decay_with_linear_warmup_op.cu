@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/optimizers/pow2_decay_with_linear_warmup_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;

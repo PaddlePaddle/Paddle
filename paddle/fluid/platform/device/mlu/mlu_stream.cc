@@ -21,7 +21,8 @@ namespace platform {
 namespace stream {
 
 bool MLUStream::Init(const MLUPlace& place, const int priority) {
-  PADDLE_ENFORCE_EQ(is_mlu_place(place), true,
+  PADDLE_ENFORCE_EQ(is_mlu_place(place),
+                    true,
                     platform::errors::InvalidArgument(
                         "MLU stream must be created using mlu place."));
   place_ = place;

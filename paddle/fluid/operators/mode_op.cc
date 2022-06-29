@@ -32,8 +32,10 @@ class ModeOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context(),
-        layout_, library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context(),
+        layout_,
+        library_);
   }
 };
 
@@ -59,16 +61,20 @@ class ModeOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::InvalidArgument("Input(X) should be not null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Indices"), true,
+        ctx->HasInput("Indices"),
+        true,
         platform::errors::InvalidArgument("Input(Indices) should be not null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Grad Input(Out) should be not null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
+        ctx->HasOutput(framework::GradVarName("X")),
+        true,
         platform::errors::InvalidArgument("Grad Output(X) should be not null"));
 
     auto x_dims = ctx->GetInputDim("X");
@@ -105,9 +111,12 @@ class ModeGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(mode, ModeInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(mode,
+                            ModeInferShapeFunctor,
                             PD_INFER_META(phi::ModeInferMeta));
-REGISTER_OPERATOR(mode, ops::ModeOp, ops::ModeOpMaker,
+REGISTER_OPERATOR(mode,
+                  ops::ModeOp,
+                  ops::ModeOpMaker,
                   ops::ModeGradOpMaker<paddle::framework::OpDesc>,
                   ops::ModeGradOpMaker<paddle::imperative::OpBase>,
                   ModeInferShapeFunctor);
