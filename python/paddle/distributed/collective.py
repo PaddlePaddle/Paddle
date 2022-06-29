@@ -471,6 +471,7 @@ def is_initialized():
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import paddle
 
             print(paddle.distributed.is_initialized())
@@ -499,6 +500,7 @@ def destroy_process_group(group=None):
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import paddle
 
             paddle.distributed.init_parallel_env()
