@@ -1448,12 +1448,19 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (cacheEnabled()) {
 #if defined(paddle_with_cuda) || defined(paddle_with_hip)
         if (!cudaGraphEnabled()) {
-          platform::CUDADeviceContext* ctx =
-              static_cast<platform::CUDADeviceContext*>(
-                  platform::DeviceContextPool::Instance().Get(
-                      platform::CUDAPlace(0)));
-          auto stream = ctx->stream();
-          impl_->runCudaGraph(stream);
+          if (updateInputsShapesDimCache()) {
+            // execute the cuda graph directly
+            platform::CUDADeviceContext* ctx =
+                static_cast<platform::CUDADeviceContext*>(
+                    platform::DeviceContextPool::Instance().Get(
+                        platform::CUDAPlace(0)));
+            auto stream = ctx->stream();
+            impl_->runCudaGraph(stream);
+          } else {
+            // op's inputs shape has changed, cuda graph cache should be
+            // recaptured.
+            InitOpCache(scope, place);
+          }
         } else {
 #endif
           if (!all_kernels_must_compute_runtime_shape_)
