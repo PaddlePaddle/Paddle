@@ -1607,12 +1607,11 @@ class MLUCnnl {
   static void Where(const ExecutionContext& ctx,
                     const cnnlTensorDescriptor_t x_desc,
                     const void* x,
-                    const uint32_t* strides,
-                    const uint32_t* index,
+                    const cnnlTensorDescriptor_t num_true_desc,
+                    const void* num_true,
+                    const bool as_tuple,
                     const cnnlTensorDescriptor_t y_desc,
-                    int* y,
-                    const bool as_tuple);
-
+                    void* y);
   static void Conv2D(const ExecutionContext& ctx,
                      const cnnlConvolutionDescriptor_t conv_desc,
                      const cnnlDataType_t tensor_dtype,
@@ -1861,6 +1860,30 @@ class MLUCnnl {
       const void* pos_weight,
       const cnnlTensorDescriptor_t diff_input_desc,
       void* diff_input);
+
+  static void RoiAlign(const ExecutionContext& ctx,
+                       const int pooled_height,
+                       const int pooled_width,
+                       const int sampling_ratio,
+                       const float spatial_scale,
+                       const bool aligned,
+                       const cnnlTensorDescriptor_t input_desc,
+                       const void* input,
+                       const cnnlTensorDescriptor_t boxes_desc,
+                       const void* boxes,
+                       const cnnlTensorDescriptor_t output_desc,
+                       void* output);
+
+  static void RoiAlignBackward(const ExecutionContext& ctx,
+                               const int sampling_ratio,
+                               const float spatial_scale,
+                               const bool aligned,
+                               const cnnlTensorDescriptor_t grads_desc,
+                               const void* grads,
+                               const cnnlTensorDescriptor_t boxes_desc,
+                               const void* boxes,
+                               const cnnlTensorDescriptor_t grads_image_desc,
+                               void* grads_image);
 };
 
 template <typename T>

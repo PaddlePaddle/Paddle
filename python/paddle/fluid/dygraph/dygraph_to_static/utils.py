@@ -1194,7 +1194,7 @@ class ForNodeVisitor(object):
         else:
             iter_var_name = ast_to_source_code(self.iter_node).strip()
 
-        convert_len_node_source_str = '{} = _jst.convert_len({})'.format(
+        convert_len_node_source_str = '{} = _jst.Len({})'.format(
             self.iter_var_len_name, iter_var_name)
 
         convert_len_node = gast.parse(convert_len_node_source_str).body[0]
@@ -1543,3 +1543,93 @@ def slice_is_num(slice_node):
         return True
 
     return False
+
+
+def create_get_args_node(names):
+    """
+    Create get_args function as follows:
+
+        def get_args_0():
+            nonlocal x, y
+            return x, y
+    """
+
+    def empty_node():
+        func_def = """
+        def {func_name}():
+            return
+        """.format(func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX))
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
+    assert isinstance(names, (list, tuple))
+    if not names:
+        return empty_node()
+
+    mapped = list(filter(lambda n: '.' not in n, names))
+    nonlocal_names = sorted(
+        mapped,
+        key=mapped.index)  # to keep the order, we can't use set() to unique
+    template = """
+    def {func_name}():
+        nonlocal {nonlocal_vars}
+        return {vars}
+    """
+    func_def = template.format(
+        func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
+        nonlocal_vars=','.join(nonlocal_names),
+        vars=",".join(names))
+    return gast.parse(textwrap.dedent(func_def)).body[0]
+
+
+GET_ARGS_FUNC_PREFIX = 'get_args'
+SET_ARGS_FUNC_PREFIX = 'set_args'
+ARGS_NAME = '__args'
+
+
+def create_set_args_node(names):
+    """
+    Create set_args function as follows:
+
+        def set_args_0(__args):
+            nonlocal x, y
+            x, y = __args
+    """
+
+    def empty_node():
+        func_def = """
+        def {func_name}({args}):
+            pass
+        """.format(func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
+                   args=ARGS_NAME)
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
+    assert isinstance(names, (list, tuple))
+    if not names:
+        return empty_node()
+
+    mapped = list(filter(lambda n: '.' not in n, names))
+    nonlocal_names = sorted(
+        mapped,
+        key=mapped.index)  # to keep the order, we can't use set() to unique
+    template = """
+    def {func_name}({args}):
+        nonlocal {nonlocal_vars}
+        {vars} = {args}
+    """
+    func_def = template.format(
+        func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
+        args=ARGS_NAME,
+        nonlocal_vars=','.join(nonlocal_names),
+        vars=",".join(names))
+    return gast.parse(textwrap.dedent(func_def)).body[0]
+
+
+def create_nonlocal_stmt_node(names):
+    assert isinstance(names, (list, tuple))
+
+    mapped = list(filter(lambda n: '.' not in n, names))
+    names = sorted(
+        mapped,
+        key=mapped.index)  # to keep the order, we can't use set() to unique
+    func_code = "nonlocal {}".format(','.join(names))
+    return gast.parse(func_code).body[0]

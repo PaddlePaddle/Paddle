@@ -31,8 +31,8 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import create_assign_node
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_nonlocal_stmt_node
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_get_args_node, create_set_args_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_get_args_node, create_set_args_node
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
@@ -362,8 +362,8 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
         After transformed, q and z are created in parent scope. For example,
 
         x, y = 5, 10
-        q = paddle.jit.dy2static.data_layer_not_check(name='q', shape=[-1], dtype='float32')
-        z = paddle.jit.dy2static.data_layer_not_check(name='z', shape=[-1], dtype='float32')
+        q = paddle.jit.dy2static.UndefindVar('q')
+        z = paddle.jit.dy2static.UndefindVar('z')
 
         def true_func(x, y, q):
             x = x+1
@@ -589,7 +589,7 @@ def create_convert_ifelse_node(return_name_ids,
         false_func_source = false_func.name
 
     convert_ifelse_layer = gast.parse(
-        '_jst.convert_ifelse('
+        '_jst.IfElse('
         '{pred}, {true_fn}, {false_fn}, {get_args}, {set_args}, {return_name_ids})'
         .format(
             pred=ast_to_source_code(pred),
