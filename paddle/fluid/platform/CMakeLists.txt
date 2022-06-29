@@ -220,7 +220,8 @@ cc_library(
        ${MLU_CTX_DEPS}
        eigen3
        cpu_context
-       generator)
+       generator
+       cuda_stream)
 if(WITH_XPU)
   target_link_libraries(device_context xpu_context xpu_resource_pool)
 endif()
