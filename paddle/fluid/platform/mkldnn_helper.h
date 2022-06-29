@@ -237,9 +237,12 @@ inline dnnl::memory::format_tag GetMKLDNNFormat(dnnl::memory::desc mem_desc) {
       } else if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
                  strides[3] >= strides[1]) {
         return dnnl::memory::format_tag::acdb;
-      } else if (strides[2] >= strides[3] && strides[3] >= strides[0] &&
-                 strides[0] >= strides[1]) {
-        return dnnl::memory::format_tag::cdab;
+      } else if (strides[0] >= strides[1] && strides[1] >= strides[3] &&
+                 strides[3] >= strides[2]) {
+        return dnnl::memory::format_tag::abdc;
+      } else if (strides[2] >= strides[3] && strides[3] >= strides[1] &&
+                 strides[1] >= strides[0]) {
+        return dnnl::memory::format_tag::cdba;
       } else {
         return dnnl::memory::format_tag::dcab;
       }
