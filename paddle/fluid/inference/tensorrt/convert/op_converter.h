@@ -553,16 +553,15 @@ class OpConverter {
       trt_dtype = nvinfer1::DataType::kINT32;
     } else if (var_t->dtype() == phi::DataType::INT64) {
       int64_t* data_ptr = engine_->GetWeightCPUData<int64_t>(name, var_t);
-
       // we must create a new framework::Tensor()
       std::unique_ptr<framework::Tensor> new_var_t(new framework::Tensor());
-      new_tensor->Resize({trt_num});
-      int32_t* new_data_ptr = new_var_t->mutable_data<T>(platform::CPUPlace());
+      new_var_t->Resize({var_t->numel()});
+      int32_t* new_data_ptr =
+          new_var_t->mutable_data<int32_t>(platform::CPUPlace());
       for (size_t i = 0; i < trt_num; i++) {
         new_data_ptr[i] = data_ptr[i];
       }
-      engine_->SetWeights(weight_name, std::move(new_var_t));
-      //
+      engine_->SetWeights(name, std::move(new_var_t));
       trt_ptr = static_cast<void*>(new_data_ptr);
       trt_dtype = nvinfer1::DataType::kINT32;
     }

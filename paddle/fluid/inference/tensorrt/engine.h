@@ -422,7 +422,6 @@ class TensorRTEngine {
   // so as to avoid repeatedly setting weights with the same name.
   void SetWeights(std::string w_name,
                   std::unique_ptr<framework::Tensor> w_tensor) {
-    static int suffix_counter = 0;
     std::string suffix = std::to_string(suffix_counter);
     std::string splitter = "__";
     weight_map[w_name + splitter + suffix] = std::move(w_tensor);
@@ -665,6 +664,8 @@ class TensorRTEngine {
   // max data size for the buffers.
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
       itensor_map_;
+  // counter for weight_map
+  static int suffix_counter;
 
   std::vector<std::unique_ptr<plugin::PluginTensorRT>> owned_plugin_;
   std::vector<std::unique_ptr<plugin::PluginTensorRTV2Ext>> owned_plugin_v2ext_;

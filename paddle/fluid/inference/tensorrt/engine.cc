@@ -398,11 +398,13 @@ std::unordered_map<std::string, nvinfer1::ITensor *>
 void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
   runtime_batch_ = batch_size;
 }
+
+int TensorRTEngine::suffix_counter = 0;
+
 template <typename T = float>
 T *TensorRTEngine::GetWeightCPUData(const std::string &name,
                                     framework::Tensor *weight_tensor) {
-  static int name_suffix_counter = 0;
-  std::string name_suffix = std::to_string(name_suffix_counter);
+  std::string name_suffix = std::to_string(suffix_counter);
   std::string splitter = "__";
   std::string name_with_suffix = name + splitter + name_suffix;
   platform::CPUPlace cpu_place;
@@ -417,7 +419,7 @@ T *TensorRTEngine::GetWeightCPUData(const std::string &name,
   paddle::framework::TensorCopySync(
       *weight_tensor, cpu_place, weight_map[name_with_suffix].get());
   T *weight_data = weight_map[name_with_suffix]->mutable_data<T>(cpu_place);
-  name_suffix_counter += 1;
+  suffix_counter += 1;
   return weight_data;
 }
 
