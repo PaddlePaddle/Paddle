@@ -28,8 +28,8 @@
 #include <iterator>
 #include <type_traits>
 
-#include "hash_functions.cuh"  // NOLINT
-#include "managed.cuh"  // NOLINT
+#include "hash_functions.cuh"     // NOLINT
+#include "managed.cuh"            // NOLINT
 #include "managed_allocator.cuh"  // NOLINT
 
 // TODO(Thunderbrook): replace this with CUDA_TRY and propagate the error
@@ -55,8 +55,9 @@
 __inline__ __device__ int8_t atomicCAS(int8_t* address,
                                        int8_t compare,
                                        int8_t val) {
-  int32_t* base_address = (int32_t*)((char*)address - ((size_t)address & 3));  // NOLINT
-  int32_t int_val = (int32_t)val << (((size_t)address & 3) * 8);  // NOLINT
+  int32_t* base_address =
+      (int32_t*)((char*)address - ((size_t)address & 3));              // NOLINT
+  int32_t int_val = (int32_t)val << (((size_t)address & 3) * 8);       // NOLINT
   int32_t int_comp = (int32_t)compare << (((size_t)address & 3) * 8);  // NOLINT
   return (int8_t)atomicCAS(base_address, int_comp, int_val);
 }
@@ -65,8 +66,9 @@ __inline__ __device__ int8_t atomicCAS(int8_t* address,
 __inline__ __device__ int16_t atomicCAS(int16_t* address,
                                         int16_t compare,
                                         int16_t val) {
-  int32_t* base_address = (int32_t*)((char*)address - ((size_t)address & 2));  // NOLINT
-  int32_t int_val = (int32_t)val << (((size_t)address & 2) * 8);  // NOLINT
+  int32_t* base_address =
+      (int32_t*)((char*)address - ((size_t)address & 2));              // NOLINT
+  int32_t int_val = (int32_t)val << (((size_t)address & 2) * 8);       // NOLINT
   int32_t int_comp = (int32_t)compare << (((size_t)address & 2) * 8);  // NOLINT
   return (int16_t)atomicCAS(base_address, int_comp, int_val);
 }
@@ -107,8 +109,8 @@ __inline__ __device__ double atomicCAS(double* address,
 __inline__ __device__ float atomicCAS(float* address,
                                       float compare,
                                       float val) {
-  return __int_as_float(
-      atomicCAS((int*)address, __float_as_int(compare), __float_as_int(val)));  // NOLINT
+  return __int_as_float(atomicCAS(
+      (int*)address, __float_as_int(compare), __float_as_int(val)));  // NOLINT
 }
 
 __inline__ __device__ int64_t atomicAdd(int64_t* address, int64_t val) {
