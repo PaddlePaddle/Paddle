@@ -29,6 +29,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ForLoopTuplePreTransfor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_node, create_get_args_node, create_set_args_node
 
 __all__ = ['LoopTransformer', 'NameVisitor']
