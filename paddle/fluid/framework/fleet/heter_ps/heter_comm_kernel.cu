@@ -146,7 +146,8 @@ __global__ void dy_mf_fill_shard_grads_kernel(KeyType* d_shard_keys,
 
 // optimized version
 template <>
-__global__ void dy_mf_fill_shard_grads_kernel<FeatureKey, FeaturePushValue, int>(
+__global__ void
+dy_mf_fill_shard_grads_kernel<FeatureKey, FeaturePushValue, int>(
     FeatureKey* d_shard_keys,
     FeatureKey* d_keys,
     FeaturePushValue* d_shard_grads,
@@ -473,15 +474,15 @@ void HeterCommKernel::merge_gradient(const uint32_t* offset,
   if (grad_dim > 0) {
     int grid_size2 = (n * grad_dim - 1) / block_size_ + 1;
     merge_gradients_embedx_kernel<<<grid_size2, block_size_, 0, stream>>>(
-      offset,
-      fea_num,
-      index,
-      input,
-      output,
-      n * grad_dim,
-      grad_dim,
-      grad_value_size,
-      merger_);
+        offset,
+        fea_num,
+        index,
+        input,
+        output,
+        n * grad_dim,
+        grad_dim,
+        grad_value_size,
+        merger_);
   }
 }
 
