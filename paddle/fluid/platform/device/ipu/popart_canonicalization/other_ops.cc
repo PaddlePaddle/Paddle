@@ -25,8 +25,8 @@ Node *custom_op_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto attrs = op->GetAttrMap();
   attrs.insert({"__op_type", node->Op()->Type()});
-  auto new_node = CreateBaseOp(graph, node, "popart_custom_op", node->inputs,
-                               node->outputs, attrs);
+  auto new_node = CreateBaseOp(
+      graph, node, "popart_custom_op", node->inputs, node->outputs, attrs);
   return new_node;
 }
 
@@ -43,15 +43,15 @@ Node *print_handler(Graph *graph, Node *node) {
   }
   auto attrs =
       AttributeMap{{"print_gradient", print_gradient}, {"title", title}};
-  return CreateBaseOp(graph, node, "popart_printtensor", node->inputs,
-                      node->outputs, attrs);
+  return CreateBaseOp(
+      graph, node, "popart_printtensor", node->inputs, node->outputs, attrs);
 }
 
 Node *popart_optimizer_handler(Graph *graph, Node *node) { return nullptr; }
 
 Node *checkpointoutput_handler(Graph *graph, Node *node) {
-  return CreateBaseOp(graph, node, "popart_checkpointoutput", node->inputs,
-                      node->outputs);
+  return CreateBaseOp(
+      graph, node, "popart_checkpointoutput", node->inputs, node->outputs);
 }
 
 Node *custom_nll_loss_handler(Graph *graph, Node *node) {
@@ -61,12 +61,18 @@ Node *custom_nll_loss_handler(Graph *graph, Node *node) {
   auto inputIsLogProbability =
       BOOST_GET_CONST(bool, op->GetAttr("inputIsLogProbability"));
   if (ignoreIndex == "None") {
-    return CreateBaseOp(graph, node, "popart_nllloss_v2", node->inputs,
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_nllloss_v2",
+                        node->inputs,
                         node->outputs,
                         {{"reduction", reduction},
                          {"inputIsLogProbability", inputIsLogProbability}});
   } else {
-    return CreateBaseOp(graph, node, "popart_nllloss_v2", node->inputs,
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_nllloss_v2",
+                        node->inputs,
                         node->outputs,
                         {{"reduction", reduction},
                          {"ignoreIndex", std::atoi(ignoreIndex.c_str())},
@@ -75,13 +81,13 @@ Node *custom_nll_loss_handler(Graph *graph, Node *node) {
 }
 
 Node *identity_handler(Graph *graph, Node *node) {
-  return CreateBaseOp(graph, node, "popart_identity", node->inputs,
-                      node->outputs);
+  return CreateBaseOp(
+      graph, node, "popart_identity", node->inputs, node->outputs);
 }
 
 Node *detach_handler(Graph *graph, Node *node) {
-  return CreateBaseOp(graph, node, "popart_detach_v2", node->inputs,
-                      node->outputs);
+  return CreateBaseOp(
+      graph, node, "popart_detach_v2", node->inputs, node->outputs);
 }
 
 }  // namespace

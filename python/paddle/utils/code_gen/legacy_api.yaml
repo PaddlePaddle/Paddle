@@ -152,9 +152,8 @@
   kernel :
     func : arg_min
 
-# argsort
 - api : argsort
-  args : (Tensor x, int axis, bool descending)
+  args : (Tensor x, int axis=-1, bool descending=false)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : ArgsortInferMeta
@@ -213,15 +212,6 @@
   kernel :
     func : atan
   backward : atan_grad
-
-- api : atan2
-  args : (Tensor x, Tensor y)
-  output : Tensor
-  infer_meta :
-    func : Atan2InferMeta
-  kernel :
-    func : atan2
-  backward : atan2_grad
 
 # atanh
 - api : atanh
@@ -335,26 +325,6 @@
     func : celu
   backward : celu_grad
 
-# cholesky
-- api : cholesky
-  args : (Tensor x, bool upper)
-  output : Tensor
-  infer_meta :
-    func : CholeskyInferMeta
-  kernel :
-    func : cholesky
-  backward : cholesky_grad
-
-# cholesky_solve
-- api : cholesky_solve
-  args : (Tensor x, Tensor y, bool upper)
-  output : Tensor
-  infer_meta :
-    func : CholeskySolveInferMeta
-  kernel :
-    func : cholesky_solve
-  backward : cholesky_solve_grad
-
 - api : clip
   args : (Tensor x, Scalar(float) min, Scalar(float) max)
   output : Tensor(out)
@@ -442,15 +412,6 @@
     func : cosh
   backward : cosh_grad
 
-- api : cross
-  args : (Tensor x, Tensor y, int axis = 9)
-  output : Tensor
-  infer_meta :
-    func : CrossInferMeta
-  kernel :
-    func : cross
-  backward : cross_grad
-
 # Part of python API paddle.nn.functional.cross_entropy
 - api : cross_entropy_with_softmax
   args : (Tensor input, Tensor label, bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index, int axis)
@@ -529,15 +490,6 @@
     func : DiagInferMeta
   kernel :
     func : diag
-
-- api : diagonal
-  args : (Tensor x, int offset, int axis1, int axis2)
-  output : Tensor
-  infer_meta :
-    func : DiagonalInferMeta
-  kernel :
-    func : diagonal
-  backward : diagonal_grad
 
 - api : digamma
   args : (Tensor x)
@@ -1817,7 +1769,7 @@
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]

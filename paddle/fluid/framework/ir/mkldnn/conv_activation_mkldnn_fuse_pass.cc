@@ -24,9 +24,19 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  std::vector<std::string> act_types = {
-      "relu", "mish",  "swish", "sqrt", "hard_swish",   "sigmoid",   "abs",
-      "gelu", "relu6", "clip",  "tanh", "hard_sigmoid", "leaky_relu"};
+  std::vector<std::string> act_types = {"relu",
+                                        "mish",
+                                        "swish",
+                                        "sqrt",
+                                        "hard_swish",
+                                        "sigmoid",
+                                        "abs",
+                                        "gelu",
+                                        "relu6",
+                                        "clip",
+                                        "tanh",
+                                        "hard_sigmoid",
+                                        "leaky_relu"};
 
   std::vector<std::string> conv_types = {"conv2d"};
 
@@ -53,7 +63,9 @@ void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
 }
 
 void ConvActivationMkldnnFusePass::FuseConvAct(
-    Graph* graph, const std::string& conv_type, std::string& act_type,
+    Graph* graph,
+    const std::string& conv_type,
+    std::string& act_type,
     const std::unordered_map<std::string, std::string>& attrs_map) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
@@ -112,7 +124,8 @@ void ConvActivationMkldnnFusePass::FuseConvAct(
   AddStatis(found_conv_activation_count);
   if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
     PrettyLogDetail("---    fused %d conv with %s activation",
-                    found_conv_activation_count, act_type);
+                    found_conv_activation_count,
+                    act_type);
   }
 }
 

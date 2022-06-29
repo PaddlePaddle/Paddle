@@ -36,7 +36,9 @@ class PowNPUKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    const auto& runner = NpuOpRunner("Power", {*x}, {*out},
+    const auto& runner = NpuOpRunner("Power",
+                                     {*x},
+                                     {*out},
                                      {{"power", factor},
                                       {"scale", static_cast<float>(1.0)},
                                       {"shift", static_cast<float>(0.0)}});
@@ -84,9 +86,10 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
     // factor.
     Tensor factor_bc_tensor(experimental::DataType::FLOAT32);
     factor_bc_tensor.mutable_data<float>(x_dims, place);
-    const auto& runner_bc =
-        NpuOpRunner("FillD", {factor_tensor}, {factor_bc_tensor},
-                    {{"dims", phi::vectorize(x_dims)}});
+    const auto& runner_bc = NpuOpRunner("FillD",
+                                        {factor_tensor},
+                                        {factor_bc_tensor},
+                                        {{"dims", phi::vectorize(x_dims)}});
     runner_bc.Run(stream);
 
     // Step 3: Compute x_power_mul_factor = factor * x.pow(factor-1)
@@ -117,7 +120,8 @@ class ReluNPUKernel : public framework::OpKernel<T> {
                                      {
                                          *x,
                                      },
-                                     {*out}, {});
+                                     {*out},
+                                     {});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -158,7 +162,8 @@ class Relu6NPUKernel : public framework::OpKernel<T> {
                                      {
                                          *x,
                                      },
-                                     {*out}, {});
+                                     {*out},
+                                     {});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -241,8 +246,8 @@ class LeakyReluGradNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     dx->mutable_data<T>(ctx.GetPlace());
-    const auto& runner = NpuOpRunner("LeakyReluGrad", {*dout, *x}, {*dx},
-                                     {{"negative_slope", alpha}});
+    const auto& runner = NpuOpRunner(
+        "LeakyReluGrad", {*dout, *x}, {*dx}, {{"negative_slope", alpha}});
 
     runner.Run(stream);
   }
@@ -573,9 +578,10 @@ class HardSwishNPUKernel : public framework::OpKernel<T> {
 
     Tensor clip_val(x->type());
     clip_val.mutable_data<T>(x->dims(), place);
-    const auto& runner_clip = NpuOpRunner(
-        "ClipByValue", {add_offset_val, tensor_zero, tensor_threshold},
-        {clip_val});
+    const auto& runner_clip =
+        NpuOpRunner("ClipByValue",
+                    {add_offset_val, tensor_zero, tensor_threshold},
+                    {clip_val});
     runner_clip.Run(stream);
 
     Tensor tensor_scale_tmp(x->type());
@@ -584,7 +590,9 @@ class HardSwishNPUKernel : public framework::OpKernel<T> {
     Tensor tensor_scale(x->type());
     tensor_scale.mutable_data<T>(x->dims(), place);
     const auto& runner_fill =
-        NpuOpRunner("FillD", {tensor_scale_tmp}, {tensor_scale},
+        NpuOpRunner("FillD",
+                    {tensor_scale_tmp},
+                    {tensor_scale},
                     {{"dims", phi::vectorize(x->dims())}});
     runner_fill.Run(stream);
 
@@ -631,14 +639,16 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
 
     Tensor tmp1(x->type());
     tmp1.mutable_data<T>(x->dims(), place);
-    const auto& runner_pow1 = NpuOpRunner("Power", {*x}, {tmp1},
-                                          {{"scale", 2.0f}, {"shift", offset}});
+    const auto& runner_pow1 = NpuOpRunner(
+        "Power", {*x}, {tmp1}, {{"scale", 2.0f}, {"shift", offset}});
     runner_pow1.Run(stream);
 
     Tensor tmp2(x->type());
     tmp2.mutable_data<T>(x->dims(), place);
     const auto& runner_ht_grad =
-        NpuOpRunner("HardtanhGrad", {add_offset_val, tmp1}, {tmp2},
+        NpuOpRunner("HardtanhGrad",
+                    {add_offset_val, tmp1},
+                    {tmp2},
                     {{"min_val", 0.0f}, {"max_val", threshold}});
     runner_ht_grad.Run(stream);
 
@@ -655,7 +665,9 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
     Tensor tensor_threshold(x->type());
     tensor_threshold.mutable_data<T>(x->dims(), place);
     const auto& runner_fill =
-        NpuOpRunner("FillD", {tensor_threshold_tmp}, {tensor_threshold},
+        NpuOpRunner("FillD",
+                    {tensor_threshold_tmp},
+                    {tensor_threshold},
                     {{"dims", phi::vectorize(x->dims())}});
     runner_fill.Run(stream);
 
@@ -669,7 +681,9 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
     auto dst_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
     const auto& runner_cast =
-        NpuOpRunner("Cast", {tmp_bool}, {tmp4},
+        NpuOpRunner("Cast",
+                    {tmp_bool},
+                    {tmp4},
                     {{"dst_type", static_cast<int>(dst_dtype)}});
     runner_cast.Run(stream);
 
@@ -913,17 +927,20 @@ class SinNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    pow, ops::PowNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    pow,
+    ops::PowNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::PowNPUKernel<paddle::platform::NPUDeviceContext,
                       paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    pow_grad, ops::PowGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    pow_grad,
+    ops::PowGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::PowGradNPUKernel<paddle::platform::NPUDeviceContext,
                           paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    relu, ops::ReluNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    relu,
+    ops::ReluNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ReluNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);
 
@@ -934,7 +951,8 @@ REGISTER_OP_NPU_KERNEL(
                            paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    relu6, ops::Relu6NPUKernel<paddle::platform::NPUDeviceContext, float>,
+    relu6,
+    ops::Relu6NPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::Relu6NPUKernel<paddle::platform::NPUDeviceContext,
                         paddle::platform::float16>);
 
@@ -957,7 +975,8 @@ REGISTER_OP_NPU_KERNEL(
                                 paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    sqrt, ops::SqrtNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    sqrt,
+    ops::SqrtNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::SqrtNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);
 
@@ -968,17 +987,20 @@ REGISTER_OP_NPU_KERNEL(
                            paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    log, ops::LogNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    log,
+    ops::LogNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::LogNPUKernel<paddle::platform::NPUDeviceContext,
                       paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    log_grad, ops::LogGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    log_grad,
+    ops::LogGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::LogGradNPUKernel<paddle::platform::NPUDeviceContext,
                           paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    tanh, ops::TanhNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    tanh,
+    ops::TanhNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::TanhNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);
 
@@ -989,7 +1011,8 @@ REGISTER_OP_NPU_KERNEL(
                            paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    square, ops::SquareNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    square,
+    ops::SquareNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>,
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext, int>);
@@ -1001,7 +1024,8 @@ REGISTER_OP_NPU_KERNEL(
                          paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    sigmoid, ops::SigmoidNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    sigmoid,
+    ops::SigmoidNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::SigmoidNPUKernel<paddle::platform::NPUDeviceContext,
                           paddle::platform::float16>);
 
@@ -1011,16 +1035,20 @@ REGISTER_OP_NPU_KERNEL(
     ops::SigmoidGradNPUKernel<paddle::platform::NPUDeviceContext,
                               paddle::platform::float16>);
 
-REGISTER_OP_NPU_KERNEL(swish, ops::SwishNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(swish,
+                       ops::SwishNPUKernel<float>,
                        ops::SwishNPUKernel<paddle::platform::float16>);
 
-REGISTER_OP_NPU_KERNEL(swish_grad, ops::SwishGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(swish_grad,
+                       ops::SwishGradNPUKernel<float>,
                        ops::SwishGradNPUKernel<paddle::platform::float16>);
 
-REGISTER_OP_NPU_KERNEL(hard_swish, ops::HardSwishNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(hard_swish,
+                       ops::HardSwishNPUKernel<float>,
                        ops::HardSwishNPUKernel<paddle::platform::float16>);
 
-REGISTER_OP_NPU_KERNEL(hard_swish_grad, ops::HardSwishGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(hard_swish_grad,
+                       ops::HardSwishGradNPUKernel<float>,
                        ops::HardSwishGradNPUKernel<paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
@@ -1050,17 +1078,20 @@ REGISTER_OP_NPU_KERNEL(
                                  paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    cos, ops::CosNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    cos,
+    ops::CosNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::CosNPUKernel<paddle::platform::NPUDeviceContext,
                       paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    cos_grad, ops::CosGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    cos_grad,
+    ops::CosGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::CosGradNPUKernel<paddle::platform::NPUDeviceContext,
                           paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    atan, ops::AtanNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    atan,
+    ops::AtanNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::AtanNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);
 
@@ -1071,15 +1102,18 @@ REGISTER_OP_NPU_KERNEL(
                            paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    exp, ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    exp,
+    ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, double>);
 
 REGISTER_OP_NPU_KERNEL(
-    exp_grad, ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    exp_grad,
+    ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, double>);
 
 REGISTER_OP_NPU_KERNEL(
-    sin, ops::SinNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    sin,
+    ops::SinNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::SinNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::SinNPUKernel<paddle::platform::NPUDeviceContext,
                       paddle::platform::float16>);

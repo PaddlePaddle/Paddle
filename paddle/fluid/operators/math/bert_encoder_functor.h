@@ -64,9 +64,17 @@ struct CUDATypeTraits<float> {
 template <typename T>
 class EmbEltwiseLayerNormFunctor {
  public:
-  void operator()(int batch, int seq_len, int hidden, const int64_t *ids,
-                  const float *scale, const float *bias, const int64_t *embs,
-                  T *output, float eps, int input_num, gpuStream_t stream);
+  void operator()(int batch,
+                  int seq_len,
+                  int hidden,
+                  const int64_t *ids,
+                  const float *scale,
+                  const float *bias,
+                  const int64_t *embs,
+                  T *output,
+                  float eps,
+                  int input_num,
+                  gpuStream_t stream);
 };
 
 // This functor involves a fusion calculation in Ernie or Bert.
@@ -85,9 +93,16 @@ class EmbEltwiseLayerNormFunctor {
 template <typename T>
 class MultiHeadGPUComputeFunctor {
  public:
-  void operator()(const platform::CUDADeviceContext &dev_ctx, int batch,
-                  int seq_len, int head_num, int head_size, T *qkptr,
-                  const T *bias_qk_ptr, T *tptr, T alpha, T beta);
+  void operator()(const platform::CUDADeviceContext &dev_ctx,
+                  int batch,
+                  int seq_len,
+                  int head_num,
+                  int head_size,
+                  T *qkptr,
+                  const T *bias_qk_ptr,
+                  T *tptr,
+                  T alpha,
+                  T beta);
 };
 
 // This functor involves a fusion calculation in Ernie or Bert.
@@ -106,9 +121,15 @@ class MultiHeadGPUComputeFunctor {
 template <typename T>
 class SkipLayerNormFunctor {
  public:
-  void operator()(const int num, const int hidden, const T *input1,
-                  const T *input2, const float *scale, const float *bias,
-                  T *output, T eps, gpuStream_t stream);
+  void operator()(const int num,
+                  const int hidden,
+                  const T *input1,
+                  const T *input2,
+                  const float *scale,
+                  const float *bias,
+                  T *output,
+                  T eps,
+                  gpuStream_t stream);
 };
 #endif
 

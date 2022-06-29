@@ -26,8 +26,8 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
-  std::vector<std::string> act_types = {"gelu", "tanh", "sigmoid", "mish",
-                                        "hard_swish"};
+  std::vector<std::string> act_types = {
+      "gelu", "tanh", "sigmoid", "mish", "hard_swish"};
 
   for (std::string act_type : act_types) FuseFCAct(graph, act_type);
 }
@@ -84,8 +84,8 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
   gpd(graph, handler);
   AddStatis(found_fc_act_count);
   if (!Has("disable_logs") || !Get<bool>("disable_logs"))
-    PrettyLogDetail("---    fused %d fc with %s activation", found_fc_act_count,
-                    act_type);
+    PrettyLogDetail(
+        "---    fused %d fc with %s activation", found_fc_act_count, act_type);
 }
 
 }  // namespace ir

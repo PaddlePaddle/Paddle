@@ -66,12 +66,17 @@ class ConcatMLUKernel : public framework::OpKernel<T> {
       inputs.push_back(GetBasePtr(ins[i]));
     }
     // init out tensors
-    MLUCnnlTensorDesc output_desc(*out, CNNL_LAYOUT_ARRAY,
-                                  ToCnnlDataType(out->dtype()));
+    MLUCnnlTensorDesc output_desc(
+        *out, CNNL_LAYOUT_ARRAY, ToCnnlDataType(out->dtype()));
 
     // MLU should do sth
-    MLUCnnl::Concat(ctx, ins_size_t, axis_t, desc_vector.data(), inputs.data(),
-                    output_desc.get(), GetBasePtr(out));
+    MLUCnnl::Concat(ctx,
+                    ins_size_t,
+                    axis_t,
+                    desc_vector.data(),
+                    inputs.data(),
+                    output_desc.get(),
+                    GetBasePtr(out));
   }
 };
 
@@ -99,18 +104,21 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
 
     axis = ComputeAxis(static_cast<int64_t>(axis),
                        static_cast<int64_t>(ins[0]->dims().size()));
-    PADDLE_ENFORCE_GE(axis, 0,
+    PADDLE_ENFORCE_GE(axis,
+                      0,
                       platform::errors::InvalidArgument(
                           "concat_grad: axis should be larger than or "
                           "equal to 0, but received axis is %d.",
                           axis));
     PADDLE_ENFORCE_LT(
-        axis, out_grad->dims().size(),
+        axis,
+        out_grad->dims().size(),
         platform::errors::InvalidArgument(
             "concat_grad: axis should be less than ins[0]->dims()!"
             "But received axis is %d, while ins[0]->dims()"
             "size is %d.",
-            axis, out_grad->dims().size()));
+            axis,
+            out_grad->dims().size()));
     // get output tensor that the name is not kEmptyVarName
     std::vector<void*> outputs_vec;
     std::vector<MLUCnnlTensorDesc> output_descs;
@@ -128,8 +136,12 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
     }
 
     MLUCnnlTensorDesc out_grad_desc(*out_grad);
-    MLUCnnl::Split(ctx, static_cast<int>(split_num), static_cast<int>(axis),
-                   out_grad_desc.get(), GetBasePtr(out_grad), descs_vec.data(),
+    MLUCnnl::Split(ctx,
+                   static_cast<int>(split_num),
+                   static_cast<int>(axis),
+                   out_grad_desc.get(),
+                   GetBasePtr(out_grad),
+                   descs_vec.data(),
                    outputs_vec.data());
   }
 };
@@ -138,12 +150,15 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_MLU_KERNEL(concat, ops::ConcatMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(concat,
+                       ops::ConcatMLUKernel<float>,
                        ops::ConcatMLUKernel<paddle::platform::float16>,
                        ops::ConcatMLUKernel<int64_t>,
-                       ops::ConcatMLUKernel<bool>, ops::ConcatMLUKernel<int>,
+                       ops::ConcatMLUKernel<bool>,
+                       ops::ConcatMLUKernel<int>,
                        ops::ConcatMLUKernel<uint8_t>);
-REGISTER_OP_MLU_KERNEL(concat_grad, ops::ConcatGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(concat_grad,
+                       ops::ConcatGradMLUKernel<float>,
                        ops::ConcatGradMLUKernel<paddle::platform::float16>,
                        ops::ConcatGradMLUKernel<int64_t>,
                        ops::ConcatGradMLUKernel<bool>,

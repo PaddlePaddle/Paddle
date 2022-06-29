@@ -45,7 +45,8 @@ class DlnneSubgraphPass : public framework::ir::FusePassBase {
 
  private:
   void CleanIntermediateOutputs(framework::ir::Node *node);
-  void CreateDlnneOp(framework::ir::Node *x, framework::ir::Graph *graph,
+  void CreateDlnneOp(framework::ir::Node *x,
+                     framework::ir::Graph *graph,
                      const std::vector<std::string> &graph_params,
                      std::vector<std::string> *repetitive_params) const;
 };

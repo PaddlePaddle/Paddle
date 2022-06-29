@@ -59,7 +59,8 @@ class CUDAStream final {
   }
   virtual ~CUDAStream() { Destroy(); }
 
-  bool Init(const Place& place, const Priority& priority = Priority::kNormal,
+  bool Init(const Place& place,
+            const Priority& priority = Priority::kNormal,
             const StreamFlag& flag = StreamFlag::kDefaultFlag);
 
   void AddCallback(std::function<void()> callback) const {

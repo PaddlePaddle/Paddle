@@ -95,12 +95,18 @@ set(wrapped_infermeta_header_file
 set(wrapped_infermeta_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
-if(NOT PYTHON_EXECUTABLE)
+if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
 endif()
 
 # install extra dependencies
-execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml jinja2)
+if(${PYTHON_VERSION_STRING} VERSION_LESS "3.6.2")
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml
+                          typing-extensions>=4.1.1 jinja2==2.11.3)
+else()
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml jinja2
+                          typing-extensions)
+endif()
 
 # parse apis
 set(parsed_api_dir ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/parsed_apis)
@@ -135,8 +141,8 @@ endforeach()
 
 # validation of api yamls
 message("validate api yaml:
-- ${parsed_api_dir}/new_api.parsed.yaml
-- ${parsed_api_dir}/new_backward_api.parsed.yaml")
+- ${parsed_api_dir}/api.parsed.yaml
+- ${parsed_api_dir}/backward_api.parsed.yaml")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
   COMMAND
@@ -327,7 +333,7 @@ cc_library(
 cc_library(
   context_pool
   SRCS context_pool.cc
-  DEPS phi_context phi_enforce place)
+  DEPS phi_context phi_enforce place init)
 
 cc_library(
   kernel_dispatch

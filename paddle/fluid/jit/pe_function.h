@@ -26,7 +26,7 @@
 
 #include "paddle/fluid/jit/base_function.h"
 #include "paddle/fluid/jit/function_schema.h"
-#include "paddle/fluid/jit/layer_utils.h"
+#include "paddle/fluid/jit/function_utils.h"
 
 namespace paddle {
 namespace jit {
@@ -37,7 +37,7 @@ class PEFunction : public BaseFunction {
              const Name2VariableMap &params_dict,
              const phi::Place &place)
       : info_(info), place_(place) {
-    ShareParamsIntoScope(info_->GetParamNames(), params_dict, &scope_);
+    utils::ShareParamsIntoScope(info_->ParamNames(), params_dict, &scope_);
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
   }
 
@@ -47,7 +47,7 @@ class PEFunction : public BaseFunction {
     // bool is_test = true;
     std::string prog_string;
     std::hash<std::string> string_hash;
-    auto &program_desc = info_->GetProgramDesc();
+    auto &program_desc = info_->ProgramDesc();
     const_cast<framework::ProgramDesc *>(&program_desc)
         ->Proto()
         ->SerializePartialToString(&prog_string);
@@ -57,12 +57,11 @@ class PEFunction : public BaseFunction {
     int64_t start_op_index = 0;
     int64_t end_op_index = static_cast<int64_t>(global_block.OpSize());
 
-    ShareInputsIntoScope(info_->GetInputArgNames(), inputs, &scope_);
-    std::vector<std::string> input_var_names = info_->GetInputArgNames();
-    std::vector<std::string> output_var_names = info_->GetOutputArgNames();
+    utils::ShareInputsIntoScope(info_->InputArgNames(), inputs, &scope_);
+    std::vector<std::string> input_var_names = info_->InputArgNames();
+    std::vector<std::string> output_var_names = info_->OutputArgNames();
     std::vector<std::string> dout_var_names;
     if (end_op_index > start_op_index) {
-      // TODO(dev): support other devices
       auto cache_info = framework::GetExecutorInfoFromCache(program_desc,
                                                             place_,
                                                             start_op_index,
@@ -92,7 +91,7 @@ class PEFunction : public BaseFunction {
     }
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
     std::vector<Variable> res;
-    FetchVarsByNames(info_->GetOutputArgNames(), scope_, &res);
+    utils::FetchVarsByNames(info_->OutputArgNames(), scope_, &res);
     return res;
   }
 
