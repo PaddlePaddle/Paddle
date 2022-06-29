@@ -89,15 +89,6 @@
     func : erf
   backward : erf_grad
 
-- api : erfinv
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : erfinv
-  backward : erfinv_grad
-
 - api : mv
   args : (Tensor x, Tensor vec)
   output : Tensor
