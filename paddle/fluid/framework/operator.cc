@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -1303,6 +1304,23 @@ bool OperatorWithKernel::SupportsMKLDNN(
   }
 }
 
+bool OperatorWithKernel::SupportsKernelType(
+    const OpKernelType& kernel_type) const {
+  auto& all_op_kernels = AllOpKernels();
+  auto kernels_iter = all_op_kernels.find(type_);
+  bool support =
+      kernels_iter != all_op_kernels.end() &&
+      kernels_iter->second.find(kernel_type) != kernels_iter->second.end();
+#if defined(PADDLE_WITH_XPU)
+  if (paddle::platform::is_xpu_place(kernel_type.place_)) {
+    support = support &&
+              paddle::platform::is_xpu_support_op(type_, kernel_type) &&
+              !paddle::platform::is_in_xpu_black_list(type_);
+  }
+#endif
+  return support;
+}
+
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
   const auto& attrs_map = ctx.Attrs();
@@ -1594,6 +1612,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->Info().infer_shape_(&infer_shape_ctx);
+    record_event.End();
+    platform::RecordOpInfoSupplement(
+        Type(), Attrs(), infer_shape_ctx, *runtime_ctx);
   }
 
   if (FLAGS_enable_unused_var_check) {

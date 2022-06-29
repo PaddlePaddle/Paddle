@@ -53,13 +53,15 @@ class CodeGenerator {
 
   // we get the parameter list code for the expression information
   std::string EmitParameters(
-      const std::set<int>& input_ids, const std::set<int>& output_ids,
+      const std::set<int>& input_ids,
+      const std::set<int>& output_ids,
       const std::set<int>& intermediate_ids,
       const std::unordered_map<int, std::string>& dtypes) const;
 
   std::string EmitComputeBody(
       const std::vector<OperationExpression>& expressions,
-      const std::set<int>& input_ids, const std::set<int>& output_ids,
+      const std::set<int>& input_ids,
+      const std::set<int>& output_ids,
       const std::set<int>& intermediate_ids,
       const std::unordered_map<int, std::string>& dtypes) const;
 

@@ -855,15 +855,14 @@ def read_file(filename, name=None):
             import cv2
             import paddle
 
-            fake_img = (np.random.random(
-                        (400, 300, 3)) * 255).astype('uint8')
+            fake_img = (paddle.rand((400, 300, 3)).numpy() * 255).astype('uint8')            
 
             cv2.imwrite('fake.jpg', fake_img)
 
             img_bytes = paddle.vision.ops.read_file('fake.jpg')
             
             print(img_bytes.shape)
-
+            # [142915]
     """
 
     if _non_static_mode():

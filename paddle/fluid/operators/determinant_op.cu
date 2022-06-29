@@ -12,14 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/determinant_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    slogdeterminant, ops::SlogDeterminantKernel<plat::CUDADeviceContext, float>,
+    slogdeterminant,
+    ops::SlogDeterminantKernel<plat::CUDADeviceContext, float>,
     ops::SlogDeterminantKernel<plat::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(

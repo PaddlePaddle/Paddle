@@ -22,7 +22,8 @@ namespace tensorrt {
 class LayerNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert a fluid layer_norm op to tensorrt layer_norm plugin";
     framework::OpDesc op_desc(op, nullptr);
 
@@ -37,11 +38,13 @@ class LayerNormOpConverter : public OpConverter {
                           ? BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"))
                           : 1e-5f;
     PADDLE_ENFORCE_NOT_NULL(
-        Bias_v, platform::errors::InvalidArgument(
-                    "Input(Bias) of layer_norm should not be null."));
+        Bias_v,
+        platform::errors::InvalidArgument(
+            "Input(Bias) of layer_norm should not be null."));
     PADDLE_ENFORCE_NOT_NULL(
-        Scale_v, platform::errors::InvalidArgument(
-                     "Input(Scale) of layer_norm should not be null."));
+        Scale_v,
+        platform::errors::InvalidArgument(
+            "Input(Scale) of layer_norm should not be null."));
 
     auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
     auto* Scale_t = Scale_v->GetMutable<framework::LoDTensor>();
@@ -70,9 +73,13 @@ class LayerNormOpConverter : public OpConverter {
       std::vector<int64_t> mean_shape{input_num};
       std::vector<int64_t> variance_shape{input_num};
       plugin::LayerNormPluginDynamic* plugin =
-          new plugin::LayerNormPluginDynamic(bias_data, bias_tensor->numel(),
-                                             scale_data, scale_tensor->numel(),
-                                             begin_norm_axis, eps, mean_shape,
+          new plugin::LayerNormPluginDynamic(bias_data,
+                                             bias_tensor->numel(),
+                                             scale_data,
+                                             scale_tensor->numel(),
+                                             begin_norm_axis,
+                                             eps,
+                                             mean_shape,
                                              variance_shape);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
@@ -82,9 +89,15 @@ class LayerNormOpConverter : public OpConverter {
       }
       std::vector<int64_t> mean_shape{input_num};
       std::vector<int64_t> variance_shape{input_num};
-      plugin::LayerNormPlugin* plugin = new plugin::LayerNormPlugin(
-          bias_data, bias_tensor->numel(), scale_data, scale_tensor->numel(),
-          begin_norm_axis, eps, mean_shape, variance_shape);
+      plugin::LayerNormPlugin* plugin =
+          new plugin::LayerNormPlugin(bias_data,
+                                      bias_tensor->numel(),
+                                      scale_data,
+                                      scale_tensor->numel(),
+                                      begin_norm_axis,
+                                      eps,
+                                      mean_shape,
+                                      variance_shape);
       layernorm_layer = engine_->AddPlugin(
           &X, 1, reinterpret_cast<plugin::PluginTensorRT*>(plugin));
     }
@@ -93,8 +106,8 @@ class LayerNormOpConverter : public OpConverter {
     engine_->SetWeights(op_desc.Input("Bias").front(), std::move(bias_tensor));
     engine_->SetWeights(op_desc.Input("Scale").front(),
                         std::move(scale_tensor));
-    RreplenishLayerAndOutput(layernorm_layer, "layer_norm", {output_name},
-                             test_mode);
+    RreplenishLayerAndOutput(
+        layernorm_layer, "layer_norm", {output_name}, test_mode);
   }
 };
 

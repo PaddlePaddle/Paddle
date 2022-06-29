@@ -317,7 +317,7 @@ class API_TestDygraphGather(unittest.TestCase):
             return
 
         x = np.random.rand(226862, 256).astype("float32")
-        index = np.random.randint(0, 22682, size=(11859027))
+        index = np.random.randint(0, 22682, size=(8859027))
 
         def test_dygraph():
             with fluid.dygraph.guard():

@@ -33,10 +33,14 @@ namespace plugin {
 
 int SkipLayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
   cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
-  cudaMemcpy(bias_gpu_, bias_.data(), bias_size_ * sizeof(float),
+  cudaMemcpy(bias_gpu_,
+             bias_.data(),
+             bias_size_ * sizeof(float),
              cudaMemcpyHostToDevice);
   cudaMalloc(&scale_gpu_, sizeof(float) * scale_size_);
-  cudaMemcpy(scale_gpu_, scale_.data(), scale_size_ * sizeof(float),
+  cudaMemcpy(scale_gpu_,
+             scale_.data(),
+             scale_size_ * sizeof(float),
              cudaMemcpyHostToDevice);
   return 0;
 }
@@ -53,23 +57,30 @@ void SkipLayerNormPluginDynamic::terminate() TRT_NOEXCEPT {
 }
 
 nvinfer1::DimsExprs SkipLayerNormPluginDynamic::getOutputDimensions(
-    int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
+    int output_index,
+    const nvinfer1::DimsExprs *inputs,
+    int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   return inputs[0];
 }
 
 bool SkipLayerNormPluginDynamic::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc *in_out,
+    int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
-      in_out, platform::errors::InvalidArgument(
-                  "The input of swish plugin shoule not be nullptr."));
+      in_out,
+      platform::errors::InvalidArgument(
+          "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
-      pos, nb_inputs + nb_outputs,
+      pos,
+      nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
-                                        pos, nb_inputs + nb_outputs));
+                                        pos,
+                                        nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
@@ -98,9 +109,11 @@ bool SkipLayerNormPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType SkipLayerNormPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types,
+    int index,
+    const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0,
+  PADDLE_ENFORCE_EQ(index,
+                    0,
                     platform::errors::InvalidArgument(
                         "The SkipLayerNorm Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
@@ -115,8 +128,11 @@ nvinfer1::DataType SkipLayerNormPluginDynamic::getOutputDataType(
 
 int SkipLayerNormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
-    const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
-    void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
+    const nvinfer1::PluginTensorDesc *output_desc,
+    const void *const *inputs,
+    void *const *outputs,
+    void *workspace,
+    cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   size_t num = ProductDim(input_dims);
   int hidden = input_dims.d[2];
@@ -128,8 +144,15 @@ int SkipLayerNormPluginDynamic::enqueue(
     const float *input2 = static_cast<const float *>(inputs[1]);
     float *output = static_cast<float *>(outputs[0]);
     operators::math::SkipLayerNormFunctor<float> skip_layer_norm_func;
-    skip_layer_norm_func(num, hidden, input1, input2, scale_gpu_, bias_gpu_,
-                         output, eps_, stream);
+    skip_layer_norm_func(num,
+                         hidden,
+                         input1,
+                         input2,
+                         scale_gpu_,
+                         bias_gpu_,
+                         output,
+                         eps_,
+                         stream);
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
     VLOG(1) << "TRT Plugin DataType selected. SkipLayerNorm-->fp16";
@@ -137,8 +160,15 @@ int SkipLayerNormPluginDynamic::enqueue(
     const half *input2 = static_cast<const half *>(inputs[1]);
     half *output = static_cast<half *>(outputs[0]);
     operators::math::SkipLayerNormFunctor<half> skip_layer_norm_func;
-    skip_layer_norm_func(num, hidden, input1, input2, scale_gpu_, bias_gpu_,
-                         output, static_cast<half>(eps_), stream);
+    skip_layer_norm_func(num,
+                         hidden,
+                         input1,
+                         input2,
+                         scale_gpu_,
+                         bias_gpu_,
+                         output,
+                         static_cast<half>(eps_),
+                         stream);
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "The Ernie(Bert) tensorRT plugin should be "

@@ -30,8 +30,8 @@ class AssignMLUKernel : public framework::OpKernel<T> {
 
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc out_desc(*out);
-    MLUCnnl::Assign(ctx, x_desc.get(), GetBasePtr(x), out_desc.get(),
-                    GetBasePtr(out));
+    MLUCnnl::Assign(
+        ctx, x_desc.get(), GetBasePtr(x), out_desc.get(), GetBasePtr(out));
   }
 };
 
@@ -41,7 +41,8 @@ class AssignMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(assign, ops::AssignMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(assign,
+                       ops::AssignMLUKernel<int>,
                        ops::AssignMLUKernel<float>,
                        ops::AssignMLUKernel<plat::float16>,
                        ops::AssignMLUKernel<bool>)

@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/phi/common/data_type.h"
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #endif
@@ -454,9 +455,12 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[in] block: the block to insert comm ops
   /// \param[in] ring_id: the ring id to be used to init NCCL env
   ///
-  void InsertCommOp(std::string tmp_var_name, int nranks, int rank,
+  void InsertCommOp(std::string tmp_var_name,
+                    int nranks,
+                    int rank,
                     const std::vector<std::string> &peer_endpoints,
-                    framework::BlockDesc *block, int ring_id);
+                    framework::BlockDesc *block,
+                    int ring_id);
 #endif
 
  private:
@@ -474,6 +478,8 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
+
+  phi::DataType model_precision_{phi::DataType::FLOAT32};
 
 #if PADDLE_WITH_MKLDNN
   // Helper class to perform quantization

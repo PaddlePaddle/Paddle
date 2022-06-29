@@ -23,14 +23,15 @@ template <typename T>
 class ShuffleChannelMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::shuffle_forward> {
  public:
-  ShuffleChannelMKLDNNHandler(const Tensor* x, const int group,
+  ShuffleChannelMKLDNNHandler(const Tensor* x,
+                              const int group,
                               const dnnl::engine engine,
                               platform::Place cpu_place)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::shuffle_forward>(engine,
                                                                     cpu_place) {
     static constexpr int channel_axis = 1;
-    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            x->mem_desc(), channel_axis, group);
+    this->AcquireForwardPrimitiveDescriptor(
+        dnnl::prop_kind::forward_training, x->mem_desc(), channel_axis, group);
   }
 };
 
@@ -48,8 +49,8 @@ class ShuffleChannelMKLDNNKernel : public framework::OpKernel<T> {
     // oneDNN handles group using C/g instead of g
     const int group = x->dims()[1] / ctx.Attr<int>("group");
 
-    ShuffleChannelMKLDNNHandler<T> handler(x, group, mkldnn_engine,
-                                           ctx.GetPlace());
+    ShuffleChannelMKLDNNHandler<T> handler(
+        x, group, mkldnn_engine, ctx.GetPlace());
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto dst_memory_p = handler.AcquireDstMemory(out);
@@ -57,8 +58,9 @@ class ShuffleChannelMKLDNNKernel : public framework::OpKernel<T> {
     auto shuffle_p = handler.AcquireForwardPrimitive();
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    shuffle_p->execute(astream, {{DNNL_ARG_SRC, *src_memory_p},
-                                 {DNNL_ARG_DST, *dst_memory_p}});
+    shuffle_p->execute(
+        astream,
+        {{DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}});
     astream.wait();
 
     out->set_mem_desc(dst_memory_p->get_desc());
@@ -68,6 +70,8 @@ class ShuffleChannelMKLDNNKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(shuffle_channel, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(shuffle_channel,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::ShuffleChannelMKLDNNKernel<float>,
                    ops::ShuffleChannelMKLDNNKernel<paddle::platform::bfloat16>);

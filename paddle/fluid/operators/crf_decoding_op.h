@@ -57,7 +57,8 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
         int64_t end_pos = start_pos + static_cast<int64_t>(length_data[i]);
         Tensor decoded_path_one_seq = decoded_path->Slice(start_pos, end_pos);
         Decode(emission_weights_tmp.Slice(start_pos, end_pos),
-               *transition_weights, &decoded_path_one_seq);
+               *transition_weights,
+               &decoded_path_one_seq);
       }
       decoded_path->Resize({in_dims[0], in_dims[1]});
 
@@ -76,14 +77,16 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
         }
       }
     } else {
-      PADDLE_ENFORCE_EQ(emission_weights->NumLevels(), 1UL,
+      PADDLE_ENFORCE_EQ(emission_weights->NumLevels(),
+                        1UL,
                         platform::errors::InvalidArgument(
                             "The Input(Emission) should be a sequence with lod "
                             "level 1. But received: lod level %u.",
                             emission_weights->NumLevels()));
       auto lod = emission_weights->lod();
       PADDLE_ENFORCE_GT(
-          lod.size(), 0,
+          lod.size(),
+          0,
           platform::errors::InvalidArgument(
               "Input(Emission) must be a sequence. But received: lod level %u.",
               lod.size()));
@@ -95,11 +98,13 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
         int64_t start_pos = static_cast<int64_t>(lod[level][i]);
         int64_t end_pos = static_cast<int64_t>(lod[level][i + 1]);
         Tensor decoded_path_one_seq = decoded_path->Slice(start_pos, end_pos);
-        Decode(emission_weights->Slice(start_pos, end_pos), *transition_weights,
+        Decode(emission_weights->Slice(start_pos, end_pos),
+               *transition_weights,
                &decoded_path_one_seq);
       }
       if (label) {
-        PADDLE_ENFORCE_EQ(label->NumLevels(), 1UL,
+        PADDLE_ENFORCE_EQ(label->NumLevels(),
+                          1UL,
                           platform::errors::InvalidArgument(
                               "The Input(label) should be a sequence with lod "
                               "level 1. But received: lod level %u.",
@@ -114,7 +119,8 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
   }
 
  private:
-  void Decode(const Tensor& emission_weights, const Tensor& transition_weights,
+  void Decode(const Tensor& emission_weights,
+              const Tensor& transition_weights,
               Tensor* decoded_path) const {
     auto emission_dims = emission_weights.dims();
     const size_t seq_len = emission_dims[0];

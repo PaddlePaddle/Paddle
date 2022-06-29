@@ -49,11 +49,16 @@ class CreateCTRReaderOp : public framework::OperatorBase {
     auto file_type = Attr<std::string>("file_type");
     auto file_format = Attr<std::string>("file_format");
     auto file_list = Attr<std::vector<std::string>>("file_list");
-    DataDesc data_desc(batch_size, file_list, file_type, file_format,
-                       dense_slot_index, sparse_slot_index, sparse_slots);
+    DataDesc data_desc(batch_size,
+                       file_list,
+                       file_type,
+                       file_format,
+                       dense_slot_index,
+                       sparse_slot_index,
+                       sparse_slots);
     VLOG(1) << data_desc;
-    out->Reset(std::make_shared<CTRReader>(queue_holder->GetQueue(), thread_num,
-                                           data_desc));
+    out->Reset(std::make_shared<CTRReader>(
+        queue_holder->GetQueue(), thread_num, data_desc));
   }
 };
 
@@ -93,5 +98,6 @@ class CreateCTRReaderOpMaker : public FileReaderMakerBase {
 
 namespace reader = ::paddle::operators::reader;
 
-REGISTER_FILE_READER_OPERATOR(create_ctr_reader, reader::CreateCTRReaderOp,
+REGISTER_FILE_READER_OPERATOR(create_ctr_reader,
+                              reader::CreateCTRReaderOp,
                               reader::CreateCTRReaderOpMaker);
