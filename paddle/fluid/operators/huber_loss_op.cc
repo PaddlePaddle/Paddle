@@ -76,8 +76,10 @@ class HuberLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "HuberLossGrad");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "HuberLossGrad");
 
     auto residual_dims = ctx->GetInputDim("Residual");
 
@@ -112,10 +114,13 @@ class HuberLossGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(huber_loss, HuberLossInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(huber_loss,
+                            HuberLossInferShapeFunctor,
                             PD_INFER_META(phi::HuberLossInferMeta));
 
-REGISTER_OPERATOR(huber_loss, ops::HuberLossOp, ops::HuberLossOpMaker<float>,
+REGISTER_OPERATOR(huber_loss,
+                  ops::HuberLossOp,
+                  ops::HuberLossOpMaker<float>,
                   ops::HuberLossGradOpMaker<paddle::framework::OpDesc>,
                   ops::HuberLossGradOpMaker<paddle::imperative::OpBase>,
                   HuberLossInferShapeFunctor);

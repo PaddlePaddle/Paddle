@@ -35,14 +35,16 @@ struct PaddleComplex;
 
 template <typename T>
 struct PaddleComplex<
-    T, typename std::enable_if<std::is_floating_point<T>::value>::type> {
+    T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type> {
   using type = paddle::platform::complex<T>;
 };
 template <typename T>
 struct PaddleComplex<
-    T, typename std::enable_if<
-           std::is_same<T, platform::complex<float>>::value ||
-           std::is_same<T, platform::complex<double>>::value>::type> {
+    T,
+    typename std::enable_if<
+        std::is_same<T, platform::complex<float>>::value ||
+        std::is_same<T, platform::complex<double>>::value>::type> {
   using type = T;
 };
 
@@ -72,22 +74,28 @@ static void SpiltBatchSquareMatrix(const Tensor& input,
 }
 
 static void CheckLapackEigResult(const int info, const std::string& name) {
-  PADDLE_ENFORCE_LE(info, 0,
+  PADDLE_ENFORCE_LE(info,
+                    0,
                     platform::errors::PreconditionNotMet(
                         "The QR algorithm failed to compute all the "
                         "eigenvalues in function %s.",
                         name.c_str()));
   PADDLE_ENFORCE_GE(
-      info, 0,
+      info,
+      0,
       platform::errors::InvalidArgument(
-          "The %d-th argument has an illegal value in function %s.", -info,
+          "The %d-th argument has an illegal value in function %s.",
+          -info,
           name.c_str()));
 }
 
 template <typename DeviceContext, typename T>
 static typename std::enable_if<std::is_floating_point<T>::value>::type
-LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
-              Tensor* output, Tensor* work, Tensor* rwork /*unused*/) {
+LapackEigvals(const framework::ExecutionContext& ctx,
+              const Tensor& input,
+              Tensor* output,
+              Tensor* work,
+              Tensor* rwork /*unused*/) {
   Tensor a;  // will be overwritten when lapackEig exit
   framework::TensorCopy(input, input.place(), &a);
 
@@ -99,19 +107,30 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
   int64_t work_mem = work->memory_size();
   int64_t required_work_mem = 3 * n_dim * sizeof(T);
   PADDLE_ENFORCE_GE(
-      work_mem, 3 * n_dim * sizeof(T),
+      work_mem,
+      3 * n_dim * sizeof(T),
       platform::errors::InvalidArgument(
           "The memory size of the work tensor in LapackEigvals function "
           "should be at least %" PRId64 " bytes, "
           "but received work\'s memory size = %" PRId64 " bytes.",
-          required_work_mem, work_mem));
+          required_work_mem,
+          work_mem));
 
   int info = 0;
-  phi::funcs::lapackEig<T>('N', 'N', static_cast<int>(n_dim),
-                           a.template data<T>(), static_cast<int>(n_dim),
-                           w_data, NULL, 1, NULL, 1, work->template data<T>(),
+  phi::funcs::lapackEig<T>('N',
+                           'N',
+                           static_cast<int>(n_dim),
+                           a.template data<T>(),
+                           static_cast<int>(n_dim),
+                           w_data,
+                           NULL,
+                           1,
+                           NULL,
+                           1,
+                           work->template data<T>(),
                            static_cast<int>(work_mem / sizeof(T)),
-                           static_cast<T*>(NULL), &info);
+                           static_cast<T*>(NULL),
+                           &info);
 
   std::string name = "framework::platform::dynload::dgeev_";
   if (framework::TransToProtoVarType(input.dtype()) ==
@@ -130,8 +149,11 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
 template <typename DeviceContext, typename T>
 typename std::enable_if<std::is_same<T, platform::complex<float>>::value ||
                         std::is_same<T, platform::complex<double>>::value>::type
-LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
-              Tensor* output, Tensor* work, Tensor* rwork) {
+LapackEigvals(const framework::ExecutionContext& ctx,
+              const Tensor& input,
+              Tensor* output,
+              Tensor* work,
+              Tensor* rwork) {
   Tensor a;  // will be overwritten when lapackEig exit
   framework::TensorCopy(input, input.place(), &a);
 
@@ -139,29 +161,43 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
   int64_t n_dim = input.dims()[1];
   int64_t required_work_mem = 3 * n_dim * sizeof(T);
   PADDLE_ENFORCE_GE(
-      work_mem, 3 * n_dim * sizeof(T),
+      work_mem,
+      3 * n_dim * sizeof(T),
       platform::errors::InvalidArgument(
           "The memory size of the work tensor in LapackEigvals function "
           "should be at least %" PRId64 " bytes, "
           "but received work\'s memory size = %" PRId64 " bytes.",
-          required_work_mem, work_mem));
+          required_work_mem,
+          work_mem));
 
   int64_t rwork_mem = rwork->memory_size();
   int64_t required_rwork_mem = (n_dim << 1) * sizeof(phi::dtype::Real<T>);
   PADDLE_ENFORCE_GE(
-      rwork_mem, required_rwork_mem,
+      rwork_mem,
+      required_rwork_mem,
       platform::errors::InvalidArgument(
           "The memory size of the rwork tensor in LapackEigvals function "
           "should be at least %" PRId64 " bytes, "
           "but received rwork\'s memory size = %" PRId64 " bytes.",
-          required_rwork_mem, rwork_mem));
+          required_rwork_mem,
+          rwork_mem));
 
   int info = 0;
   phi::funcs::lapackEig<T, phi::dtype::Real<T>>(
-      'N', 'N', static_cast<int>(n_dim), a.template data<T>(),
-      static_cast<int>(n_dim), output->template data<T>(), NULL, 1, NULL, 1,
-      work->template data<T>(), static_cast<int>(work_mem / sizeof(T)),
-      rwork->template data<phi::dtype::Real<T>>(), &info);
+      'N',
+      'N',
+      static_cast<int>(n_dim),
+      a.template data<T>(),
+      static_cast<int>(n_dim),
+      output->template data<T>(),
+      NULL,
+      1,
+      NULL,
+      1,
+      work->template data<T>(),
+      static_cast<int>(work_mem / sizeof(T)),
+      rwork->template data<phi::dtype::Real<T>>(),
+      &info);
 
   std::string name = "framework::platform::dynload::cgeev_";
   if (framework::TransToProtoVarType(input.dtype()) ==
@@ -192,9 +228,20 @@ class EigvalsKernel : public framework::OpKernel<T> {
     T qwork;
     int info;
     phi::funcs::lapackEig<T, phi::dtype::Real<T>>(
-        'N', 'N', static_cast<int>(n_dim), input_matrices[0].template data<T>(),
-        static_cast<int>(n_dim), NULL, NULL, 1, NULL, 1, &qwork, -1,
-        static_cast<phi::dtype::Real<T>*>(NULL), &info);
+        'N',
+        'N',
+        static_cast<int>(n_dim),
+        input_matrices[0].template data<T>(),
+        static_cast<int>(n_dim),
+        NULL,
+        NULL,
+        1,
+        NULL,
+        1,
+        &qwork,
+        -1,
+        static_cast<phi::dtype::Real<T>*>(NULL),
+        &info);
     int64_t lwork = static_cast<int64_t>(qwork);
 
     Tensor work, rwork;
@@ -216,8 +263,8 @@ class EigvalsKernel : public framework::OpKernel<T> {
     }
 
     for (int64_t i = 0; i < n_batch; ++i) {
-      LapackEigvals<DeviceContext, T>(ctx, input_matrices[i],
-                                      &output_vectors[i], &work, &rwork);
+      LapackEigvals<DeviceContext, T>(
+          ctx, input_matrices[i], &output_vectors[i], &work, &rwork);
     }
     output->Resize(output_dims);
   }

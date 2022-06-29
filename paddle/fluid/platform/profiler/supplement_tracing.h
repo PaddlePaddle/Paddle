@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/core/compat/arg_map_context.h"
 
 namespace paddle {
 
@@ -39,6 +40,16 @@ class RecordOpInfoSupplement {
                                   const framework::AttributeMap& attrs,
                                   const framework::InferShapeContext& shape_ctx,
                                   const framework::RuntimeContext& ctx);
+  /**
+   * @param type:  Operator type name.
+   * @param attrs: Attribute map of op.
+   * @param shape_ctx: Infershape context object.
+   * @param kernel_signature:  KernelSignature object, used in dygraph.
+   */
+  explicit RecordOpInfoSupplement(const std::string& type,
+                                  const framework::AttributeMap& attrs,
+                                  const framework::InferShapeContext& shape_ctx,
+                                  const phi::KernelSignature& kernel_signature);
 };
 
 }  // namespace platform

@@ -38,20 +38,24 @@ class SGDOpXPUKernel : public framework::OpKernel<T> {
       // Actually, all tensors are LoDTensor except SelectedRows.
       const auto *grad = ctx.Input<framework::Tensor>("Grad");
       auto sz = param_out->numel();
-      PADDLE_ENFORCE_EQ(param->numel(), sz,
+      PADDLE_ENFORCE_EQ(param->numel(),
+                        sz,
                         platform::errors::InvalidArgument(
                             "The input tensor Param's numel of SgdOp "
                             "should be equal with ParamOut's numel. "
                             "But received Param's "
                             "numel = [%s], ParamOut's numel = [%s]",
-                            param->numel(), sz));
-      PADDLE_ENFORCE_EQ(grad->numel(), sz,
+                            param->numel(),
+                            sz));
+      PADDLE_ENFORCE_EQ(grad->numel(),
+                        sz,
                         platform::errors::InvalidArgument(
                             "The input tensor Grad's numel of SgdOp "
                             "should be equal with ParamOut's numel. "
                             "But received Grad's "
                             "numel = [%s], ParamOut's numel = [%s]",
-                            grad->numel(), sz));
+                            grad->numel(),
+                            sz));
 
       const T *lr_t = learning_rate->data<T>();
       auto &dev_ctx = ctx.template device_context<DeviceContext>();
@@ -61,8 +65,10 @@ class SGDOpXPUKernel : public framework::OpKernel<T> {
         float *lr_float =
             RAII_GUARD.alloc_l3_or_gm<float>(learning_rate->numel());
         int r = xpu::cast_v2<XPUType, float>(
-            dev_ctx.x_context(), reinterpret_cast<const XPUType *>(lr_t),
-            lr_float, learning_rate->numel());
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType *>(lr_t),
+            lr_float,
+            learning_rate->numel());
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_v2");
         lr = lr_float;
       } else {
@@ -75,8 +81,10 @@ class SGDOpXPUKernel : public framework::OpKernel<T> {
 
       int r = xpu::sgd(dev_ctx.x_context(),
                        reinterpret_cast<const XPUType *>(grad_data),
-                       reinterpret_cast<const XPUType *>(param_data), lr,
-                       reinterpret_cast<XPUType *>(out_data), sz);
+                       reinterpret_cast<const XPUType *>(param_data),
+                       lr,
+                       reinterpret_cast<XPUType *>(out_data),
+                       sz);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "sgd");
     }
   }
@@ -88,6 +96,7 @@ class SGDOpXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_XPU_KERNEL(
-    sgd, ops::SGDOpXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    sgd,
+    ops::SGDOpXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::SGDOpXPUKernel<paddle::platform::XPUDeviceContext, plat::float16>);
 #endif

@@ -12,17 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/conj_op.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -66,20 +62,12 @@ class ConjGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(conj, ConjInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(conj,
+                            ConjInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
-REGISTER_OPERATOR(conj, ops::ConjOp, ops::ConjOpMaker,
+REGISTER_OPERATOR(conj,
+                  ops::ConjOp,
+                  ops::ConjOpMaker,
                   ops::ConjGradMaker<paddle::framework::OpDesc>,
                   ops::ConjGradMaker<paddle::imperative::OpBase>,
                   ConjInferShapeFunctor);
-
-REGISTER_OP_CPU_KERNEL(
-    conj,
-    ops::ConjKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::complex<float>>,
-    ops::ConjKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::complex<double>>,
-    ops::ConjKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ConjKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ConjKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConjKernel<paddle::platform::CPUDeviceContext, int64_t>);

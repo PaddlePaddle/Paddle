@@ -14,29 +14,24 @@
 
 #include "paddle/fluid/jit/compilation_unit.h"
 
+#include "paddle/phi/core/enforce.h"
+
 namespace paddle {
 namespace jit {
 
-void CompilationUnit::AddExecutorFunction(
-    const std::string &func_name,
-    const std::shared_ptr<FunctionInfo> &info,
-    const Name2VariableMap &params_dict,
-    const phi::Place &place) {
-  function_dict_[func_name] =
-      std::make_shared<ExecutorFunction>(info, params_dict, place);
-}
-
-void CompilationUnit::AddPEFunction(const std::string &func_name,
-                                    const std::shared_ptr<FunctionInfo> &info,
-                                    const Name2VariableMap &params_dict,
-                                    const phi::Place &place) {
-  function_dict_[func_name] =
-      std::make_shared<PEFunction>(info, params_dict, place);
-}
-
-std::shared_ptr<BaseFunction> CompilationUnit::GetFunction(
+std::shared_ptr<BaseFunction> CompilationUnit::Function(
     const std::string &name) const {
+  PADDLE_ENFORCE_EQ(
+      function_dict_.count(name),
+      1,
+      platform::errors::InvalidArgument(
+          "Funciton name %s is not exist in function_dict_.", name));
   return function_dict_.at(name);
+}
+
+void CompilationUnit::SetFunction(
+    const std::string &name, const std::shared_ptr<BaseFunction> &function) {
+  function_dict_[name] = function;
 }
 
 }  // namespace jit

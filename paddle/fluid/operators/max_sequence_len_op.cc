@@ -69,8 +69,8 @@ class MaxSeqenceLenOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 class MaxSeqenceLenInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInput("RankTable"), "Input", "RankTable",
-                   "MaxSeqenceLen");
+    OP_INOUT_CHECK(
+        context->HasInput("RankTable"), "Input", "RankTable", "MaxSeqenceLen");
     context->SetOutputDim("Out", {1});
   }
 };
@@ -78,7 +78,8 @@ class MaxSeqenceLenInferShape : public framework::InferShapeBase {
 }  // namespace paddle
 
 REGISTER_OPERATOR(
-    max_sequence_len, paddle::operators::MaxSeqenceLenOp,
+    max_sequence_len,
+    paddle::operators::MaxSeqenceLenOp,
     paddle::operators::MaxSeqenceLenOpProtoMaker,
     paddle::operators::MaxSeqenceLenInferShape,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,

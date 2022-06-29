@@ -27,7 +27,8 @@ class ExtraInfo {
  public:
   ExtraInfo() {}
   template <typename... Args>
-  void AddExtraInfo(const std::string& key, const std::string& format,
+  void AddExtraInfo(const std::string& key,
+                    const std::string& format,
                     Args... args);
   void Clear() { extra_info_.clear(); }
   std::unordered_map<std::string, std::string> GetExtraInfo() {
@@ -39,7 +40,8 @@ class ExtraInfo {
 };
 
 template <typename... Args>
-void ExtraInfo::AddExtraInfo(const std::string& key, const std::string& format,
+void ExtraInfo::AddExtraInfo(const std::string& key,
+                             const std::string& format,
                              Args... args) {
   std::string value = string_format(format, args...);
   extra_info_[key] = value;

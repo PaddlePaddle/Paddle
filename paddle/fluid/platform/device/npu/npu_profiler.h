@@ -53,7 +53,8 @@ constexpr uint64_t default_type =
 
 aclprofConfig *NPUProfilerCreateConfig(
     std::vector<uint32_t> devices = {},
-    aclprofAicoreMetrics metrics = default_metrics, uint64_t c = default_type,
+    aclprofAicoreMetrics metrics = default_metrics,
+    uint64_t c = default_type,
     aclprofAicoreEvents *events = nullptr) {
   if (devices.size() == 0) {
     int device_id = GetCurrentNPUDeviceId();
@@ -61,8 +62,9 @@ aclprofConfig *NPUProfilerCreateConfig(
   }
   aclprofConfig *config =
       aclprofCreateConfig(devices.data(), devices.size(), metrics, events, c);
-  PADDLE_ENFORCE_NOT_NULL(config, paddle::platform::errors::External(
-                                      "Failed to create prof config for NPU"));
+  PADDLE_ENFORCE_NOT_NULL(config,
+                          paddle::platform::errors::External(
+                              "Failed to create prof config for NPU"));
   return config;
 }
 

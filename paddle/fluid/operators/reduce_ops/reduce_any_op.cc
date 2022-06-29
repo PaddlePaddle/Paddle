@@ -31,7 +31,8 @@ class CPUDeviceContext;
 }  // namespace platform
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(reduce_any, ReduceAnyInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_any,
+                            ReduceAnyInferShapeFunctor,
                             PD_INFER_META(phi::ReduceInferMetaBase));
 
 class ReduceAnyOpMaker : public ops::ReduceOpMaker {
@@ -42,7 +43,9 @@ class ReduceAnyOpMaker : public ops::ReduceOpMaker {
 // kernel's device type is decided by input tensor place, to be consistent with
 // compare and logical ops
 REGISTER_OPERATOR(
-    reduce_any, ops::ReduceOpUseInputPlace, ReduceAnyOpMaker,
+    reduce_any,
+    ops::ReduceOpUseInputPlace,
+    ReduceAnyOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ReduceAnyInferShapeFunctor);

@@ -22,9 +22,16 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-const std::array<float, 10> positive_and_negative_values = {
-    -0.0482659, -0.0102493, -0.00794221, -0.00387115, -0.00674586,
-    -0.0495346, 0.0629528,  -0.00531285, -0.0230353,  0.0269089};
+const std::array<float, 10> positive_and_negative_values = {-0.0482659,
+                                                            -0.0102493,
+                                                            -0.00794221,
+                                                            -0.00387115,
+                                                            -0.00674586,
+                                                            -0.0495346,
+                                                            0.0629528,
+                                                            -0.00531285,
+                                                            -0.0230353,
+                                                            0.0269089};
 
 const std::vector<std::vector<float>> wx = {
     {0.04347931, -0.5643393, 0.7551297, 0.26713502, 0.8055306, 0.91144973},
@@ -34,11 +41,11 @@ const std::vector<std::vector<float>> wh = {
     {0.42484227, -0.9025513, 0.17087583, 0.8403284, 0.03325734, 0.92331886},
     {0.32630175, 0.41691914, 0.99848574, 0.3504407, 0.06707559, 0.62239844}};
 
-const std::vector<double> gru_scales = {2.35381475, 1.08304947, 1.32427582,
-                                        1.19001095, 1.00151656, 1.01785819};
+const std::vector<double> gru_scales = {
+    2.35381475, 1.08304947, 1.32427582, 1.19001095, 1.00151656, 1.01785819};
 
-const std::vector<double> lstm_scales = {2.35381475, 1.10797026, 1.00151656,
-                                         1.19001095, 1.09045166, 1.01785819};
+const std::vector<double> lstm_scales = {
+    2.35381475, 1.10797026, 1.00151656, 1.19001095, 1.09045166, 1.01785819};
 
 static const std::initializer_list<std::string> conv_variable_names{
     "conv_in", "filter", "bias", "conv_out"};
@@ -56,30 +63,36 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
     return pass->GetScales(tensor, axis);
   }
 
-  void ComputeVarScales(ir::Graph* graph, Scope* scope,
+  void ComputeVarScales(ir::Graph* graph,
+                        Scope* scope,
                         const std::unordered_set<std::string> ops,
-                        const std::string& weight_name, const int axis,
+                        const std::string& weight_name,
+                        const int axis,
                         StringPairMap* var_quant_scales) const {
-    pass->ComputeVarScales(graph, scope, ops, weight_name, axis,
-                           var_quant_scales);
+    pass->ComputeVarScales(
+        graph, scope, ops, weight_name, axis, var_quant_scales);
   }
 
-  void ComputeGruWeightScales(ir::Graph* graph, Scope* scope,
+  void ComputeGruWeightScales(ir::Graph* graph,
+                              Scope* scope,
                               const std::string& wx_name,
                               const std::string& wh_name,
                               StringPairMap* var_quant_scales) const {
-    pass->ComputeGruWeightScales(graph, scope, wx_name, wh_name,
-                                 var_quant_scales);
+    pass->ComputeGruWeightScales(
+        graph, scope, wx_name, wh_name, var_quant_scales);
   }
 
-  void ComputeLstmWeightScales(ir::Graph* graph, Scope* scope,
-                               std::string wx_name, std::string wh_name,
+  void ComputeLstmWeightScales(ir::Graph* graph,
+                               Scope* scope,
+                               std::string wx_name,
+                               std::string wh_name,
                                StringPairMap* var_quant_scales) const {
-    pass->ComputeLstmWeightScales(graph, scope, wx_name, wh_name,
-                                  var_quant_scales);
+    pass->ComputeLstmWeightScales(
+        graph, scope, wx_name, wh_name, var_quant_scales);
   }
 
-  void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
+  void InitTensorHolder(Scope* scope,
+                        const paddle::platform::Place& place,
                         const std::string& var_name) {
     auto x = scope->Var(var_name);
     auto tensor = x->GetMutable<LoDTensor>();
@@ -96,7 +109,9 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
                          tensor_size);
   }
 
-  void PrepareGraph(ir::Graph* graph, const ProgramDesc& prog, Scope* scope,
+  void PrepareGraph(ir::Graph* graph,
+                    const ProgramDesc& prog,
+                    Scope* scope,
                     const std::initializer_list<std::string>& variable_names) {
     auto place = paddle::platform::CPUPlace();
     NaiveExecutor exe{place};
@@ -128,7 +143,8 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
     auto* wx_tensor = wx_var->GetMutable<LoDTensor>();
     wx_tensor->Resize(phi::make_dim(wx.size(), wx[0].size()));
     for (size_t i = 0; i < wx.size(); i++)
-      std::copy(begin(wx[i]), end(wx[i]),
+      std::copy(begin(wx[i]),
+                end(wx[i]),
                 wx_tensor->mutable_data<float>(platform::CPUPlace()) +
                     i * wx[0].size());
 
@@ -136,15 +152,16 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
     auto* wh_tensor = wh_var->GetMutable<LoDTensor>();
     wh_tensor->Resize(phi::make_dim(wh.size(), wh[0].size()));
     for (size_t i = 0; i < wh.size(); i++)
-      std::copy(begin(wh[i]), end(wh[i]),
+      std::copy(begin(wh[i]),
+                end(wh[i]),
                 wh_tensor->mutable_data<float>(platform::CPUPlace()) +
                     i * wh[0].size());
     if (type == "gru") {
-      ComputeGruWeightScales(graph, &scope, wx_name, wh_name,
-                             &var_quant_scales);
+      ComputeGruWeightScales(
+          graph, &scope, wx_name, wh_name, &var_quant_scales);
     } else {
-      ComputeLstmWeightScales(graph, &scope, wx_name, wh_name,
-                              &var_quant_scales);
+      ComputeLstmWeightScales(
+          graph, &scope, wx_name, wh_name, &var_quant_scales);
     }
     bool is_unsigned;
     framework::Tensor wx_result_tensor;
@@ -161,7 +178,9 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
   std::unique_ptr<ComputePropagateScalesMkldnnPass> pass;
 };
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
+           const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs) {
   auto* op = prog->MutableBlock(0)->AppendOp();
@@ -218,7 +237,8 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, get_scales_function) {
 
   framework::Tensor var_tensor;
   var_tensor.Resize(phi::make_dim(values.size(), 1));
-  std::copy(begin(values), end(values),
+  std::copy(begin(values),
+            end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
   std::vector<float> results = GetScales(&var_tensor, 0);
 
@@ -244,7 +264,8 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, compute_var_scales) {
   auto* var = scope.FindVar(weight_var_name);
   auto* weight_tensor = var->GetMutable<LoDTensor>();
   weight_tensor->Resize(phi::make_dim(1, values.size()));
-  std::copy(begin(values), end(values),
+  std::copy(begin(values),
+            end(values),
             weight_tensor->mutable_data<float>(platform::CPUPlace()));
 
   auto max_val = *std::max_element(values.begin(), values.end());
@@ -262,13 +283,15 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, compute_var_scales) {
 }
 
 TEST_F(ComputePropagateScalesMkldnnPassTest, compute_gru_weight_scales) {
-  ComputeRnnWeightScalesTest("gru", {"fusion_gru", "multi_gru"},
-                             BuildFusionGruProgramDesc(), gru_scales);
+  ComputeRnnWeightScalesTest("gru",
+                             {"fusion_gru", "multi_gru"},
+                             BuildFusionGruProgramDesc(),
+                             gru_scales);
 }
 
 TEST_F(ComputePropagateScalesMkldnnPassTest, compute_lstm_weight_scales) {
-  ComputeRnnWeightScalesTest("lstm", {"fusion_lstm"},
-                             BuildFusionLstmProgramDesc(), lstm_scales);
+  ComputeRnnWeightScalesTest(
+      "lstm", {"fusion_lstm"}, BuildFusionLstmProgramDesc(), lstm_scales);
 }
 
 }  // namespace ir

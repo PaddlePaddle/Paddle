@@ -41,8 +41,10 @@ void TensorUtils::CudaFreePinnedMemory(void* ptr) {
 #endif
 }
 
-void TensorUtils::CopyTensorImpl(Tensor* p_dst, const Tensor& src,
-                                 void* exec_stream, CallbackFunc cb,
+void TensorUtils::CopyTensorImpl(Tensor* p_dst,
+                                 const Tensor& src,
+                                 void* exec_stream,
+                                 CallbackFunc cb,
                                  void* cb_params) {
   Tensor& dst = *p_dst;
   dst.Reshape(src.shape());
@@ -59,28 +61,40 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst, const Tensor& src,
     switch (src.type()) {
       case PaddleDType::INT32:
         src.CopyToCpuImpl(dst.mutable_data<int32_t>(PlaceType::kCPU),
-                          exec_stream, cb, cb_params);
+                          exec_stream,
+                          cb,
+                          cb_params);
         break;
       case PaddleDType::INT64:
         src.CopyToCpuImpl(dst.mutable_data<int64_t>(PlaceType::kCPU),
-                          exec_stream, cb, cb_params);
+                          exec_stream,
+                          cb,
+                          cb_params);
         break;
       case PaddleDType::FLOAT32:
-        src.CopyToCpuImpl(dst.mutable_data<float>(PlaceType::kCPU), exec_stream,
-                          cb, cb_params);
+        src.CopyToCpuImpl(dst.mutable_data<float>(PlaceType::kCPU),
+                          exec_stream,
+                          cb,
+                          cb_params);
         break;
       case PaddleDType::UINT8:
         src.CopyToCpuImpl(dst.mutable_data<uint8_t>(PlaceType::kCPU),
-                          exec_stream, cb, cb_params);
+                          exec_stream,
+                          cb,
+                          cb_params);
         break;
       case PaddleDType::INT8:
         src.CopyToCpuImpl(dst.mutable_data<int8_t>(PlaceType::kCPU),
-                          exec_stream, cb, cb_params);
+                          exec_stream,
+                          cb,
+                          cb_params);
         break;
       case PaddleDType::FLOAT16:
         src.CopyToCpuImpl(
             dst.mutable_data<paddle::platform::float16>(PlaceType::kCPU),
-            exec_stream, cb, cb_params);
+            exec_stream,
+            cb,
+            cb_params);
         break;
       default:
         PADDLE_THROW(paddle::platform::errors::Unimplemented(
@@ -148,12 +162,18 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst, const Tensor& src,
         pool.Get(gpu_place));
 
     if (src.place() == PlaceType::kCPU) {
-      paddle::memory::Copy(gpu_place, static_cast<void*>(dst_data),
-                           paddle::platform::CPUPlace(), src_data, data_len,
+      paddle::memory::Copy(gpu_place,
+                           static_cast<void*>(dst_data),
+                           paddle::platform::CPUPlace(),
+                           src_data,
+                           data_len,
                            dev_ctx->stream());
     } else {
-      paddle::memory::Copy(gpu_place, static_cast<void*>(dst_data),
-                           paddle::platform::CUDAPlace(), src_data, data_len,
+      paddle::memory::Copy(gpu_place,
+                           static_cast<void*>(dst_data),
+                           paddle::platform::CUDAPlace(),
+                           src_data,
+                           data_len,
                            dev_ctx->stream());
     }
 
@@ -177,13 +197,16 @@ void TensorUtils::CopyTensor(Tensor* p_dst, const Tensor& src) {
   CopyTensorImpl(p_dst, src, nullptr, nullptr, nullptr);
 }
 
-void TensorUtils::CopyTensorAsync(Tensor* p_dst, const Tensor& src,
+void TensorUtils::CopyTensorAsync(Tensor* p_dst,
+                                  const Tensor& src,
                                   void* exec_stream) {
   CopyTensorImpl(p_dst, src, exec_stream, nullptr, nullptr);
 }
 
-void TensorUtils::CopyTensorAsync(Tensor* p_dst, const Tensor& src,
-                                  CallbackFunc cb, void* cb_params) {
+void TensorUtils::CopyTensorAsync(Tensor* p_dst,
+                                  const Tensor& src,
+                                  CallbackFunc cb,
+                                  void* cb_params) {
   CopyTensorImpl(p_dst, src, nullptr, cb, cb_params);
 }
 
@@ -192,8 +215,8 @@ struct Status::Impl {
   std::string msg;
 };
 
-Status::Status() noexcept : impl_(new Impl) {}
-Status::Status(const Status& status) noexcept : impl_(new Impl) {
+Status::Status() : impl_(std::make_shared<Impl>()) {}
+Status::Status(const Status& status) : impl_(std::make_shared<Impl>()) {
   *impl_ = *status.impl_;
 }
 
@@ -201,7 +224,7 @@ Status& Status::operator=(const Status& status) noexcept {
   *impl_ = *status.impl_;
   return *this;
 }
-Status::Status(std::exception_ptr e) noexcept : impl_(new Impl) {
+Status::Status(std::exception_ptr e) : impl_(std::make_shared<Impl>()) {
   constexpr int kDefaultError{-1};
   impl_->ec = kDefaultError;
   try {
@@ -215,7 +238,7 @@ Status::Status(std::exception_ptr e) noexcept : impl_(new Impl) {
     impl_->msg = e.what();
   }
 }
-Status Status::OK() noexcept { return Status(); }
+Status Status::OK() { return Status(); }
 bool Status::ok() const noexcept { return impl_->ec == 0; }
 Status::Code Status::code() const noexcept { return impl_->ec; }
 const std::string& Status::error_message() const noexcept { return impl_->msg; }
