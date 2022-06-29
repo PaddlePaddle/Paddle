@@ -97,7 +97,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     out->Resize(out_dims);
-    out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(phi::vectorize(out_dims)));
+    out->set_mem_desc(
+        reorder_dst_memory_p->get_desc().reshape(phi::vectorize(out_dims)));
   }
 
   void InferInOutShape(const framework::ExecutionContext& ctx,
@@ -332,7 +333,9 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        dx, platform::GetPlainMKLDNNFormat(dout_vec_dims.size()), ctx.GetPlace());
+        dx,
+        platform::GetPlainMKLDNNFormat(dout_vec_dims.size()),
+        ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                     reorder_src_memory_p);
 
@@ -341,7 +344,8 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     astream.wait();
 
     dx->Resize(dx_dims);
-    dx->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(phi::vectorize(dx_dims)));
+    dx->set_mem_desc(
+        reorder_dst_memory_p->get_desc().reshape(phi::vectorize(dx_dims)));
   }
 
   void InferOutputShapeInGrad(const framework::ExecutionContext& ctx,
