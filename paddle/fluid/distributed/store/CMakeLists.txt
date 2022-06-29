@@ -3,8 +3,10 @@ cc_library(
   SRCS tcp_store.cc tcp_utils.cc socket.cpp
   DEPS enforce glog)
 
-set_source_files_properties(tcp_store.cc PROPERTIES COMPILE_FLAGS
-                                                    "-Wno-error=unused-result")
+if(NOT WIN32)
+  set_source_files_properties(
+    tcp_store.cc PROPERTIES COMPILE_FLAGS "-Wno-error=unused-result")
+endif()
 
 if(NOT WIN32)
   cc_test(
