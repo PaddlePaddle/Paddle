@@ -33,7 +33,6 @@ class AutoTuneStatus {
   // EnableAutoTune and DisableAutoTune should be used for debug only.
   void EnableAutoTune();
   void DisableAutoTune();
-  void DebugForUnittest();
 
   void Update();
 
@@ -74,6 +73,9 @@ class AutoTuneStatus {
   void SetAutoTuneRange(int64_t start, int64_t stop) {
     start_step_id_ = start;
     stop_step_id_ = stop;
+    if (start_step_id_ < current_steps_id_) {
+      use_autotune_ = true;
+    }
   }
 
  private:

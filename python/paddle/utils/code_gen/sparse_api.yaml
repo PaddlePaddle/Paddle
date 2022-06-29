@@ -1,3 +1,12 @@
+- api : add
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  kernel :
+    func : add_coo_coo{sparse_coo -> sparse_coo},
+           add_csr_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : add_grad
+
 - api : conv3d
   args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm)
   output : Tensor(out), Tensor(rulebook)
@@ -27,6 +36,24 @@
   output : Tensor(out)
   invoke : to_sparse_coo_impl(x, sparse_dim)
   backward : dense_to_coo_grad
+
+- api : divide
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  kernel :
+    func : divide_coo_coo{sparse_coo -> sparse_coo},
+           divide_csr_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : divide_grad
+
+- api : multiply
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  kernel :
+    func : multiply_coo_coo{sparse_coo -> sparse_coo},
+           multiply_csr_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : multiply_grad
 
 - api : relu
   args : (Tensor x)
@@ -62,6 +89,15 @@
            sparse_csr_sqrt{sparse_csr -> sparse_csr}
     layout : x
   backward : sqrt_grad
+
+- api : subtract
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  kernel :
+    func : subtract_coo_coo{sparse_coo -> sparse_coo},
+           subtract_csr_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : subtract_grad
 
 - api : tanh
   args : (Tensor x)
@@ -132,3 +168,12 @@
     layout : x
   intermediate : rulebook
   backward : sparse_maxpool_grad
+
+- api: mv
+  args : (Tensor x, Tensor vec)
+  output : Tensor(out)
+  kernel :
+    func : mv_coo{sparse_coo, dense -> dense},
+           mv_csr{sparse_csr, dense -> dense}
+    layout : x
+  backward: mv_grad

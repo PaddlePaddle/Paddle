@@ -12,19 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/fluid/jit/compilation_unit.h"
 
-namespace phi {
+#include "paddle/phi/core/enforce.h"
 
-KernelSignature CholeskySolveGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("cholesky_solve_grad",
-                         {"X", "Y", "Out", "Out@GRAD"},
-                         {"upper"},
-                         {"X@GRAD", "Y@GRAD"});
+namespace paddle {
+namespace jit {
+
+std::shared_ptr<BaseFunction> CompilationUnit::Function(
+    const std::string &name) const {
+  PADDLE_ENFORCE_EQ(
+      function_dict_.count(name),
+      1,
+      platform::errors::InvalidArgument(
+          "Funciton name %s is not exist in function_dict_.", name));
+  return function_dict_.at(name);
 }
 
-}  // namespace phi
+void CompilationUnit::SetFunction(
+    const std::string &name, const std::shared_ptr<BaseFunction> &function) {
+  function_dict_[name] = function;
+}
 
-PD_REGISTER_ARG_MAPPING_FN(cholesky_solve_grad,
-                           phi::CholeskySolveGradOpArgumentMapping);
+}  // namespace jit
+}  // namespace paddle

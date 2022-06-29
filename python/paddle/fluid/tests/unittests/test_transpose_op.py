@@ -143,7 +143,9 @@ class TestAutoTuneTransposeOp(OpTest):
         }
 
     def initTestCase(self):
-        fluid.core.unitest_debug()
+        fluid.core.enable_autotune()
+        # Set a huge range to activate the auto-tune function.
+        fluid.core.set_autotune_range(-10, 10)
         self.shape = (1, 12, 256, 1)
         self.axis = (0, 3, 2, 1)
 

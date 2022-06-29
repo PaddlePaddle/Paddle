@@ -102,8 +102,10 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
     tracer.Get().CollectTraceData(&collector);
   }
   std::unique_ptr<NodeTrees> tree(
-      new NodeTrees(collector.HostEvents(), collector.RuntimeEvents(),
-                    collector.DeviceEvents(), collector.MemEvents(),
+      new NodeTrees(collector.HostEvents(),
+                    collector.RuntimeEvents(),
+                    collector.DeviceEvents(),
+                    collector.MemEvents(),
                     collector.OperatorSupplementEvents()));
   cpu_utilization_.RecordEndTimeInfo();
   ExtraInfo extrainfo;
@@ -117,7 +119,8 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
       collector.ThreadNames();
   for (const auto& kv : thread_names) {
     extrainfo.AddExtraInfo(string_format(std::string("%llu"), kv.first),
-                           std::string("%s"), kv.second.c_str());
+                           std::string("%s"),
+                           kv.second.c_str());
   }
   return std::unique_ptr<ProfilerResult>(
       new platform::ProfilerResult(std::move(tree), extrainfo));

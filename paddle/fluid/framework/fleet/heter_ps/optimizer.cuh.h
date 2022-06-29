@@ -37,8 +37,9 @@ class Optimizer {
   void initialize() {}
 
   __device__ void update_lr(const OptimizerConfig& optimizer_config,
-                            float& w,               // NOLINT
-                            float& g2sum, float g,  // NOLINT
+                            float& w,  // NOLINT
+                            float& g2sum,
+                            float g,  // NOLINT
                             float scale) {
     double add_g2sum = 0;
     double ratio = optimizer_config.learning_rate *
@@ -56,10 +57,12 @@ class Optimizer {
     g2sum += add_g2sum;
   }
 
-  __device__ void update_mf(const OptimizerConfig& optimizer_config, int n,
+  __device__ void update_mf(const OptimizerConfig& optimizer_config,
+                            int n,
                             float* w,
                             float& g2sum,  // NOLINT
-                            const float* g, float scale) {
+                            const float* g,
+                            float scale) {
     double add_g2sum = 0;
     double ratio = optimizer_config.mf_learning_rate *
                    sqrt(optimizer_config.mf_initial_g2sum /
@@ -105,13 +108,18 @@ class Optimizer {
         }
       }
     } else {
-      update_mf(optimizer_config, MF_DIM, &val.mf[1], val.mf[0], grad.mf_g,
+      update_mf(optimizer_config,
+                MF_DIM,
+                &val.mf[1],
+                val.mf[0],
+                grad.mf_g,
                 grad.show);
     }
   }
 
   __device__ void dy_mf_update_value(const OptimizerConfig& optimizer_config,
-                                     ValType* ptr, const GradType& grad) {
+                                     ValType* ptr,
+                                     const GradType& grad) {
     ptr->slot = grad.slot;
     ptr->show += grad.show;
     ptr->clk += grad.clk;
@@ -139,7 +147,10 @@ class Optimizer {
         }
       }
     } else {
-      update_mf(optimizer_config, ptr->mf_dim, &(ptr->mf[1]), ptr->mf[0],
+      update_mf(optimizer_config,
+                ptr->mf_dim,
+                &(ptr->mf[1]),
+                ptr->mf[0],
                 grad.mf_g,
                 grad.show);  // for local test
     }

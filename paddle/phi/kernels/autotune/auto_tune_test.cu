@@ -20,8 +20,8 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace tune = phi::autotune;

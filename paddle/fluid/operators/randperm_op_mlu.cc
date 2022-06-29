@@ -19,5 +19,5 @@ template <typename T>
 using kernel =
     paddle::operators::RandpermKernel<paddle::platform::MLUDeviceContext, T>;
 
-REGISTER_OP_MLU_KERNEL(randperm, kernel<int64_t>, kernel<int>, kernel<float>,
-                       kernel<double>);
+REGISTER_OP_MLU_KERNEL(
+    randperm, kernel<int64_t>, kernel<int>, kernel<float>, kernel<double>);

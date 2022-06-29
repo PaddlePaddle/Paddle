@@ -86,13 +86,17 @@ class AllcloseOpVarTypeInference : public framework::VarTypeInference {
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
-DECLARE_INFER_SHAPE_FUNCTOR(allclose, AllcloseInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(allclose,
+                            AllcloseInferShapeFunctor,
                             PD_INFER_META(phi::AllValueCompareInferMeta));
 REGISTER_OPERATOR(
-    allclose, ops::AllcloseOp, ops::AllcloseOpMaker,
+    allclose,
+    ops::AllcloseOp,
+    ops::AllcloseOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::AllcloseOpVarTypeInference, AllcloseInferShapeFunctor);
+    ops::AllcloseOpVarTypeInference,
+    AllcloseInferShapeFunctor);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(allclose)

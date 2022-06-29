@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -1159,14 +1159,6 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
                               const std::vector<int32_t>& perm,
                               Tensor* out) {
   const int rank = perm.size();
-  PADDLE_ENFORCE_LT(rank,
-                    phi::DDim::kMaxRank,
-                    platform::errors::OutOfRange(
-                        "The maximum dimension rank of tensor is "
-                        "expected to be less than %d, but here is %d.",
-                        phi::DDim::kMaxRank,
-                        rank));
-
   auto ret = TransposeSimple<T>::run(ctx, in, perm, out);
   if (!ret) {
     auto* tuner =

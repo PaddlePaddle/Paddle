@@ -33,8 +33,6 @@ void AutoTuneStatus::DisableAutoTune() {
   Init();
 }
 
-void AutoTuneStatus::DebugForUnittest() { use_autotune_ = true; }
-
 void AutoTuneStatus::Update() {
   current_steps_id_ += 1;
   if (!FLAGS_use_autotune) {

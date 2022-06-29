@@ -18,10 +18,16 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void GenAnchors(T* out, const T* aspect_ratios, const int ar_num,
-                           const T* anchor_sizes, const int as_num,
-                           const T* stride, const int sd_num, const int height,
-                           const int width, const T offset) {
+__global__ void GenAnchors(T* out,
+                           const T* aspect_ratios,
+                           const int ar_num,
+                           const T* anchor_sizes,
+                           const int as_num,
+                           const T* stride,
+                           const int sd_num,
+                           const int height,
+                           const int width,
+                           const T offset) {
   int num_anchors = as_num * ar_num;
   int box_num = height * width * num_anchors;
   CUDA_KERNEL_LOOP(i, box_num) {
@@ -58,7 +64,9 @@ __global__ void GenAnchors(T* out, const T* aspect_ratios, const int ar_num,
 }
 
 template <typename T>
-__global__ void SetVariance(T* out, const T* var, const int vnum,
+__global__ void SetVariance(T* out,
+                            const T* var,
+                            const int vnum,
                             const int num) {
   CUDA_KERNEL_LOOP(i, num) { out[i] = var[i % vnum]; }
 }
@@ -103,16 +111,22 @@ class AnchorGeneratorOpCUDAKernel : public framework::OpKernel<T> {
     framework::Tensor sd;
     framework::TensorFromVector(stride, ctx.device_context(), &sd);
 
-    GenAnchors<T><<<grid, block, 0, stream>>>(
-        anchors->data<T>(), ar.data<T>(), aspect_ratios.size(), as.data<T>(),
-        anchor_sizes.size(), sd.data<T>(), stride.size(), height, width,
-        offset);
+    GenAnchors<T><<<grid, block, 0, stream>>>(anchors->data<T>(),
+                                              ar.data<T>(),
+                                              aspect_ratios.size(),
+                                              as.data<T>(),
+                                              anchor_sizes.size(),
+                                              sd.data<T>(),
+                                              stride.size(),
+                                              height,
+                                              width,
+                                              offset);
 
     framework::Tensor v;
     framework::TensorFromVector(variances, ctx.device_context(), &v);
     grid = (box_num * 4 + block - 1) / block;
-    SetVariance<T><<<grid, block, 0, stream>>>(vars->data<T>(), v.data<T>(),
-                                               variances.size(), box_num * 4);
+    SetVariance<T><<<grid, block, 0, stream>>>(
+        vars->data<T>(), v.data<T>(), variances.size(), box_num * 4);
   }
 };  // namespace operators
 

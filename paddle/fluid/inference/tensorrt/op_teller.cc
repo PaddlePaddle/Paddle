@@ -1256,6 +1256,28 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           }
         }
       }
+      // not support following four inputs for slice in paddle-trt
+      auto slice_inputs = desc.Inputs();  // its size == 5
+      if (slice_inputs.find("StartsTensor") != slice_inputs.end()) {
+        if (desc.Input("StartsTensor").size()) {
+          return false;
+        }
+      }
+      if (slice_inputs.find("EndsTensor") != slice_inputs.end()) {
+        if (desc.Input("EndsTensor").size()) {
+          return false;
+        }
+      }
+      if (slice_inputs.find("StartsTensorList") != slice_inputs.end()) {
+        if (desc.Input("StartsTensorList").size()) {
+          return false;
+        }
+      }
+      if (slice_inputs.find("EndsTensorList") != slice_inputs.end()) {
+        if (desc.Input("EndsTensorList").size()) {
+          return false;
+        }
+      }
     }
 
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||

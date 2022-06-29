@@ -117,7 +117,8 @@ struct DataRecord {
   }
 };
 
-void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
+void PrepareInputs(std::vector<PaddleTensor> *input_slots,
+                   DataRecord *data,
                    int batch_size) {
   PaddleTensor turns_tensor[FLAGS_max_turn_num];
   PaddleTensor turns_mask_tensor[FLAGS_max_turn_num];
@@ -203,8 +204,8 @@ void profile(bool use_mkldnn = false) {
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
     // Enable all the mkldnn supported ops except conv3d in dam
-    std::unordered_set<std::string> op_list = {"softmax", "elementwise_add",
-                                               "relu", "fc"};
+    std::unordered_set<std::string> op_list = {
+        "softmax", "elementwise_add", "relu", "fc"};
     cfg.SetMKLDNNOp(op_list);
     cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
     cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
@@ -215,18 +216,23 @@ void profile(bool use_mkldnn = false) {
   SetInput(&input_slots_all);
 
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+                 input_slots_all,
+                 &outputs,
+                 FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
-    PADDLE_ENFORCE_GT(outputs.size(), 0,
+    PADDLE_ENFORCE_GT(outputs.size(),
+                      0,
                       paddle::platform::errors::Fatal(
                           "The size of outputs should be greater than 0."));
     auto output = outputs.back();
-    PADDLE_ENFORCE_GT(output.size(), 0,
+    PADDLE_ENFORCE_GT(output.size(),
+                      0,
                       paddle::platform::errors::Fatal(
                           "The size of output should be greater than 0."));
     size_t size = GetSize(output[0]);
-    PADDLE_ENFORCE_GT(size, 0,
+    PADDLE_ENFORCE_GT(size,
+                      0,
                       paddle::platform::errors::Fatal(
                           "The size of output should be greater than 0."));
     float *result = static_cast<float *>(output[0].data.data());
@@ -260,8 +266,8 @@ void compare(bool use_mkldnn = false) {
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
     // Enable all the mkldnn supported ops except conv3d in dam
-    std::unordered_set<std::string> op_list = {"softmax", "elementwise_add",
-                                               "relu"};
+    std::unordered_set<std::string> op_list = {
+        "softmax", "elementwise_add", "relu"};
     cfg.SetMKLDNNOp(op_list);
     cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
     cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");

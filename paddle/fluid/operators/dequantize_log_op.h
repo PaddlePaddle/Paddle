@@ -28,8 +28,10 @@ namespace operators {
 
 template <typename DeviceContext, typename T>
 struct DequantizeFunctor {
-  void operator()(const DeviceContext& dev_ctx, const framework::Tensor* in,
-                  const framework::Tensor* dict, framework::Tensor* out);
+  void operator()(const DeviceContext& dev_ctx,
+                  const framework::Tensor* in,
+                  const framework::Tensor* dict,
+                  framework::Tensor* out);
 };
 
 template <typename DeviceContext, typename T>
