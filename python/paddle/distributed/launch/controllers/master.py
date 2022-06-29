@@ -316,5 +316,5 @@ class ETCDMaster(Master):
     def stop(self):
         if hasattr(self, 'beat_thread'):
             self.ctx.status.done()
-            # TODO(kuizhiqing) thread should exit
+            # daemon thread
             #self.beat_thread.join()
