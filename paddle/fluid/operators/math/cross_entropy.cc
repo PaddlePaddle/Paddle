@@ -28,7 +28,8 @@ namespace operators {
 namespace math {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
@@ -59,19 +60,25 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
       for (int j = 0; j < num_remain; j++) {
         int lbl = static_cast<int>(label_data[i * num_remain + j]);
         if (lbl != ignore_index_) {
-          PADDLE_ENFORCE_GE(lbl, 0,
+          PADDLE_ENFORCE_GE(lbl,
+                            0,
                             platform::errors::OutOfRange(
                                 "label value should >= 0 when label "
                                 "value(%f) not equal to ignore_index(%f)",
-                                lbl, ignore_index_));
+                                lbl,
+                                ignore_index_));
           PADDLE_ENFORCE_LT(
-              lbl, axis_dim_,
+              lbl,
+              axis_dim_,
               platform::errors::OutOfRange(
                   "label value should less than the shape of axis dimension "
                   "when label value(%f) not equal to ignore_index(%f), But "
                   "received label value as %ld and shape of axis dimension "
                   "is %d",
-                  lbl, ignore_index_, lbl, axis_dim_));
+                  lbl,
+                  ignore_index_,
+                  lbl,
+                  axis_dim_));
         }
         int index = i * num_classes + lbl * num_remain + j;
         int loss_idx = i * num_remain + j;
@@ -93,9 +100,13 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
 
 template <typename DeviceContext, typename T>
 void CrossEntropyFunctor<DeviceContext, T>::operator()(
-    const DeviceContext& ctx, framework::Tensor* out,
-    const framework::Tensor* prob, const framework::Tensor* labels,
-    const bool softLabel, const int ignore_index, const int axis_dim) {
+    const DeviceContext& ctx,
+    framework::Tensor* out,
+    const framework::Tensor* prob,
+    const framework::Tensor* labels,
+    const bool softLabel,
+    const int ignore_index,
+    const int axis_dim) {
   if (softLabel) {
     const int batch_size = prob->dims()[0];
     const int num_classes = prob->dims()[1];
@@ -111,8 +122,8 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
               .reshape(batch_axis_remain)
               .sum(Eigen::DSizes<int, 1>(1)));
   } else {
-    HardLabelCrossEntropyCPUFunctorImpl<T> functor_impl(out, prob, labels,
-                                                        ignore_index, axis_dim);
+    HardLabelCrossEntropyCPUFunctorImpl<T> functor_impl(
+        out, prob, labels, ignore_index, axis_dim);
     framework::VisitIntDataType(framework::TransToProtoVarType(labels->dtype()),
                                 functor_impl);
   }

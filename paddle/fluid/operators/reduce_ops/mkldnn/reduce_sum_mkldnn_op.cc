@@ -29,8 +29,11 @@ template <typename T>
 class ReduceSumGradMKLDNNKernel : public ReduceGradMKLDNNKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    this->RunKernel(ctx, dnnl::algorithm::binary_add,
-                    dnnl::algorithm::reduction_sum, 0.0f, 1.0f);
+    this->RunKernel(ctx,
+                    dnnl::algorithm::binary_add,
+                    dnnl::algorithm::reduction_sum,
+                    0.0f,
+                    1.0f);
   }
 };
 
@@ -38,10 +41,14 @@ class ReduceSumGradMKLDNNKernel : public ReduceGradMKLDNNKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(reduce_sum, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(reduce_sum,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::ReduceSumMKLDNNKernel<float>,
                    ops::ReduceSumMKLDNNKernel<paddle::platform::bfloat16>);
 
-REGISTER_OP_KERNEL(reduce_sum_grad, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(reduce_sum_grad,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::ReduceSumGradMKLDNNKernel<float>,
                    ops::ReduceSumGradMKLDNNKernel<paddle::platform::bfloat16>);

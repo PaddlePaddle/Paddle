@@ -40,7 +40,7 @@ class InterpreterCore {
   InterpreterCore(const platform::Place& place,
                   const BlockDesc& block,
                   const std::set<std::string>& skip_gc_vars,
-                  VariableScope* global_scope);
+                  Scope* scope);
 
   ~InterpreterCore();
 
@@ -112,7 +112,10 @@ class InterpreterCore {
   // new program is deleted.
   std::shared_ptr<ProgramDesc> copy_program_{nullptr};
 
-  VariableScope* global_scope_;  // not owned
+  // from variable scope
+  std::vector<Variable*> var_list_;
+  std::map<std::string, int> name2id_;
+  std::vector<VariableMetaInfo> vec_meta_info_;
 
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
@@ -125,6 +128,10 @@ class InterpreterCore {
   std::atomic<size_t> unfinished_op_numer_{0};
   std::vector<std::vector<size_t>> input_var2op_info_;
 
+  VariableScope var_scope_;
+  bool create_local_scope_{true};
+  Scope* local_scope_{nullptr};  // not owned
+
   StreamAnalyzer stream_analyzer_;
   EventsWaiter main_thread_blocker_;
   std::shared_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
@@ -134,8 +141,6 @@ class InterpreterCore {
 
   std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;
-  bool create_local_scope_{true};
-  Scope* local_scope_{nullptr};  // not owned
 
   std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_deps_;
   std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_var_ref_;
@@ -144,7 +149,7 @@ class InterpreterCore {
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(
     const platform::Place& place,
     const ProgramDesc& prog,
-    VariableScope* global_scope,
+    Scope* global_scope,
     const std::vector<std::string>& fetch_names = {},
     const std::set<std::string>& skip_gc_vars = {});
 

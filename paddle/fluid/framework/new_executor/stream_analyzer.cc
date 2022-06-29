@@ -26,10 +26,12 @@ StreamAnalyzer::StreamAnalyzer(const platform::Place& place) : place_(place) {
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::EmplaceDeviceContexts(
-        &d2h_ctxs_, {place},
+        &d2h_ctxs_,
+        {place},
         /*disable_setting_default_stream_for_allocator=*/true);
     platform::EmplaceDeviceContexts(
-        &h2d_ctxs_, {place},
+        &h2d_ctxs_,
+        {place},
         /*disable_setting_default_stream_for_allocator=*/true);
 #else
     PADDLE_THROW(
@@ -96,8 +98,10 @@ std::vector<size_t> StreamAnalyzer::GetNeedEventVarIds(
 }
 
 void StreamAnalyzer::ConstructEventForVar(
-    const std::vector<size_t>& new_event_var_id, Instruction* next_instr,
-    platform::DeviceType waiter_type, const platform::Place& place) {
+    const std::vector<size_t>& new_event_var_id,
+    Instruction* next_instr,
+    platform::DeviceType waiter_type,
+    const platform::Place& place) {
   for (auto var_id : new_event_var_id) {
     if (var_id2event_.count(var_id) == 0) {
       auto device_event = std::make_shared<platform::DeviceEvent>(
@@ -124,11 +128,14 @@ void StreamAnalyzer::Schedule(const std::vector<size_t>& downstream_ops,
     } else {
       // Always insert events between different stream
       auto need_event_var_ids = GetNeedEventVarIds(cur_instr, next_instr);
-      event_var_ids.insert(event_var_ids.end(), need_event_var_ids.begin(),
+      event_var_ids.insert(event_var_ids.end(),
+                           need_event_var_ids.begin(),
                            need_event_var_ids.end());
 
       auto waiter_type = GetWaiterType(next_instr);
-      ConstructEventForVar(need_event_var_ids, &next_instr, waiter_type,
+      ConstructEventForVar(need_event_var_ids,
+                           &next_instr,
+                           waiter_type,
                            cur_instr.DeviceContext().GetPlace());
 
       if (waiter_type == platform::kCPU) {  // GPU -> CPU
@@ -146,8 +153,8 @@ void StreamAnalyzer::Schedule(const std::vector<size_t>& downstream_ops,
   VLOG(3) << cur_instr.OpBase()->Type()
           << " event_var_ids.size: " << event_var_ids.size();
   for (auto var_id : event_var_ids) {
-    cur_instr.AddOutputEvent(var_id, var_id2event_.at(var_id),
-                             platform::kCUDA /*not used*/);
+    cur_instr.AddOutputEvent(
+        var_id, var_id2event_.at(var_id), platform::kCUDA /*not used*/);
   }
 }
 

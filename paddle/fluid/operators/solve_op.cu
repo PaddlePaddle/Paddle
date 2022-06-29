@@ -16,7 +16,8 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(solve, ops::SolveKernel<plat::CUDADeviceContext, float>,
+REGISTER_OP_CUDA_KERNEL(solve,
+                        ops::SolveKernel<plat::CUDADeviceContext, float>,
                         ops::SolveKernel<plat::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(solve_grad,

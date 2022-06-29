@@ -72,9 +72,15 @@ class FillOpVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    fill, ops::FillOp, ops::FillOpMaker, ops::FillOpVarTypeInference,
+    fill,
+    ops::FillOp,
+    ops::FillOpMaker,
+    ops::FillOpVarTypeInference,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(fill, ops::FillKernel<float>, ops::FillKernel<double>,
-                       ops::FillKernel<int64_t>, ops::FillKernel<int>,
+REGISTER_OP_CPU_KERNEL(fill,
+                       ops::FillKernel<float>,
+                       ops::FillKernel<double>,
+                       ops::FillKernel<int64_t>,
+                       ops::FillKernel<int>,
                        ops::FillKernel<paddle::platform::float16>);

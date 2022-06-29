@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -686,11 +686,9 @@ class MSRAInitializer(Initializer):
         \frac{gain}{\sqrt{{fan\_in}}}
 
     Args:
-        uniform (bool): whether to use uniform or normal distribution
-        fan_in (float32|None): fan_in (in_features) of trainable Tensor,\
-        If None, it will be infered automaticly. If you don't want to use in_features of the Tensor,\
-        you can set the value of 'fan_in' smartly by yourself. default is None.
-        seed (int32): random seed
+        uniform (bool, optional): whether to use uniform or normal distribution
+        fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be infered automaticly. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. default is None.
+        seed (int32, optional): random seed.
         negative_slope (float, optional): negative_slope (only used with leaky_relu). default is 0.0.
         nonlinearity(str, optional): the non-linear function. default is relu.
 

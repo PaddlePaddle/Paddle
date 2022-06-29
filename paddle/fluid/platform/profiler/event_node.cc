@@ -93,11 +93,9 @@ void NodeTrees::BuildTrees(
        ++it) {
     auto dst_iter =
         correlation_id2runtime_event_node.find((*it)->CorrelationId());
-    PADDLE_ENFORCE_NE(
-        dst_iter,
-        correlation_id2runtime_event_node.end(),
-        platform::errors::NotFound("Unknown device events, "
-                                   "no corresponding cuda runtime events"));
+    if (dst_iter == correlation_id2runtime_event_node.end()) {
+      continue;
+    }
     dst_iter->second->AddDeviceTraceEventNode(*it);
   }
   // construct thread2mem_event_nodes

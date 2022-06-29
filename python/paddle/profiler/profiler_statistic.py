@@ -610,18 +610,17 @@ class MemorySummary:
 
     class MemoryItem:
 
-        def __init__(self, event_name, place):
+        def __init__(self, event_name, place, memory_type='Allocated'):
             self.event_name = event_name
-            self.place = device_type
+            self.place = place
             self.allocation_count = 0
             self.free_count = 0
             self.allocation_size = 0
             self.free_size = 0
             self.increase_size = 0
-            self.manipulation_type = TracerMemEventType.Allocate
+            self.memory_type = memory_type
 
         def add_memory_record(self, size, allocation_type):
-            self.manipulation_type = allocation_type
             if allocation_type == TracerMemEventType.Allocate or allocation_type == TracerMemEventType.ReservedAllocate:
                 self.allocation_count += 1
                 self.allocation_size += size
@@ -632,29 +631,39 @@ class MemorySummary:
 
             else:
                 print("No corresponding type.")
+            self.increase_size = self.allocation_size - self.free_size
 
     def __init__(self):
-        self.items = collections.defaultdict(
+        self.allocated_items = collections.defaultdict(
+            dict)  # for memory summary, device type: event
+        self.reserved_items = collections.defaultdict(
             dict)  # for memory summary, device type: event
         self.peak_allocation_values = collections.defaultdict(int)
         self.peak_reserved_values = collections.defaultdict(int)
 
     def _analyse_node_memory(self, event_name, node):
         for memnode in node.mem_node:  # self mem node
-            if event_name not in self.items[memnode.place]:
-                self.items[
-                    memnode.place][event_name] = MemorySummary.MemoryItem(
-                        event_name, memnode.place)
-            self.items[memnode.place][event_name].add_memory_record(
-                memnode.increase_bytes, memnode.type)
-            if memnode.allocation_type == TracerMemEventType.Allocate or memnode.allocation_type == TracerMemEventType.Free:
-                self.peak_allocation_values[memnode.place] = max(
-                    self.peak_allocation_values[memnode.place],
-                    memnode.peak_allocated)
-            elif memnode.allocation_type == TracerMemEventType.ReservedAllocate or memnode.allocation_type == TracerMemEventType.ReservedFree:
-                self.peak_reserved_values[memnode.place] = max(
-                    self.peak_reserved_values[memnode.place],
-                    memnode.peak_reserved)
+            if memnode.type == TracerMemEventType.Allocate or memnode.type == TracerMemEventType.Free:
+                if event_name not in self.allocated_items[memnode.place]:
+                    self.allocated_items[
+                        memnode.place][event_name] = MemorySummary.MemoryItem(
+                            event_name, memnode.place, 'Allocated')
+                self.allocated_items[
+                    memnode.place][event_name].add_memory_record(
+                        memnode.increase_bytes, memnode.type)
+            elif memnode.type == TracerMemEventType.ReservedAllocate or memnode.type == TracerMemEventType.ReservedFree:
+                if event_name not in self.reserved_items[memnode.place]:
+                    self.reserved_items[
+                        memnode.place][event_name] = MemorySummary.MemoryItem(
+                            event_name, memnode.place, 'Reserved')
+                self.reserved_items[
+                    memnode.place][event_name].add_memory_record(
+                        memnode.increase_bytes, memnode.type)
+            self.peak_allocation_values[memnode.place] = max(
+                self.peak_allocation_values[memnode.place],
+                memnode.peak_allocated)
+            self.peak_reserved_values[memnode.place] = max(
+                self.peak_reserved_values[memnode.place], memnode.peak_reserved)
 
     def parse(self, nodetrees):
         r"""
@@ -667,10 +676,8 @@ class MemorySummary:
                     continue
                 if host_node.type == TracerEventType.Operator:
                     for child in host_node.children_node:
-                        for memnode in child.mem_node:
-                            self._analyse_node_memory(host_node.name, memnode)
-                for memnode in host_node.mem_node:
-                    self._analyse_node_memory(host_node.name, memnode)
+                        self._analyse_node_memory(host_node.name, child)
+                self._analyse_node_memory(host_node.name, host_node)
 
 
 class StatisticData:
@@ -1571,8 +1578,8 @@ def _build_table(statistic_data,
         append('')
 
     ###### Print Memory Summary Report ######
-    if statistic_data.memory_summary.items:
-        for device_type, memory_events in statistic_data.memory_summary.items.items(
+    if statistic_data.memory_summary.allocated_items or statistic_data.memory_summary.reserved_items:
+        for device_type, memory_events in statistic_data.memory_summary.allocated_items.items(
         ):
             all_row_values = []
             sorted_items = sorted(memory_events.items(),
@@ -1581,10 +1588,21 @@ def _build_table(statistic_data,
 
             for event_name, item in sorted_items:
                 row_values = [
-                    event_name,
-                    str(item.manipulation_type).split('.')[1],
-                    item.allocation_count, item.free_count,
-                    item.allocation_size, item.free_size, item.increase_size
+                    event_name, item.memory_type, item.allocation_count,
+                    item.free_count, item.allocation_size, item.free_size,
+                    item.increase_size
+                ]
+                all_row_values.append(row_values)
+
+            sorted_reserved_items = sorted(statistic_data.memory_summary.
+                                           reserved_items[device_type].items(),
+                                           key=lambda x: x[1].increase_size,
+                                           reverse=True)
+            for event_name, item in sorted_reserved_items:
+                row_values = [
+                    event_name, item.memory_type, item.allocation_count,
+                    item.free_count, item.allocation_size, item.free_size,
+                    item.increase_size
                 ]
                 all_row_values.append(row_values)
 
@@ -1596,10 +1614,10 @@ def _build_table(statistic_data,
             row_format_list = [""]
             header_sep_list = [""]
             line_length_list = [-SPACING_SIZE]
-            name_column_width = 30
+            name_column_width = 50
             number_column_width = 15
             add_column(name_column_width)
-            add_column(20)
+            add_column(12)
             add_column(number_column_width)
             add_column(number_column_width)
             add_column(number_column_width)
@@ -1615,9 +1633,11 @@ def _build_table(statistic_data,
                 add_title(line_length,
                           "Memory Summary - {}".format(device_type)))
             append('Peak Allocated Memory: {}'.format(
-                memory_summary.peak_allocation_values[device_type]))
+                statistic_data.memory_summary.
+                peak_allocation_values[device_type]))
             append('Peak Reserved Memory: {}'.format(
-                memory_summary.peak_reserved_values[device_type]))
+                statistic_data.memory_summary.peak_reserved_values[device_type])
+                   )
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)

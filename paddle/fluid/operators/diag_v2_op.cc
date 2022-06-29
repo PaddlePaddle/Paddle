@@ -62,8 +62,10 @@ class DiagV2GradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "X", "X", "DiagV2Grad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   framework::GradVarName("X"), "DiagV2Grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   framework::GradVarName("X"),
+                   "DiagV2Grad");
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
@@ -99,13 +101,17 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(DiagGradV2NoNeedBufferVarsInferer, "X");
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(diag_v2, DiagInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(diag_v2,
+                            DiagInferShapeFunctor,
                             PD_INFER_META(phi::DiagInferMeta));
 
-REGISTER_OPERATOR(diag_v2, ops::DiagV2Op, ops::DiagV2OpMaker,
+REGISTER_OPERATOR(diag_v2,
+                  ops::DiagV2Op,
+                  ops::DiagV2OpMaker,
                   ops::DiagV2GradOpMaker<paddle::framework::OpDesc>,
                   ops::DiagV2GradOpMaker<paddle::imperative::OpBase>,
                   DiagInferShapeFunctor);
 
-REGISTER_OPERATOR(diag_v2_grad, ops::DiagV2GradOp,
+REGISTER_OPERATOR(diag_v2_grad,
+                  ops::DiagV2GradOp,
                   ops::DiagGradV2NoNeedBufferVarsInferer);

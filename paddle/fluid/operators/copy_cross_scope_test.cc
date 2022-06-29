@@ -37,7 +37,8 @@ namespace p = paddle::platform;
 USE_NO_KERNEL_OP(copy_cross_scope);
 
 template <typename T>
-void Compare1(f::Scope* scope, const p::DeviceContext& ctx,
+void Compare1(f::Scope* scope,
+              const p::DeviceContext& ctx,
               std::string op_type) {
   // init
   auto var_x = scope->Var("tmp");
@@ -62,8 +63,8 @@ void Compare1(f::Scope* scope, const p::DeviceContext& ctx,
   // run
   f::AttributeMap attrs = {{"to_main_scope", false}, {"num_micro_batches", 3}};
   f::VariableNameMap output;
-  auto op = f::OpRegistry::CreateOp(op_type, {{"X", {"tmp"}}, {"Id", {"Id"}}},
-                                    output, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      op_type, {{"X", {"tmp"}}, {"Id", {"Id"}}}, output, attrs);
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);
@@ -85,7 +86,8 @@ void Compare1(f::Scope* scope, const p::DeviceContext& ctx,
 }
 
 template <typename T>
-void Compare2(f::Scope* scope, const p::DeviceContext& ctx,
+void Compare2(f::Scope* scope,
+              const p::DeviceContext& ctx,
               std::string op_type) {
   // init
   auto var_x = scope->Var("tmp");
@@ -110,8 +112,8 @@ void Compare2(f::Scope* scope, const p::DeviceContext& ctx,
   // run
   f::AttributeMap attrs = {{"to_main_scope", true}, {"num_micro_batches", 3}};
   f::VariableNameMap output;
-  auto op = f::OpRegistry::CreateOp(op_type, {{"X", {"tmp"}}, {"Id", {"Id"}}},
-                                    output, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      op_type, {{"X", {"tmp"}}, {"Id", {"Id"}}}, output, attrs);
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);

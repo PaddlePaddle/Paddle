@@ -60,10 +60,13 @@ class FrobeniusNormOpMaker : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce frobenius_norm"; }
 };
 
-DECLARE_INFER_SHAPE_FUNCTOR(frobenius_norm, FrobeniusNormInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(frobenius_norm,
+                            FrobeniusNormInferShapeFunctor,
                             PD_INFER_META(phi::ReduceInferMetaBase));
 
-REGISTER_OPERATOR(frobenius_norm, ops::ReduceOp, FrobeniusNormOpMaker,
+REGISTER_OPERATOR(frobenius_norm,
+                  ops::ReduceOp,
+                  FrobeniusNormOpMaker,
                   ops::FrobeniusNormOpGradMaker<paddle::framework::OpDesc>,
                   ops::FrobeniusNormOpGradMaker<paddle::imperative::OpBase>,
                   FrobeniusNormInferShapeFunctor);

@@ -63,15 +63,17 @@ TEST(DISABLED_tensorrt_tester_resnet50_quant, multi_thread4_trt_int8_bz1) {
   paddle_infer::Config config;
   config.SetModel(FLAGS_int8dir);
   config.EnableUseGpu(1000, 0);
-  config.EnableTensorRtEngine(1 << 20, 10, 3,
-                              paddle_infer::PrecisionType::kInt8, false, false);
+  config.EnableTensorRtEngine(
+      1 << 20, 10, 3, paddle_infer::PrecisionType::kInt8, false, false);
   // get infer results from multi threads
   std::vector<std::thread> threads;
   services::PredictorPool pred_pool(config, thread_num);
   for (int i = 0; i < thread_num; ++i) {
     threads.emplace_back(paddle::test::SingleThreadPrediction,
-                         pred_pool.Retrive(i), &input_data_map,
-                         &infer_output_data, 5);
+                         pred_pool.Retrive(i),
+                         &input_data_map,
+                         &infer_output_data,
+                         5);
   }
 
   // thread join & check outputs
@@ -123,12 +125,16 @@ TEST(DISABLED_tensorrt_tester_resnet50_quant, multi_thread_multi_instance) {
   for (int i = 0; i < thread_num; ++i) {
     if (i % 2 == 0) {
       threads.emplace_back(paddle::test::SingleThreadPrediction,
-                           pred_pool_fp32.Retrive(i), &input_data_fp32,
-                           &infer_output_data, 5);
+                           pred_pool_fp32.Retrive(i),
+                           &input_data_fp32,
+                           &infer_output_data,
+                           5);
     } else {
       threads.emplace_back(paddle::test::SingleThreadPrediction,
-                           pred_pool_quant.Retrive(i), &input_data_quant,
-                           &infer_output_data, 5);
+                           pred_pool_quant.Retrive(i),
+                           &input_data_quant,
+                           &infer_output_data,
+                           5);
     }
   }
 

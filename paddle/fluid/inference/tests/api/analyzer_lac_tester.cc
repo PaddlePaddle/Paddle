@@ -58,8 +58,8 @@ struct DataRecord {
       int bs_id = 0;
       for (auto one_sentence : datasets) {
         bs_id++;
-        one_batch.insert(one_batch.end(), one_sentence.begin(),
-                         one_sentence.end());
+        one_batch.insert(
+            one_batch.end(), one_sentence.begin(), one_sentence.end());
         lod.push_back(lod.back() + one_sentence.size());
         if (bs_id == bs) {
           bs_id = 0;
@@ -91,7 +91,8 @@ struct DataRecord {
   }
 };
 
-void GetOneBatch(std::vector<PaddleTensor> *input_slots, DataRecord *data,
+void GetOneBatch(std::vector<PaddleTensor> *input_slots,
+                 DataRecord *data,
                  int batch_size) {
   auto one_batch = data->NextBatch();
   PaddleTensor input_tensor;
@@ -99,7 +100,8 @@ void GetOneBatch(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   input_tensor.dtype = PaddleDType::INT64;
   TensorAssignData<int64_t>(&input_tensor, {one_batch.data}, one_batch.lod);
   PADDLE_ENFORCE_EQ(
-      batch_size, static_cast<int>(one_batch.lod.size() - 1),
+      batch_size,
+      static_cast<int>(one_batch.lod.size() - 1),
       paddle::platform::errors::Fatal("The lod size of one batch is invaild."));
   input_slots->assign({input_tensor});
 }
@@ -131,7 +133,9 @@ TEST(Analyzer_LAC, profile) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+                 input_slots_all,
+                 &outputs,
+                 FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
@@ -139,17 +143,20 @@ TEST(Analyzer_LAC, profile) {
         24, 25, 25, 25, 38, 30, 31, 14, 15, 44, 24, 25, 25, 25, 25, 25,
         44, 24, 25, 25, 25, 36, 42, 43, 44, 14, 15, 44, 14, 15, 44, 14,
         15, 44, 38, 39, 14, 15, 44, 22, 23, 23, 23, 23, 23, 23, 23};
-    PADDLE_ENFORCE_GT(outputs.size(), 0,
+    PADDLE_ENFORCE_GT(outputs.size(),
+                      0,
                       paddle::platform::errors::Fatal(
                           "The size of output should be greater than 0."));
     auto output = outputs.back();
-    PADDLE_ENFORCE_EQ(output.size(), 1UL,
+    PADDLE_ENFORCE_EQ(output.size(),
+                      1UL,
                       paddle::platform::errors::Fatal(
                           "The size of output should be equal to 1."));
     size_t size = GetSize(output[0]);
     size_t batch1_size = sizeof(lac_ref_data) / sizeof(int64_t);
     PADDLE_ENFORCE_GE(
-        size, batch1_size,
+        size,
+        batch1_size,
         paddle::platform::errors::Fatal("The size of batch is invaild."));
     int64_t *pdata = static_cast<int64_t *>(output[0].data.data());
     for (size_t i = 0; i < batch1_size; ++i) {

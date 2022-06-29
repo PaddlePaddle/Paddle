@@ -25,9 +25,8 @@ namespace tensorrt {
 namespace plugin {
 
 template <class T>
-__inline__ __device__ T BilinearInterpolate(const T* input_data,
-                                            const int height, const int width,
-                                            T y, T x) {
+__inline__ __device__ T BilinearInterpolate(
+    const T* input_data, const int height, const int width, T y, T x) {
   if (y < -1.f || y > height || x < -1.f || x > width) return 0;
   y = y <= 0.f ? 0.f : y;
   x = x <= 0.f ? 0.f : x;
@@ -59,12 +58,19 @@ __inline__ __device__ T BilinearInterpolate(const T* input_data,
 }
 
 template <typename T, typename OutT, bool USE_SMEM>
-__global__ void GPUROIAlignOpt(
-    const int nthreads, const T* __restrict__ input_data,
-    const T* __restrict__ input_rois, const float spatial_scale,
-    const int channels, const int height, const int width,
-    const int pooled_height, const int pooled_width, const int sampling_ratio,
-    const int num_rois, const bool aligned, OutT* __restrict__ output_data) {
+__global__ void GPUROIAlignOpt(const int nthreads,
+                               const T* __restrict__ input_data,
+                               const T* __restrict__ input_rois,
+                               const float spatial_scale,
+                               const int channels,
+                               const int height,
+                               const int width,
+                               const int pooled_height,
+                               const int pooled_width,
+                               const int sampling_ratio,
+                               const int num_rois,
+                               const bool aligned,
+                               OutT* __restrict__ output_data) {
   const int batch = blockIdx.x;
   const int channel = blockIdx.y;
   const T* offset_input_data =
@@ -138,7 +144,8 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
                                              const int pooled_height,
                                              const int pooled_width,
                                              float spatial_scale,
-                                             int sampling_ratio, bool aligned)
+                                             int sampling_ratio,
+                                             bool aligned)
     : data_type_(data_type),
       pooled_height_(pooled_height),
       pooled_width_(pooled_width),
@@ -147,7 +154,8 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
       aligned_(aligned) {
   bool data_type_is_valid = data_type_ == nvinfer1::DataType::kFLOAT ||
                             data_type_ == nvinfer1::DataType::kHALF;
-  PADDLE_ENFORCE_EQ(data_type_is_valid, true,
+  PADDLE_ENFORCE_EQ(data_type_is_valid,
+                    true,
                     platform::errors::InvalidArgument(
                         "TRT RoiAlign plugin only accepts kFLOAT(%d) or "
                         "kHALF(%d) data type, but the received data type = %d",
@@ -155,36 +163,44 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
                         static_cast<int>(nvinfer1::DataType::kHALF),
                         static_cast<int>(data_type_)));
 
-  PADDLE_ENFORCE_GT(pooled_height_, 0,
+  PADDLE_ENFORCE_GT(pooled_height_,
+                    0,
                     platform::errors::InvalidArgument(
                         "TRT RoiAlign plugin only accepts pooled_height "
                         "greater than %d, but the received pooled_height = %d",
-                        0, pooled_height_));
+                        0,
+                        pooled_height_));
 
-  PADDLE_ENFORCE_GT(pooled_width_, 0,
+  PADDLE_ENFORCE_GT(pooled_width_,
+                    0,
                     platform::errors::InvalidArgument(
                         "TRT RoiAlign plugin only accepts pooled_width greater "
                         "than %d, but the received pooled_width = %d",
-                        0, pooled_height_));
+                        0,
+                        pooled_height_));
 
-  PADDLE_ENFORCE_GT(spatial_scale_, 0.f,
+  PADDLE_ENFORCE_GT(spatial_scale_,
+                    0.f,
                     platform::errors::InvalidArgument(
                         "TRT RoiAlign plugin only accepts spatial_scale "
                         "greater than %f, but the received spatial_scale = %f",
-                        0, spatial_scale_));
+                        0,
+                        spatial_scale_));
 
   int smem_per_block = -1;
   int device = -1;
   cudaGetDevice(&device);
 
   PADDLE_ENFORCE_GE(
-      device, 0,
+      device,
+      0,
       platform::errors::InvalidArgument(
           "The cuda device ID should be greater than %d, but device ID is %d",
-          0, device));
+          0,
+          device));
 
-  cudaDeviceGetAttribute(&smem_per_block, cudaDevAttrMaxSharedMemoryPerBlock,
-                         device);
+  cudaDeviceGetAttribute(
+      &smem_per_block, cudaDevAttrMaxSharedMemoryPerBlock, device);
   smem_per_block_ = smem_per_block;
 }
 
@@ -199,26 +215,33 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(void const* data, size_t length) {
   int device = -1;
   cudaGetDevice(&device);
   PADDLE_ENFORCE_GE(
-      device, 0,
+      device,
+      0,
       platform::errors::InvalidArgument(
           "The cuda device ID should be greater than %d, but device ID is %d",
-          0, device));
-  cudaDeviceGetAttribute(&smem_per_block, cudaDevAttrMaxSharedMemoryPerBlock,
-                         device);
+          0,
+          device));
+  cudaDeviceGetAttribute(
+      &smem_per_block, cudaDevAttrMaxSharedMemoryPerBlock, device);
   smem_per_block_ = smem_per_block;
 }
 
 nvinfer1::IPluginV2DynamicExt* RoiAlignPluginDynamic::clone() const
     TRT_NOEXCEPT {
-  auto* plugin =
-      new RoiAlignPluginDynamic(data_type_, pooled_height_, pooled_width_,
-                                spatial_scale_, sampling_ratio_, aligned_);
+  auto* plugin = new RoiAlignPluginDynamic(data_type_,
+                                           pooled_height_,
+                                           pooled_width_,
+                                           spatial_scale_,
+                                           sampling_ratio_,
+                                           aligned_);
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
 
 nvinfer1::DimsExprs RoiAlignPluginDynamic::getOutputDimensions(
-    int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
+    int outputIndex,
+    const nvinfer1::DimsExprs* inputs,
+    int nbInputs,
     nvinfer1::IExprBuilder& exprBuilder) TRT_NOEXCEPT {
   nvinfer1::DimsExprs ret{};
   ret.nbDims = 4;
@@ -230,7 +253,9 @@ nvinfer1::DimsExprs RoiAlignPluginDynamic::getOutputDimensions(
 }
 
 bool RoiAlignPluginDynamic::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc* inOut, int nbInputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc* inOut,
+    int nbInputs,
     int nbOutputs) TRT_NOEXCEPT {
   if (inOut[pos].format != nvinfer1::TensorFormat::kLINEAR) {
     return false;
@@ -242,11 +267,14 @@ bool RoiAlignPluginDynamic::supportsFormatCombination(
 }
 
 void RoiAlignPluginDynamic::configurePlugin(
-    const nvinfer1::DynamicPluginTensorDesc* in, int nbInputs,
-    const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) TRT_NOEXCEPT {}
+    const nvinfer1::DynamicPluginTensorDesc* in,
+    int nbInputs,
+    const nvinfer1::DynamicPluginTensorDesc* out,
+    int nbOutputs) TRT_NOEXCEPT {}
 
 size_t RoiAlignPluginDynamic::getWorkspaceSize(
-    const nvinfer1::PluginTensorDesc* inputs, int nbInputs,
+    const nvinfer1::PluginTensorDesc* inputs,
+    int nbInputs,
     const nvinfer1::PluginTensorDesc* outputs,
     int nbOutputs) const TRT_NOEXCEPT {
   return 0;
@@ -255,8 +283,11 @@ size_t RoiAlignPluginDynamic::getWorkspaceSize(
 template <typename T, typename OutT>
 int RoiAlignPluginDynamic::enqueue_impl(
     const nvinfer1::PluginTensorDesc* inputDesc,
-    const nvinfer1::PluginTensorDesc* outputDesc, const void* const* inputs,
-    void* const* outputs, void* workspace, cudaStream_t stream) {
+    const nvinfer1::PluginTensorDesc* outputDesc,
+    const void* const* inputs,
+    void* const* outputs,
+    void* workspace,
+    cudaStream_t stream) {
   auto in_dims = inputDesc[0].dims;
   auto rois_dims = inputDesc[1].dims;
   auto out_dims = outputDesc[0].dims;
@@ -276,18 +307,36 @@ int RoiAlignPluginDynamic::enqueue_impl(
   const int threads = 512;
 
   if (smem_per_block_ < width * height * sizeof(T)) {
-    GPUROIAlignOpt<T, OutT, false><<<blocks, threads, 0, stream>>>(
-        output_size, static_cast<const T*>(inputs[0]),
-        static_cast<const T*>(inputs[1]), spatial_scale_, channels, height,
-        width, pooled_height_, pooled_width_, sampling_ratio_, rois_num / batch,
-        aligned_, static_cast<OutT*>(outputs[0]));
+    GPUROIAlignOpt<T, OutT, false>
+        <<<blocks, threads, 0, stream>>>(output_size,
+                                         static_cast<const T*>(inputs[0]),
+                                         static_cast<const T*>(inputs[1]),
+                                         spatial_scale_,
+                                         channels,
+                                         height,
+                                         width,
+                                         pooled_height_,
+                                         pooled_width_,
+                                         sampling_ratio_,
+                                         rois_num / batch,
+                                         aligned_,
+                                         static_cast<OutT*>(outputs[0]));
   } else {
     GPUROIAlignOpt<T, OutT, false>
         <<<blocks, threads, width * height * sizeof(T), stream>>>(
-            output_size, static_cast<const T*>(inputs[0]),
-            static_cast<const T*>(inputs[1]), spatial_scale_, channels, height,
-            width, pooled_height_, pooled_width_, sampling_ratio_,
-            rois_num / batch, aligned_, static_cast<OutT*>(outputs[0]));
+            output_size,
+            static_cast<const T*>(inputs[0]),
+            static_cast<const T*>(inputs[1]),
+            spatial_scale_,
+            channels,
+            height,
+            width,
+            pooled_height_,
+            pooled_width_,
+            sampling_ratio_,
+            rois_num / batch,
+            aligned_,
+            static_cast<OutT*>(outputs[0]));
   }
 
   return cudaGetLastError() != cudaSuccess;
@@ -296,23 +345,26 @@ int RoiAlignPluginDynamic::enqueue_impl(
 int RoiAlignPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
                                    const nvinfer1::PluginTensorDesc* outputDesc,
                                    const void* const* inputs,
-                                   void* const* outputs, void* workspace,
+                                   void* const* outputs,
+                                   void* workspace,
                                    cudaStream_t stream) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(outputDesc[0].type, data_type_,
+  PADDLE_ENFORCE_EQ(outputDesc[0].type,
+                    data_type_,
                     platform::errors::InvalidArgument(
                         "TRT RoiAlignPluginDynamic expects outputDesc[0].type "
                         "equal to data_type_"));
 
   if (data_type_ == nvinfer1::DataType::kHALF) {
-    return enqueue_impl<float, half>(inputDesc, outputDesc, inputs, outputs,
-                                     workspace, stream);
+    return enqueue_impl<float, half>(
+        inputDesc, outputDesc, inputs, outputs, workspace, stream);
   }
-  return enqueue_impl<float, float>(inputDesc, outputDesc, inputs, outputs,
-                                    workspace, stream);
+  return enqueue_impl<float, float>(
+      inputDesc, outputDesc, inputs, outputs, workspace, stream);
 }
 
 nvinfer1::DataType RoiAlignPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* inputTypes,
+    int index,
+    const nvinfer1::DataType* inputTypes,
     int nbInputs) const TRT_NOEXCEPT {
   return inputTypes[0];
 }
@@ -386,7 +438,8 @@ nvinfer1::IPluginV2Ext* RoiAlignPluginDynamicCreator::createPlugin(
 }
 
 nvinfer1::IPluginV2Ext* RoiAlignPluginDynamicCreator::deserializePlugin(
-    const char* name, const void* serial_data,
+    const char* name,
+    const void* serial_data,
     size_t serial_length) TRT_NOEXCEPT {
   auto plugin = new RoiAlignPluginDynamic(serial_data, serial_length);
   plugin->setPluginNamespace(namespace_.c_str());

@@ -41,7 +41,9 @@ namespace details {
 
 struct FetchAsyncOpHandle : public OpHandleBase {
  public:
-  FetchAsyncOpHandle(ir::Node *node, FetchResultType *data, size_t offset,
+  FetchAsyncOpHandle(ir::Node *node,
+                     FetchResultType *data,
+                     size_t offset,
                      std::vector<Scope *> *local_scopes,
                      std::vector<Scope *> *local_exec_scopes,
                      bool return_merged);

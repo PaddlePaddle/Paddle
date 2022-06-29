@@ -272,7 +272,15 @@ for (int i = 0; i < 3 * 3; ++i) {
 #ifdef PADDLE_WITH_CUDA
 {
   std::vector<bool> src_vec = {
-      false, true, false, true, false, true, false, true, false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
   };
   paddle::framework::Tensor gpu_tensor;
   paddle::platform::CUDAPlace place;
@@ -294,7 +302,15 @@ for (int i = 0; i < 3 * 3; ++i) {
 #ifdef PADDLE_WITH_ASCEND_CL
 {
   std::vector<bool> src_vec = {
-      false, true, false, true, false, true, false, true, false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
   };
   paddle::framework::Tensor npu_tensor;
   paddle::platform::NPUPlace place(0);
@@ -360,8 +376,8 @@ TEST(TensorFromDLPack, Tensor) {
     gpu_ctx.Wait();
 
     // Copy from GPU to CPU tensor for comparison
-    paddle::framework::TensorCopy(gpu_tensor_from_dlpack, cpu_place, gpu_ctx,
-                                  &dst_tensor);
+    paddle::framework::TensorCopy(
+        gpu_tensor_from_dlpack, cpu_place, gpu_ctx, &dst_tensor);
     // Sync before Compare Tensors
     gpu_ctx.Wait();
     const int* src_ptr = src_vec.data();
@@ -519,7 +535,8 @@ TEST(Tensor, FromAndToStream) {
 
     std::istringstream iss(oss.str());
     TensorFromStream(
-        iss, &dst_tensor,
+        iss,
+        &dst_tensor,
         *platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
 
     int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());

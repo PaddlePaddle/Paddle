@@ -25,8 +25,8 @@ TEST(quant_int8, yolov3_resnet50) {
   config.EnableUseGpu(100, 0);
   config.SetModel(FLAGS_infer_model + "/model", FLAGS_infer_model + "/params");
   config.SwitchUseFeedFetchOps(false);
-  config.EnableTensorRtEngine(1 << 30, 1, 3, AnalysisConfig::Precision::kInt8,
-                              false, false);
+  config.EnableTensorRtEngine(
+      1 << 30, 1, 3, AnalysisConfig::Precision::kInt8, false, false);
 
   auto predictor = CreatePaddlePredictor(config);
   auto input_names = predictor->GetInputNames();
@@ -54,8 +54,8 @@ TEST(quant_int8, yolov3_resnet50) {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputTensor(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   out_data.resize(out_num);
   output_t->copy_to_cpu(out_data.data());
 }
