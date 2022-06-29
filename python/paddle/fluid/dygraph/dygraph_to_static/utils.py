@@ -1527,3 +1527,186 @@ def slice_is_num(slice_node):
         return True
 
     return False
+
+
+class NameScope:
+
+    def __init__(self):
+        """ 
+            A NameScope is a object which manager all the variable names. 
+            only FunctionDef and Controlflow node will have a namescope property.
+
+            type can be "function" and "controlflow"
+
+            we don't analyze the read only variable because they don't affect the analysis.
+        """
+        self.globals = set()
+        self.nonlocals = set()
+        self.args = set()
+        self.father = None  # point to the nearest function name scope.
+        self.w_vars = set()  # all qualified + normal names been stored
+        self.created = set(
+        )  # useful for control flow compatibility. may be remove later
+
+    def set_father(self, father):
+        self.father = father
+
+    def existed_vars(self):
+        """ vars existing in current scope. 
+            they must not contain qualified names.
+        """
+        local_vars = self.w_vars - self.globals - self.nonlocals - self.args
+        return set(filter(lambda x: '.' not in x, local_vars))
+
+    def created_vars(self):
+        return self.created
+
+    def modified_vars(self):
+        # may be globals / non-locals / args / qualified names and created_vars
+        return self.w_vars
+
+    def control_flow_vars(self):
+        valid_names = self.w_vars
+        tmp = self.father.global_vars & valid_names,
+        return {"global": tmp, "nonlocal": self.w_vars - tmp}
+
+    def global_vars(self):
+        return self.globals
+
+    def merge_from(self, name_scope):
+        self.globals |= name_scope.globals
+        self.nonlocals |= name_scope.nonlocals
+        self.args |= name_scope.args
+        self.w_vars |= name_scope.w_vars
+
+
+class FunctionNameLivenessAnalysis(gast.NodeVisitor):
+    """ analyze the liveness of a function.
+
+        every variables stored in this scope will be collected,
+        in addition with global/nonlocal information.
+
+        1. global variable is stored in node.var_globals.
+        2. nonlocal variable is stored in node.var_nonlocals.
+        3. arguments is stored in node.var_args.
+
+        For example:
+
+        def func(*args, **kargs):
+            a = 12
+            global i,j
+            nonlocal x,y
+            print(a)
+            i = k
+            for m in range(10):
+                q = 12
+        
+        After this visitor we have: 
+        # node is the FunctionDef node with name: "func"
+        node.pd_scope = NameScope(
+            globals = ['i', 'j'],
+            nonlocals = ['x', 'y'],
+            args = ['args', 'kargs'], 
+            wr_vars = ['a', 'i', 'q', 'm']
+        )
+    """
+
+    def __init__(self, root_node):
+        self.scope_node_stack = []  # controlflow, functiondef node
+        self.visit(root_node)
+
+    def _reset_name_scope(self, node):
+        # always reset the node as empty namescope.
+        setattr(node, "pd_scope", NameScope())
+
+    def _get_name_scope(self, node):
+        if not hasattr(node, "pd_scope"):
+            setattr(node, "pd_scope", NameScope())
+        return node.pd_scope
+
+    def _current_name_scope(self):
+        return self._get_name_scope(self.scope_node_stack[-1])
+
+    def _father_name_scope(self):
+        if len(self.scope_node_stack) == 1: return None
+        return self._get_name_scope(self.scope_node_stack[-2])
+
+    def _nearest_function_scope(self):
+        if len(self.scope_node_stack) == 1: return None
+        for node in self.scope_node_stack[-2::-1]:
+            if isinstance(node, gast.FunctionDef):
+                return self._get_name_scope(node)
+
+    def visit_Name(self, node):
+        self.generic_visit(node)
+        write_context = (gast.Store, gast.AugStore, gast.Del)
+        if isinstance(node.ctx, write_context):
+            self._current_name_scope().w_vars.add(node.id)
+
+    def visit_FunctionDef(self, node):
+
+        def pre_func():
+            self._current_name_scope().args |= set(
+                self._get_argument_names(node))
+
+        self._visit_scope_node(node, pre_func, None)
+
+    def _visit_scope_node(self, node, pre_func, post_func):
+        """ scope node main visit logic.
+            pre_func and post_func is callbacks
+        """
+        self._reset_name_scope(node)
+        self.scope_node_stack.append(node)
+        self._current_name_scope().father = self._nearest_function_scope()
+        if pre_func: pre_func()
+        self.generic_visit(node)
+        if post_func: post_func()
+        self.scope_node_stack.pop()
+
+    def _visit_controlflow_node(self, node):
+
+        def post_func():
+            self._father_name_scope().merge_from(self._current_name_scope())
+            self._current_name_scope().created = self._nearest_function_scope(
+            ).existed_vars() - node.before_created
+
+        def pre_func():
+            setattr(node, "before_created",
+                    self._nearest_function_scope().existed_vars())
+
+        self._visit_scope_node(node, pre_func, post_func)
+
+    def visit_For(self, node):
+        self._visit_controlflow_node(node)
+
+    def visit_While(self, node):
+        self._visit_controlflow_node(node)
+
+    def visit_If(self, node):
+        self._visit_controlflow_node(node)
+
+    def visit_Global(self, node):
+        self._current_name_scope().globals |= set(node.names)
+
+    def visit_Nonlocal(self, node):
+        self._current_name_scope().nonlocals |= set(node.names)
+
+    def visit_Attribute(self, node):
+        self.generic_visit(node)
+        write_context = (gast.Store, gast.AugStore, gast.Del)
+        if isinstance(node.ctx, write_context):
+            name = ast_to_source_code(node).strip()
+            self._current_name_scope().w_vars.add(name)
+
+    def _get_argument_names(self, node):
+        """ get all arguments name in the functiondef node.
+            this node is local to the function and shouldn't 
+            be created.
+        """
+        assert isinstance(
+            node, gast.FunctionDef), "Input node is not function define node"
+        names = [a for a in node.args.args]
+        names.append(node.args.vararg)
+        names.append(node.args.kwarg)
+        names = [i.id for i in names if i is not None]
+        return names
