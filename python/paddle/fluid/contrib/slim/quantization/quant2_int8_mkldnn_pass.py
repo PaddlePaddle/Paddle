@@ -432,7 +432,7 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'conv_transpose_bias_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_elementwise_add_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_concat_relu_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_activation_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'operator_activation_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'fc_fuse_pass',
                                  ['use_gpu', 'use_fc_padding'], [False, False])
         graph = self._apply_pass(graph, 'repeated_fc_relu_fuse_pass')
@@ -443,7 +443,6 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'matmul_transpose_reshape_fuse_pass')
         graph = self._apply_pass(graph, 'matmul_v2_transpose_reshape_fuse_pass')
         graph = self._apply_pass(graph, 'batch_norm_act_fuse_pass')
-        graph = self._apply_pass(graph, 'softplus_activation_mkldnn_fuse_pass')
         # the following pass should be the last one since it will work on all fused ops.
         graph = self._apply_pass(graph, 'runtime_context_cache_pass')
         return graph

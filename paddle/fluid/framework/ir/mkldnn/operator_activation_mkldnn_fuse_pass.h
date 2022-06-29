@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <string>
-
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -23,22 +21,18 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-/*
- * \brief   Fuse the Elementwise and activation operators into single
- * OneDNN's Elementwise with post-op.
- */
-class ElementwiseActivationOneDNNPass : public FusePassBase {
+class OperatorActivationMkldnnFusePass : public FusePassBase {
  public:
-  virtual ~ElementwiseActivationOneDNNPass() {}
+  virtual ~OperatorActivationMkldnnFusePass() {}
 
  protected:
   void ApplyImpl(Graph *graph) const override;
 
-  void FuseElementwiseAct(
+  void FuseOperatorAct(
       Graph *graph,
-      const std::string &elt_types,
-      const std::string &act_types,
-      const std::unordered_map<std::string, std::string> &attr_map) const;
+      const std::string &op_type,
+      std::string &act_type,
+      const std::unordered_map<std::string, std::string> &attrs_map) const;
 };
 
 }  // namespace ir
