@@ -106,7 +106,7 @@ cc_test(
   DEPS place glog gflags)
 
 if(WITH_MKLDNN)
-  set(MKLDNN_CTX_DEPS onednn_context)
+  set(MKLDNN_CTX_DEPS mkldnn)
 else()
   set(MKLDNN_CTX_DEPS)
 endif()
@@ -195,6 +195,7 @@ cc_library(
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
+
 cc_library(
   device_context
   SRCS device_context.cc
@@ -220,10 +221,13 @@ cc_library(
        ${MLU_CTX_DEPS}
        eigen3
        cpu_context
-       generator
-       cuda_stream)
+       generator)
 if(WITH_XPU)
   target_link_libraries(device_context xpu_context xpu_resource_pool)
+endif()
+
+if(WITH_MKLDNN)
+  target_link_libraries(device_context onednn_context)
 endif()
 
 cc_library(
