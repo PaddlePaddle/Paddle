@@ -3225,13 +3225,17 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   m.def("set_feed_variable",
-        static_cast<void (*)(
-            Scope *, const LoDTensor &, const std::string &, size_t)>(
-            &framework::SetFeedVariable));
+        static_cast<void (*)(  // NOLINT
+            Scope *,
+            const LoDTensor &,
+            const std::string &,
+            size_t)>(&framework::SetFeedVariable));
   m.def("set_feed_variable",
-        static_cast<void (*)(
-            Scope *, const Strings &, const std::string &, size_t)>(
-            &framework::SetFeedVariable));
+        static_cast<void (*)(  // NOLINT
+            Scope *,
+            const Strings &,
+            const std::string &,
+            size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",
         [](const Scope &scope,
            const std::string &var_name,
@@ -4601,20 +4605,18 @@ All parameter, weight, gradient are variables in Paddle.
            [](ParallelExecutor &self,
               const std::vector<std::string> &fetch_tensors,
               bool return_merged) -> py::object {
-             paddle::framework::FetchResultType ret;
-             {
-               pybind11::gil_scoped_release release;
-               ret = self.Run(fetch_tensors, return_merged);
-             }
-
-             // TODO(Ruibiao): Refactor the run interface of PE to avoid use
-             // boost::get here
              if (return_merged) {
-               return py::cast(
-                   std::move(boost::get<paddle::framework::FetchList>(ret)));
+               pybind11::gil_scoped_release release;
+               paddle::framework::FetchList ret =
+                   self.RunAndMerge(fetch_tensors);
+
+               return py::cast(std::move(ret));
              } else {
-               return py::cast(std::move(
-                   boost::get<paddle::framework::FetchUnmergedList>(ret)));
+               pybind11::gil_scoped_release release;
+               paddle::framework::FetchUnmergedList ret =
+                   self.Run(fetch_tensors);
+
+               return py::cast(std::move(ret));
              }
            })
       .def("device_count", &ParallelExecutor::DeviceCount);
