@@ -208,6 +208,19 @@ def _new_ring_id():
     return len(_get_group_map()) + max(_get_global_env().nrings, 9)
 
 
+def _get_reduce_op(reduce_op, func_name):
+    if reduce_op == ReduceOp.SUM:
+        return core.ReduceOp.SUM
+    elif reduce_op == ReduceOp.MAX:
+        return core.ReduceOp.MAX
+    elif reduce_op == ReduceOp.MIN:
+        return core.ReduceOp.MIN
+    elif reduce_op == ReduceOp.PROD:
+        return core.ReduceOp.PRODUCT
+    else:
+        raise ValueError("Unknown reduce_op type for {}.".format(func_name))
+
+
 def get_group(id=0):
     """
 
@@ -675,16 +688,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         return
 
     if in_dygraph_mode():
-        if op == ReduceOp.SUM:
-            op_type = core.ReduceOp.SUM
-        elif op == ReduceOp.MAX:
-            op_type = core.ReduceOp.MAX
-        elif op == ReduceOp.MIN:
-            op_type = core.ReduceOp.MIN
-        elif op == ReduceOp.PROD:
-            op_type = core.ReduceOp.PRODUCT
-        else:
-            raise ValueError("Unknown reduce_op type for allreduce.")
+        op_type = _get_reduce_op(op, "allreduce")
         group = _get_default_group() if group is None else group
         task = group.process_group.allreduce(tensor, op_type)
         if use_calc_stream:
@@ -780,16 +784,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         return
 
     if in_dygraph_mode():
-        if op == ReduceOp.SUM:
-            op_type = core.ReduceOp.SUM
-        elif op == ReduceOp.MAX:
-            op_type = core.ReduceOp.MAX
-        elif op == ReduceOp.MIN:
-            op_type = core.ReduceOp.MIN
-        elif op == ReduceOp.PROD:
-            op_type = core.ReduceOp.PRODUCT
-        else:
-            raise ValueError("Unknown reduce_op type for reduce.")
+        op = _get_reduce_op(op, "reduce")
         group = _get_default_group() if group is None else group
         gdst = group.get_group_rank(dst)
         assert gdst >= 0, ("dst rank out of group, need global rank")
@@ -2305,16 +2300,7 @@ def reduce_scatter(output,
         return
 
     if in_dygraph_mode():
-        if op == ReduceOp.SUM:
-            op_type = core.ReduceOp.SUM
-        elif op == ReduceOp.MAX:
-            op_type = core.ReduceOp.MAX
-        elif op == ReduceOp.MIN:
-            op_type = core.ReduceOp.MIN
-        elif op == ReduceOp.PROD:
-            op_type = core.ReduceOp.PRODUCT
-        else:
-            raise ValueError("Unknown reduce_op type for reduce_scatter.")
+        op_type = _get_reduce_op(op, "reduce_scatter")
         group = _get_default_group() if group is None else group
 
         temp = paddle.concat(input_list, axis=0)
@@ -2377,16 +2363,7 @@ def _reduce_scatter_base(output,
         return
 
     if in_dygraph_mode():
-        if op == ReduceOp.SUM:
-            op_type = core.ReduceOp.SUM
-        elif op == ReduceOp.MAX:
-            op_type = core.ReduceOp.MAX
-        elif op == ReduceOp.MIN:
-            op_type = core.ReduceOp.MIN
-        elif op == ReduceOp.PROD:
-            op_type = core.ReduceOp.PRODUCT
-        else:
-            raise ValueError("Unknown reduce_op type for reduce_scatter.")
+        op_type = _get_reduce_op(op, "_reduce_scatter_base")
         group = _get_default_group() if group is None else group
         task = group.process_group._reduce_scatter_base(output, input, op_type)
         if use_calc_stream:
