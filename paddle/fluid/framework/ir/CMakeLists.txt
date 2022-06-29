@@ -197,7 +197,7 @@ if(WITH_MKLDNN)
   pass_library(depthwise_conv_mkldnn_pass base DIR mkldnn)
   pass_library(conv_affine_channel_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_bias_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(conv_activation_mkldnn_fuse_pass inference DIR mkldnn)
+  pass_library(operator_activation_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_concat_relu_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(int8_scale_calculation_mkldnn_pass inference DIR mkldnn)
@@ -208,11 +208,8 @@ if(WITH_MKLDNN)
   pass_library(cpu_bfloat16_pass inference DIR mkldnn)
   pass_library(fc_mkldnn_pass inference DIR mkldnn)
   pass_library(interpolate_mkldnn_pass inference DIR mkldnn)
-  pass_library(softplus_activation_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(shuffle_channel_mkldnn_detect_pass inference DIR mkldnn)
   pass_library(fc_act_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(elt_act_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(cpu_quantize_placement_pass base DIR mkldnn)
   pass_library(cpu_quantize_pass inference DIR mkldnn)
   pass_library(cpu_quantize_squash_pass inference DIR mkldnn)
@@ -405,7 +402,7 @@ if(WITH_MKLDNN)
   cc_test(
     test_conv_activation_mkldnn_fuse_pass
     SRCS mkldnn/conv_activation_mkldnn_fuse_pass_tester.cc
-    DEPS conv_activation_mkldnn_fuse_pass)
+    DEPS operator_activation_mkldnn_fuse_pass)
   cc_test(
     test_conv_concat_relu_mkldnn_fuse_pass
     SRCS mkldnn/conv_concat_relu_mkldnn_fuse_pass_tester.cc

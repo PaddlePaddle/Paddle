@@ -40,7 +40,7 @@ class ConvActivationMkldnnFusePassTest(InferencePassTest):
         }
         self.fetch_list = [conv_out]
         self.enable_mkldnn = True
-        self.pass_name = 'conv_activation_mkldnn_fuse_pass'
+        self.pass_name = 'operator_activation_mkldnn_fuse_pass'
 
     def set_params(self):
         self.conv_num_filters = 3
