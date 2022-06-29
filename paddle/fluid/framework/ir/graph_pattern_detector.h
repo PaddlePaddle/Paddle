@@ -406,7 +406,7 @@ struct KeyCounter {
     return x;
   }
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_TENSORRT
   static int IncCounter(const std::string& key) { return dic_[key]++; }
   static void CleanCounter() { dic_.clear(); }
 

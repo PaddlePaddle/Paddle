@@ -1360,7 +1360,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
   config.SetInValid();
   auto predictor_p = dynamic_cast<AnalysisPredictor *>(predictor.get());
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_TENSORRT
   paddle::framework::ir::patterns::KeyCounter::Instance().CleanCounter();
 #endif
 
