@@ -760,7 +760,6 @@ void HeterComm<KeyType, ValType, GradType>::dynamic_merge_grad(
                                      (char*)d_grads,
                                      (char*)d_merge_grads_ptr,
                                      uniq_len,
-                                     max_mf_dim_,
                                      grad_value_size,
                                      merger_,
                                      stream);
