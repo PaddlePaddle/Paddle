@@ -54,7 +54,7 @@ class AvgPool1D(Layer):
             Usually name is no nset and None by default.
 
     Returns:
-        A callable object of AvgPool1D.
+        :ref:`api_paddle_nn_Layer`. A callable object of AvgPool1D.
 
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
@@ -162,7 +162,8 @@ class AvgPool2D(Layer):
           The data type is same as input x.
 
     Returns:
-        A callable object of AvgPool2D.
+        :ref:`api_paddle_nn_Layer`. A callable object of AvgPool2D.
+
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
@@ -252,7 +253,8 @@ class AvgPool3D(Layer):
              None by default.
 
     Returns:
-        A callable object of AvgPool3D.
+        :ref:`api_paddle_nn_Layer`. A callable object of AvgPool3D.
+
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
@@ -346,8 +348,6 @@ class MaxPool1D(Layer):
             False is the default. If it is set to False, the floor function will be used. Default False.
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
-    Returns:
-        A callable object of MaxPool1D.
 
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
@@ -362,6 +362,9 @@ class MaxPool1D(Layer):
           The data type can be float32, float64.
         - output(Tensor): The output tensor of max pool1d  operator, which is a 3-D tensor.
           The data type is same as input x.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of MaxPool1D.
 
     Examples:
 
@@ -451,8 +454,6 @@ class MaxPool2D(Layer):
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
 
-    Returns:
-        A callable object of MaxPool2D.
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
@@ -463,6 +464,9 @@ class MaxPool2D(Layer):
           The data type can be float32, float64.
         - output(Tensor): The output tensor of max pool2d  operator, which is a 4-D tensor.
           The data type is same as input x.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of MaxPool2D.
 
     Examples:
         .. code-block:: python
@@ -548,9 +552,6 @@ class MaxPool3D(Layer):
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
 
-
-    Returns:
-        A callable object of MaxPool3D.
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
@@ -561,6 +562,9 @@ class MaxPool3D(Layer):
           The data type can be float32, float64.
         - output(Tensor): The output tensor of max pool3d  operator, which is a 5-D tensor.
           The data type is same as input x.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of MaxPool3D.
 
     Examples:
         .. code-block:: python
@@ -639,7 +643,7 @@ class AdaptiveAvgPool1D(Layer):
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A callable object for computing 1D adaptive average pooling.
+        :ref:`api_paddle_nn_Layer`. A callable object of AdaptiveAvgPool1D.
 
     Examples:
         .. code-block:: python
@@ -716,7 +720,7 @@ class AdaptiveAvgPool2D(Layer):
           The data type is same as input x.
 
     Returns:
-        A callable object of AdaptiveAvgPool2D.
+        :ref:`api_paddle_nn_Layer`. A callable object of AdaptiveAvgPool2D.
 
     Examples:
         .. code-block:: python
@@ -804,7 +808,7 @@ class AdaptiveAvgPool3D(Layer):
           The data type is same as input x.
 
     Returns:
-        A callable object of AdaptiveAvgPool3D.
+        :ref:`api_paddle_nn_Layer`. A callable object of AdaptiveAvgPool3D.
 
     Examples:
         .. code-block:: python
@@ -879,8 +883,6 @@ class AdaptiveMaxPool1D(Layer):
             with outputs. It cannot be set in average pooling type. Default False.
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
-    Returns:
-        A callable object of AdaptiveMaxPool1D.
 
     Raises:
         ValueError: 'pool_size' should be a integer or list or tuple with length as 1.
@@ -890,6 +892,9 @@ class AdaptiveMaxPool1D(Layer):
           The data type can be float32, float64.
         - output(Tensor): The output tensor of adaptive max pool1d operator, which is a 3-D tensor.
           The data type is same as input x.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of AdaptiveMaxPool1D.
 
     Examples:
         .. code-block:: python
@@ -972,7 +977,8 @@ class AdaptiveMaxPool2D(Layer):
           The data type is same as input x.
 
     Returns:
-        A callable object of AdaptiveMaxPool2D.
+        :ref:`api_paddle_nn_Layer`. A callable object of AdaptiveMaxPool2D.
+
     Examples:
         .. code-block:: python
 
@@ -1056,7 +1062,8 @@ class AdaptiveMaxPool3D(Layer):
           The data type is same as input x.
 
     Returns:
-        A callable object of AdaptiveMaxPool3D.
+        :ref:`api_paddle_nn_Layer`. A callable object of AdaptiveMaxPool3D.
+
     Examples:
         .. code-block:: python
 
@@ -1140,9 +1147,8 @@ class MaxUnPool1D(Layer):
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
-
     Returns:
-        A callable object of MaxUnPool1D.
+        :ref:`api_paddle_nn_Layer`. A callable object of MaxUnPool1D.
 
     Examples:
         .. code-block:: python
@@ -1225,9 +1231,7 @@ class MaxUnPool2D(Layer):
           or as given by :attr:`output_size` in the call operator
 
     Returns:
-        A callable object of MaxUnPool2D.
-
-            
+        :ref:`api_paddle_nn_Layer`. A callable object of MaxUnPool2D.
 
     Examples:
         .. code-block:: python
@@ -1312,9 +1316,8 @@ class MaxUnPool3D(Layer):
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
-
     Returns:
-        A callable object of MaxUnPool3D.
+        :ref:`api_paddle_nn_Layer`. A callable object of MaxUnPool3D.
 
     Examples:
         .. code-block:: python

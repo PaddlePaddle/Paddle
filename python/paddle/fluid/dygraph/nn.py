@@ -1264,7 +1264,7 @@ class BatchNorm(layers.Layer):
             Default: False.
 
     Returns:
-        None
+        :ref:`api_paddle_nn_Layer`. A callable object of BatchNorm.
 
     Examples:
         .. code-block:: python
@@ -3306,7 +3306,7 @@ class Flatten(layers.Layer):
         stop_axis(int): last dim to flatten (default = -1).
     
     Returns:
-        None
+        :ref:`api_paddle_nn_Layer`. A callable object of Flatten.
 
     Examples:
 

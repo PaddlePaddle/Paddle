@@ -152,8 +152,7 @@ class InstanceNorm1D(_InstanceNormBase):
         - output: 3-D tensor with same shape as input x.
 
     Returns:
-        None.
-
+        :ref:`api_paddle_nn_Layer`. A callable object of InstanceNorm1D.
 
     Examples:
 
@@ -225,8 +224,7 @@ class InstanceNorm2D(_InstanceNormBase):
         - output: 4-D tensor with same shape as input x.
 
     Returns:
-        None.
-
+        :ref:`api_paddle_nn_Layer`. A callable object of InstanceNorm2D.
 
     Examples:
 
@@ -305,8 +303,7 @@ class InstanceNorm3D(_InstanceNormBase):
         - output: 5-D tensor with same shape as input x.
 
     Returns:
-        None.
-
+        :ref:`api_paddle_nn_Layer`. A callable object of InstanceNorm3D.
 
     Examples:
 
@@ -370,7 +367,7 @@ class GroupNorm(Layer):
         - output: The same shape as input x.
 
     Returns:
-        None
+        :ref:`api_paddle_nn_Layer`. A callable object of GroupNorm.
 
     Examples:
         .. code-block:: python
@@ -516,7 +513,7 @@ class LayerNorm(Layer):
         y & = f(\frac{g}{\sigma}(x - \mu) + b)
 
     - :math:`x`: the vector representation of the summed inputs to the neurons in that layer.
-    - :math:`H`: the number of hidden units in a layers
+    - :math:`H`: the number of hidden units in a layers.
     - :math:`\epsilon`: the small value added to the variance to prevent division by zero.
     - :math:`g`: the trainable scale parameter.
     - :math:`b`: the trainable bias parameter.
@@ -541,7 +538,7 @@ class LayerNorm(Layer):
         - output: same shape as input x.
 
     Returns:
-        None
+        :ref:`api_paddle_nn_Layer`. A callable object of LayerNorm.
 
     Examples:
 
@@ -795,8 +792,7 @@ class BatchNorm1D(_BatchNormBase):
         - output: 3-D tensor with same shape as input x.
 
     Returns:
-        None.
-    
+        :ref:`api_paddle_nn_Layer`. A callable object of BatchNorm1D.
 
     Examples:
         .. code-block:: python
@@ -898,7 +894,7 @@ class BatchNorm2D(_BatchNormBase):
         - output: 4-D tensor with same shape as input x.
 
     Returns:
-        None
+        :ref:`api_paddle_nn_Layer`. A callable object of BatchNorm2D.
 
     Examples:
         .. code-block:: python
@@ -988,7 +984,7 @@ class BatchNorm3D(_BatchNormBase):
         - output: 5-D tensor with same shape as input x.
 
     Returns:
-        None
+        :ref:`api_paddle_nn_Layer`. A callable object of BatchNorm3D.
 
     Examples:
         .. code-block:: python

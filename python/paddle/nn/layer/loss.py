@@ -92,7 +92,7 @@ class BCEWithLogitsLoss(Layer):
             same as ``logit`` , else the shape of output is scalar.
 
     Returns:
-        A callable object of BCEWithLogitsLoss.
+        :ref:`api_paddle_nn_Layer`. A callable object of BCEWithLogitsLoss.
 
     Examples:
 
@@ -328,6 +328,9 @@ class CrossEntropyLoss(Layer):
 
             2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
 
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of CrossEntropyLoss.
+
     Example1(hard labels):
 
         .. code-block:: python
@@ -458,6 +461,9 @@ class HSigmoidLoss(Layer):
         label (Tensor): It's shapes is [N, 1]. It's data type should be int64.
         output (Tensor): The HSigmoid Loss of ``input`` and ``label``. Shape is [N, 1]
 
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of HSigmoidLoss.
+
     Examples:
         .. code-block:: python
 
@@ -568,6 +574,9 @@ class MSELoss(Layer):
         label (Tensor): Label tensor, the data type is float32 or float64
         output (Tensor): output tensor storing the MSE loss of input and label, the data type is same as input.
 
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of MSELoss.
+
     Examples:
         .. code-block:: python
 
@@ -651,6 +660,9 @@ class L1Loss(Layer):
         output (Tensor): The L1 Loss of ``input`` and ``label``.
             If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
             If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of L1Loss.
 
     Examples:
         .. code-block:: python
@@ -749,7 +761,7 @@ class BCELoss(Layer):
             same as ``input`` , else the shape of output is scalar.
 
     Returns:
-        A callable object of BCELoss.
+        :ref:`api_paddle_nn_Layer`. A callable object of BCELoss.
 
     Examples:
         .. code-block:: python
@@ -852,6 +864,9 @@ class NLLLoss(Layer):
             If `reduction` is `'none'`, the shape is `[N, *]`.
             If `reduction` is `'sum'` or `'mean'`, the shape is `[1]`.
 
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of NLLLoss.
+
     Examples:
         .. code-block:: python
 
@@ -923,6 +938,8 @@ class KLDivLoss(Layer):
 
         - output (Tensor): tensor with shape: [1] by default.
 
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of KLDivLoss.
 
     Examples:
         .. code-block:: python
@@ -1006,7 +1023,7 @@ class MarginRankingLoss(Layer):
         output: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
 
     Returns:
-        A callable object of MarginRankingLoss.
+        :ref:`api_paddle_nn_Layer`. A callable object of MarginRankingLoss.
 
     Examples:
 
@@ -1062,7 +1079,7 @@ class CTCLoss(Layer):
         norm_by_times (bool, default false) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
 
     Returns:
-        Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
+        :ref:`api_paddle_nn_Layer`. A callable object of CTCLoss.
 
     Examples:
 
@@ -1178,9 +1195,7 @@ class SmoothL1Loss(Layer):
             is the same as the shape of input.
 
     Returns:
-        The tensor storing the smooth_l1_loss of input and label.
-
-    Return type: Tensor.
+        :ref:`api_paddle_nn_Layer`. A callable object of SmoothL1Loss.
 
     Examples:
         .. code-block:: python
@@ -1211,63 +1226,64 @@ class SmoothL1Loss(Layer):
 
 
 class MultiLabelSoftMarginLoss(Layer):
-    r"""Creates a criterion that optimizes a multi-class multi-classification
-        hinge loss (margin-based loss) between input :math:`x` (a 2D mini-batch `Tensor`)
-        and output :math:`y` (which is a 2D `Tensor` of target class indices).
-        For each sample in the mini-batch:
+    r"""
+    Creates a criterion that optimizes a multi-class multi-classification
+    hinge loss (margin-based loss) between input :math:`x` (a 2D mini-batch `Tensor`)
+    and output :math:`y` (which is a 2D `Tensor` of target class indices).
+    For each sample in the mini-batch:
 
-        .. math::
-            \text{loss}(x, y) = \sum_{ij}\frac{\max(0, 1 - (x[y[j]] - x[i]))}{\text{x.size}(0)}
+    .. math::
+        \text{loss}(x, y) = \sum_{ij}\frac{\max(0, 1 - (x[y[j]] - x[i]))}{\text{x.size}(0)}
 
-        where :math:`x \in \left\{0, \; \cdots , \; \text{x.size}(0) - 1\right\}`, \
-        :math:`y \in \left\{0, \; \cdots , \; \text{y.size}(0) - 1\right\}`, \
-        :math:`0 \leq y[j] \leq \text{x.size}(0)-1`, \
-        and :math:`i \neq y[j]` for all :math:`i` and :math:`j`.
-        :math:`y` and :math:`x` must have the same size.
+    where :math:`x \in \left\{0, \; \cdots , \; \text{x.size}(0) - 1\right\}`, \
+    :math:`y \in \left\{0, \; \cdots , \; \text{y.size}(0) - 1\right\}`, \
+    :math:`0 \leq y[j] \leq \text{x.size}(0)-1`, \
+    and :math:`i \neq y[j]` for all :math:`i` and :math:`j`.
+    :math:`y` and :math:`x` must have the same size.
 
-        Parameters:
-            weight (Tensor,optional): a manual rescaling weight given to each class.
-                    If given, has to be a Tensor of size C and the data type is float32, float64.
-                    Default is ``'None'`` .
-            reduction (str, optional): Indicate how to average the loss by batch_size,
-                    the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-                    If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
-                    If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-                    If :attr:`reduction` is ``'sum'``, the summed loss is returned.
-                    Default: ``'mean'``
-            name (str, optional): Name for the operation (optional, default is None).
-                For more information, please refer to :ref:`api_guide_Name`.
+    Parameters:
+        weight (Tensor,optional): a manual rescaling weight given to each class.
+                If given, has to be a Tensor of size C and the data type is float32, float64.
+                Default is ``'None'`` .
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+                the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+                If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+                If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+                Default: ``'mean'``
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
-        Call parameters:
-            input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
-            label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64. The shape of label is the same as the shape of input.
+    Call parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
+        label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64. The shape of label is the same as the shape of input.
 
-        Shape:
-            input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
-            label: N-D Tensor, same shape as the input.
-            output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
+    Shape:
+        input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
+        label: N-D Tensor, same shape as the input.
+        output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
 
-        Returns:
-            A callable object of MultiLabelSoftMarginLoss.
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of MultiLabelSoftMarginLoss.
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                import paddle
-                import paddle.nn as nn
+            import paddle
+            import paddle.nn as nn
 
-                input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
-                label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
+            input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
+            label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
 
-                multi_label_soft_margin_loss = nn.MultiLabelSoftMarginLoss(reduction='none')
-                loss = multi_label_soft_margin_loss(input, label)
-                print(loss)
-                # Tensor([3.49625897, 0.71111226, 0.43989015])
+            multi_label_soft_margin_loss = nn.MultiLabelSoftMarginLoss(reduction='none')
+            loss = multi_label_soft_margin_loss(input, label)
+            print(loss)
+            # Tensor([3.49625897, 0.71111226, 0.43989015])
 
-                multi_label_soft_margin_loss = nn.MultiLabelSoftMarginLoss(reduction='mean')
-                loss = multi_label_soft_margin_loss(input, label)
-                print(loss)
-                # Tensor([1.54908717])
+            multi_label_soft_margin_loss = nn.MultiLabelSoftMarginLoss(reduction='mean')
+            loss = multi_label_soft_margin_loss(input, label)
+            print(loss)
+            # Tensor([1.54908717])
         """
 
     def __init__(self, weight=None, reduction="mean", name=None):
@@ -1342,8 +1358,7 @@ class HingeEmbeddingLoss(Layer):
         output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
 
     Returns:
-
-        Tensor, The tensor variable storing the hinge_embedding_loss of input and label.
+        :ref:`api_paddle_nn_Layer`. A callable object of HingeEmbeddingLoss.
 
     Examples:
         .. code-block:: python
@@ -1425,6 +1440,9 @@ class CosineEmbeddingLoss(Layer):
         output (Tensor): Tensor, the cosine embedding Loss of Tensor ``input1`` ``input2`` and ``label``.
                          If `reduction` is ``'none'``, the shape of output loss is [N], the same as ``input`` .
                          If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of CosineEmbeddingLoss.
 
     Examples:
         .. code-block:: python
@@ -1518,18 +1536,18 @@ class TripletMarginWithDistanceLoss(Layer):
 
     Shapes:
         input (Tensor):Input tensor, the data type is float32 or float64.
-    the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+            the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
 
         positive (Tensor):Positive tensor, the data type is float32 or float64.
-    The shape of label is the same as the shape of input.
+            The shape of label is the same as the shape of input.
 
         negative (Tensor):Negative tensor, the data type is float32 or float64.
-    The shape of label is the same as the shape of input.
+            The shape of label is the same as the shape of input.
 
         output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
-    Return：
-        A callable object of TripletMarginWithDistanceLoss
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of TripletMarginWithDistanceLoss.
 
     Examples:
         .. code-block:: python
@@ -1633,7 +1651,7 @@ class TripletMarginLoss(Layer):
         The shape of label is the same as the shape of input.
 
     Returns:
-        Tensor. The tensor variable storing the triplet_margin_loss of input and positive and negative.
+        :ref:`api_paddle_nn_Layer`. A callable object of TripletMarginLoss.
 
     Examples:
         .. code-block:: python

@@ -273,9 +273,9 @@ class Conv1D(_ConvNd):
         - weight: 3-D tensor with shape: (out_channels, in_channels, kernel_size)
         - bias: 1-D tensor with shape: (out_channels)
         - output: 3-D tensor with same shape as input x.
-    
-    Raises:
-        None
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of Conv1D.
 
     Examples:
         .. code-block:: python
@@ -456,6 +456,9 @@ class Conv1DTranspose(_ConvNd):
         - output_size(int|tuple|list, optional): The output image size. If output size is a tuple/list, it must contain one integer, (feature_length). None if use kernel_size, padding, output_padding and stride to calculate output_size. If output_size and kernel_size are specified at the same time, They should follow the formula above. Default: None. output_size and kernel_size should not be None at the same time.
         - output(Tensor): 3-D tensor with same shape as input x.
 
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of Conv1DTranspose.
+
     Examples:
         .. code-block:: python
 
@@ -610,6 +613,9 @@ class Conv2D(_ConvNd):
            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1
 
            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of Conv2D.
 
     Examples:
 
@@ -776,6 +782,9 @@ class Conv2DTranspose(_ConvNd):
 
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
 
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of Conv2DTranspose.
+
     Examples:
 
        .. code-block:: python
@@ -927,6 +936,9 @@ class Conv3D(_ConvNd):
            H_{out}&= \frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
 
            W_{out}&= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (kernel\_size[2] - 1) + 1))}{strides[2]} + 1
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of Conv3D.
 
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
@@ -1105,7 +1117,10 @@ class Conv3DTranspose(_ConvNd):
            H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel\_size[1] - 1) + 1
            
            W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (kernel\_size[2] - 1) + 1
-           
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. A callable object of Conv3DTranspose.
+
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
                     groups mismatch.
