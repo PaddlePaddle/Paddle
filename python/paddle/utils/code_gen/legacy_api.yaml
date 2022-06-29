@@ -48,11 +48,17 @@
   kernel :
     func : adadelta
 
-- api : adam
+- api : adam_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, bool lazy_mode, int64_t min_row_size_to_use_multithread, bool multi_precision, bool use_global_beta_pow)
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
+  infer_meta :
+    func : AdamInferMeta
+  kernel :
+    func : adam {dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense},
+           adam_dense_param_sparse_grad {dense, selected_rows, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense}
+    data_type : param
   optional : master_param, skip_update
-  invoke : adam_impl(param, grad, learning_rate, moment1, moment2, beta1_pow, beta2_pow, master_param, skip_update, beta1, beta2, epsilon, lazy_mode, min_row_size_to_use_multithread, multi_precision, use_global_beta_pow)
+  inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
 
 - api : adamax
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment, Tensor inf_norm, Tensor beta1_pow, float beta1, float beta2, float epsilon)
@@ -1015,7 +1021,8 @@
   infer_meta :
     func : IsfiniteInferMeta
   kernel :
-    func : isfinite, infinite_sr
+    func : isfinite {dense -> dense},
+           infinite_sr {selected_rows -> selected_rows}
 
 # isinf
 - api : isinf
@@ -1024,7 +1031,8 @@
   infer_meta :
     func : IsfiniteInferMeta
   kernel :
-    func : isinf, isinf_sr
+    func : isinf {dense -> dense},
+           isinf_sr {selected_rows -> selected_rows}
 
 # isnan
 - api : isnan
@@ -1033,7 +1041,8 @@
   infer_meta :
     func : IsfiniteInferMeta
   kernel :
-    func : isnan, isnan_sr
+    func : isnan {dense -> dense},
+           isnan_sr {selected_rows -> selected_rows}
 
 - api : kldiv_loss
   args : (Tensor x, Tensor label, str reduction)
@@ -1774,7 +1783,8 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : scale, scale_sr
+    func : scale {dense -> dense},
+           scale_sr {selected_rows -> selected_rows}
   inplace : (x -> out)
   backward : scale_grad
 
@@ -1829,11 +1839,20 @@
     func : selu
   backward : selu_grad
 
-- api : sgd
+- api : sgd_
   args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision)
   output : Tensor(param_out), Tensor(master_param_out)
-  invoke : sgd_impl(param, learning_rate, grad, master_param, multi_precision)
+  infer_meta :
+    func : SgdInferMeta
+  kernel :
+    func : sgd {dense, dense, dense, dense -> dense, dense},
+           sgd_dense_param_sparse_grad {dense, dense, selected_rows, dense -> dense, dense},
+           sgd_sparse_param_sparse_grad {selected_rows, dense, selected_rows, selected_rows -> selected_rows, selected_rows}
+    data_type : param
+  data_transform :
+    support_trans_dtype : learning_rate
   optional : master_param
+  inplace : (param -> param_out), (master_param -> master_param_out)
 
 - api : shape
   args : (Tensor input)
@@ -1841,7 +1860,8 @@
   infer_meta :
     func : ShapeInferMeta
   kernel :
-    func : shape, shape_sr
+    func : shape {dense -> dense},
+           shape_sr {selected_rows -> selected_rows}
   data_transform:
     skip_transform : input
 
