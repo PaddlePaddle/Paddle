@@ -106,7 +106,7 @@ cc_test(
   DEPS place glog gflags)
 
 if(WITH_MKLDNN)
-  set(MKLDNN_CTX_DEPS mkldnn)
+  set(MKLDNN_CTX_DEPS onednn_context)
 else()
   set(MKLDNN_CTX_DEPS)
 endif()

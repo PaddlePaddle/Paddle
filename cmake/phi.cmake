@@ -103,6 +103,9 @@ function(kernel_declare TARGET_LIST)
       elseif(${kernel_path} MATCHES "./kps\/")
         file(APPEND ${kernel_declare_file}
              "PD_DECLARE_KERNEL(${kernel_name}, KPS, ALL_LAYOUT);\n")
+      elseif(${kernel_path} MATCHES "./onednn\/")
+        file(APPEND ${kernel_declare_file}
+             "PD_DECLARE_KERNEL(${kernel_name}, MKLDNN, ALL_LAYOUT);\n")
       else()
         # deal with device independent kernel, now we use CPU temporaary
         file(APPEND ${kernel_declare_file}
@@ -120,6 +123,7 @@ function(kernel_library TARGET)
   set(xpu_srcs)
   set(gpudnn_srcs)
   set(kps_srcs)
+  set(onednn_srcs)
   # parse and save the deps kerenl targets
   set(all_srcs)
   set(kernel_deps)
@@ -168,6 +172,11 @@ function(kernel_library TARGET)
         list(APPEND xpu_srcs ${CMAKE_CURRENT_SOURCE_DIR}/xpu/${TARGET}.cc)
       endif()
     endif()
+    if(WITH_MKLDNN)
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/onednn/${TARGET}.cc)
+        list(APPEND onednn_srcs ${CMAKE_CURRENT_SOURCE_DIR}/onednn/${TARGET}.cc)
+      endif()
+    endif()
     if(WITH_XPU_KP)
       if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/kps/${TARGET}.cu)
         # Change XPU2 file suffix
@@ -193,6 +202,7 @@ function(kernel_library TARGET)
   list(APPEND all_srcs ${xpu_srcs})
   list(APPEND all_srcs ${gpudnn_srcs})
   list(APPEND all_srcs ${kps_srcs})
+  list(APPEND all_srcs ${onednn_srcs})
 
   set(all_include_kernels)
   set(all_kernel_name)
@@ -254,11 +264,12 @@ function(kernel_library TARGET)
   list(LENGTH xpu_srcs xpu_srcs_len)
   list(LENGTH gpudnn_srcs gpudnn_srcs_len)
   list(LENGTH kps_srcs kps_srcs_len)
+  list(LENGTH onednn_srcs onednn_srcs_len)
 
   # kernel source file level
   # level 1: base device kernel (if any device or dnn kernel exists, the cpu_kernel must be exists!!!)
   # - cpu_srcs / gpu_srcs / xpu_srcs / kps_srcs
-  # = dnn srcs: gpudnn_srcs
+  # = dnn srcs: gpudnn_srcs / onednn_srcs
   # level 2: device-independent kernel
   # - common_srcs
 
@@ -270,7 +281,8 @@ function(kernel_library TARGET)
   if(${cpu_srcs_len} GREATER 0
      OR ${gpu_srcs_len} GREATER 0
      OR ${xpu_srcs_len} GREATER 0
-     OR ${kps_srcs_len} GREATER 0)
+     OR ${kps_srcs_len} GREATER 0
+     OR ${onednn_srcs_len} GREATER 0)
     set(base_build_flag 1)
   endif()
 
@@ -289,6 +301,15 @@ function(kernel_library TARGET)
         DEPS ${kernel_library_DEPS} ${kernel_deps})
     endif()
     list(APPEND dnn_kernels ${TARGET}_gpudnn${target_suffix})
+  endif()
+  if(${onednn_srcs_len} GREATER 0)
+    if(WITH_MKLDNN)
+      cc_library(
+        ${TARGET}_onednn${target_suffix}
+        SRCS ${onednn_srcs}
+        DEPS ${kernel_library_DEPS} ${kernel_deps})
+    endif()
+    list(APPEND dnn_kernels ${TARGET}_onednn${target_suffix})
   endif()
   list(LENGTH dnn_kernels dnn_kernels_len)
 
@@ -329,7 +350,7 @@ function(kernel_library TARGET)
     else()
       cc_library(
         ${TARGET}${target_suffix}
-        SRCS ${cpu_srcs} ${xpu_srcs}
+        SRCS ${cpu_srcs} ${xpu_srcs} ${onednn_srcs}
         DEPS ${kernel_library_DEPS} ${kernel_deps})
     endif()
   elseif(${partial_build_flag} EQUAL 1 AND ${base_build_flag} EQUAL 1)
@@ -363,7 +384,7 @@ function(kernel_library TARGET)
     else()
       cc_library(
         ${TARGET}_base${target_suffix}
-        SRCS ${cpu_srcs} ${xpu_srcs}
+        SRCS ${cpu_srcs} ${xpu_srcs} ${onednn_srcs}
         DEPS ${kernel_library_DEPS} ${kernel_deps})
       cc_library(
         ${TARGET}${target_suffix}
@@ -402,7 +423,8 @@ function(kernel_library TARGET)
        OR ${gpu_srcs_len} GREATER 0
        OR ${xpu_srcs_len} GREATER 0
        OR ${kps_srcs_len} GREATER 0
-       OR ${gpudnn_srcs_len} GREATER 0)
+       OR ${gpudnn_srcs_len} GREATER 0
+       OR ${onednn_srcs_len} GREATER 0)
       # append target into PHI_KERNELS property
       get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
       set(phi_kernels ${phi_kernels} ${TARGET}${target_suffix})
@@ -429,6 +451,9 @@ function(kernel_library TARGET)
     endif()
     if(${kps_srcs_len} GREATER 0)
       kernel_declare(${kps_srcs})
+    endif()
+    if(${onednn_srcs_len} GREATER 0)
+      kernel_declare(${onednn_srcs})
     endif()
   endif()
 endfunction()
