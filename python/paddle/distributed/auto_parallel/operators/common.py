@@ -236,7 +236,7 @@ def is_parameter_related(varname, block):
 
 
 def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
-    var_shape = block.var(src_var.name).shape
+    var_shape = block._var_recursive(src_var.name).shape
     var_topoloy = src_var_dist_attr.process_mesh.topology
     var_dims_mapping = src_var_dist_attr.dims_mapping
 

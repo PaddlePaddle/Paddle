@@ -538,6 +538,20 @@ class Completer:
                     dist_attr.set_output_dims_mapping(arg_name,
                                                       new_dims_mapping)
 
+        # Amend the process meshes related to array
+        for array_node_list in self._array_nodes.values():
+            merged_process_mesh = None
+            for array_node in array_node_list:
+                dist_attr = self._dist_context.get_dist_attr_for_graph(
+                    array_node)
+                merged_process_mesh = merge_process_mesh_two(
+                    merged_process_mesh, dist_attr.process_mesh)
+            for array_node in array_node_list:
+                dist_attr = self._dist_context.get_dist_attr_for_graph(
+                    array_node)
+                dist_attr.process_mesh = merged_process_mesh
+                _make_dims_mapping_replicate(dist_attr)
+
         # Amend the process meshes related to while_op
         for while_op_node, while_op_node_idx in self._while_op_nodes.values():
             sub_graph_id = while_op_node.op()._block_attr_id("sub_block")
@@ -625,20 +639,6 @@ class Completer:
                 nearest_tensor_dist_attr = self._dist_context.get_dist_attr_for_graph(
                     nearest_tensor_node)
                 tensor_dist_attr.process_mesh = nearest_tensor_dist_attr.process_mesh
-
-        # Amend the process meshes related to array
-        for array_node_list in self._array_nodes.values():
-            merged_process_mesh = None
-            for array_node in array_node_list:
-                dist_attr = self._dist_context.get_dist_attr_for_graph(
-                    array_node)
-                merged_process_mesh = merge_process_mesh_two(
-                    merged_process_mesh, dist_attr.process_mesh)
-            for array_node in array_node_list:
-                dist_attr = self._dist_context.get_dist_attr_for_graph(
-                    array_node)
-                dist_attr.process_mesh = merged_process_mesh
-                _make_dims_mapping_replicate(dist_attr)
 
     def _update_process_mesh_between_graphs(self):
         for parent_node, child_node in self._node_pairs_between_graphs:
@@ -740,6 +740,8 @@ class Completer:
                     if self._array_nodes.get(array_var_name, None) is None:
                         self._array_nodes[array_var_name] = []
                     self._array_nodes[array_var_name].append(node)
+                    # Add the array input node
+                    self._array_nodes[array_var_name].append(node.inputs[0])
                 if node.op().type() == "write_to_array":
                     array_var_name = node.op().output("Out")[0]
                     if self._array_nodes.get(array_var_name, None) is None:

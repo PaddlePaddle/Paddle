@@ -15,6 +15,7 @@
 import copy
 import logging
 from collections import defaultdict
+import time
 
 import paddle
 import paddle.utils as utils
@@ -232,6 +233,9 @@ class Engine:
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
+            print("engine.py process group")
+            for process_group in all_process_groups:
+                print(process_group.ranks)
             for process_group in all_process_groups:
                 if self._cur_rank not in process_group.ranks:
                     continue
@@ -252,6 +256,9 @@ class Engine:
                 uninitialized.append(var)
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
+                print("engine.py startup_program")
+                print_program_with_dist_attr(prune_startup_prog,
+                                             self.dist_context)
                 self._executor.run(prune_startup_prog)
 
     def fit(self,
@@ -350,6 +357,9 @@ class Engine:
         fetch_outputs = self._inner_fetch(self.fetch_vars["outputs"])
         fetch_list, fetch_map = self._fetch_map(fetch_outputs, usr_fetch)
 
+        dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
+        print("engine.py predict step****")
+        print_program_with_dist_attr(dist_main_prog, self.dist_context)
         outputs = []
         for step, _ in enumerate(test_dataloader):
             predict_logs = {"step": step}
@@ -429,7 +439,7 @@ class Engine:
         with static.program_guard(dist_main_prog, dist_startup_prog):
             dataloader = NonIterableGeneratorLoader(
                 dataset,
-                feed_list,
+                inputs_var + labels_var,
                 places,
                 batch_size,
                 epochs,
@@ -439,6 +449,15 @@ class Engine:
 
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
+        # for _ in range(new_op_size - 1, op_size - 1, -1):
+        #     op = dist_main_block.ops[new_op_size - 1]
+        #     new_op_desc = dist_main_block.desc._prepend_op()
+        #     new_op_desc.copy_from(op.desc)
+        #     new_op = Operator(
+        #         dist_main_block, new_op_desc, type=new_op_desc.type())
+        #     dist_main_block.ops.insert(0, new_op)
+        #     dist_op = DistributedOperator(new_op)
+        #     dist_context.add_dist_op_for_program(dist_op)
         for _ in range(new_op_size - 1, op_size - 1, -1):
             op = dist_main_block.ops[new_op_size - 1]
             new_op_desc = dist_main_block.desc._prepend_op()

@@ -263,7 +263,7 @@ class Partitioner(object):
                 dist_op_backward_impl.backward(
                     self._dist_context, **kinputs, **koutputs,
                     **{"grad_var_to_var": grad_var_to_var})
-            elif is_optimize_op(op):
+            elif int(op.attr('op_role')) == 2:
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_impl = get_distributed_operator_impl_container(
                     "default").get_impl(0)
@@ -303,7 +303,7 @@ class Partitioner(object):
 
 
 def _get_dist_shape(var, dist_attr):
-
+    # print("partitioner.py var: ", var, " dist_attr: ", dist_attr)
     var_shape = var.shape
     mapping = dist_attr.dims_mapping
     mesh = dist_attr.process_mesh.topology

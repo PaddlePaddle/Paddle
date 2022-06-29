@@ -728,9 +728,10 @@ class CommOpCost(OpCost):
                 factor = 1
             elif dtype == paddle.float16:
                 factor = 2
+            elif dtype == paddle.bool:
+                factor = 8
             else:
-                raise TypeError(
-                    "This dtype {} is not supported now".format(dtype))
+                raise ValueError("Unsupported comm dtype {}".format(dtype))
             comm_count = reduce(lambda x, y: x * y, shape) * factor
             self._comm_count = comm_count
 

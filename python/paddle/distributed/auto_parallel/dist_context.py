@@ -773,7 +773,7 @@ class DistributedContext:
                 # we just amend the dimension mapping to -1. (Is this really OK?)
                 for i in range(len(tensor_shape)):
                     if dims_mapping[i] != -1 and tensor_shape[i] > 0 \
-                        and process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
+                        and tensor_shape[i] % process_mesh_shape[dims_mapping[i]] != 0:
                         dims_mapping[i] = -1
                     if dims_mapping[i] != -1 and len(
                             process_mesh_processes) == 1:
@@ -790,7 +790,7 @@ class DistributedContext:
                 # we just amend the dimension mapping to -1. (Is this really OK?)
                 for i in range(len(tensor_shape)):
                     if dims_mapping[i] != -1 and tensor_shape[i] > 0 \
-                        and process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
+                        and tensor_shape[i] % process_mesh_shape[dims_mapping[i]] != 0:
                         dims_mapping[i] = -1
                     if dims_mapping[i] != -1 and len(
                             process_mesh_processes) == 1:
@@ -988,4 +988,5 @@ class BlockState(object):
             self.backward_to_forward_index_map[idx] = block.forward_block_idx
             self.nblock += 1
 
+        print("dist_context.py", self.nblock, len(program.blocks))
         assert self.nblock == len(program.blocks)

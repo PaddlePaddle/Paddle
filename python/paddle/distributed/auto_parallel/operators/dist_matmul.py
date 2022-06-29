@@ -64,6 +64,8 @@ def _update_dims_mapping_for_matmul(dist_op):
     x_name = op_desc.input('X')[0]
     y_name = op_desc.input('Y')[0]
     out_name = op_desc.output('Out')[0]
+    trans_x = op_desc.attr('trans_x')
+    trans_y = op_desc.attr('trans_y')
     x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
     y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
     out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
@@ -73,27 +75,34 @@ def _update_dims_mapping_for_matmul(dist_op):
 
     # Add dim mapping to Make sure the length dims_mapping be at least 2
     if x_dims_mapping_len == 1:
+        assert trans_x is False
         x_dims_mapping.insert(0, -1)
+        out_dims_mapping.insert(out_dims_mapping_len - 1, 0)
     if y_dims_mapping_len == 1:
+        assert trans_y is False
         y_dims_mapping.insert(1, -1)
+        out_dims_mapping.insert(out_dims_mapping_len, 0)
 
+    new_x_dims_mapping_len = len(x_dims_mapping)
+    new_y_dims_mapping_len = len(y_dims_mapping)
+    new_out_dims_mapping_len = len(out_dims_mapping)
     # Deal with dim > 2 and take care of broadcasting
-    if out_dims_mapping_len > 2:
+    if new_out_dims_mapping_len > 2:
         broadcast_x_dims_mapping = []
         broadcast_y_dims_mapping = []
         broadcast_out_dims_mapping = []
 
-        for i in range(out_dims_mapping_len - x_dims_mapping_len):
+        for i in range(new_out_dims_mapping_len - new_x_dims_mapping_len):
             broadcast_x_dims_mapping.append(out_dims_mapping[i])
-        for i in range(x_dims_mapping_len - 2):
+        for i in range(new_x_dims_mapping_len - 2):
             broadcast_x_dims_mapping.append(x_dims_mapping[i])
 
-        for i in range(out_dims_mapping_len - y_dims_mapping_len):
+        for i in range(new_out_dims_mapping_len - new_y_dims_mapping_len):
             broadcast_y_dims_mapping.append(out_dims_mapping[i])
-        for i in range(y_dims_mapping_len - 2):
+        for i in range(new_y_dims_mapping_len - 2):
             broadcast_y_dims_mapping.append(y_dims_mapping[i])
 
-        for i in range(out_dims_mapping_len - 2):
+        for i in range(new_out_dims_mapping_len - 2):
             broadcast_out_dims_mapping.append(out_dims_mapping[i])
 
         compatible_dims_mapping = compute_compatible_dims_mapping([
@@ -103,22 +112,29 @@ def _update_dims_mapping_for_matmul(dist_op):
         if compatible_dims_mapping is None:
             return False
 
-        for i in range(x_dims_mapping_len - 2):
-            new_idx = i + (out_dims_mapping_len - x_dims_mapping_len)
+        for i in range(new_x_dims_mapping_len - 2):
+            new_idx = i + (out_dims_mapping_len - new_x_dims_mapping_len)
             if x_dims_mapping[i] != compatible_dims_mapping[new_idx]:
                 x_dims_mapping[i] = compatible_dims_mapping[new_idx]
                 changed = True
 
-        for i in range(y_dims_mapping_len - 2):
-            new_idx = i + (out_dims_mapping_len - y_dims_mapping_len)
+        for i in range(new_y_dims_mapping_len - 2):
+            new_idx = i + (out_dims_mapping_len - new_y_dims_mapping_len)
             if y_dims_mapping[i] != compatible_dims_mapping[new_idx]:
                 y_dims_mapping[i] = compatible_dims_mapping[new_idx]
                 changed = True
 
-        for i in range(out_dims_mapping_len - 2):
+        for i in range(new_out_dims_mapping_len - 2):
             if out_dims_mapping[i] != compatible_dims_mapping[i]:
                 out_dims_mapping[i] = compatible_dims_mapping[i]
                 changed = True
+
+    if trans_x:
+        x_dims_mapping[-1], x_dims_mapping[-2] = x_dims_mapping[
+            -2], x_dims_mapping[-1]
+    if trans_y:
+        y_dims_mapping[-1], y_dims_mapping[-2] = y_dims_mapping[
+            -2], y_dims_mapping[-1]
 
     # The following which uses negative index can be work
     # when len(out_dims_mapping) > 2 and len(out_dims_mapping) <=2
@@ -137,11 +153,20 @@ def _update_dims_mapping_for_matmul(dist_op):
     if dim_changed:
         changed = True
 
+    if trans_x:
+        x_dims_mapping[-1], x_dims_mapping[-2] = x_dims_mapping[
+            -2], x_dims_mapping[-1]
+    if trans_y:
+        y_dims_mapping[-1], y_dims_mapping[-2] = y_dims_mapping[
+            -2], y_dims_mapping[-1]
+
     # Remove unnecessary dim mapping to make sure the length of dims_mapping is same as its tensor
     if x_dims_mapping_len == 1:
         x_dims_mapping.pop(0)
+        out_dims_mapping.pop(out_dims_mapping_len - 1)
     if y_dims_mapping_len == 1:
         y_dims_mapping.pop(1)
+        out_dims_mapping.pop(out_dims_mapping_len)
 
     assert len(x_dims_mapping) == x_dims_mapping_len
     assert len(y_dims_mapping) == y_dims_mapping_len
@@ -2081,7 +2106,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
                                                     dist_context=ctx)
         processes = dist_op.dist_attr.process_mesh.processes
-        cost_mpping = build_comp_costs_from_desc_mapping(
+        cost_mapping = build_comp_costs_from_desc_mapping(
             MulOpCost, ctx, processes, desc_mapping, cluster)
 
         # calc comm op cost
@@ -2254,13 +2279,37 @@ class DistributedMulImpl0(DistributedOperatorImpl):
             "x_num_col_dims": src_op.desc.attr("x_num_col_dims"),
             "y_num_col_dims": src_op.desc.attr("y_num_col_dims")
         }
-        inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
+        inputs = {'X': intermediate_var_0, 'Y': Weight_var}
+
+        inputs_ref_shape = {}
+        inputs_original_shape = {}
+        for var_name in inputs:
+            if var_name == "X":
+                var = X_var
+            else:
+                var = inputs[var_name]
+            inputs_original_shape[var_name] = var.shape
+            input_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(var)
+            input_var_dist_attr = op_dist_attr.get_input_dist_attr(var.name)
+            # print("input_tensor_dist_attr ", input_tensor_dist_attr, "input_var_dist_attr ", input_var_dist_attr)
+            input_ref_shape = infer_shape(main_block, var,
+                                          input_tensor_dist_attr,
+                                          input_var_dist_attr)
+            # print("original shape", var.shape, "ref_shape", input_ref_shape)
+            inputs_ref_shape[var_name] = input_ref_shape
+            var.desc.set_shape(input_ref_shape)
+
         mul_op = main_block.append_op(type='mul',
                                       inputs=inputs,
                                       outputs={'Out': Out_var},
                                       attrs=attrs)
         if Out_var.shape != ref_shape_out:
             Out_var.desc.set_shape(ref_shape_out)
+
+        for var_name in inputs:
+            var = inputs[var_name]
+            original_shape = inputs_original_shape[var_name]
+            var.desc.set_shape(original_shape)
 
         # set dist op's dist_attr with serial op's dist_attr
         # c_identity
@@ -2410,6 +2459,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             attrs=attrs,
             parallel_axis=parallel_axis)
 
+        # print("dist_matmul.py dist_op: ", dist_op)
         comm_op_cost_list = build_comm_costs_from_desc_mapping(
             AllreduceSumOpCost, ctx, processes, c_allreduce_sum_desc_mapping,
             cluster)
@@ -2536,6 +2586,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         assert out_var_dist_attr is not None
         ref_shape = infer_shape(main_block, Out_var, out_tensor_dist_attr,
                                 out_var_dist_attr)
+        # print("dist_matmul.py out_var ref_shape", Out_var, ref_shape)
 
         intermediate_var_0 = main_block.create_var(
             name=unique_name.generate_with_ignorable_key(".".join(
@@ -2550,13 +2601,35 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         # set intermediate_var_0's dist_attr with Out_var's dist_attr
         ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
                                              out_var_dist_attr)
+        # print("dist_matmul.py ", inputs, intermediate_var_0, op_dist_attr)
+
+        inputs_ref_shape = {}
+        inputs_original_shape = {}
+        for var_name in inputs:
+            var = inputs[var_name]
+            inputs_original_shape[var_name] = var.shape
+            input_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(var)
+            input_var_dist_attr = op_dist_attr.get_input_dist_attr(var.name)
+            # print("input_tensor_dist_attr ", input_tensor_dist_attr, "input_var_dist_attr ", input_var_dist_attr)
+            input_ref_shape = infer_shape(main_block, var,
+                                          input_tensor_dist_attr,
+                                          input_var_dist_attr)
+            # print("original shape", var.shape, "ref_shape", input_ref_shape)
+            inputs_ref_shape[var_name] = input_ref_shape
+            var.desc.set_shape(input_ref_shape)
 
         mul_op = main_block.append_op(type='mul',
                                       inputs=inputs,
                                       outputs={'Out': intermediate_var_0},
                                       attrs=attrs)
+
         if intermediate_var_0.shape != ref_shape:
             intermediate_var_0.desc.set_shape(ref_shape)
+
+        for var_name in inputs:
+            var = inputs[var_name]
+            original_shape = inputs_original_shape[var_name]
+            var.desc.set_shape(original_shape)
 
         c_allreduce_sum_op = main_block.append_op(
             type='c_allreduce_sum',
@@ -2567,6 +2640,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
                 'use_calc_stream': True,
                 'use_model_parallel': True
             })
+
         if Out_var.shape != ref_shape:
             Out_var.desc.set_shape(ref_shape)
 

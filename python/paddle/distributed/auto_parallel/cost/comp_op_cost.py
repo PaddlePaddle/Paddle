@@ -1086,6 +1086,25 @@ class SplitOpCost(CompOpCost):
 
 
 @register_op_cost
+class Squeeze2OpCost(CompOpCost):
+    OP_TYPE = "squeeze2"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(Squeeze2OpCost, self).__init__(op=op,
+                                             op_desc=op_desc,
+                                             cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
 class SquareOpCost(CompOpCost):
     OP_TYPE = "square"
 

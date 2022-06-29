@@ -16,10 +16,12 @@ from collections import OrderedDict
 from functools import reduce
 
 import paddle
+from paddle.fluid import core
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 from .base_cost import Cost, CompOpCost, CommContext
 from ..operators.common import get_distributed_operator_impl_container
+from ..utils import print_program_with_dist_attr
 
 
 class CostEstimator:
@@ -82,7 +84,7 @@ class CostEstimator:
             if cost.time > max_time:
                 max_time = cost.time
             memory += cost.memory
-            flops += cost.memory
+            flops += cost.flops
         self._global_cost.time = max_time
         self._global_cost.memory = memory
         self._global_cost.flops = flops
@@ -230,14 +232,11 @@ class CostEstimator:
                                 continue
                             self.local_cost(rank).time += item[rank].time
 
-    def prepare(self):
-        self._global_cost = Cost()
-        self._local_cost_mapping = {}
-        self._detailed_cost = OrderedDict()
-        self._bubble_time_mapping = {}
-
     def _calculate_bytes(self, sizes, dtype):
-        total_count = reduce(lambda x, y: x * y, sizes)
+        if sizes:
+            total_count = reduce(lambda x, y: x * y, sizes)
+        else:
+            total_count = 0
 
         if dtype == paddle.float64 or dtype == paddle.int64:
             dtype_factor = 8
@@ -260,24 +259,43 @@ class CostEstimator:
         for block in self.program.blocks:
             for tensor in block.vars.values():
                 dist_tensor = dist_context.get_dist_tensor_for_program(tensor)
-                dist_attr = dist_tensor.dist_attr
-                processes = dist_attr.process_mesh.processes
-                for process in processes:
-                    sizes = dist_tensor.local_sizes()
-                    dtype = dist_tensor.serial_tensor.dtype
-                    if not all(size >= 0 for size in sizes):
-                        print("$$$$$$$$$$",
-                              dist_tensor.serial_tensor.name,
-                              sizes,
-                              dtype,
-                              flush=True)
-                    if process in memories:
-                        memories[process] += self._calculate_bytes(sizes, dtype)
-                    else:
-                        memories[process] = self._calculate_bytes(sizes, dtype)
+                if dist_tensor is None:
+                    raise ValueError("Cannot find the dist tensor of {}".format(
+                        tensor.name))
+                serial_tensor = dist_tensor.serial_tensor
+                if serial_tensor.type == core.VarDesc.VarType.READER \
+                    or serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+                    or serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES:
+                    continue
+                else:
+                    dist_attr = dist_tensor.dist_attr
+                    if dist_attr.process_mesh is None:
+                        print(tensor.name, tensor.type, dist_attr, flush=True)
+                    processes = dist_attr.process_mesh.processes
+                    for process in processes:
+                        sizes = dist_tensor.local_sizes()
+                        dtype = dist_tensor.serial_tensor.dtype
+                        if sizes and not all(size >= 0 for size in sizes):
+                            print("$$$$$$$$$$",
+                                  dist_tensor.serial_tensor.name,
+                                  sizes,
+                                  dtype,
+                                  flush=True)
+                        if process in memories:
+                            memories[process] += self._calculate_bytes(
+                                sizes, dtype)
+                        else:
+                            memories[process] = self._calculate_bytes(
+                                sizes, dtype)
         # Calculate the max memory in all ranks
         max_memory = max(memories.values())
         return max_memory
+
+    def prepare(self):
+        self._global_cost = Cost()
+        self._local_cost_mapping = {}
+        self._detailed_cost = OrderedDict()
+        self._bubble_time_mapping = {}
 
     def estimate(self, dist_context, resharder=None):
         self.prepare()
@@ -289,5 +307,8 @@ class CostEstimator:
         block = self.program.global_block()
         # print("estimate_cost", self.program)
         self._estimate_core(dist_context, resharder, block)
+        # print("estimate_cost.py  detailed_cost", self.detailed_cost)
+        # print("estimate_cost.py program with dist_attr********")
+        # print_program_with_dist_attr(self.program, dist_context)
 
         return self.global_cost
