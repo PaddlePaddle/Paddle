@@ -1193,7 +1193,45 @@ struct OperatorWithKernel::CacheImpl {
     return infer_shape_ctx_.get();
   }
 
+  bool updateInputsShapesDimCache() {
+    bool flag = true;
+    size_t inputs_size = kernel_ctx_->InputsSize();
+    for (size_t i = 0; i < inputs_size; i++) {
+      const std::string& in_name = infer_shape_ctx_->GetInputNameByIdx(i);
+      if (!inputs_dim_caches.count(in_name) ||
+          infer_shape_ctx_->GetInputDim(in_name) !=
+              inputs_dim_caches[in_name]) {
+        inputs_dim_caches[in_name] = infer_shape_ctx_->GetInputDim(in_name);
+        flag = false;
+      }
+    }
+    return flag;
+  }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+ public:
+  void startCudaGraphCapture(gpuStream_t stream) {
+    cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+  }
+
+  void endCudaGraphCapture(gpuStream_t stream) {
+    cudaStreamEndCapture(stream, &graph_);
+    cudaGraphInstantiate(&graph_instance_, graph_, NULL, NULL, 0);
+  }
+
+  void runCudaGraph(gpuStream_t stream) {
+    cudaGraphLaunch(graph_instance_, stream);
+    cudaStreamSynchronize(stream);
+  }
+
  private:
+  cudaGraphExec_t graph_instance_;
+  cudaGraph_t graph_;
+#endif
+
+ private:
+  std::map<std::string, DDim> inputs_dim_caches;
   std::unique_ptr<phi::KernelContext> kernel_ctx_;
   std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
 };
@@ -1337,6 +1375,58 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->Info().infer_shape_(&infer_shape_ctx);
 }
 
+void OperatorWithKernel::InitOpCache(const Scope& scope,
+                                     const platform::Place& place) const {
+  if (impl_) delete impl_;
+  if (runtime_ctx_.get() == nullptr || pre_scope_ != &scope) {
+    std::lock_guard<std::mutex> lock(cache_update_mutex_);
+    if (runtime_ctx_.get() == nullptr || pre_scope_ != &scope) {
+      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+      pre_scope_ = &scope;
+    }
+  }
+  impl_ =
+      new CacheImpl(new phi::KernelContext(),
+                    new RuntimeInferShapeContext(*this, *runtime_ctx_.get()));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  platform::CUDADeviceContext* ctx = static_cast<platform::CUDADeviceContext*>(
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+  auto stream = ctx->stream();
+
+  if (std::count(graphed_ops.begin(), graphed_ops.end(), Type())) {
+    impl_->startCudaGraphCapture(stream);
+  }
+#endif
+  RunImpl(scope, place, runtime_ctx_.get());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (std::count(graphed_ops.begin(), graphed_ops.end(), Type())) {
+    impl_->endCudaGraphCapture(stream);
+  }
+#endif
+}
+
+bool OperatorWithKernel::cacheEnabled() const {
+  return (run_phi_kernel_ && !need_prepare_data_ && !need_prepare_phi_data_ &&
+          impl_ != nullptr);
+}
+bool OperatorWithKernel::cudaGraphEnabled() const {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  return std::count(graphed_ops.begin(), graphed_ops.end(), Type());
+#else
+  return false;
+#endif
+}
+void OperatorWithKernel::checkRuntimeContext(const Scope& scope) const {
+  const Scope* cur_scope = &scope;
+  if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
+    std::lock_guard<std::mutex> lock(cache_update_mutex_);
+    if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
+      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+      pre_scope_ = cur_scope;
+    }
+  }
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
@@ -1351,20 +1441,32 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
-  } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
-             !need_prepare_phi_data_) {
-    if (!all_kernels_must_compute_runtime_shape_)
-      this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
-    (*pt_kernel_)(impl_->getKernelContext());
   } else {
-    if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
-      std::lock_guard<std::mutex> lock(cache_update_mutex_);
-      if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
-        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
-        pre_scope_ = cur_scope;
+    if (!impl_) {
+      InitOpCache(scope, place);
+    } else {
+      if (cacheEnabled()) {
+#if defined(paddle_with_cuda) || defined(paddle_with_hip)
+        if (!cudaGraphEnabled()) {
+          platform::CUDADeviceContext* ctx =
+              static_cast<platform::CUDADeviceContext*>(
+                  platform::DeviceContextPool::Instance().Get(
+                      platform::CUDAPlace(0)));
+          auto stream = ctx->stream();
+          impl_->runCudaGraph(stream);
+        } else {
+#endif
+          if (!all_kernels_must_compute_runtime_shape_)
+            this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+          (*pt_kernel_)(impl_->getKernelContext());
+#if defined(paddle_with_cuda) || defined(paddle_with_hip)
+        }
+#endif
+      } else {
+        checkRuntimeContext(scope);
+        RunImpl(scope, place, runtime_ctx_.get());
       }
     }
-    RunImpl(scope, place, runtime_ctx_.get());
   }
 }
 
@@ -1632,9 +1734,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_, runtime_ctx);
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
           !need_prepare_data_) {
-        impl_ =
-            new CacheImpl(new phi::KernelContext(),
-                          new RuntimeInferShapeContext(*this, *runtime_ctx));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
         (*pt_kernel_)(impl_->getKernelContext());
       } else {
