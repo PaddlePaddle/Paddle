@@ -940,10 +940,6 @@ class Conv3D(_ConvNd):
     Returns:
         :ref:`api_paddle_nn_Layer`. A callable object of Conv3D.
 
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
-
     Examples:
 
         .. code-block:: python
@@ -1121,9 +1117,6 @@ class Conv3DTranspose(_ConvNd):
     Returns:
         :ref:`api_paddle_nn_Layer`. A callable object of Conv3DTranspose.
 
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
     Examples:
 
        .. code-block:: python
