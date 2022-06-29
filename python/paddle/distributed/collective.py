@@ -688,7 +688,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         return
 
     if in_dygraph_mode():
-        op_type = _get_reduce_op(op, "allreduce")
+        op_type = _get_reduce_op(op, "all_reduce")
         group = _get_default_group() if group is None else group
         task = group.process_group.allreduce(tensor, op_type)
         if use_calc_stream:
@@ -784,7 +784,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         return
 
     if in_dygraph_mode():
-        op = _get_reduce_op(op, "reduce")
+        op_type = _get_reduce_op(op, "reduce")
         group = _get_default_group() if group is None else group
         gdst = group.get_group_rank(dst)
         assert gdst >= 0, ("dst rank out of group, need global rank")
@@ -2257,6 +2257,7 @@ def reduce_scatter(output,
     Args:
         output (Tensor): Output tensor.
         input_list (list[Tensor]): List of tensors to reduce and scatter.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (Group, optional): The group instance return by new_group or None for global 
             default group. Default: None.
         use_calc_stream (bool, optional): Whether this op should be an async op.
@@ -2325,6 +2326,7 @@ def _reduce_scatter_base(output,
     Args:
         output (Tensor): Output tensor.
         input (Tensor): Input tensor that is of size output tensor size times world size
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (ProcessGroup, optional): The process group to work on. If None,
             the default process group will be used.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream (False).
