@@ -263,11 +263,12 @@ __global__ void dy_mf_fill_dvals_kernel(ValType* d_shard_vals,
 
 // optimized version
 template <>
-__global__ void dy_mf_fill_dvals_kernel<FeatureValue, int>(FeatureValue* d_shard_vals,
-                                                    FeatureValue* d_vals,
-                                                    int* idx,
-                                                    size_t len,
-                                                    size_t val_size) {
+__global__ void dy_mf_fill_dvals_kernel<FeatureValue, int>(
+    FeatureValue* d_shard_vals,
+    FeatureValue* d_vals,
+    int* idx,
+    size_t len,
+    size_t val_size) {
   const size_t i = blockIdx.x * blockDim.y + threadIdx.y;
   const size_t k = threadIdx.x;
   if (i < len) {
@@ -440,9 +441,12 @@ void HeterCommKernel::dy_mf_fill_shard_grads(KeyType* d_shard_keys,
                                              long long len,
                                              size_t grad_value_size,
                                              const StreamType& stream) {
-  int grid_size = (len - 1) / block_size_ + 1;
+  // int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
-  dy_mf_fill_shard_grads_kernel<<<grid_size, block_size_, 0, stream>>>(
+  dim3 block_dims(32, 32);
+  const size_t grid_size = (len - 1) / 32 + 1;
+  dim3 grid_dims(grid_size);
+  dy_mf_fill_shard_grads_kernel<<<grid_dims, block_dims, 0, stream>>>(
       d_shard_keys,
       d_keys,
       d_shard_grads,
@@ -459,12 +463,26 @@ void HeterCommKernel::merge_gradient(const uint32_t* offset,
                                      const char* input,
                                      char* output,
                                      int n,
+                                     size_t grad_dim,
                                      size_t grad_value_size,
                                      DynamicGradMerger& merger_,
                                      const StreamType& stream) {
   int grid_size = (n - 1) / block_size_ + 1;
-  merge_gradients_kernel<<<grid_size, block_size_, 0, stream>>>(
+  merge_gradients_basic_kernel<<<grid_size, block_size_, 0, stream>>>(
       offset, fea_num, index, input, output, n, grad_value_size, merger_);
+  if (grad_dim > 0) {
+    int grid_size2 = (n * grad_dim - 1) / block_size_ + 1;
+    merge_gradients_embedx_kernel<<<grid_size2, block_size_, 0, stream>>>(
+      offset,
+      fea_num,
+      index,
+      input,
+      output,
+      n * grad_dim,
+      grad_dim,
+      grad_value_size,
+      merger_);
+  }
 }
 
 template <typename ValType, typename T, typename StreamType>
@@ -474,9 +492,12 @@ void HeterCommKernel::dy_mf_fill_dvals(ValType* d_shard_vals,
                                        long long len,
                                        size_t val_size,
                                        const StreamType& stream) {
-  int grid_size = (len - 1) / block_size_ + 1;
+  // int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
-  dy_mf_fill_dvals_kernel<<<grid_size, block_size_, 0, stream>>>(
+  dim3 block_dims(32, 32);
+  const size_t grid_size_ = (len - 1) / 32 + 1;
+  dim3 grid_dims(grid_size_);
+  dy_mf_fill_dvals_kernel<<<grid_dims, block_dims, 0, stream>>>(
       d_shard_vals, d_vals, idx, c_len, val_size);
 }
 
@@ -605,7 +626,8 @@ template void HeterCommKernel::merge_gradient<cudaStream_t>(
     const uint32_t* index,
     const char* input,
     char* output,
-    int n, size_t grad_dim,
+    int n,
+    size_t grad_dim,
     size_t grad_value_size,
     DynamicGradMerger& merger_,
     const cudaStream_t& stream);
