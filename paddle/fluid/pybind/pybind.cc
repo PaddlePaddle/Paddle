@@ -1964,6 +1964,13 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
+  m.def("get_all_op_names", []() {
+    std::vector<std::string> op_names;
+    for (auto &iter : OpInfoMap::Instance().map()) {
+      op_names.emplace_back(iter.first);
+    }
+    return op_names;
+  });
   m.def("get_op_attrs_default_value",
         [](py::bytes byte_name) -> paddle::framework::AttributeMap {
           std::string op_type = byte_name;
@@ -2210,12 +2217,12 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     device_types = phi::DeviceManager::GetAllDeviceTypes();
 #else
-          LOG(WARNING) << string::Sprintf(
+          VLOG(1) << string::Sprintf(
               "Cannot use get_all_device_type because you have installed"
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_all_device_type, please try to install"
               "CustomDevice version "
-              "PaddlePaddle by: pip install paddlepaddle-core\n");
+              "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
     return device_types;
   });
@@ -2224,12 +2231,12 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
 #else
-          LOG(WARNING) << string::Sprintf(
+          VLOG(1) << string::Sprintf(
               "Cannot use get_all_custom_device_type because you have installed"
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_all_custom_device_type, please try to "
               "install CustomDevice version "
-              "PaddlePaddle by: pip install paddlepaddle-core\n");
+              "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
     return device_types;
   });
@@ -2238,12 +2245,12 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     devices = phi::DeviceManager::GetAllDeviceList();
 #else
-          LOG(WARNING) << string::Sprintf(
+          VLOG(1) << string::Sprintf(
               "Cannot use get_available_device because you have installed"
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_available_device, please try to install"
               "CustomDevice version "
-              "PaddlePaddle by: pip install paddlepaddle-core\n");
+              "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
     return devices;
   });
@@ -2252,14 +2259,14 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     devices = phi::DeviceManager::GetAllCustomDeviceList();
 #else
-          LOG(WARNING) << string::Sprintf(
+          VLOG(1) << string::Sprintf(
               "Cannot use get_available_custom_device because you have "
               "installed"
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_available_custom_device, please try to "
               "install"
               "CustomDevice version "
-              "PaddlePaddle by: pip install paddlepaddle-core\n");
+              "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
     return devices;
   });
@@ -2333,7 +2340,7 @@ All parameter, weight, gradient are variables in Paddle.
                  "version PaddlePaddle.\n"
                  "If you want to use CustomDevice, please try to install"
                  "CustomDevice version "
-                 "PaddlePaddle by: pip install paddlepaddle-core\n"
+                 "PaddlePaddle by: pip install paddlepaddle\n"
                  "If you only have CPU, please change "
                  "CustomPlace(%s, %d) to be CPUPlace().\n",
                  device_type, dev_id);
@@ -2794,6 +2801,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::Place, platform::IPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPinnedPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::MLUPlace>)
+      .def("_equals", &IsSamePlace<platform::Place, platform::CustomPlace>)
       .def("is_gpu_place",
            [](platform::Place &self) { return platform::is_gpu_place(self); })
       .def("is_cpu_place",
@@ -3330,7 +3338,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::take_ownership);
 
   py::class_<FetchList>(m, "FetchList", R"DOC( FetchList is a
-        vector of boost::variant<LoDTensor, LoDTensorArray>.
+        vector of paddle::variant<LoDTensor, LoDTensorArray>.
         )DOC")
       .def(
           "_move_to_list",
@@ -3377,7 +3385,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::arg("var"));
 
   py::class_<FetchUnmergedList>(m, "FetchUnmergedList", R"DOC(
-        FetchUnmergedList is 2-D array of FetchType(boost::variant(LoDTensor, LoDTensorArray)).
+        FetchUnmergedList is 2-D array of FetchType(paddle::variant(LoDTensor, LoDTensorArray)).
         )DOC")
       .def(
           "_move_to_list",
@@ -4598,12 +4606,15 @@ All parameter, weight, gradient are variables in Paddle.
                pybind11::gil_scoped_release release;
                ret = self.Run(fetch_tensors, return_merged);
              }
+
+             // TODO(Ruibiao): Refactor the run interface of PE to avoid use
+             // boost::get here
              if (return_merged) {
                return py::cast(
-                   std::move(BOOST_GET(paddle::framework::FetchList, ret)));
+                   std::move(boost::get<paddle::framework::FetchList>(ret)));
              } else {
                return py::cast(std::move(
-                   BOOST_GET(paddle::framework::FetchUnmergedList, ret)));
+                   boost::get<paddle::framework::FetchUnmergedList>(ret)));
              }
            })
       .def("device_count", &ParallelExecutor::DeviceCount);

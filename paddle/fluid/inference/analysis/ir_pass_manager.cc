@@ -86,6 +86,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                               argument->tensorrt_tuned_dynamic_shape();
     pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
 
+    pass->Set("model_precision", new int(argument->model_precision()));
+
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();
       std::string dot_file_path;

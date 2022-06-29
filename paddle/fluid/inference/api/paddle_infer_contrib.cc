@@ -215,8 +215,8 @@ struct Status::Impl {
   std::string msg;
 };
 
-Status::Status() noexcept : impl_(new Impl) {}
-Status::Status(const Status& status) noexcept : impl_(new Impl) {
+Status::Status() : impl_(std::make_shared<Impl>()) {}
+Status::Status(const Status& status) : impl_(std::make_shared<Impl>()) {
   *impl_ = *status.impl_;
 }
 
@@ -224,7 +224,7 @@ Status& Status::operator=(const Status& status) noexcept {
   *impl_ = *status.impl_;
   return *this;
 }
-Status::Status(std::exception_ptr e) noexcept : impl_(new Impl) {
+Status::Status(std::exception_ptr e) : impl_(std::make_shared<Impl>()) {
   constexpr int kDefaultError{-1};
   impl_->ec = kDefaultError;
   try {
@@ -238,7 +238,7 @@ Status::Status(std::exception_ptr e) noexcept : impl_(new Impl) {
     impl_->msg = e.what();
   }
 }
-Status Status::OK() noexcept { return Status(); }
+Status Status::OK() { return Status(); }
 bool Status::ok() const noexcept { return impl_->ec == 0; }
 Status::Code Status::code() const noexcept { return impl_->ec; }
 const std::string& Status::error_message() const noexcept { return impl_->msg; }

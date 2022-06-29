@@ -12,19 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-namespace phi {
+#include <cstddef>
+#include <memory>
+#include <string>
+#include <vector>
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/phi/common/data_type.h"
 
-KernelSignature CholeskySolveGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("cholesky_solve_grad",
-                         {"X", "Y", "Out", "Out@GRAD"},
-                         {"upper"},
-                         {"X@GRAD", "Y@GRAD"});
-}
+namespace paddle {
+namespace inference {
 
-}  // namespace phi
+// Get all model's weights and return the data_type, e.g., fp16/bf16 or fp32.
+phi::DataType GetModelPrecision(const framework::ProgramDesc& program);
 
-PD_REGISTER_ARG_MAPPING_FN(cholesky_solve_grad,
-                           phi::CholeskySolveGradOpArgumentMapping);
+}  // namespace inference
+}  // namespace paddle

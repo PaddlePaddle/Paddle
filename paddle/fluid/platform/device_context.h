@@ -906,6 +906,8 @@ class DeviceContextPool {
     return *pool;
   }
 
+  static bool IsInitialized() { return pool != nullptr; }
+
   static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
 
   /*! \brief  Return handle of single device context. */

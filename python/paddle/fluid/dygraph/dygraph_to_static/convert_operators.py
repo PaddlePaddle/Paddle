@@ -209,9 +209,44 @@ def convert_ifelse(pred, true_fn, false_fn, get_args, set_args,
         out = _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
                                return_name_ids)
     else:
-        out = _run_py_ifelse(pred, true_fn, false_fn)
+        out = _run_py_ifelse(pred, true_fn, false_fn, get_args, set_args,
+                             return_name_ids)
 
-    return _remove_no_value_return_var(out)
+    return out
+
+
+def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
+                     return_name_ids):
+    """
+    Paddle cond API will evaluate both ture_fn and false_fn codes.
+    """
+    pred = cast_bool_if_necessary(pred)
+    init_args = get_args()
+
+    def new_true_fn():
+        set_args(init_args)
+        outs = true_fn()
+        _check_no_undefined_var(outs, return_name_ids, 'if_body')
+        return outs
+
+    def new_false_fn():
+        set_args(init_args)
+        outs = false_fn()
+        _check_no_undefined_var(outs, return_name_ids, 'else_body')
+        return outs
+
+    cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn)
+    return _recover_args_state(cond_outs, get_args, set_args, return_name_ids)
+
+
+def _run_py_ifelse(pred, true_fn, false_fn, get_args, set_args,
+                   return_name_ids):
+    """
+    Evaluate python original branch function if-else.
+    """
+    py_outs = true_fn() if pred else false_fn()
+    py_outs = _remove_no_value_return_var(py_outs)
+    return _recover_args_state(py_outs, get_args, set_args, return_name_ids)
 
 
 def _remove_no_value_return_var(out):
@@ -258,48 +293,31 @@ def _check_no_undefined_var(outs, names, branch_name):
                 .format(name, branch_name))
 
 
-def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
-                     return_name_ids):
+def _recover_args_state(outs, get_args, set_args, return_name_ids):
     """
-    Paddle cond API will evaluate both ture_fn and false_fn codes.
+    Currently we support variant length of early return statement by padding
+    _no_return_value.
+
+    # TODO(dev): We shall consider to evaluate whether should support this for Python if-else?
     """
-    pred = cast_bool_if_necessary(pred)
-    init_args = get_args()
-
-    def new_true_fn():
-        set_args(init_args)
-        outs = true_fn()
-        _check_no_undefined_var(outs, return_name_ids, 'if_body')
-        return outs
-
-    def new_false_fn():
-        set_args(init_args)
-        outs = false_fn()
-        _check_no_undefined_var(outs, return_name_ids, 'else_body')
-        return outs
-
-    cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn)
     # IfExpr's return_name_ids maybe None
     if return_name_ids is None:
-        return cond_outs
+        return outs
 
+    init_args = get_args()
     # recover args state
     num_outs = len(return_name_ids)
     num_args = 1 if not isinstance(init_args, tuple) else len(init_args)
     assert num_outs <= num_args
 
     if num_args == 1:
-        final_outs = cond_outs
+        final_outs = outs
     else:
-        cond_outs = (cond_outs, ) if num_outs == 1 else cond_outs
-        final_outs = cond_outs + init_args[num_outs:]
+        outs = (outs, ) if num_outs == 1 else outs
+        final_outs = outs + init_args[num_outs:]
 
     set_args(final_outs)
     return final_outs
-
-
-def _run_py_ifelse(pred, true_fn, false_fn):
-    return true_fn() if pred else false_fn()
 
 
 def convert_len(var):
@@ -338,88 +356,30 @@ def convert_zip(*args):
     return zip(*args)
 
 
-def convert_var_shape(x, idx=None, in_control_flow=False):
+def convert_shape(x):
     """
     A function representation of the shape of variable.
     """
 
-    def has_negative(list_shape, idx=None):
-        if idx is not None:
-            return list_shape[idx] < 0
+    def has_negative(list_shape):
+        return any([x < 0 for x in list_shape])
 
-        num_negative = sum([1 if i < 0 else 0 for i in list_shape])
-        return num_negative > 0
+    # When `x` is Variable:
+    #  (1) if x.shape contains -1, such as [2, -1, 64], returns [2, var, 64],
+    #      where var = paddle.shape(x)[1]
 
-    # When `x` is Variable, call nn.shape(x) in following cases:
-    #  (1) The shape of `x` is used in control flow condition.
-    #      ```
-    #      if x.shape[0] == 1:
-    #          y = XX
-    #      ```
-    #  (2) The dim to be used is negative
-    #      ```
-    #      # Assume x.shape=[3, -1] in static mode
-    #      y = paddle.reshape(x, shape=[1, x.shape[1]])
-    #      ```
-    if isinstance(x, Variable) and has_negative(x.shape, idx):
-        return nn.shape(x) if idx is None else nn.shape(x)[idx]
-    else:
-        return list(x.shape) if idx is None else x.shape[idx]
+    #  (2) if x.shape does not contains -1, return lsit(x.shape) directly
 
-
-def convert_var_shape_simple(x):
-    """
-    A function representation of the shape of variable.
-    """
     if isinstance(x, Variable):
-        return nn.shape(x)
+        values = list(x.shape)
+        if has_negative(values):
+            shape_tensor = nn.shape(x)
+            for i, v in enumerate(values):
+                if v is None or v < 0:
+                    values[i] = shape_tensor[i]
+        return values
     else:
-        # Use list() to make returned type consistant with dygraph
-        return list(x.shape)
-
-
-def eval_if_exist_else_none(name, global_symbol_table):
-    """
-    Args:
-        name([str]): Expression passed into `eval`.
-        local_symbol_table(dict): Specified from `globals()`. DO NOT use `locals()`,
-                                  because all STATIC_CONVERT_VAR_SHAPE_SUFFIX vars is
-                                  declared with keyword `global`.
-    
-    Returns:
-        Return the variable if found in global_symbol_table else None.
-    """
-    try:
-        return eval(name, global_symbol_table)
-    except:
-        return None
-
-
-def choose_shape_attr_or_api(attr_shape, api_shape, idx=None):
-    """
-    Input can be attribute `x.shape` or api `shape(x)`, this function
-    chooses which one to return to use in dy2stat.
-
-    Note: sometimes users write `x.shape[3]`, so attr_shape can be an integer.
-    """
-    if api_shape is None:
-        return attr_shape if idx is None else attr_shape[idx]
-    if not isinstance(attr_shape, (list, tuple)):
-        # some variables like x.shape[0] is no longer a list or tuple
-        if isinstance(attr_shape, int) and attr_shape < 0:
-            return api_shape if idx is None else api_shape[idx]
-        return attr_shape if idx is None else attr_shape[idx]
-
-    def has_negative(list_shape, idx=None):
-        if idx is not None:
-            return list_shape[idx] < 0
-
-        num_negative = sum([1 if i < 0 else 0 for i in list_shape])
-        return num_negative > 0
-
-    if has_negative(attr_shape, idx):
-        return api_shape if idx is None else api_shape[idx]
-    return attr_shape if idx is None else attr_shape[idx]
+        return x.shape
 
 
 def convert_shape_compare(left, *args):

@@ -201,6 +201,28 @@ def test_return_without_paddle_cond(x):
     return y
 
 
+def two_value(x):
+    return x * 2, x + 1
+
+
+def diff_return_hepler(x):
+    if False:
+        y = x + 1
+        z = x - 1
+        return y, z
+    else:
+        return two_value(x)
+
+
+@to_static
+def test_diff_return(x):
+    x = paddle.to_tensor(x)
+    y, z = diff_return_hepler(x)
+    if y.shape[0] > 1:
+        y = y + 1
+    return y, z
+
+
 class TestReturnBase(unittest.TestCase):
 
     def setUp(self):
@@ -253,6 +275,12 @@ class TestReturnIf(TestReturnBase):
 
     def init_dygraph_func(self):
         self.dygraph_func = test_return_if
+
+
+class TestReturnIfDiff(TestReturnBase):
+
+    def init_dygraph_func(self):
+        self.dygraph_func = test_diff_return
 
 
 class TestReturnIfElse(TestReturnBase):

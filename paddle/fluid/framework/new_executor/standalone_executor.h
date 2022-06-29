@@ -18,21 +18,18 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
 
-class ExecutorBase {
- public:
-  virtual ~ExecutorBase() {}
-  virtual paddle::framework::FetchList Run(
-      const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors,
-      const std::vector<std::string>& fetch_names) = 0;
-};
+class InterpreterCore;
 
-class StandaloneExecutor : public ExecutorBase {
+class StandaloneExecutor {
  public:
   StandaloneExecutor(const platform::Place& place,
                      const ProgramDesc& startup_prog,
@@ -57,10 +54,8 @@ class StandaloneExecutor : public ExecutorBase {
       const std::vector<framework::LoDTensor>& feed_tensors);
 
  private:
-  void BuildVariableScope(const framework::ProgramDesc& pdesc,
-                          VariableScope* var_scope);
-
   std::shared_ptr<InterpreterCore> GetInterpreterCore(
+      const ProgramDesc& prog,
       const std::vector<std::string>& feed_names,
       const std::vector<std::string>& fetch_names,
       bool add_fetch_op);
@@ -68,7 +63,7 @@ class StandaloneExecutor : public ExecutorBase {
   platform::Place place_;
   const ProgramDesc& startup_prog_;
   const ProgramDesc& main_prog_;
-  VariableScope global_scope_;
+  Scope* scope_;  // not owned
 
   std::unordered_map<std::string, std::shared_ptr<InterpreterCore>>
       interpretercores_;

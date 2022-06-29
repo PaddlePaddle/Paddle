@@ -28,7 +28,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import ForLoopTuplePreTransformer
 from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 
 __all__ = ['LoopTransformer', 'NameVisitor']
 
@@ -89,7 +89,7 @@ def create_while_nodes(condition_name, body_name, loop_var_names):
         else:
             assign_loop_var_names.append(name)
 
-    while_func_name = "_jst.convert_while_loop"
+    while_func_name = "_jst.While"
     while_node_str = "[{}] = {}({}, {}, [{}])".format(
         ",".join(assign_loop_var_names), while_func_name, condition_name,
         body_name, ",".join(loop_var_names))
@@ -672,7 +672,7 @@ class LoopTransformer(gast.NodeTransformer):
         # We need to create static variable for those variables
         for name in create_var_names:
             if "." not in name:
-                new_stmts.append(create_static_variable_gast_node(name))
+                new_stmts.append(create_fill_constant_node(name))
 
         # 4. append init statements
         new_stmts.extend(init_stmts)
@@ -756,7 +756,7 @@ class LoopTransformer(gast.NodeTransformer):
         # We need to create static variable for those variables
         for name in create_var_names:
             if "." not in name:
-                new_stmts.append(create_static_variable_gast_node(name))
+                new_stmts.append(create_fill_constant_node(name))
 
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_CONDITION_PREFIX),

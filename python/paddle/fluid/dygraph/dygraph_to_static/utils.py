@@ -1178,7 +1178,7 @@ class ForNodeVisitor(object):
         else:
             iter_var_name = ast_to_source_code(self.iter_node).strip()
 
-        convert_len_node_source_str = '{} = _jst.convert_len({})'.format(
+        convert_len_node_source_str = '{} = _jst.Len({})'.format(
             self.iter_var_len_name, iter_var_name)
 
         convert_len_node = gast.parse(convert_len_node_source_str).body[0]

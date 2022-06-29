@@ -24,7 +24,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/operators/conj_op.h"
 #include "paddle/fluid/operators/spectral_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/enforce.h"

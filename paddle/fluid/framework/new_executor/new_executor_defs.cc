@@ -560,8 +560,8 @@ const std::vector<Variable*>& InterpretercoreInferShapeContext::OutputVars(
 
 VariableScope::VariableScope(Scope* scope) {
   // for @EMPTY@ variable
-  var_list_.push_back(nullptr);
   name2id_[kEmptyVarName] = kEmptyVarIndex;
+  var_list_.push_back(nullptr);
   vec_meta_info_.emplace_back(0, nullptr);
   scope_ = scope;
   PADDLE_ENFORCE_NE(
@@ -569,15 +569,9 @@ VariableScope::VariableScope(Scope* scope) {
       nullptr,
       platform::errors::PreconditionNotMet(
           "You have passed a nullptr to construct VariableScope."));
-  listener_ = std::make_shared<VariableScopeListener>(this);
-  scope->AddListener(listener_);
 }
 
-VariableScope::~VariableScope() {
-  if (scope_ && listener_) {
-    scope_->DelListener(listener_);
-  }
-}
+VariableScope::~VariableScope() {}
 
 Scope* VariableScope::GetMutableScope() const { return scope_; }
 
@@ -586,22 +580,6 @@ Scope* VariableScope::GetMutableLocalScope() const { return local_scope_; }
 void VariableScope::SetLocalScope(Scope* local_scope) {
   VLOG(4) << "Set local scope: " << local_scope;
   local_scope_ = local_scope;
-}
-
-Variable* VariableScope::FindVar(const std::string& name) const {
-  auto it = name2id_.find(name);
-  if (it != name2id_.end()) {
-    PADDLE_ENFORCE_LT(it->second,
-                      var_list_.size(),
-                      platform::errors::NotFound(
-                          "The id(%d) of variable(%s) should not be larger "
-                          "than the size of variable list(%d).",
-                          it->second,
-                          name,
-                          var_list_.size()));
-    return var_list_[it->second];
-  }
-  return nullptr;
 }
 
 // Get variable id by name, return -1 if not found
@@ -638,34 +616,23 @@ int VariableScope::VarId(const std::string& name) const {
   return name2id_.at(name);
 }
 
-Variable* VariableScope::Var(int id) const { return var_list_.at(id); }
+Variable* VariableScope::VarRef(int id) const { return var_list_[id]; }
 
-Variable* VariableScope::Var(const std::string& name) const {
-  return var_list_.at(VarId(name));
-}
-
-size_t VariableScope::VarSize() const { return var_list_.size(); }
+size_t VariableScope::VarSize() const { return name2id_.size(); }
 
 void VariableScope::AddVar(const std::string& name,
-                           framework::VarDesc* var_desc,
-                           bool local_scope) {  // NOLINT
-  auto v = local_scope ? local_scope_->Var(name) : scope_->Var(name);
-  if (nullptr == var_desc) {
-    v->GetMutable<LoDTensor>();
-  } else {
-    InitializeVariable(
-        v,
-        var_desc
-            ->GetType());  // Scope don't initialize variable recently created
+                           framework::VarDesc* var_desc) {
+  if (!HasVar(name)) {
+    auto id = VarSize();
+    name2id_[name] = id;
+    vec_meta_info_.emplace_back(0, var_desc);
+    var_list_.push_back(local_scope_->FindVar(name));
+    PADDLE_ENFORCE_EQ(
+        var_list_.size(),
+        name2id_.size(),
+        platform::errors::InvalidArgument(
+            "The size of var_list and name2id map should be equal"));
   }
-  SetVarDesc(name, var_desc);
-}
-
-void VariableScope::AddVar(const std::string& name,
-                           const Variable& var) {  // NOLINT
-  // Though name existed in outer_scope_, we need
-  // add again to create name2id map.
-  scope_->Var(name);
 }
 
 void VariableScope::SetVarDesc(const std::string& name,
@@ -696,10 +663,10 @@ bool VariableScope::GetVarSikpInplace(int id) const {
 
 void VariableScope::CheckExist(int id) const {
   PADDLE_ENFORCE_LT(id,
-                    var_list_.size(),
+                    name2id_.size(),
                     platform::errors::PreconditionNotMet(
                         "Required var_id < %d, but received var_id = %d.",
-                        var_list_.size(),
+                        name2id_.size(),
                         id));
 }
 
@@ -709,55 +676,6 @@ void VariableScope::CheckExist(const std::string& name) const {
       true,
       platform::errors::NotFound("%s not in VariableScope.", name));
 }
-
-void VariableScope::ClearListener() {
-  if (scope_ && listener_ && scope_->HasListener(listener_)) {
-    VLOG(4) << "Clear listener " << listener_ << " for " << scope_;
-    scope_->DelListener(listener_);
-  }
-  if (local_scope_ && listener_ && local_scope_->HasListener(listener_)) {
-    VLOG(4) << "Clear listener " << listener_ << " for " << local_scope_;
-    local_scope_->DelListener(listener_);
-  }
-}
-
-void VariableScope::ResetListener() {
-  if (scope_ && listener_ && !scope_->HasListener(listener_)) {
-    VLOG(4) << "Add listener " << listener_ << " for " << scope_;
-    scope_->AddListener(listener_);
-  }
-  if (local_scope_ && listener_ && !local_scope_->HasListener(listener_)) {
-    VLOG(4) << "Add listener " << listener_ << " for " << local_scope_;
-    local_scope_->AddListener(listener_);
-  }
-}
-
-VariableScopeListener::VariableScopeListener(VariableScope* var_scope) {
-  var_scope_ = var_scope;
-}
-
-void VariableScopeListener::onCreateVariable(const std::string& name,
-                                             Variable* v) {
-  if (!var_scope_->HasVar(name)) {  // may exist in variable scope.
-    VLOG(4) << "Calling VariableScope::onCreateVariable with var_name: "
-            << name;
-    var_scope_->name2id_[name] = var_scope_->VarSize();
-    var_scope_->var_list_.emplace_back(v);
-    var_scope_->vec_meta_info_.emplace_back(0, nullptr);
-  }
-}
-
-void VariableScopeListener::onDeleteVariable(const std::string& name) {
-  if (var_scope_->HasVar(name)) {
-    VLOG(4) << "Calling VariableScope::onDeleteVariable with var_name: "
-            << name;
-  }
-}
-void VariableScopeListener::onRenameVariable(const std::string& old_name,
-                                             const std::string& new_name) {}
-void VariableScopeListener::onCreateScope(Scope* Scope) {}
-void VariableScopeListener::onDeleteScope(Scope* Scope) {}
-void VariableScopeListener::onClear() {}
 
 Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
