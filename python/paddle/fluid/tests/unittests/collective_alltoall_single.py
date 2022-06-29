@@ -28,9 +28,20 @@ from paddle import framework
 
 class TestCollectiveAllToAllSingle(unittest.TestCase):
 
-    def test_collective_alltoall_single_case1(self):
+    def setUp(self):
+        assert not paddle.distributed.is_initialized(), \
+            "The distributed environment has not been initialized."
+        dist.init_parallel_env()
+        assert paddle.distributed.is_initialized(), \
+            "The distributed environment has been initialized."
+
+        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+
+    def test_collective_alltoall_single(self):
         rank = dist.get_rank()
         size = dist.get_world_size()
+
+        # case 1
         input = paddle.ones([size, size], dtype='int64') * rank
         output = paddle.empty([size, size], dtype='int64')
         expected_output = paddle.concat(
@@ -42,10 +53,7 @@ class TestCollectiveAllToAllSingle(unittest.TestCase):
         np.testing.assert_allclose(output.numpy(), expected_output.numpy())
         dist.destroy_process_group(group)
 
-    def test_collective_alltoall_single_case2(self):
-        rank = dist.get_rank()
-        size = dist.get_world_size()
-
+        # case 2
         in_split_sizes = [i + 1 for i in range(size)]
         out_split_sizes = [rank + 1 for i in range(size)]
 
@@ -68,17 +76,11 @@ class TestCollectiveAllToAllSingle(unittest.TestCase):
         np.testing.assert_allclose(output.numpy(), expected_output.numpy())
         dist.destroy_process_group(group)
 
+    def tearDown(self):
+        dist.destroy_process_group()
+        assert not paddle.distributed.is_initialized(), \
+            "The distributed environment has been deinitialized."
+
 
 if __name__ == '__main__':
-    assert not paddle.distributed.is_initialized(), \
-        "The distributed environment has not been initialized."
-    dist.init_parallel_env()
-    assert paddle.distributed.is_initialized(), \
-        "The distributed environment has been initialized."
-
-    paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
     unittest.main()
-
-    dist.destroy_process_group()
-    assert not paddle.distributed.is_initialized(), \
-        "The distributed environment has been deinitialized."
