@@ -865,4 +865,4 @@ x.second );
   unsigned long long m_collisions;  // NOLINT
 };
 
-#endif  // CONCURRENT_UNORDERED_MAP_CUH
+#endif  // CONCURRENT_UNORDERED_MAP_CUH  // NOLINT
