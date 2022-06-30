@@ -172,6 +172,9 @@ class FCPrimitiveFactory {
       out->set_format(MKLDNNMemoryFormat::nc);
       // In case of 3 dims, we generate a format that is based on number
       // of output dims and the layout of input format (nchw or nhwc).
+      out->set_mem_desc({phi::vectorize(out->dims()),
+                         platform::MKLDNNGetDataType<T_out>(),
+                         out->format()});
     } else if (dim_num == 3) {
       if (in_format == MKLDNNMemoryFormat::nwc ||
           in_format == MKLDNNMemoryFormat::nhwc) {
@@ -185,9 +188,6 @@ class FCPrimitiveFactory {
     } else {
       out->set_format(in_format);
     }
-    out->set_mem_desc({phi::vectorize(out->dims()),
-                       platform::MKLDNNGetDataType<T_out>(),
-                       out->format()});
   }
 
   void UpdateDataPointers(const ExecutionContext& ctx,
