@@ -28,8 +28,6 @@
 
 namespace phi {
 
-using RuntimeConfig = paddle::flat_hash_map<std::string, Attribute>;
-
 /**
  * Note: KernelContext doesn't manage the life of DeviceContext and Tensor
  *
@@ -133,7 +131,7 @@ class KernelContext {
   template <typename AttrType>
   const AttrType& AttrAt(size_t idx) const;
 
-  const RuntimeConfig& RuntimeConfig() const { return runtime_config_; }
+  const RuntimeAttrs& GetRuntimeAttrs() const { return runtime_attrs_; }
 
   size_t InputsSize() const { return inputs_.size(); }
   size_t OutputsSize() const { return outputs_.size(); }
@@ -150,7 +148,7 @@ class KernelContext {
   paddle::small_vector<std::pair<int, int>, kOutputSmallVectorSize>
       output_range_;
 
-  RuntimeConfig runtime_config_;
+  RuntimeAttrs runtime_attrs_;
 };
 
 }  // namespace phi

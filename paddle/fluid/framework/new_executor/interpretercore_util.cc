@@ -256,12 +256,14 @@ void create_all_ops(const framework::BlockDesc& block,
     const VariableNameMap& outputs_names = op->Outputs();
 
     AttributeMap op_attr_map = op->GetAttrMap();
+    RuntimeAttributeMap op_runtime_attr_map = op->GetRuntimeAttrMap();
 
     if (info.Checker() != nullptr) {
       info.Checker()->Check(&op_attr_map);
     }
     auto op_base =
         info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
+    op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
 
 #ifdef PADDLE_WITH_MKLDNN
     if (FLAGS_use_mkldnn) {

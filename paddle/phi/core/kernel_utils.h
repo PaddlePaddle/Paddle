@@ -318,19 +318,19 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(StringTensor);
 
   template <typename... Tail>
-  struct KernelCallHelper<const RuntimeConfig&, Tail...> {
+  struct KernelCallHelper<const RuntimeAttrs&, Tail...> {
     template <int dev_ctx_idx,
               int in_idx,
               int attr_idx,
               int out_idx,
               typename... PreviousArgs>
     static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {
-      const auto& runtime_config = ctx->RuntimeConfig();
+      const auto& runtime_attrs = ctx->GetRuntimeAttrs();
       KernelCallHelper<Tail...>::
           template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx>(
-              ctx, pargs..., runtime_config);
+              ctx, pargs..., runtime_attrs);
     }
-  }
+  };
 
   /* End case */
   template <typename T>

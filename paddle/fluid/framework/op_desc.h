@@ -120,6 +120,8 @@ class OpDesc {
   // Only be used in C++
   void SetAttrMap(const AttributeMap &attr_map);
 
+  const RuntimeAttributeMap &GetRuntimeAttrMap() const;
+
   std::vector<std::string> InputNames() const { return MapKeys(inputs_); }
   std::vector<std::string> OutputNames() const { return MapKeys(outputs_); }
 
@@ -189,6 +191,7 @@ class OpDesc {
   // output arg name => output variable names
   VariableNameMap outputs_;
   AttributeMap attrs_;
+  RuntimeAttributeMap runtime_attrs_;
 
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.

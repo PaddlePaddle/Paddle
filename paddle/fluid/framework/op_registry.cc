@@ -36,6 +36,18 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
       info.Creator()(type, inputs, outputs, attrs));
 }
 
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
+    const std::string& type,
+    const VariableNameMap& inputs,
+    const VariableNameMap& outputs,
+    const AttributeMap& attrs,
+    const RuntimeAttributeMap& runtime_attrs,
+    bool attr_check) {
+  auto op_base = CreateOp(type, inputs, outputs, attrs, attr_check);
+  op_base->SetRuntimeAttributeMap(runtime_attrs);
+  return op_base;
+}
+
 static VariableNameMap ConvertOpDescVarsToVarNameMap(
     const google::protobuf::RepeatedPtrField<proto::OpDesc::Var>&
         op_desc_vars) {
@@ -70,7 +82,8 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
   return CreateOp(op_desc.Type(),
                   op_desc.Inputs(),
                   op_desc.Outputs(),
-                  op_desc.GetAttrMap());
+                  op_desc.GetAttrMap(),
+                  op_desc.GetRuntimeAttrMap());
 }
 
 }  // namespace framework

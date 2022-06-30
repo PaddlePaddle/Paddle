@@ -195,6 +195,10 @@ class OperatorBase {
     attrs_[name] = v;
   }
   const AttributeMap& Attrs() const { return attrs_; }
+  const RuntimeAttributeMap& RuntimeAttrs() const { return runtime_attrs_; }
+  void SetRuntimeAttributeMap(const RuntimeAttributeMap& runtime_attrs) {
+    runtime_attrs_ = runtime_attrs;
+  }
 
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
@@ -249,6 +253,7 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+  RuntimeAttributeMap runtime_attrs_;
 
   // OpInfo
   const OpInfo* info_;
@@ -297,7 +302,12 @@ class ExecutionContext {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return BOOST_GET_CONST(T, GetAttr(name));
+    auto iter = op_.Attrs().find(name);
+    if (iter == op_.Attrs().end()) {
+      return BOOST_GET_CONST(T, op_.RuntimeAttrs().at(name));
+    } else {
+      return BOOST_GET_CONST(T, iter->second);
+    }
   }
 
   virtual const Attribute& GetAttr(const std::string& name) const {
