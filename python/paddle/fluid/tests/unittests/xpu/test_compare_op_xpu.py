@@ -29,20 +29,19 @@ class TestCompareOpBase(XPUOpTest):
         self.place = paddle.XPUPlace(0)
         self.init_dtype()
         self.set_case()
+        self.inputs = {'X': self.x, 'Y': self.y}
+        self.outputs = {'Out': self.result}
 
     def set_case(self):
         self.op_type = 'less_than'
-        input_x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-        input_y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-        result = np.less(input_x, input_y)
-        self.inputs = {'X': input_x, 'Y': input_y}
-        self.outputs = {'Out': result}
+        self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+        self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+        self.result = np.less(self.x, self.y)
 
     def init_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
-
         paddle.enable_static()
         self.check_output_with_place(self.place)
 
@@ -59,23 +58,19 @@ class XPUTestLessThanOP(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = 'less_than'
 
-            input_x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            input_y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            result = np.less(input_x, input_y)
-            self.inputs = {'X': input_x, 'Y': input_y}
-            self.outputs = {'Out': result}
+            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.result = np.less(self.x, self.y)
 
     class LessThanOpTestCase2(TestCompareOpBase):
 
         def set_case(self):
             self.dtype = self.in_type
             self.op_type = 'less_than'
-            # np.random.rand
-            input_x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            input_y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
-            result = np.less(input_x, input_y)
-            self.inputs = {'X': input_x, 'Y': input_y}
-            self.outputs = {'Out': result}
+
+            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
+            self.result = np.less(self.x, self.y)
 
 
 support_types = get_xpu_op_support_types('less_than')
@@ -95,11 +90,9 @@ class XPUTestLessEqualOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = 'less_equal'
 
-            input_x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            input_y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            result = np.less_equal(input_x, input_y)
-            self.inputs = {'X': input_x, 'Y': input_y}
-            self.outputs = {'Out': result}
+            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.result = np.less_equal(self.x, self.y)
 
     class LessEqualOpTestCase2(TestCompareOpBase):
 
@@ -107,11 +100,9 @@ class XPUTestLessEqualOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = 'less_equal'
 
-            input_x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            input_y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
-            result = np.less_equal(input_x, input_y)
-            self.inputs = {'X': input_x, 'Y': input_y}
-            self.outputs = {'Out': result}
+            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
+            self.result = np.less_equal(self.x, self.y)
 
 
 support_types = get_xpu_op_support_types('less_equal')
@@ -131,11 +122,9 @@ class XPUTestGreaterThanOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = 'greater_than'
 
-            input_x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            input_y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            result = np.greater(input_x, input_y)
-            self.inputs = {'X': input_x, 'Y': input_y}
-            self.outputs = {'Out': result}
+            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.result = np.greater(self.x, self.y)
 
     class GreaterThanOpTestCase2(TestCompareOpBase):
 
@@ -143,11 +132,9 @@ class XPUTestGreaterThanOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = 'greater_than'
 
-            input_x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            input_y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
-            result = np.greater(input_x, input_y)
-            self.inputs = {'X': input_x, 'Y': input_y}
-            self.outputs = {'Out': result}
+            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
+            self.result = np.greater(self.x, self.y)
 
 
 support_types = get_xpu_op_support_types('greater_than')
@@ -167,11 +154,9 @@ class XPUTestGreaterEqualOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = 'greater_equal'
 
-            input_x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            input_y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            result = np.greater_equal(input_x, input_y)
-            self.inputs = {'X': input_x, 'Y': input_y}
-            self.outputs = {'Out': result}
+            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.result = np.greater_equal(self.x, self.y)
 
     class GreaterEqualOpTestCase2(TestCompareOpBase):
 
@@ -179,11 +164,9 @@ class XPUTestGreaterEqualOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = 'greater_equal'
 
-            input_x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            input_y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
-            result = np.greater_equal(input_x, input_y)
-            self.inputs = {'X': input_x, 'Y': input_y}
-            self.outputs = {'Out': result}
+            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
+            self.result = np.greater_equal(self.x, self.y)
 
 
 support_types = get_xpu_op_support_types('greater_equal')
@@ -203,11 +186,9 @@ class XPUTestEqualOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = 'equal'
 
-            input_x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            input_y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            result = np.equal(input_x, input_y)
-            self.inputs = {'X': input_x, 'Y': input_y}
-            self.outputs = {'Out': result}
+            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.result = np.equal(self.x, self.y)
 
     class EqualOpTestCase2(TestCompareOpBase):
 
@@ -215,11 +196,9 @@ class XPUTestEqualOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = 'equal'
 
-            input_x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            input_y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
-            result = np.equal(input_x, input_y)
-            self.inputs = {'X': input_x, 'Y': input_y}
-            self.outputs = {'Out': result}
+            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
+            self.result = np.equal(self.x, self.y)
 
 
 support_types = get_xpu_op_support_types('equal')
@@ -239,11 +218,9 @@ class XPUTestNotEqualOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = 'not_equal'
 
-            input_x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            input_y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            result = np.not_equal(input_x, input_y)
-            self.inputs = {'X': input_x, 'Y': input_y}
-            self.outputs = {'Out': result}
+            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.result = np.not_equal(self.x, self.y)
 
     class NotEqualOpTestCase2(TestCompareOpBase):
 
@@ -251,11 +228,9 @@ class XPUTestNotEqualOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = 'not_equal'
 
-            input_x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            input_y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
-            result = np.not_equal(input_x, input_y)
-            self.inputs = {'X': input_x, 'Y': input_y}
-            self.outputs = {'Out': result}
+            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+            self.y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
+            self.result = np.not_equal(self.x, self.y)
 
 
 support_types = get_xpu_op_support_types('not_equal')
