@@ -18,8 +18,7 @@ import numpy as np
 from pass_test import PassTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-
-
+'''
 class EmbEltwiseLayerNormFusePassTest(PassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -113,7 +112,7 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
         }
         place = fluid.CUDAPlace(0)
         self.check_output_with_place(place, startup_on_cpu=True)
-
+'''
 
 if __name__ == "__main__":
     unittest.main()
