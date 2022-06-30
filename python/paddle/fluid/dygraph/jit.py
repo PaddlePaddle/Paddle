@@ -25,7 +25,6 @@ import threading
 
 import six
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid import core, dygraph
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
@@ -182,7 +181,7 @@ def declarative(function=None,
             in the computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
             please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        property: whether the fucntion is python property. The default is False.
+        property(bool, Optional): whether the fucntion is python property. The default is False.
 
 
     Returns:
@@ -1029,7 +1028,7 @@ def save(layer, path, input_spec=None, **configs):
             paddle.static.save_vars(Executor(_current_expected_place()),
                                     dirname=model_path,
                                     vars=list(
-                                        filter(fluid.io.is_persistable,
+                                        filter(paddle.fluid.io.is_persistable,
                                                all_vars)),
                                     filename=params_filename)
         # TODO: save property
