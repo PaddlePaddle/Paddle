@@ -669,7 +669,8 @@ void CPUQuantizePass::QuantizePriorBox(Graph* graph) const {
   LogQuantizedOpsCounter("prior_box", quantize_prior_box_count);
 }
 
-void CPUQuantizePass::QuantizeImmutable(Graph* graph, const std::string immutable_type) const {
+void CPUQuantizePass::QuantizeImmutable(
+    Graph* graph, const std::string immutable_type) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::Immutable immutable_pattern{pattern, name_scope_};
@@ -709,13 +710,22 @@ void CPUQuantizePass::QuantizeImmutable(Graph* graph, const std::string immutabl
     if (immutable_type == "slice") {
       input_name = "Input";
     }
-    QuantizeInput(
-        g, immutable_op, immutable_in, input_name, input_scale, is_input_unsigned);
+    QuantizeInput(g,
+                  immutable_op,
+                  immutable_in,
+                  input_name,
+                  input_scale,
+                  is_input_unsigned);
 
     bool is_output_unsigned{false};
-    auto output_scale = GetScaleValueForNode(immutable_out, &is_output_unsigned);
-    DequantizeOutput(
-        g, immutable_op, immutable_out, "Out", output_scale, is_output_unsigned);
+    auto output_scale = 
+        GetScaleValueForNode(immutable_out, &is_output_unsigned);
+    DequantizeOutput(g,
+                     immutable_op,
+                     immutable_out,
+                     "Out",
+                     output_scale,
+                     is_output_unsigned);
 
     ++quantize_immutable_count;
   };

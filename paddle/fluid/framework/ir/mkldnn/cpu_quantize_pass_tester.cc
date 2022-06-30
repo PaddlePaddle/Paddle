@@ -550,11 +550,10 @@ void TestImmutableOpWithManyOutputs(const std::string tested_op) {
            SCALE * S8_MAX);
 }
 
-const std::vector<std::string> immutables = {"reshape2", "transpose2", 
-"slice", "nearest_interp", "nearest_interp_v2"};
+const std::vector<std::string> immutables = {
+    "reshape2", "transpose2", "slice", "nearest_interp", "nearest_interp_v2"};
 
-class TestImmutables
-    : public testing::TestWithParam<std::string> {};
+class TestImmutables : public testing::TestWithParam<std::string> {};
 
 TEST_P(TestImmutables, immutable_basic) { TestImmutableOp(GetParam()); }
 
