@@ -718,7 +718,7 @@ void CPUQuantizePass::QuantizeImmutable(
                   is_input_unsigned);
 
     bool is_output_unsigned{false};
-    auto output_scale = 
+    auto output_scale =
         GetScaleValueForNode(immutable_out, &is_output_unsigned);
     DequantizeOutput(g,
                      immutable_op,
