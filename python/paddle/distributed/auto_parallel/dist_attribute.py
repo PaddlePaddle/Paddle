@@ -18,7 +18,8 @@ from paddle.fluid.framework import Variable
 from .process_mesh import ProcessMesh
 
 _g_tensor_dist_attr_field_keys = [
-    "process_mesh", "dims_mapping", "shard_sizes", "device_placement"
+    "process_mesh", "dims_mapping", "shard_sizes", "device_placement",
+    "dynamic_dims"
 ]
 
 _g_op_dist_attr_field_keys = [
@@ -60,6 +61,7 @@ class TensorDistributedAttribute:
         self._shard_sizes = None
         self._device_placement = None
         self._is_annotated = {}
+        self._dynamic_dims = None
 
     @property
     def process_mesh(self):
@@ -88,6 +90,21 @@ class TensorDistributedAttribute:
             assert all(x >= -1 for x in dims_mapping), \
                 ("All elements of dims_mapping must be greater than or equal to -1.")
             self._dims_mapping = copy.deepcopy(dims_mapping)
+
+    @property
+    def dynamic_dims(self):
+        return self._dynamic_dims
+
+    @dynamic_dims.setter
+    def dynamic_dims(self, dynamic_dims):
+        if dynamic_dims is not None:
+            assert isinstance(dynamic_dims, list), \
+                "The type of dynamic_dims must be list."
+            assert all(isinstance(x, int) for x in dynamic_dims), \
+                ("All elements of dynamic_dims must be integer")
+            assert all((x == 0 or x == 1) for x in dynamic_dims), \
+                ("All elements of dynamic_dims must be 0 or equal to 1.")
+            self._dynamic_dims = copy.deepcopy(dynamic_dims)
 
     @property
     def shard_sizes(self):
@@ -188,6 +205,12 @@ class TensorDistributedAttribute:
             annotated_str = "non-annotated"
         str += "\n\t\tdims_mapping ({}): {}".format(annotated_str,
                                                     self.dims_mapping)
+        if self.is_annotated("dynamic_dims"):
+            annotated_str = "annotated"
+        else:
+            annotated_str = "non-annotated"
+        str += "\n\t\tdynamic_dims ({}): {}".format(annotated_str,
+                                                    self.dynamic_dims)
         str += "\n\t}"
         return str
 
@@ -322,6 +345,42 @@ class OperatorDistributedAttribute:
         else:
             dist_attr = TensorDistributedAttribute()
             dist_attr.dims_mapping = dims_mapping
+            self._outputs_dist_attrs[name] = dist_attr
+
+    def get_input_dynamic_dims(self, name):
+        input_dist_attr = self.get_input_dist_attr(name)
+        if input_dist_attr:
+            dynamic_dims = input_dist_attr.dynamic_dims
+        else:
+            dynamic_dims = None
+        return dynamic_dims
+
+    def set_input_dynamic_dims(self, name, dynamic_dims):
+        print(dynamic_dims)
+        input_dist_attr = self.get_input_dist_attr(name)
+        if input_dist_attr:
+            input_dist_attr.dynamic_dims = dynamic_dims
+        else:
+            dist_attr = TensorDistributedAttribute()
+            dist_attr.dynamic_dims = dynamic_dims
+            self._inputs_dist_attrs[name] = dist_attr
+            print(dist_attr)
+
+    def get_output_dynamic_dims(self, name):
+        output_dist_attr = self.get_output_dist_attr(name)
+        if output_dist_attr:
+            dynamic_dims = output_dist_attr.dynamic_dims
+        else:
+            dynamic_dims = None
+        return dynamic_dims
+
+    def set_output_dynamic_dims(self, name, dynamic_dims):
+        output_dist_attr = self.get_output_dist_attr(name)
+        if output_dist_attr:
+            output_dist_attr.dynamic_dims = dynamic_dims
+        else:
+            dist_attr = TensorDistributedAttribute()
+            dist_attr.dynamic_dims = dynamic_dims
             self._outputs_dist_attrs[name] = dist_attr
 
     def init(self, dist_attr):
@@ -483,6 +542,20 @@ class OperatorDistributedAttribute:
         output_dist_attr = self.get_output_dist_attr(name)
         if output_dist_attr:
             return output_dist_attr.is_annotated("dims_mapping")
+        else:
+            return False
+
+    def is_annotated_input_dynamic_dims(self, name):
+        input_dist_attr = self.get_input_dist_attr(name)
+        if input_dist_attr:
+            return input_dist_attr.is_annotated("dynamic_dims")
+        else:
+            return False
+
+    def is_annotated_output_dynamic_dims(self, name):
+        output_dist_attr = self.get_output_dist_attr(name)
+        if output_dist_attr:
+            return output_dist_attr.is_annotated("dynamic_dims")
         else:
             return False
 

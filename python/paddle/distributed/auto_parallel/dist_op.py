@@ -86,6 +86,10 @@ class DistributedOperator:
                 tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
                 self._dist_attr.set_input_dims_mapping(tensor_name,
                                                        tensor_dims_mapping)
+            if self._dist_attr.get_input_dynamic_dims(tensor_name) is None:
+                tensor_dynamic_dims = [0 for _ in range(len(tensor_shape))]
+                self._dist_attr.set_input_dynamic_dims(tensor_name,
+                                                       tensor_dynamic_dims)
         for tensor_name in self._serial_op.output_arg_names:
             tensor = self._serial_op.block._var_recursive(tensor_name)
             if tensor.type == core.VarDesc.VarType.READER \
@@ -99,6 +103,10 @@ class DistributedOperator:
                 tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
                 self._dist_attr.set_output_dims_mapping(tensor_name,
                                                         tensor_dims_mapping)
+            if self._dist_attr.get_output_dynamic_dims(tensor_name) is None:
+                tensor_dynamic_dims = [0 for _ in range(len(tensor_shape))]
+                self._dist_attr.set_output_dynamic_dims(tensor_name,
+                                                        tensor_dynamic_dims)
         if self._dist_attr.op_type is None:
             self._dist_attr.op_type = self.serial_op.type
         if self._dist_attr.impl_type is None:
@@ -210,8 +218,10 @@ class DistributedOperator:
                     is_parameter_str = "non-parameter"
             else:
                 is_parameter_str = "non-parameter"
-            str += ", {}'s dims_mapping (input, {}, {}): {}".format(
-                arg_name, annotated_str, is_parameter_str, dims_mapping)
+            dynamic_dims = self.dist_attr.get_input_dynamic_dims(arg_name)
+            str += ", {}'s dims_mapping (input, {}, {}): {}, dynamic_dims: {}".format(
+                arg_name, annotated_str, is_parameter_str, dims_mapping,
+                dynamic_dims)
 
         for arg_name in self.serial_op.desc.output_arg_names():
             dims_mapping = self.dist_attr.get_output_dims_mapping(arg_name)
@@ -226,8 +236,10 @@ class DistributedOperator:
                     is_parameter_str = "non-parameter"
             else:
                 is_parameter_str = "non-parameter"
-            str += ", {}'s dims_mapping (output, {}, {}): {}".format(
-                arg_name, annotated_str, is_parameter_str, dims_mapping)
+            dynamic_dims = self.dist_attr.get_output_dynamic_dims(arg_name)
+            str += ", {}'s dims_mapping (output, {}, {}): {}, dynamic_dims: {}".format(
+                arg_name, annotated_str, is_parameter_str, dims_mapping,
+                dynamic_dims)
 
         str += ", pipeline stage: {}".format(None)
 
