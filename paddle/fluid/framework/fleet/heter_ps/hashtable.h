@@ -82,6 +82,8 @@ class XPUCacheArray {
   }
 
   void print() {
+    xpu_set_device(get_xpu_id());//TODO: logic to physics
+
     KeyType* keys = get_cpu_keys();
     ValType* vals = get_cpu_vals();
 
