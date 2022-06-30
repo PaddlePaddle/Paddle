@@ -73,7 +73,6 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     VLOG(4) << "Fuse softplus with activation op.";
-
     GET_IR_NODE_FROM_SUBGRAPH(
         softplus, preceding_op, softplus_activation_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(

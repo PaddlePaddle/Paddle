@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -21,18 +23,21 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class OperatorActivationMkldnnFusePass : public FusePassBase {
+/*
+ * \brief   Fuse the softplus and another activation operators into
+ *          softplus with another activation as post-op.
+ */
+class SoftplusActivationOneDNNPass : public FusePassBase {
  public:
-  virtual ~OperatorActivationMkldnnFusePass() {}
+  virtual ~SoftplusActivationOneDNNPass() {}
 
  protected:
-  void ApplyImpl(Graph *graph) const override;
+  void ApplyImpl(ir::Graph *graph) const override;
 
-  void FuseOperatorAct(
-      Graph *graph,
-      const std::string &op_type,
-      std::string &act_type,
-      const std::unordered_map<std::string, std::string> &attrs_map) const;
+  void FuseSoftplusActivation(
+      ir::Graph *graph,
+      const std::string &fuse_activation,
+      const std::unordered_map<std::string, std::string> &attr_map) const;
 };
 
 }  // namespace ir

@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include "paddle/fluid/framework/ir/mkldnn/operator_activation_mkldnn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -147,8 +147,7 @@ void MainTest(std::string activation) {
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
-  auto pass =
-      PassRegistry::Instance().Get("operator_activation_mkldnn_fuse_pass");
+  auto pass = PassRegistry::Instance().Get("conv_activation_mkldnn_fuse_pass");
 
   int original_nodes_num = graph->Nodes().size();
 
@@ -201,4 +200,4 @@ TEST(ConvActivationFusePass, conv_hard_sigmoid_fuse_pass) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(operator_activation_mkldnn_fuse_pass);
+USE_PASS(conv_activation_mkldnn_fuse_pass);

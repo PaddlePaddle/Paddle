@@ -50,28 +50,21 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
  private:
   dnnl::post_ops get_post_ops(const framework::ExecutionContext& ctx) const {
     dnnl::post_ops post_operations;
-    if (ctx.HasAttr("fuse_activation")) {
-      const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
-      const auto fuse_alpha =
-          ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
-      const auto fuse_beta =
-          ctx.HasAttr("fuse_beta") ? ctx.Attr<float>("fuse_beta") : 0.0f;
-      const auto activation_scale = ctx.HasAttr("activation_scale")
-                                        ? ctx.Attr<float>("activation_scale")
-                                        : 1.0f;
-      if (fuse_activation == "hard_sigmoid") {
-        post_operations.append_eltwise(activation_scale,
-                                       dnnl::algorithm::eltwise_linear,
-                                       fuse_alpha,
-                                       fuse_beta);
-        post_operations.append_eltwise(
-            activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
-      } else if (fuse_activation != "") {
-        const auto activation_algorithm =
-            platform::AcquireActivationAlgorithm(fuse_activation);
-        post_operations.append_eltwise(
-            activation_scale, activation_algorithm, fuse_alpha, fuse_beta);
-      }
+    if (ctx.HasAttr("activation_type")) {
+      const float scale = ctx.HasAttr("activation_scale")
+                              ? ctx.Attr<float>("activation_scale")
+                              : 1.0f;
+      const float alpha = ctx.HasAttr("activation_alpha")
+                              ? ctx.Attr<float>("activation_alpha")
+                              : 0.0f;
+      const float beta = ctx.HasAttr("activation_beta")
+                             ? ctx.Attr<float>("activation_beta")
+                             : 0.0f;
+
+      const auto activation_algorithm = platform::AcquireActivationAlgorithm(
+          ctx.Attr<std::string>("activation_type"));
+
+      post_operations.append_eltwise(scale, activation_algorithm, alpha, beta);
     }
     return post_operations;
   }

@@ -88,4 +88,4 @@ TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSigmoid) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(operator_activation_mkldnn_fuse_pass);
+USE_PASS(softplus_activation_mkldnn_fuse_pass);

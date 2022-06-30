@@ -1,104 +1,139 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+from __future__ import print_function
+import unittest
+import numpy as np
+from inference_pass_test import InferencePassTest
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.core import PassVersionChecker
+
+
+@ @ -12, 137 + 12, 93 @ @
 # See the License for the specific language governing permissions and
 # limitations under the License.
+class SoftplusActivationReluOneDNNFusePassTest(InferencePassTest):
+    fuse_activation_alpha = None
+    fuse_activation_beta = None
+    pass_name = 'softplus_activation_mkldnn_fuse_pass'
 
-from auto_scan_test import PassAutoScanTest
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-from functools import partial
-import unittest
-import hypothesis.strategies as st
+    def setUp(self):
+        self.set_params()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data",
+                              shape=[-1, 3, 100, 100],
+                              dtype="float32")
+            softplus_out = fluid.layers.softplus(data)
+            if self.fuse_activation_beta is not None:
+                activation_out = self.fuse_activation(
+                    softplus_out, self.fuse_activation_alpha,
+                    self.fuse_activation_beta)
+            elif self.fuse_activation_alpha is not None:
+                activation_out = self.fuse_activation(
+                    softplus_out, self.fuse_activation_alpha)
+            else:
+                activation_out = self.fuse_activation(softplus_out)
 
+        self.feeds = {
+            "data": np.random.random((1, 3, 100, 100)).astype("float32"),
+        }
+        self.fetch_list = [activation_out]
+        self.enable_mkldnn = True
 
-class TestSoftplusActivationMkldnnFusePass(PassAutoScanTest):
+    def set_params(self):
+        self.fuse_activation = fluid.layers.relu
 
-    def sample_program_config(self, draw):
-        activation_type = draw(
-            st.sampled_from([
-                'relu', 'gelu', 'tanh', 'sigmoid', 'swish', 'mish', 'sqrt',
-                'hard_swish', 'sigmoid', 'abs', 'relu6', 'clip', 'tanh',
-                'hard_sigmoid', 'leaky_relu'
-            ]))
+    def test_check_output(self):
+        use_gpu = False
+        self.check_output_with_option(use_gpu)
 
-        def generate_input():
-            shape = [16, 3, 100, 100]
-            return np.random.random(shape).astype(np.float32)
-
-        softplus_op = OpConfig(type='softplus',
-                               inputs={
-                                   'X': ['softplus_X']
-                               },
-                               outputs={'Out': ['softplus_output']},
-                               attrs={
-                                   'beta': 1,
-                                   'threshold': 20,
-                                   'use_mkldnn': True
-                               })
-
-        if activation_type == "relu6":
-            activation_op = OpConfig(activation_type,
-                                     inputs={"X": ["softplus_output"]},
-                                     outputs={"Out": ["activation_output"]},
-                                     threshold=draw(
-                                         st.floats(min_value=1.0,
-                                                   max_value=10.0)))
-        elif activation_type == "leaky_relu":
-            activation_op = OpConfig(activation_type,
-                                     inputs={"X": ["softplus_output"]},
-                                     outputs={"Out": ["activation_output"]},
-                                     alpha=draw(
-                                         st.floats(min_value=0.1,
-                                                   max_value=1.0)))
-        elif activation_type == "swish":
-            activation_op = OpConfig(activation_type,
-                                     inputs={"X": ["softplus_output"]},
-                                     outputs={"Out": ["activation_output"]},
-                                     beta=draw(
-                                         st.floats(min_value=0.1,
-                                                   max_value=1.0)))
-        elif activation_type == "clip":
-            activation_op = OpConfig(
-                activation_type,
-                inputs={"X": ["softplus_output"]},
-                outputs={"Out": ["activation_output"]},
-                min=draw(st.floats(min_value=0.1, max_value=0.49)),
-                max=draw(st.floats(min_value=0.5, max_value=1.0)))
-        else:
-            activation_op = OpConfig(activation_type,
-                                     inputs={"X": ["softplus_output"]},
-                                     outputs={"Out": ["activation_output"]})
-
-        model_net = [softplus_op, activation_op]
-
-        program_config = ProgramConfig(
-            ops=model_net,
-            weights={},
-            inputs={
-                'softplus_X': TensorConfig(data_gen=partial(generate_input))
-            },
-            outputs=['activation_output'])
-
-        return program_config
-
-    def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
-        yield config, ['softplus'], (1e-5, 1e-5)
-
-    def test(self):
-        self.run_and_statis(quant=False,
-                            max_examples=100,
-                            passes=['operator_activation_mkldnn_fuse_pass'])
+    def test_pass_compatible(self):
+        self.assertTrue(PassVersionChecker.IsCompatible(self.pass_name))
 
 
-if __name__ == '__main__':
-    unittest.main()
+class SoftplusActivationTanhOneDNNFusePassTest(
+        SoftplusActivationReluOneDNNFusePassTest):
+
+    def set_params(self):
+        self.fuse_activation = fluid.layers.tanh
+
+
+class SoftplusActivationLeakyReluOneDNNFusePassTest(
+        SoftplusActivationReluOneDNNFusePassTest):
+
+    def set_params(self):
+        self.fuse_activation = fluid.layers.leaky_relu
+        self.fuse_activation_alpha = 0.3
+
+
+class SoftplusActivationSwishOneDNNFusePassTest(
+        SoftplusActivationReluOneDNNFusePassTest):
+
+    def set_params(self):
+        self.fuse_activation = fluid.layers.swish
+        self.fuse_activation_alpha = 3
+
+
+class SoftplusActivationHardSwishOneDNNFusePassTest(
+        SoftplusActivationReluOneDNNFusePassTest):
+
+    def set_params(self):
+        self.fuse_activation = fluid.layers.hard_swish
+
+
+class SoftplusActivationSqrtOneDNNFusePassTest(
+        SoftplusActivationReluOneDNNFusePassTest):
+
+    def set_params(self):
+        self.fuse_activation = fluid.layers.hard_swish
+
+
+class SoftplusActivationAbsOneDNNFusePassTest(
+        SoftplusActivationReluOneDNNFusePassTest):
+
+    def set_params(self):
+        self.fuse_activation = fluid.layers.abs
+
+
+class SoftplusActivationClipOneDNNFusePassTest(
+        SoftplusActivationReluOneDNNFusePassTest):
+
+    def set_params(self):
+        self.fuse_activation = fluid.layers.clip
+        self.fuse_activation_alpha = 1.1
+        self.fuse_activation_beta = 5.2
+
+
+class SoftplusActivationGeluErfOneDNNFusePassTest(
+        SoftplusActivationReluOneDNNFusePassTest):
+
+    def set_params(self):
+        self.fuse_activation = fluid.layers.gelu
+
+
+class SoftplusActivationGeluTanhOneDNNFusePassTest(
+        SoftplusActivationReluOneDNNFusePassTest):
+
+    def set_params(self):
+        self.fuse_activation = fluid.layers.gelu
+        self.fuse_activation_alpha = True  # simulated "Approximate" attr
+
+
+class SoftplusActivationRelu6OneDNNFusePassTest(
+        SoftplusActivationReluOneDNNFusePassTest):
+
+    def set_params(self):
+        self.fuse_activation = fluid.layers.relu6
+
+
+class SoftplusActivationSigmoidOneDNNFusePassTest(
+        SoftplusActivationReluOneDNNFusePassTest):
+
+    def set_params(self):
+        self.fuse_activation = fluid.layers.sigmoid
+
+
+if __name__ == "__main__":
+    paddle.enable_static()

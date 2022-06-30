@@ -76,7 +76,7 @@ class TestElementWiseAddReluFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(quant=False,
-                            passes=["operator_activation_mkldnn_fuse_pass"],
+                            passes=["elt_act_mkldnn_fuse_pass"],
                             min_success_num=4)
 
 

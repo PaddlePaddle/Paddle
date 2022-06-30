@@ -170,7 +170,7 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
 
         # 11. Generate legal attr of act
         act_op = None
-        self.passes = ["operator_activation_mkldnn_fuse_pass"]
+        self.passes = ["conv_activation_mkldnn_fuse_pass"]
         if act_type == "relu6":
             threshold = draw(st.floats(min_value=1.0, max_value=10.0))
             act_op = OpConfig("relu6",
