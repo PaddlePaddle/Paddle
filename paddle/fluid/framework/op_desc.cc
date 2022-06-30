@@ -584,13 +584,16 @@ void OpDesc::RemoveAttr(const std::string &name) {
 void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   bool is_proto_attr = false;
   proto::OpProto::Attr attr;
-  const proto::OpProto &proto = OpInfoMap::Instance().Get(Type()).Proto();
-  for (int i = 0; i != proto.attrs_size(); ++i) {
-    const proto::OpProto::Attr &cur_attr = proto.attrs(i);
-    if (cur_attr.name() == name) {
-      attr = cur_attr;
-      is_proto_attr = true;
-      break;
+  const auto &op_info = OpInfoMap::Instance().Get(Type());
+  if (op_info.proto_ != nullptr) {
+    const proto::OpProto &proto = op_info.Proto();
+    for (int i = 0; i != proto.attrs_size(); ++i) {
+      const proto::OpProto::Attr &cur_attr = proto.attrs(i);
+      if (cur_attr.name() == name) {
+        attr = cur_attr;
+        is_proto_attr = true;
+        break;
+      }
     }
   }
   if (is_proto_attr) {
