@@ -125,8 +125,8 @@ int32_t GraphBrpcService::clear_nodes(Table *table,
                                       const PsRequestMessage &request,
                                       PsResponseMessage &response,
                                       brpc::Controller *cntl) {
-  int type_id = *(reinterpret_cast<int *>(request.params(0).c_str()));
-  int idx_ = *(reinterpret_cast<int *>(request.params(1).c_str()));
+  int type_id = *(reinterpret_cast<const int *>(request.params(0).c_str()));
+  int idx_ = *(reinterpret_cast<const int *>(request.params(1).c_str()));
   (reinterpret_cast<GraphTable *>(table))->clear_nodes(type_id, idx_);
   return 0;
 }
@@ -142,17 +142,18 @@ int32_t GraphBrpcService::add_graph_node(Table *table,
     return 0;
   }
 
-  int idx_ = *(reinterpret_cast<int *>(request.params(0).c_str()));
+  int idx_ = *(reinterpret_cast<const int *>(request.params(0).c_str()));
   size_t node_num = request.params(1).size() / sizeof(int64_t);
-  int64_t *node_data = reinterpret_cast<int64_t *>(request.params(1).c_str());
+  const int64_t *node_data =
+      reinterpret_cast<const int64_t *>(request.params(1).c_str());
   // size_t node_num = request.params(0).size() / sizeof(int64_t);
   // int64_t *node_data = (int64_t *)(request.params(0).c_str());
   std::vector<int64_t> node_ids(node_data, node_data + node_num);
   std::vector<bool> is_weighted_list;
   if (request.params_size() == 3) {
     size_t weight_list_size = request.params(2).size() / sizeof(bool);
-    bool *is_weighted_buffer =
-        reinterpret_cast<bool *>(request.params(2).c_str());
+    const bool *is_weighted_buffer =
+        reinterpret_cast<const bool *>(request.params(2).c_str());
     is_weighted_list = std::vector<bool>(is_weighted_buffer,
                                          is_weighted_buffer + weight_list_size);
   }
@@ -180,9 +181,10 @@ int32_t GraphBrpcService::remove_graph_node(Table *table,
         "remove_graph_node request requires at least 2 arguments");
     return 0;
   }
-  int idx_ = *(reinterpret_cast<int *>(request.params(0).c_str()));
+  int idx_ = *(reinterpret_cast<const int *>(request.params(0).c_str()));
   size_t node_num = request.params(1).size() / sizeof(int64_t);
-  int64_t *node_data = reinterpret_cast<int64_t *>(request.params(1).c_str());
+  const int64_t *node_data =
+      reinterpret_cast<const int64_t *>(request.params(1).c_str());
   // size_t node_num = request.params(0).size() / sizeof(int64_t);
   // int64_t *node_data = (int64_t *)(request.params(0).c_str());
   std::vector<int64_t> node_ids(node_data, node_data + node_num);
@@ -386,11 +388,11 @@ int32_t GraphBrpcService::pull_graph_list(Table *table,
         response, -1, "pull_graph_list request requires at least 5 arguments");
     return 0;
   }
-  int type_id = *(reinterpret_cast<int *>(request.params(0).c_str()));
-  int idx = *(reinterpret_cast<int *>(request.params(1).c_str()));
-  int start = *(reinterpret_cast<int *>(request.params(2).c_str()));
-  int size = *(reinterpret_cast<int *>(request.params(3).c_str()));
-  int step = *(reinterpret_cast<int *>(request.params(4).c_str()));
+  int type_id = *(reinterpret_cast<const int *>(request.params(0).c_str()));
+  int idx = *(reinterpret_cast<const int *>(request.params(1).c_str()));
+  int start = *(reinterpret_cast<const int *>(request.params(2).c_str()));
+  int size = *(reinterpret_cast<const int *>(request.params(3).c_str()));
+  int step = *(reinterpret_cast<const int *>(request.params(4).c_str()));
   // int start = *(int *)(request.params(0).c_str());
   // int size = *(int *)(request.params(1).c_str());
   // int step = *(int *)(request.params(2).c_str());
@@ -415,11 +417,14 @@ int32_t GraphBrpcService::graph_random_sample_neighbors(
         "graph_random_sample_neighbors request requires at least 3 arguments");
     return 0;
   }
-  int idx_ = *(reinterpret_cast<int *>(request.params(0).c_str()));
+  int idx_ = *(reinterpret_cast<const int *>(request.params(0).c_str()));
   size_t node_num = request.params(1).size() / sizeof(int64_t);
-  int64_t *node_data = reinterpret_cast<int64_t *>(request.params(1).c_str());
-  int sample_size = *(reinterpret_cast<int64_t *>(request.params(2).c_str()));
-  bool need_weight = *(reinterpret_cast<bool *>(request.params(3).c_str()));
+  const int64_t *node_data =
+      reinterpret_cast<const int64_t *>(request.params(1).c_str());
+  int sample_size =
+      *(reinterpret_cast<const int64_t *>(request.params(2).c_str()));
+  bool need_weight =
+      *(reinterpret_cast<const bool *>(request.params(3).c_str()));
   // size_t node_num = request.params(0).size() / sizeof(int64_t);
   // int64_t *node_data = (int64_t *)(request.params(0).c_str());
   // int sample_size = *(int64_t *)(request.params(1).c_str());
@@ -427,8 +432,12 @@ int32_t GraphBrpcService::graph_random_sample_neighbors(
   std::vector<std::shared_ptr<char>> buffers(node_num);
   std::vector<int> actual_sizes(node_num, 0);
   (reinterpret_cast<GraphTable *>(table))
-      ->random_sample_neighbors(
-          idx_, node_data, sample_size, buffers, actual_sizes, need_weight);
+      ->random_sample_neighbors(idx_,
+                                const_cast<int64_t *>(node_data),
+                                sample_size,
+                                buffers,
+                                actual_sizes,
+                                need_weight);
 
   cntl->response_attachment().append(&node_num, sizeof(size_t));
   cntl->response_attachment().append(actual_sizes.data(),
@@ -443,9 +452,9 @@ int32_t GraphBrpcService::graph_random_sample_nodes(
     const PsRequestMessage &request,
     PsResponseMessage &response,
     brpc::Controller *cntl) {
-  int type_id = *(reinterpret_cast<int *>(request.params(0).c_str()));
-  int idx_ = *(reinterpret_cast<int *>(request.params(1).c_str()));
-  size_t size = *(reinterpret_cast<int64_t *>(request.params(2).c_str()));
+  int type_id = *(reinterpret_cast<const int *>(request.params(0).c_str()));
+  int idx_ = *(reinterpret_cast<const int *>(request.params(1).c_str()));
+  size_t size = *(reinterpret_cast<const int64_t *>(request.params(2).c_str()));
   // size_t size = *(int64_t *)(request.params(0).c_str());
   std::unique_ptr<char[]> buffer;
   int actual_size;
@@ -472,9 +481,10 @@ int32_t GraphBrpcService::graph_get_node_feat(Table *table,
         "graph_get_node_feat request requires at least 3 arguments");
     return 0;
   }
-  int idx_ = *(reinterpret_cast<int *>(request.params(0).c_str()));
+  int idx_ = *(reinterpret_cast<const int *>(request.params(0).c_str()));
   size_t node_num = request.params(1).size() / sizeof(int64_t);
-  int64_t *node_data = reinterpret_cast<int64_t *>(request.params(1).c_str());
+  const int64_t *node_data =
+      reinterpret_cast<const int64_t *>(request.params(1).c_str());
   // size_t node_num = request.params(0).size() / sizeof(int64_t);
   // int64_t *node_data = (int64_t *)(request.params(0).c_str());
   std::vector<int64_t> node_ids(node_data, node_data + node_num);
@@ -514,11 +524,14 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
     return 0;
   }
 
-  int idx_ = *(reinterpret_cast<int *>(request.params(0).c_str()));
+  int idx_ = *(reinterpret_cast<const int *>(request.params(0).c_str()));
   size_t node_num = request.params(1).size() / sizeof(int64_t);
-  int64_t *node_data = reinterpret_cast<int64_t *>(request.params(1).c_str());
-  int sample_size = *(reinterpret_cast<int64_t *>(request.params(2).c_str()));
-  bool need_weight = *(reinterpret_cast<int64_t *>(request.params(3).c_str()));
+  const int64_t *node_data =
+      reinterpret_cast<const int64_t *>(request.params(1).c_str());
+  int sample_size =
+      *(reinterpret_cast<const int64_t *>(request.params(2).c_str()));
+  bool need_weight =
+      *(reinterpret_cast<const bool *>(request.params(3).c_str()));
 
   // size_t node_num = request.params(0).size() / sizeof(int64_t),
   //        size_of_size_t = sizeof(size_t);
@@ -686,12 +699,13 @@ int32_t GraphBrpcService::graph_set_node_feat(Table *table,
         "graph_set_node_feat request requires at least 3 arguments");
     return 0;
   }
-  int idx_ = *(reinterpret_cast<int *>(request.params(0).c_str()));
+  int idx_ = *(reinterpret_cast<const int *>(request.params(0).c_str()));
 
   // size_t node_num = request.params(0).size() / sizeof(int64_t);
   // int64_t *node_data = (int64_t *)(request.params(0).c_str());
   size_t node_num = request.params(1).size() / sizeof(int64_t);
-  int64_t *node_data = reinterpret_cast<int64_t *>(request.params(1).c_str());
+  const int64_t *node_data =
+      reinterpret_cast<const int64_t *>(request.params(1).c_str());
   std::vector<int64_t> node_ids(node_data, node_data + node_num);
 
   // std::vector<std::string> feature_names =
@@ -708,7 +722,7 @@ int32_t GraphBrpcService::graph_set_node_feat(Table *table,
 
   for (size_t feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
     for (size_t node_idx = 0; node_idx < node_num; ++node_idx) {
-      size_t feat_len = *(reinterpret_cast<size_t *>(buffer));
+      size_t feat_len = *(reinterpret_cast<const size_t *>(buffer));
       buffer += sizeof(size_t);
       auto feat = std::string(buffer, feat_len);
       features[feat_idx][node_idx] = feat;

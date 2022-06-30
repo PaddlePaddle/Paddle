@@ -43,7 +43,8 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                                    const uint64_t* keys,
                                    size_t num) {
   CostTimer timer("pserver_downpour_sparse_select_all");
-  size_t value_size = _value_accesor->GetAccessorInfo().size / sizeof(float);
+  const size_t value_size =
+      _value_accesor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_size =
       _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
   size_t select_value_size =
@@ -73,7 +74,7 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                &missed_keys]() -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
-                float data_buffer[value_size];
+                float data_buffer[value_size];  // NOLINT
                 float* data_buffer_ptr = data_buffer;
                 for (size_t i = 0; i < keys.size(); ++i) {
                   uint64_t key = keys[i].first;
@@ -83,7 +84,7 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                     // pull rocksdb
                     std::string tmp_string("");
                     if (_db->get(shard_id,
-                                 (char*)&key,
+                                 reinterpret_cast<char*>(&key),
                                  sizeof(uint64_t),
                                  tmp_string) > 0) {
                       ++missed_keys;
@@ -110,7 +111,9 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                       memcpy(const_cast<float*>(feature_value.data()),
                              data_buffer_ptr,
                              data_size * sizeof(float));
-                      _db->del_data(shard_id, (char*)&key, sizeof(uint64_t));
+                      _db->del_data(shard_id,
+                                    reinterpret_cast<char*>(&key),
+                                    sizeof(uint64_t));
                     }
                   } else {
                     data_size = itr.value().size();
@@ -147,7 +150,8 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
                                    size_t num) {
   CostTimer timer("pserver_downpour_sparse_update_all");
   // 构造value push_value的数据指针
-  size_t value_col = _value_accesor->GetAccessorInfo().size / sizeof(float);
+  const size_t value_col =
+      _value_accesor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_col =
       _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
   size_t update_value_col =
@@ -172,7 +176,7 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
                &task_keys]() -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
-                float data_buffer[value_col];
+                float data_buffer[value_col];  // NOLINT
                 float* data_buffer_ptr = data_buffer;
                 for (size_t i = 0; i < keys.size(); ++i) {
                   uint64_t key = keys[i].first;
@@ -201,7 +205,8 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
                   if (value_size ==
                       value_col) {  // 已拓展到最大size, 则就地update
                     _value_accesor->Update(&value_data, &update_data, 1);
-                  } else {  // 拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
+                  } else {
+                    // 拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
                     memcpy(data_buffer_ptr,
                            value_data,
                            value_size * sizeof(float));
@@ -282,13 +287,13 @@ int32_t SSDSparseTable::Shrink(const std::string& param) {
     delete it;
     LOG(INFO) << "SSDSparseTable shrink success. shard:" << i << " delete MEM["
               << mem_count << "] SSD[" << ssd_count << "]";
-    //_db->flush(i);
+    // _db->flush(i);
   }
   return 0;
 }
 
 int32_t SSDSparseTable::UpdateTable() {
-  // TODO implement with multi-thread
+  // TODO(Thunderbrook) implement with multi-thread
   int count = 0;
   for (int i = 0; i < _real_local_shard_num; ++i) {
     auto& shard = _local_shards[i];
@@ -296,9 +301,9 @@ int32_t SSDSparseTable::UpdateTable() {
     for (auto it = shard.begin(); it != shard.end();) {
       if (_value_accesor->SaveSSD(it.value().data())) {
         _db->put(i,
-                 (char*)&it.key(),
+                 reinterpret_cast<const char*>(&it.key()),
                  sizeof(uint64_t),
-                 (char*)it.value().data(),
+                 reinterpret_cast<char*>(it.value().data()),
                  it.value().size() * sizeof(float));
         count++;
         it = shard.erase(it);
@@ -317,7 +322,7 @@ int64_t SSDSparseTable::LocalSize() {
   for (int i = 0; i < _real_local_shard_num; ++i) {
     local_size += _local_shards[i].size();
   }
-  // TODO rocksdb size
+  // TODO(Thunderbrook) rocksdb size
   return local_size;
 }
 
@@ -430,7 +435,8 @@ int32_t SSDSparseTable::Save(const std::string& path,
                 it->value().size() / sizeof(float));
             if (0 != write_channel->write_line(paddle::string::format_string(
                          "%lu %s",
-                         *((uint64_t*)const_cast<char*>(it->key().data())),
+                         *(reinterpret_cast<uint64_t*>(
+                             const_cast<char*>(it->key().data()))),
                          format_value.c_str()))) {
               ++retry_num;
               is_write_failed = true;
@@ -657,7 +663,7 @@ int32_t SSDSparseTable::Load(const std::string& path,
   return MemorySparseTable::Load(path, param);
 }
 
-//加载path目录下数据[start_idx, end_idx)
+// 加载path目录下数据[start_idx, end_idx)
 int32_t SSDSparseTable::Load(size_t start_idx,
                              size_t end_idx,
                              const std::vector<std::string>& file_list,
@@ -704,7 +710,8 @@ int32_t SSDSparseTable::Load(size_t start_idx,
       char* end = NULL;
       int local_shard_id = i % _avg_local_shard_num;
       auto& shard = _local_shards[local_shard_id];
-      float data_buffer[FLAGS_pserver_load_batch_size * feature_value_size];
+      float data_buffer[FLAGS_pserver_load_batch_size *
+                        feature_value_size];  // NOLINT
       float* data_buffer_ptr = data_buffer;
       uint64_t mem_count = 0;
       uint64_t ssd_count = 0;
@@ -729,10 +736,11 @@ int32_t SSDSparseTable::Load(size_t start_idx,
           // ssd or mem
           if (_value_accesor->SaveSSD(data_buffer_ptr)) {
             tmp_key.emplace_back(key);
-            ssd_keys.emplace_back(
-                std::make_pair((char*)&tmp_key.back(), sizeof(uint64_t)));
-            ssd_values.emplace_back(std::make_pair((char*)data_buffer_ptr,
-                                                   value_size * sizeof(float)));
+            ssd_keys.emplace_back(std::make_pair(
+                reinterpret_cast<char*>(&tmp_key.back()), sizeof(uint64_t)));
+            ssd_values.emplace_back(
+                std::make_pair(reinterpret_cast<char*>(data_buffer_ptr),
+                               value_size * sizeof(float)));
             data_buffer_ptr += feature_value_size;
             if (static_cast<int>(ssd_keys.size()) ==
                 FLAGS_pserver_load_batch_size) {

@@ -60,14 +60,14 @@ class GraphShard {
   std::vector<Node *> get_batch(int start, int end, int step);
   std::vector<int64_t> get_ids_by_range(int start, int end) {
     std::vector<int64_t> res;
-    for (int i = start; i < end && i < (int)bucket.size(); i++) {
+    for (int i = start; i < end && i < static_cast<int>(bucket.size()); i++) {
       res.push_back(bucket[i]->get_id());
     }
     return res;
   }
   std::vector<int64_t> get_all_id() {
     std::vector<int64_t> res;
-    for (int i = 0; i < (int)bucket.size(); i++) {
+    for (int i = 0; i < static_cast<int>(bucket.size()); i++) {
       res.push_back(bucket[i]->get_id());
     }
     return res;
@@ -114,7 +114,7 @@ class SampleResult {
  public:
   size_t actual_size;
   std::shared_ptr<char> buffer;
-  SampleResult(size_t _actual_size, std::shared_ptr<char> &_buffer)
+  SampleResult(size_t _actual_size, std::shared_ptr<char> &_buffer)  // NOLINT
       : actual_size(_actual_size), buffer(_buffer) {}
   SampleResult(size_t _actual_size, char *_buffer)
       : actual_size(_actual_size),
@@ -140,7 +140,7 @@ class ScaledLRU;
 template <typename K, typename V>
 class RandomSampleLRU {
  public:
-  RandomSampleLRU(ScaledLRU<K, V> *_father) {
+  explicit RandomSampleLRU(ScaledLRU<K, V> *_father) {
     father = _father;
     remove_count = 0;
     node_size = 0;
@@ -157,7 +157,9 @@ class RandomSampleLRU {
       node_head = p;
     }
   }
-  LRUResponse query(K *keys, size_t length, std::vector<std::pair<K, V>> &res) {
+  LRUResponse query(K *keys,
+                    size_t length,
+                    std::vector<std::pair<K, V>> &res) {  // NOLINT
     if (pthread_rwlock_tryrdlock(&father->rwlock) != 0)
       return LRUResponse::blocked;
     // pthread_rwlock_rdlock(&father->rwlock);
@@ -309,7 +311,7 @@ class ScaledLRU {
   LRUResponse query(size_t index,
                     K *keys,
                     size_t length,
-                    std::vector<std::pair<K, V>> &res) {
+                    std::vector<std::pair<K, V>> &res) {  // NOLINT
     return lru_pool[index].query(keys, length, res);
   }
   LRUResponse insert(size_t index, K *keys, V *data, size_t length) {
@@ -321,13 +323,14 @@ class ScaledLRU {
       node_size += lru_pool[i].node_size - lru_pool[i].remove_count;
     }
 
-    if ((size_t)node_size <= size_t(1.1 * size_limit) + 1) return 0;
+    if (static_cast<size_t>(node_size) <= size_t(1.1 * size_limit) + 1)
+      return 0;
     if (pthread_rwlock_wrlock(&rwlock) == 0) {
       global_count = 0;
       for (size_t i = 0; i < lru_pool.size(); i++) {
         global_count += lru_pool[i].node_size - lru_pool[i].remove_count;
       }
-      if ((size_t)global_count > size_limit) {
+      if (static_cast<size_t>(global_count) > size_limit) {
         size_t remove = global_count - size_limit;
         for (size_t i = 0; i < lru_pool.size(); i++) {
           lru_pool[i].total_diff = 0;
@@ -345,7 +348,7 @@ class ScaledLRU {
   void handle_size_diff(int diff) {
     if (diff != 0) {
       __sync_fetch_and_add(&global_count, diff);
-      if (global_count > int(1.25 * size_limit)) {
+      if (global_count > static_cast<int>(1.25 * size_limit)) {
         thread_pool->enqueue([this]() -> int { return Shrink(); });
       }
     }
@@ -460,8 +463,8 @@ class GraphTable : public Table {
                                   int idx,
                                   int start,
                                   int size,
-                                  std::unique_ptr<char[]> &buffer,
-                                  int &actual_size,
+                                  std::unique_ptr<char[]> &buffer,  // NOLINT
+                                  int &actual_size,                 // NOLINT
                                   bool need_feature,
                                   int step);
 
@@ -469,21 +472,21 @@ class GraphTable : public Table {
       int idx,
       int64_t *node_ids,
       int sample_size,
-      std::vector<std::shared_ptr<char>> &buffers,
-      std::vector<int> &actual_sizes,
+      std::vector<std::shared_ptr<char>> &buffers,  // NOLINT
+      std::vector<int> &actual_sizes,               // NOLINT
       bool need_weight);
 
   int32_t random_sample_nodes(int type_id,
                               int idx,
                               int sample_size,
-                              std::unique_ptr<char[]> &buffers,
-                              int &actual_sizes);
+                              std::unique_ptr<char[]> &buffers,  // NOLINT
+                              int &actual_sizes);                // NOLINT
 
   virtual int32_t get_nodes_ids_by_ranges(
       int type_id,
       int idx,
       std::vector<std::pair<int, int>> ranges,
-      std::vector<int64_t> &res);
+      std::vector<int64_t> &res);  // NOLINT
   virtual int32_t Initialize() { return 0; }
   virtual int32_t Initialize(const TableParameter &config,
                              const FsClientParameter &fs_config);
@@ -500,22 +503,22 @@ class GraphTable : public Table {
   int32_t load_nodes(const std::string &path, std::string node_type);
 
   int32_t add_graph_node(int idx,
-                         std::vector<int64_t> &id_list,
-                         std::vector<bool> &is_weight_list);
+                         std::vector<int64_t> &id_list,       // NOLINT
+                         std::vector<bool> &is_weight_list);  // NOLINT
 
-  int32_t remove_graph_node(int idx, std::vector<int64_t> &id_list);
+  int32_t remove_graph_node(int idx, std::vector<int64_t> &id_list);  // NOLINT
 
   int32_t get_server_index_by_id(int64_t id);
   Node *find_node(int type_id, int idx, int64_t id);
 
-  virtual int32_t Pull(TableContext &context) { return 0; }
-  virtual int32_t Push(TableContext &context) { return 0; }
+  virtual int32_t Pull(TableContext &context) { return 0; }  // NOLINT
+  virtual int32_t Push(TableContext &context) { return 0; }  // NOLINT
 
   virtual int32_t clear_nodes(int type, int idx);
   virtual void Clear() {}
   virtual int32_t Flush() { return 0; }
   virtual int32_t Shrink(const std::string &param) { return 0; }
-  //指定保存路径
+  // 指定保存路径
   virtual int32_t Save(const std::string &path, const std::string &converter) {
     return 0;
   }
@@ -536,10 +539,11 @@ class GraphTable : public Table {
   virtual std::pair<int32_t, std::string> parse_feature(int idx,
                                                         std::string feat_str);
 
-  virtual int32_t get_node_feat(int idx,
-                                const std::vector<int64_t> &node_ids,
-                                const std::vector<std::string> &feature_names,
-                                std::vector<std::vector<std::string>> &res);
+  virtual int32_t get_node_feat(
+      int idx,
+      const std::vector<int64_t> &node_ids,
+      const std::vector<std::string> &feature_names,
+      std::vector<std::vector<std::string>> &res);  // NOLINT
 
   virtual int32_t set_node_feat(
       int idx,
@@ -581,13 +585,14 @@ class GraphTable : public Table {
       int64_t id,
       int sample_size,
       const std::shared_ptr<std::mt19937_64> rng,
-      int &actual_size);
+      int &actual_size);  // NOLINT
   virtual int32_t add_node_to_ssd(
       int type_id, int idx, int64_t src_id, char *data, int len);
   virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
       int idx, std::vector<int64_t> ids);
   int32_t Load_to_ssd(const std::string &path, const std::string &param);
-  int64_t load_graph_to_memory_from_ssd(int idx, std::vector<int64_t> &ids);
+  int64_t load_graph_to_memory_from_ssd(int idx,
+                                        std::vector<int64_t> &ids);  // NOLINT
   int32_t make_complementary_graph(int idx, int64_t byte_size);
   int32_t dump_edges_to_ssd(int idx);
   int32_t get_partition_num(int idx) { return partitions[idx].size(); }
