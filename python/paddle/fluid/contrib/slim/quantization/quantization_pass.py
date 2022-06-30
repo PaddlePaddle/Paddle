@@ -954,8 +954,9 @@ class QuantizationFreezePass(object):
             weight_bits(int): quantization bit number for weights.
             activation_bits(int): quantization bit number for activation.
             round_type(str, optional): The method of converting the quantized weights
-                value from float to int. Currently supports ['round', 'adaround'] methods.
-                Default is `round`, which is rounding nearest to the nearest whole number. 
+                value float->int. Currently supports ['round', 'adaround'] methods.
+                Default is `round`, which is rounding nearest to the integer.
+                'adaround' is refer to https://arxiv.org/abs/2004.10568.
             weight_quantize_type(str): quantization type for weights, support 'abs_max' and 
                 'channel_wise_abs_max'. The 'range_abs_max' usually is not used for weight, 
                 since weights are fixed once the model is well trained.
@@ -1018,8 +1019,8 @@ class QuantizationFreezePass(object):
                         scale_v = scale_v.tolist()
                     self._quant_var_scale_map[input_arg_name] = scale_v
                     # Quantize weight and restore
-                    param_v = self._load_var(input_arg_name)
                     if self._round_type == 'round':
+                        param_v = self._load_var(input_arg_name)
                         if any(
                                 _check_grandchild_op_node(op_node, op)
                                 for op in utils._channelwise_quant_axis1_ops):
@@ -1030,6 +1031,7 @@ class QuantizationFreezePass(object):
                             param_v.copy(), scale_v, quant_axis,
                             self._weight_bits)
                         quantized_param_v = np.round(quantized_param_v)
+                        # Weight bias correction
                         if self._bias_correction == True:
                             quantized_param_v = utils.bias_correction_w(
                                 param_v,
@@ -2598,8 +2600,11 @@ class QuantWeightPass(object):
                 param_v = self._load_var(x_node.name())
                 quant_axis = _op.op().attr("quant_axis")
                 bits_length = _op.op().attr("bit_length")
-                quantized_param_v = utils.quant_tensor(param_v.copy(), scale_v,
-                                                       quant_axis, bits_length)
+                quantized_param_v = utils.quant_tensor(param_v.copy(),
+                                                       scale_v,
+                                                       quant_axis,
+                                                       bits_length,
+                                                       onnx_format=True)
                 if self._bias_correction == True:
                     quantized_param_v = utils.bias_correction_w(
                         param_v,

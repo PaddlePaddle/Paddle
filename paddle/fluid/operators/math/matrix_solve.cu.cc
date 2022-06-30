@@ -37,7 +37,8 @@ template <typename T>
 class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& a, const framework::Tensor& b,
+                  const framework::Tensor& a,
+                  const framework::Tensor& b,
                   framework::Tensor* out) {
 #ifndef PADDLE_WITH_HIP
 
@@ -93,9 +94,12 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
     // Copy the addresses of A and tmp_b from host to device.
     memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
         memory::Alloc(context, cpu_ptrs.size() * sizeof(T*));
-    memory::Copy(context.GetPlace(), tmp_gpu_ptrs_data->ptr(),
-                 platform::CPUPlace(), static_cast<void*>(cpu_ptrs.data()),
-                 cpu_ptrs.size() * sizeof(T*), context.stream());
+    memory::Copy(context.GetPlace(),
+                 tmp_gpu_ptrs_data->ptr(),
+                 platform::CPUPlace(),
+                 static_cast<void*>(cpu_ptrs.data()),
+                 cpu_ptrs.size() * sizeof(T*),
+                 context.stream());
 
     T** gpu_tmp_b_ptrs =
         reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()) + batch_size;
@@ -118,19 +122,29 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
     // This function performs the LU factorization of each matrix A by the
     // equation A = L * U. L and U are written back to original matrix A,
     // and diagonal elements of L are discarded.
-    blas.BatchedGETRF(n, reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()),
-                      gpu_pivot_ptr, gpu_info_ptr, batch_size);
+    blas.BatchedGETRF(n,
+                      reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()),
+                      gpu_pivot_ptr,
+                      gpu_info_ptr,
+                      batch_size);
 
     // check whether BatchedGETRF is executed successfully or not
-    memory::Copy(platform::CPUPlace(), info.data(), context.GetPlace(),
-                 gpu_info_ptr, sizeof(int) * batch_size, context.stream());
+    memory::Copy(platform::CPUPlace(),
+                 info.data(),
+                 context.GetPlace(),
+                 gpu_info_ptr,
+                 sizeof(int) * batch_size,
+                 context.stream());
     for (int i = 0; i < batch_size; ++i) {
-      PADDLE_ENFORCE_EQ(info[i], 0,
+      PADDLE_ENFORCE_EQ(info[i],
+                        0,
                         platform::errors::PreconditionNotMet(
                             "For batch [%d]: U(%d, %d) is zero, singular U. "
                             "Please check the matrix value and change it to a "
                             "non-singular matrix",
-                            i, info[i], info[i]));
+                            i,
+                            info[i],
+                            info[i]));
     }
 
     // hold the result code from BatchedGETRS
@@ -138,12 +152,20 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
 
     // to solve the equation after LU factorization
     CBLAS_TRANSPOSE transA = CblasTrans;
-    blas.BatchedGETRS(
-        transA, n, nrhs, reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr()),
-        lda, gpu_pivot_ptr, gpu_tmp_b_ptrs, ldb, &host_info, batch_size);
+    blas.BatchedGETRS(transA,
+                      n,
+                      nrhs,
+                      reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr()),
+                      lda,
+                      gpu_pivot_ptr,
+                      gpu_tmp_b_ptrs,
+                      ldb,
+                      &host_info,
+                      batch_size);
 
     // check whether BatchedGETRS is executed successfully or not
-    PADDLE_ENFORCE_EQ(host_info, 0,
+    PADDLE_ENFORCE_EQ(host_info,
+                      0,
                       platform::errors::InvalidArgument(
                           "The [%d]'th argument to cublas*getrsBatched had "
                           "an illegal value.",

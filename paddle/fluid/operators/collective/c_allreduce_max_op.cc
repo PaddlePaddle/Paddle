@@ -42,7 +42,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(
-    c_allreduce_max, ops::CAllReduceOp, ops::CAllReduceMaxOpMaker,
+    c_allreduce_max,
+    ops::CAllReduceOp,
+    ops::CAllReduceMaxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::AllreduceMaxInplaceInferer)

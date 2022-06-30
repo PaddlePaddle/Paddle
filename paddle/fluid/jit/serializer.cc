@@ -14,102 +14,75 @@
 
 #include "paddle/fluid/jit/serializer.h"
 
+#include <set>
+
+#include "paddle/fluid/platform/device_context.h"
+
+#include "paddle/fluid/jit/executor_function.h"
+#include "paddle/fluid/jit/serializer_utils.h"
+
 namespace paddle {
 namespace jit {
 
-Layer Deserializer::operator()(const std::string& dir_path) {
-  const auto& file_name_prefixs = GetPdmodelFileNamePrefix(dir_path);
-  std::vector<std::string> func_names;
-  std::vector<framework::ProgramDesc> program_descs;
-  std::vector<std::vector<std::string>> param_names_for_each_program;
+Layer Deserializer::operator()(const std::string& path,
+                               const phi::Place& place) {
+  const auto& pdmodel_paths = utils::PdmodelFilePaths(path);
   // set is ordered
   std::set<std::string> param_names_set;
-  VariableNameMap params_dict;
-  for (auto& it : file_name_prefixs) {
-    func_names.emplace_back(it.first);
+  std::vector<std::shared_ptr<FunctionInfo>> infos;
+  Name2VariableMap params_dict;
+  for (auto& it : pdmodel_paths) {
+    auto& func_name = it.first;
+    auto program_desc = LoadProgram(it.second);
 
-    auto program = LoadProgram(dir_path + it.second + PDMODEL_SUFFIX);
-    program_descs.emplace_back(program);
-
-    // TODO(dev): load int/float params
-    std::vector<std::string> persistable_var_names;
-    auto all_var_desc = program.Block(0).AllVars();
+    // TODO(dev): load int/float attrs
+    std::vector<std::string> persist_var_names;
+    auto all_var_desc = program_desc.Block(0).AllVars();
     for (auto* desc_ptr : all_var_desc) {
-      if (IsPersistable(desc_ptr)) {
-        persistable_var_names.emplace_back(desc_ptr->Name());
+      if (utils::IsPersistable(desc_ptr)) {
+        persist_var_names.emplace_back(desc_ptr->Name());
       }
     }
 
-    param_names_for_each_program.emplace_back(persistable_var_names);
-    param_names_set.insert(persistable_var_names.begin(),
-                           persistable_var_names.end());
+    param_names_set.insert(persist_var_names.begin(), persist_var_names.end());
+    infos.emplace_back(std::make_shared<FunctionInfo>(
+        func_name, persist_var_names, program_desc));
   }
 
-  // Read from one pdiparams file, refine here
-  auto params_for_all_program =
-      ReadTensorData(dir_path + "export.forward.pdiparams", param_names_set);
-  params_dict.insert(params_for_all_program.begin(),
-                     params_for_all_program.end());
+  ReadTensorData(path + PDPARAMS_SUFFIX, param_names_set, place, &params_dict);
+  // ReadAttributeData();
 
-  return Layer(func_names, program_descs, param_names_for_each_program,
-               params_dict);
-}
+  Layer layer = Layer(infos, params_dict, place);
 
-bool Deserializer::IsPersistable(framework::VarDesc* desc_ptr) {
-  auto type = desc_ptr->GetType();
-  if (type == framework::proto::VarType::FEED_MINIBATCH ||
-      type == framework::proto::VarType::FETCH_LIST ||
-      type == framework::proto::VarType::READER ||
-      type == framework::proto::VarType::RAW) {
-    return false;
+  for (auto& info : infos) {
+    layer.SetFunction(
+        info->FunctionName(),
+        utils::MakeFunction<ExecutorFunction>(info, params_dict, place));
   }
-  return desc_ptr->Persistable();
+
+  return layer;
 }
 
-bool Deserializer::EndsWith(const std::string& str, const std::string& suffix) {
-  if (str.length() < suffix.length()) {
-    return false;
-  }
-  return str.compare(str.length() - suffix.length(), suffix.length(), suffix) ==
-         0;
-}
-
-const std::vector<std::pair<std::string, std::string>>
-Deserializer::GetPdmodelFileNamePrefix(const std::string& path) {
-  std::vector<std::pair<std::string, std::string>> file_name_prefixs;
-  DIR* dir = opendir(path.c_str());
-  struct dirent* ptr;
-  while ((ptr = readdir(dir)) != nullptr) {
-    std::string file_name = ptr->d_name;
-    if (EndsWith(file_name, PDMODEL_SUFFIX)) {
-      std::string prefix = file_name.substr(
-          0, file_name.length() - std::string(PDMODEL_SUFFIX).length());
-      std::string func_name = prefix.substr(prefix.find_first_of(".") + 1);
-      file_name_prefixs.emplace_back(std::make_pair(func_name, prefix));
-    }
-  }
-  closedir(dir);
-  return file_name_prefixs;
-}
-
-VariableNameMap Deserializer::ReadTensorData(
-    const std::string& file_name, const std::set<std::string>& var_name) const {
+void Deserializer::ReadTensorData(const std::string& file_name,
+                                  const std::set<std::string>& var_name,
+                                  const phi::Place& place,
+                                  Name2VariableMap* params_dict) const {
   VLOG(3) << "ReadTensorData from: " << file_name;
   std::ifstream fin(file_name, std::ios::binary);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  // TODO(dev): Support other devices
-  auto& dev_ctx = *pool.Get(phi::CPUPlace());
-  VariableNameMap res;
+  auto& dev_ctx = *pool.Get(place);
   for (auto it = var_name.begin(); it != var_name.end(); it++) {
     VLOG(3) << "load Tensor: " << *it;
     Variable v;
     // TODO(dev): Support framework::Vocab
     DenseTensor* dense_tesnor = v.GetMutable<DenseTensor>();
     framework::DeserializeFromStream(fin, dense_tesnor, dev_ctx);
-    res[*it] = v;
+    (*params_dict)[*it] = v;
   }
-  return res;
 }
+
+void Deserializer::ReadAttributeData(const std::string& file_path,
+                                     Name2VariableMap* attrs_dict) const {}
 
 framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
   VLOG(3) << "LoadProgram " << file_name;
@@ -122,9 +95,9 @@ framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
   return framework::ProgramDesc(buffer);
 }
 
-Layer Load(const std::string& file_path) {
+Layer Load(const std::string& file_path, const phi::Place& place) {
   auto deserializer = Deserializer();
-  return deserializer(file_path);
+  return deserializer(file_path, place);
 }
 
 }  // namespace jit

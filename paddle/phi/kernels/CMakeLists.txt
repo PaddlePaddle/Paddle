@@ -29,7 +29,8 @@ set(COMMON_KERNEL_DEPS
     arg_map_context
     convert_utils
     lod_utils
-    custom_kernel)
+    custom_kernel
+    phi_tensor_utils)
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
     eigen_function
@@ -81,8 +82,6 @@ set(COMMON_KERNEL_DEPS
     utf8proc)
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
-# For strings kernels
-add_subdirectory(strings)
 
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
@@ -146,7 +145,8 @@ if(WITH_XPU)
   else()
     add_library(phi_xpu ${kernel_xpu})
   endif()
-  kernel_declare(${kernel_xpu})
+  kernel_declare("${kernel_xpu}")
+  kernel_declare("${kernel_xpu_kps}")
   target_link_libraries(phi_xpu ${COMMON_KERNEL_DEPS})
   set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu phi_xpu)
 endif()

@@ -20,8 +20,8 @@ REGISTER_GENERATE_PASS(generate_fc_fuse) {
   paddle::framework::ir::PassPairs pass_pairs;
   for (bool with_relu : {true, false}) {
     // pattern
-    SUBGRAPH_(pattern) = [subgraph = &pattern, with_relu](VAR_(x), VAR_(y),
-                                                          VAR_(z)) {
+    SUBGRAPH_(pattern) = [subgraph = &pattern, with_relu](
+                             VAR_(x), VAR_(y), VAR_(z)) {
       VLOG(3) << "exec lambda func.";
       auto mul = OP_(mul)({{"X", x}, {"Y", y}}).Out("Out");
       auto ewadd = OP_(elementwise_add)({{"X", mul}, {"Y", z}}).Out("Out");
@@ -32,8 +32,8 @@ REGISTER_GENERATE_PASS(generate_fc_fuse) {
       }
     };
     // replace
-    SUBGRAPH_(replace) = [subgraph = &replace, with_relu](VAR_(x), VAR_(y),
-                                                          VAR_(z)) {
+    SUBGRAPH_(replace) = [subgraph = &replace, with_relu](
+                             VAR_(x), VAR_(y), VAR_(z)) {
       auto& fc = OP_(fc)({{"Input", x}, {"W", y}, {"Bias", z}});
       return fc.Out("Out");
     };
@@ -122,17 +122,22 @@ TEST(GeneratePass, generate_fc_fuse) {
   int num_fc_nodes_after = GetNumOpNodes(graph, "fc");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 6,
+  PADDLE_ENFORCE_EQ(num_nodes_before,
+                    num_nodes_after + 6,
                     platform::errors::InvalidArgument(
                         "num_nodes_before=%d, num_nodes_after=%d.",
-                        num_nodes_before, num_nodes_after));
-  PADDLE_ENFORCE_EQ(num_fc_nodes_after, 2,
+                        num_nodes_before,
+                        num_nodes_after));
+  PADDLE_ENFORCE_EQ(num_fc_nodes_after,
+                    2,
                     platform::errors::InvalidArgument("num_fc_nodes_after=%d.",
                                                       num_fc_nodes_after));
-  PADDLE_ENFORCE_EQ(num_mul_nodes_before, num_fc_nodes_after,
+  PADDLE_ENFORCE_EQ(num_mul_nodes_before,
+                    num_fc_nodes_after,
                     platform::errors::InvalidArgument(
                         "num_mul_nodes_before=%d, num_fc_nodes_after=%d.",
-                        num_mul_nodes_before, num_fc_nodes_after));
+                        num_mul_nodes_before,
+                        num_fc_nodes_after));
 }
 
 TEST(GeneratePass, generate_multi_add_to_addn) {
@@ -158,17 +163,22 @@ TEST(GeneratePass, generate_multi_add_to_addn) {
   int num_addn_nodes_after = GetNumOpNodes(graph, "sum");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 2,
+  PADDLE_ENFORCE_EQ(num_nodes_before,
+                    num_nodes_after + 2,
                     platform::errors::InvalidArgument(
                         "num_nodes_before=%d, num_nodes_after=%d.",
-                        num_nodes_before, num_nodes_after));
-  PADDLE_ENFORCE_EQ(num_addn_nodes_after, 1,
+                        num_nodes_before,
+                        num_nodes_after));
+  PADDLE_ENFORCE_EQ(num_addn_nodes_after,
+                    1,
                     platform::errors::InvalidArgument(
                         "num_addn_nodes_after=%d.", num_addn_nodes_after));
-  PADDLE_ENFORCE_EQ(num_add_nodes_before, num_addn_nodes_after + 1,
+  PADDLE_ENFORCE_EQ(num_add_nodes_before,
+                    num_addn_nodes_after + 1,
                     platform::errors::InvalidArgument(
                         "num_add_nodes_before=%d, num_addn_nodes_after=%d.",
-                        num_add_nodes_before, num_addn_nodes_after));
+                        num_add_nodes_before,
+                        num_addn_nodes_after));
 }
 
 TEST(GeneratePass, generate_combine_matmul) {
@@ -194,18 +204,23 @@ TEST(GeneratePass, generate_combine_matmul) {
   int num_matmul_nodes_after = GetNumOpNodes(graph, "matmul");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after - 4,
+  PADDLE_ENFORCE_EQ(num_nodes_before,
+                    num_nodes_after - 4,
                     platform::errors::InvalidArgument(
                         "num_nodes_before=%d, num_nodes_after=%d.",
-                        num_nodes_before, num_nodes_after));
-  PADDLE_ENFORCE_EQ(num_matmul_nodes_after, 1,
+                        num_nodes_before,
+                        num_nodes_after));
+  PADDLE_ENFORCE_EQ(num_matmul_nodes_after,
+                    1,
                     platform::errors::InvalidArgument(
                         "num_matmul_nodes_after=%d.", num_matmul_nodes_after));
   PADDLE_ENFORCE_EQ(
-      num_matmul_nodes_before, num_matmul_nodes_after + 1,
+      num_matmul_nodes_before,
+      num_matmul_nodes_after + 1,
       platform::errors::InvalidArgument(
           "num_matmul_nodes_before=%d, num_matmul_nodes_after=%d.",
-          num_matmul_nodes_before, num_matmul_nodes_after));
+          num_matmul_nodes_before,
+          num_matmul_nodes_after));
 }
 
 }  // namespace ir

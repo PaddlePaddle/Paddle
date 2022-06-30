@@ -110,7 +110,8 @@ if(WITH_GPU
       sgd_op
       squared_l2_norm_op
       memcpy_h2d_op
-      memcpy_d2h_op)
+      memcpy_d2h_op
+      fetch_v2_op)
 
   # All deps of the operators above, part of GLOB_OPERATOR_DEPS.
   set(OP_DEPS generator softmax selected_rows_functor jit_kernel_helper

@@ -24,29 +24,35 @@ class TopkOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(X) of TopkOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of TopkOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Indices"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Indices"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Indices) of TopkOp should not be null."));
 
     auto input_dims = ctx->GetInputDim("X");
     const int k = static_cast<int>(ctx->Attrs().Get<int>("k"));
 
-    PADDLE_ENFORCE_GE(k, 1,
+    PADDLE_ENFORCE_GE(k,
+                      1,
                       platform::errors::InvalidArgument(
                           "Attribute k must be >= 1, but got k is %d.", k));
     PADDLE_ENFORCE_GE(
-        input_dims.size(), 1,
+        input_dims.size(),
+        1,
         platform::errors::InvalidArgument("input must have >= 1d shape"));
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_GE(
-          input_dims[input_dims.size() - 1], k,
+          input_dims[input_dims.size() - 1],
+          k,
           platform::errors::InvalidArgument("input must have >= k columns"));
     }
 
@@ -64,8 +70,10 @@ class TopkOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context(),
-        layout_, library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context(),
+        layout_,
+        library_);
   }
 };
 
@@ -99,16 +107,20 @@ class TopkOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::InvalidArgument("Input(X) should be not null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Indices"), true,
+        ctx->HasInput("Indices"),
+        true,
         platform::errors::InvalidArgument("Input(Indices) should be not null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Grad Input(Out) should be not null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
+        ctx->HasOutput(framework::GradVarName("X")),
+        true,
         platform::errors::InvalidArgument("Grad Output(X) should be not null"));
 
     auto x_dims = ctx->GetInputDim("X");
@@ -143,7 +155,9 @@ class TopkGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(top_k, ops::TopkOp, ops::TopkOpMaker,
+REGISTER_OPERATOR(top_k,
+                  ops::TopkOp,
+                  ops::TopkOpMaker,
                   ops::TopkGradOpMaker<paddle::framework::OpDesc>,
                   ops::TopkGradOpMaker<paddle::imperative::OpBase>);
 

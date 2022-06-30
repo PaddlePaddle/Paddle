@@ -54,7 +54,8 @@ class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
           NpuOpRunner("Mul", {*out_diff, *inside_weight}, {tmp_diff}, {});
       runner2.Run(stream);
       framework::TensorCopy(
-          tmp_diff, context.GetPlace(),
+          tmp_diff,
+          context.GetPlace(),
           context.template device_context<paddle::platform::NPUDeviceContext>(),
           out_diff);
 
@@ -73,12 +74,16 @@ class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
       const auto& runner_y =
           NpuOpRunner("Mul", {*in_y, *inside_weight}, {tmp_y}, {});
       runner_y.Run(stream);
-      const auto& runner3 = NpuOpRunner("SmoothL1Loss", {tmp_x, tmp_y},
-                                        {no_reduce_loss}, {{"sigma", sigma2}});
+      const auto& runner3 = NpuOpRunner("SmoothL1Loss",
+                                        {tmp_x, tmp_y},
+                                        {no_reduce_loss},
+                                        {{"sigma", sigma2}});
       runner3.Run(stream);
     } else {
-      const auto& runner3 = NpuOpRunner("SmoothL1Loss", {*in_x, *in_y},
-                                        {no_reduce_loss}, {{"sigma", sigma2}});
+      const auto& runner3 = NpuOpRunner("SmoothL1Loss",
+                                        {*in_x, *in_y},
+                                        {no_reduce_loss},
+                                        {{"sigma", sigma2}});
       runner3.Run(stream);
     }
 
@@ -92,12 +97,16 @@ class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
           NpuOpRunner("Mul", {no_reduce_loss, *outside_weight}, {tmp_loss}, {});
       runner4.Run(stream);
       const auto& runner5 =
-          NpuOpRunner("ReduceSumD", {tmp_loss}, {*out_loss},
+          NpuOpRunner("ReduceSumD",
+                      {tmp_loss},
+                      {*out_loss},
                       {{"axes", std::vector<int>{1}}, {"keep_dims", true}});
       runner5.Run(stream);
     } else {
       const auto& runner5 =
-          NpuOpRunner("ReduceSumD", {no_reduce_loss}, {*out_loss},
+          NpuOpRunner("ReduceSumD",
+                      {no_reduce_loss},
+                      {*out_loss},
                       {{"axes", std::vector<int>{1}}, {"keep_dims", true}});
       runner5.Run(stream);
     }
@@ -134,7 +143,9 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
     grad.mutable_data<T>(context.GetPlace());
     // broadcast og(output_grad) to adapt to the npu interface
     const auto& runner_broad =
-        NpuOpRunner("BroadcastToD", {*og}, {grad},
+        NpuOpRunner("BroadcastToD",
+                    {*og},
+                    {grad},
                     {{"shape", phi::vectorize(diff->dims())}});
     runner_broad.Run(stream);
 
@@ -142,9 +153,10 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
     gradient.Resize(diff->dims());
     gradient.mutable_data<T>(context.GetPlace());
     // diff == diff - 0 == in_x - in_y
-    const auto& runner_grad =
-        NpuOpRunner("SmoothL1LossGrad", {*diff, tmp_zero, grad}, {gradient},
-                    {{"sigma", sigma2}});
+    const auto& runner_grad = NpuOpRunner("SmoothL1LossGrad",
+                                          {*diff, tmp_zero, grad},
+                                          {gradient},
+                                          {{"sigma", sigma2}});
     runner_grad.Run(stream);
 
     // mul weight and gradient
@@ -164,7 +176,8 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
       runner_weight_grad.Run(stream);
 
       framework::TensorCopy(
-          tmp_grad, context.GetPlace(),
+          tmp_grad,
+          context.GetPlace(),
           context.template device_context<paddle::platform::NPUDeviceContext>(),
           &gradient);
     }
@@ -172,7 +185,8 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
     if (outx_grad) {
       outx_grad->mutable_data<T>(context.GetPlace());
       framework::TensorCopy(
-          gradient, context.GetPlace(),
+          gradient,
+          context.GetPlace(),
           context.template device_context<paddle::platform::NPUDeviceContext>(),
           outx_grad);
     }

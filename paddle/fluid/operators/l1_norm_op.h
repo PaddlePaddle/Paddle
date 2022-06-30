@@ -47,7 +47,8 @@ class L1NormGradKernel : public framework::OpKernel<T> {
     const framework::Tensor *d_out =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
     PADDLE_ENFORCE_EQ(
-        d_out->numel(), 1,
+        d_out->numel(),
+        1,
         platform::errors::InvalidArgument(
             "Input(GRAD@Out) of L1NormGradOP should be a scalar."));
     framework::Tensor *dx =

@@ -45,8 +45,10 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
     int nums_inf_nans = 0;
     MPDType cpu_scale_data;
     if (platform::is_xpu_place(scale->place())) {
-      memory::Copy(platform::CPUPlace(), static_cast<void*>(&cpu_scale_data),
-                   scale->place(), static_cast<const void*>(scale_data),
+      memory::Copy(platform::CPUPlace(),
+                   static_cast<void*>(&cpu_scale_data),
+                   scale->place(),
+                   static_cast<const void*>(scale_data),
                    sizeof(MPDType));
 
     } else {
@@ -62,12 +64,17 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
               found_inf->dims(), dev_ctx);
 
       if (nums_inf_nans == 0) {
-        int r = xpu::count_nan_or_inf(
-            dev_ctx.x_context(), reinterpret_cast<const XPUTyp*>(x->data<T>()),
-            inf_nan_count.data<int>(), x->numel());
+        int r =
+            xpu::count_nan_or_inf(dev_ctx.x_context(),
+                                  reinterpret_cast<const XPUTyp*>(x->data<T>()),
+                                  inf_nan_count.data<int>(),
+                                  x->numel());
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "count_nan_or_inf");
-        memory::Copy(platform::CPUPlace(), &nums_inf_nans, dev_ctx.GetPlace(),
-                     inf_nan_count.data<int>(), sizeof(int));
+        memory::Copy(platform::CPUPlace(),
+                     &nums_inf_nans,
+                     dev_ctx.GetPlace(),
+                     inf_nan_count.data<int>(),
+                     sizeof(int));
       }
 
       if (nums_inf_nans > 0) {
@@ -86,15 +93,21 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
                                         out->numel() * sizeof(MPDType));
         int r = xpu::cast_v2(dev_ctx.x_context(),
                              reinterpret_cast<const float16*>(x->data<T>()),
-                             float_x.data<MPDType>(), x->numel());
+                             float_x.data<MPDType>(),
+                             x->numel());
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
 
-        r = xpu::scale(dev_ctx.x_context(), float_x.data<MPDType>(),
-                       float_out.data<MPDType>(), x->numel(), false,
-                       inverse_scale, 0.0);
+        r = xpu::scale(dev_ctx.x_context(),
+                       float_x.data<MPDType>(),
+                       float_out.data<MPDType>(),
+                       x->numel(),
+                       false,
+                       inverse_scale,
+                       0.0);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
-        r = xpu::cast_v2(dev_ctx.x_context(), float_out.data<MPDType>(),
+        r = xpu::cast_v2(dev_ctx.x_context(),
+                         float_out.data<MPDType>(),
                          reinterpret_cast<float16*>(out->data<T>()),
                          out->numel());
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
@@ -102,12 +115,18 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
         int r = xpu::scale(dev_ctx.x_context(),
                            reinterpret_cast<const XPUTyp*>(x->data<T>()),
                            reinterpret_cast<XPUTyp*>(out->data<T>()),
-                           x->numel(), false, inverse_scale, 0.0);
+                           x->numel(),
+                           false,
+                           inverse_scale,
+                           0.0);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
       }
     }
-    memory::Copy(dev_ctx.GetPlace(), found_inf_data, platform::CPUPlace(),
-                 &cpu_found_inf_data, sizeof(bool));
+    memory::Copy(dev_ctx.GetPlace(),
+                 found_inf_data,
+                 platform::CPUPlace(),
+                 &cpu_found_inf_data,
+                 sizeof(bool));
   }
 };
 

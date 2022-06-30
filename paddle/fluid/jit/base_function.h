@@ -17,79 +17,20 @@
 #include <ostream>
 #include <string>
 
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/utils/none.h"
-#include "paddle/utils/optional.h"
+#include "paddle/phi/common/place.h"
+
+#include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace jit {
 
 using Variable = paddle::framework::Variable;
-using VariableNameMap = std::map<std::string, Variable>;
-using DenseTensor = phi::DenseTensor;
-
-class Argument {
- public:
-  explicit Argument(const std::string &name, bool is_out = false);
-
-  const std::string &Name() const;
-
- private:
-  std::string name_;
-  // paddle::optional<Variable> default_val_;
-  bool is_output_;
-};
-
-class FunctionSchema {
- public:
-  FunctionSchema() = default;
-
-  std::vector<std::string> GetInputArgNames();
-
-  std::vector<std::string> GetOutputArgNames();
-
-  void AddInputArg(std::string name, bool is_output);
-
-  void AddOutputArg(std::string name, bool is_output);
-
- private:
-  std::vector<Argument> input_args;
-  std::vector<Argument> output_args;
-};
-
-// TODO(dev): make it as abstract class
 class BaseFunction {
  public:
-  BaseFunction(const framework::ProgramDesc &program_desc,
-               const std::vector<std::string> param_names_for_program,
-               const VariableNameMap &params_dict);
-
+  virtual std::vector<Variable> operator()(
+      const std::vector<Variable> &inputs) = 0;
   virtual ~BaseFunction() {}
-
-  virtual std::vector<Variable> operator()(const VariableNameMap &inputs) = 0;
-
- protected:
-  void FetchOutput(std::vector<Variable> *outs);
-
-  void ShareIntoScope(const VariableNameMap &ivals);
-
-  void SharePartialIntoScope(
-      const std::vector<std::string> param_names_for_program,
-      const VariableNameMap &params_dict);
-
-  void RemoveFeedFetch();
-
- protected:
-  framework::ProgramDesc program_desc_;
-  // TODO(dev): need a better way to share params
-  // std::vector<Variable> &param_for_program_;
-  // std::vector<std::string> skip_var_name_;
-  FunctionSchema schema_;
-  // global_scope place params
-  framework::Scope scope_;
-  //   framework::Executor inner_exe_;
+  // virtual void SetPalce(const phi::Place &place);
 };
 
 }  // namespace jit
