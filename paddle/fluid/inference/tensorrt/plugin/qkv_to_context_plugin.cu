@@ -342,6 +342,12 @@ int QkvToContextPluginDynamic::enqueue(
           head_number_);
       qk_bias = temp_qk_bias;
     }
+    // fake qk_bias
+    if (ProductDim(input_desc[1].dims) == ProductDim(input_desc[0].dims)) {
+      qk_bias = reinterpret_cast<float *>(workspace);
+      auto size = batch * head_number_ * seq_len * seq_len;
+      cudaMemset(qk_bias, 0, sizeof(float) * size);
+    }
     const float *input1_data = static_cast<const float *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
     TransposeQKV(
@@ -397,6 +403,12 @@ int QkvToContextPluginDynamic::enqueue(
           seq_len,
           head_number_);
       qk_bias = temp_qk_bias;
+    }
+    // fake qk_bias
+    if (ProductDim(input_desc[1].dims) == ProductDim(input_desc[0].dims)) {
+      qk_bias = reinterpret_cast<half *>(workspace);
+      auto size = batch * head_number_ * seq_len * seq_len;
+      cudaMemset(qk_bias, 0, sizeof(float) * size);
     }
     const half *input1_data = static_cast<const half *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
