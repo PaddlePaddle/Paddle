@@ -311,7 +311,7 @@ def _recover_args_state(outs, get_args, set_args, return_name_ids):
     assert num_outs <= num_args
 
     if num_args == 1:
-        final_outs = (outs,)
+        final_outs = (outs, )
     else:
         outs = (outs, ) if num_outs == 1 else outs
         final_outs = outs + init_args[num_outs:]
