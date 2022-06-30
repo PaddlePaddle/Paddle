@@ -97,7 +97,7 @@ class PadMKLDNNKernel : public framework::OpKernel<T> {
     // must be done inside the kernel
     std::vector<int64_t> out_tz(x_tz);
 
-    for (int i = 0; i < paddings.size() / 2; ++i) {
+    for (size_t i = 0; i < paddings.size() / 2; ++i) {
       out_tz[out_tz.size() - 1 - i] += paddings[2 * i] + paddings[2 * i + 1];
     }
     out->Resize(phi::make_ddim(out_tz));
@@ -127,7 +127,7 @@ class PadMKLDNNKernel : public framework::OpKernel<T> {
               pad_value);
 
     // paddings are in order: left, right, top, bottom, front, back
-    for (int i = 0; i < paddings.size(); ++i) {
+    for (size_t i = 0; i < paddings.size(); ++i) {
       if (paddings[i] != 0) {
         std::vector<int64_t> offsets(out_tz.size(), 0);
         std::vector<int64_t> chunk_tz(out_tz.begin(), out_tz.end());
@@ -149,7 +149,7 @@ class PadMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     std::vector<int64_t> offsets(out_tz.size(), 0);
-    for (int i = 0; i < paddings.size() / 2; ++i) {
+    for (size_t i = 0; i < paddings.size() / 2; ++i) {
       offsets[out_tz.size() - 1 - i] = paddings[2 * i];
     }
 
@@ -169,9 +169,9 @@ class PadMKLDNNKernel : public framework::OpKernel<T> {
     int64_t max_elems = 0;
     int64_t independent_dims = out_tz[0] * out_tz[1];
 
-    for (int i = 0; i < paddings.size() / 2; ++i) {
+    for (size_t i = 0; i < paddings.size() / 2; ++i) {
       int64_t elems = std::max(paddings[2 * i], paddings[2 * i + 1]);
-      for (int j = 0; j < paddings.size() / 2; ++j) {
+      for (size_t j = 0; j < paddings.size() / 2; ++j) {
         if (j != i) {
           elems *= out_tz[out_tz.size() - 1 - j];
         }
