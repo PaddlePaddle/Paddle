@@ -280,7 +280,7 @@ def main():
         description='Generate PaddlePaddle C++ Sparse API files')
     parser.add_argument('--api_yaml_path',
                         help='path to sparse api yaml file',
-                        default='python/paddle/utils/code_gen/sparse_api.yaml')
+                        default='paddle/phi/api/yaml/sparse_api.yaml')
 
     parser.add_argument('--api_header_path',
                         help='output of generated api header code file',

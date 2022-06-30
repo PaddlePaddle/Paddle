@@ -70,4 +70,4 @@ paddle/fluid/pybind/tmp_eager_final_state_op_function_impl.h
 # these files (directories) are generated before build system generation
 paddle/fluid/operators/generated_op.cc
 paddle/phi/ops/compat/generated_sig.cc
-python/paddle/utils/code_gen/parsed_apis/
+paddle/phi/api/yaml/parsed_apis/

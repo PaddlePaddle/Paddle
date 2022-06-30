@@ -162,10 +162,9 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 def main():
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle C++ Sparse API files')
-    parser.add_argument(
-        '--api_yaml_path',
-        help='path to sparse api yaml file',
-        default='python/paddle/utils/code_gen/sparse_bw_api.yaml')
+    parser.add_argument('--api_yaml_path',
+                        help='path to sparse api yaml file',
+                        default='paddle/phi/api/yaml/sparse_bw_api.yaml')
 
     parser.add_argument('--api_header_path',
                         help='output of generated api header code file',

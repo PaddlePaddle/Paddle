@@ -279,7 +279,7 @@ def main():
     parser.add_argument('--backward_yaml_path',
                         help='path to backward yaml file',
                         nargs='+',
-                        default='python/paddle/utils/code_gen/backward.yaml')
+                        default='paddle/phi/api/yaml/backward.yaml')
     parser.add_argument('--backward_header_path',
                         help='output of generated backward header code file',
                         default='paddle/phi/api/backward/backward_api.h')

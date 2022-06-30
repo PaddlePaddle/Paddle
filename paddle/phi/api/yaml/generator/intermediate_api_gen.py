@@ -134,11 +134,11 @@ def main():
     parser.add_argument('--api_yaml_path',
                         nargs='+',
                         help='path to api yaml file',
-                        default='python/paddle/utils/code_gen/api.yaml')
+                        default='paddle/phi/api/yaml/api.yaml')
 
     parser.add_argument('--sparse_api_yaml_path',
                         help='path to sparse api yaml file',
-                        default='python/paddle/utils/code_gen/sparse_api.yaml')
+                        default='paddle/phi/api/yaml/sparse_api.yaml')
 
     parser.add_argument('--dygraph_api_header_path',
                         help='output of generated dygraph api header code file',

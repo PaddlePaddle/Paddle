@@ -313,7 +313,7 @@ def main():
     parser.add_argument('--api_yaml_path',
                         help='path to api yaml file',
                         nargs='+',
-                        default='python/paddle/utils/code_gen/api.yaml')
+                        default='paddle/phi/api/yaml/api.yaml')
 
     parser.add_argument('--api_header_path',
                         help='output of generated api header code file',
