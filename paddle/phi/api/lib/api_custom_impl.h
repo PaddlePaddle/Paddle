@@ -31,24 +31,6 @@ namespace experimental {
 
 ////////////////// Forward api impls //////////////////////
 
-std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adam_impl(
-    const Tensor& param,
-    const Tensor& grad,
-    const Tensor& learning_rate,
-    const Tensor& moment1,
-    const Tensor& moment2,
-    const Tensor& beta1_pow,
-    const Tensor& beta2_pow,
-    const paddle::optional<Tensor>& master_param,
-    const paddle::optional<Tensor>& skip_update,
-    const Scalar& beta1,
-    const Scalar& beta2,
-    const Scalar& epsilon,
-    bool lazy_mode,
-    int64_t min_row_size_to_use_multithread,
-    bool multi_precision,
-    bool use_global_beta_pow);
-
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adamw_impl(
     const Tensor& param,
     const Tensor& grad,
@@ -131,13 +113,6 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
     float regularization_coeff,
     bool multi_precision,
     float rescale_grad);
-
-std::tuple<Tensor, Tensor> sgd_impl(
-    const Tensor& param,
-    const Tensor& learning_rate,
-    const Tensor& grad,
-    const paddle::optional<Tensor>& master_param,
-    bool multi_precision);
 
 ////////////////// Backward(grad) api impls //////////////////////
 

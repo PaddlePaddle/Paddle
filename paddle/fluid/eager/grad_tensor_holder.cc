@@ -95,8 +95,6 @@ void GradTensorHolder::add(size_t slot_id,
                  paddle::platform::errors::Fatal(
                      "Invalid slot_id for GradTensorHolder::add() "
                      "which exceeds size of buffer"));
-  VLOG(6) << "Add Tensor for buffer_ slot: " << slot_id
-          << ", size: " << buffer_[slot_id].size();
   if (buffer_[slot_id].empty()) {
     VLOG(6) << "Pass add Tensor for buffer_ slot: " << slot_id
             << " since its buffer_ is empty ";
@@ -119,8 +117,12 @@ void GradTensorHolder::add(size_t slot_id,
   // framework::Variable is initialized.
   if ((!buffer_tensor.defined() || !buffer_tensor.initialized())) {
     // Simply copy tensor->impl
+    VLOG(6) << "Move Tensor for buffer_ slot: " << slot_id
+            << ", size: " << buffer_[slot_id].size();
     buffer_tensor = t;
   } else {
+    VLOG(6) << "Add Tensor for buffer_ slot: " << slot_id
+            << ", size: " << buffer_[slot_id].size();
     // Accumulation
     PADDLE_ENFORCE_EQ(t.initialized(),
                       true,

@@ -234,6 +234,53 @@ void Copy(const Context& dev_ctx,
       dev_ctx, src.value(), dst_place, blocking, dst->mutable_value());
 }
 
+template <typename Context>
+void Copy(const Context& dev_ctx,
+          const SparseCooTensor& src,
+          Place dst_place,
+          bool blocking,
+          SparseCooTensor* dst) {
+  phi::Copy<Context>(dev_ctx,
+                     src.non_zero_indices(),
+                     dst_place,
+                     blocking,
+                     dst->mutable_non_zero_indices());
+
+  phi::Copy<Context>(dev_ctx,
+                     src.non_zero_elements(),
+                     dst_place,
+                     blocking,
+                     dst->mutable_non_zero_elements());
+  dst->set_dims(src.dims());
+  dst->SetCoalesced(src.coalesced());
+}
+
+template <typename Context>
+void Copy(const Context& dev_ctx,
+          const SparseCsrTensor& src,
+          Place dst_place,
+          bool blocking,
+          SparseCsrTensor* dst) {
+  phi::Copy<Context>(dev_ctx,
+                     src.non_zero_crows(),
+                     dst_place,
+                     blocking,
+                     dst->mutable_non_zero_crows());
+
+  phi::Copy<Context>(dev_ctx,
+                     src.non_zero_cols(),
+                     dst_place,
+                     blocking,
+                     dst->mutable_non_zero_cols());
+
+  phi::Copy<Context>(dev_ctx,
+                     src.non_zero_elements(),
+                     dst_place,
+                     blocking,
+                     dst->mutable_non_zero_elements());
+  dst->set_dims(src.dims());
+}
+
 template void Copy(const CPUContext& dev_ctx,
                    const DenseTensor& src,
                    Place dst_place,
@@ -256,6 +303,30 @@ template void Copy(const DeviceContext& dev_ctx,
                    Place dst_place,
                    bool blocking,
                    SelectedRows* dst);
+
+template void Copy(const CPUContext& dev_ctx,
+                   const SparseCooTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   SparseCooTensor* dst);
+
+template void Copy(const DeviceContext& dev_ctx,
+                   const SparseCooTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   SparseCooTensor* dst);
+
+template void Copy(const CPUContext& dev_ctx,
+                   const SparseCsrTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   SparseCsrTensor* dst);
+
+template void Copy(const DeviceContext& dev_ctx,
+                   const SparseCsrTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   SparseCsrTensor* dst);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template void Copy(const GPUContext& dev_ctx,
@@ -268,6 +339,16 @@ template void Copy(const GPUContext& dev_ctx,
                    Place dst_place,
                    bool blocking,
                    SelectedRows* dst);
+template void Copy(const GPUContext& dev_ctx,
+                   const SparseCooTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   SparseCooTensor* dst);
+template void Copy(const GPUContext& dev_ctx,
+                   const SparseCsrTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   SparseCsrTensor* dst);
 #endif
 
 #ifdef PADDLE_WITH_XPU

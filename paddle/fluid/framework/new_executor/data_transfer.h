@@ -29,8 +29,10 @@ namespace interpreter {
  */
 class DataTranferHelper {
  public:
-  DataTranferHelper(const platform::Place& place, VariableScope* var_scope)
-      : place_(place), var_scope_(var_scope) {}
+  DataTranferHelper(const platform::Place& place,
+                    VariableScope* var_scope,
+                    Scope* local_scope)
+      : place_(place), var_scope_(var_scope), scope_(local_scope) {}
 
   bool apply(const OpKernelType& kernel_type_for_var,
              const OpKernelType& expected_kernel_key,
@@ -52,6 +54,7 @@ class DataTranferHelper {
  private:
   platform::Place place_;
   VariableScope* var_scope_;
+  Scope* scope_;
 };
 
 void ApplyDataTransform(const OpKernelType& expected_kernel_key,

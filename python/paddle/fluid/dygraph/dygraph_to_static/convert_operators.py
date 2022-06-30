@@ -24,7 +24,7 @@ from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_
 from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
 
 
-def convert_while_loop(cond, body, loop_vars):
+def convert_while_loop(cond, body, getter, setter):
     """
     A function representation of a Python ``while`` statement.
 
@@ -39,25 +39,36 @@ def convert_while_loop(cond, body, loop_vars):
 
     # NOTE: It may be slower if cond is very expensive, but usually cond is just O(1).
     # If loop_vars is changed during cond callable, then it causes bug, but current logical_and/logical_not/... doesn't change the loop_vars.
-    pred = cond(*loop_vars)
+    pred = cond()
     if isinstance(pred, Variable):
-        loop_vars = _run_paddle_while_loop(cond, body, loop_vars)
+        loop_vars = _run_paddle_while(cond, body, getter, setter)
     else:
-        loop_vars = _run_py_while(cond, body, loop_vars)
+        loop_vars = _run_py_while(cond, body, getter, setter)
 
     return loop_vars
 
 
-def _run_paddle_while_loop(cond, body, loop_vars):
+def _run_paddle_while(cond, body, getter, setter):
     # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
-    loop_vars = [to_static_variable(var) for var in loop_vars]
+    def to_list(x):
+        if isinstance(x, (tuple, list)): return x
+        return [x]
+
+    # UndefinedVar will become data layer not check.
+    loop_vars = [to_static_variable(var) for var in to_list(getter())]
+    setter(loop_vars if len(loop_vars) > 1 else
+           loop_vars[0])  # change the non-local var to variable
+    # variable maybe modified to inner var. change it into
     loop_vars = control_flow.while_loop(cond, body, loop_vars)
+    setter(loop_vars if len(loop_vars) > 1 else
+           loop_vars[0])  # change the non-local var to variable
     return loop_vars
 
 
-def _run_py_while(cond, body, loop_vars):
-    while cond(*loop_vars):
-        loop_vars = body(*loop_vars)
+def _run_py_while(cond, body, getter, setter):
+    loop_vars = getter()
+    while cond():
+        loop_vars = body()
     return loop_vars
 
 
