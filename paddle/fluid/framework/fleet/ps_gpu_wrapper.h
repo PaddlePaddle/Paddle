@@ -54,6 +54,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_PSLIB
 #include "afs_api.h"
 #endif
+#include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 
 namespace paddle {
 namespace framework {

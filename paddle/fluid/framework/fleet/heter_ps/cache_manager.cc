@@ -16,6 +16,7 @@ limitations under the License. */
 #include <fstream>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cache_manager.h"
+#include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 
 #if defined(PADDLE_WITH_XPU_KP)
 
