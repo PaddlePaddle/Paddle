@@ -32,25 +32,44 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
  public:
   GRUMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                    const platform::MKLDNNDeviceContext& dev_ctx,
-                   const dnnl::engine mkldnn_engine, platform::Place cpu_place,
-                   const LoDTensor* input, const Tensor* weight_h,
-                   const Tensor* h0, const bool is_reverse, const int64_t N,
-                   const int64_t Ti, const int64_t IC, const int64_t OC,
+                   const dnnl::engine mkldnn_engine,
+                   platform::Place cpu_place,
+                   const LoDTensor* input,
+                   const Tensor* weight_h,
+                   const Tensor* h0,
+                   const bool is_reverse,
+                   const int64_t N,
+                   const int64_t Ti,
+                   const int64_t IC,
+                   const int64_t OC,
                    const std::string& unique_name)
       : RNNMKLDNNHandler<T, dnnl::gru_forward, T_out>(
-            ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), input, weight_h, h0,
-            is_reverse, N, Ti, IC, OC, 3,
+            ctx,
+            dev_ctx,
+            mkldnn_engine,
+            ctx.GetPlace(),
+            input,
+            weight_h,
+            h0,
+            is_reverse,
+            N,
+            Ti,
+            IC,
+            OC,
+            3,
             ctx.InputName("X") + ctx.InputName("WeightH")) {
     const bool is_INT8 = std::is_same<T, uint8_t>::value;
 
     if (unlikely(!this->isCached())) {
       // oneDNN kernel has hardcoded activation functions
       PADDLE_ENFORCE_EQ(
-          ctx.Attr<std::string>("gate_activation"), "sigmoid",
+          ctx.Attr<std::string>("gate_activation"),
+          "sigmoid",
           platform::errors::Unimplemented(
               "oneDNN fusion_gru supports only sigmoid as a gate activation."));
       PADDLE_ENFORCE_EQ(
-          ctx.Attr<std::string>("activation"), "tanh",
+          ctx.Attr<std::string>("activation"),
+          "tanh",
           platform::errors::Unimplemented(
               "oneDNN fusion_gru supports only tanh as an activation."));
 
@@ -64,18 +83,18 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
       const int64_t G = 3;  // Number of Gates, 3 for GRU
 
       // Create memory descriptors
-      auto input_md = MKLDNNMemDesc({Ti, N, IC}, MKLDNNGetDataType<T>(),
-                                    MKLDNNMemoryFormat::ntc);
+      auto input_md = MKLDNNMemDesc(
+          {Ti, N, IC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ntc);
       auto weight_x_md =
           MKLDNNMemDesc({L, D, IC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
       auto weight_h_md =
           MKLDNNMemDesc({L, D, OC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
-      auto bias_md = MKLDNNMemDesc({L, D, G, OC}, MKLDNNGetDataType<float>(),
-                                   MKLDNNMemoryFormat::ldgo);
-      auto hidden_md = MKLDNNMemDesc({Ti, N, OC}, MKLDNNGetDataType<T_out>(),
-                                     MKLDNNMemoryFormat::ntc);
-      auto h0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<T>(),
-                                 MKLDNNMemoryFormat::ldnc);
+      auto bias_md = MKLDNNMemDesc(
+          {L, D, G, OC}, MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldgo);
+      auto hidden_md = MKLDNNMemDesc(
+          {Ti, N, OC}, MKLDNNGetDataType<T_out>(), MKLDNNMemoryFormat::ntc);
+      auto h0_md = MKLDNNMemDesc(
+          {L, D, N, OC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ldnc);
 
       // Create GRU oneDNN primitive
       const auto direction =
@@ -83,8 +102,15 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
                      : dnnl::rnn_direction::unidirectional_left2right;
 
       this->AcquireForwardPrimitiveDescriptor(
-          this->attr_, dnnl::prop_kind::forward_inference, direction, input_md,
-          h0_md, weight_x_md, weight_h_md, bias_md, hidden_md,
+          this->attr_,
+          dnnl::prop_kind::forward_inference,
+          direction,
+          input_md,
+          h0_md,
+          weight_x_md,
+          weight_h_md,
+          bias_md,
+          hidden_md,
           dnnl::memory::desc());
     }
   }
@@ -97,13 +123,14 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wx_key));
 
     if (!memory_p) {
-      auto user_md =
-          MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC},
-                        MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldigo);
+      auto user_md = MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC},
+                                   MKLDNNGetDataType<U>(),
+                                   MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       auto* weight_x_data = reinterpret_cast<U*>(user_memory.get_data_handle());
-      memcpy(weight_x_data, weight_x->data<U>(),
+      memcpy(weight_x_data,
+             weight_x->data<U>(),
              sizeof(U) * this->IC * this->G * this->OC);
 
       if (origin_mode == false) {
@@ -136,9 +163,9 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wh_key));
 
     if (!memory_p) {
-      auto user_md =
-          MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC},
-                        MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldigo);
+      auto user_md = MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC},
+                                   MKLDNNGetDataType<U>(),
+                                   MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       // Reorder weights_h from PP format [OC, 2OC] + [OC, OC] to
@@ -268,8 +295,18 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
     const int64_t OC = weight_h_dims[0];   // Output channels
 
     GRUMKLDNNHandler<T, Tout> handler(
-        ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), input, weight_h, h0,
-        is_reverse, N, Ti, IC, OC,
+        ctx,
+        dev_ctx,
+        mkldnn_engine,
+        ctx.GetPlace(),
+        input,
+        weight_h,
+        h0,
+        is_reverse,
+        N,
+        Ti,
+        IC,
+        OC,
         ctx.InputName("X") + ctx.InputName("WeightH"));
 
     auto input_memory_p =
@@ -324,11 +361,17 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
     auto* hidden_data =
         to_void_cast(hidden->mutable_data<Tout>(ctx.GetPlace()));
     if (handler.is_NTC()) {
-      handler.reorderRNNdata(hidden_onednn_data, hidden_data, input_lod,
-                             is_reverse, platform::RNNReorderType::NTC_PP);
+      handler.reorderRNNdata(hidden_onednn_data,
+                             hidden_data,
+                             input_lod,
+                             is_reverse,
+                             platform::RNNReorderType::NTC_PP);
     } else {
-      handler.reorderRNNdata(hidden_onednn_data, hidden_data, input_lod,
-                             is_reverse, platform::RNNReorderType::TNC_PP);
+      handler.reorderRNNdata(hidden_onednn_data,
+                             hidden_data,
+                             input_lod,
+                             is_reverse,
+                             platform::RNNReorderType::TNC_PP);
     }
   }
 };
@@ -337,7 +380,9 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(fusion_gru, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(fusion_gru,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::FusionGRUMKLDNNKernel<float>,
                    ops::FusionGRUMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::FusionGRUMKLDNNKernel<uint8_t>);

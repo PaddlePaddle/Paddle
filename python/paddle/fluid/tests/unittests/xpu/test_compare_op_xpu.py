@@ -259,7 +259,6 @@ class XPUTestNotEqualOp(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('not_equal')
-
 for stype in support_types:
     create_test_class(globals(), XPUTestNotEqualOp, stype)
 

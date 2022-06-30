@@ -41,7 +41,8 @@ void SetAnalysisConfig(AnalysisConfig *cfg,
   cfg->EnableMKLDNN();
 }
 
-std::vector<size_t> ReadSentenceLod(std::ifstream &file, size_t offset,
+std::vector<size_t> ReadSentenceLod(std::ifstream &file,
+                                    size_t offset,
                                     int64_t total_sentences_num) {
   std::vector<size_t> sentence_lod(total_sentences_num);
 
@@ -60,12 +61,14 @@ std::shared_ptr<std::vector<PaddleTensor>> WarmupData(
     int num_images = 1) {
   int data_size = test_data.size();
 
-  PADDLE_ENFORCE_LE(static_cast<size_t>(num_images), data_size,
+  PADDLE_ENFORCE_LE(static_cast<size_t>(num_images),
+                    data_size,
                     platform::errors::InvalidArgument(
                         "The requested quantization warmup data size must be "
                         "lower or equal to the test data size. But received"
                         "warmup size is %d and test data size is %d",
-                        num_images, data_size));
+                        num_images,
+                        data_size));
   int words_shape = test_data[0][0].shape[0];
   PaddleTensor words;
   words.name = "words";
@@ -160,8 +163,8 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   EXPECT_EQ(lods_sum, static_cast<size_t>(total_words_num));
 
   TensorReader<int64_t> words_reader(file, words_beginning_offset, "words");
-  TensorReader<int64_t> targets_reader(file, targets_beginning_offset,
-                                       "targets");
+  TensorReader<int64_t> targets_reader(
+      file, targets_beginning_offset, "targets");
   // If FLAGS_iterations is set to 0, run all batches
   auto iterations_max = total_sentences_num / batch_size;
   auto iterations = iterations_max;
@@ -195,11 +198,14 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
 
 std::vector<double> Lexical_Test(
     const std::vector<std::vector<PaddleTensor>> &input_slots_all,
-    std::vector<std::vector<PaddleTensor>> *outputs, AnalysisConfig *config,
+    std::vector<std::vector<PaddleTensor>> *outputs,
+    AnalysisConfig *config,
     const bool use_analysis) {
   TestOneThreadPrediction(
       reinterpret_cast<const PaddlePredictor::Config *>(config),
-      input_slots_all, outputs, FLAGS_use_analysis);
+      input_slots_all,
+      outputs,
+      FLAGS_use_analysis);
   std::vector<double> acc_res(3);
   if (FLAGS_with_accuracy_layer) {
     EXPECT_GT(outputs->size(), 0UL);

@@ -28,33 +28,31 @@ class SparseBlas {
  public:
   explicit SparseBlas(const DeviceContext& dev_ctx) : dev_ctx_(dev_ctx) {}
 
-  // TODO(zhouwei25): implement "COO @ DENSE -> DENSE" of DSDMM
-  template <typename T>
-  void DSDMM(bool transa,
-             bool transb,
-             T alpha,
-             const phi::SparseCooTensor& mat_a,
-             const phi::DenseTensor& mat_b,
-             T beta,
-             phi::DenseTensor* mat_c) const;
+  template <typename T, typename TensorType>
+  void SPMM(bool transa,
+            bool transb,
+            T alpha,
+            const TensorType& mat_a,
+            const phi::DenseTensor& mat_b,
+            T beta,
+            phi::DenseTensor* mat_out) const;
 
-  template <typename T>
-  void DSDMM(bool transa,
-             bool transb,
-             T alpha,
-             const phi::SparseCsrTensor& mat_a,
-             const phi::DenseTensor& mat_b,
-             T beta,
-             phi::DenseTensor* mat_c) const;
+  template <typename T, typename TensorType>
+  void SPMV(bool transa,
+            T alpha,
+            const TensorType& mat_a,
+            const phi::DenseTensor& vec_x,
+            T beta,
+            phi::DenseTensor* vec_out) const;
 
-  template <typename T>
+  template <typename T, typename TensorType>
   void SDDMM(bool transa,
              bool transb,
              T alpha,
              const phi::DenseTensor& mat_a,
              const phi::DenseTensor& mat_b,
              T beta,
-             phi::SparseCsrTensor* mat_c) const;
+             TensorType* mat_out) const;
 
  private:
   const DeviceContext& dev_ctx_;
@@ -66,8 +64,13 @@ class SparseBlasT : private SparseBlas<DeviceContext> {
   using SparseBlas<DeviceContext>::SparseBlas;
 
   template <typename... ARGS>
-  void DSDMM(ARGS... args) const {
-    Base()->template DSDMM<T>(args...);
+  void SPMM(ARGS... args) const {
+    Base()->template SPMM<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void SPMV(ARGS... args) const {
+    Base()->template SPMV<T>(args...);
   }
 
   template <typename... ARGS>

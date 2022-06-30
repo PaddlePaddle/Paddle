@@ -59,11 +59,14 @@ class ReduceSumGradMLUKernel : public framework::OpKernel<T> {
     tmp_out.Resize(phi::make_ddim(tmp_output_dims));
 
     MLUCnnlTensorDesc out_desc(tmp_out, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
-    MLUCnnlTensorDesc in_grad_desc(*in_grad, CNNL_LAYOUT_ARRAY,
-                                   ToCnnlDataType<T>());
+    MLUCnnlTensorDesc in_grad_desc(
+        *in_grad, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
 
-    MLUCnnl::BroadcastTo(context, out_desc.get(), GetBasePtr(&tmp_out),
-                         in_grad_desc.get(), GetBasePtr(in_grad));
+    MLUCnnl::BroadcastTo(context,
+                         out_desc.get(),
+                         GetBasePtr(&tmp_out),
+                         in_grad_desc.get(),
+                         GetBasePtr(in_grad));
   }
 };
 }  // namespace operators
@@ -72,8 +75,10 @@ class ReduceSumGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(reduce_sum, ops::ReduceSumMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(reduce_sum,
+                       ops::ReduceSumMLUKernel<float>,
                        ops::ReduceSumMLUKernel<int>,
                        ops::ReduceSumMLUKernel<plat::float16>);
-REGISTER_OP_MLU_KERNEL(reduce_sum_grad, ops::ReduceSumGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(reduce_sum_grad,
+                       ops::ReduceSumGradMLUKernel<float>,
                        ops::ReduceSumGradMLUKernel<plat::float16>);

@@ -42,23 +42,41 @@ struct DynamicGradMerger {
   }
 
   template <typename T>
-  __device__ __forceinline__ void update_one(T& output, const T& input) {
+  __device__ __forceinline__ void update_basic(T& output, const T& input) {
     output.slot = input.slot;
     output.show = input.show;
     output.clk = input.clk;
     output.mf_dim = input.mf_dim;
     output.lr_g = input.lr_g;
-    for (int i = 0; i < output.mf_dim; ++i) {
-      output.mf_g[i] = input.mf_g[i];
-    }
+    // for (int i = 0; i < output.mf_dim; ++i) {
+    //  output.mf_g[i] = input.mf_g[i];
+    //}
   }
   template <typename T>
-  __device__ __forceinline__ void merge_one(T& output, const T& input) {
+  __device__ __forceinline__ void merge_basic(T& output, const T& input) {
     output.show += input.show;
     output.clk += input.clk;
     output.lr_g += input.lr_g;
-    for (int i = 0; i < input.mf_dim; ++i) {
-      output.mf_g[i] += input.mf_g[i];
+    // for (int i = 0; i < input.mf_dim; ++i) {
+    //  output.mf_g[i] += input.mf_g[i];
+    //}
+  }
+
+  template <typename T>
+  __device__ __forceinline__ void update_embedx(T& output,
+                                                const T& input,
+                                                size_t embedx_id) {
+    if (embedx_id < output.mf_dim) {
+      output.mf_g[embedx_id] = input.mf_g[embedx_id];
+    }
+  }
+
+  template <typename T>
+  __device__ __forceinline__ void merge_embedx(T& output,
+                                               const T& input,
+                                               size_t embedx_id) {
+    if (embedx_id < output.mf_dim) {
+      output.mf_g[embedx_id] += input.mf_g[embedx_id];
     }
   }
 };
@@ -72,66 +90,110 @@ class HeterCommKernel {
   void fill_idx(T* idx, long long len, const StreamType& stream);
 
   template <typename T, typename StreamType>
-  void calc_shard_offset(T* idx, T* left, T* right, long long len,
-                         int total_devs, const StreamType& stream);
+  void calc_shard_offset(T* idx,
+                         T* left,
+                         T* right,
+                         long long len,
+                         int total_devs,
+                         const StreamType& stream);
 
   template <typename KeyType, typename T, typename StreamType>
-  void calc_shard_index(KeyType* d_keys, long long len, T* shard_index,
+  void calc_shard_index(KeyType* d_keys,
+                        long long len,
+                        T* shard_index,
 
-                        int total_devs, const StreamType& stream);
+                        int total_devs,
+                        const StreamType& stream);
 
   template <typename KeyType, typename T, typename StreamType>
-  void fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys, T* idx,
-                      long long len, const StreamType& stream);
+  void fill_shard_key(KeyType* d_shard_keys,
+                      KeyType* d_keys,
+                      T* idx,
+                      long long len,
+                      const StreamType& stream);
 
-  template <typename KeyType, typename GradType, typename T,
+  template <typename KeyType,
+            typename GradType,
+            typename T,
             typename StreamType>
-  void fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
-                        GradType* d_shard_grads, GradType* d_grads, T* idx,
-                        long long len, const StreamType& stream);
+  void fill_shard_grads(KeyType* d_shard_keys,
+                        KeyType* d_keys,
+                        GradType* d_shard_grads,
+                        GradType* d_grads,
+                        T* idx,
+                        long long len,
+                        const StreamType& stream);
 
   template <typename ValType, typename T, typename StreamType>
-  void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx, long long len,
+  void fill_dvals(ValType* d_shard_vals,
+                  ValType* d_vals,
+                  T* idx,
+                  long long len,
                   const StreamType& stream);
 
   template <typename KeyT, typename ValueT, typename StreamType>
-  void sort_pairs(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
-                  const KeyT* d_keys_in, KeyT* d_keys_out,
-                  const ValueT* d_values_in, ValueT* d_values_out,
-                  int num_items, int begin_bit = 0,
+  void sort_pairs(void* d_temp_storage,
+                  size_t& temp_storage_bytes,  // NOLINT
+                  const KeyT* d_keys_in,
+                  KeyT* d_keys_out,
+                  const ValueT* d_values_in,
+                  ValueT* d_values_out,
+                  int num_items,
+                  int begin_bit = 0,
 
-                  int end_bit = sizeof(KeyT) * 8, StreamType stream = NULL,
+                  int end_bit = sizeof(KeyT) * 8,
+                  StreamType stream = NULL,
                   bool debug_synchronous = false);
 
-  template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
-            typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
-            typename NumRunsOutputIteratorT, typename StreamType>
+  template <typename KeysInputIteratorT,
+            typename UniqueOutputIteratorT,
+            typename ValuesInputIteratorT,
+            typename AggregatesOutputIteratorT,
+            typename NumRunsOutputIteratorT,
+            typename StreamType>
   void reduce_by_key(void* d_temp_storage,
                      size_t& temp_storage_bytes,  // NOLINT
                      KeysInputIteratorT d_keys_in,
                      UniqueOutputIteratorT d_unique_out,
                      ValuesInputIteratorT d_values_in,
                      AggregatesOutputIteratorT d_aggregates_out,
-                     NumRunsOutputIteratorT d_num_runs_out, int num_items,
+                     NumRunsOutputIteratorT d_num_runs_out,
+                     int num_items,
 
-                     StreamType stream = NULL, bool debug_synchronous = false);
+                     StreamType stream = NULL,
+                     bool debug_synchronous = false);
 
-  template <typename KeyType, typename GradType, typename T,
+  template <typename KeyType,
+            typename GradType,
+            typename T,
             typename StreamType>
-  void dy_mf_fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
-                              GradType* d_shard_grads, GradType* d_grads,
-                              T* idx, long long len, size_t grad_value_size,
+  void dy_mf_fill_shard_grads(KeyType* d_shard_keys,
+                              KeyType* d_keys,
+                              GradType* d_shard_grads,
+                              GradType* d_grads,
+                              T* idx,
+                              long long len,
+                              size_t grad_value_size,
                               const StreamType& stream);
 
   template <typename StreamType>
-  void merge_gradient(const uint32_t* offset, const uint32_t* fea_num,
-                      const uint32_t* index, const char* input, char* output,
-                      int n, size_t grad_value_size, DynamicGradMerger& merger_,
+  void merge_gradient(const uint32_t* offset,
+                      const uint32_t* fea_num,
+                      const uint32_t* index,
+                      const char* input,
+                      char* output,
+                      int n,
+                      size_t grad_dim,
+                      size_t grad_value_size,
+                      DynamicGradMerger& merger_,
                       const StreamType& stream);
 
   template <typename ValType, typename T, typename StreamType>
-  void dy_mf_fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
-                        long long len, size_t val_size,
+  void dy_mf_fill_dvals(ValType* d_shard_vals,
+                        ValType* d_vals,
+                        T* idx,
+                        long long len,
+                        size_t val_size,
                         const StreamType& stream);
 
  private:

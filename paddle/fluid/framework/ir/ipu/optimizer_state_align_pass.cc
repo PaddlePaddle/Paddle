@@ -33,8 +33,9 @@ void IpuOptimizerStateAlignPass::ApplyImpl(ir::Graph* graph) const {
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()) {
       int op_role = BOOST_GET_CONST(
-          int, node->Op()->GetAttr(
-                   framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
+          int,
+          node->Op()->GetAttr(
+              framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
 
       if ((op_role == static_cast<int>(framework::OpRole::kOptimize))) {
         auto inputs = node->Op()->Inputs();

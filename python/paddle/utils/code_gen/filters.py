@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from typing import List, Dict
+import itertools
 import re
 
 from jinja2.filters import do_xmlattr
@@ -23,6 +24,10 @@ from type_mapping import (dense_input_types_map, dense_optional_input_types_map,
                           dense_output_types_map, sr_input_types_map,
                           sr_optional_input_types_map, sr_output_types_map,
                           phi_attr_types_map)
+
+
+def quote(s):
+    return '"{}"'.format(s)
 
 
 # ------------------------------ attr -------------------------------------
@@ -74,15 +79,14 @@ def to_sr_output_type(s):
 # -------------- transform argument names from yaml to opmaker ------------
 def to_opmaker_name(s):
     if s.endswith("_grad"):
-        return 'GradVarName("{}")'.format(
-            to_pascal_case(s.removesuffix("_grad")))
+        return 'GradVarName("{}")'.format(to_pascal_case(s[:-5]))
     else:
         return '"{}"'.format(to_pascal_case(s))
 
 
 def to_opmaker_name_cstr(s):
     if s.endswith("_grad"):
-        return '"{}@GRAD"'.format(to_pascal_case(s.removesuffix("_grad")))
+        return '"{}@GRAD"'.format(to_pascal_case(s[:-5]))
     else:
         return '"{}"'.format(to_pascal_case(s))
 
@@ -97,11 +101,56 @@ def to_input_name(s):
     x -> dx
     x -> d2x
     x -> d3x
-    
+
     NOTE: for first order backward api
-    x -> x_grad 
+    x -> x_grad
     is more common.
     """
     match = re.match(r"(d\d*)(\w+)", s)
     assert (match.group(1) != ""), "it should be a grad style name."
     return match.group(2)
+
+
+def cartesian_prod_attrs(attrs):
+    items = []
+    for attr in attrs:
+        type_name = attr["typename"]
+        name = attr["name"]
+        if type_name == "Scalar":
+            items.append((name, "{}Tensor".format(name)))
+        elif type_name == "IntArray":
+            items.append(
+                (name, "{}Tensor".format(name), "{}TensorList".format(name)))
+        else:
+            items.append((name, ))
+
+    _combinations = itertools.product(*items)
+    combinations = []
+    for x in _combinations:
+        combinations.append('{' + ", ".join(quote(t) for t in x) + '}')
+    return combinations
+
+
+def cartesian_prod_mapping(api):
+    kernels = api["kernel"]["func"]
+    inputs = [
+        x["name"] for x in api["inputs"] if x["name"] in api["kernel"]["param"]
+    ]
+    inputs = [to_opmaker_name_cstr(input) for input in inputs]
+    attrs = cartesian_prod_attrs(api["attrs"])
+    outputs = [
+        to_opmaker_name_cstr(output["name"]) for output in api["outputs"]
+    ]
+
+    def vec(items):
+        return "{" + ', '.join(items) + "}"
+
+    inputs = [vec(inputs)]
+    outputs = [vec(outputs)]
+    kernels = [quote(x) for x in kernels]
+    mappings = itertools.product(kernels, inputs, attrs, outputs)
+
+    outs = []
+    for spec in mappings:
+        outs.append("return KernelSignature({});".format(", ".join(spec)))
+    return "\n".join(outs)

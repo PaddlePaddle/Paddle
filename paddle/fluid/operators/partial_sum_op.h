@@ -29,7 +29,8 @@ class PartialSumKernel : public framework::OpKernel<T> {
     auto ins = ctx.MultiInput<Tensor>("X");
     Tensor* out = ctx.Output<Tensor>("Out");
     PADDLE_ENFORCE_EQ(
-        ins[0] != nullptr, true,
+        ins[0] != nullptr,
+        true,
         platform::errors::InvalidArgument("The input should not be null."));
 
     auto place = ctx.GetPlace();  // CPUPlace only now
@@ -67,7 +68,8 @@ class PartialSumGradientOpKernel : public framework::OpKernel<T> {
         ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
 
     PADDLE_ENFORCE_EQ(
-        ins[0] != nullptr, true,
+        ins[0] != nullptr,
+        true,
         platform::errors::InvalidArgument("The input should not be null."));
     auto start_index = ctx.Attr<int>("start_index");
     auto length = ctx.Attr<int>("length");

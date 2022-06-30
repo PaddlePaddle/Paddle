@@ -26,26 +26,31 @@ class ExpandAsOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExpandAs");
-    OP_INOUT_CHECK(ctx->HasInput("target_tensor"), "Input", "target_tensor",
-                   "ExpandAs");
+    OP_INOUT_CHECK(
+        ctx->HasInput("target_tensor"), "Input", "target_tensor", "ExpandAs");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ExpandAs");
     auto x_dims = ctx->GetInputDim("X");
     auto target_tensor_dims = ctx->GetInputDim("target_tensor");
     PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(x_dims.size()), target_tensor_dims.size(),
+        static_cast<size_t>(x_dims.size()),
+        target_tensor_dims.size(),
         platform::errors::InvalidArgument(
             "The rank of Input(target_tensor) must be equal "
             "to the rank of Input(X). But received Input(X): input "
             "rank %u, input shape [%s]; received Input(target_tensor): "
             "input rank %u, input shape [%s].",
-            x_dims.size(), x_dims, target_tensor_dims.size(),
+            x_dims.size(),
+            x_dims,
+            target_tensor_dims.size(),
             target_tensor_dims));
     PADDLE_ENFORCE_LE(
-        x_dims.size(), 6,
+        x_dims.size(),
+        6,
         platform::errors::InvalidArgument(
             "The rank of Input(X) must not be greater than 6. But "
             "received: input rank %u, input shape [%s].",
-            x_dims.size(), x_dims));
+            x_dims.size(),
+            x_dims));
     std::vector<int64_t> out_shape(x_dims.size());
     ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
   }
@@ -91,8 +96,10 @@ class ExpandAsGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExpandAs");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "ExpandAs");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "ExpandAs");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
@@ -131,13 +138,17 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ExpandAsGradNoNeedBufVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(expand_as, ops::ExpandAsOp, ops::ExpandAsOpMaker,
+REGISTER_OPERATOR(expand_as,
+                  ops::ExpandAsOp,
+                  ops::ExpandAsOpMaker,
                   ops::ExpandAsGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandAsGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(expand_as_grad, ops::ExpandAsGradOp,
+REGISTER_OPERATOR(expand_as_grad,
+                  ops::ExpandAsGradOp,
                   ops::ExpandAsGradNoNeedBufVarsInferer);
 REGISTER_OP_CPU_KERNEL(
-    expand_as, ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, float>,
+    expand_as,
+    ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, int64_t>,
@@ -150,7 +161,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, double>);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
-    expand_as, ops::ExpandAsKernel<paddle::platform::CUDADeviceContext, float>,
+    expand_as,
+    ops::ExpandAsKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ExpandAsKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ExpandAsKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ExpandAsKernel<paddle::platform::CUDADeviceContext, int64_t>,

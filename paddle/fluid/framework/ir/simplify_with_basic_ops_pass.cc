@@ -70,7 +70,8 @@ void SimplifyWithBasicOpsPass::ApplyImpl(Graph* graph) const {
 }
 
 bool SimplifyWithBasicOpsPass::SimplifyDropout(
-    Graph* graph, Node* n,
+    Graph* graph,
+    Node* n,
     std::unordered_set<const Node*>* del_node_set) const {
   OpDesc* dropout_op_desc = n->Op();
   bool is_test = false;
@@ -200,7 +201,8 @@ Node* SimplifyWithBasicOpsPass::GetOutputVar(Node* n,
   return nullptr;
 }
 
-void SimplifyWithBasicOpsPass::ReplaceInputVar(Node* op, Node* old_var,
+void SimplifyWithBasicOpsPass::ReplaceInputVar(Node* op,
+                                               Node* old_var,
                                                Node* new_var) const {
   if (op->IsOp() && op->Op()) {
     new_var->outputs.push_back(op);
@@ -213,7 +215,8 @@ void SimplifyWithBasicOpsPass::ReplaceInputVar(Node* op, Node* old_var,
   }
 }
 
-void SimplifyWithBasicOpsPass::ReplaceOutputVar(Node* op, Node* old_var,
+void SimplifyWithBasicOpsPass::ReplaceOutputVar(Node* op,
+                                                Node* old_var,
                                                 Node* new_var) const {
   if (op->IsOp() && op->Op()) {
     new_var->inputs.push_back(op);

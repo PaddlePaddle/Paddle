@@ -35,6 +35,7 @@ from .framework import set_flags  # noqa: F401
 from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
+from .fluid.dataset import *  # noqa: F401
 
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
@@ -370,7 +371,7 @@ if is_compiled_with_cinn():
     runtime_include_dir = os.path.join(package_dir, "libs")
     cuh_file = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
     if os.path.exists(cuh_file):
-        os.environ['runtime_include_dir'] = runtime_include_dir
+        os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
 disable_static()
 

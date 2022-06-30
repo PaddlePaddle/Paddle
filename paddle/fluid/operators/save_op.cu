@@ -18,7 +18,8 @@ limitations under the License. */
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    save, ops::SaveOpKernel<paddle::platform::CUDADeviceContext, float>,
+    save,
+    ops::SaveOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SaveOpKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SaveOpKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SaveOpKernel<paddle::platform::CUDADeviceContext, uint8_t>,
