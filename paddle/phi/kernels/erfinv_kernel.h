@@ -20,6 +20,7 @@ namespace phi {
 
 /**
  * @brief This kernel is used to compute inverse error function of x.
+ *
  *        The equation is:
  *        $$erfinv(x) = {ndtri({x \over 2} + 0.5)} \over {\sqrt{2}}$$
  *
