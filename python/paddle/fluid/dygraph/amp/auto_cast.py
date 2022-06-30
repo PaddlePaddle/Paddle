@@ -173,6 +173,10 @@ def pure_fp16_initialize(models):
                             paddle.nn.BatchNorm2D, paddle.nn.BatchNorm3D,
                             paddle.nn.LayerNorm, paddle.nn.SyncBatchNorm)):
                 continue
+            if isinstance(layer, (paddle.incubate.nn.FusedFeedForward,
+                                  paddle.incubate.nn.FusedMultiHeadAttention)):
+                layer._amp_decorate(dtype='float16')
+                continue
             layer._to_impl(dtype='float16',
                            include_sublayers=False,
                            floating_only=True)

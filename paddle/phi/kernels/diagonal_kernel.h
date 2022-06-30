@@ -18,6 +18,20 @@
 
 namespace phi {
 
+/**
+ * @brief Return a partial view of input with the its diagonal elements
+ *        of the input tensor. The behavior of this operator is similar to
+ *        how `numpy.diagonal` works.
+ * @param  ctx     device context
+ * @param  x       the input tensor, from which the diagonals are taken
+ * @param  offset  offset of the diagonal from the main diagonal. Can be both
+ *                 positive and negative
+ * @param  axis1   the first axis of the 2-D planes from which the diagonals
+ *                 should be taken. Can be either positive or negative
+ * @param  axis2   the second axis of the 2-D planes from which the diagonals
+ *                 should be taken. Can be either positive or negative
+ * @param  out     the partial view of input with the its diagonal elements
+ */
 template <typename T, typename Context>
 void DiagonalKernel(const Context& dev_ctx,
                     const DenseTensor& x,
