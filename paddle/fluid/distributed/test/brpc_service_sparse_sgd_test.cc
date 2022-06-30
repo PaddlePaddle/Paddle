@@ -54,7 +54,8 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   x_g_var->GetMutable<framework::LoDTensor>();
 }
 
-void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnClient(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
 
@@ -260,14 +261,17 @@ void RunBrpcPushSparse() {
   for (auto i = 0; i < static_cast<int>(fea_keys.size()); ++i) {
     push_g_vec.push_back(g_tensor->data<float>() + i * 13);
   }
-  auto push_grad_status = worker_ptr_->PushSparseRawGradient(
-      0, fea_keys.data(), (const float**)push_g_vec.data(), fea_keys.size(),
-      closure_push_grad);
+  auto push_grad_status =
+      worker_ptr_->PushSparseRawGradient(0,
+                                         fea_keys.data(),
+                                         (const float**)push_g_vec.data(),
+                                         fea_keys.size(),
+                                         closure_push_grad);
   push_grad_status.wait();
 
   // pull
-  pull_status = worker_ptr_->PullSparse(fea_value_ptr.data(), 0,
-                                        fea_keys.data(), fea_keys.size(), true);
+  pull_status = worker_ptr_->PullSparse(
+      fea_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_status.wait();
 
   paddle::distributed::DownpourBrpcClosure* closure_push_grad1 =
@@ -285,9 +289,12 @@ void RunBrpcPushSparse() {
       });
 
   // push again, embedx update this time
-  push_grad_status = worker_ptr_->PushSparseRawGradient(
-      0, fea_keys.data(), (const float**)push_g_vec.data(), fea_keys.size(),
-      closure_push_grad1);
+  push_grad_status =
+      worker_ptr_->PushSparseRawGradient(0,
+                                         fea_keys.data(),
+                                         (const float**)push_g_vec.data(),
+                                         fea_keys.size(),
+                                         closure_push_grad1);
   push_grad_status.wait();
 
   // pull update
@@ -295,7 +302,7 @@ void RunBrpcPushSparse() {
       fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_update_status.wait();
 
-  for (size_t idx = 0; idx < tensor->numel(); ++idx) {
+  for (int64_t idx = 0; idx < tensor->numel(); ++idx) {
     EXPECT_FLOAT_EQ(fea_temp_values[idx], fea_values[idx] - 1.0);
   }
 

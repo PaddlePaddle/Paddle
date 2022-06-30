@@ -95,12 +95,18 @@ set(wrapped_infermeta_header_file
 set(wrapped_infermeta_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
-if(NOT PYTHON_EXECUTABLE)
+if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
 endif()
 
 # install extra dependencies
-execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml jinja2)
+if(${PYTHON_VERSION_STRING} VERSION_LESS "3.6.2")
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml
+                          typing-extensions>=4.1.1 jinja2==2.11.3)
+else()
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml jinja2
+                          typing-extensions)
+endif()
 
 # parse apis
 set(parsed_api_dir ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/parsed_apis)
@@ -135,8 +141,8 @@ endforeach()
 
 # validation of api yamls
 message("validate api yaml:
-- ${parsed_api_dir}/new_api.parsed.yaml
-- ${parsed_api_dir}/new_backward_api.parsed.yaml")
+- ${parsed_api_dir}/api.parsed.yaml
+- ${parsed_api_dir}/backward_api.parsed.yaml")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
   COMMAND
@@ -159,8 +165,9 @@ execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} generate_op.py --api_yaml_path
     ./parsed_apis/api.parsed.yaml --backward_api_yaml_path
-    ./parsed_apis/backward_api.parsed.yaml --output_op_path
-    "${generated_op_path}.tmp" --output_arg_map_path
+    ./parsed_apis/backward_api.parsed.yaml --api_version_yaml_path
+    api_version.yaml --api_args_compat_yaml_path args_compat.yaml
+    --output_op_path "${generated_op_path}.tmp" --output_arg_map_path
     "${generated_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
 if(${_result})
@@ -217,7 +224,8 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
           ${api_source_file}
   COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
-  DEPENDS ${api_yaml_file} ${api_gen_file} ${api_gen_base}
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${api_gen_file}
+          ${api_gen_base}
   VERBATIM)
 
 # generate backward api
@@ -233,7 +241,8 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_source_file_tmp}
           ${bw_api_source_file}
   COMMENT "copy_if_different ${bw_api_header_file} ${bw_api_source_file}"
-  DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file} ${api_gen_base}
+  DEPENDS ${bw_api_yaml_file} ${legacy_bw_api_yaml_file} ${bw_api_gen_file}
+          ${api_gen_base}
   VERBATIM)
 
 # generate sparse api
@@ -326,7 +335,7 @@ cc_library(
 cc_library(
   context_pool
   SRCS context_pool.cc
-  DEPS phi_context phi_enforce place)
+  DEPS phi_context phi_enforce place init)
 
 cc_library(
   kernel_dispatch

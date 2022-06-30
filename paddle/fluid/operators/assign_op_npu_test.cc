@@ -33,7 +33,8 @@ USE_OP_ITSELF(assign);
 USE_OP_DEVICE_KERNEL(assign, NPU);
 
 template <typename T>
-void Compare(f::Scope* scope, const p::DeviceContext& ctx,
+void Compare(f::Scope* scope,
+             const p::DeviceContext& ctx,
              std::string op_type) {
   // init
   auto x = scope->Var("X");

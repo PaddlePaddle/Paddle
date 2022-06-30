@@ -35,7 +35,8 @@ namespace tensorrt {
 class MatMulOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid matmul op to tensorrt matmul layer ";
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;
@@ -74,8 +75,8 @@ class MatMulOpConverter : public OpConverter {
             new plugin::MatmulPluginDynamic(transpose_X, transpose_Y, alpha);
         std::vector<nvinfer1::ITensor*> inputs{input1, input2};
         layer = engine_->AddDynamicPlugin(inputs.data(), inputs.size(), plugin);
-        RreplenishLayerAndOutput(layer, "matmul_op_int8_dynamic", {output_name},
-                                 test_mode);
+        RreplenishLayerAndOutput(
+            layer, "matmul_op_int8_dynamic", {output_name}, test_mode);
       } else {
         VLOG(3) << "Convert a fluid matmul_op_int8_static to TensorRT "
                    "MatmulPluginLayer";
@@ -83,17 +84,20 @@ class MatMulOpConverter : public OpConverter {
             dims_x, dims_y, transpose_X, transpose_Y, alpha);
         std::vector<nvinfer1::ITensor*> inputs{input1, input2};
         layer = engine_->AddPluginV2IOExt(inputs.data(), inputs.size(), plugin);
-        RreplenishLayerAndOutput(layer, "matmul_op_int8_static", {output_name},
-                                 test_mode);
+        RreplenishLayerAndOutput(
+            layer, "matmul_op_int8_static", {output_name}, test_mode);
       }
     } else {
       VLOG(3) << "Convert a fluid matmul_op_float to TensorRT ";
-      layer =
-          TRT_ENGINE_ADD_LAYER(engine_, MatrixMultiply, *input1,
-                               matrix_operation_X, *input2, matrix_operation_Y);
+      layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                   MatrixMultiply,
+                                   *input1,
+                                   matrix_operation_X,
+                                   *input2,
+                                   matrix_operation_Y);
       if (alpha == 1) {
-        RreplenishLayerAndOutput(layer, "matmul_op_float_no_alpha",
-                                 {output_name}, test_mode);
+        RreplenishLayerAndOutput(
+            layer, "matmul_op_float_no_alpha", {output_name}, test_mode);
       } else {
         layer->setName(
             ("matmul_op_float_has_alpha: MatrixMultiplyLayer (Output: " +
@@ -150,15 +154,19 @@ class MatMulOpConverter : public OpConverter {
         float* alpha_data = create_weights(alpha, "alpha");
         float* shift_data = create_weights(0.0, "shift");
         float* power_data = create_weights(1.0, "power");
-        TensorRTEngine::Weight nv_alpha{nvinfer1::DataType::kFLOAT,
-                                        static_cast<void*>(alpha_data), 1};
-        TensorRTEngine::Weight nv_shift{nvinfer1::DataType::kFLOAT,
-                                        static_cast<void*>(shift_data), 1};
-        TensorRTEngine::Weight nv_power{nvinfer1::DataType::kFLOAT,
-                                        static_cast<void*>(power_data), 1};
-        auto* scale_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, Scale, *matmul_out, nvinfer1::ScaleMode::kUNIFORM,
-            nv_shift.get(), nv_alpha.get(), nv_power.get());
+        TensorRTEngine::Weight nv_alpha{
+            nvinfer1::DataType::kFLOAT, static_cast<void*>(alpha_data), 1};
+        TensorRTEngine::Weight nv_shift{
+            nvinfer1::DataType::kFLOAT, static_cast<void*>(shift_data), 1};
+        TensorRTEngine::Weight nv_power{
+            nvinfer1::DataType::kFLOAT, static_cast<void*>(power_data), 1};
+        auto* scale_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                                 Scale,
+                                                 *matmul_out,
+                                                 nvinfer1::ScaleMode::kUNIFORM,
+                                                 nv_shift.get(),
+                                                 nv_alpha.get(),
+                                                 nv_power.get());
         auto* scale_out = scale_layer->getOutput(0);
         scale_layer->setName(
             ("matmul_op_float_has_alpha: ScaleLayer (Output: " + output_name +

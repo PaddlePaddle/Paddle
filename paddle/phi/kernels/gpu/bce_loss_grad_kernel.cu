@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/bce_loss_grad_kernel.h"
+
 #include <algorithm>
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/bce_loss_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {

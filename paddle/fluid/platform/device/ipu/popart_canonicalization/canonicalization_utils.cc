@@ -68,7 +68,9 @@ void ClearNode(Node *node) {
   }
 }
 
-void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
+void CopyOpAttr(const std::string &attr_name,
+                OpDesc *op,
+                OpDesc *new_op,
                 bool override) {
   if (new_op->HasAttr(attr_name) && !override) {
     return;
@@ -81,13 +83,15 @@ void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
   }
 }
 
-Node *GetInputVarNode(const std::string &input_name, const Node *op_node,
+Node *GetInputVarNode(const std::string &input_name,
+                      const Node *op_node,
                       const int id) {
   auto var_name = op_node->Op()->Input(input_name).at(id);
   return GetInputVarNodeByVarName(var_name, op_node);
 }
 
-Node *GetOutputVarNode(const std::string &output_name, const Node *op_node,
+Node *GetOutputVarNode(const std::string &output_name,
+                       const Node *op_node,
                        const int id) {
   auto var_name = op_node->Op()->Output(output_name).at(id);
   return GetOutputVarNodeByVarName(var_name, op_node);
@@ -117,15 +121,21 @@ const bool is_float_equal(float a, float b, float eps) {
   return std::fabs(a - b) <= eps;
 }
 
-const int GetOutputVarDType(const Node *node, const std::string &output_name) {
-  auto out_node = GetOutputVarNode(output_name, node);
-  PADDLE_ENFORCE_NOT_NULL(out_node, platform::errors::Unavailable(
-                                        "Node's out node does not exist."));
-  auto var = out_node->Var();
+const ONNXDataType GetVarDType(const Node *node) {
+  auto var = node->Var();
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::Unavailable("Node is not a variable."));
   auto proto_var_type = var->GetDataType();
-  return static_cast<int>(VarType2OnnxDType(proto_var_type));
+  return VarType2OnnxDType(proto_var_type);
+}
+
+const ONNXDataType GetOutputVarDType(const Node *node,
+                                     const std::string &output_name) {
+  auto out_node = GetOutputVarNode(output_name, node);
+  PADDLE_ENFORCE_NOT_NULL(
+      out_node,
+      platform::errors::Unavailable("Node's out node does not exist."));
+  return GetVarDType(out_node);
 }
 
 }  // namespace ipu

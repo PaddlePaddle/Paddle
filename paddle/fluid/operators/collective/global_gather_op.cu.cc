@@ -53,8 +53,8 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
       cpu_local_count_data = local_count->data<int64_t>();
       local_count_len = local_count->numel();
     } else {
-      framework::TensorCopySync(*local_count, platform::CPUPlace(),
-                                &cpu_local_count);
+      framework::TensorCopySync(
+          *local_count, platform::CPUPlace(), &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
       local_count_len = cpu_local_count.numel();
     }
@@ -63,8 +63,8 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     if (platform::is_cpu_place(global_count->place())) {
       cpu_global_count_data = global_count->data<int64_t>();
     } else {
-      framework::TensorCopySync(*global_count, platform::CPUPlace(),
-                                &cpu_global_count);
+      framework::TensorCopySync(
+          *global_count, platform::CPUPlace(), &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
     }
 
@@ -73,7 +73,8 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
 
     int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for global gather op must be non-negative.",
             ring_id));
@@ -114,14 +115,20 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
           PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::ncclSend(send_buf + send_ptr * in_feat,
                                           cpu_global_count_data[idx] * in_feat,
-                                          dtype, j, comm->comm(), stream));
+                                          dtype,
+                                          j,
+                                          comm->comm(),
+                                          stream));
           send_ptr += cpu_global_count_data[idx];
         }
         if (cpu_local_count_data[idx]) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::ncclRecv(recv_buf + expert_ptr[idx] * in_feat,
                                           cpu_local_count_data[idx] * in_feat,
-                                          dtype, j, comm->comm(), stream));
+                                          dtype,
+                                          j,
+                                          comm->comm(),
+                                          stream));
         }
       }
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
@@ -167,8 +174,8 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
       cpu_local_count_data = local_count->data<int64_t>();
       local_count_len = local_count->numel();
     } else {
-      framework::TensorCopySync(*local_count, platform::CPUPlace(),
-                                &cpu_local_count);
+      framework::TensorCopySync(
+          *local_count, platform::CPUPlace(), &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
       local_count_len = cpu_local_count.numel();
     }
@@ -177,14 +184,15 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
     if (platform::is_cpu_place(global_count->place())) {
       cpu_global_count_data = global_count->data<int64_t>();
     } else {
-      framework::TensorCopySync(*global_count, platform::CPUPlace(),
-                                &cpu_global_count);
+      framework::TensorCopySync(
+          *global_count, platform::CPUPlace(), &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
     }
 
     int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for global gather op must be non-negative.",
             ring_id));
@@ -218,12 +226,14 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
         int idx = i + j * n_expert;
         if (cpu_global_count_data[idx]) {
           phi::DenseTensor tmp = *x;
-          pg->Send_Partial(tmp, j, send_ptr * in_feat,
-                           cpu_global_count_data[idx] * in_feat);
+          pg->Send_Partial(
+              tmp, j, send_ptr * in_feat, cpu_global_count_data[idx] * in_feat);
           send_ptr += cpu_global_count_data[idx];
         }
         if (cpu_local_count_data[idx]) {
-          pg->Recv_Partial(*out, j, expert_ptr[idx] * in_feat,
+          pg->Recv_Partial(*out,
+                           j,
+                           expert_ptr[idx] * in_feat,
                            cpu_local_count_data[idx] * in_feat);
         }
       }
@@ -269,7 +279,8 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(global_gather, ops::GlobalGatherOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(global_gather,
+                        ops::GlobalGatherOpCUDAKernel<float>,
                         ops::GlobalGatherOpCUDAKernel<double>,
                         ops::GlobalGatherOpCUDAKernel<int>,
                         ops::GlobalGatherOpCUDAKernel<int64_t>,

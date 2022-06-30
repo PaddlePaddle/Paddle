@@ -44,7 +44,7 @@ from .dist_saver import DistributedSaver
 from .dist_loader import NonIterableGeneratorLoader
 from .utils import make_data_unshard, set_grad_var_shape
 from .utils import print_program_with_dist_attr, to_list
-from .process_group import get_all_process_groups, get_world_process_group
+from .process_group import new_process_group, get_all_process_groups, get_world_process_group
 from .dist_context import DistributedContext, get_default_distributed_context
 
 
@@ -83,6 +83,7 @@ class Engine:
         self._dist_startup_progs = defaultdict(dict)  # dist startup programs
         self._feed_vars = {}
         self._fetch_vars = {}
+        self._planners = {}
 
     def prepare(self,
                 optimizer=None,
@@ -116,13 +117,13 @@ class Engine:
 
         self._planned_mode = None
         self._modes = ['train', 'eval', 'predict']
-        # Build forward program
         self._build()
 
         # Do auto parallel process
         for mode in self._modes:
             # Do the planning process
             self._plan(mode)
+        for mode in self._modes:
             # Do the parallel process
             self._parallel(mode, all_ranks)
             # Init comm and startup program
@@ -155,8 +156,10 @@ class Engine:
 
             default_ctx = get_default_distributed_context()
             if not default_ctx.has_annotation or self._default_strategy:
-                inputs = [self._set_data_parallel(var) for var in inputs]
-                labels = [self._set_data_parallel(var) for var in labels]
+                # We build the world process group because the data parallel
+                # needs all ranks by default.
+                new_process_group(list(range(self._nranks)))
+                default_ctx.data_parallel = True
 
             # self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
             feed_vars = {"inputs": inputs, "labels": labels}
@@ -183,14 +186,14 @@ class Engine:
         else:
             self._init_dist_context(mode)
 
-        self.planner = Planner(mode, self._dist_contexts[mode])
-        self.planner.plan()
+        self._planners[mode] = Planner(mode, self._dist_contexts[mode])
+        self._planners[mode].plan()
 
     def _parallel(self, mode, all_ranks):
         # Parallelize program based on the planner's results
         # For now, the completer has to be passed to the planner,
         # because we may use it to complete the annotation of the backwarkward and update.
-        parallelizer = Parallelizer(mode, self.planner.completer,
+        parallelizer = Parallelizer(mode, self._planners[mode].completer,
                                     self._dist_contexts[mode])
         if not all_ranks:
             parallelizer.parallel(self._cur_rank)

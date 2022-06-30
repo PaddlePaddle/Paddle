@@ -41,7 +41,8 @@ class ElementwiseModXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_XPU_KERNEL(elementwise_mod, ops::ElementwiseModXPUKernel<float>,
+REGISTER_OP_XPU_KERNEL(elementwise_mod,
+                       ops::ElementwiseModXPUKernel<float>,
                        ops::ElementwiseModXPUKernel<paddle::platform::float16>,
                        ops::ElementwiseModXPUKernel<int32_t>,
                        ops::ElementwiseModXPUKernel<int64_t>);

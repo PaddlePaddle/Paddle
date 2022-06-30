@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -63,35 +64,54 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputsDim("QKVW")[0];
+    bool trans_qkvw = ctx->Attrs().Get<bool>("trans_qkvw");
     PADDLE_ENFORCE_EQ(
-        x_dim.size(), 3,
+        x_dim.size(),
+        3,
         platform::errors::InvalidArgument("The dimensions of x must be 3"
                                           "(batch_size, seq_len, dim_embed),"
                                           "but received dimensions of"
                                           "Input is [%d]",
                                           x_dim.size()));
-    PADDLE_ENFORCE_EQ(y_dim.size(), 4,
+    PADDLE_ENFORCE_EQ(y_dim.size(),
+                      4,
                       platform::errors::InvalidArgument(
                           "The dimensions of qkv_weight must be 4"
                           "(3, num_head, dim_head, dim_embed),"
                           "but received dimensions of"
                           "Input is [%d]",
                           y_dim.size()));
-    PADDLE_ENFORCE_EQ(x_dim[2], y_dim[3],
-                      platform::errors::InvalidArgument(
-                          "ShapeError: the dimension of x_dim[2] and y_dim[3]"
-                          "must be equal. But received: the shape "
-                          "of input x = [%s], and the shape of "
-                          "input qkv_weight = [%s]",
-                          x_dim, y_dim));
+    PADDLE_ENFORCE_EQ(
+        x_dim[2],
+        trans_qkvw ? y_dim[3] : y_dim[0],
+        platform::errors::InvalidArgument(
+            "ShapeError: the dimension of x_dim[2] and y_dim[3](trans_qkvw is "
+            "true) or y_dim[0](trans_qkvw is false)"
+            "must be equal. But received: the shape "
+            "of input x = [%s], and the shape of "
+            "input qkv_weight = [%s]",
+            x_dim,
+            y_dim));
 
     if (ctx->Attrs().Get<int>("ring_id") == -1) {
-      PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2], y_dim[3],
-                        platform::errors::InvalidArgument(
-                            "The dimensions of qkv_weight must be 4"
-                            "(3, num_head, dim_head, dim_embed),"
-                            "and must satisfy the limitations: "
-                            "(num_head * dim_head == dim_embed)"));
+      if (trans_qkvw) {
+        PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2],
+                          y_dim[3],
+                          platform::errors::InvalidArgument(
+                              "The dimensions of qkv_weight must be 4"
+                              "(3, num_head, dim_head, dim_embed),"
+                              "and must satisfy the limitations: "
+                              "(num_head * dim_head == dim_embed)"));
+
+      } else {
+        PADDLE_ENFORCE_EQ(y_dim[2] * y_dim[3],
+                          y_dim[0],
+                          platform::errors::InvalidArgument(
+                              "The dimensions of qkv_weight must be 4"
+                              "(dim_embed, 3, num_head, dim_head),"
+                              "and must satisfy the limitations: "
+                              "(num_head * dim_head == dim_embed)"));
+      }
     }
 
     if (ctx->HasInputs("CacheKV")) {
@@ -100,33 +120,42 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
       const auto &c_dim = c_dims[0];
 
       PADDLE_ENFORCE_EQ(
-          c_dim.size(), 5,
+          c_dim.size(),
+          5,
           paddle::platform::errors::InvalidArgument(
               "The CacheKV must be 5 dims, but got %d", c_dim.size()));
-      PADDLE_ENFORCE_EQ(c_dim[0], 2,
+      PADDLE_ENFORCE_EQ(c_dim[0],
+                        2,
                         paddle::platform::errors::InvalidArgument(
                             "The first dim of CacheKV must be 2, but got %d",
                             c_dim[0]));  // 2
-      PADDLE_ENFORCE_EQ(c_dim[1], x_dim[0],
+      PADDLE_ENFORCE_EQ(c_dim[1],
+                        x_dim[0],
                         paddle::platform::errors::InvalidArgument(
                             "The second dim of CacheKV must be equal with "
                             "batch size %d, but got %d",
-                            x_dim[0], c_dim[1]));  // batch_size
-      PADDLE_ENFORCE_EQ(c_dim[2], y_dim[1],
+                            x_dim[0],
+                            c_dim[1]));  // batch_size
+      PADDLE_ENFORCE_EQ(c_dim[2],
+                        trans_qkvw ? y_dim[1] : y_dim[2],
                         paddle::platform::errors::InvalidArgument(
                             "The third dim of CacheKV must be equal with num "
                             "head %d, but got %d",
-                            y_dim[1], c_dim[2]));  // num_head
+                            trans_qkvw ? y_dim[1] : y_dim[2],
+                            c_dim[2]));  // num_head
       PADDLE_ENFORCE_GT(
-          c_dim[3], 0,
+          c_dim[3],
+          0,
           paddle::platform::errors::InvalidArgument(
               "The forth dim of CacheKV must be greater than 0, but got %d",
               c_dim[3]));  // cache_seq_len
-      PADDLE_ENFORCE_EQ(c_dim[4], y_dim[2],
+      PADDLE_ENFORCE_EQ(c_dim[4],
+                        trans_qkvw ? y_dim[2] : y_dim[3],
                         paddle::platform::errors::InvalidArgument(
                             "The fifth dim of CacheKV must be equal with head "
                             "size %d, but got %d",
-                            y_dim[2], c_dim[4]));  // head_size
+                            trans_qkvw ? y_dim[2] : y_dim[3],
+                            c_dim[4]));  // head_size
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -140,14 +169,15 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "TimeStep") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -208,7 +238,8 @@ class FusedMultiTransformerOpOpMaker
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
-          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
+          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'epsilon' in Op(LayerNorm) should be between"
                                 "0.0 and 0.001, But received [%s].",
@@ -218,7 +249,8 @@ class FusedMultiTransformerOpOpMaker
     AddAttr<float>("dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
-          PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f, true,
+          PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'dropout_rate' must be between 0.0 and 1.0."));
         });
@@ -234,12 +266,20 @@ class FusedMultiTransformerOpOpMaker
         .SetDefault("downgrade_in_infer")
         .AddCustomChecker([](const std::string &type) {
           PADDLE_ENFORCE_EQ(
-              type == "downgrade_in_infer" || type == "upscale_in_train", true,
+              type == "downgrade_in_infer" || type == "upscale_in_train",
+              true,
               platform::errors::InvalidArgument(
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
     AddAttr<std::string>("act_method", "act_method").SetDefault("gelu");
+    AddAttr<bool>(
+        "trans_qkvw",
+        "Whether the weights of qkv should be transposed. If true,"
+        "the shape eights of qkv should be [3, num_head, dim_head, dim_embed]."
+        "Otherwise the shape of weights of qkv should be"
+        "[dim_embed, 3, num_head, dim_head]")
+        .SetDefault(true);
 
     AddAttr<int>(
         "ring_id",
@@ -255,7 +295,17 @@ class FusedMultiTransformerOpOpMaker
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    fused_multi_transformer, ops::FusedMultiTransformerOp,
+    fused_multi_transformer,
+    ops::FusedMultiTransformerOp,
     ops::FusedMultiTransformerOpOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OP_VERSION(fused_multi_transformer)
+    .AddCheckpoint(
+        R"ROC(
+              Add a new attribute [trans_qkvw] )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "trans_qkvw",
+            "A flag to indicate whether to transpose for weights of qkv.",
+            true));
