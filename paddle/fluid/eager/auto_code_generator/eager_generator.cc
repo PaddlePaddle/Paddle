@@ -337,7 +337,7 @@ static std::string AttrTypeToString(const proto::AttrType& type) {
     }
     default: {
       PADDLE_THROW(platform::errors::Fatal(
-          "AttrType of type boost::variant only supports specific data types."
+          "AttrType of type paddle::variant only supports specific data types."
           "However, detected unrecognized AttrType: %d",
           type));
     }
@@ -345,37 +345,39 @@ static std::string AttrTypeToString(const proto::AttrType& type) {
   return ret;
 }
 
-template <typename T>
-static std::string GetAttrValue(const framework::Attribute& attr,
-                                bool is_vector) {
+template <typename T, bool IsVector>
+static typename std::enable_if<IsVector, std::string>::type GetAttrValue(
+    const framework::Attribute& attr) {
   std::string val = "";
-  if (is_vector) {
-    val += "{";
-    for (auto x : BOOST_GET_CONST(std::vector<T>, attr)) {
-      val += std::to_string(x) + ",";
-    }
-    if (val.size() > 1) val.pop_back();
-    val += "}";
-  } else {
-    val = std::to_string(BOOST_GET_CONST(T, attr));
+  val += "{";
+  for (auto x : BOOST_GET_CONST(std::vector<T>, attr)) {
+    val += std::to_string(x) + ",";
   }
+  if (val.size() > 1) val.pop_back();
+  val += "}";
   return val;
+}
+
+template <typename T, bool IsVector>
+static typename std::enable_if<!IsVector, std::string>::type GetAttrValue(
+    const framework::Attribute& attr) {
+  return std::to_string(BOOST_GET_CONST(T, attr));
 }
 
 static std::pair<std::string, std::string> GetAttrType(
     const framework::Attribute& attr, bool is_arg) {
   std::string ret = "";
   std::string val = "";
-  size_t variant_pos = attr.which();
+  size_t variant_pos = attr.index();
   switch (variant_pos) {
     case (1): {
       ret = "int";
-      val = GetAttrValue<int>(attr, false);
+      val = GetAttrValue<int, false>(attr);
       break;
     }
     case (2): {
       ret = "float";
-      val = GetAttrValue<float>(attr, false);
+      val = GetAttrValue<float, false>(attr);
       break;
     }
     case (3): {
@@ -387,13 +389,13 @@ static std::pair<std::string, std::string> GetAttrType(
     case (4): {
       ret = "std::vector<int>";
       if (is_arg) ret += "&";
-      val = GetAttrValue<int>(attr, true);
+      val = GetAttrValue<int, true>(attr);
       break;
     }
     case (5): {
       ret = "std::vector<float>";
       if (is_arg) ret += "&";
-      val = GetAttrValue<float>(attr, true);
+      val = GetAttrValue<float, true>(attr);
       break;
     }
     case (6): {
@@ -409,13 +411,13 @@ static std::pair<std::string, std::string> GetAttrType(
     }
     case (7): {
       ret = "bool";
-      val = GetAttrValue<bool>(attr, false);
+      val = GetAttrValue<bool, false>(attr);
       break;
     }
     case (8): {
       ret = "std::vector<bool>";
       if (is_arg) ret += "&";
-      val = GetAttrValue<bool>(attr, true);
+      val = GetAttrValue<bool, true>(attr);
       break;
     }
     case (9): {
@@ -424,7 +426,7 @@ static std::pair<std::string, std::string> GetAttrType(
     }
     case (10): {
       ret = "int64_t";
-      val = GetAttrValue<int64_t>(attr, false);
+      val = GetAttrValue<int64_t, false>(attr);
       break;
     }
     case (11): {
@@ -435,18 +437,18 @@ static std::pair<std::string, std::string> GetAttrType(
     case (12): {
       ret = "std::vector<int64_t>";
       if (is_arg) ret += "&";
-      val = GetAttrValue<int64_t>(attr, true);
+      val = GetAttrValue<int64_t, true>(attr);
       break;
     }
     case (13): {
       ret = "std::vector<double>";
       if (is_arg) ret += "&";
-      val = GetAttrValue<double>(attr, true);
+      val = GetAttrValue<double, true>(attr);
       break;
     }
     default: {
       PADDLE_THROW(platform::errors::Fatal(
-          "AttrType of type boost::variant only supports specific data types."
+          "AttrType of type paddle::variant only supports specific data types."
           "However, detected unrecognized AttrType: %d",
           variant_pos));
     }
