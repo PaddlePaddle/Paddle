@@ -166,7 +166,7 @@ execute_process(
     ${PYTHON_EXECUTABLE} generate_op.py --api_yaml_path
     ./parsed_apis/api.parsed.yaml --backward_api_yaml_path
     ./parsed_apis/backward_api.parsed.yaml --api_version_yaml_path
-    api_version.yaml --api_api_compat_yaml_path api_compat.yaml --output_op_path
+    api_version.yaml --api_compat_yaml_path api_compat.yaml --output_op_path
     "${generated_op_path}.tmp" --output_arg_map_path
     "${generated_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
