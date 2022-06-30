@@ -130,7 +130,7 @@ fused_attentionGradNodeCompat::operator()(
       egr::EagerUtils::RecoverTensorWrapper(&this->AttnDropoutOut_);
   if (AttnDropoutOut.defined() && (!out_metas[20].empty()) &&
       (!out_metas[20][0].IsStopGradient()))
-    outs0["AttnDropoutOut_@GRAD"] = {std::make_shared<egr::EagerVariable>(
+    outs0["AttnDropoutOut@GRAD"] = {std::make_shared<egr::EagerVariable>(
         egr::Controller::Instance().GenerateUniqueName())};
   auto FMHAOut = egr::EagerUtils::RecoverTensorWrapper(&this->FMHAOut_);
   if (FMHAOut.defined() && (!out_metas[21].empty()) &&
