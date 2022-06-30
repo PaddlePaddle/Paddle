@@ -583,7 +583,6 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:
-                print(command)
                 if os.system(command) != 0:
                     raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
 
