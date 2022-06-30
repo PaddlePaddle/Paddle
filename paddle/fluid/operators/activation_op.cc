@@ -318,7 +318,8 @@ $$out = asinh(x)$$
 UNUSED constexpr char AcoshDoc[] = R"DOC(
 Acosh Activation Operator.
 
-$$out = acosh(x)$$
+.. math::
+    out = acosh(x)
 
 )DOC";
 
