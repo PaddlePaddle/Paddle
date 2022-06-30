@@ -20,26 +20,31 @@ import logging
 import paddle.fluid as fluid
 
 from ....log_helper import get_logger
-from .utils import load_variable_data, set_variable_data, stable_sigmoid, quant_tensor, dequant_tensor, _channelwise_quant_axis1_ops, calculate_quant_cos_error
+from .utils import load_variable_data, set_variable_data, stable_sigmoid, quant_tensor, dequant_tensor, _channelwise_quant_axis1_ops, calculate_quant_cos_error, bias_correction_w
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 GAMMA = -0.1
 ZETA = 1.1
 
 
 def compute_soft_rounding(alpha_v):
-    return fluid.layers.clip(
-        fluid.layers.sigmoid(alpha_v) * (ZETA - GAMMA) + GAMMA, min=0, max=1)
+    return fluid.layers.clip(fluid.layers.sigmoid(alpha_v) * (ZETA - GAMMA) +
+                             GAMMA,
+                             min=0,
+                             max=1)
 
 
 def compute_soft_rounding_np(alpha_v):
-    return np.clip(
-        stable_sigmoid(alpha_v) * (ZETA - GAMMA) + GAMMA, a_min=0, a_max=1)
+    return np.clip(stable_sigmoid(alpha_v) * (ZETA - GAMMA) + GAMMA,
+                   a_min=0,
+                   a_max=1)
 
 
 class AdaRoundLoss(object):
+
     def __init__(self, reg_param=0.01, default_beta_range=(20, 2)):
         self.default_reg_param = reg_param
         self.default_beta_range = default_beta_range
@@ -48,26 +53,29 @@ class AdaRoundLoss(object):
         square_cost = fluid.layers.square_error_cost(ada_quantized_output,
                                                      orig_output)
         recon_loss = fluid.layers.reduce_mean(
-            fluid.layers.reduce_sum(
-                square_cost, dim=-1))
+            fluid.layers.reduce_sum(square_cost, dim=-1))
         return recon_loss
 
     def compute_round_loss(self, alpha_v, warm_start, beta):
+
         def round_loss_fn():
             # compute rectified sigmoid of parameter 'alpha' which maps it between zero and one
             h_v = compute_soft_rounding(alpha_v)
 
             # calculate regularization term - which ensures parameter to converge to exactly zeros and ones
             # at the end of optimization
-            reg_term = fluid.layers.reduce_sum(-fluid.layers.pow(
-                fluid.layers.abs(2 * h_v - 1), factor=beta) + 1)
+            reg_term = fluid.layers.reduce_sum(
+                -fluid.layers.pow(fluid.layers.abs(2 * h_v - 1), factor=beta) +
+                1)
 
             # calculate the rounding loss
             round_loss = self.default_reg_param * reg_term
 
             return round_loss
 
-        round_loss = fluid.layers.cond(warm_start, lambda: fluid.layers.fill_constant(shape=[1], dtype='float32', value=0.0), round_loss_fn)
+        round_loss = fluid.layers.cond(
+            warm_start, lambda: fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=0.0), round_loss_fn)
 
         return round_loss
 
@@ -80,15 +88,16 @@ class AdaRoundLoss(object):
         warm_start_end_iter = warm_start * max_iter
 
         # compute relative iteration of current iteration
-        rel_iter = (cur_iter - warm_start_end_iter) / (
-            max_iter - warm_start_end_iter)
-        beta = end_beta + 0.5 * (start_beta - end_beta) * (1 + np.cos(rel_iter *
-                                                                      np.pi))
+        rel_iter = (cur_iter - warm_start_end_iter) / (max_iter -
+                                                       warm_start_end_iter)
+        beta = end_beta + 0.5 * (start_beta -
+                                 end_beta) * (1 + np.cos(rel_iter * np.pi))
 
         return beta
 
 
 class AdaRound(object):
+
     def __init__(self,
                  scale,
                  weight_tensor,
@@ -145,10 +154,9 @@ class AdaRound(object):
         h_alpha = compute_soft_rounding_np(np_alpha)
 
         # Scale the tensor
-        tensor_scale = quant_tensor(
-            self.ori_weight_tensor.copy(),
-            self.scale,
-            quant_axis=self.quant_axis)
+        tensor_scale = quant_tensor(self.ori_weight_tensor.copy(),
+                                    self.scale,
+                                    quant_axis=self.quant_axis)
 
         weight_tensor = np.floor(tensor_scale)
 
@@ -160,10 +168,10 @@ class AdaRound(object):
         weight_tensor_quant = self._calculate_quant_weight()
 
         # Dequantize the tensor
-        weight_tensor_dequant = dequant_tensor(
-            weight_tensor_quant + self.offset,
-            self.scale,
-            quant_axis=self.quant_axis)
+        weight_tensor_dequant = dequant_tensor(weight_tensor_quant +
+                                               self.offset,
+                                               self.scale,
+                                               quant_axis=self.quant_axis)
         return weight_tensor_dequant
 
     def update_final_weights(self):
@@ -171,10 +179,10 @@ class AdaRound(object):
         return weight_tensor_quant
 
     def get_loss(self, beta, warm_start, adaround_out_tensor, orig_out_tensor):
-        round_loss = self.adaround_loss.compute_round_loss(self.alpha_v,
-                                                           warm_start, beta)
-        recon_loss = self.adaround_loss.compute_recon_loss(adaround_out_tensor,
-                                                           orig_out_tensor)
+        round_loss = self.adaround_loss.compute_round_loss(
+            self.alpha_v, warm_start, beta)
+        recon_loss = self.adaround_loss.compute_recon_loss(
+            adaround_out_tensor, orig_out_tensor)
         loss = round_loss + recon_loss
         losses = {
             'loss': loss,
@@ -201,6 +209,7 @@ def run_adaround(data_loader,
                  scale_dict,
                  num_iterations=1000,
                  lr=0.001,
+                 bias_correction=False,
                  fast_mode=True):
     fetch_op_name = fetch_list[0].name
     final_weight_tensor_quant_dict = {}
@@ -226,29 +235,29 @@ def run_adaround(data_loader,
         with fluid.program_guard(train_program, startup_program):
             with fluid.unique_name.guard():
                 # initialize adaround
-                adaround = AdaRound(
-                    scale,
-                    weight_var_tensor,
-                    scope=scope,
-                    weight_var_name=weight_var_name,
-                    weight_op_type=weight_op_type,
-                    num_iterations=num_iterations)
-                orig_out_tensor = fluid.data(
-                    name='orig_out_tensor',
-                    shape=fp32_fetch_list.shape,
-                    dtype='float32')
-                adaround_out_tensor = fluid.data(
-                    name='adaround_out_tensor',
-                    shape=fp32_fetch_list.shape,
-                    dtype='float32')
-                beta_tensor = fluid.data(
-                    name='beta', shape=[1], dtype='float32')
-                warm_start_tensor = fluid.data(
-                    name='warm_start', shape=[1], dtype='bool')
+                adaround = AdaRound(scale,
+                                    weight_var_tensor,
+                                    scope=scope,
+                                    weight_var_name=weight_var_name,
+                                    weight_op_type=weight_op_type,
+                                    num_iterations=num_iterations)
+                orig_out_tensor = fluid.data(name='orig_out_tensor',
+                                             shape=fp32_fetch_list.shape,
+                                             dtype='float32')
+                adaround_out_tensor = fluid.data(name='adaround_out_tensor',
+                                                 shape=fp32_fetch_list.shape,
+                                                 dtype='float32')
+                beta_tensor = fluid.data(name='beta',
+                                         shape=[1],
+                                         dtype='float32')
+                warm_start_tensor = fluid.data(name='warm_start',
+                                               shape=[1],
+                                               dtype='bool')
 
-                train_fetches_loss = adaround.get_loss(
-                    beta_tensor, warm_start_tensor, adaround_out_tensor,
-                    orig_out_tensor)
+                train_fetches_loss = adaround.get_loss(beta_tensor,
+                                                       warm_start_tensor,
+                                                       adaround_out_tensor,
+                                                       orig_out_tensor)
                 optimizer = fluid.optimizer.Adam(learning_rate=lr)
                 loss = train_fetches_loss['loss']
                 optimizer.minimize(loss)
@@ -291,16 +300,23 @@ def run_adaround(data_loader,
                 fetch_list=[v.name for v in train_fetches_loss.values()],
                 return_numpy=True)
             _logger.info(
-                "Iter {:d}, lr {:.5f}, loss {:.5f}, loss_round {:.5f}, loss_recon {:.5f}, time {:.5f}s".
-                format(i, lr,
-                       np.mean(out[0]),
-                       np.mean(out[1]),
-                       np.mean(out[2]), start_time - prev_start_time))
+                "Iter {:d}, lr {:.5f}, loss {:.5f}, loss_round {:.5f}, loss_recon {:.5f}, time {:.5f}s"
+                .format(i, lr, np.mean(out[0]), np.mean(out[1]),
+                        np.mean(out[2]), start_time - prev_start_time))
             sys.stdout.flush()
             if i == num_iterations:
                 break
         final_weight_tensor_quant_dict[
             weight_var_name] = adaround.update_final_weights()
+
+        if bias_correction:
+            final_weight_tensor_quant_dict[weight_var_name] = bias_correction_w(
+                weight_var_tensor,
+                final_weight_tensor_quant_dict[weight_var_name],
+                scale,
+                adaround.quant_axis,
+                weight_bits=adaround.weight_bits)
+
         del adaround
 
     # update adarounded calibrated weights

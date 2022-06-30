@@ -56,24 +56,28 @@ static void CheckShapeValid(const std::vector<int64_t> &x_shape,
                             const std::vector<int64_t> &target_shape) {
   size_t x_rank = x_shape.size();
   size_t target_rank = target_shape.size();
-  PADDLE_ENFORCE_GE(target_rank, x_rank,
+  PADDLE_ENFORCE_GE(target_rank,
+                    x_rank,
                     platform::errors::InvalidArgument(
                         "The rank of target shape should be greater than or "
                         "equal to input tensor's dimensions, "
                         "but received %d and %d",
-                        target_rank, x_rank));
+                        target_rank,
+                        x_rank));
   std::vector<int64_t>::const_iterator it = target_shape.begin();
   for (size_t i = 0; i < x_rank; i++, it++) {
     if (x_shape[i] != 1) {
       it = std::find(it, target_shape.end(), x_shape[i]);
     }
     PADDLE_ENFORCE_EQ(
-        it != target_shape.end(), true,
+        it != target_shape.end(),
+        true,
         platform::errors::InvalidArgument(
             "Invalid shape, can not broadcast input tensor into target shape,"
             "the first dismatching shape  %d is shape of input tensor at "
             "dimension %d",
-            x_shape[i], i));
+            x_shape[i],
+            i));
   }
 }
 
@@ -104,7 +108,8 @@ class BroadcastPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(broadcast_p, paddle::operators::BroadcastPrimOp,
+REGISTER_OPERATOR(broadcast_p,
+                  paddle::operators::BroadcastPrimOp,
                   paddle::operators::BroadcastPrimOpMaker,
                   paddle::operators::BroadcastPrimOpShapeInference,
                   paddle::operators::BroadcastPrimOpVarTypeInference);

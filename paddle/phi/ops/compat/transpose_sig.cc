@@ -22,8 +22,7 @@ KernelSignature TransposeOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature TransposeGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "transpose_grad", {GradVarName("Out")}, {"axis"}, {GradVarName("X")});
+  return KernelSignature("transpose_grad", {"Out@GRAD"}, {"axis"}, {"X@GRAD"});
 }
 
 }  // namespace phi

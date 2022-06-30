@@ -18,13 +18,13 @@
 #include <numeric>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/conj_op.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/complex.h"
@@ -106,7 +106,9 @@ struct FFTFillConjGradFunctor {
   const int64_t* strides_;
   const size_t double_length_;
 
-  FFTFillConjGradFunctor(T* input, size_t axis, const int64_t* strides,
+  FFTFillConjGradFunctor(T* input,
+                         size_t axis,
+                         const int64_t* strides,
                          size_t double_length)
       : input_(input),
         axis_(axis),
@@ -129,22 +131,31 @@ struct FFTFillConjGradFunctor {
 
 template <typename DeviceContext, typename Ti, typename To>
 struct FFTC2CFunctor {
-  void operator()(const DeviceContext& ctx, const Tensor* X, Tensor* out,
-                  const std::vector<int64_t>& axes, FFTNormMode normalization,
+  void operator()(const DeviceContext& ctx,
+                  const Tensor* X,
+                  Tensor* out,
+                  const std::vector<int64_t>& axes,
+                  FFTNormMode normalization,
                   bool forward);
 };
 
 template <typename DeviceContext, typename Ti, typename To>
 struct FFTR2CFunctor {
-  void operator()(const DeviceContext& ctx, const Tensor* X, Tensor* out,
-                  const std::vector<int64_t>& axes, FFTNormMode normalization,
+  void operator()(const DeviceContext& ctx,
+                  const Tensor* X,
+                  Tensor* out,
+                  const std::vector<int64_t>& axes,
+                  FFTNormMode normalization,
                   bool forward);
 };
 
 template <typename DeviceContext, typename Ti, typename To>
 struct FFTC2RFunctor {
-  void operator()(const DeviceContext& ctx, const Tensor* X, Tensor* out,
-                  const std::vector<int64_t>& axes, FFTNormMode normalization,
+  void operator()(const DeviceContext& ctx,
+                  const Tensor* X,
+                  Tensor* out,
+                  const std::vector<int64_t>& axes,
+                  FFTNormMode normalization,
                   bool forward);
 };
 
@@ -158,7 +169,8 @@ HOSTDEVICE inline int64_t get_src_idx(const int64_t dst_idx,
                                       const int64_t* dst_strides,
                                       const int64_t* dst_shape,
                                       const int64_t* src_strides,
-                                      const bool* is_fft_axis, const bool conj,
+                                      const bool* is_fft_axis,
+                                      const bool conj,
                                       const int64_t rank) {
   int64_t src_idx = 0;
   int64_t quotient = dst_idx;
@@ -205,10 +217,15 @@ HOSTDEVICE inline bool is_conj_part(const int64_t dst_idx,
 // supporting different device
 template <typename C>
 struct FFTFillConjFunctor {
-  FFTFillConjFunctor(const C* src_data, C* dst_data, const int64_t* src_strides,
-                     const int64_t* dst_strides, const int64_t* dst_shape,
-                     const bool* is_fft_axis, const int64_t last_axis,
-                     const int64_t last_axis_size, const int64_t rank)
+  FFTFillConjFunctor(const C* src_data,
+                     C* dst_data,
+                     const int64_t* src_strides,
+                     const int64_t* dst_strides,
+                     const int64_t* dst_shape,
+                     const bool* is_fft_axis,
+                     const int64_t last_axis,
+                     const int64_t last_axis_size,
+                     const int64_t rank)
       : src_data_(src_data),
         dst_data_(dst_data),
         src_strides_(src_strides),
@@ -220,16 +237,24 @@ struct FFTFillConjFunctor {
         rank_(rank) {}
   HOSTDEVICE void operator()(int64_t dst_idx) {
     if (is_conj_part(dst_idx, dst_strides_, last_axis_, last_axis_size_)) {
-      const auto conj_idx =
-          get_src_idx(dst_idx, dst_strides_, dst_shape_, src_strides_,
-                      is_fft_axis_, true, rank_);
+      const auto conj_idx = get_src_idx(dst_idx,
+                                        dst_strides_,
+                                        dst_shape_,
+                                        src_strides_,
+                                        is_fft_axis_,
+                                        true,
+                                        rank_);
       auto src_value = src_data_[conj_idx];
       auto conj_value = C(src_value.real, -src_value.imag);
       dst_data_[dst_idx] = conj_value;
     } else {
-      const auto copy_idx =
-          get_src_idx(dst_idx, dst_strides_, dst_shape_, src_strides_,
-                      is_fft_axis_, false, rank_);
+      const auto copy_idx = get_src_idx(dst_idx,
+                                        dst_strides_,
+                                        dst_shape_,
+                                        src_strides_,
+                                        is_fft_axis_,
+                                        false,
+                                        rank_);
       dst_data_[dst_idx] = src_data_[copy_idx];
     }
   }
@@ -246,7 +271,9 @@ struct FFTFillConjFunctor {
 };
 
 template <typename DeviceContext, typename C>
-void fill_conj(const DeviceContext& ctx, const Tensor* src, Tensor* dst,
+void fill_conj(const DeviceContext& ctx,
+               const Tensor* src,
+               Tensor* dst,
                const std::vector<int64_t>& axes) {
   std::vector<int64_t> src_strides_v =
       phi::vectorize<int64_t>(phi::stride(src->dims()));
@@ -280,9 +307,15 @@ void fill_conj(const DeviceContext& ctx, const Tensor* src, Tensor* dst,
   const auto p_is_fft_axis = _is_fft_axis.get();
 #endif
   platform::ForRange<DeviceContext> for_range(ctx, dst->numel());
-  FFTFillConjFunctor<C> fill_conj_functor(src_data, dst_data, src_strides,
-                                          dst_strides, dst_shape, p_is_fft_axis,
-                                          last_axis, last_axis_size, rank);
+  FFTFillConjFunctor<C> fill_conj_functor(src_data,
+                                          dst_data,
+                                          src_strides,
+                                          dst_strides,
+                                          dst_shape,
+                                          p_is_fft_axis,
+                                          last_axis,
+                                          last_axis_size,
+                                          rank);
   for_range(fill_conj_functor);
 }
 
@@ -395,14 +428,20 @@ class FFTR2CGradKernel : public framework::OpKernel<T> {
       pads[axes.back() * 2 + 1] = zero_length;
 
       phi::funcs::PaddingFunctor<DeviceContext, C>(
-          rank, ctx.template device_context<DeviceContext>(), pads,
-          static_cast<C>(0), *dy, &full_dy);
-      fft_c2c_func(dev_ctx, &full_dy, &complex_dx, axes, normalization,
-                   !forward);
+          rank,
+          ctx.template device_context<DeviceContext>(),
+          pads,
+          static_cast<C>(0),
+          *dy,
+          &full_dy);
+      fft_c2c_func(
+          dev_ctx, &full_dy, &complex_dx, axes, normalization, !forward);
     }
     framework::TransComplexToReal(
         framework::TransToProtoVarType(dx->dtype()),
-        framework::TransToProtoVarType(complex_dx.dtype()), complex_dx, dx);
+        framework::TransToProtoVarType(complex_dx.dtype()),
+        complex_dx,
+        dx);
   }
 };
 

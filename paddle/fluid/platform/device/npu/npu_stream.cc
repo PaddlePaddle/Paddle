@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -20,7 +21,8 @@ namespace platform {
 namespace stream {
 
 bool NPUStream::Init(const Place& place) {
-  PADDLE_ENFORCE_EQ(is_npu_place(place), true,
+  PADDLE_ENFORCE_EQ(is_npu_place(place),
+                    true,
                     platform::errors::InvalidArgument(
                         "NPU stream must be created using npu place."));
   place_ = place;

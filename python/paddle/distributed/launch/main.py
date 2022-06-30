@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -54,7 +54,7 @@ def launch():
 
         - ``--devices``: The selected accelerate devices on nodes, can be gpu/xpu/npu/mlu etc.. e.g., ``--devices=0,1,2,3`` will launch four training processes each bound to one device.
 
-        - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``traing.py``
+        - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``training.py``
 
         - ``training_script_args``: The args of training_script. e.g., ``--lr=0.1``
 
@@ -91,6 +91,26 @@ def launch():
 
         - ``--elastic_timeout``: Seconds to wait before elastic job begin to train. Default ``--elastic_timeout=30``.
 
+    IPU Parameters:
+        IPU distributed launch only requires and allowes three arguments ``--devices``, ``training_script`` and ``training_script_args``.
+        The ``--devices`` is the number of IPU devices. e.g., ``--devices=4`` will launch the training program with four IPU devices.
+        The ``training_script`` is only allowed to set as ``ipu``. 
+        The ``training_script_args`` includes arguments required by IPU distributed launch and illustrated as below.
+        ``Examples 10`` has provided a example of paddle.distributed.launch with IPUs.
+
+        - ``--hosts``: The hosts for IPU distributd training.
+        
+        - ``--nproc_per_host``: The number of processes launched per host.
+
+        - ``--ipus_per_replica``: The number of IPUs requested per replica.
+
+        - ``--ipu_partition``: The partition name of IPU devices.
+
+        - ``--vipu_server``: The ip of the IPU device manager.
+
+        - ``training_script``: The full path to the IPU distributed training program/script to be launched in parallel. e.g., ``training.py``.
+
+        - ``training_script_args``: The args of the IPU distributed training program/script.
 
     Returns:
         - ``None``
@@ -228,6 +248,15 @@ def launch():
             python -m paddle.distributed.launch --master etcd://10.0.0.1:2379 --nnodes 2:4 train.py
             
             # once the number of nodes changes between 2:4 during training, the strategy holds
+
+    Examples 10 (ipu):
+        .. code-block:: bash
+            :name: code-block-example-bash10
+
+            # With the following command, the job will begin to run the distributhed program with IPUs.
+            # Only support and require the `device_num` as the arg and `ipu` as the launch script.
+            # Please Check the details about the following args of the launch scripte from `utils/ipu_launch.py`.
+            python -m paddle.distributed.launch --devices 4 ipu --hosts=localhost --nproc_per_host=2 --ipus_per_replica=1 --ipu_partition=pod16 --vipu_server=127.0.0.1 train.py
 
     """
 

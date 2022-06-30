@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/edit_distance_op.h"
@@ -42,8 +43,12 @@ __global__ void FillFirstColumn(T* dist, const int M, const int N) {
 }
 
 template <typename T>
-__global__ void Levenshtein(T* dist, const int64_t* x1, const int64_t* x2,
-                            const int M, const int N, const int start) {
+__global__ void Levenshtein(T* dist,
+                            const int64_t* x1,
+                            const int64_t* x2,
+                            const int M,
+                            const int N,
+                            const int start) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   int offset = N;
   int index = start + idx * offset;
@@ -59,8 +64,8 @@ __global__ void Levenshtein(T* dist, const int64_t* x1, const int64_t* x2,
 }
 
 template <typename T>
-__global__ void SetOutput(T* out, const T* dist, const int M, const int N,
-                          bool normalized) {
+__global__ void SetOutput(
+    T* out, const T* dist, const int M, const int N, bool normalized) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   if (idx == 0) {
     out[0] = normalized ? dist[M * (N + 1) + N] / N : dist[M * (N + 1) + N];
@@ -111,7 +116,8 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
 
     if (normalized) {
       for (size_t i = 1; i < ref_lod.size(); ++i) {
-        PADDLE_ENFORCE_GT(ref_lod[i], ref_lod[i - 1],
+        PADDLE_ENFORCE_GT(ref_lod[i],
+                          ref_lod[i - 1],
                           platform::errors::InvalidArgument(
                               "Reference string %d is empty.", i));
       }
@@ -120,7 +126,8 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
     const size_t num_strs = hyp_lod.size() - 1;
     phi::funcs::SetConstant<platform::CUDADeviceContext, int64_t> set_constant;
     set_constant(ctx.template device_context<platform::CUDADeviceContext>(),
-                 sequence_num, static_cast<int64_t>(num_strs));
+                 sequence_num,
+                 static_cast<int64_t>(num_strs));
 
     out_t->Resize({static_cast<int64_t>(num_strs), 1});
     out_t->mutable_data<T>(ctx.GetPlace());
@@ -135,8 +142,12 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
         if (normalized) {
           distance = distance / n;
         }
-        memory::Copy(ctx.GetPlace(), out + num, platform::CPUPlace(), &distance,
-                     sizeof(T), stream);
+        memory::Copy(ctx.GetPlace(),
+                     out + num,
+                     platform::CPUPlace(),
+                     &distance,
+                     sizeof(T),
+                     stream);
       } else {
         framework::Tensor dist_t;
         dist_t.Resize({m + 1, n + 1});
@@ -148,10 +159,14 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
         auto x2 = x2_t->data<int64_t>() + ref_offset;
 
         FillFirstColumn<T><<<1 + m / PADDLE_CUDA_NUM_THREADS,
-                             PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, m, n);
+                             PADDLE_CUDA_NUM_THREADS,
+                             0,
+                             stream>>>(dist, m, n);
 
         FillFirstRow<T><<<1 + n / PADDLE_CUDA_NUM_THREADS,
-                          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, n);
+                          PADDLE_CUDA_NUM_THREADS,
+                          0,
+                          stream>>>(dist, n);
 
         // Compute the elements of distance matrix in the anti-diagonal diretion
         for (int64_t slice = 2; slice < m + n + 1; ++slice) {
@@ -162,8 +177,9 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
           // the start index at which computes from
           int start = slice < n + 1 ? slice : (z_n + 1) * (n + 1) - 1;
           Levenshtein<T><<<1 + (size - 1) / PADDLE_CUDA_NUM_THREADS,
-                           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, x1, x2,
-                                                                 m, n, start);
+                           PADDLE_CUDA_NUM_THREADS,
+                           0,
+                           stream>>>(dist, x1, x2, m, n, start);
         }
         SetOutput<T><<<1, 1, 0, stream>>>(out + num, dist, m, n, normalized);
       }

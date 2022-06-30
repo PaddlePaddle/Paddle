@@ -33,14 +33,20 @@ USE_OP_ITSELF(elementwise_add);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
 #endif
 
 // get paddle matmul op results as baseline
 template <typename T>
-void GetLinearOp(const std::vector<T> &x, const std::vector<T> &y,
-                 const framework::DDim &x_dim, const framework::DDim &y_dim,
-                 const platform::CUDADeviceContext &ctx, bool transpose_a,
-                 bool transpose_b, float alpha, std::vector<T> *out) {
+void GetLinearOp(const std::vector<T> &x,
+                 const std::vector<T> &y,
+                 const framework::DDim &x_dim,
+                 const framework::DDim &y_dim,
+                 const platform::CUDADeviceContext &ctx,
+                 bool transpose_a,
+                 bool transpose_b,
+                 float alpha,
+                 std::vector<T> *out) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
   auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
@@ -77,8 +83,10 @@ void GetLinearOp(const std::vector<T> &x, const std::vector<T> &y,
 
 // get paddle elementwise_add op results as baseline
 template <typename T>
-void GetElementwiseAddOp(const std::vector<T> &x, const std::vector<T> &y,
-                         const int bsz_seq, const int output_size,
+void GetElementwiseAddOp(const std::vector<T> &x,
+                         const std::vector<T> &y,
+                         const int bsz_seq,
+                         const int output_size,
                          const platform::CUDADeviceContext &ctx,
                          std::vector<T> *out) {
   framework::Scope scope;
@@ -105,7 +113,8 @@ void GetElementwiseAddOp(const std::vector<T> &x, const std::vector<T> &y,
   framework::AttributeMap attrs;
   auto op = framework::OpRegistry::CreateOp("elementwise_add",
                                             {{"X", {"X"}}, {"Y", {"Y"}}},
-                                            {{"Out", {"Out"}}}, attrs);
+                                            {{"Out", {"Out"}}},
+                                            attrs);
   op->Run(scope, ctx.GetPlace());
   cudaMemcpy(out->data(), z_ptr, size_z * sizeof(T), cudaMemcpyDeviceToHost);
   ctx.Wait();
@@ -113,12 +122,17 @@ void GetElementwiseAddOp(const std::vector<T> &x, const std::vector<T> &y,
 
 // get paddle matmul_grad op results as baseline
 template <typename T>
-void GetLinearOpGrad(const std::vector<T> &x_vec, const std::vector<T> &y_vec,
+void GetLinearOpGrad(const std::vector<T> &x_vec,
+                     const std::vector<T> &y_vec,
                      const std::vector<T> &dout_vec,
-                     const framework::DDim &x_dim, const framework::DDim &y_dim,
+                     const framework::DDim &x_dim,
+                     const framework::DDim &y_dim,
                      const framework::DDim &out_dim,
-                     const platform::CUDADeviceContext &ctx, bool transpose_a,
-                     bool transpose_b, float alpha, std::vector<T> *dinput_vec,
+                     const platform::CUDADeviceContext &ctx,
+                     bool transpose_a,
+                     bool transpose_b,
+                     float alpha,
+                     std::vector<T> *dinput_vec,
                      std::vector<T> *dweight_vec) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
@@ -149,8 +163,8 @@ void GetLinearOpGrad(const std::vector<T> &x_vec, const std::vector<T> &y_vec,
   auto size_z = x_dim[0] * x_dim[1] * y_dim[0];
   cudaMemcpy(x_ptr, x_vec.data(), size_x * sizeof(T), cudaMemcpyHostToDevice);
   cudaMemcpy(y_ptr, y_vec.data(), size_y * sizeof(T), cudaMemcpyHostToDevice);
-  cudaMemcpy(dout_ptr, dout_vec.data(), size_z * sizeof(T),
-             cudaMemcpyHostToDevice);
+  cudaMemcpy(
+      dout_ptr, dout_vec.data(), size_z * sizeof(T), cudaMemcpyHostToDevice);
 
   bool use_mkldnn = false;
   std::vector<int> fused_reshape_X = {};
@@ -182,20 +196,27 @@ void GetLinearOpGrad(const std::vector<T> &x_vec, const std::vector<T> &y_vec,
   attrs.insert({"force_fp32_output", force_fp32_output});
 
   auto op = framework::OpRegistry::CreateOp(
-      "matmul_grad", {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}, {"Y", {"Y"}}},
-      {{"X@GRAD", {"DX"}}, {"Y@GRAD", {"DY"}}}, attrs);
+      "matmul_grad",
+      {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}, {"Y", {"Y"}}},
+      {{"X@GRAD", {"DX"}}, {"Y@GRAD", {"DY"}}},
+      attrs);
   op->Run(scope, ctx.GetPlace());
 
-  cudaMemcpy(dinput_vec->data(), dinput_ptr, size_x * sizeof(T),
+  cudaMemcpy(dinput_vec->data(),
+             dinput_ptr,
+             size_x * sizeof(T),
              cudaMemcpyDeviceToHost);
-  cudaMemcpy(dweight_vec->data(), dweight_ptr, size_y * sizeof(T),
+  cudaMemcpy(dweight_vec->data(),
+             dweight_ptr,
+             size_y * sizeof(T),
              cudaMemcpyDeviceToHost);
   ctx.Wait();
 }
 
 // get paddle elementwise_add_grad op results as baseline
 template <typename T>
-void GetElementwiseAddOpGrad(const std::vector<T> &dout_vec, const int bsz_seq,
+void GetElementwiseAddOpGrad(const std::vector<T> &dout_vec,
+                             const int bsz_seq,
                              const int output_size,
                              const platform::CUDADeviceContext &ctx,
                              std::vector<T> *dy_vec) {
@@ -220,8 +241,8 @@ void GetElementwiseAddOpGrad(const std::vector<T> &dout_vec, const int bsz_seq,
   auto dout_ptr = tensor_dout->mutable_data<T>(ctx.GetPlace());
   auto tensor_dy_ptr = tensor_dy->mutable_data<T>(ctx.GetPlace());
   auto size_z = static_cast<size_t>(bsz_seq * output_size);
-  cudaMemcpy(dout_ptr, dout_vec.data(), size_z * sizeof(T),
-             cudaMemcpyHostToDevice);
+  cudaMemcpy(
+      dout_ptr, dout_vec.data(), size_z * sizeof(T), cudaMemcpyHostToDevice);
 
   int axis = -1;
   bool use_mkldnn = false, use_quantizer = false;
@@ -243,11 +264,14 @@ void GetElementwiseAddOpGrad(const std::vector<T> &dout_vec, const int bsz_seq,
   auto op = framework::OpRegistry::CreateOp(
       "elementwise_add_grad",
       {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}, {"Y", {"Y"}}},
-      {{"X@GRAD", {"DX"}}, {"Y@GRAD", {"DY"}}}, attrs);
+      {{"X@GRAD", {"DX"}}, {"Y@GRAD", {"DY"}}},
+      attrs);
   op->Run(scope, ctx.GetPlace());
 
   auto size_y = static_cast<size_t>(output_size);
-  cudaMemcpy(dy_vec->data(), tensor_dy_ptr, size_y * sizeof(T),
+  cudaMemcpy(dy_vec->data(),
+             tensor_dy_ptr,
+             size_y * sizeof(T),
              cudaMemcpyDeviceToHost);
   ctx.Wait();
 }
@@ -264,8 +288,12 @@ class TestFeedForward {
     has_bias_ = false;
   }
 
-  TestFeedForward(int batch_size, int seq_len, int num_head, int dim_head,
-                  int dim_embed, bool has_bias) {
+  TestFeedForward(int batch_size,
+                  int seq_len,
+                  int num_head,
+                  int dim_head,
+                  int dim_embed,
+                  bool has_bias) {
     batch_size_ = batch_size;
     seq_len_ = seq_len;
     num_head_ = num_head;
@@ -358,11 +386,22 @@ class TestFeedForward {
   void BaselineForward() {
     bool transpose_a = false, transpose_b = true;
     float alpha = 1;
-    GetLinearOp(src_vec_, weight_vec_, src_.dims(), weight_.dims(), *ctx_,
-                transpose_a, transpose_b, alpha, &base_out_vec_);
+    GetLinearOp(src_vec_,
+                weight_vec_,
+                src_.dims(),
+                weight_.dims(),
+                *ctx_,
+                transpose_a,
+                transpose_b,
+                alpha,
+                &base_out_vec_);
     if (has_bias_) {
-      GetElementwiseAddOp(base_out_vec_, bias_vec_, bsz_seq_, output_size_,
-                          *ctx_, &base_bias_out_vec_);
+      GetElementwiseAddOp(base_out_vec_,
+                          bias_vec_,
+                          bsz_seq_,
+                          output_size_,
+                          *ctx_,
+                          &base_bias_out_vec_);
     }
     ctx_->Wait();
   }
@@ -381,8 +420,8 @@ class TestFeedForward {
     }
     auto qkv_compute = paddle::operators::FeedForward<T>(
         *ctx_, bsz_seq_, output_size_, input_size_, has_bias_);
-    qkv_compute.ComputeForward(p_weight, p_src, p_bias, p_output,
-                               p_bias_output);
+    qkv_compute.ComputeForward(
+        p_weight, p_src, p_bias, p_output, p_bias_output);
     ctx_->Wait();
   }
 
@@ -390,12 +429,21 @@ class TestFeedForward {
     bool transpose_a = false, transpose_b = true;
     float alpha = 1;
 
-    GetLinearOpGrad(src_vec_, weight_vec_, doutput_vec_, src_.dims(),
-                    weight_.dims(), out_.dims(), *ctx_, transpose_a,
-                    transpose_b, alpha, &base_dinput_vec_, &base_dweight_vec_);
+    GetLinearOpGrad(src_vec_,
+                    weight_vec_,
+                    doutput_vec_,
+                    src_.dims(),
+                    weight_.dims(),
+                    out_.dims(),
+                    *ctx_,
+                    transpose_a,
+                    transpose_b,
+                    alpha,
+                    &base_dinput_vec_,
+                    &base_dweight_vec_);
     if (has_bias_) {
-      GetElementwiseAddOpGrad(doutput_vec_, bsz_seq_, output_size_, *ctx_,
-                              &base_dbias_vec_);
+      GetElementwiseAddOpGrad(
+          doutput_vec_, bsz_seq_, output_size_, *ctx_, &base_dbias_vec_);
     }
     ctx_->Wait();
   }
@@ -414,8 +462,8 @@ class TestFeedForward {
     }
     auto qkv_compute = paddle::operators::FeedForward<T>(
         *ctx_, bsz_seq_, output_size_, input_size_, has_bias_);
-    qkv_compute.ComputeBackward(p_src, p_weight, p_doutput, p_dinput, p_dweight,
-                                bias_ptr);
+    qkv_compute.ComputeBackward(
+        p_src, p_weight, p_doutput, p_dinput, p_dweight, bias_ptr);
     ctx_->Wait();
   }
 
@@ -522,8 +570,8 @@ TEST(FeedForward, GPUFeedforwardBertLargeSizeFp32) {
   int dim_head = 64;
   int dim_embed = 1024;
   bool has_bias = false;
-  TestFeedForward<float> test(batch_size, seq_len, num_head, dim_head,
-                              dim_embed, has_bias);
+  TestFeedForward<float> test(
+      batch_size, seq_len, num_head, dim_head, dim_embed, has_bias);
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
   test.CheckGrad(static_cast<float>(1e-5));
@@ -550,8 +598,8 @@ TEST(FeedForward, GPUFeedforwardBertLargeSizeFp32Bias) {
   int dim_head = 64;
   int dim_embed = 1024;
   bool has_bias = true;
-  TestFeedForward<float> test(batch_size, seq_len, num_head, dim_head,
-                              dim_embed, has_bias);
+  TestFeedForward<float> test(
+      batch_size, seq_len, num_head, dim_head, dim_embed, has_bias);
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
   test.CheckGrad(static_cast<float>(1e-3));

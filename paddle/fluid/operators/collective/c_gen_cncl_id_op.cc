@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <cncl.h>
+
 #include <string>
 
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -21,9 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
-
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
@@ -41,8 +41,9 @@ static void CopyCNCLIDToVar(const std::vector<cnclCliqueId>& cncl_ids,
     std::string var_name = func(i);
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable with name %s is not found",
-                                        var_name.c_str()));
+        var,
+        platform::errors::NotFound("Variable with name %s is not found",
+                                   var_name.c_str()));
     auto cncl_id = var->GetMutable<cnclCliqueId>();
     memcpy(cncl_id, &cncl_ids[i], sizeof(cnclCliqueId));
   }

@@ -32,6 +32,7 @@ DeviceType = core.DeviceType
 
 
 class TestParallelExecutorBase(unittest.TestCase):
+
     @classmethod
     def check_network_convergence(cls,
                                   method,
@@ -52,6 +53,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   optimizer=fluid.optimizer.Adam,
                                   use_fast_executor=False,
                                   enable_sequential_execution=False):
+
         def run_executor(exe, binary, feed, fetch_list):
             if feed_data_reader is None:
                 res = exe.run(binary, feed=feed, fetch_list=fetch_list)
@@ -66,8 +68,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                 feed_data_reader, FeedDataReader
             ), "feed_data_reader must be type of FeedDataReader"
 
-        paddle.seed(1)
-        paddle.framework.random._manual_program_seed(1)
+        paddle.seed(0)
+        paddle.framework.random._manual_program_seed(0)
         main = fluid.Program()
         startup = fluid.Program()
 
@@ -101,18 +103,29 @@ class TestParallelExecutorBase(unittest.TestCase):
             ) if use_device == DeviceType.XPU else int(
                 os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
 
+        area_below_loss = 0
         begin = time.time()
-        first_loss, = run_executor(
-            exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name])
+        first_loss, = run_executor(exe=exe,
+                                   binary=binary,
+                                   feed=feed_dict,
+                                   fetch_list=[loss.name])
+        area_below_loss += 0.5 * first_loss.mean()
         for _ in range(iter):
-            run_executor(exe=exe, binary=binary, feed=feed_dict, fetch_list=[])
-        last_loss, = run_executor(
-            exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name])
+            mid_loss = run_executor(exe=exe,
+                                    binary=binary,
+                                    feed=feed_dict,
+                                    fetch_list=[loss.name])
+            area_below_loss += mid_loss[0].mean()
+        last_loss, = run_executor(exe=exe,
+                                  binary=binary,
+                                  feed=feed_dict,
+                                  fetch_list=[loss.name])
+        area_below_loss += 0.5 * last_loss.mean()
         end = time.time()
 
         if batch_size is not None:
-            print("%.4f Instance per second" % (
-                (batch_size * iter + 2) / (end - begin)))
+            print("%.4f Instance per second" % ((batch_size * iter + 2) /
+                                                (end - begin)))
 
         avg_last_loss_val = np.array(last_loss).mean()
         avg_first_loss_val = np.array(first_loss).mean()
@@ -120,9 +133,9 @@ class TestParallelExecutorBase(unittest.TestCase):
                 float(avg_first_loss_val)):
             sys.exit("got NaN loss, training failed.")
 
-        print(first_loss, last_loss)
+        print(first_loss, last_loss, area_below_loss)
         # self.assertGreater(first_loss[0], last_loss[0])
-        return first_loss, last_loss
+        return first_loss, last_loss, area_below_loss
 
     @classmethod
     def check_pass_conflict(cls,

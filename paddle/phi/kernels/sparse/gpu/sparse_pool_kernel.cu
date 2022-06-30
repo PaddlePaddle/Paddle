@@ -46,7 +46,7 @@ __global__ void MaxPoolCudaKernel(const T* in_features_ptr,
  * x: (N, D, H, W, C)
  * kernel: (D, H, W, C, OC)
  * out: (N, D, H, W, OC)
-**/
+ **/
 template <typename T, typename IntT = int>
 void MaxPoolGPUKernel(const GPUContext& dev_ctx,
                       const SparseCooTensor& x,
@@ -104,7 +104,7 @@ void MaxPoolGPUKernel(const GPUContext& dev_ctx,
 #endif
                out_features_ptr,
                out_features_ptr + out->non_zero_elements().numel(),
-               static_cast<T>(-FLT_MAX));
+               static_cast<T>(0));
   // TODO(zhangkaihuo) Replacing multiple calls with one kernel may be faster
   for (int i = 0; i < kernel_size; i++) {
     if (counter[i] <= 0) {
@@ -113,16 +113,16 @@ void MaxPoolGPUKernel(const GPUContext& dev_ctx,
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, counter[i] * in_channels, 1);
-    MaxPoolCudaKernel<T, IntT><<<config.block_per_grid.x,
-                                 config.thread_per_block.x,
-                                 0,
-                                 dev_ctx.stream()>>>(
-        in_features_ptr,
-        rulebook_ptr + offsets[i] + rulebook_len,
-        counter[i],
-        rulebook_len,
-        in_channels,
-        out_features_ptr);
+    MaxPoolCudaKernel<T, IntT>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(in_features_ptr,
+                               rulebook_ptr + offsets[i] + rulebook_len,
+                               counter[i],
+                               rulebook_len,
+                               in_channels,
+                               out_features_ptr);
   }
 }
 

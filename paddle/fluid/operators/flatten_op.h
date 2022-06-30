@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -39,8 +40,10 @@ class FlattenKernel : public framework::OpKernel<T> {
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
+        *in,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
 
@@ -72,8 +75,10 @@ class FlattenGradKernel : public framework::OpKernel<T> {
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(),
+        d_x);
     d_x->Resize(in_dims);
   }
 };
@@ -94,8 +99,10 @@ class Flatten2Kernel : public framework::OpKernel<T> {
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
+        *in,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
 };
@@ -113,8 +120,10 @@ class Flatten2GradKernel : public framework::OpKernel<T> {
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(),
+        d_x);
     d_x->Resize(x_dims);
   }
 };

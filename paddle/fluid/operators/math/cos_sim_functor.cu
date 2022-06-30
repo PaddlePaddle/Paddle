@@ -20,9 +20,15 @@ namespace operators {
 namespace math {
 
 template <typename T>
-__global__ void CosSimDyKernel(const T* x_norm, const T* y_norm, const T* x,
-                               const T* y, const T* z, const T* dz,
-                               const size_t rows, const size_t cols, T* dy) {
+__global__ void CosSimDyKernel(const T* x_norm,
+                               const T* y_norm,
+                               const T* x,
+                               const T* y,
+                               const T* z,
+                               const T* dz,
+                               const size_t rows,
+                               const size_t cols,
+                               T* dy) {
   int grid_size = blockDim.x * gridDim.x;
   T y_norm_data = y_norm[0];
   for (int row_id = blockIdx.x * blockDim.x + threadIdx.x; row_id < rows;
@@ -45,9 +51,15 @@ __global__ void CosSimDyKernel(const T* x_norm, const T* y_norm, const T* x,
 
 template <typename T>
 struct CosSimDyFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx, const T* x_norm,
-                  const T* y_norm, const T* x, const T* y, const T* z,
-                  const T* dz, const size_t rows, const size_t cols,
+  void operator()(const platform::CUDADeviceContext& ctx,
+                  const T* x_norm,
+                  const T* y_norm,
+                  const T* x,
+                  const T* y,
+                  const T* z,
+                  const T* dz,
+                  const size_t rows,
+                  const size_t cols,
                   T* dy) const {
     const int block_size = 512;
     dim3 threads(block_size, 1);

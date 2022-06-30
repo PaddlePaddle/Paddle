@@ -15,6 +15,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -37,14 +38,20 @@ class SigmoidCrossEntropyWithLogitsGradOp
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+    OP_INOUT_CHECK(ctx->HasInput("X"),
+                   "Input",
+                   "X",
                    "SigmoidCrossEntropyWithLogitsGradOp");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
+    OP_INOUT_CHECK(ctx->HasInput("Label"),
+                   "Input",
+                   "Label",
                    "SigmoidCrossEntropyWithLogitsGradOp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
                    framework::GradVarName("Out"),
                    "SigmoidCrossEntropyWithLogitsGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
                    framework::GradVarName("X"),
                    "SigmoidCrossEntropyWithLogitsGradOp");
 
@@ -67,15 +74,18 @@ class SigmoidCrossEntropyWithLogitsGradOp
               "Input(X) and Input(Label) shall have the same shape "
               "except the last dimension. But received: the shape of "
               "Input(X) is [%s], the shape of Input(Label) is [%s].",
-              x_dims, labels_dims));
+              x_dims,
+              labels_dims));
 
       PADDLE_ENFORCE_EQ(
-          phi::slice_ddim(x_dims, 0, rank), phi::slice_ddim(dout_dims, 0, rank),
+          phi::slice_ddim(x_dims, 0, rank),
+          phi::slice_ddim(dout_dims, 0, rank),
           platform::errors::InvalidArgument(
               "Input(X) and Input(Out@Grad) shall have the same shape "
               "except the last dimension. But received: the shape of "
               "Input(X) is [%s], the shape of Input(Out@Grad) is [%s].",
-              x_dims, dout_dims));
+              x_dims,
+              dout_dims));
     }
 
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -169,7 +179,8 @@ DECLARE_INFER_SHAPE_FUNCTOR(
     SigmoidCrossEntropyWithLogitsInferShapeFunctor,
     PD_INFER_META(phi::SigmoidCrossEntropyWithLogitsInferMeta));
 REGISTER_OPERATOR(
-    sigmoid_cross_entropy_with_logits, ops::SigmoidCrossEntropyWithLogitsOp,
+    sigmoid_cross_entropy_with_logits,
+    ops::SigmoidCrossEntropyWithLogitsOp,
     ops::SigmoidCrossEntropyWithLogitsOpMaker,
     ops::SigmoidCrossEntropyWithLogitsGradOpMaker<paddle::framework::OpDesc>,
     ops::SigmoidCrossEntropyWithLogitsGradOpMaker<paddle::imperative::OpBase>,

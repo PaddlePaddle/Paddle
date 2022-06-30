@@ -14,6 +14,7 @@
 
 #pragma once
 #include <cstdint>
+
 #include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -25,6 +26,7 @@ typedef enum {
   kNone = 0,
   // sort by alphabet
   kAdam = 1,
+  kAdamW,
   kCRFDecoding,
   kEmbSeqPool,
   kGRUH1,
@@ -163,8 +165,11 @@ struct lstm_attr_s : public rnn_attr_s {
   bool use_peephole;
   KernelType act_cell;
   lstm_attr_s() = default;
-  explicit lstm_attr_s(int _d, KernelType _act_gate, KernelType _act_cand,
-                       KernelType _act_cell, bool _use_peephole = false)
+  explicit lstm_attr_s(int _d,
+                       KernelType _act_gate,
+                       KernelType _act_cand,
+                       KernelType _act_cell,
+                       bool _use_peephole = false)
       : rnn_attr_s(_d, _act_gate, _act_cand),
         use_peephole(_use_peephole),
         act_cell(_act_cell) {}
@@ -226,8 +231,10 @@ typedef struct emb_seq_pool_attr_s {
   int64_t out_width;
   SeqPoolType pool_type;
   emb_seq_pool_attr_s() = default;
-  explicit emb_seq_pool_attr_s(int64_t tbl_height, int64_t tbl_width,
-                               int64_t idx_height, int64_t idx_width,
+  explicit emb_seq_pool_attr_s(int64_t tbl_height,
+                               int64_t tbl_width,
+                               int64_t idx_height,
+                               int64_t idx_width,
                                int64_t output_width,
                                SeqPoolType seqpool_type = SeqPoolType::kSum)
       : table_height(tbl_height),
@@ -243,7 +250,9 @@ struct EmbSeqPoolTuple {
   static constexpr KernelType kernel_type = kEmbSeqPool;
   typedef T data_type;
   typedef emb_seq_pool_attr_t attr_type;
-  typedef void (*func_type)(const T*, const int64_t*, T*,
+  typedef void (*func_type)(const T*,
+                            const int64_t*,
+                            T*,
                             const emb_seq_pool_attr_t*);
 };
 
@@ -252,8 +261,11 @@ typedef struct sgd_attr_s {
   int64_t grad_height, grad_width;
   int64_t selected_rows_size;
   sgd_attr_s() = default;
-  explicit sgd_attr_s(int64_t param_h, int64_t param_w, int64_t grad_h,
-                      int64_t grad_w, int64_t selected_rows_sz)
+  explicit sgd_attr_s(int64_t param_h,
+                      int64_t param_w,
+                      int64_t grad_h,
+                      int64_t grad_w,
+                      int64_t selected_rows_sz)
       : param_height(param_h),
         param_width(param_w),
         grad_height(grad_h),
@@ -266,8 +278,8 @@ struct SgdTuple {
   static constexpr KernelType kernel_type = kSgd;
   typedef T data_type;
   typedef sgd_attr_t attr_type;
-  typedef void (*func_type)(const T*, const T*, const T*, const int64_t*, T*,
-                            const sgd_attr_t*);
+  typedef void (*func_type)(
+      const T*, const T*, const T*, const int64_t*, T*, const sgd_attr_t*);
 };
 
 typedef struct adam_attr_s {
@@ -281,8 +293,30 @@ struct AdamTuple {
   static constexpr KernelType kernel_type = kAdam;
   typedef T data_type;
   typedef adam_attr_t attr_type;
-  typedef void (*func_type)(T, T, T, T, int64_t, const T*, const T*, const T*,
-                            const T*, T*, T*, T*);
+  typedef void (*func_type)(
+      T, T, T, T, int64_t, const T*, const T*, const T*, const T*, T*, T*, T*);
+};
+
+template <typename T>
+struct AdamWTuple {
+  static constexpr KernelType kernel_type = kAdamW;
+  typedef T data_type;
+  typedef int attr_type;
+  typedef void (*func_type)(T,
+                            T,
+                            T,
+                            T,
+                            T,
+                            T,
+                            T,
+                            int64_t,
+                            const T*,
+                            const T*,
+                            const T*,
+                            const T*,
+                            T*,
+                            T*,
+                            T*);
 };
 
 typedef struct matmul_attr_s {
@@ -314,8 +348,8 @@ struct LayerNormTuple {
   static constexpr KernelType kernel_type = kLayerNorm;
   typedef T data_type;
   typedef int attr_type;
-  typedef void (*func_type)(T*, T*, T*, T*, const T*, const T*, int,
-                            const float, int);
+  typedef void (*func_type)(
+      T*, T*, T*, T*, const T*, const T*, int, const float, int);
 };
 
 template <typename T>

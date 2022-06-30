@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include <assert.h>
 #include <cuda.h>          // NOTLINT
 #include <cuda_runtime.h>  // NOTLINT
 #include <dlnne.h>         // NOTLINT
 
-#include <assert.h>
 #include <ctime>
 #include <fstream>
 #include <iostream>
@@ -128,11 +128,15 @@ class DlnneEngineOp : public framework::OperatorBase {
              << ".onnx";
 
     builder = dl::nne::CreateInferBuilder();
-    PADDLE_ENFORCE_NE(builder, nullptr, platform::errors::Unavailable(
-                                            "nne create builder failed"));
+    PADDLE_ENFORCE_NE(
+        builder,
+        nullptr,
+        platform::errors::Unavailable("nne create builder failed"));
     parser = dl::nne::CreateParser();
-    PADDLE_ENFORCE_NE(parser, nullptr, platform::errors::Unavailable(
-                                           "nne create parser failed"));
+    PADDLE_ENFORCE_NE(
+        parser,
+        nullptr,
+        platform::errors::Unavailable("nne create parser failed"));
 
     network = builder->CreateNetwork();
 
@@ -174,7 +178,8 @@ class DlnneEngineOp : public framework::OperatorBase {
   void RunDlnneOnCreateEngine(const framework::Scope &scope,
                               const platform::Place &dev_place) const {
     PADDLE_ENFORCE_EQ(
-        input_names_.empty(), false,
+        input_names_.empty(),
+        false,
         platform::errors::PreconditionNotMet(
             "Dlnne engine needs at least one input, but no input is found. "
             "Please check if you set the input correctly."));
@@ -297,7 +302,8 @@ class DlnneEngineOp : public framework::OperatorBase {
         engine_input_ptr[InputIndexToBindIndex_[i]] = gpu_ptr;
 
         paddle::inference::CopyTensorCpuToDevice(
-            gpu_ptr, reinterpret_cast<void *>(cpu_input_buffers[i]),
+            gpu_ptr,
+            reinterpret_cast<void *>(cpu_input_buffers[i]),
             total_bytes);
 
       } else {

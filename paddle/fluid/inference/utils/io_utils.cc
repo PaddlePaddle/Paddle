@@ -158,8 +158,10 @@ void SerializePDTensorsToFile(const std::string &path,
 void DeserializePDTensorsToFile(const std::string &path,
                                 std::vector<PaddleTensor> *tensors) {
   bool is_present = analysis::FileExists(path);
-  PADDLE_ENFORCE_EQ(is_present, true, platform::errors::InvalidArgument(
-                                          "Cannot open %s to read", path));
+  PADDLE_ENFORCE_EQ(
+      is_present,
+      true,
+      platform::errors::InvalidArgument("Cannot open %s to read", path));
   std::ifstream fin(path, std::ios::binary);
   DeserializePDTensorsToStream(fin, tensors);
   fin.close();

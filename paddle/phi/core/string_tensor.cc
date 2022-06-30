@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/core/string_tensor.h"
 
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/common/pstring.h"
+
 namespace phi {
 
 StringTensor::StringTensor() { meta_.offset = 0; }
@@ -159,6 +162,34 @@ void* StringTensor::AllocateFrom(Allocator* allocator,
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  meta_.offset);
+}
+
+dtype::pstring* StringTensor::mutable_data(const phi::Place& place,
+                                           size_t requested_size) {
+  PADDLE_ENFORCE_GE(
+      numel(),
+      0,
+      phi::errors::PreconditionNotMet(
+          "The Tensor's element number must be equal or greater than zero. "
+          "The Tensor's shape is [",
+          dims(),
+          "] now"));
+  size_t size = numel() * SizeOf(dtype());
+  if (requested_size && (requested_size > size)) {
+    size = requested_size;
+  }
+
+  /* some versions of paddle::variant don't have operator!= */
+  if (holder_ == nullptr || !(holder_->place() == place) ||
+      holder_->size() < size + meta_.offset) {
+    holder_.reset();
+    holder_ = paddle::memory::AllocShared(place, size);
+    // Initialize the allocated bytes
+    init_holder();
+    meta_.offset = 0;
+  }
+  return reinterpret_cast<dtype::pstring*>(
+      reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
 }
 
 }  // namespace phi

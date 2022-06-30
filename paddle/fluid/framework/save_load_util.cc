@@ -37,7 +37,8 @@ void CheckInStreamState(std::istream& istre, size_t length) {
 }
 
 struct DeserializedDataFunctor {
-  DeserializedDataFunctor(void** buf, Tensor* tensor,
+  DeserializedDataFunctor(void** buf,
+                          Tensor* tensor,
                           const platform::Place& place)
       : buf_(buf), tensor_(tensor), place_(place) {}
 
@@ -57,11 +58,13 @@ size_t ReadTensorNumber(std::istream& istre) {
              sizeof(char) * tensor_number_mark.size());
   std::string str_read_tensor_number_mark(tensor_number_mark_buffer,
                                           tensor_number_mark.size());
-  PADDLE_ENFORCE_EQ(tensor_number_mark, str_read_tensor_number_mark,
+  PADDLE_ENFORCE_EQ(tensor_number_mark,
+                    str_read_tensor_number_mark,
                     platform::errors::InvalidArgument(
                         "Tensor number mark does not match, expect mark is "
                         "[%s], but the mark read from file is [%s].",
-                        tensor_number_mark, str_read_tensor_number_mark));
+                        tensor_number_mark,
+                        str_read_tensor_number_mark));
 
   size_t tensor_number = 0;
   istre.read(reinterpret_cast<char*>(&tensor_number), sizeof(tensor_number));
@@ -79,11 +82,13 @@ std::string ReadTensorName(std::istream& istre) {
 
   std::string str_read_tensor_name_mark(name_mark_buffer,
                                         tensor_name_mark.size());
-  PADDLE_ENFORCE_EQ(tensor_name_mark, str_read_tensor_name_mark,
+  PADDLE_ENFORCE_EQ(tensor_name_mark,
+                    str_read_tensor_name_mark,
                     platform::errors::InvalidArgument(
                         "Tensor name mark does not match, expect mark is [%s], "
                         "but the mark read from file is [%s].",
-                        tensor_name_mark, str_read_tensor_name_mark));
+                        tensor_name_mark,
+                        str_read_tensor_name_mark));
 
   size_t tensor_name_length = 0;
   istre.read(reinterpret_cast<char*>(&tensor_name_length),
@@ -113,19 +118,22 @@ void ReadReserveBuffer(std::istream& istre) {
 
 bool SaveStaticNameListToDisk(
     const std::string& file_name,
-    const std::vector<std::string>& vec_tensor_name_list, const Scope& scope) {
+    const std::vector<std::string>& vec_tensor_name_list,
+    const Scope& scope) {
   std::map<std::string, Tensor*> map_tensor;
 
   for (size_t i = 0; i < vec_tensor_name_list.size(); ++i) {
     auto var_ptr = scope.FindVar(vec_tensor_name_list[i]);
     PADDLE_ENFORCE_NOT_NULL(
-        var_ptr, platform::errors::NotFound("Variable (%s) is not found when "
-                                            "saving model, please make sure "
-                                            "that exe.run(startup_program) has "
-                                            "been executed.",
-                                            vec_tensor_name_list[i]));
+        var_ptr,
+        platform::errors::NotFound("Variable (%s) is not found when "
+                                   "saving model, please make sure "
+                                   "that exe.run(startup_program) has "
+                                   "been executed.",
+                                   vec_tensor_name_list[i]));
     Tensor* tensor = var_ptr->GetMutable<LoDTensor>();
-    PADDLE_ENFORCE_EQ(tensor->IsInitialized(), true,
+    PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "Paramter [%s] is not initialzed, please make sure "
                           "that exe.run(startup_program) has been executed.",
@@ -147,7 +155,8 @@ bool SaveDygraphVarBaseListToDisk(
 
     Tensor* tensor = var_ptr->GetMutable<LoDTensor>();
 
-    PADDLE_ENFORCE_EQ(tensor->IsInitialized(), true,
+    PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "Paramter [%s] is not initialzed, please make sure "
                           "that exe.run(startup_program) has been executed.",
@@ -172,8 +181,8 @@ LoadDygraphVarBaseListFromDisk(const std::string& file_name) {
 
     auto* tensor = var->MutableVar()->GetMutable<framework::LoDTensor>();
 
-    TensorCopySync(*(load_tensor.second.get()), load_tensor.second->place(),
-                   tensor);
+    TensorCopySync(
+        *(load_tensor.second.get()), load_tensor.second->place(), tensor);
 
     vec_res.emplace_back(var);
   }
@@ -183,16 +192,19 @@ LoadDygraphVarBaseListFromDisk(const std::string& file_name) {
 
 bool LoadStaticNameListFromDisk(
     const std::string& file_name,
-    const std::vector<std::string>& vec_tensor_name_list, const Scope& scope) {
+    const std::vector<std::string>& vec_tensor_name_list,
+    const Scope& scope) {
   std::map<std::string, std::shared_ptr<Tensor>> map_load_tensor;
   LoadTensorFromDisk(file_name, &map_load_tensor);
 
   for (size_t i = 0; i < vec_tensor_name_list.size(); ++i) {
     auto it = map_load_tensor.find(vec_tensor_name_list[i]);
-    PADDLE_ENFORCE_NE(it, map_load_tensor.end(),
+    PADDLE_ENFORCE_NE(it,
+                      map_load_tensor.end(),
                       platform::errors::NotFound(
                           "Parameter (%s) not found in model file (%s).",
-                          vec_tensor_name_list[i], file_name));
+                          vec_tensor_name_list[i],
+                          file_name));
     auto var_ptr = scope.FindVar(vec_tensor_name_list[i]);
 
     PADDLE_ENFORCE_NOT_NULL(
@@ -210,20 +222,24 @@ bool LoadStaticNameListFromDisk(
             "please make sure that exe.run(startup_program) has been executed.",
             vec_tensor_name_list[i]));
 
-    PADDLE_ENFORCE_EQ(tensor->IsInitialized(), true,
+    PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "Paramter [%s] is not initialzed, "
                           "please make sure that exe.run(startup_program) has "
                           "been executed.v",
                           vec_tensor_name_list[i]));
     PADDLE_ENFORCE_EQ(
-        tensor->dims(), it->second->dims(),
+        tensor->dims(),
+        it->second->dims(),
         platform::errors::InvalidArgument(
             "Shape does not match, the program requires a parameter with a "
             "shape of "
             "(%s), while the loaded parameter (namely [ %s ]) has a shape of "
             "(%s).",
-            tensor->dims(), vec_tensor_name_list[i], it->second->dims()));
+            tensor->dims(),
+            vec_tensor_name_list[i],
+            it->second->dims()));
 
     TensorCopySync(*(it->second.get()), tensor->place(), tensor);
 
@@ -251,7 +267,8 @@ bool SaveTensorToDisk(const std::string& file_name,
 
   std::ofstream fout(file_name, std::ios::binary);
   PADDLE_ENFORCE_EQ(
-      fout.is_open(), true,
+      fout.is_open(),
+      true,
       platform::errors::Unavailable("File (%s) open failed.", file_name));
 
   // first 256 byte for reserve for fulture upgrade
@@ -328,7 +345,8 @@ bool LoadTensorFromDisk(
   std::ifstream fin(file_name, std::ios::binary);
 
   PADDLE_ENFORCE_EQ(
-      fin.is_open(), true,
+      fin.is_open(),
+      true,
       platform::errors::Unavailable("File (%s) open failed.", file_name));
 
   ReadReserveBuffer(fin);
@@ -342,8 +360,10 @@ bool LoadTensorFromDisk(
     uint32_t version;
     fin.read(reinterpret_cast<char*>(&version), sizeof(version));
     CheckInStreamState(fin, sizeof(version));
-    PADDLE_ENFORCE_EQ(version, 0U, platform::errors::InvalidArgument(
-                                       "Only version 0 tensor is supported."));
+    PADDLE_ENFORCE_EQ(version,
+                      0U,
+                      platform::errors::InvalidArgument(
+                          "Only version 0 tensor is supported."));
     proto::VarType::TensorDesc desc;
     {
       // int32_t size
@@ -355,21 +375,23 @@ bool LoadTensorFromDisk(
       fin.read(reinterpret_cast<char*>(buf.get()), size);
       CheckInStreamState(fin, sizeof(size));
       PADDLE_ENFORCE_EQ(
-          desc.ParseFromArray(buf.get(), size), true,
+          desc.ParseFromArray(buf.get(), size),
+          true,
           platform::errors::InvalidArgument("Parse tensor desc failed."));
     }
 
     {  // read tensor
       std::vector<int64_t> dims;
       dims.reserve(static_cast<size_t>(desc.dims().size()));
-      std::copy(desc.dims().begin(), desc.dims().end(),
-                std::back_inserter(dims));
+      std::copy(
+          desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
       auto new_dim = phi::make_ddim(dims);
       tensor_temp->Resize(new_dim);
       void* buf;
-      framework::VisitDataType(desc.data_type(),
-                               DeserializedDataFunctor(&buf, tensor_temp.get(),
-                                                       platform::CPUPlace()));
+      framework::VisitDataType(
+          desc.data_type(),
+          DeserializedDataFunctor(
+              &buf, tensor_temp.get(), platform::CPUPlace()));
       size_t size =
           tensor_temp->numel() * framework::SizeOfType(desc.data_type());
 

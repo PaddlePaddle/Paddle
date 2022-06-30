@@ -210,21 +210,21 @@ void GridSampleKernel(const Context& dev_ctx,
   auto cu_stream = dev_ctx.stream();
   backends::gpu::GpuLaunchConfig config =
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, count);
-  GridSampleCudaKernel<
-      T><<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
-      count,
-      n,
-      c,
-      out_h,
-      out_w,
-      in_h,
-      in_w,
-      x.data<T>(),
-      grid.data<T>(),
-      output_data,
-      enum_mode,
-      enum_padding_mode,
-      align_corners);
+  GridSampleCudaKernel<T>
+      <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
+          count,
+          n,
+          c,
+          out_h,
+          out_w,
+          in_h,
+          in_w,
+          x.data<T>(),
+          grid.data<T>(),
+          output_data,
+          enum_mode,
+          enum_padding_mode,
+          align_corners);
 }
 
 }  // namespace phi

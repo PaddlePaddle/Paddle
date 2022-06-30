@@ -15,6 +15,7 @@
 #pragma once
 
 #include <Python.h>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/operators/utils.h"
@@ -79,8 +80,10 @@ static Py_ssize_t GetSliceIndexFromTensor(const phi::DenseTensor& tensor) {
 // So, I make a revised version of PySlice_GetIndices, named to
 // _PySlice_GetIndices. Try to use _PySlice_Unpack which is more robust than
 // PySlice_GetIndices in the future.
-static int _PySlice_GetIndices(PySliceObject* r, Py_ssize_t length,
-                               Py_ssize_t* start, Py_ssize_t* stop,
+static int _PySlice_GetIndices(PySliceObject* r,
+                               Py_ssize_t length,
+                               Py_ssize_t* start,
+                               Py_ssize_t* stop,
                                Py_ssize_t* step) {
   /* XXX support long ints */
   if (r->step == Py_None) {
@@ -135,13 +138,17 @@ static int _PySlice_GetIndices(PySliceObject* r, Py_ssize_t length,
   return 0;
 }
 
-static void ParseIndexingSlice(
-    framework::LoDTensor* tensor, PyObject* _index,
-    std::vector<int>* slice_axes, std::vector<int>* slice_starts,
-    std::vector<int>* slice_ends, std::vector<int>* slice_strides,
-    std::vector<int>* decrease_axis, std::vector<int>* none_axes,
-    std::vector<int>* infer_flags, std::vector<int>* list_select_idxs,
-    bool* list_select_flag) {
+static void ParseIndexingSlice(framework::LoDTensor* tensor,
+                               PyObject* _index,
+                               std::vector<int>* slice_axes,
+                               std::vector<int>* slice_starts,
+                               std::vector<int>* slice_ends,
+                               std::vector<int>* slice_strides,
+                               std::vector<int>* decrease_axis,
+                               std::vector<int>* none_axes,
+                               std::vector<int>* infer_flags,
+                               std::vector<int>* list_select_idxs,
+                               bool* list_select_flag) {
   // We allow indexing by Integers, Slices, Ellipsis, None, tuples of those
   // types, and list of Bool and Integers.
   // wrap to tuple
@@ -155,7 +162,8 @@ static void ParseIndexingSlice(
     }
   });
   PADDLE_ENFORCE_EQ(
-      tensor->IsInitialized(), true,
+      tensor->IsInitialized(),
+      true,
       platform::errors::InvalidArgument("tensor has not been initialized"));
   const auto& shape = tensor->dims();
   const int rank = shape.size();
@@ -174,7 +182,8 @@ static void ParseIndexingSlice(
     }
   }
 
-  PADDLE_ENFORCE_LE(ell_count, 1,
+  PADDLE_ENFORCE_LE(ell_count,
+                    1,
                     platform::errors::InvalidArgument(
                         "An index can only have a single ellipsis ('...')"));
   int none_count = 0;
@@ -194,7 +203,10 @@ static void ParseIndexingSlice(
           platform::errors::OutOfRange("The starting index %d of slice is out "
                                        "of bounds in tensor %d-th axis, it "
                                        "shound be in the range of [%d, %d).",
-                                       s_t, dim, -dim_len, dim_len));
+                                       s_t,
+                                       dim,
+                                       -dim_len,
+                                       dim_len));
 
       slice_axes->push_back(dim);
       slice_starts->push_back(start);
@@ -226,7 +238,8 @@ static void ParseIndexingSlice(
     } else if (PyList_Check(slice_item)) {
       *list_select_flag = true;
       PADDLE_ENFORCE_EQ(
-          size, 1,
+          size,
+          1,
           platform::errors::InvalidArgument(
               "When index contains a list, its length is excepted to 1, "
               "but received %d",
@@ -244,11 +257,13 @@ static void ParseIndexingSlice(
       }
       if (all_bool) {
         PADDLE_ENFORCE_EQ(
-            list_size, shape[0],
+            list_size,
+            shape[0],
             platform::errors::InvalidArgument(
                 "The dimension of bool index doesn't match indexed array along "
                 "dimension 0, the target dimension is %d, but received %d.",
-                shape[0], list_size));
+                shape[0],
+                list_size));
 
         for (int j = 0; j < list_size; ++j) {
           PyObject* list_item = PyList_GetItem(slice_item, j);
@@ -276,16 +291,19 @@ static void ParseIndexingSlice(
           "by Integers, Slices, Ellipsis, None, tuples of these types "
           "and list of Bool and Integers, but received "
           "%s in %dth slice item",
-          std::string(Py_TYPE(slice_item)->tp_name), i + 1));
+          std::string(Py_TYPE(slice_item)->tp_name),
+          i + 1));
     }
   }
 
   // valid_index is the number of dimensions exclude None index
   const int valid_indexs = size - none_axes->size() - ell_count;
-  PADDLE_ENFORCE_EQ(valid_indexs <= rank, true,
+  PADDLE_ENFORCE_EQ(valid_indexs <= rank,
+                    true,
                     platform::errors::InvalidArgument(
                         "Too many indices (%d) for tensor of dimension %d.",
-                        valid_indexs, rank));
+                        valid_indexs,
+                        rank));
 }
 
 }  // namespace pybind

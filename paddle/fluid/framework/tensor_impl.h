@@ -24,12 +24,14 @@ namespace framework {
 inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
   int rank = src.dims().size();
   PADDLE_ENFORCE_GE(
-      rank, 2, platform::errors::InvalidArgument(
-                   "'ReshapeToMatrix()' is only used for flatten high rank "
-                   "tensors to matrixs. The dimensions of Tensor must be "
-                   "greater or equal than 2. "
-                   "But received dimensions of Tensor is %d",
-                   rank));
+      rank,
+      2,
+      platform::errors::InvalidArgument(
+          "'ReshapeToMatrix()' is only used for flatten high rank "
+          "tensors to matrixs. The dimensions of Tensor must be "
+          "greater or equal than 2. "
+          "But received dimensions of Tensor is %d",
+          rank));
   if (rank == 2) {
     return src;
   }

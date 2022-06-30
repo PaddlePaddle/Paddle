@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/ipu/optimizer_extract_pass.h"
 
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -30,9 +31,10 @@ std::set<std::string> ignored_ops = {
     "elementwise_max",
     "elementwise_div",
     "elementwise_mul",
-    "scale",           // adamax
-    "assign",          // adamw
-    "squared_l2_norm"  // gradient_clip_norm
+    "scale",            // adamax
+    "assign",           // adamw
+    "squared_l2_norm",  // gradient_clip_norm
+    "cast",             // mix-precision support
 };
 
 const bool startswith(const std::string& str, const std::string& pre) {
@@ -67,7 +69,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
   std::vector<float> weight_decay_values{};
 
   // use map store <op_type, op_ptr> ?
-  for (auto* node : graph->Nodes()) {
+  for (auto* node : TopologySortOperations(*graph)) {
     if (!node->IsOp()) {
       continue;
     }
@@ -113,21 +115,25 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
         auto type = std::string{"sgd"};
         // auto LearningRate = op->Input("LearningRate");
         auto use_nesterov = BOOST_GET_CONST(bool, op->GetAttr("use_nesterov"));
-        PADDLE_ENFORCE_EQ(use_nesterov, false,
+        PADDLE_ENFORCE_EQ(use_nesterov,
+                          false,
                           platform::errors::Unimplemented(
                               "ipu does not support nesterov mode."));
         auto regularization_method =
             BOOST_GET_CONST(std::string, op->GetAttr("regularization_method"));
-        PADDLE_ENFORCE_NE(regularization_method, "l1_decay",
+        PADDLE_ENFORCE_NE(regularization_method,
+                          "l1_decay",
                           platform::errors::Unimplemented(
                               "ipu does not support l1_decay mode."));
         auto multi_precision =
             BOOST_GET_CONST(bool, op->GetAttr("multi_precision"));
-        PADDLE_ENFORCE_EQ(multi_precision, false,
+        PADDLE_ENFORCE_EQ(multi_precision,
+                          false,
                           platform::errors::Unimplemented(
                               "ipu does not support multi_precision mode."));
         auto rescale_grad = BOOST_GET_CONST(float, op->GetAttr("rescale_grad"));
-        PADDLE_ENFORCE_EQ(rescale_grad, 1.0,
+        PADDLE_ENFORCE_EQ(rescale_grad,
+                          1.0,
                           platform::errors::Unimplemented(
                               "ipu does not support rescale_grad mode."));
         auto regularization_coeff =
@@ -148,10 +154,12 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
         auto lazy_mode = BOOST_GET_CONST(bool, op->GetAttr("lazy_mode"));
         auto multi_precision =
             BOOST_GET_CONST(bool, op->GetAttr("multi_precision"));
-        PADDLE_ENFORCE_EQ(lazy_mode, false,
+        PADDLE_ENFORCE_EQ(lazy_mode,
+                          false,
                           platform::errors::Unimplemented(
                               "ipu does not support lazy_mode mode."));
-        PADDLE_ENFORCE_EQ(multi_precision, false,
+        PADDLE_ENFORCE_EQ(multi_precision,
+                          false,
                           platform::errors::Unimplemented(
                               "ipu does not support multi_precision mode."));
         new_op.SetAttr("type", type);
@@ -266,11 +274,13 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       VLOG(10) << "found loss op type: " << op->Type();
       auto outputs = op->Outputs();
       PADDLE_ENFORCE_EQ(
-          outputs.size(), 1,
+          outputs.size(),
+          1,
           platform::errors::InvalidArgument("Can only support one loss key"));
       auto losses = outputs.begin()->second;
       PADDLE_ENFORCE_EQ(
-          losses.size(), 1,
+          losses.size(),
+          1,
           platform::errors::InvalidArgument("Can only support one loss name"));
       auto loss_var = losses.front();
       new_op.SetAttr("loss_var", loss_var);

@@ -14,10 +14,9 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
-
-#include "paddle/fluid/platform/device_context.h"
 
 namespace phi {
 
@@ -152,8 +151,8 @@ void LeakyReluDoubleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void TanhDoubleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
-                          const DenseTensor& ddx,
                           const DenseTensor& dout,
+                          const DenseTensor& ddx,
                           DenseTensor* dout_new,
                           DenseTensor* ddout) {
   if (dout_new) {
@@ -171,10 +170,10 @@ void TanhDoubleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void TanhTripleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
-                          const DenseTensor& ddx,
                           const DenseTensor& dout,
-                          const DenseTensor& d_ddout,
+                          const DenseTensor& ddx,
                           const DenseTensor& d_dout_new,
+                          const DenseTensor& d_ddout,
                           DenseTensor* d_out_new,
                           DenseTensor* d_dout,
                           DenseTensor* d_ddx) {
@@ -265,7 +264,7 @@ void SigmoidTripleGradKernel(const Context& dev_ctx,
                              const DenseTensor& dout,
                              const DenseTensor& ddx,
                              const DenseTensor& d_dout_new,
-                             const DenseTensor& d_ddout,
+                             const paddle::optional<DenseTensor>& d_ddout,
                              DenseTensor* d_out_new,
                              DenseTensor* d_dout,
                              DenseTensor* d_ddx) {
@@ -274,11 +273,11 @@ void SigmoidTripleGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(d_dout);
   }
   if (d_out_new) {
-    d_dout->Resize(out.dims());
+    d_out_new->Resize(out.dims());
     dev_ctx.template Alloc<T>(d_out_new);
   }
   if (d_ddx) {
-    d_dout->Resize(ddx.dims());
+    d_ddx->Resize(ddx.dims());
     dev_ctx.template Alloc<T>(d_ddx);
   }
   funcs::SigmoidTripleGradFunctor<T> functor;
@@ -286,7 +285,7 @@ void SigmoidTripleGradKernel(const Context& dev_ctx,
           &out,
           &ddx,
           &dout,
-          &d_ddout,
+          d_ddout.get_ptr(),
           &d_dout_new,
           d_dout,
           d_out_new,
@@ -333,6 +332,89 @@ void PowGradKernel(const Context& dev_ctx,
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = factor.to<float>();
   functor(*place, x_flatten, nullptr, dout_flatten, dx_flatten);
+}
+
+template <typename T, typename Context>
+void SqrtDoubleGradKernel(const Context& dev_ctx,
+                          const DenseTensor& out,
+                          const DenseTensor& dx,
+                          const DenseTensor& ddx,
+                          DenseTensor* dout,
+                          DenseTensor* ddout) {
+  if (dout) {
+    dout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(dout);
+  }
+  if (ddout) {
+    ddout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(ddout);
+  }
+
+  phi::funcs::SqrtGradGradFunctor<T> functor;
+  functor(dev_ctx, &out, &dx, &ddx, dout, ddout);
+}
+
+// rsqrt Grad: dx = -0.5 * dy * y * y * y
+// rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = (3 / y) * dx * ddx
+template <typename T, typename Context>
+void RsqrtDoubleGradKernel(const Context& dev_ctx,
+                           const DenseTensor& out,
+                           const DenseTensor& dx,
+                           const DenseTensor& ddx,
+                           DenseTensor* dout,
+                           DenseTensor* ddout) {
+  if (dout) {
+    dout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(dout);
+  }
+  if (ddout) {
+    ddout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(ddout);
+  }
+
+  phi::funcs::RsqrtGradGradFunctor<T> functor;
+  functor(dev_ctx, &out, &dx, &ddx, dout, ddout);
+}
+
+template <typename T, typename Context>
+void CeluDoubleGradKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& dout,
+                          const DenseTensor& ddx,
+                          float alpha,
+                          DenseTensor* dx,
+                          DenseTensor* ddout) {
+  if (dx) {
+    dx->Resize(x.dims());
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (ddout) {
+    dev_ctx.template Alloc<T>(ddout);
+  }
+
+  phi::funcs::CELUGradGradFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = alpha;
+  functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
+}
+
+template <typename T, typename Context>
+void SquareDoubleGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& dout,
+                            const DenseTensor& ddx,
+                            DenseTensor* dx,
+                            DenseTensor* ddout) {
+  if (dx) {
+    dx->Resize(x.dims());
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (ddout) {
+    dev_ctx.template Alloc<T>(ddout);
+  }
+
+  phi::funcs::SquareGradGradFunctor<T> functor;
+  functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
 }
 
 }  // namespace phi

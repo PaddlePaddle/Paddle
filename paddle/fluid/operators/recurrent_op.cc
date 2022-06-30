@@ -65,14 +65,18 @@ static void ClearStepScopes(const platform::DeviceContext &dev_ctx,
 }
 
 StepScopes::StepScopes(const platform::DeviceContext &dev_ctx,
-                       const framework::Scope &parent, StepScopeVar *scopes,
-                       bool is_train, size_t seq_len, bool is_backward)
+                       const framework::Scope &parent,
+                       StepScopeVar *scopes,
+                       bool is_train,
+                       size_t seq_len,
+                       bool is_backward)
     : counter_(is_backward ? seq_len - 1 : 0UL),
       scopes_(scopes),
       is_train_(is_train),
       is_backward_(is_backward) {
   size_t num_step_scopes = is_train ? seq_len : 2;
-  PADDLE_ENFORCE_EQ(is_train || !is_backward, true,
+  PADDLE_ENFORCE_EQ(is_train || !is_backward,
+                    true,
                     platform::errors::PreconditionNotMet(
                         "Cannot backward when is not training"));
   if (!is_backward_) {
@@ -93,7 +97,8 @@ framework::Scope &StepScopes::ExScope() {
 
 void StepScopes::BackwardNext(const platform::DeviceContext &dev_ctx,
                               framework::Scope *parent_scope) {
-  PADDLE_ENFORCE_EQ(is_backward_, true,
+  PADDLE_ENFORCE_EQ(is_backward_,
+                    true,
                     platform::errors::PreconditionNotMet(
                         "Cannot get backward next scope when is forward"));
   if (counter_ + 2 == scopes_->size()) {
@@ -105,7 +110,8 @@ void StepScopes::BackwardNext(const platform::DeviceContext &dev_ctx,
 }
 
 void StepScopes::ForwardNext() {
-  PADDLE_ENFORCE_EQ(is_backward_, false,
+  PADDLE_ENFORCE_EQ(is_backward_,
+                    false,
                     platform::errors::PreconditionNotMet(
                         "Cannot get forward next scope when is backward"));
   ++counter_;
@@ -116,7 +122,8 @@ framework::Scope &StepScopes::GetScope(size_t scope_id) const {
     scope_id %= 2;
   }
   PADDLE_ENFORCE_LT(
-      scope_id, scopes_->size(),
+      scope_id,
+      scopes_->size(),
       platform::errors::InvalidArgument(
           "Input scope_id is greater than scopes size in RecurrentOp"));
   return *(*scopes_)[scope_id];
@@ -138,14 +145,16 @@ int64_t RecurrentBase::GetSequenceLength(const framework::Scope &scope) const {
   int64_t seq_len = -1;
   auto &all_inputs = Inputs(kInputs);
   PADDLE_ENFORCE_EQ(
-      all_inputs.empty(), false,
+      all_inputs.empty(),
+      false,
       platform::errors::InvalidArgument("RecurrentOp gets empty input"));
   for (auto &iname : all_inputs) {
     auto *var = scope.FindVar(iname);
     PADDLE_ENFORCE_NOT_NULL(var,
                             platform::errors::InvalidArgument(
                                 "RecurrentOp finds var %s is NULL", iname));
-    PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(),
+                      true,
                       platform::errors::InvalidArgument(
                           "RecurrentOp only accepts LoDTensor as input but "
                           "input var %s is not LoDTensor",
@@ -154,14 +163,16 @@ int64_t RecurrentBase::GetSequenceLength(const framework::Scope &scope) const {
     if (seq_len == -1) {
       seq_len = dim[0];
     } else {
-      PADDLE_ENFORCE_EQ(seq_len, dim[0],
+      PADDLE_ENFORCE_EQ(seq_len,
+                        dim[0],
                         platform::errors::InvalidArgument(
                             "Sequence length of input %s in RecurrentOp is NOT "
                             "equal to sequence length of previous input",
                             iname));
     }
   }
-  PADDLE_ENFORCE_GE(seq_len, 0,
+  PADDLE_ENFORCE_GE(seq_len,
+                    0,
                     platform::errors::InvalidArgument(
                         "RecurrentOp gets invalid sequence length. Expected "
                         "seq_len >= 0. Received seq_len = %d",
@@ -177,7 +188,10 @@ void RecurrentBase::LinkTensor(const framework::Scope &src_scope,
                                framework::Scope *dst_scope,
                                const std::vector<std::string> &dst_vars) {
   LinkTensorWithCallback(
-      src_scope, src_vars, dst_scope, dst_vars,
+      src_scope,
+      src_vars,
+      dst_scope,
+      dst_vars,
       [&](const framework::Tensor &src, framework::Tensor *dst) {
         dst->ShareDataWith(src);
       });
@@ -213,7 +227,8 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
   auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
   auto *program = block->Program();
-  auto ctx = executor.Prepare(*program, block->ID(),
+  auto ctx = executor.Prepare(*program,
+                              block->ID(),
                               Attr<std::vector<std::string>>(
                                   kSkipEagerDeletionVars), /*skip_ref_cnt_vars*/
                               true);
@@ -228,7 +243,10 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
     // Link outside::input --> inside::input
     //   inside::input = outside::input[seq_offset: seq_offset+1]
     LinkTensorWithCallback(
-        scope, Inputs(kInputs), &cur_scope, Inputs(kInputs),
+        scope,
+        Inputs(kInputs),
+        &cur_scope,
+        Inputs(kInputs),
         [&seq_offset](const framework::Tensor &outside,
                       framework::Tensor *inside) {
           inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
@@ -240,13 +258,17 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
     if (has_state) {
       if (i == 0) {
         // Link initial states  --> ex_states
-        LinkTensor(scope, Inputs(kInitialStates), &cur_scope,
+        LinkTensor(scope,
+                   Inputs(kInitialStates),
+                   &cur_scope,
                    Attr<std::vector<std::string>>(kExStates));
       } else {
         auto &ex_scope = scopes.ExScope();
         // Link ex_scope::state --> cur_scope::ex_state
-        LinkTensor(ex_scope, Attr<std::vector<std::string>>(kStates),
-                   &cur_scope, Attr<std::vector<std::string>>(kExStates));
+        LinkTensor(ex_scope,
+                   Attr<std::vector<std::string>>(kStates),
+                   &cur_scope,
+                   Attr<std::vector<std::string>>(kExStates));
       }
     }
 
@@ -255,12 +277,17 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
     executor.CreateVariables(ctx->prog_, &cur_scope, ctx->block_id_);
 
     // Linked now, execute!
-    executor.RunPreparedContext(ctx.get(), &cur_scope,
+    executor.RunPreparedContext(ctx.get(),
+                                &cur_scope,
                                 false /*create_local_scope*/,
-                                false /*create_vars*/, true /* keep_kids */);
+                                false /*create_vars*/,
+                                true /* keep_kids */);
     if (i == 0) {
       LinkTensorWithCallback(
-          cur_scope, Outputs(kOutputs), scope, Outputs(kOutputs),
+          cur_scope,
+          Outputs(kOutputs),
+          scope,
+          Outputs(kOutputs),
           [&](const framework::LoDTensor &src_tensor,
               framework::LoDTensor *dst_tensor) {
             // create output tensor at begin
@@ -274,7 +301,10 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
           });
     } else {
       LinkTensorWithCallback(
-          cur_scope, Outputs(kOutputs), scope, Outputs(kOutputs),
+          cur_scope,
+          Outputs(kOutputs),
+          scope,
+          Outputs(kOutputs),
           [&](const framework::LoDTensor &src_tensor,
               framework::LoDTensor *dst_tensor) {
             auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
@@ -295,10 +325,14 @@ StepScopes RecurrentOp::CreateStepScopes(const platform::DeviceContext &dev_ctx,
   // fault in multithreading in eval process. The performance drop of
   // adding mutex need to be fixed.
   auto *var = scope.FindVar(Output(kStepScopes));
-  PADDLE_ENFORCE_NOT_NULL(var, platform::errors::InvalidArgument(
-                                   "RecurrentOp gets empty StepScopes var"));
-  return StepScopes(dev_ctx, scope, var->GetMutable<StepScopeVar>(),
-                    Attr<bool>(kIsTrain), seq_len);
+  PADDLE_ENFORCE_NOT_NULL(var,
+                          platform::errors::InvalidArgument(
+                              "RecurrentOp gets empty StepScopes var"));
+  return StepScopes(dev_ctx,
+                    scope,
+                    var->GetMutable<StepScopeVar>(),
+                    Attr<bool>(kIsTrain),
+                    seq_len);
 }
 
 RecurrentGradOp::RecurrentGradOp(const std::string &type,
@@ -322,9 +356,11 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
   framework::Executor executor(place);
   auto *block = Attr<framework::BlockDesc *>(kStepBlock);
   auto *program = block->Program();
-  auto ctx = executor.Prepare(
-      *program, block->ID(), Attr<std::vector<std::string>>(
-                                 kSkipEagerDeletionVars) /*skip_ref_cnt_vars*/);
+  auto ctx =
+      executor.Prepare(*program,
+                       block->ID(),
+                       Attr<std::vector<std::string>>(
+                           kSkipEagerDeletionVars) /*skip_ref_cnt_vars*/);
 
   for (size_t step_id = 0; step_id < seq_len; ++step_id) {
     size_t seq_offset = reverse ? step_id : seq_len - step_id - 1;
@@ -334,7 +370,10 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
     // Link outside::output_grads --> inside::output_grads
     //   inside::output_grad = outside::output_grad[seq_offset:seq_offset+1]
     LinkTensorWithCallback(
-        scope, Inputs(kOutputGrads), &cur_scope, Inputs(kOutputGrads),
+        scope,
+        Inputs(kOutputGrads),
+        &cur_scope,
+        Inputs(kOutputGrads),
         [&](const framework::Tensor &outside, framework::Tensor *inside) {
           inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
           auto dims = phi::vectorize(inside->dims());
@@ -346,7 +385,8 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
 
     if (VLOG_IS_ON(10)) {
       std::ostringstream sout;
-      std::copy(og_set.begin(), og_set.end(),
+      std::copy(og_set.begin(),
+                og_set.end(),
                 std::ostream_iterator<std::string>(sout, ","));
       VLOG(10) << " RNN output gradients = [" << sout.str() << "]";
     }
@@ -364,7 +404,8 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
         auto cur_state_grads =
             GradVarLists(Attr<std::vector<std::string>>(kStates));
 
-        PADDLE_ENFORCE_EQ(ex_state_grads.size(), cur_state_grads.size(),
+        PADDLE_ENFORCE_EQ(ex_state_grads.size(),
+                          cur_state_grads.size(),
                           platform::errors::InvalidArgument(
                               "lengths of ex_states and cur_states are not "
                               "equal in RecurrentGradOp"));
@@ -387,26 +428,31 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
     //   outside::output[seq_offset: seq_offset + 1] = inside::output
     executor.CreateVariables(ctx->prog_, &cur_scope, ctx->block_id_);
     if (step_id > 0) {
-      LinkTensorWithCallback(scope, Outputs(kInputGrads), cur_scope,
-                             GradVarLists(Inputs(kInputs)),
-                             [&](const framework::LoDTensor &src_tensor,
-                                 framework::LoDTensor *dst_tensor) {
-                               if (src_tensor.memory_size() ==
-                                   0) {  // Inside Gradient is not created.
-                                 return;
-                               }
-                               framework::Tensor src_slice =
-                                   src_tensor.Slice(seq_offset, seq_offset + 1);
-                               dst_tensor->ShareDataWith(src_slice);
-                             },
-                             true /*is_backward*/);
+      LinkTensorWithCallback(
+          scope,
+          Outputs(kInputGrads),
+          cur_scope,
+          GradVarLists(Inputs(kInputs)),
+          [&](const framework::LoDTensor &src_tensor,
+              framework::LoDTensor *dst_tensor) {
+            if (src_tensor.memory_size() ==
+                0) {  // Inside Gradient is not created.
+              return;
+            }
+            framework::Tensor src_slice =
+                src_tensor.Slice(seq_offset, seq_offset + 1);
+            dst_tensor->ShareDataWith(src_slice);
+          },
+          true /*is_backward*/);
     }
 
     VLOG(5) << "Recurrent memory linking finished ";
     // Run step block with cur_scope
-    executor.RunPreparedContext(ctx.get(), &cur_scope,
+    executor.RunPreparedContext(ctx.get(),
+                                &cur_scope,
                                 false /*create_local_scope*/,
-                                false /*create_vars*/, true /* keep_kids */);
+                                false /*create_vars*/,
+                                true /* keep_kids */);
 
     VLOG(5) << "executor.Run finished ";
 
@@ -419,7 +465,8 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
     {
       auto &pg_names = Outputs(kParamGrads);
       auto &p_names = Inputs(kParameters);
-      PADDLE_ENFORCE_EQ(pg_names.size(), p_names.size(),
+      PADDLE_ENFORCE_EQ(pg_names.size(),
+                        p_names.size(),
                         platform::errors::InvalidArgument(
                             "Sizes of Parameters and ParamGrads are not equal "
                             "in RecurrentGradOp"));
@@ -443,9 +490,11 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
           attrs["shape"] = phi::vectorize<int>(inside_tensor.dims());
           attrs["value"] = 0.0f;
 
-          auto zero_op = framework::OpRegistry::CreateOp(
-              "fill_constant", framework::VariableNameMap{},
-              {{"Out", {pg_names[param_id]}}}, attrs);
+          auto zero_op =
+              framework::OpRegistry::CreateOp("fill_constant",
+                                              framework::VariableNameMap{},
+                                              {{"Out", {pg_names[param_id]}}},
+                                              attrs);
           zero_op->Run(scope, place);
         }
 
@@ -453,7 +502,8 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
 
         // sum gradient
         auto sum_op = framework::OpRegistry::CreateOp(
-            "sum", {{"X", {pg_names[param_id], new_inside_name}}},
+            "sum",
+            {{"X", {pg_names[param_id], new_inside_name}}},
             {{"Out", {pg_names[param_id]}}},
             framework::AttributeMap{{"use_mkldnn", {false}}});
         sum_op->Run(cur_scope, place);
@@ -467,7 +517,10 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
     //   outside::input_grad[seq_offset: seq_offset + 1] = inside::input_grad
     if (step_id == 0) {
       LinkTensorWithCallback(
-          cur_scope, GradVarLists(Inputs(kInputs)), scope, Outputs(kInputGrads),
+          cur_scope,
+          GradVarLists(Inputs(kInputs)),
+          scope,
+          Outputs(kInputGrads),
           [&](const framework::LoDTensor &inside,
               framework::LoDTensor *outside) {
             if (inside.memory_size() == 0) {  // IG is not created.
@@ -488,8 +541,10 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
       if (step_id + 1 == seq_len) {  // at_end
         // copy initialize states gradient from inside to outside
         LinkTensorWithCallback(
-            cur_scope, GradVarLists(Attr<std::vector<std::string>>(kExStates)),
-            scope, Outputs(kInitStateGrads),
+            cur_scope,
+            GradVarLists(Attr<std::vector<std::string>>(kExStates)),
+            scope,
+            Outputs(kInitStateGrads),
             [&](const framework::LoDTensor &inside,
                 framework::LoDTensor *outside) {
               outside->Resize(inside.dims());
@@ -512,14 +567,19 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
 }
 
 StepScopes RecurrentGradOp::CreateStepScopes(
-    const platform::DeviceContext &dev_ctx, const framework::Scope &scope,
+    const platform::DeviceContext &dev_ctx,
+    const framework::Scope &scope,
     size_t seq_len) const {
   auto *var = scope.FindVar(Input(kStepScopes));
   PADDLE_ENFORCE_NOT_NULL(var,
                           platform::errors::InvalidArgument(
                               "StepScopes var is empty in RecurrentGradOp"));
-  return StepScopes(dev_ctx, scope, var->GetMutable<StepScopeVar>(),
-                    Attr<bool>(kIsTrain), seq_len, true /*is_backward*/);
+  return StepScopes(dev_ctx,
+                    scope,
+                    var->GetMutable<StepScopeVar>(),
+                    Attr<bool>(kIsTrain),
+                    seq_len,
+                    true /*is_backward*/);
 }
 
 std::unordered_set<std::string> RecurrentGradOp::List2Set(
@@ -541,7 +601,9 @@ std::vector<std::string> RecurrentGradOp::GradVarLists(
     const std::vector<std::string> &var_names) {
   std::vector<std::string> retv;
   retv.reserve(var_names.size());
-  std::transform(var_names.begin(), var_names.end(), std::back_inserter(retv),
+  std::transform(var_names.begin(),
+                 var_names.end(),
+                 std::back_inserter(retv),
                  framework::GradVarName);
   return retv;
 }
@@ -564,19 +626,20 @@ class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
               "StepScopes contain all local variables in each time step.");
     AddAttr<bool>(RecurrentBase::kHasStates, "Whether has states.")
         .SetDefault(false);
-    AddAttr<std::vector<std::string>>(
-        RecurrentBase::kExStates,
-        string::Sprintf(
-            R"DOC(The ex-state variable names.
+    AddAttr<std::vector<std::string>>(RecurrentBase::kExStates,
+                                      string::Sprintf(
+                                          R"DOC(The ex-state variable names.
 The ex-state means the state value in the ex-timestep or the previous time step
 [%s, %s, %s] must be the same order)DOC",
-            RecurrentBase::kExStates, RecurrentBase::kStates,
-            RecurrentBase::kInitStateGrads));
+                                          RecurrentBase::kExStates,
+                                          RecurrentBase::kStates,
+                                          RecurrentBase::kInitStateGrads));
     AddAttr<std::vector<std::string>>(
         RecurrentBase::kStates,
         string::Sprintf(
             "The state variable names. [%s, %s, %s] must be the same order",
-            RecurrentBase::kExStates, RecurrentBase::kStates,
+            RecurrentBase::kExStates,
+            RecurrentBase::kStates,
             RecurrentBase::kInitStateGrads));
     AddAttr<framework::BlockDesc *>(RecurrentBase::kStepBlock,
                                     "The step block inside RNN");
@@ -604,7 +667,8 @@ if reverse is True
       |          |          |         |
       v          v          v         v
       o          o          o         o
-)DOC").SetDefault(false);
+)DOC")
+        .SetDefault(false);
     AddAttr<bool>(RecurrentBase::kIsTrain, "").SetDefault(true);
     AddAttr<std::vector<std::string>>(RecurrentBase::kSkipEagerDeletionVars,
                                       "Vars that would skip eager deletion."
@@ -663,22 +727,26 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
           ctx->Attrs()
               .Get<std::vector<std::string>>(RecurrentBase::kExStates)
               .size(),
-          0, platform::errors::InvalidArgument("The Attr(%s) should be empty.",
-                                               RecurrentBase::kExStates));
+          0,
+          platform::errors::InvalidArgument("The Attr(%s) should be empty.",
+                                            RecurrentBase::kExStates));
       PADDLE_ENFORCE_EQ(
           ctx->Attrs()
               .Get<std::vector<std::string>>(RecurrentBase::kStates)
               .size(),
-          0, platform::errors::InvalidArgument("The Attr(%s) should be empty.",
-                                               RecurrentBase::kStates));
+          0,
+          platform::errors::InvalidArgument("The Attr(%s) should be empty.",
+                                            RecurrentBase::kStates));
     }
 
     PADDLE_ENFORCE_EQ(
-        ctx->HasInputs(RecurrentBase::kInputs), true,
+        ctx->HasInputs(RecurrentBase::kInputs),
+        true,
         platform::errors::InvalidArgument("The input(%s) should not be empty.",
                                           RecurrentBase::kInputs));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInputs(RecurrentBase::kOutputs), true,
+        ctx->HasInputs(RecurrentBase::kOutputs),
+        true,
         platform::errors::InvalidArgument("The input(%s) should not be empty.",
                                           RecurrentBase::kOutputs));
 
@@ -691,7 +759,8 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
     }
 
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutputs(framework::GradVarName(RecurrentBase::kInputs)), true,
+        ctx->HasOutputs(framework::GradVarName(RecurrentBase::kInputs)),
+        true,
         platform::errors::InvalidArgument(
             "The output of(%s) should not be empty.",
             framework::GradVarName(RecurrentBase::kInputs)));
@@ -702,9 +771,10 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
     if (ctx->HasInputs(RecurrentBase::kParameters)) {
       PADDLE_ENFORCE_EQ(
           ctx->HasOutputs(framework::GradVarName(RecurrentBase::kParameters)),
-          true, platform::errors::InvalidArgument(
-                    "The output of(%s) should not be empty.",
-                    framework::GradVarName(RecurrentBase::kParameters)));
+          true,
+          platform::errors::InvalidArgument(
+              "The output of(%s) should not be empty.",
+              framework::GradVarName(RecurrentBase::kParameters)));
       ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kParameters),
                          ctx->GetInputsDim(RecurrentBase::kParameters));
     }
@@ -715,8 +785,10 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
 }  // namespace paddle
 
 REGISTER_OPERATOR(
-    recurrent, paddle::operators::RecurrentOp,
+    recurrent,
+    paddle::operators::RecurrentOp,
     paddle::operators::RecurrentOpProtoMaker,
     paddle::operators::RecurrentGradOpMaker<paddle::framework::OpDesc>);
-REGISTER_OPERATOR(recurrent_grad, paddle::operators::RecurrentGradOp,
+REGISTER_OPERATOR(recurrent_grad,
+                  paddle::operators::RecurrentGradOp,
                   paddle::operators::RecurrentGradOpShapeInference);

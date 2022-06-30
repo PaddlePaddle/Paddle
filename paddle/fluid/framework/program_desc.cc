@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/program_desc.h"
+
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/version.h"
 
@@ -58,9 +59,12 @@ ProgramDesc::ProgramDesc() {
 
 ProgramDesc::ProgramDesc(const ProgramDesc &o) {
   desc_ = o.desc_;
+  std::vector<framework::BlockDesc *> old_block_desc;
   for (int i = 0; i < desc_.blocks_size(); ++i) {
     auto *block = desc_.mutable_blocks(i);
     blocks_.emplace_back(new BlockDesc(*o.blocks_[i], block, this));
+    // record all block desc's ptr from origin program
+    old_block_desc.emplace_back(o.blocks_[i].get());
   }
   for (size_t block_id = 0; block_id < blocks_.size(); ++block_id) {
     auto all_ops = blocks_[block_id]->AllOps();
@@ -69,9 +73,22 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
 
       for (const std::string &attr_name : op->AttrNames()) {
         if (op->GetAttrType(attr_name) == proto::AttrType::BLOCK) {
-          int sub_block_id =
-              o.Block(block_id).Op(op_id)->GetBlockAttrId(attr_name);
-          op->SetBlockAttr(attr_name, MutableBlock(sub_block_id));
+          framework::BlockDesc *block_desc =
+              BOOST_GET_CONST(framework::BlockDesc *, op->GetAttr(attr_name));
+          if (std::find(old_block_desc.begin(),
+                        old_block_desc.end(),
+                        block_desc) != old_block_desc.end()) {
+            // The block is owned by the origin program. Just use id to get
+            // the corresponding block.
+            int sub_block_id =
+                o.Block(block_id).Op(op_id)->GetBlockAttrId(attr_name);
+            op->SetBlockAttr(attr_name, MutableBlock(sub_block_id));
+          } else {
+            // The block is not owned by the origin program. Should copy
+            // the real block desc instead of logical block in the program.
+            VLOG(3) << "Set op's block attr with the original block";
+            op->SetBlockAttr(attr_name, block_desc);
+          }
         } else if (op->GetAttrType(attr_name) == proto::AttrType::BLOCKS) {
           std::vector<int> sub_block_ids =
               o.Block(block_id).Op(op_id)->GetBlocksAttrIds(attr_name);
@@ -98,7 +115,8 @@ void ProgramDesc::CopyFrom(const proto::ProgramDesc &desc) {
 }
 
 ProgramDesc::ProgramDesc(const std::string &binary_str) {
-  PADDLE_ENFORCE_EQ(desc_.ParseFromString(binary_str), true,
+  PADDLE_ENFORCE_EQ(desc_.ParseFromString(binary_str),
+                    true,
                     platform::errors::InvalidArgument(
                         "Failed to parse program_desc from binary string."));
   InitFromProto();

@@ -11,9 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#Taken and modified for fairscale from:
-#    https://github.com/facebookresearch/fairscale/blob/main/fairscale/nn/misc/param_bucket.py
-#Commit: 8acbec718f3c70a6b9785470bb9e05cd84fc3f8e
+
+# The file has been adapted from fairscale file:
+# https://github.com/facebookresearch/fairscale/blob/main/fairscale/nn/misc/param_bucket.py
+# Git commit hash: 8acbec718f3c70a6b9785470bb9e05cd84fc3f8e
+# We retain the following license from the original files:
+
+# Copyright (c) Facebook, Inc. and its affiliates. All rights reserved.
+#
+# This source code is licensed under the BSD license found in the
+# LICENSE file in the root directory of this source tree.
 
 import os
 import time
@@ -55,11 +62,11 @@ class InternalStorage:
         Move the underlying buffer
         """
         assert self.buffer is not None, "Cannot move a collapsed bucket, please rebuild it"
-        assert (dtype == Type.fp32.value or
-                Type.fp16.value), "Conversion type is not supported now"
+        assert (dtype == Type.fp32.value
+                or Type.fp16.value), "Conversion type is not supported now"
 
-        dev_id = 0 if paddle.get_device() == "cpu" else int(paddle.get_device()
-                                                            .split(":")[1])
+        dev_id = 0 if paddle.get_device() == "cpu" else int(
+            paddle.get_device().split(":")[1])
 
         if self._device != device:
             tmp_buffer = self.buffer.cuda(
@@ -147,11 +154,11 @@ class ParamStorage(InternalStorage):
         param.stop_gradient = origin_state
 
         # Copy the current param value
-        dev_id = 0 if paddle.get_device() == "cpu" else int(paddle.get_device()
-                                                            .split(":")[1])
+        dev_id = 0 if paddle.get_device() == "cpu" else int(
+            paddle.get_device().split(":")[1])
         with device_guard(dev_id, "cpu"):
-            tmp_var = core.VarBase(tensor=self.buffer._slice(self._fill,
-                                                             var_end))
+            tmp_var = core.VarBase(
+                tensor=self.buffer._slice(self._fill, var_end))
             if convert_gpu:
                 param_cpu = param.cpu()
                 param.value().get_tensor()._clear()
@@ -309,8 +316,8 @@ class GradStorage(InternalStorage):
         assert offset <= np.prod(self.buffer.shape)
 
         # Copy the current grad value to InternalStorage
-        dev_id = 0 if paddle.get_device() == "cpu" else int(paddle.get_device()
-                                                            .split(":")[1])
+        dev_id = 0 if paddle.get_device() == "cpu" else int(
+            paddle.get_device().split(":")[1])
         if self._device == "cpu":
             with device_guard(dev_id, self._device):
                 tmp_var = core.VarBase(self.buffer._slice(self._fill, grad_end))

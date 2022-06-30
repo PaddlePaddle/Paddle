@@ -33,12 +33,15 @@ namespace paddle {
 namespace framework {
 class Scope;
 class GarbageCollector;
-}
+}  // namespace framework
 namespace distributed {
 
 class TaskNode;
 class Carrier;
 class TaskLoop;
+
+constexpr int64_t SOURCE_ID = -1;
+constexpr int64_t SINK_ID = -2;
 
 class Interceptor {
  public:
@@ -126,7 +129,8 @@ class InterceptorFactory {
   static void Register(const std::string& type, CreateInterceptorFunc func);
 
   static std::unique_ptr<Interceptor> Create(const std::string& type,
-                                             int64_t id, TaskNode* node);
+                                             int64_t id,
+                                             TaskNode* node);
 };
 
 template <typename InterceptorClass>

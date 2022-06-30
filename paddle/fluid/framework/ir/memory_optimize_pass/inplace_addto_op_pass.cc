@@ -64,7 +64,8 @@ class InplaceAddToOpPass : public MemoryReusePass {
       last_live_op_of_in_var = op;
     } else {
       PADDLE_ENFORCE_EQ(
-          out_var_op_iter->second.ops().empty(), false,
+          out_var_op_iter->second.ops().empty(),
+          false,
           platform::errors::InvalidArgument(
               "Var(%s)'s last live op should not empty.", out_var->Name()));
       last_live_op_of_in_var = *(out_var_op_iter->second.ops().begin());
@@ -77,7 +78,8 @@ class InplaceAddToOpPass : public MemoryReusePass {
 
     auto in_var_info_iter = (*var_infos_)[scope_idx].find(in_var->Name());
     PADDLE_ENFORCE_NE(
-        in_var_info_iter, (*var_infos_)[scope_idx].end(),
+        in_var_info_iter,
+        (*var_infos_)[scope_idx].end(),
         platform::errors::NotFound("Cannot find variable %s.", in_var->Name()));
 
     in_var_info_iter->second->SetRefCnt(2);  // before inplace, it is 1
@@ -111,9 +113,9 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
       auto *op = *(pair.second.ops().begin());
       const std::string &op_type = op->GetOp()->Type();
       const framework::OpDesc *op_desc = op->Node()->Op();
-      PADDLE_ENFORCE_NOT_NULL(
-          op_desc, platform::errors::NotFound("Op(%s) can not find opdesc.",
-                                              op->Name()));
+      PADDLE_ENFORCE_NOT_NULL(op_desc,
+                              platform::errors::NotFound(
+                                  "Op(%s) can not find opdesc.", op->Name()));
 
       // only grad op should be processed.
       if (op_type != "grad_add") {
@@ -147,15 +149,19 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
 
     const std::string &op_type = op->GetOp()->Type();
 
-    PADDLE_ENFORCE_EQ(op->Node()->inputs.size(), 2,
+    PADDLE_ENFORCE_EQ(op->Node()->inputs.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The size of inputs of %s should be 2, but got %d",
-                          op_type, op->Node()->inputs.size()));
+                          op_type,
+                          op->Node()->inputs.size()));
 
-    PADDLE_ENFORCE_EQ(op->Node()->outputs.size(), 1,
+    PADDLE_ENFORCE_EQ(op->Node()->outputs.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "The size of outputs of %s should be 1, but got %d",
-                          op_type, op->Node()->outputs.size()));
+                          op_type,
+                          op->Node()->outputs.size()));
 
     auto *left_var_ptr = dynamic_cast<details::VarHandle *>(
         &(op->Node()->inputs[0]->Wrapper<details::VarHandleBase>()));
@@ -178,9 +184,11 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
     auto *out_generated_op = dynamic_cast<details::ComputationOpHandle *>(
         out_var_ptr->GeneratedOp());
 
-    // NOTE(zhiqiu): currently, only conv2d_grad supports addto strategy
+    // FIXME(zengjinle): the "custom_fused_dense_grad" is only used for
+    // MLPerf temporarily. Replace it with the formal op type in the future.
     if (right_generated_op->Name() != "conv2d_grad" &&
-        right_generated_op->Name() != "resnet_unit_grad") {
+        right_generated_op->Name() != "resnet_unit_grad" &&
+        right_generated_op->Name() != "custom_fused_dense_grad") {
       continue;
     }
 
@@ -259,17 +267,21 @@ static bool IsDownstreamNode(const Node &upstream, const Node &downstream) {
   return false;
 }
 
-static void BuildInplaceAddToGraph(Node *in_var_0, Node *in_var_1,
-                                   Node *out_var, Graph *graph) {
+static void BuildInplaceAddToGraph(Node *in_var_0,
+                                   Node *in_var_1,
+                                   Node *out_var,
+                                   Graph *graph) {
   auto *grad_add_op = out_var->inputs[0];
 
   // Cut the connection between in_var_0 and grad_add_op
-  in_var_0->outputs.erase(std::remove(in_var_0->outputs.begin(),
-                                      in_var_0->outputs.end(), grad_add_op),
-                          in_var_0->outputs.end());
-  grad_add_op->inputs.erase(std::remove(grad_add_op->inputs.begin(),
-                                        grad_add_op->inputs.end(), in_var_0),
-                            grad_add_op->inputs.end());
+  in_var_0->outputs.erase(
+      std::remove(
+          in_var_0->outputs.begin(), in_var_0->outputs.end(), grad_add_op),
+      in_var_0->outputs.end());
+  grad_add_op->inputs.erase(
+      std::remove(
+          grad_add_op->inputs.begin(), grad_add_op->inputs.end(), in_var_0),
+      grad_add_op->inputs.end());
 
   // Replace grad_add_op with share_buffer op
   auto *grad_add_op_desc = grad_add_op->Op();
@@ -334,7 +346,8 @@ GetAllVersionVarsMap(const Graph &graph) {
   }
 
   PADDLE_ENFORCE_EQ(
-      sorted_nodes.size(), nodes.size(),
+      sorted_nodes.size(),
+      nodes.size(),
       platform::errors::PermissionDenied("Wrong toplogical sort algorithm."));
   std::unordered_map<std::string, std::vector<Node *>> result;
   for (auto *node : sorted_nodes) {
@@ -370,7 +383,8 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
       if (in->IsCtrlVar() || in->Name() == kEmptyVarName) {
         continue;
       }
-      PADDLE_ENFORCE_LT(input_vars.size(), 2,
+      PADDLE_ENFORCE_LT(input_vars.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The size of inputs of grad_add should be 2."));
       input_vars.push_back(in);
@@ -397,7 +411,8 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
     // Step 2: find the unique output var
     Node *output_var = nullptr;
     std::string output_var_name = node->Op()->Output("Out")[0];
-    PADDLE_ENFORCE_NE(output_var_name, kEmptyVarName,
+    PADDLE_ENFORCE_NE(output_var_name,
+                      kEmptyVarName,
                       platform::errors::InvalidArgument(
                           "Output of grad_add should be provided."));
     for (auto *out : node->outputs) {
@@ -436,14 +451,16 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
     // Therefore, input_vars[0] must be last version, input_vars[1] must be 1st
     // version and last version, and output_var must be the 1st version.
     auto iter = all_ver_vars.find(input_vars[0]->Name());
-    PADDLE_ENFORCE_EQ(iter != all_ver_vars.end(), true,
+    PADDLE_ENFORCE_EQ(iter != all_ver_vars.end(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Variable %s not found.", input_vars[0]->Name()));
     if (iter->second[iter->second.size() - 1] != input_vars[0]) continue;
 
     iter = all_ver_vars.find(input_vars[1]->Name());
     if (iter->second.size() != 1) continue;
-    PADDLE_ENFORCE_EQ(iter->second[0], input_vars[1],
+    PADDLE_ENFORCE_EQ(iter->second[0],
+                      input_vars[1],
                       platform::errors::InvalidArgument(
                           "Variable %s not found.", input_vars[1]->Name()));
     iter = all_ver_vars.find(output_var->Name());

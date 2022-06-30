@@ -116,6 +116,10 @@ message TableParameter {
   optional TableType type = 7;
   optional bool compress_in_save = 8 [ default = false ];
   optional GraphParameter graph_parameter = 9;
+  // for cache model
+  optional bool enable_sparse_table_cache = 10 [ default = true ];
+  optional double sparse_table_cache_rate = 11 [ default = 0.00055 ];
+  optional uint32 sparse_table_cache_file_num = 12 [ default = 16 ];
 }
 
 message TableAccessorParameter {
@@ -153,6 +157,7 @@ message CtrAccessorParameter {
                         // will be delete in shrink_model
   optional int32 ssd_unseenday_threshold = 9
       [ default = 1 ]; // threshold to save ssd
+  optional bool show_scale = 10 [ default = true ];
 }
 
 message TensorAccessorParameter {
@@ -215,18 +220,16 @@ message SparseAdamSGDParameter { // SparseAdamSGDRule
 
 message GraphParameter {
   optional int32 task_pool_size = 1 [ default = 24 ];
-  optional bool gpups_mode = 2 [ default = false ];
-  optional string gpups_graph_sample_class = 3
-      [ default = "CompleteGraphSampler" ];
-  optional string gpups_graph_sample_args = 4 [ default = "" ];
-  optional bool use_cache = 5 [ default = false ];
-  optional int32 cache_size_limit = 6 [ default = 100000 ];
-  optional int32 cache_ttl = 7 [ default = 5 ];
-  optional GraphFeature graph_feature = 8;
-  optional string table_name = 9 [ default = "" ];
-  optional string table_type = 10 [ default = "" ];
-  optional int32 shard_num = 11 [ default = 127 ];
-  optional int32 gpu_num = 12 [ default = 1 ];
+  repeated string edge_types = 2;
+  repeated string node_types = 3;
+  optional bool use_cache = 4 [ default = false ];
+  optional int32 cache_size_limit = 5 [ default = 100000 ];
+  optional int32 cache_ttl = 6 [ default = 5 ];
+  repeated GraphFeature graph_feature = 7;
+  optional string table_name = 8 [ default = "" ];
+  optional string table_type = 9 [ default = "" ];
+  optional int32 shard_num = 10 [ default = 127 ];
+  optional int32 search_level = 11 [ default = 1 ];
 }
 
 message GraphFeature {

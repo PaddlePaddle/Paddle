@@ -14,49 +14,76 @@ limitations under the License. */
 
 #pragma once
 
-#if defined(PADDLE_WITH_XPU_KP)
-#include "xpu/kernel/cluster_header.h"
-#include "xpu/kernel/debug.h"
-#include "xpu/kernel/math.h"
-#endif
+namespace paddle {
+namespace framework {
 
-namespace optimizer_config {
+class OptimizerConfig {
+ public:
+  float nonclk_coeff = 0.1;
+  float clk_coeff = 1;
 
-#if defined(PADDLE_WITH_CUDA)
+  float min_bound = -10;
+  float max_bound = 10;
+  float learning_rate = 0.05;
+  float initial_g2sum = 3.0;
+  float initial_range = 0;
 
-__constant__ float nonclk_coeff = 0.1;
-__constant__ float clk_coeff = 1;
+  float mf_create_thresholds = 10;
+  float mf_learning_rate = 0.05;
+  float mf_initial_g2sum = 3.0;
+  float mf_initial_range = 1e-4;
+  float mf_min_bound = -10;
+  float mf_max_bound = 10;
 
-__constant__ float min_bound = -10;
-__constant__ float max_bound = 10;
-__constant__ float learning_rate = 0.05;
-__constant__ float initial_g2sum = 3.0;
-__constant__ float initial_range = 0;
+  void set_sparse_sgd(float nonclk_coeff,
+                      float clk_coeff,
+                      float min_bound,
+                      float max_bound,
+                      float learning_rate,
+                      float initial_g2sum,
+                      float initial_range) {
+    this->nonclk_coeff = nonclk_coeff;
+    this->clk_coeff = clk_coeff;
+    this->min_bound = min_bound;
+    this->max_bound = max_bound;
+    this->learning_rate = learning_rate;
+    this->initial_g2sum = initial_g2sum;
+    this->initial_range = initial_range;
+  }
 
-__constant__ float mf_create_thresholds = 10;
-__constant__ float mf_learning_rate = 0.05;
-__constant__ float mf_initial_g2sum = 3.0;
-__constant__ float mf_initial_range = 1e-4;
-__constant__ float mf_min_bound = -10;
-__constant__ float mf_max_bound = 10;
+  void set_sparse_sgd(const OptimizerConfig& optimizer_config) {
+    this->nonclk_coeff = optimizer_config.nonclk_coeff;
+    this->clk_coeff = optimizer_config.clk_coeff;
+    this->min_bound = optimizer_config.min_bound;
+    this->max_bound = optimizer_config.max_bound;
+    this->learning_rate = optimizer_config.learning_rate;
+    this->initial_g2sum = optimizer_config.initial_g2sum;
+    this->initial_range = optimizer_config.initial_range;
+  }
 
-#elif defined(PADDLE_WITH_XPU_KP)
+  void set_embedx_sgd(float mf_create_thresholds,
+                      float mf_learning_rate,
+                      float mf_initial_g2sum,
+                      float mf_initial_range,
+                      float mf_min_bound,
+                      float mf_max_bound) {
+    this->mf_create_thresholds = mf_create_thresholds;
+    this->mf_learning_rate = mf_learning_rate;
+    this->mf_initial_g2sum = mf_initial_g2sum;
+    this->mf_initial_range = mf_initial_range;
+    this->mf_min_bound = mf_min_bound;
+    this->mf_max_bound = mf_max_bound;
+  }
 
-_global_ptr_ float* nonclk_coeff;
-_global_ptr_ float* clk_coeff;
+  void set_embedx_sgd(const OptimizerConfig& optimizer_config) {
+    this->mf_create_thresholds = optimizer_config.mf_create_thresholds;
+    this->mf_learning_rate = optimizer_config.mf_learning_rate;
+    this->mf_initial_g2sum = optimizer_config.mf_initial_g2sum;
+    this->mf_initial_range = optimizer_config.mf_initial_range;
+    this->mf_min_bound = optimizer_config.mf_min_bound;
+    this->mf_max_bound = optimizer_config.mf_max_bound;
+  }
+};
 
-_global_ptr_ float* min_bound;
-_global_ptr_ float* max_bound;
-_global_ptr_ float* learning_rate;
-_global_ptr_ float* initial_g2sum;
-_global_ptr_ float* initial_range;
-
-_global_ptr_ float* mf_create_thresholds;
-_global_ptr_ float* mf_learning_rate;
-_global_ptr_ float* mf_initial_g2sum;
-_global_ptr_ float* mf_initial_range;
-_global_ptr_ float* mf_min_bound;
-_global_ptr_ float* mf_max_bound;
-
-#endif
-}  // namespace optimizer_config
+}  // namespace framework
+}  // namespace paddle

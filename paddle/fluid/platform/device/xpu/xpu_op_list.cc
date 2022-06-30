@@ -9,6 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+
 #include <mutex>
 #include <string>
 #include <unordered_set>
@@ -17,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/xpu2_op_list.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_kpfirst_list.h"
-#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 
 namespace paddle {
 namespace platform {
@@ -35,7 +36,8 @@ bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type) {
 
 // ops_string contains op_list(e.g., 'mul,mul_grad'), parse the op string and
 // insert op to op set
-static void tokenize(const std::string& ops, char delim,
+static void tokenize(const std::string& ops,
+                     char delim,
                      std::unordered_set<std::string>* op_set) {
   std::string::size_type beg = 0;
   for (uint64_t end = 0; (end = ops.find(delim, end)) != std::string::npos;

@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/adam_kernel.h"
 
 #include <math.h>  // for sqrt in CPU and CUDA
+
 #include <vector>
 
 #include "paddle/fluid/framework/tensor_util.h"
@@ -23,7 +24,7 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
@@ -135,8 +136,8 @@ void AdamDenseKernel(const Context& dev_ctx,
                      const DenseTensor& moment2,
                      const DenseTensor& beta1_pow,
                      const DenseTensor& beta2_pow,
-                     paddle::optional<const DenseTensor&> master_param,
-                     paddle::optional<const DenseTensor&> skip_update,
+                     const paddle::optional<DenseTensor>& master_param,
+                     const paddle::optional<DenseTensor>& skip_update,
                      const Scalar& beta1,
                      const Scalar& beta2,
                      const Scalar& epsilon,

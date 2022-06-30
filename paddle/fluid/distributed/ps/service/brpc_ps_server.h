@@ -53,6 +53,13 @@ class BrpcPsServer : public PSServer {
   }
   int32_t Port();
 
+  virtual int32_t StartS2S() override;
+  virtual ::std::future<int32_t> SendPServer2PServerMsg(
+      int msg_type, int to_pserver_id, const std::string &msg) override;
+  virtual int32_t ReceiveFromPServer(int msg_type,
+                                     int pserver_id,
+                                     const std::string &msg) override;
+
  private:
   virtual int32_t Initialize();
   mutable std::mutex mutex_;
@@ -66,7 +73,9 @@ class BrpcPsServer : public PSServer {
 class BrpcPsService;
 
 typedef int32_t (BrpcPsService::*serviceHandlerFunc)(
-    Table *table, const PsRequestMessage &request, PsResponseMessage &response,
+    Table *table,
+    const PsRequestMessage &request,
+    PsResponseMessage &response,
     brpc::Controller *cntl);
 
 class BrpcPsService : public PsBaseService {
@@ -80,48 +89,103 @@ class BrpcPsService : public PsBaseService {
 
  private:
   int32_t InitializeShardInfo();
-  int32_t PullDense(Table *table, const PsRequestMessage &request,
-                    PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t PushDense(Table *table, const PsRequestMessage &request,
-                    PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t PushDenseParam(Table *table, const PsRequestMessage &request,
-                         PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t PushSparseParam(Table *table, const PsRequestMessage &request,
-                          PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t PullSparse(Table *table, const PsRequestMessage &request,
-                     PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t PullGeoParam(Table *table, const PsRequestMessage &request,
-                       PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t Barrier(Table *table, const PsRequestMessage &request,
-                  PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t PushSparse(Table *table, const PsRequestMessage &request,
-                     PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t LoadOneTable(Table *table, const PsRequestMessage &request,
-                       PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t LoadAllTable(Table *table, const PsRequestMessage &request,
-                       PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t SaveOneTable(Table *table, const PsRequestMessage &request,
-                       PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t SaveAllTable(Table *table, const PsRequestMessage &request,
-                       PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t ShrinkTable(Table *table, const PsRequestMessage &request,
-                      PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t ClearOneTable(Table *table, const PsRequestMessage &request,
-                        PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t ClearAllTable(Table *table, const PsRequestMessage &request,
-                        PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t StopServer(Table *table, const PsRequestMessage &request,
-                     PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t StartProfiler(Table *table, const PsRequestMessage &request,
-                        PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t StopProfiler(Table *table, const PsRequestMessage &request,
-                       PsResponseMessage &response, brpc::Controller *cntl);
+  int32_t PullDense(Table *table,
+                    const PsRequestMessage &request,
+                    PsResponseMessage &response,
+                    brpc::Controller *cntl);
+  int32_t PushDense(Table *table,
+                    const PsRequestMessage &request,
+                    PsResponseMessage &response,
+                    brpc::Controller *cntl);
+  int32_t PushDenseParam(Table *table,
+                         const PsRequestMessage &request,
+                         PsResponseMessage &response,
+                         brpc::Controller *cntl);
+  int32_t PushSparseParam(Table *table,
+                          const PsRequestMessage &request,
+                          PsResponseMessage &response,
+                          brpc::Controller *cntl);
+  int32_t PullSparse(Table *table,
+                     const PsRequestMessage &request,
+                     PsResponseMessage &response,
+                     brpc::Controller *cntl);
+  int32_t PullGeoParam(Table *table,
+                       const PsRequestMessage &request,
+                       PsResponseMessage &response,
+                       brpc::Controller *cntl);
+  int32_t Barrier(Table *table,
+                  const PsRequestMessage &request,
+                  PsResponseMessage &response,
+                  brpc::Controller *cntl);
+  int32_t PushSparse(Table *table,
+                     const PsRequestMessage &request,
+                     PsResponseMessage &response,
+                     brpc::Controller *cntl);
+  int32_t LoadOneTable(Table *table,
+                       const PsRequestMessage &request,
+                       PsResponseMessage &response,
+                       brpc::Controller *cntl);
+  int32_t LoadAllTable(Table *table,
+                       const PsRequestMessage &request,
+                       PsResponseMessage &response,
+                       brpc::Controller *cntl);
+  int32_t SaveOneTable(Table *table,
+                       const PsRequestMessage &request,
+                       PsResponseMessage &response,
+                       brpc::Controller *cntl);
+  int32_t SaveAllTable(Table *table,
+                       const PsRequestMessage &request,
+                       PsResponseMessage &response,
+                       brpc::Controller *cntl);
+  int32_t ShrinkTable(Table *table,
+                      const PsRequestMessage &request,
+                      PsResponseMessage &response,
+                      brpc::Controller *cntl);
+  int32_t ClearOneTable(Table *table,
+                        const PsRequestMessage &request,
+                        PsResponseMessage &response,
+                        brpc::Controller *cntl);
+  int32_t ClearAllTable(Table *table,
+                        const PsRequestMessage &request,
+                        PsResponseMessage &response,
+                        brpc::Controller *cntl);
+  int32_t StopServer(Table *table,
+                     const PsRequestMessage &request,
+                     PsResponseMessage &response,
+                     brpc::Controller *cntl);
+  int32_t StartProfiler(Table *table,
+                        const PsRequestMessage &request,
+                        PsResponseMessage &response,
+                        brpc::Controller *cntl);
+  int32_t StopProfiler(Table *table,
+                       const PsRequestMessage &request,
+                       PsResponseMessage &response,
+                       brpc::Controller *cntl);
 
-  int32_t PrintTableStat(Table *table, const PsRequestMessage &request,
-                         PsResponseMessage &response, brpc::Controller *cntl);
+  int32_t PrintTableStat(Table *table,
+                         const PsRequestMessage &request,
+                         PsResponseMessage &response,
+                         brpc::Controller *cntl);
 
-  int32_t PushGlobalStep(Table *table, const PsRequestMessage &request,
-                         PsResponseMessage &response, brpc::Controller *cntl);
+  int32_t PushGlobalStep(Table *table,
+                         const PsRequestMessage &request,
+                         PsResponseMessage &response,
+                         brpc::Controller *cntl);
+
+  int32_t CacheShuffle(Table *table,
+                       const PsRequestMessage &request,
+                       PsResponseMessage &response,
+                       brpc::Controller *cntl);
+
+  int32_t SaveCacheTable(Table *table,
+                         const PsRequestMessage &request,
+                         PsResponseMessage &response,
+                         brpc::Controller *cntl);
+
+  int32_t GetCacheThreshold(Table *table,
+                            const PsRequestMessage &request,
+                            PsResponseMessage &response,
+                            brpc::Controller *cntl);
 
   bool _is_initialize_shard_info;
   std::mutex _initialize_shard_mutex;

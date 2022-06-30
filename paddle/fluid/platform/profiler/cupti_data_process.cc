@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/cupti_data_process.h"
+
 #include <cstdio>
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
 
@@ -21,7 +23,8 @@ namespace paddle {
 namespace platform {
 namespace details {
 #ifdef PADDLE_WITH_CUPTI
-void AddKernelRecord(const CUpti_ActivityKernel4* kernel, uint64_t start_ns,
+void AddKernelRecord(const CUpti_ActivityKernel4* kernel,
+                     uint64_t start_ns,
                      TraceEventCollector* collector) {
   if (kernel->start < start_ns) {
     return;
@@ -102,7 +105,8 @@ const char* MemoryKind(uint16_t kind) {
   }
 }
 
-void AddMemcpyRecord(const CUpti_ActivityMemcpy* memcpy, uint64_t start_ns,
+void AddMemcpyRecord(const CUpti_ActivityMemcpy* memcpy,
+                     uint64_t start_ns,
                      TraceEventCollector* collector) {
   if (memcpy->start < start_ns) {
     return;
@@ -119,14 +123,19 @@ void AddMemcpyRecord(const CUpti_ActivityMemcpy* memcpy, uint64_t start_ns,
   event.memcpy_info.num_bytes = memcpy->bytes;
   // snprintf(event.memcpy_info.copy_kind, kMemKindMaxLen, "%s",
   //         MemcpyKind(memcpy->copyKind));
-  snprintf(event.memcpy_info.src_kind, kMemKindMaxLen, "%s",
+  snprintf(event.memcpy_info.src_kind,
+           kMemKindMaxLen,
+           "%s",
            MemcpyKind(memcpy->srcKind));
-  snprintf(event.memcpy_info.dst_kind, kMemKindMaxLen, "%s",
+  snprintf(event.memcpy_info.dst_kind,
+           kMemKindMaxLen,
+           "%s",
            MemcpyKind(memcpy->dstKind));
   collector->AddDeviceEvent(std::move(event));
 }
 
-void AddMemcpy2Record(const CUpti_ActivityMemcpy2* memcpy2, uint64_t start_ns,
+void AddMemcpy2Record(const CUpti_ActivityMemcpy2* memcpy2,
+                      uint64_t start_ns,
                       TraceEventCollector* collector) {
   if (memcpy2->start < start_ns) {
     return;
@@ -143,14 +152,19 @@ void AddMemcpy2Record(const CUpti_ActivityMemcpy2* memcpy2, uint64_t start_ns,
   event.memcpy_info.num_bytes = memcpy2->bytes;
   // snprintf(event.memcpy_info.copy_kind, kMemKindMaxLen, "%s",
   // MemcpyKind(memcpy2->copyKind));
-  snprintf(event.memcpy_info.src_kind, kMemKindMaxLen, "%s",
+  snprintf(event.memcpy_info.src_kind,
+           kMemKindMaxLen,
+           "%s",
            MemcpyKind(memcpy2->srcKind));
-  snprintf(event.memcpy_info.dst_kind, kMemKindMaxLen, "%s",
+  snprintf(event.memcpy_info.dst_kind,
+           kMemKindMaxLen,
+           "%s",
            MemcpyKind(memcpy2->dstKind));
   collector->AddDeviceEvent(std::move(event));
 }
 
-void AddMemsetRecord(const CUpti_ActivityMemset* memset, uint64_t start_ns,
+void AddMemsetRecord(const CUpti_ActivityMemset* memset,
+                     uint64_t start_ns,
                      TraceEventCollector* collector) {
   if (memset->start < start_ns) {
     return;
@@ -165,7 +179,9 @@ void AddMemsetRecord(const CUpti_ActivityMemset* memset, uint64_t start_ns,
   event.stream_id = memset->streamId;
   event.correlation_id = memset->correlationId;
   event.memset_info.num_bytes = memset->bytes;
-  snprintf(event.memset_info.memory_kind, kMemKindMaxLen, "%s",
+  snprintf(event.memset_info.memory_kind,
+           kMemKindMaxLen,
+           "%s",
            MemoryKind(memset->memoryKind));
   event.memset_info.value = memset->value;
   collector->AddDeviceEvent(std::move(event));
@@ -245,7 +261,8 @@ CuptiRuntimeCbidStr::CuptiRuntimeCbidStr() {
 #undef REGISTER_RUNTIME_CBID_STR
 }
 
-void AddApiRecord(const CUpti_ActivityAPI* api, uint64_t start_ns,
+void AddApiRecord(const CUpti_ActivityAPI* api,
+                  uint64_t start_ns,
                   const std::unordered_map<uint32_t, uint64_t> tid_mapping,
                   TraceEventCollector* collector) {
   if (api->start < start_ns) {
@@ -269,31 +286,38 @@ void AddApiRecord(const CUpti_ActivityAPI* api, uint64_t start_ns,
 }
 
 void ProcessCuptiActivityRecord(
-    const CUpti_Activity* record, uint64_t start_ns,
+    const CUpti_Activity* record,
+    uint64_t start_ns,
     const std::unordered_map<uint32_t, uint64_t> tid_mapping,
     TraceEventCollector* collector) {
   switch (record->kind) {
     case CUPTI_ACTIVITY_KIND_KERNEL:
     case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL:
       AddKernelRecord(reinterpret_cast<const CUpti_ActivityKernel4*>(record),
-                      start_ns, collector);
+                      start_ns,
+                      collector);
       break;
     case CUPTI_ACTIVITY_KIND_MEMCPY:
       AddMemcpyRecord(reinterpret_cast<const CUpti_ActivityMemcpy*>(record),
-                      start_ns, collector);
+                      start_ns,
+                      collector);
       break;
     case CUPTI_ACTIVITY_KIND_MEMCPY2:
       AddMemcpy2Record(reinterpret_cast<const CUpti_ActivityMemcpy2*>(record),
-                       start_ns, collector);
+                       start_ns,
+                       collector);
       break;
     case CUPTI_ACTIVITY_KIND_MEMSET:
       AddMemsetRecord(reinterpret_cast<const CUpti_ActivityMemset*>(record),
-                      start_ns, collector);
+                      start_ns,
+                      collector);
       break;
     case CUPTI_ACTIVITY_KIND_DRIVER:
     case CUPTI_ACTIVITY_KIND_RUNTIME:
-      AddApiRecord(reinterpret_cast<const CUpti_ActivityAPI*>(record), start_ns,
-                   tid_mapping, collector);
+      AddApiRecord(reinterpret_cast<const CUpti_ActivityAPI*>(record),
+                   start_ns,
+                   tid_mapping,
+                   collector);
       break;
     default:
       break;

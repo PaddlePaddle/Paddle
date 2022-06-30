@@ -25,6 +25,11 @@
 #include "paddle/infrt/paddle/scope.h"
 #include "paddle/infrt/paddle/tensor.h"
 
+#ifdef INFRT_WITH_PHI
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#endif
+
 namespace infrt {
 namespace paddle {
 namespace framework_proto = ::paddle::framework::proto;
@@ -52,6 +57,12 @@ void TensorFromStream(
     _Tensor_* tensor,
     const common::Target& target = common::DefaultHostTarget());
 void ReadBinaryFile(const std::string& filename, std::string* contents);
+
+#ifdef INFRT_WITH_PHI
+void DeserializeFromStream(std::istream& is,
+                           ::phi::DenseTensor* tensor,
+                           const ::phi::CPUContext& dev_ctx);
+#endif
 
 }  // namespace paddle
 }  // namespace infrt

@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
@@ -55,4 +56,4 @@ TEST(Relu6OpConverter, main) { test_activation("relu6"); }
 USE_OP_ITSELF(relu);
 USE_OP_ITSELF(sigmoid);
 USE_OP_ITSELF(tanh);
-USE_OP(relu6);
+USE_OP_ITSELF(relu6);

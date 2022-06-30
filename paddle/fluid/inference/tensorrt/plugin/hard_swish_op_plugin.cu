@@ -14,6 +14,7 @@
 
 #include <cassert>
 #include <cstring>
+
 #include "paddle/fluid/inference/tensorrt/plugin/hard_swish_op_plugin.h"
 
 namespace paddle {
@@ -41,8 +42,12 @@ __device__ T kMin(T a, T b) {
 }
 
 template <typename T, unsigned TPB>
-__global__ void hard_swish_kernel(float threshold, float scale, float offset,
-                                  int n, const T *input, T *output) {
+__global__ void hard_swish_kernel(float threshold,
+                                  float scale,
+                                  float offset,
+                                  int n,
+                                  const T *input,
+                                  T *output) {
   const int idx = blockIdx.x * TPB + threadIdx.x;
   if (idx < n) {
     const T in = input[idx];
@@ -50,11 +55,15 @@ __global__ void hard_swish_kernel(float threshold, float scale, float offset,
   }
 }
 
-int HardSwishPlugin::enqueue(int batch_size, const void *const *inputs,
+int HardSwishPlugin::enqueue(int batch_size,
+                             const void *const *inputs,
 #if IS_TRT_VERSION_LT(8000)
-                             void **outputs, void *, cudaStream_t stream) {
+                             void **outputs,
+                             void *,
+                             cudaStream_t stream) {
 #else
-                             void *const *outputs, void *,
+                             void *const *outputs,
+                             void *,
                              cudaStream_t stream) TRT_NOEXCEPT {
 #endif
   const auto &input_dims = this->getInputDims(0);
@@ -80,15 +89,20 @@ int HardSwishPlugin::enqueue(int batch_size, const void *const *inputs,
 #if IS_TRT_VERSION_GE(6000)
 
 nvinfer1::DimsExprs HardSwishPluginDynamic::getOutputDimensions(
-    int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
+    int output_index,
+    const nvinfer1::DimsExprs *inputs,
+    int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   return inputs[0];
 }
 
 int HardSwishPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
-    const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
-    void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
+    const nvinfer1::PluginTensorDesc *output_desc,
+    const void *const *inputs,
+    void *const *outputs,
+    void *workspace,
+    cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   int num = 1;
   for (int i = 0; i < input_dims.nbDims; i++) {
@@ -108,9 +122,11 @@ int HardSwishPluginDynamic::enqueue(
 }
 
 nvinfer1::DataType HardSwishPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types,
+    int index,
+    const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0,
+  PADDLE_ENFORCE_EQ(index,
+                    0,
                     platform::errors::InvalidArgument(
                         "The Elementwise Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
@@ -119,17 +135,22 @@ nvinfer1::DataType HardSwishPluginDynamic::getOutputDataType(
 }
 
 bool HardSwishPluginDynamic::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc *in_out,
+    int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
-      in_out, platform::errors::InvalidArgument(
-                  "The input of swish plugin shoule not be nullptr."));
+      in_out,
+      platform::errors::InvalidArgument(
+          "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
-      pos, nb_inputs + nb_outputs,
+      pos,
+      nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
-                                        pos, nb_inputs + nb_outputs));
+                                        pos,
+                                        nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];

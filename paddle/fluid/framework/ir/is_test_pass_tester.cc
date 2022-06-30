@@ -11,9 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/fluid/framework/ir/is_test_pass.h"
-
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/framework/ir/is_test_pass.h"
 #ifdef _WIN32
 #undef FALSE
 #undef TRUE
@@ -24,9 +24,12 @@ namespace ir {
 
 enum class ISTEST_STATE { FALSE, TRUE, UNSET };
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
+           const std::string& name,
            const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs, bool use_mkldnn = false,
+           const std::vector<std::string>& outputs,
+           bool use_mkldnn = false,
            ISTEST_STATE is_test = ISTEST_STATE::UNSET) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
@@ -55,9 +58,19 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 // (i,weights3)->conv2d->j
 ProgramDesc BuildProgramDesc() {
   ProgramDesc prog;
-  for (auto& v :
-       std::vector<std::string>({"a", "b", "c", "d", "e", "f", "g", "h", "i",
-                                 "j", "weights1", "weights2", "weights3"})) {
+  for (auto& v : std::vector<std::string>({"a",
+                                           "b",
+                                           "c",
+                                           "d",
+                                           "e",
+                                           "f",
+                                           "g",
+                                           "h",
+                                           "i",
+                                           "j",
+                                           "weights1",
+                                           "weights2",
+                                           "weights3"})) {
     auto* var = prog.MutableBlock(0)->Var(v);
     var->SetType(proto::VarType::SELECTED_ROWS);
     if (v == "weights1" || v == "weights2" || v == "weights3") {
@@ -65,26 +78,71 @@ ProgramDesc BuildProgramDesc() {
     }
   }
 
-  SetOp(&prog, "pool2d", "pooling1", std::vector<std::string>({"a"}),
-        std::vector<std::string>({"b"}), true, ISTEST_STATE::TRUE);
-  SetOp(&prog, "relu", "activation1", std::vector<std::string>({"b"}),
-        std::vector<std::string>({"c"}), true, ISTEST_STATE::TRUE);
-  SetOp(&prog, "conv2d", "conv1", std::vector<std::string>({"c", "weights1"}),
-        std::vector<std::string>({"d"}), true, ISTEST_STATE::TRUE);
+  SetOp(&prog,
+        "pool2d",
+        "pooling1",
+        std::vector<std::string>({"a"}),
+        std::vector<std::string>({"b"}),
+        true,
+        ISTEST_STATE::TRUE);
+  SetOp(&prog,
+        "relu",
+        "activation1",
+        std::vector<std::string>({"b"}),
+        std::vector<std::string>({"c"}),
+        true,
+        ISTEST_STATE::TRUE);
+  SetOp(&prog,
+        "conv2d",
+        "conv1",
+        std::vector<std::string>({"c", "weights1"}),
+        std::vector<std::string>({"d"}),
+        true,
+        ISTEST_STATE::TRUE);
 
-  SetOp(&prog, "pool2d", "pooling2", std::vector<std::string>({"d"}),
-        std::vector<std::string>({"e"}), false, ISTEST_STATE::FALSE);
-  SetOp(&prog, "hard_sigmoid", "activation2", std::vector<std::string>({"e"}),
-        std::vector<std::string>({"f"}), false, ISTEST_STATE::FALSE);
-  SetOp(&prog, "conv2d", "conv2", std::vector<std::string>({"f", "weights2"}),
-        std::vector<std::string>({"g"}), false, ISTEST_STATE::FALSE);
+  SetOp(&prog,
+        "pool2d",
+        "pooling2",
+        std::vector<std::string>({"d"}),
+        std::vector<std::string>({"e"}),
+        false,
+        ISTEST_STATE::FALSE);
+  SetOp(&prog,
+        "hard_sigmoid",
+        "activation2",
+        std::vector<std::string>({"e"}),
+        std::vector<std::string>({"f"}),
+        false,
+        ISTEST_STATE::FALSE);
+  SetOp(&prog,
+        "conv2d",
+        "conv2",
+        std::vector<std::string>({"f", "weights2"}),
+        std::vector<std::string>({"g"}),
+        false,
+        ISTEST_STATE::FALSE);
 
-  SetOp(&prog, "pool2d", "pooling3", std::vector<std::string>({"g"}),
-        std::vector<std::string>({"h"}), false, ISTEST_STATE::UNSET);
-  SetOp(&prog, "tanh", "activation3", std::vector<std::string>({"h"}),
-        std::vector<std::string>({"i"}), true, ISTEST_STATE::UNSET);
-  SetOp(&prog, "conv2d", "conv3", std::vector<std::string>({"i", "weights3"}),
-        std::vector<std::string>({"j"}), false, ISTEST_STATE::UNSET);
+  SetOp(&prog,
+        "pool2d",
+        "pooling3",
+        std::vector<std::string>({"g"}),
+        std::vector<std::string>({"h"}),
+        false,
+        ISTEST_STATE::UNSET);
+  SetOp(&prog,
+        "tanh",
+        "activation3",
+        std::vector<std::string>({"h"}),
+        std::vector<std::string>({"i"}),
+        true,
+        ISTEST_STATE::UNSET);
+  SetOp(&prog,
+        "conv2d",
+        "conv3",
+        std::vector<std::string>({"i", "weights3"}),
+        std::vector<std::string>({"j"}),
+        false,
+        ISTEST_STATE::UNSET);
 
   return prog;
 }

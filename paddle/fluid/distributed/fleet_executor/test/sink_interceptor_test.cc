@@ -16,7 +16,6 @@
 #include <unordered_map>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
@@ -39,10 +38,10 @@ class FakeInterceptor : public Interceptor {
                 << std::endl;
       InterceptorMessage reply;
       reply.set_message_type(DATA_IS_USELESS);
-      Send(-1, reply);
+      Send(SOURCE_ID, reply);
       InterceptorMessage ready;
       ready.set_message_type(DATA_IS_READY);
-      Send(-2, ready);
+      Send(SINK_ID, ready);
     } else if (msg.message_type() == DATA_IS_USELESS) {
       std::cout << "FakeInterceptor remove result in scope " << msg.scope_idx()
                 << std::endl;
@@ -57,28 +56,31 @@ TEST(SourceInterceptor, Source) {
   std::string carrier_id = "0";
   Carrier* carrier =
       GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
-  carrier->Init(0, {{-1, 0}, {0, 0}, {-2, 0}});
+  carrier->Init(0, {{SOURCE_ID, 0}, {0, 0}, {SINK_ID, 0}});
 
   MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
-  TaskNode* source = new TaskNode(0, -1, 0, 3, 0);  // role, rank, task_id
-  TaskNode* node_a = new TaskNode(0, 0, 0, 3, 0);   // role, rank, task_id
-  TaskNode* sink = new TaskNode(0, -2, 0, 3, 0);    // role, rank, task_id
+  TaskNode* source =
+      new TaskNode(0, SOURCE_ID, 0, 3, 0);             // role, rank, task_id
+  TaskNode* node_a = new TaskNode(0, 0, 0, 3, 0);      // role, rank, task_id
+  TaskNode* sink = new TaskNode(0, SINK_ID, 0, 3, 0);  // role, rank, task_id
 
   source->AddDownstreamTask(0, 1);
-  node_a->AddUpstreamTask(-1, 1);
-  node_a->AddDownstreamTask(-2, 1);
+  node_a->AddUpstreamTask(SOURCE_ID, 1);
+  node_a->AddDownstreamTask(SINK_ID, 1);
   sink->AddUpstreamTask(0, 1);
-  carrier->SetInterceptor(-1, InterceptorFactory::Create("Source", -1, source));
+  carrier->SetInterceptor(
+      SOURCE_ID, InterceptorFactory::Create("Source", SOURCE_ID, source));
   carrier->SetInterceptor(0, std::make_unique<FakeInterceptor>(0, node_a));
-  carrier->SetInterceptor(-2, InterceptorFactory::Create("Sink", -2, sink));
+  carrier->SetInterceptor(SINK_ID,
+                          InterceptorFactory::Create("Sink", SINK_ID, sink));
 
   // start
   InterceptorMessage msg;
   msg.set_message_type(START);
-  msg.set_dst_id(-1);
+  msg.set_dst_id(SOURCE_ID);
   carrier->EnqueueInterceptorMessage(msg);
 
   carrier->Wait();

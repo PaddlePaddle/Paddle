@@ -17,6 +17,7 @@ limitations under the License. */
 #include <numeric>  // std::iota
 #include <sstream>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -26,7 +27,8 @@ namespace operators {
 template <typename DeviceContext, typename T>
 struct SequenceExpandAsFunctor {
   void operator()(
-      const DeviceContext &ctx, const framework::LoDTensor &x,
+      const DeviceContext &ctx,
+      const framework::LoDTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       framework::LoDTensor *out);
 };
@@ -34,7 +36,8 @@ struct SequenceExpandAsFunctor {
 template <typename DeviceContext, typename T>
 struct SequenceExpandAsGradFunctor {
   void operator()(
-      const DeviceContext &ctx, const framework::LoDTensor &dout,
+      const DeviceContext &ctx,
+      const framework::LoDTensor &dout,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       framework::LoDTensor *dx);
 };
@@ -42,7 +45,8 @@ struct SequenceExpandAsGradFunctor {
 template <typename T>
 struct SequenceExpandAsFunctor<platform::CPUDeviceContext, T> {
   void operator()(
-      const platform::CPUDeviceContext &context, const framework::LoDTensor &x,
+      const platform::CPUDeviceContext &context,
+      const framework::LoDTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       framework::LoDTensor *out) {
     int64_t height = x.dims()[0];
@@ -75,19 +79,22 @@ class SequenceExpandAsKernel : public framework::OpKernel<T> {
     auto *out = context.Output<framework::LoDTensor>("Out");
 
     PADDLE_ENFORCE_EQ(
-        y->lod().empty(), false,
+        y->lod().empty(),
+        false,
         platform::errors::InvalidArgument(
             "Input(Y) of SequenceExpandAsOp has wrong LoD information. "
             "Expected Y's lod is not empty, but received empty lod."));
 
     auto &y_lod = y->lod();
-    PADDLE_ENFORCE_EQ(y_lod.size(), 1,
+    PADDLE_ENFORCE_EQ(y_lod.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "Input(Y) of SequenceExpandAsOp has wrong LoD "
                           "information. Expected Y's lod level = 1, but "
                           "received  lod level = %d.",
                           y_lod.size()));
-    PADDLE_ENFORCE_GT(y_lod[0].size(), 1,
+    PADDLE_ENFORCE_GT(y_lod[0].size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "Input(Y) of SequenceExpandAsOp has wrong LoD "
                           "information. Expected the size of Y's lod[0] > 1, "
@@ -154,8 +161,10 @@ class SequenceExpandAsGradKernel : public framework::OpKernel<T> {
     g_x->mutable_data<T>(context.GetPlace());
 
     SequenceExpandAsGradFunctor<DeviceContext, T> functor;
-    functor(context.template device_context<DeviceContext>(), *g_out,
-            y->lod()[0], g_x);
+    functor(context.template device_context<DeviceContext>(),
+            *g_out,
+            y->lod()[0],
+            g_x);
   }
 };
 

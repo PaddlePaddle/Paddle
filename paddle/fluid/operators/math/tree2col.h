@@ -17,6 +17,7 @@
 #include <array>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -26,7 +27,9 @@ namespace math {
 class TreeNode {
  public:
   size_t node;
-  explicit TreeNode(size_t node = 0, size_t index = 0, size_t pclen = 0,
+  explicit TreeNode(size_t node = 0,
+                    size_t index = 0,
+                    size_t pclen = 0,
                     size_t depth = 0)
       : node(node), index(index), pclen(pclen), depth(depth) {}
   template <typename T>
@@ -73,14 +76,16 @@ class Tree2ColFunctor {
   void operator()(const DeviceContext &context,
                   const framework::Tensor &EdgeSet,
                   const framework::Tensor &node_features,
-                  framework::Tensor *patch, int max_depth);
+                  framework::Tensor *patch,
+                  int max_depth);
 };
 template <typename DeviceContext, typename T>
 class Col2TreeFunctor {
  public:
   void operator()(const DeviceContext &context,
                   const framework::Tensor &EdgeSet,
-                  const framework::Tensor &out_grad, framework::Tensor *in_grad,
+                  const framework::Tensor &out_grad,
+                  framework::Tensor *in_grad,
                   int max_depth);
 };
 }  // namespace math

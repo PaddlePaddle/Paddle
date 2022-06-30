@@ -16,9 +16,9 @@
 
 #include <cmath>
 #include <string>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -348,14 +348,14 @@ void TrtMapMatmulV2ToMulPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(3) << "trt map matmul_v2 to mul";
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_x, matmul_v2_in_x,
-                              matmul_v2_weight_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_y, matmul_v2_in_y,
-                              matmul_v2_weight_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_op, matmul_v2_op,
-                              matmul_v2_weight_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_out, matmul_v2_out,
-                              matmul_v2_weight_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_x, matmul_v2_in_x, matmul_v2_weight_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_y, matmul_v2_in_y, matmul_v2_weight_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_op, matmul_v2_op, matmul_v2_weight_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_out, matmul_v2_out, matmul_v2_weight_pattern);
 
     bool flag = true;
     bool trans_x =
@@ -432,10 +432,10 @@ void TrtMapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "trt map matmul_v2 to matmul";
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_x, matmul_v2_in_x,
-                              matmul_v2_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_in_y, matmul_v2_in_y,
-                              matmul_v2_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_x, matmul_v2_in_x, matmul_v2_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_v2_in_y, matmul_v2_in_y, matmul_v2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_op, matmul_v2_op, matmul_v2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_v2_out, matmul_v2_out, matmul_v2_pattern);
     if (!IsCompat(subgraph, g)) {

@@ -13,7 +13,9 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/more/intrinsic/crf_decoding.h"
+
 #include <limits>
+
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -25,8 +27,12 @@ namespace intrinsic {
 // Note: intrinsic code is not runtime build.
 // For example, if you build code on AVX, and run on AVX512 it can only use AVX
 
-void CRFDecoding(const int seq_len, const float* x, const float* w,
-                 float* alpha, int* track, int tag_num) {
+void CRFDecoding(const int seq_len,
+                 const float* x,
+                 const float* w,
+                 float* alpha,
+                 int* track,
+                 int tag_num) {
 #ifdef __AVX512F__
   const int step_size = ZMM_FLOAT_BLOCK;
 #else

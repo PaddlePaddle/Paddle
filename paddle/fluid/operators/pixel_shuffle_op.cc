@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -39,7 +40,8 @@ class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
                  "the factor to increase spatial resolution by.")
         .SetDefault(1)
         .AddCustomChecker([](const int& upscale_factor) {
-          PADDLE_ENFORCE_GE(upscale_factor, 1,
+          PADDLE_ENFORCE_GE(upscale_factor,
+                            1,
                             platform::errors::InvalidArgument(
                                 "upscale_factor should be larger than 0."));
         });
@@ -88,10 +90,13 @@ class PixelShuffleGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(pixel_shuffle, PixelShuffleInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pixel_shuffle,
+                            PixelShuffleInferShapeFunctor,
                             PD_INFER_META(phi::PixelShuffleInferMeta));
 
-REGISTER_OPERATOR(pixel_shuffle, ops::PixelShuffleOp, ops::PixelShuffleOpMaker,
+REGISTER_OPERATOR(pixel_shuffle,
+                  ops::PixelShuffleOp,
+                  ops::PixelShuffleOpMaker,
                   ops::PixelShuffleGradMaker<paddle::framework::OpDesc>,
                   ops::PixelShuffleGradMaker<paddle::imperative::OpBase>,
                   PixelShuffleInferShapeFunctor);
@@ -99,7 +104,8 @@ REGISTER_OPERATOR(pixel_shuffle, ops::PixelShuffleOp, ops::PixelShuffleOpMaker,
 DECLARE_INFER_SHAPE_FUNCTOR(pixel_shuffle_grad,
                             PixelShuffleGradInferShapeFunctor,
                             PD_INFER_META(phi::PixelShuffleGradInferMeta));
-REGISTER_OPERATOR(pixel_shuffle_grad, ops::PixelShuffleGradOp,
+REGISTER_OPERATOR(pixel_shuffle_grad,
+                  ops::PixelShuffleGradOp,
                   PixelShuffleGradInferShapeFunctor);
 
 REGISTER_OP_VERSION(pixel_shuffle)

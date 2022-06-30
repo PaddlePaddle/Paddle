@@ -211,6 +211,14 @@ class VarBase {
 
   framework::proto::VarType::Type DataType() const { return var_->DataType(); }
 
+  void SetDataLayout(paddle::experimental::DataLayout data_layout) {
+    var_->SetDataLayout(data_layout);
+  }
+
+  paddle::experimental::DataLayout DataLayout() const {
+    return var_->DataLayout();
+  }
+
   size_t ElementSize() const { return framework::SizeOfType(var_->DataType()); }
 
   void SetForwardDataType(framework::proto::VarType::Type data_type) {
@@ -283,15 +291,21 @@ class VarBase {
 };
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(
-    const framework::OperatorBase& op, const NameVarBaseMap& ins,
-    const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs, const platform::Place& place,
+    const framework::OperatorBase& op,
+    const NameVarBaseMap& ins,
+    const NameVarBaseMap& outs,
+    const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs,
+    const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(
-    const framework::OperatorBase& op, const NameTensorMap& ins,
-    const NameTensorMap& outs, const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs, const platform::Place& place,
+    const framework::OperatorBase& op,
+    const NameTensorMap& ins,
+    const NameTensorMap& outs,
+    const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs,
+    const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
 void ClearNoNeedBufferInputs(OpBase* op);

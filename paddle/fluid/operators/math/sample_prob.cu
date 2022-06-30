@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <thrust/random.h>
 #include <thrust/sort.h>
+
 #include <iostream>
 #include <vector>
 
@@ -33,7 +34,8 @@ namespace math {
 using Tensor = framework::Tensor;
 
 template <typename T>
-__device__ T gpu_adjust_prob(const T prob, const int num_samples,
+__device__ T gpu_adjust_prob(const T prob,
+                             const int num_samples,
                              const int num_tries) {
   if (num_samples == num_tries) {
     return prob * num_samples;
@@ -44,12 +46,14 @@ __device__ T gpu_adjust_prob(const T prob, const int num_samples,
 
 class GPULogUniformSampler {
  public:
-  __device__ int64_t Sample(float random, const int range,
+  __device__ int64_t Sample(float random,
+                            const int range,
                             const float log_range) const;
   __device__ float Probability(int64_t value, const float log_range) const;
 };
 
-__device__ int64_t GPULogUniformSampler::Sample(float random, const int range,
+__device__ int64_t GPULogUniformSampler::Sample(float random,
+                                                const int range,
                                                 const float log_range) const {
   // Got Log Uniform distribution from uniform distribution by
   // inverse_transform_sampling method
@@ -67,10 +71,15 @@ __device__ float GPULogUniformSampler::Probability(
 }
 
 template <typename T>
-__global__ void SamplingCondidate(
-    const size_t n, const int num_tries, const int range, const float log_range,
-    const int num_true, const std::size_t num_samples,
-    const int64_t* label_data, int64_t* samples_data, T* probabilities_data) {
+__global__ void SamplingCondidate(const size_t n,
+                                  const int num_tries,
+                                  const int range,
+                                  const float log_range,
+                                  const int num_true,
+                                  const std::size_t num_samples,
+                                  const int64_t* label_data,
+                                  int64_t* samples_data,
+                                  T* probabilities_data) {
   const int num_sampled_classes = num_true + num_samples;
 
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -92,7 +101,8 @@ __global__ void SamplingCondidate(
 }
 
 template <typename T>
-int UniqSampler(const Sampler& sampler, const std::size_t num_samples,
+int UniqSampler(const Sampler& sampler,
+                const std::size_t num_samples,
                 int64_t* samples_data) {
   // sample num_samles unique samples for an example, note that they are not
   // all negative samples
@@ -115,9 +125,14 @@ int UniqSampler(const Sampler& sampler, const std::size_t num_samples,
 
 template <typename T>
 void GPUSampleWithProb<T>::operator()(
-    const platform::CUDADeviceContext& context, const int seed,
-    const int dict_size, const bool uniq, const std::size_t num_samples,
-    const Tensor* L, Tensor* S, Tensor* P) {
+    const platform::CUDADeviceContext& context,
+    const int seed,
+    const int dict_size,
+    const bool uniq,
+    const std::size_t num_samples,
+    const Tensor* L,
+    Tensor* S,
+    Tensor* P) {
   // UNDERSTAND: dimension issues
   const auto lbl_dim = L->dims();
   const int batch_size = lbl_dim[0];
@@ -144,11 +159,13 @@ void GPUSampleWithProb<T>::operator()(
   VLOG(1) << "num_tries: " << num_tries;
 
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(samples_data + num_true, s_data,
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(samples_data + num_true,
+                                       s_data,
                                        sizeof(int64_t) * num_samples,
                                        hipMemcpyHostToDevice));
 #else
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(samples_data + num_true, s_data,
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(samples_data + num_true,
+                                        s_data,
                                         sizeof(int64_t) * num_samples,
                                         cudaMemcpyHostToDevice));
 #endif
@@ -157,14 +174,31 @@ void GPUSampleWithProb<T>::operator()(
   const size_t size = batch_size * num_sampled_classes;
   int grid = (batch_size * num_sampled_classes + threads - 1) / threads;
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(SamplingCondidate<T>), dim3(grid),
-                     dim3(threads), 0, context.stream(), size, num_tries, range,
-                     log_range, num_true, num_samples, label_data, samples_data,
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(SamplingCondidate<T>),
+                     dim3(grid),
+                     dim3(threads),
+                     0,
+                     context.stream(),
+                     size,
+                     num_tries,
+                     range,
+                     log_range,
+                     num_true,
+                     num_samples,
+                     label_data,
+                     samples_data,
                      probabilities_data);
 #else
-  SamplingCondidate<T><<<grid, threads, 0, context.stream()>>>(
-      size, num_tries, range, log_range, num_true, num_samples, label_data,
-      samples_data, probabilities_data);
+  SamplingCondidate<T>
+      <<<grid, threads, 0, context.stream()>>>(size,
+                                               num_tries,
+                                               range,
+                                               log_range,
+                                               num_true,
+                                               num_samples,
+                                               label_data,
+                                               samples_data,
+                                               probabilities_data);
 #endif
 }
 

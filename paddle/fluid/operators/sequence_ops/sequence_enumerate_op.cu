@@ -14,6 +14,7 @@
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+
 #include "paddle/fluid/operators/sequence_ops/sequence_enumerate_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
@@ -23,9 +24,12 @@ using platform::PADDLE_CUDA_NUM_THREADS;
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
-__global__ void CalcOutPut(const T* in_data, const size_t* in_lod,
-                           const size_t lod_len, const int64_t win_size,
-                           const int64_t pad_value, T* out_data) {
+__global__ void CalcOutPut(const T* in_data,
+                           const size_t* in_lod,
+                           const size_t lod_len,
+                           const int64_t win_size,
+                           const int64_t pad_value,
+                           T* out_data) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < in_lod[lod_len - 1]) {
     int end_idx = 0;
@@ -57,11 +61,13 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
     auto in_lod = in->lod();
 
     PADDLE_ENFORCE_EQ(
-        static_cast<uint64_t>(in_dims[0]), in_lod[0].back(),
+        static_cast<uint64_t>(in_dims[0]),
+        in_lod[0].back(),
         platform::errors::InvalidArgument(
             "The actual input data's size mismatched with LoD information."
             "Received input data size is %d (actual) vs %d (loD information).",
-            static_cast<uint64_t>(in_dims[0]), in_lod[0].back()));
+            static_cast<uint64_t>(in_dims[0]),
+            in_lod[0].back()));
 
     /* Generate enumerate sequence set */
     auto stream = context.cuda_device_context().stream();
@@ -75,7 +81,9 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
     const size_t* dev_in_lod_ptr = mixv_lod0.CUDAData(context.GetPlace());
     // Calc output tensor
     CalcOutPut<<<(in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
-                 PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+                 PADDLE_CUDA_NUM_THREADS,
+                 0,
+                 stream>>>(
         in_data, dev_in_lod_ptr, lod0.size(), win_size, pad_value, out_data);
     out->set_lod(in->lod());
   }

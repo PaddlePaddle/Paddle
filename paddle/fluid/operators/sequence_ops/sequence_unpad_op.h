@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/sequence_padding.h"
@@ -92,8 +93,14 @@ class SequenceUnpadGradOpKernel : public framework::OpKernel<T> {
       set_zero(dev_ctx, &zero_pads, static_cast<T>(0));
 
       math::PaddingLoDTensorFunctor<DeviceContext, T>()(
-          ctx.template device_context<DeviceContext>(), *d_out, d_x, zero_pads,
-          padded_length, 0, false, math::kBatchLengthWidth);
+          ctx.template device_context<DeviceContext>(),
+          *d_out,
+          d_x,
+          zero_pads,
+          padded_length,
+          0,
+          false,
+          math::kBatchLengthWidth);
     }
   }
 };

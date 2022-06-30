@@ -19,27 +19,51 @@ limitations under the License. */
 #include <popart/tensorinfo.hpp>
 #include <popart/vendored/any.hpp>
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/float16.h"
+
+using float16 = paddle::platform::float16;
+using Tensor = paddle::framework::Tensor;
+using LoDTensor = paddle::framework::LoDTensor;
+using Scope = paddle::framework::Scope;
+using OpDesc = paddle::framework::OpDesc;
+using Graph = paddle::framework::ir::Graph;
+using Node = paddle::framework::ir::Node;
+using BlockDesc = paddle::framework::BlockDesc;
+using VarType = paddle::framework::proto::VarType;
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
-using float16 = platform::float16;
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using Scope = framework::Scope;
-using OpDesc = framework::OpDesc;
-using Graph = framework::ir::Graph;
-using Node = framework::ir::Node;
-using BlockDesc = framework::BlockDesc;
+template <typename T>
+T GetSingleVarFromScope(const Scope* scope, const std::string& var_name) {
+  auto var = scope->GetVar(var_name);
+  auto tensor = var->Get<framework::LoDTensor>();
+  return tensor.data<T>()[0];
+}
 
-// onnx dtype
+struct IpuCustomOpIdentifier {
+  IpuCustomOpIdentifier(const std::string& _paddle_op,
+                        const std::string& _popart_op,
+                        const std::string& _domain,
+                        unsigned int _version)
+      : paddle_op(_paddle_op), popart_op(_domain, _popart_op, _version) {}
+
+  std::string repr() {
+    std::ostringstream os;
+    os << "paddle_op: " << paddle_op << ", domain: " << popart_op.domain
+       << ", type: " << popart_op.type << ", version: " << popart_op.version;
+    return os.str();
+  }
+
+  std::string paddle_op;
+  popart::OperatorIdentifier popart_op;
+};
+
+// Onnx dtype
 // https://github.com/onnx/onnx/blob/master/onnx/onnx-ml.proto3
 enum ONNXDataType : int {
   UNDEFINED = 0,
@@ -61,178 +85,22 @@ enum ONNXDataType : int {
   BFLOAT16 = 16
 };
 
-class PaddleIArray final : public popart::IArray {
- public:
-  explicit PaddleIArray(const Tensor* tensor) {
-    tensor_.ShareDataWith(*tensor);
-    for (int i = 0; i < tensor->dims().size(); ++i) {
-      shape_.push_back(tensor->dims().at(i));
-    }
-  }
-
- public:
-  void* data();
-  popart::DataType dataType() const;
-  std::size_t rank() const;
-  int64_t dim(size_t index) const;
-  std::size_t nelms() const;
-  const popart::Shape shape() const;
-
- private:
-  Tensor tensor_;
-  std::vector<int64_t> shape_;
-};
-
-popart::DataType VarType2PopartType(const framework::proto::VarType::Type type);
-popart::DataType PdDataType2PopartType(
-    const paddle::experimental::DataType type);
-framework::proto::VarType::Type PopartType2VarType(const popart::DataType type);
-popart::DataType OnnxDtype2PopartType(const int type);
-bool GetBoolEnv(std::string str);
-
-template <typename T>
-std::unique_ptr<popart::NDArrayWrapper<T>> Tensor2IArray(const Tensor& tensor) {
-  auto dtype = PdDataType2PopartType(tensor.dtype());
-  auto shape = std::vector<int64_t>();
-  for (size_t i = 0; i < tensor.dims().size(); ++i) {
-    shape.push_back(tensor.dims().at(i));
-  }
-  popart::TensorInfo tensor_info(dtype, shape);
-
-  return std::make_unique<popart::NDArrayWrapper<T>>(
-      reinterpret_cast<T*>(tensor.data()), tensor_info);
-}
-
-template <typename T>
-std::unique_ptr<popart::NDArrayWrapper<T>> LoDTensor2IArray(
-    LoDTensor const& lod_tensor) {
-  if (lod_tensor.lod().size() == 0) {
-    return Tensor2IArray<T>(lod_tensor);
-  } else {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("LoDTensor2IArray is Unimplemented"));
-  }
-}
-
-template <typename T>
-T GetSingleVarFromScope(const Scope* scope, const std::string& var_name) {
-  auto var = scope->GetVar(var_name);
-  auto tensor = var->Get<framework::LoDTensor>();
-  // check dtype is  ?
-  return tensor.data<T>()[0];
-}
-
-struct CustomOpAttrVisitor : public boost::static_visitor<void> {
-  explicit CustomOpAttrVisitor(std::map<std::string, popart::any>* attr,
-                               const std::string& attr_name)
-      : attrs_(attr), attr_name_(attr_name) {}
-  mutable std::map<std::string, popart::any>* attrs_;
-  std::string attr_name_;
-
-  void operator()(int v) const { attrs_->emplace(attr_name_, v); }
-  void operator()(float v) const { attrs_->emplace(attr_name_, v); }
-  void operator()(const std::string& v) const {
-    attrs_->emplace(attr_name_, v);
-  }
-  void operator()(const std::vector<int>& v) const {
-    attrs_->emplace(attr_name_, v);
-  }
-  void operator()(const std::vector<float>& v) const {
-    attrs_->emplace(attr_name_, v);
-  }
-  void operator()(const std::vector<std::string>& v) const {
-    attrs_->emplace(attr_name_, v);
-  }
-  void operator()(bool v) const { attrs_->emplace(attr_name_, v); }
-  void operator()(const std::vector<bool>& v) const {
-    attrs_->emplace(attr_name_, v);
-  }
-  void operator()(BlockDesc* desc) const {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Unsupported calling method for `BlockDesc` type."));
-  }
-  void operator()(const std::vector<BlockDesc*>& v) const {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Unsupported calling method for `BlockDesc` type."));
-  }
-  void operator()(int64_t v) const { attrs_->emplace(attr_name_, v); }
-  void operator()(const std::vector<int64_t>& v) const {
-    attrs_->emplace(attr_name_, v);
-  }
-  void operator()(const std::vector<double>& v) const {
-    attrs_->emplace(attr_name_, v);
-  }
-  void operator()(boost::blank) const {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Unsupported calling method for `boost::blank` type."));
-  }
-};
-
-struct IpuCustomOpIdentifier {
-  IpuCustomOpIdentifier(const std::string& _paddle_op,
-                        const std::string& _popart_op,
-                        const std::string& _domain, unsigned int _version)
-      : paddle_op(_paddle_op), popart_op(_domain, _popart_op, _version) {}
-
-  std::string repr() {
-    std::ostringstream os;
-    os << "paddle_op: " << paddle_op << ", domain: " << popart_op.domain
-       << ", type: " << popart_op.type << ", version: " << popart_op.version;
-    return os.str();
-  }
-
-  std::string paddle_op;
-  popart::OperatorIdentifier popart_op;
-};
-
-struct ConstantOpAttrVisitor : public boost::static_visitor<void> {
-  explicit ConstantOpAttrVisitor(framework::LoDTensor* tensor,
-                                 framework::proto::VarType::Type dtype)
-      : tensor_(tensor), dtype_(dtype) {}
-  framework::LoDTensor* tensor_;
-  framework::proto::VarType::Type dtype_;
-
-  void operator()(const std::vector<int>& vec) const {
-    framework::TensorFromVector<int>(vec, tensor_);
-  }
-  void operator()(const std::vector<float>& vec) const {
-    if (dtype_ == framework::proto::VarType::FP16) {
-      std::vector<float16> vec_fp16;
-      std::transform(vec.begin(), vec.end(), std::back_inserter(vec_fp16),
-                     [](float f) -> float16 { return float16(f); });
-      framework::TensorFromVector<float16>(vec_fp16, tensor_);
-    } else {
-      framework::TensorFromVector<float>(vec, tensor_);
-    }
-  }
-  void operator()(const std::vector<bool>& vec) const {
-    framework::TensorFromVector<bool>(vec, tensor_);
-  }
-  void operator()(const std::vector<int64_t>& vec) const {
-    framework::TensorFromVector<int64_t>(vec, tensor_);
-  }
-  void operator()(const std::vector<double>& vec) const {
-    framework::TensorFromVector<double>(vec, tensor_);
-  }
-  void RaiseError() const {
-    PADDLE_THROW(
-        platform::errors::InvalidArgument("Constant value must be a vector"));
-  }
-  void operator()(int v) const { RaiseError(); }
-  void operator()(float v) const { RaiseError(); }
-  void operator()(const std::string& v) const { RaiseError(); }
-  void operator()(const std::vector<std::string>& v) const { RaiseError(); }
-  void operator()(bool v) const { RaiseError(); }
-  void operator()(BlockDesc* desc) const { RaiseError(); }
-  void operator()(const std::vector<BlockDesc*>& v) const { RaiseError(); }
-  void operator()(int64_t v) const { RaiseError(); }
-  void operator()(boost::blank) const { RaiseError(); }
-};
-
-std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
-    const std::string& opt_type);
-
-int RequestIpus(const int num_ipus);
+// VarType::Type to popart::DataType
+const popart::DataType VarType2PopartDType(const VarType::Type type);
+// phi::DataType to popart::DataType
+const popart::DataType PhiDType2PopartDType(const phi::DataType type);
+// popart::DataType to VarType::Type
+const VarType::Type PopartDType2VarType(const popart::DataType type);
+// ONNXDataType to popart::DataType
+const popart::DataType OnnxDType2PopartType(const ONNXDataType type);
+// VarType::Type to ONNXDataType
+const ONNXDataType VarType2OnnxDType(const VarType::Type type);
+// VarType::Type to String in Popart
+const std::string VarType2PopartStr(const VarType::Type type);
+// Get bool from envirnment varaible
+const bool GetBoolEnv(const std::string& str);
+// Request number of ipus must be pow(2, n)
+const int RequestIpus(const int num_ipus);
 
 }  // namespace ipu
 }  // namespace platform

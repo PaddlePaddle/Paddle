@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -34,12 +35,14 @@ class DistOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_NE(phi::product(x_dims), 0,
+    PADDLE_ENFORCE_NE(phi::product(x_dims),
+                      0,
                       platform::errors::InvalidArgument(
                           "The Input(X) has not been initialized properly. The "
                           "shape of Input(X) = [%s].",
                           x_dims));
-    PADDLE_ENFORCE_NE(phi::product(y_dims), 0,
+    PADDLE_ENFORCE_NE(phi::product(y_dims),
+                      0,
                       platform::errors::InvalidArgument(
                           "The Input(Y) has not been initialized properly. The "
                           "shape of Input(Y) = [%s].",
@@ -124,10 +127,13 @@ class DistGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(dist, DistInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(dist,
+                            DistInferShapeFunctor,
                             PD_INFER_META(phi::DistInferMeta));
 
-REGISTER_OPERATOR(dist, ops::DistOp, ops::DistOpMaker,
+REGISTER_OPERATOR(dist,
+                  ops::DistOp,
+                  ops::DistOpMaker,
                   ops::DistGradOpMaker<paddle::framework::OpDesc>,
                   ops::DistGradOpMaker<paddle::imperative::OpBase>,
                   DistInferShapeFunctor);

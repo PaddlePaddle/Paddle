@@ -34,6 +34,10 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/enforce.h"
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#endif
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -135,6 +139,13 @@ void SynchronizeAllDevice() {
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  int count = GetMLUDeviceCount();
+  for (int i = 0; i < count; i++) {
+    SetMLUDeviceId(i);
+    PADDLE_ENFORCE_MLU_SUCCESS(cnrtSyncDevice());
+  }
+#endif
 }
 
 static double ToMegaBytes(size_t bytes) {
@@ -145,7 +156,8 @@ static double ToMegaBytes(size_t bytes) {
 void PrintMemProfiler(
     const std::map<Place, std::unordered_map<std::string, MemoryProfierReport>>
         &annotation_report,
-    const size_t name_width, const size_t data_width) {
+    const size_t name_width,
+    const size_t data_width) {
   // Output header information
   std::cout << "\n------------------------->"
             << "    Memory Profiling Report     "
@@ -157,11 +169,13 @@ void PrintMemProfiler(
   if (num_gpus > 0) {
     std::cout << "GPU Memory Usage (MB):\n";
     for (int dev_id = 0; dev_id < num_gpus; ++dev_id) {
-      int64_t allocated = memory::StatGetCurrentValue("Allocated", dev_id);
-      int64_t reserved = memory::StatGetCurrentValue("Reserved", dev_id);
+      int64_t allocated =
+          memory::DeviceMemoryStatCurrentValue("Allocated", dev_id);
+      int64_t reserved =
+          memory::DeviceMemoryStatCurrentValue("Reserved", dev_id);
       size_t available = 0, total = 0, actual_available = 0, actual_total = 0;
-      RecordedGpuMemGetInfo(&available, &total, &actual_available,
-                            &actual_total, dev_id);
+      RecordedGpuMemGetInfo(
+          &available, &total, &actual_available, &actual_total, dev_id);
 
       std::ostringstream system_gpu_memory;
       system_gpu_memory << "System GPU Memory (gpu:" << dev_id << ")";
@@ -261,8 +275,8 @@ void DealWithShowName() {
             }
           }
           replace_str = std::to_string(replace_index);
-          event_name.replace(start_replace, end_replace - start_replace + 1,
-                             replace_str);
+          event_name.replace(
+              start_replace, end_replace - start_replace + 1, replace_str);
           start = start + 1;
           start = origin_event_name.find('%', start);
           end = origin_event_name.find('%', start + 1);
@@ -330,8 +344,10 @@ std::function<bool(const EventItem &, const EventItem &)> SetSortedFunc(
   return sorted_func;
 }
 
-void SetEvent(bool merge_thread, const Event &analyze_event,
-              size_t *max_name_width, std::list<Event> *pushed_events,
+void SetEvent(bool merge_thread,
+              const Event &analyze_event,
+              size_t *max_name_width,
+              std::list<Event> *pushed_events,
               std::vector<EventItem> *event_items,
               std::unordered_map<std::string, int> *event_idx,
               const std::set<std::string> &main_thread_event_name) {
@@ -377,8 +393,8 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
             index++;
           }
           if (split_pos == -1 && !main_thread_event_name.count(rit->name())) {
-            event_name = "thread" + std::to_string(rit->thread_id()) + "::" +
-                         rit->name();
+            event_name = "thread" + std::to_string(rit->thread_id()) +
+                         "::" + rit->name();
           } else {
             if (!main_thread_event_name.count(rit->name())) {
               event_name =
@@ -409,9 +425,16 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
 
       if (event_idx->find(event_name) == event_idx->end()) {
         event_idx->insert({event_name, event_items->size()});
-        EventItem event_item = {event_name, 1,          event_time, event_time,
-                                event_time, event_time, cpu_time,   gpu_time,
-                                0.,         rit->role()};
+        EventItem event_item = {event_name,
+                                1,
+                                event_time,
+                                event_time,
+                                event_time,
+                                event_time,
+                                cpu_time,
+                                gpu_time,
+                                0.,
+                                rit->role()};
         event_items->push_back(event_item);
       } else {
         int index = event_idx->at(event_name);
@@ -438,7 +461,8 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
   }
 }
 
-void UpdateGpuMemcpy(const EventItem &item, EventItem *memcpy_async,
+void UpdateGpuMemcpy(const EventItem &item,
+                     EventItem *memcpy_async,
                      EventItem *memcpy_sync) {
   if (item.name.find("GpuMemcpyAsync") != std::string::npos) {
     memcpy_async->calls += item.calls;
@@ -456,8 +480,8 @@ void ComputeOverhead(const std::vector<EventItem> &main_event_items,
                      OverHead *overhead) {
   EventItem memcpy_async = {
       "GpuMemcpyAsync", 0, 0., 0., 0., 0., 0., 0., 0.0f, EventRole::kOrdinary};
-  EventItem memcpy_sync = {"GpuMemcpySync",     0, 0., 0., 0., 0., 0., 0., 0.0f,
-                           EventRole::kOrdinary};
+  EventItem memcpy_sync = {
+      "GpuMemcpySync", 0, 0., 0., 0., 0., 0., 0., 0.0f, EventRole::kOrdinary};
   // GpuMemcpy may be in main_event_items
   for (auto &item : main_event_items) {
     if (item.role != EventRole::kSpecial) {
@@ -602,9 +626,13 @@ void PrintProfiler(
     const std::vector<std::vector<EventItem>> &events_table,
     const std::multimap<std::string, EventItem> &child_map,
     std::function<bool(const EventItem &, const EventItem &)> sorted_func,
-    EventSortingKey sorted_by, const OverHead &overhead,
-    const std::string &sorted_domain, const size_t name_width,
-    const size_t data_width, bool merge_thread, int print_depth) {
+    EventSortingKey sorted_by,
+    const OverHead &overhead,
+    const std::string &sorted_domain,
+    const size_t name_width,
+    const size_t data_width,
+    bool merge_thread,
+    int print_depth) {
   if (print_depth == 0) {
     // Output header information
     std::cout << "\n------------------------->"
@@ -690,11 +718,13 @@ void PrintProfiler(
       if (g_state == ProfilerState::kAll) {
         std::cout << std::setw(data_width * 2)
                   << string::Sprintf(
-                         "%f (%f)", event_item.cpu_time,
+                         "%f (%f)",
+                         event_item.cpu_time,
                          (event_item.cpu_time / event_item.total_time))
                   << std::setw(data_width * 2)
                   << string::Sprintf(
-                         "%f (%f)", event_item.gpu_time,
+                         "%f (%f)",
+                         event_item.gpu_time,
                          (event_item.gpu_time / event_item.total_time));
       }
       std::cout << std::setw(data_width) << event_item.min_time
@@ -708,8 +738,15 @@ void PrintProfiler(
       }
       std::cout << std::endl;
 
-      PrintProfiler(child_table, child_map, sorted_func, sorted_by, overhead,
-                    sorted_domain, name_width, data_width, merge_thread,
+      PrintProfiler(child_table,
+                    child_map,
+                    sorted_func,
+                    sorted_by,
+                    overhead,
+                    sorted_domain,
+                    name_width,
+                    data_width,
+                    merge_thread,
                     print_depth + 1);
     }
   }
@@ -720,7 +757,9 @@ void AnalyzeEvent(
     std::vector<std::vector<EventItem>> *events_table,
     std::multimap<std::string, EventItem> *child_map,
     std::function<bool(const EventItem &, const EventItem &)> sorted_func,
-    EventSortingKey sorted_by, size_t *max_name_width, OverHead *overhead,
+    EventSortingKey sorted_by,
+    size_t *max_name_width,
+    OverHead *overhead,
     bool merge_thread) {
   // In oreder to deal with special event in main thread
   std::set<std::string> main_thread_event_name;
@@ -743,8 +782,13 @@ void AnalyzeEvent(
     for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
       Event analyze_event = (*analyze_events)[i][j];
       if (!(analyze_event.role() == EventRole::kSpecial && !merge_thread)) {
-        SetEvent(merge_thread, analyze_event, max_name_width, &pushed_events,
-                 &event_items, &event_idx, main_thread_event_name);
+        SetEvent(merge_thread,
+                 analyze_event,
+                 max_name_width,
+                 &pushed_events,
+                 &event_items,
+                 &event_idx,
+                 main_thread_event_name);
       }
     }
 
@@ -858,12 +902,26 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   std::multimap<std::string, EventItem> child_map;
   size_t max_name_width = 0;
   OverHead overhead;
-  AnalyzeEvent(analyze_events, &events_table, &child_map, sorted_func,
-               sorted_by, &max_name_width, &overhead, merge_thread);
+  AnalyzeEvent(analyze_events,
+               &events_table,
+               &child_map,
+               sorted_func,
+               sorted_by,
+               &max_name_width,
+               &overhead,
+               merge_thread);
 
   // Print report
-  PrintProfiler(events_table, child_map, sorted_func, sorted_by, overhead,
-                sorted_domain, max_name_width + 8, 12, merge_thread, 0);
+  PrintProfiler(events_table,
+                child_map,
+                sorted_func,
+                sorted_by,
+                overhead,
+                sorted_domain,
+                max_name_width + 8,
+                12,
+                merge_thread,
+                0);
 }
 
 }  // namespace platform

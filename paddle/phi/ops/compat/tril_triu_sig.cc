@@ -22,10 +22,8 @@ KernelSignature TrilTriuOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature TrilTriuGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("tril_triu_grad",
-                         {GradVarName("Out")},
-                         {"diagonal", "lower"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "tril_triu_grad", {"Out@GRAD"}, {"diagonal", "lower"}, {"X@GRAD"});
 }
 
 }  // namespace phi

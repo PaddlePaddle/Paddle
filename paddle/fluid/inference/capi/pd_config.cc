@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/capi/paddle_c_api.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -38,7 +39,8 @@ void PD_DeleteAnalysisConfig(PD_AnalysisConfig* config) {
   }
 }
 
-void PD_SetModel(PD_AnalysisConfig* config, const char* model_dir,
+void PD_SetModel(PD_AnalysisConfig* config,
+                 const char* model_dir,
                  const char* params_path) {
   LOG(INFO) << model_dir;
   PADDLE_ENFORCE_NOT_NULL(
@@ -101,7 +103,8 @@ const char* PD_ParamsFile(const PD_AnalysisConfig* config) {
   return config->config.params_file().c_str();
 }
 
-void PD_EnableUseGpu(PD_AnalysisConfig* config, int memory_pool_init_size_mb,
+void PD_EnableUseGpu(PD_AnalysisConfig* config,
+                     int memory_pool_init_size_mb,
                      int device_id) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
@@ -239,17 +242,23 @@ bool PD_SpecifyInputName(const PD_AnalysisConfig* config) {
   return config->config.specify_input_name();
 }
 
-void PD_EnableTensorRtEngine(PD_AnalysisConfig* config, int workspace_size,
-                             int max_batch_size, int min_subgraph_size,
-                             Precision precision, bool use_static,
+void PD_EnableTensorRtEngine(PD_AnalysisConfig* config,
+                             int workspace_size,
+                             int max_batch_size,
+                             int min_subgraph_size,
+                             Precision precision,
+                             bool use_static,
                              bool use_calib_mode) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
       paddle::platform::errors::InvalidArgument(
           "The pointer of analysis configuration shouldn't be nullptr"));
-  config->config.EnableTensorRtEngine(
-      workspace_size, max_batch_size, min_subgraph_size,
-      paddle::ConvertToACPrecision(precision), use_static, use_calib_mode);
+  config->config.EnableTensorRtEngine(workspace_size,
+                                      max_batch_size,
+                                      min_subgraph_size,
+                                      paddle::ConvertToACPrecision(precision),
+                                      use_static,
+                                      use_calib_mode);
 }
 
 bool PD_TensorrtEngineEnabled(const PD_AnalysisConfig* config) {
@@ -357,15 +366,17 @@ bool PD_MkldnnBfloat16Enabled(const PD_AnalysisConfig* config) {
   return config->config.mkldnn_bfloat16_enabled();
 }
 
-void PD_SetModelBuffer(PD_AnalysisConfig* config, const char* prog_buffer,
-                       size_t prog_buffer_size, const char* params_buffer,
+void PD_SetModelBuffer(PD_AnalysisConfig* config,
+                       const char* prog_buffer,
+                       size_t prog_buffer_size,
+                       const char* params_buffer,
                        size_t params_buffer_size) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
       paddle::platform::errors::InvalidArgument(
           "The pointer of analysis configuration shouldn't be nullptr"));
-  config->config.SetModelBuffer(prog_buffer, prog_buffer_size, params_buffer,
-                                params_buffer_size);
+  config->config.SetModelBuffer(
+      prog_buffer, prog_buffer_size, params_buffer, params_buffer_size);
 }
 
 bool PD_ModelFromMemory(const PD_AnalysisConfig* config) {

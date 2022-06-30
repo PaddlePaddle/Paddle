@@ -24,6 +24,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/broadcast.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
@@ -44,7 +45,8 @@ class CBroadcastOpCPUKernel : public framework::OpKernel<T> {
     T* recv_buff = out->mutable_data<T>(in->dims(), place);
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     PADDLE_ENFORCE_EQ(
-        gloo->IsInitialized(), true,
+        gloo->IsInitialized(),
+        true,
         platform::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
     gloo::BroadcastOptions opts(gloo->GetContext());

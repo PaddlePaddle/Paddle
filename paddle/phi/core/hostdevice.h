@@ -20,6 +20,7 @@
 
 #if defined(__xpu__)
 #include <xpu/runtime.h>
+
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/debug.h"
 #include "xpu/kernel/math.h"

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/xpu_api_wrapper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -68,10 +69,24 @@ class MulXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
     int ret = xpu_fc_wrapper<XPUType, int16_t>(
-        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(data_a),
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(data_a),
         reinterpret_cast<const XPUType*>(data_b),
-        reinterpret_cast<XPUType*>(data_c), m, n, k, trans_a, trans_b, nullptr,
-        nullptr, nullptr, k, n, n, alpha, beta, nullptr,
+        reinterpret_cast<XPUType*>(data_c),
+        m,
+        n,
+        k,
+        trans_a,
+        trans_b,
+        nullptr,
+        nullptr,
+        nullptr,
+        k,
+        n,
+        n,
+        alpha,
+        beta,
+        nullptr,
         xpu::Activation_t::LINEAR);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "xpu_fc_wrapper");
 
@@ -135,10 +150,24 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
       T* data_c = dx_matrix.data<T>();
 
       int ret = xpu_fc_wrapper<XPUType, int16_t>(
-          dev_ctx.x_context(), reinterpret_cast<const XPUType*>(data_a),
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(data_a),
           reinterpret_cast<const XPUType*>(data_b),
-          reinterpret_cast<XPUType*>(data_c), m, n, k, trans_a, trans_b,
-          nullptr, nullptr, nullptr, lda, ldb, ldc, alpha, beta, nullptr,
+          reinterpret_cast<XPUType*>(data_c),
+          m,
+          n,
+          k,
+          trans_a,
+          trans_b,
+          nullptr,
+          nullptr,
+          nullptr,
+          lda,
+          ldb,
+          ldc,
+          alpha,
+          beta,
+          nullptr,
           xpu::Activation_t::LINEAR);
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "xpu_fc_wrapper");
     }
@@ -168,10 +197,24 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
       T* data_c = dy_matrix.data<T>();
 
       int ret = xpu_fc_wrapper<XPUType, int16_t>(
-          dev_ctx.x_context(), reinterpret_cast<const XPUType*>(data_a),
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(data_a),
           reinterpret_cast<const XPUType*>(data_b),
-          reinterpret_cast<XPUType*>(data_c), m, n, k, trans_a, trans_b,
-          nullptr, nullptr, nullptr, lda, ldb, ldc, alpha, beta, nullptr,
+          reinterpret_cast<XPUType*>(data_c),
+          m,
+          n,
+          k,
+          trans_a,
+          trans_b,
+          nullptr,
+          nullptr,
+          nullptr,
+          lda,
+          ldb,
+          ldc,
+          alpha,
+          beta,
+          nullptr,
           xpu::Activation_t::LINEAR);
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "xpu_fc_wrapper");
     }
@@ -185,9 +228,11 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_XPU_KERNEL(
-    mul, ops::MulXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    mul,
+    ops::MulXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::MulXPUKernel<paddle::platform::XPUDeviceContext, plat::float16>);
 REGISTER_OP_XPU_KERNEL(
-    mul_grad, ops::MulGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    mul_grad,
+    ops::MulGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::MulGradXPUKernel<paddle::platform::XPUDeviceContext, plat::float16>)
 #endif

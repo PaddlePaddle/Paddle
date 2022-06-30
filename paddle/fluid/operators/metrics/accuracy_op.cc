@@ -36,7 +36,7 @@ class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     // TODO(typhoonzero): support both inference value and indices.
     AddInput("Out", "The network output of topk (inferences)");
-    AddInput("Indices", "The the network output of topk (indices)");
+    AddInput("Indices", "The network output of topk (indices)");
     AddInput("Label", "Label of the training data");
     // TODO(typhoonzero): AddInput("Weight", ...
     AddOutput("Accuracy", "The accuracy of current batch");
@@ -64,11 +64,14 @@ with the input Out(Inference).
 
 // FIXME(typhoonzero): types of T is for infernece data.
 // label data is always int.
-DECLARE_INFER_SHAPE_FUNCTOR(accuracy, AccuracyInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(accuracy,
+                            AccuracyInferShapeFunctor,
                             PD_INFER_META(phi::AccuracyInferMeta));
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    accuracy, ops::AccuracyOp, ops::AccuracyOpMaker,
+    accuracy,
+    ops::AccuracyOp,
+    ops::AccuracyOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     AccuracyInferShapeFunctor);

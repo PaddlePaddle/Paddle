@@ -14,6 +14,9 @@
 
 #include "paddle/phi/kernels/where_grad_kernel.h"
 
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/kernel_registry.h"
+
 namespace phi {
 
 template <typename T>
@@ -47,9 +50,9 @@ void WhereGradKernel(const Context& ctx,
 
   auto stream = ctx.stream();
   auto config = backends::gpu::GetGpuLaunchConfig1D(ctx, numel);
-  WhereGradCUDAKernel<
-      T><<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-      numel, dout, cond_data, dx, dy);
+  WhereGradCUDAKernel<T>
+      <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
+          numel, dout, cond_data, dx, dy);
 }
 
 }  // namespace phi

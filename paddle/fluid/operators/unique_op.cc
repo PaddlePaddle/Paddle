@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/unique_op.h"
+
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -64,9 +66,16 @@ class UniqueOp : public framework::OperatorWithKernel {
     }
     bool is_sorted = ctx->Attrs().Get<bool>("is_sorted");
     if (is_sorted) {
-      phi::UniqueInferMeta(x, return_index, return_inverse, return_counts,
-                           axis_vec, data_type, &out, indices.get(),
-                           index.get(), counts.get());
+      phi::UniqueInferMeta(x,
+                           return_index,
+                           return_inverse,
+                           return_counts,
+                           axis_vec,
+                           data_type,
+                           &out,
+                           indices.get(),
+                           index.get(),
+                           counts.get());
     } else {
       OP_INOUT_CHECK(ctx->HasOutput("Index"), "Output", "Index", "unique");
       if (index == nullptr) {
@@ -74,9 +83,17 @@ class UniqueOp : public framework::OperatorWithKernel {
             std::move(std::unique_ptr<CompatMetaTensor>(new CompatMetaTensor(
                 ctx->GetOutputVarPtrs("Index")[0], ctx->IsRuntime())));
       }
-      phi::UniqueRawInferMeta(x, return_index, return_inverse, return_counts,
-                              axis_vec, data_type, is_sorted, &out,
-                              indices.get(), index.get(), counts.get());
+      phi::UniqueRawInferMeta(x,
+                              return_index,
+                              return_inverse,
+                              return_counts,
+                              axis_vec,
+                              data_type,
+                              is_sorted,
+                              &out,
+                              indices.get(),
+                              index.get(),
+                              counts.get());
     }
   }
 

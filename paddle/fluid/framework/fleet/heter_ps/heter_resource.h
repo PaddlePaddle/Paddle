@@ -24,6 +24,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU_KP
 #include <xpu/runtime.h>  // NOLINT
+
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
@@ -36,6 +37,7 @@ namespace framework {
 
 #if defined(PADDLE_WITH_CUDA)
 using ppStream = cudaStream_t;
+
 #elif defined(PADDLE_WITH_XPU_KP)
 using ppStream = XPUStream;
 #endif
@@ -61,6 +63,7 @@ class GPUResource {
   std::vector<gpuStream_t> local_streams_;
   std::vector<gpuStream_t> comm_streams_;
 };
+
 #elif defined(PADDLE_WITH_XPU_KP)
 class XPUResource {
  public:
@@ -105,6 +108,9 @@ class HeterPsResource {
   int get_index_by_devid(int devid);
   int dev_id(int num);
   void set_multi_mf(int multi_mf_dim, int max_mf_dim);
+  int multi_mf() { return multi_mf_dim_; }
+  int max_mf_dim() { return max_mf_dim_; }
+
   ppStream local_stream(int dev_num, int stream_num);
   ppStream remote_stream(int dev_num, int stream_num);
   ppStream comm_stream(int dev_num, int stream_num);

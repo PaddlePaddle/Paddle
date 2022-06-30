@@ -1,14 +1,17 @@
-if (WITH_ASCEND_CL)
-  cc_library(beam_search_npu SRCS beam_search_npu.cc DEPS npu_op_runner)
+if(WITH_ASCEND_CL)
+  cc_library(
+    beam_search_npu
+    SRCS beam_search_npu.cc
+    DEPS npu_op_runner)
 endif()
 
 # please add new math_library in alphabetical order
-if (WITH_ASCEND_CL)
-math_library(concat_and_split DEPS concat_and_split_functor npu_op_runner)
-elseif (WITH_MLU)
-math_library(concat_and_split DEPS concat_and_split_functor mlu_baseop)
+if(WITH_ASCEND_CL)
+  math_library(concat_and_split DEPS concat_and_split_functor npu_op_runner)
+elseif(WITH_MLU)
+  math_library(concat_and_split DEPS concat_and_split_functor mlu_baseop)
 else()
-math_library(concat_and_split DEPS concat_and_split_functor)
+  math_library(concat_and_split DEPS concat_and_split_functor)
 endif()
 math_library(context_project DEPS im2col math_function)
 math_library(cross_entropy)
@@ -22,23 +25,29 @@ math_library(sampler DEPS generator)
 math_library(maxouting)
 
 if(WITH_MKLDNN)
-    math_library(selected_rows_functor DEPS selected_rows_utils math_function blas mkldnn_axpy_handler mixed_vector)
+  math_library(
+    selected_rows_functor
+    DEPS
+    selected_rows_utils
+    math_function
+    blas
+    mkldnn_axpy_handler
+    mixed_vector)
 else()
-    math_library(selected_rows_functor DEPS selected_rows_utils math_function blas mixed_vector)
+  math_library(selected_rows_functor DEPS selected_rows_utils math_function
+               blas mixed_vector)
 endif()
 
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 math_library(sequence_scale)
 math_library(softmax DEPS math_function jit_kernel_helper)
-if (WITH_ASCEND_CL)
-    math_library(beam_search DEPS math_function beam_search_npu)
+if(WITH_ASCEND_CL)
+  math_library(beam_search DEPS math_function beam_search_npu)
 else()
-    math_library(beam_search DEPS math_function)
+  math_library(beam_search DEPS math_function)
 endif()
-math_library(fc DEPS blas jit_kernel_helper)
 math_library(matrix_bit_code)
-
 
 math_library(unpooling)
 math_library(vol2col)
@@ -47,28 +56,47 @@ math_library(bert_encoder_functor)
 math_library(tree2col DEPS math_function)
 math_library(matrix_solve)
 
-cc_test(selected_rows_functor_test SRCS selected_rows_functor_test.cc DEPS selected_rows_functor)
-cc_test(im2col_test SRCS im2col_test.cc DEPS im2col)
-cc_test(vol2col_test SRCS vol2col_test.cc DEPS vol2col)
-cc_test(sequence_padding_test SRCS sequence_padding_test.cc DEPS sequence_padding)
-cc_test(sequence_pooling_test SRCS sequence_pooling_test.cc DEPS sequence_pooling)
-cc_test(beam_search_test SRCS beam_search_test.cc DEPS beam_search)
+cc_test(
+  selected_rows_functor_test
+  SRCS selected_rows_functor_test.cc
+  DEPS selected_rows_functor)
+cc_test(
+  im2col_test
+  SRCS im2col_test.cc
+  DEPS im2col)
+cc_test(
+  vol2col_test
+  SRCS vol2col_test.cc
+  DEPS vol2col)
+cc_test(
+  sequence_padding_test
+  SRCS sequence_padding_test.cc
+  DEPS sequence_padding)
+cc_test(
+  sequence_pooling_test
+  SRCS sequence_pooling_test.cc
+  DEPS sequence_pooling)
+cc_test(
+  beam_search_test
+  SRCS beam_search_test.cc
+  DEPS beam_search)
 if(WITH_GPU)
-    nv_test(selected_rows_functor_gpu_test SRCS selected_rows_functor_test.cu.cc DEPS selected_rows_functor math_function)
+  nv_test(
+    selected_rows_functor_gpu_test
+    SRCS selected_rows_functor_test.cu.cc
+    DEPS selected_rows_functor math_function)
 endif()
 if(WITH_ROCM)
-    hip_test(selected_rows_functor_gpu_test SRCS selected_rows_functor_test.cu.cc DEPS selected_rows_functor math_function)
+  hip_test(
+    selected_rows_functor_gpu_test
+    SRCS selected_rows_functor_test.cu.cc
+    DEPS selected_rows_functor math_function)
 endif()
-cc_test(concat_test SRCS concat_test.cc DEPS concat_and_split)
-
-if(WITH_GPU AND (NOT WITH_ROCM))
-#currenty not yet support ROCM 
-#the generic conversion APIs of dense and sparse are only supported after cuda11.2
-    if((NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.2)) 
-        cc_test(cusparse_conversion_api_test SRCS cusparse_conversion_api_test.cc DEPS tensor)
-    endif()
-endif()
+cc_test(
+  concat_test
+  SRCS concat_test.cc
+  DEPS concat_and_split)
 
 if(WITH_TESTING AND TEST im2col_test)
-    set_tests_properties(im2col_test PROPERTIES TIMEOUT 120)
+  set_tests_properties(im2col_test PROPERTIES TIMEOUT 120)
 endif()

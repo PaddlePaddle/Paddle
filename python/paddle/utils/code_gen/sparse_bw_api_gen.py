@@ -22,6 +22,7 @@ from backward_api_gen import BackwardAPI
 
 
 class SparseBackwardAPI(SparseAPI, BackwardAPI):
+
     def __init__(self, bw_api_item_yaml):
         BackwardAPI.__init__(self, bw_api_item_yaml)
 
@@ -31,58 +32,57 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def gene_kernel_backend_select(self):
         return BackwardAPI.gene_kernel_backend_select(self)
 
-    def get_return_type(self, out_type_list):
-        return BackwardAPI.get_return_type(self, out_type_list)
+    def get_return_type(self, inplace_flag=False):
+        return BackwardAPI.get_return_type(self)
+
+    def gene_return_code(self):
+        return "return;"
 
     def gene_api_declaration(self):
         return SparseAPI.gene_api_declaration(self)
 
+    def get_declare_args(self, inplace_flag=False):
+        return BackwardAPI.get_declare_args(self)
+
+    def get_define_args(self, inplace_flag=False):
+        return BackwardAPI.get_define_args(self)
+
     def gene_output(self,
-                    output_type_list,
-                    set_out_func,
-                    code_indent,
+                    out_dtype_list,
+                    out_tensor_type_list=None,
+                    code_indent='',
                     inplace_flag=False):
         kernel_output = ""
         output_names = []
         output_create = ""
+        output_type_map = {
+            'dense': 'TensorType::DENSE_TENSOR',
+            'sparse_coo': 'TensorType::SPARSE_COO',
+            'sparse_csr': 'TensorType::SPARSE_CSR'
+        }
 
-        if len(output_type_list) == 1:
+        if len(out_dtype_list) == 1:
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
             inplace_assign = " = " + self.inplace_map[self.outputs['names'][
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
-  {self.outputs['return_type']} api_output{inplace_assign};
-  auto kernel_out = {set_out_func}(&api_output, {self.get_kernel_tensor_out_type(self.outputs['names'][0])});"""
+    auto kernel_out = SetSparseKernelOutput({self.outputs['names'][0]}, {output_type_map[out_dtype_list[0]]});"""
 
-        elif len(output_type_list) > 1:
-            output_create = f"""
-  {self.outputs['return_type']} api_output({len(output_type_list)});"""
+        elif len(out_dtype_list) > 1:
+            output_create = ""
 
-            for i, out_type_item in enumerate(output_type_list):
+            for i, out_type_item in enumerate(out_dtype_list):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
-                if out_type_item == 'Tensor':
-                    get_out_code = f'&api_output[{i}][0]'
-                    if inplace_flag and self.inplace_map is not None and self.outputs[
-                            'names'][i] in self.inplace_map:
-                        output_create = output_create + f"""
-  api_output[{i}].emplace_back({self.inplace_map[self.outputs['names'][i]]});"""
-
-                    else:
-                        output_create = output_create + f"""
-  api_output[{i}].emplace_back();"""
-
-                else:
-                    get_out_code = f'&api_output[{i}]'
-                    if inplace_flag and self.inplace_map is not None and self.outputs[
-                            'names'][i] in self.inplace_map:
-                        output_create = output_create + f"""
-  api_output[{i}] = {self.inplace_map[self.outputs['names'][i]]};"""
+                if inplace_flag and self.inplace_map is not None and self.outputs[
+                        'names'][i] in self.inplace_map:
+                    output_create = output_create + f"""
+    *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
 
                 output_create = output_create + f"""
-  auto kernel_out_{i} = {set_out_func}({get_out_code}, {self.get_kernel_tensor_out_type(self.outputs['names'][i])});"""
+    auto kernel_out_{i} = SetSparseKernelOutput({self.outputs['names'][i]}, {output_type_map[out_dtype_list[i]]});"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -167,15 +167,13 @@ def main():
         help='path to sparse api yaml file',
         default='python/paddle/utils/code_gen/sparse_bw_api.yaml')
 
-    parser.add_argument(
-        '--api_header_path',
-        help='output of generated api header code file',
-        default='paddle/phi/api/backward/sparse_bw_api.h')
+    parser.add_argument('--api_header_path',
+                        help='output of generated api header code file',
+                        default='paddle/phi/api/backward/sparse_bw_api.h')
 
-    parser.add_argument(
-        '--api_source_path',
-        help='output of generated api source code file',
-        default='paddle/phi/api/lib/sparse_bw_api.cc')
+    parser.add_argument('--api_source_path',
+                        help='output of generated api source code file',
+                        default='paddle/phi/api/lib/sparse_bw_api.cc')
 
     options = parser.parse_args()
 

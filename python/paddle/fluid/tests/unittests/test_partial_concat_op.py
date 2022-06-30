@@ -41,6 +41,7 @@ def np_partial_concat(inputs, start, length):
 
 
 class TestPartialConcatOp(OpTest):
+
     def setUp(self):
         self.op_type = "partial_concat"
         self.init_kernel_type()
@@ -74,6 +75,7 @@ class TestPartialConcatOp(OpTest):
 
 
 class TestPartialConcatOp2(TestPartialConcatOp):
+
     def init_para(self):
         self.batch_size = random.randint(1, 10)
         self.column = random.randint(101, 200)
@@ -83,6 +85,7 @@ class TestPartialConcatOp2(TestPartialConcatOp):
 
 
 class TestPartialConcatOp3(TestPartialConcatOp):
+
     def init_para(self):
         self.batch_size = random.randint(1, 10)
         self.column = random.randint(101, 200)
@@ -92,6 +95,7 @@ class TestPartialConcatOp3(TestPartialConcatOp):
 
 
 class TestPartialConcatOp4(TestPartialConcatOp):
+
     def init_para(self):
         self.batch_size = random.randint(1, 10)
         self.column = random.randint(101, 200)

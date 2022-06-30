@@ -12,6 +12,7 @@
 #include <atomic>
 #include <cstdlib>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/new_executor/workqueue/event_count.h"
 #include "paddle/fluid/framework/new_executor/workqueue/run_queue.h"
@@ -28,14 +29,17 @@ class ThreadPoolTempl {
   typedef typename Environment::Task Task;
   typedef RunQueue<Task, 1024> Queue;
 
-  ThreadPoolTempl(const std::string& name, int num_threads, bool allow_spinning,
+  ThreadPoolTempl(const std::string& name,
+                  int num_threads,
+                  bool allow_spinning,
+                  bool always_spinning,
                   Environment env = Environment())
       : env_(env),
         allow_spinning_(allow_spinning),
+        always_spinning_(always_spinning),
         global_steal_partition_(EncodePartition(0, num_threads_)),
         blocked_(0),
         num_tasks_(0),
-        spinning_(0),
         done_(false),
         cancelled_(false),
         ec_(num_threads),
@@ -129,6 +133,7 @@ class ThreadPoolTempl {
     // this. We expect that such scenario is prevented by program, that is,
     // this is kept alive while any threads can potentially be in Schedule.
     if (!t.f) {
+      // Allow 'false positive' which makes a redundant notification.
       if (num_tasks > num_threads_ - blocked_) {
         VLOG(6) << "Add task, Notify";
         ec_.Notify(false);
@@ -235,11 +240,11 @@ class ThreadPoolTempl {
 
   Environment env_;
   const bool allow_spinning_;
+  const bool always_spinning_;
   std::vector<std::vector<unsigned>> all_coprimes_;
   unsigned global_steal_partition_;
   std::atomic<unsigned> blocked_;
   std::atomic<uint64_t> num_tasks_;
-  std::atomic<bool> spinning_;
   std::atomic<bool> done_;
   std::atomic<bool> cancelled_;
   EventCount ec_;
@@ -379,9 +384,8 @@ class ThreadPoolTempl {
       return false;
     }
 
-    // Number of blocked threads is used as termination condition.
-    // If we are shutting down and all worker threads blocked without work,
-    // that's we are done.
+    // Number of blocked threads is used as notification condition.
+    // We must increase the counter before the emptiness check.
     blocked_++;
 
     // Now do a reliable emptiness check.
@@ -393,6 +397,9 @@ class ThreadPoolTempl {
       return true;
     }
 
+    // Number of blocked threads is used as termination condition.
+    // If we are shutting down and all worker threads blocked without work,
+    // that's we are done.
     if (done_ && blocked_ == static_cast<unsigned>(num_threads_)) {
       ec_.CancelWait();
       // Almost done, but need to re-check queues.
@@ -414,8 +421,17 @@ class ThreadPoolTempl {
       ec_.Notify(true);
       return false;
     }
-    platform::RecordEvent record("WaitForWork",
-                                 platform::TracerEventType::UserDefined, 10);
+
+    // Cancel wait if always_spinning_
+    if (always_spinning_) {
+      ec_.CancelWait();
+      blocked_--;
+      return true;
+    }
+
+    // Wait for work
+    platform::RecordEvent record(
+        "WaitForWork", platform::TracerEventType::UserDefined, 10);
     ec_.CommitWait(waiter);
     blocked_--;
     return true;

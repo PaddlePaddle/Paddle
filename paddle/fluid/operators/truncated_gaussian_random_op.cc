@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/truncated_gaussian_random_op.h"
+
 #include <limits>
 #include <random>
 #include <vector>
@@ -19,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
@@ -36,7 +37,9 @@ class TruncatedGaussianRandomOp : public framework::OperatorWithKernel {
     framework::DataLayout layout{framework::DataLayout::kAnyLayout};
     return framework::OpKernelType(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
-        ctx.device_context(), layout, library);
+        ctx.device_context(),
+        layout,
+        library);
   }
 };
 
@@ -83,11 +86,13 @@ Used to initialize tensors with truncated gaussian random generator.
 namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(
-    truncated_gaussian_random, TruncatedGaussianRandomInferShapeFunctor,
+    truncated_gaussian_random,
+    TruncatedGaussianRandomInferShapeFunctor,
     PD_INFER_META(phi::TruncatedGaussianRandomInferMeta));
 
 REGISTER_OPERATOR(
-    truncated_gaussian_random, ops::TruncatedGaussianRandomOp,
+    truncated_gaussian_random,
+    ops::TruncatedGaussianRandomOp,
     ops::TruncatedGaussianRandomOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,

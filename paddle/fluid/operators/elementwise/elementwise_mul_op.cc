@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/complex.h"
 
@@ -114,17 +116,21 @@ class ElementwiseMulTripleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseMulOp,
-                  ops::ElementwiseMulOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_mul,
+                  ops::ElementwiseMulOp,
+                  ops::ElementwiseMulOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
-    elementwise_mul_grad, ops::ElementwiseOpGrad,
+    elementwise_mul_grad,
+    ops::ElementwiseOpGrad,
     ops::ElementwiseMulDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseMulDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(
-    elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad,
+    elementwise_mul_grad_grad,
+    ops::ElementwiseOpDoubleGrad,
     ops::ElementwiseDoubleGradOpInplaceInferer,
     ops::ElementwiseMulTripleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseMulTripleGradMaker<paddle::imperative::OpBase>);

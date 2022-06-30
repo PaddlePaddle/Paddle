@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/infershape_utils.h"
+
 #include <string>
 #include <vector>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/framework/attribute.h"
-#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -32,8 +32,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void TestInferMeta(bool bool_attr, int int_attr, int64_t int64_attr,
-                   float float_attr, const std::string& str_attr,
+void TestInferMeta(bool bool_attr,
+                   int int_attr,
+                   int64_t int64_attr,
+                   float float_attr,
+                   const std::string& str_attr,
                    const std::vector<bool>& vec_bool_attr,
                    const std::vector<int>& vec_int_attr,
                    const std::vector<int64_t>& vec_int64_attr,
@@ -89,21 +92,37 @@ class InferShapeUtilsTestOp : public OperatorWithKernel {
 
 phi::KernelSignature InferShapeUtilsTestOpArgumentMapping(
     const phi::ArgumentMappingContext& ctx) {
-  return phi::KernelSignature(
-      "infer_shape_utils_test", {},
-      {"bool", "int", "int64", "float", "string", "vec_bool", "vec_int",
-       "vec_int64", "vec_float", "vec_double", "vec_str"},
-      {});
+  return phi::KernelSignature("infer_shape_utils_test",
+                              {},
+                              {"bool",
+                               "int",
+                               "int64",
+                               "float",
+                               "string",
+                               "vec_bool",
+                               "vec_int",
+                               "vec_int64",
+                               "vec_float",
+                               "vec_double",
+                               "vec_str"},
+                              {});
 }
 
 template <typename T, typename Context>
-void InferShapeUtilsTestKernel(
-    const Context& dev_ctx, const phi::DenseTensor& x, bool attr1, int attr2,
-    int64_t attr3, float attr4, const std::string& attr5,
-    const std::vector<bool>& attr6, const std::vector<int>& attr7,
-    const std::vector<int64_t>& attr8, const std::vector<float>& attr9,
-    const std::vector<double>& attr10, const std::vector<std::string>& attr11,
-    phi::DenseTensor* out) {
+void InferShapeUtilsTestKernel(const Context& dev_ctx,
+                               const phi::DenseTensor& x,
+                               bool attr1,
+                               int attr2,
+                               int64_t attr3,
+                               float attr4,
+                               const std::string& attr5,
+                               const std::vector<bool>& attr6,
+                               const std::vector<int>& attr7,
+                               const std::vector<int64_t>& attr8,
+                               const std::vector<float>& attr9,
+                               const std::vector<double>& attr10,
+                               const std::vector<std::string>& attr11,
+                               phi::DenseTensor* out) {
   VLOG(6) << "Come into InferShapeUtilsTestKernel";
 }
 
@@ -118,8 +137,11 @@ REGISTER_OPERATOR(infer_shape_utils_test,
                   paddle::framework::InferShapeUtilsTestOpMaker,
                   InferShapeUtilsTestInferShapeFunctor);
 
-PD_REGISTER_KERNEL(infer_shape_utils_test, CPU, ALL_LAYOUT,
-                   paddle::framework::InferShapeUtilsTestKernel, int) {}
+PD_REGISTER_KERNEL(infer_shape_utils_test,
+                   CPU,
+                   ALL_LAYOUT,
+                   paddle::framework::InferShapeUtilsTestKernel,
+                   int) {}
 
 TEST(InferShapeUtilsTest, ALL) {
   paddle::framework::ProgramDesc prog;

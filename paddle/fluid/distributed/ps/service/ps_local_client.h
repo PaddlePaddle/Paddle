@@ -52,11 +52,13 @@ class PsLocalClient : public PSClient {
   virtual ::std::future<int32_t> StopServer() override;
 
   virtual void FinalizeWorker() override {}
-  virtual ::std::future<int32_t> PullDense(Region* regions, size_t region_num,
+  virtual ::std::future<int32_t> PullDense(Region* regions,
+                                           size_t region_num,
                                            size_t table_id);
 
   virtual ::std::future<int32_t> PushDense(const Region* regions,
-                                           size_t region_num, size_t table_id);
+                                           size_t region_num,
+                                           size_t table_id);
 
   virtual ::std::future<int32_t> PushDenseParam(const Region* regions,
                                                 size_t region_num,
@@ -64,7 +66,8 @@ class PsLocalClient : public PSClient {
 
   virtual ::std::future<int32_t> PullSparse(float** select_values,
                                             size_t table_id,
-                                            const uint64_t* keys, size_t num,
+                                            const uint64_t* keys,
+                                            size_t num,
                                             bool is_training) {
     std::promise<int32_t> prom;
     std::future<int32_t> fut = prom.get_future();
@@ -159,12 +162,19 @@ class PsLocalClient : public PSClient {
                                                     void* callback) override;
 
   virtual std::future<int32_t> PushSparseRawGradient(
-      size_t table_id, const uint64_t* keys, const float** update_values,
-      size_t num, void* callback) override;
+      size_t table_id,
+      const uint64_t* keys,
+      const float** update_values,
+      size_t num,
+      void* callback) override;
 
   virtual std::future<int32_t> PushSparseRawGradientPartial(
-      size_t table_id, const uint64_t* keys, const float** update_values,
-      uint32_t num, void* done, int pserver_idx) override {
+      size_t table_id,
+      const uint64_t* keys,
+      const float** update_values,
+      uint32_t num,
+      void* done,
+      int pserver_idx) override {
     std::promise<int32_t> prom;
     std::future<int32_t> fut = prom.get_future();
     prom.set_value(0);
@@ -223,5 +233,5 @@ class PsLocalClient : public PSClient {
   float _mse = 0;
   uint16_t _push_times = 0;
 };
-}
-}
+}  // namespace distributed
+}  // namespace paddle

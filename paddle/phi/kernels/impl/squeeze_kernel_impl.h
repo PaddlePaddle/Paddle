@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 
 namespace phi {
@@ -22,8 +22,8 @@ template <typename T, typename Context>
 void SqueezeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const std::vector<int>& axes,
-                   DenseTensor* xshape,
-                   DenseTensor* out) {
+                   DenseTensor* out,
+                   DenseTensor* xshape) {
   auto x_dims = x.dims();
   auto out_dims = funcs::GetOutputSqueezeShape(axes, x_dims, true);
 

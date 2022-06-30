@@ -11,11 +11,11 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
 
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
 
 namespace paddle {
 namespace pybind {
@@ -27,9 +27,7 @@ typedef struct {
 } TensorObject;
 
 typedef struct {
-  PyObject_HEAD
-
-      PyObject* container;
+  PyObject_HEAD PyObject* container;
   PyObject* non_differentiable;
   PyObject* dirty_tensors;
   bool materialize_grads;
@@ -39,6 +37,7 @@ typedef struct {
 } PyLayerObject;
 
 void BindEager(pybind11::module* m);
+void BindEagerStringTensor(pybind11::module* module);
 void BindFunctions(PyObject* module);
 void BindEagerPyLayer(PyObject* module);
 

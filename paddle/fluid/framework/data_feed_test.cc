@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_feed.h"
+
 #include <fcntl.h>
+
 #include <chrono>  // NOLINT
 #include <fstream>
 #include <iostream>
@@ -23,6 +25,7 @@
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
+
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
@@ -35,7 +38,8 @@ paddle::framework::DataFeedDesc load_datafeed_param_from_file(
   paddle::framework::DataFeedDesc data_feed_desc;
   int file_descriptor = open(filename, O_RDONLY);
   PADDLE_ENFORCE_NE(
-      file_descriptor, -1,
+      file_descriptor,
+      -1,
       platform::errors::Unavailable(
           "Cannot open file %s c load datafeed param from file.", filename));
   google::protobuf::io::FileInputStream fileInput(file_descriptor);
@@ -48,7 +52,8 @@ const std::vector<std::string> load_filelist_from_file(const char* filename) {
   std::vector<std::string> filelist;
   std::ifstream fin(filename);
   PADDLE_ENFORCE_EQ(
-      fin.good(), true,
+      fin.good(),
+      true,
       platform::errors::Unavailable(
           "Cannot open file %s when load filelist from file.", filename));
   std::string line;
@@ -279,7 +284,8 @@ void GetElemSetFromFile(std::vector<MultiTypeSet>* file_elem_set,
   for (const auto& file : filelist) {
     std::ifstream fin(file.c_str());
     PADDLE_ENFORCE_EQ(
-        fin.good(), true,
+        fin.good(),
+        true,
         platform::errors::Unavailable(
             "Can not open %s when get element set from file.", file.c_str()));
     while (1) {

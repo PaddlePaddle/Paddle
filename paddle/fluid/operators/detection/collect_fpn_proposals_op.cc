@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License.*/
 
 #include "paddle/fluid/operators/detection/collect_fpn_proposals_op.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -23,15 +24,18 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(
-        context->HasInputs("MultiLevelRois"), true,
+        context->HasInputs("MultiLevelRois"),
+        true,
         platform::errors::NotFound("Inputs(MultiLevelRois) of "
                                    "CollectFpnProposalsOp is not found"));
     PADDLE_ENFORCE_EQ(
-        context->HasInputs("MultiLevelScores"), true,
+        context->HasInputs("MultiLevelScores"),
+        true,
         platform::errors::NotFound("Inputs(MultiLevelScores) of "
                                    "CollectFpnProposalsOp is not found"));
     PADDLE_ENFORCE_EQ(
-        context->HasOutput("FpnRois"), true,
+        context->HasOutput("FpnRois"),
+        true,
         platform::errors::NotFound("Outputs(MultiFpnRois) of "
                                    "CollectFpnProposalsOp is not found"));
     auto roi_dims = context->GetInputsDim("MultiLevelRois");
@@ -40,7 +44,8 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
     std::vector<int64_t> out_dims;
     for (auto &roi_dim : roi_dims) {
       PADDLE_ENFORCE_EQ(
-          roi_dim[1], 4,
+          roi_dim[1],
+          4,
           platform::errors::InvalidArgument(
               "Second dimension of Input"
               "(MultiLevelRois) must be 4. But received dimension = %d",
@@ -48,7 +53,8 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
     }
     for (auto &score_dim : score_dims) {
       PADDLE_ENFORCE_EQ(
-          score_dim[1], 1,
+          score_dim[1],
+          1,
           platform::errors::InvalidArgument(
               "Second dimension of Input"
               "(MultiLevelScores) must be 1. But received dimension = %d",
@@ -63,10 +69,8 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
       context->ShareLoD("MultiLevelRois", "FpnRois");
     }
     if (context->IsRuntime() && !context->HasInputs("MultiLevelRoIsNum")) {
-      std::vector<framework::InferShapeVarPtr> roi_inputs =
-          context->GetInputVarPtrs("MultiLevelRois");
-      std::vector<framework::InferShapeVarPtr> score_inputs =
-          context->GetInputVarPtrs("MultiLevelScores");
+      auto roi_inputs = context->GetInputVarPtrs("MultiLevelRois");
+      auto score_inputs = context->GetInputVarPtrs("MultiLevelScores");
       for (size_t i = 0; i < roi_inputs.size(); ++i) {
         framework::Variable *roi_var =
             BOOST_GET(framework::Variable *, roi_inputs[i]);
@@ -75,7 +79,8 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
         auto &roi_lod = roi_var->Get<LoDTensor>().lod();
         auto &score_lod = score_var->Get<LoDTensor>().lod();
         PADDLE_ENFORCE_EQ(
-            roi_lod, score_lod,
+            roi_lod,
+            score_lod,
             platform::errors::InvalidArgument(
                 "Inputs(MultiLevelRois) and "
                 "Inputs(MultiLevelScores) should have same lod."));
@@ -129,7 +134,8 @@ by objectness confidence. Select the post_nms_topN RoIs in
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    collect_fpn_proposals, ops::CollectFpnProposalsOp,
+    collect_fpn_proposals,
+    ops::CollectFpnProposalsOp,
     ops::CollectFpnProposalsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

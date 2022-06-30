@@ -17,7 +17,8 @@ limitations under the License. */
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    inverse, ops::InverseKernel<paddle::platform::CUDADeviceContext, float>,
+    inverse,
+    ops::InverseKernel<paddle::platform::CUDADeviceContext, float>,
     ops::InverseKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     inverse_grad,

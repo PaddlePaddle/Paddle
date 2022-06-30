@@ -34,11 +34,18 @@ struct VisitDataArgNPUMaxFunctor {
     out.template mutable_data<Tout>(ctx.GetPlace());
     auto axis = ctx.Attr<int64_t>("axis");
     auto dtype = ctx.Attr<int>("dtype");
+    const bool& flatten = ctx.Attr<bool>("flatten");
+
+    Tensor transformed_x(x.type());
+    transformed_x.ShareDataWith(x);
+    if (flatten) {
+      transformed_x.Resize(phi::make_ddim({x.numel()}));
+    }
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     NpuOpRunner runner;
     runner.SetType("ArgMaxV2")
-        .AddInput(x)
+        .AddInput(transformed_x)
         .AddInput(std::vector<int64_t>{axis})
         .AddOutput(out)
         .AddAttrDataType("dtype", dtype)
@@ -67,5 +74,6 @@ class ArgMaxNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(arg_max, ops::ArgMaxNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(arg_max,
+                       ops::ArgMaxNPUKernel<float>,
                        ops::ArgMaxNPUKernel<paddle::platform::float16>);

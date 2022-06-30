@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/matrix_solve.h"
+
 #include "Eigen/Core"
 #include "Eigen/LU"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -25,7 +26,8 @@ template <typename T>
 class MatrixSolveFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& dev_ctx,
-                  const framework::Tensor& a, const framework::Tensor& b,
+                  const framework::Tensor& a,
+                  const framework::Tensor& b,
                   framework::Tensor* out) {
     compute_solve_eigen<platform::CPUDeviceContext, T>(dev_ctx, a, b, out);
   }

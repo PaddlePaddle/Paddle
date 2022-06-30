@@ -39,8 +39,10 @@ class WhereGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Condition"), "Input", "Condition", "Where");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Where");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "Where");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "Where");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "Where");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -117,12 +119,16 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(WhereGradNoNeedBufferVarsInferer, "X", "Y");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(where, WhereInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(where,
+                            WhereInferShapeFunctor,
                             PD_INFER_META(phi::WhereInferMeta));
-REGISTER_OPERATOR(where, ops::WhereOp, ops::WhereOpMaker,
+REGISTER_OPERATOR(where,
+                  ops::WhereOp,
+                  ops::WhereOpMaker,
                   ops::WhereOpGradMaker<paddle::framework::OpDesc>,
                   ops::WhereOpGradMaker<paddle::imperative::OpBase>,
                   WhereInferShapeFunctor);
 
-REGISTER_OPERATOR(where_grad, ops::WhereGradOp,
+REGISTER_OPERATOR(where_grad,
+                  ops::WhereGradOp,
                   ops::WhereGradNoNeedBufferVarsInferer);

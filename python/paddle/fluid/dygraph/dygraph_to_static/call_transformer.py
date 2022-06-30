@@ -71,7 +71,7 @@ class CallTransformer(gast.NodeTransformer):
         if PDB_SET in func_str:
             return node
 
-        new_func_str = "paddle.jit.dy2static.convert_call({})".format(func_str)
+        new_func_str = "_jst.Call({})".format(func_str)
         new_func_ast = gast.parse(new_func_str).body[0].value
         node.func = new_func_ast
 

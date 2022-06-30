@@ -29,9 +29,12 @@ namespace plugin {
 #if IS_TRT_VERSION_GE(6000)
 class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit SkipLayerNormPluginDynamic(const float* bias, const float* scale,
-                                      int bias_size, int scale_size,
-                                      const float eps, bool with_fp16)
+  explicit SkipLayerNormPluginDynamic(const float* bias,
+                                      const float* scale,
+                                      int bias_size,
+                                      int scale_size,
+                                      const float eps,
+                                      bool with_fp16)
       : bias_size_(bias_size), scale_size_(scale_size), eps_(eps) {
     with_fp16_ = with_fp16;
     bias_.resize(bias_size);
@@ -78,9 +81,11 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, with_fp16_);
   }
 
-  nvinfer1::DimsExprs getOutputDimensions(
-      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-      nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT override;
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+      TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* in_out,
@@ -101,11 +106,14 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
 
   int enqueue(const nvinfer1::PluginTensorDesc* input_desc,
               const nvinfer1::PluginTensorDesc* output_desc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* input_types,
-      int nb_inputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* input_types,
+                                       int nb_inputs) const
+      TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override { delete this; }
   void terminate() TRT_NOEXCEPT override;
@@ -142,9 +150,10 @@ class SkipLayerNormPluginDynamicCreator : public nvinfer1::IPluginCreator {
     return nullptr;
   }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     auto plugin = new SkipLayerNormPluginDynamic(serial_data, serial_length);
     return plugin;
   }

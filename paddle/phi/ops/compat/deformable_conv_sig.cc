@@ -33,17 +33,14 @@ KernelSignature DeformableConvGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "deformable_conv_grad",
-      {"Input", "Offset", "Filter", "Mask", GradVarName("Output")},
+      {"Input", "Offset", "Filter", "Mask", "Output@GRAD"},
       {"strides",
        "paddings",
        "dilations",
        "deformable_groups",
        "groups",
        "im2col_step"},
-      {GradVarName("Input"),
-       GradVarName("Offset"),
-       GradVarName("Filter"),
-       GradVarName("Mask")});
+      {"Input@GRAD", "Offset@GRAD", "Filter@GRAD", "Mask@GRAD"});
 }
 
 }  // namespace phi

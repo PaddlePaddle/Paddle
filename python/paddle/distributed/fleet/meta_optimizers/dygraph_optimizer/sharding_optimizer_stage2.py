@@ -11,9 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#Taken and modified for fairscale from:
-#    https://github.com/facebookresearch/fairscale/blob/main/fairscale/optim/oss.py
-#Commit: 8acbec718f3c70a6b9785470bb9e05cd84fc3f8e
+
+# The file has been adapted from fairscale file:
+# https://github.com/facebookresearch/fairscale/blob/main/fairscale/optim/oss.py
+# Git commit hash: 8acbec718f3c70a6b9785470bb9e05cd84fc3f8e
+# We retain the following license from the original files:
+
+# Copyright (c) Facebook, Inc. and its affiliates. All rights reserved.
+#
+# This source code is licensed under the BSD license found in the
+# LICENSE file in the root directory of this source tree.
 
 import copy
 import logging
@@ -50,7 +57,7 @@ class ShardingOptimizerStage2(Optimizer):
 
     """
 
-    # TODO (Baibaifan) 
+    # TODO (Baibaifan)
     # Feature Notes:
     # 1. Unified memory for parameters and parameters.grad to InternalStorage.
     # 2. Support the segmentation of optimizer parameters and partial updating of parameters.
@@ -90,8 +97,8 @@ class ShardingOptimizerStage2(Optimizer):
                 filter(lambda x: x.trainable and x.dtype == Type.fp16.value,
                        self._local_params))) > 0
 
-        self.group = new_group(_get_global_group()
-                               .ranks) if group is None else group
+        self.group = new_group(
+            _get_global_group().ranks) if group is None else group
 
         self.world_size = self.group.nranks
         self.rank = self.group.rank
@@ -115,8 +122,8 @@ class ShardingOptimizerStage2(Optimizer):
                 for item in self._optim._param_groups:
                     if "grad_clip" in item.keys():
                         item["grad_clip"] = ShardingClipGrad(
-                            self._optim._grad_clip,
-                            paddle.get_device(), self.group)
+                            self._optim._grad_clip, paddle.get_device(),
+                            self.group)
 
         if offload:
             assert self._pfp16, "Only support offload strategy while using \'Adam\', \'AdamW\' and \'Momentum\' optimizer with AMP/Pure FP16"
@@ -140,11 +147,10 @@ class ShardingOptimizerStage2(Optimizer):
         """
 
         for p in self._local_params:
-            broadcast(
-                p,
-                src=self._global_root_rank,
-                group=self.group,
-                use_calc_stream=True)
+            broadcast(p,
+                      src=self._global_root_rank,
+                      group=self.group,
+                      use_calc_stream=True)
 
         # Multi stream operation will be supported later
         wait(tensor=p, group=self.group, use_calc_stream=True)
@@ -217,8 +223,9 @@ class ShardingOptimizerStage2(Optimizer):
             # Assign the parameters of each rank according to the type
             for param in self._local_params:
                 if param.dtype not in self._dtype_rank_params.keys():
-                    self._dtype_rank_params[
-                        param.dtype] = [[] for _ in range(self.world_size)]
+                    self._dtype_rank_params[param.dtype] = [
+                        [] for _ in range(self.world_size)
+                    ]
                 self._dtype_rank_params[param.dtype][self.param2rank[
                     param.name]].append(param)
 
@@ -372,8 +379,9 @@ class ShardingOptimizerStage2(Optimizer):
             dev_id = int(paddle.get_device().split(":")[1])
             for param in self._local_params:
                 if param.name in self._master_params.keys():
-                    param.set_value(self._master_params[param.name].cuda(dev_id)
-                                    .cast(dtype=param.dtype))
+                    param.set_value(
+                        self._master_params[param.name].cuda(dev_id).cast(
+                            dtype=param.dtype))
         else:
             self._optim.step()
 
@@ -404,14 +412,12 @@ class ShardingOptimizerStage2(Optimizer):
         # Exchange all the shards with the other ranks
         for dtype_per_rank in self.param_storages.values():
             for dst_rank, internal_storage in dtype_per_rank.items():
-                broadcast(
-                    tensor=internal_storage.buffer,
-                    src=self.group.ranks[dst_rank],
-                    group=self.group,
-                    use_calc_stream=True)
+                broadcast(tensor=internal_storage.buffer,
+                          src=self.group.ranks[dst_rank],
+                          group=self.group,
+                          use_calc_stream=True)
 
             # Multi stream operation will be supported later
-            wait(
-                tensor=internal_storage.buffer,
-                group=self.group,
-                use_calc_stream=True)
+            wait(tensor=internal_storage.buffer,
+                 group=self.group,
+                 use_calc_stream=True)

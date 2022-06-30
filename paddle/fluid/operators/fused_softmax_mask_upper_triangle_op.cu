@@ -12,6 +12,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 // this file is inspired by:
 // https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/fused_kernels/scaled_upper_triang_masked_softmax.h
+/* Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -25,6 +39,7 @@ limitations under the License. */
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/transform.h>
+
 #include <algorithm>
 #include <string>
 
@@ -86,7 +101,8 @@ struct MaxOP_upper_tri {
 };
 
 template <typename T>
-__device__ __forceinline__ T warp_shfl_xor_upper_tri(T value, int laneMask,
+__device__ __forceinline__ T warp_shfl_xor_upper_tri(T value,
+                                                     int laneMask,
                                                      int width,
                                                      unsigned int mask = MASK) {
 #if CUDA_VERSION >= 9000
@@ -110,7 +126,8 @@ __device__ __forceinline__ void warp_reduce_upper_tri(T* sum) {
 }
 
 template <typename T, int pow2_index>
-__global__ void SoftmaxMaskFuseUpperTriangleGPUKernel(const T* src, T* dst,
+__global__ void SoftmaxMaskFuseUpperTriangleGPUKernel(const T* src,
+                                                      T* dst,
                                                       int batch_count,
                                                       int key_seq_len) {
   constexpr int next_pow2 = 1 << pow2_index;
@@ -344,13 +361,16 @@ class SoftmaxMaskFuseUpperTriangleKernel : public framework::OpKernel<T> {
     auto query_seq_len = x_dim[2];
     auto key_seq_len = x_dim[3];
 
-    PADDLE_ENFORCE_EQ(key_seq_len, query_seq_len,
+    PADDLE_ENFORCE_EQ(key_seq_len,
+                      query_seq_len,
                       platform::errors::InvalidArgument(
                           "Key seq len must be equal with query seq len "
                           "received key len: %d, query len: %d",
-                          key_seq_len, query_seq_len));
+                          key_seq_len,
+                          query_seq_len));
 
-    PADDLE_ENFORCE_EQ(key_seq_len >= 32 && key_seq_len < 8192, true,
+    PADDLE_ENFORCE_EQ(key_seq_len >= 32 && key_seq_len < 8192,
+                      true,
                       platform::errors::InvalidArgument(
                           "Input x's last dim must be between [32, 8192) "
                           "received the last dimension of x is %d",
@@ -369,61 +389,64 @@ class SoftmaxMaskFuseUpperTriangleKernel : public framework::OpKernel<T> {
     int warps_per_block = (threads_per_block / warp_size);
     int batches_per_block = warps_per_block * batches_per_warp;
     PADDLE_ENFORCE_EQ(
-        query_seq_len % batches_per_block, 0,
+        query_seq_len % batches_per_block,
+        0,
         platform::errors::InvalidArgument(
             "The query seq len (third dim of input X) must can divide the "
             "number of batches per block. The query seq len is %d, while "
             "the number of batches per block is %d.",
-            query_seq_len, batches_per_block));
+            query_seq_len,
+            batches_per_block));
     dim3 blocks(query_seq_len,
-                (attn_mul_batch + batches_per_block) / batches_per_block, 1);
+                (attn_mul_batch + batches_per_block) / batches_per_block,
+                1);
     dim3 threads(warp_size, warps_per_block, 1);
 
     switch (pow2_index) {
       case 5:  // 32
-        SoftmaxMaskFuseUpperTriangleGPUKernel<
-            T, 5><<<blocks, threads, 0, stream>>>(x_data, y_data, batch_count,
-                                                  key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGPUKernel<T, 5>
+            <<<blocks, threads, 0, stream>>>(
+                x_data, y_data, batch_count, key_seq_len);
         break;
       case 6:  // 64
-        SoftmaxMaskFuseUpperTriangleGPUKernel<
-            T, 6><<<blocks, threads, 0, stream>>>(x_data, y_data, batch_count,
-                                                  key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGPUKernel<T, 6>
+            <<<blocks, threads, 0, stream>>>(
+                x_data, y_data, batch_count, key_seq_len);
         break;
       case 7:  // 128
-        SoftmaxMaskFuseUpperTriangleGPUKernel<
-            T, 7><<<blocks, threads, 0, stream>>>(x_data, y_data, batch_count,
-                                                  key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGPUKernel<T, 7>
+            <<<blocks, threads, 0, stream>>>(
+                x_data, y_data, batch_count, key_seq_len);
         break;
       case 8:  // 256
-        SoftmaxMaskFuseUpperTriangleGPUKernel<
-            T, 8><<<blocks, threads, 0, stream>>>(x_data, y_data, batch_count,
-                                                  key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGPUKernel<T, 8>
+            <<<blocks, threads, 0, stream>>>(
+                x_data, y_data, batch_count, key_seq_len);
         break;
       case 9:  // 512
-        SoftmaxMaskFuseUpperTriangleGPUKernel<
-            T, 9><<<blocks, threads, 0, stream>>>(x_data, y_data, batch_count,
-                                                  key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGPUKernel<T, 9>
+            <<<blocks, threads, 0, stream>>>(
+                x_data, y_data, batch_count, key_seq_len);
         break;
       case 10:  // 1024
-        SoftmaxMaskFuseUpperTriangleGPUKernel<
-            T, 10><<<blocks, threads, 0, stream>>>(x_data, y_data, batch_count,
-                                                   key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGPUKernel<T, 10>
+            <<<blocks, threads, 0, stream>>>(
+                x_data, y_data, batch_count, key_seq_len);
         break;
       case 11:  // 2048
-        SoftmaxMaskFuseUpperTriangleGPUKernel<
-            T, 11><<<blocks, threads, 0, stream>>>(x_data, y_data, batch_count,
-                                                   key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGPUKernel<T, 11>
+            <<<blocks, threads, 0, stream>>>(
+                x_data, y_data, batch_count, key_seq_len);
         break;
       case 12:  // 4096
-        SoftmaxMaskFuseUpperTriangleGPUKernel<
-            T, 12><<<blocks, threads, 0, stream>>>(x_data, y_data, batch_count,
-                                                   key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGPUKernel<T, 12>
+            <<<blocks, threads, 0, stream>>>(
+                x_data, y_data, batch_count, key_seq_len);
         break;
       case 13:  // 8192
-        SoftmaxMaskFuseUpperTriangleGPUKernel<
-            T, 13><<<blocks, threads, 0, stream>>>(x_data, y_data, batch_count,
-                                                   key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGPUKernel<T, 13>
+            <<<blocks, threads, 0, stream>>>(
+                x_data, y_data, batch_count, key_seq_len);
         break;
       default:
         break;
@@ -464,63 +487,82 @@ class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
     int warps_per_block = (threads_per_block / warp_size);
     int batches_per_block = warps_per_block * batches_per_warp;
     dim3 blocks(query_seq_len,
-                (attn_mul_batch + batches_per_block) / batches_per_block, 1);
+                (attn_mul_batch + batches_per_block) / batches_per_block,
+                1);
     dim3 threads(warp_size, warps_per_block, 1);
 
     switch (pow2_index) {
       case 5:  // 32
-        SoftmaxMaskFuseUpperTriangleGradGPUKernel<
-            T, 5><<<blocks, threads, 0, stream>>>(grad_y_data, grad_x_data,
-                                                  softmax_rst_data, batch_count,
-                                                  key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 5>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 6:  // 64
-        SoftmaxMaskFuseUpperTriangleGradGPUKernel<
-            T, 6><<<blocks, threads, 0, stream>>>(grad_y_data, grad_x_data,
-                                                  softmax_rst_data, batch_count,
-                                                  key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 6>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 7:  // 128
-        SoftmaxMaskFuseUpperTriangleGradGPUKernel<
-            T, 7><<<blocks, threads, 0, stream>>>(grad_y_data, grad_x_data,
-                                                  softmax_rst_data, batch_count,
-                                                  key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 7>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 8:  // 256
-        SoftmaxMaskFuseUpperTriangleGradGPUKernel<
-            T, 8><<<blocks, threads, 0, stream>>>(grad_y_data, grad_x_data,
-                                                  softmax_rst_data, batch_count,
-                                                  key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 8>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 9:  // 512
-        SoftmaxMaskFuseUpperTriangleGradGPUKernel<
-            T, 9><<<blocks, threads, 0, stream>>>(grad_y_data, grad_x_data,
-                                                  softmax_rst_data, batch_count,
-                                                  key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 9>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 10:  // 1024
-        SoftmaxMaskFuseUpperTriangleGradGPUKernel<
-            T, 10><<<blocks, threads, 0, stream>>>(grad_y_data, grad_x_data,
-                                                   softmax_rst_data,
-                                                   batch_count, key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 10>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 11:  // 2048
-        SoftmaxMaskFuseUpperTriangleGradGPUKernel<
-            T, 11><<<blocks, threads, 0, stream>>>(grad_y_data, grad_x_data,
-                                                   softmax_rst_data,
-                                                   batch_count, key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 11>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 12:  // 4096
-        SoftmaxMaskFuseUpperTriangleGradGPUKernel<
-            T, 12><<<blocks, threads, 0, stream>>>(grad_y_data, grad_x_data,
-                                                   softmax_rst_data,
-                                                   batch_count, key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 12>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 13:  // 8192
-        SoftmaxMaskFuseUpperTriangleGradGPUKernel<
-            T, 13><<<blocks, threads, 0, stream>>>(grad_y_data, grad_x_data,
-                                                   softmax_rst_data,
-                                                   batch_count, key_seq_len);
+        SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 13>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       default:
         break;

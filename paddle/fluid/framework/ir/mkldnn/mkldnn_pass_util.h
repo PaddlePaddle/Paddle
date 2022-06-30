@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
@@ -22,7 +23,9 @@ namespace framework {
 namespace ir {
 
 static void SaveInfoInTheFirstOp(
-    ir::Graph* graph, const std::string& flag, const std::string& key_suffix,
+    ir::Graph* graph,
+    const std::string& flag,
+    const std::string& key_suffix,
     const std::unordered_map<std::string, std::vector<float>>& info_map) {
   VLOG(3) << "save variables in the first op's attr";
 
@@ -42,7 +45,9 @@ static void SaveInfoInTheFirstOp(
 }
 
 static void GetInfoFromTheFirstOp(
-    ir::Graph* graph, const std::string& flag, const std::string& key_suffix,
+    ir::Graph* graph,
+    const std::string& flag,
+    const std::string& key_suffix,
     std::unordered_map<std::string, std::vector<float>>* info_map) {
   VLOG(3) << "get variables from the first op's attr";
 

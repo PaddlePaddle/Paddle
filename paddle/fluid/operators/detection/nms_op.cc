@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detection/nms_op.h"
+
 #include <vector>
 
 namespace paddle {
@@ -40,12 +41,14 @@ class NMSOpMaker : public framework::OpProtoAndCheckerMaker {
         "and just one of them can be kept.")
         .SetDefault(1.0f)
         .AddCustomChecker([](const float& iou_threshold) {
-          PADDLE_ENFORCE_LE(iou_threshold, 1.0f,
+          PADDLE_ENFORCE_LE(iou_threshold,
+                            1.0f,
                             platform::errors::InvalidArgument(
                                 "iou_threshold should less equal than 1.0 "
                                 "but got %f",
                                 iou_threshold));
-          PADDLE_ENFORCE_GE(iou_threshold, 0.0f,
+          PADDLE_ENFORCE_GE(iou_threshold,
+                            0.0f,
                             platform::errors::InvalidArgument(
                                 "iou_threshold should greater equal than 0.0 "
                                 "but got %f",
@@ -64,11 +67,12 @@ class NMSOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Boxes"), "Input", "Boxes", "NMS");
-    OP_INOUT_CHECK(ctx->HasOutput("KeepBoxesIdxs"), "Output", "KeepBoxesIdxs",
-                   "NMS");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("KeepBoxesIdxs"), "Output", "KeepBoxesIdxs", "NMS");
 
     auto boxes_dim = ctx->GetInputDim("Boxes");
-    PADDLE_ENFORCE_EQ(boxes_dim.size(), 2,
+    PADDLE_ENFORCE_EQ(boxes_dim.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The Input Boxes must be 2-dimention "
                           "whose shape must be [N, 4] "
@@ -88,7 +92,9 @@ class NMSOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-static void NMS(const T* boxes_data, int64_t* output_data, float threshold,
+static void NMS(const T* boxes_data,
+                int64_t* output_data,
+                float threshold,
                 int64_t num_boxes) {
   auto num_masks = CeilDivide(num_boxes, 64);
   std::vector<uint64_t> masks(num_masks, 0);
@@ -141,7 +147,9 @@ class NMSKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    nms, ops::NMSOp, ops::NMSOpMaker,
+    nms,
+    ops::NMSOp,
+    ops::NMSOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(nms, ops::NMSKernel<float>, ops::NMSKernel<double>);

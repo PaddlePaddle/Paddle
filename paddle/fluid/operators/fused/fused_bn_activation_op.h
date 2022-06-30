@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
@@ -37,7 +38,8 @@ class FusedBatchNormActOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override;
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 

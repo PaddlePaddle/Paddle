@@ -26,6 +26,33 @@ extern "C" {
 #define PADDLE_CUSTOM_RUNTIME_PATCH_VERSION 1
 
 typedef enum {
+  UNDEFINED = 0,
+  BOOL,
+  UINT8,
+  UINT16,
+  UINT32,
+  UINT64,
+  INT8,
+  INT16,
+  INT32,
+  INT64,
+  FLOAT16,
+  FLOAT32,
+  FLOAT64,
+  BFLOAT16,
+} C_DataType;
+
+typedef enum {
+  ANY = 0,
+  NHWC,
+  NCHW,
+  NCDHW,
+  NDHWC,
+  NUM_DATA_LAYOUTS,
+  ALL_LAYOUT = ANY,
+} C_DataLayout;
+
+typedef enum {
   C_SUCCESS = 0,    // success
   C_WARNING,        // results may not meet expectation (such as an asynchronous
                     // interface is actually synchronous)
@@ -34,7 +61,9 @@ typedef enum {
   C_INTERNAL_ERROR  // plugin error
 } C_Status;
 
-typedef struct C_Device_st { int id; } * C_Device;
+typedef struct C_Device_st {
+  int id;
+} * C_Device;
 
 typedef struct C_Stream_st* C_Stream;
 
@@ -523,14 +552,14 @@ struct CustomRuntimeParams {
   char reserved[32];
 };
 
-#define PADDLE_CUSTOM_RUNTIME_CHECK_VERSION(params)             \
-  if ((params)->size != sizeof(DevicePluginParams) &&           \
-      (params)->interface->size != sizeof(C_DeviceInterface)) { \
-    return;                                                     \
-  }                                                             \
-  (params)->version.major = PADDLE_DEVICE_PLUGIN_MAJOR_VERSION; \
-  (params)->version.minor = PADDLE_DEVICE_PLUGIN_MINOR_VERSION; \
-  (params)->version.patch = PADDLE_DEVICE_PLUGIN_PATCH_VERSION;
+#define PADDLE_CUSTOM_RUNTIME_CHECK_VERSION(params)              \
+  if ((params)->size != sizeof(CustomRuntimeParams) &&           \
+      (params)->interface->size != sizeof(C_DeviceInterface)) {  \
+    return;                                                      \
+  }                                                              \
+  (params)->version.major = PADDLE_CUSTOM_RUNTIME_MAJOR_VERSION; \
+  (params)->version.minor = PADDLE_CUSTOM_RUNTIME_MINOR_VERSION; \
+  (params)->version.patch = PADDLE_CUSTOM_RUNTIME_PATCH_VERSION;
 
 // Plugin implement it and fill CustomRuntimeParams
 void InitPlugin(CustomRuntimeParams*);

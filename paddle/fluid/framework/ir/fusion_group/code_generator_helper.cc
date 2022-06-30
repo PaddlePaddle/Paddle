@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <sstream>
 #include <string>
+
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 
 namespace paddle {
@@ -77,7 +78,7 @@ static std::string RefineTemplateWithAttr(const std::string& op_type,
     }
     Attribute attr = it->second;
     proto::AttrType attr_type =
-        static_cast<proto::AttrType>(it->second.which() - 1);
+        static_cast<proto::AttrType>(it->second.index() - 1);
     if (attr_type == proto::AttrType::BOOLEAN) {
       bool result = BOOST_GET(bool, attr);
       if (result) {
@@ -135,16 +136,22 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
       std::string var_name;
       if (index_str == refine_str) {
         int index = StringTo<int>(index_str);
-        PADDLE_ENFORCE_LT(index, input_ids_.size(),
+        PADDLE_ENFORCE_LT(index,
+                          input_ids_.size(),
                           platform::errors::InvalidArgument(
                               "Only %d inputs are provided, but need %d for "
                               "operation < %s >.",
-                              input_ids_.size(), index + 1, op_type_));
-        PADDLE_ENFORCE_GE(input_ids_[index], 0,
+                              input_ids_.size(),
+                              index + 1,
+                              op_type_));
+        PADDLE_ENFORCE_GE(input_ids_[index],
+                          0,
                           platform::errors::InvalidArgument(
                               "Expected %d-th input id > 0 for operation < %s "
                               ">. Received %d.",
-                              index, op_type_, input_ids_[index]));
+                              index,
+                              op_type_,
+                              input_ids_[index]));
         var_name = TmpName(input_ids_[index]);
         rhs.replace(pos, length + 3, var_name);
         used->insert(input_ids_[index]);

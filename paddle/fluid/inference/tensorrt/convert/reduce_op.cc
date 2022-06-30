@@ -38,10 +38,11 @@ namespace tensorrt {
 class ReduceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert a paddle " << op_type << " op to tensorrt reduce layer";
     framework::OpDesc op_desc(op, nullptr);
-    nvinfer1::ReduceOperation reduce_type;
+    nvinfer1::ReduceOperation reduce_type = nvinfer1::ReduceOperation::kSUM;
     if (op_type == "reduce_sum") {
       reduce_type = nvinfer1::ReduceOperation::kSUM;
     } else if (op_type == "reduce_mean") {
@@ -63,8 +64,8 @@ class ReduceOpConverter : public OpConverter {
       for (int i = 0; i < input_dims; ++i) {
         reduce_dim |= 1 << i;
       }
-      layer = TRT_ENGINE_ADD_LAYER(engine_, Reduce, *x, reduce_type, reduce_dim,
-                                   keep_dim);
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Reduce, *x, reduce_type, reduce_dim, keep_dim);
     } else {
       auto CvtToBitMask = [&](const std::vector<int32_t>& dims) -> uint32_t {
         uint32_t res = 0;
@@ -78,8 +79,8 @@ class ReduceOpConverter : public OpConverter {
         }
         return res;
       };
-      layer = TRT_ENGINE_ADD_LAYER(engine_, Reduce, *x, reduce_type,
-                                   CvtToBitMask(dim), keep_dim);
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Reduce, *x, reduce_type, CvtToBitMask(dim), keep_dim);
     }
 
     auto output_name = op_desc.Output("Out")[0];

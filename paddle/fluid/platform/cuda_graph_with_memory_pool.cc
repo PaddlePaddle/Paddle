@@ -13,26 +13,48 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device_context.h"
+
+DECLARE_bool(use_stream_safe_cuda_allocator);
 
 namespace paddle {
 namespace platform {
 
 #ifdef PADDLE_WITH_CUDA
 void BeginCUDAGraphCapture(platform::CUDAPlace place,
-                           cudaStreamCaptureMode mode) {
+                           cudaStreamCaptureMode mode,
+                           int64_t pool_id) {
   auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
 
+  // After PR(#43206), cudnn related initializations will change to lazy mode.
+  // It will only be initialized when op calls them. But cuda graph not support
+  // capture such kind of init, need to init all these handle before cuda graph.
+  dev_ctx->cublas_handle();
+#if CUDA_VERSION >= 11060
+  dev_ctx->cublaslt_handle();
+#endif
+  dev_ctx->cudnn_handle();
+  dev_ctx->cusolver_dn_handle();
+
   auto stream = dev_ctx->stream();
   CUDAGraph::BeginCapture(place, stream, mode);
-  auto id = CUDAGraph::CapturingID();
+
+  auto old_value = FLAGS_use_stream_safe_cuda_allocator;
+  if (old_value) {
+    FLAGS_use_stream_safe_cuda_allocator = false;
+  }
+  pool_id = CUDAGraph::SetMemoryPoolID(pool_id);
   memory::allocation::AllocatorFacade::Instance().PrepareMemoryPoolForCUDAGraph(
-      id);
-  AddResetCallbackIfCapturingCUDAGraph([id] {
+      pool_id);
+  if (old_value) {
+    FLAGS_use_stream_safe_cuda_allocator = true;
+  }
+  AddResetCallbackIfCapturingCUDAGraph([pool_id] {
     memory::allocation::AllocatorFacade::Instance().RemoveMemoryPoolOfCUDAGraph(
-        id);
+        pool_id);
   });
 }
 

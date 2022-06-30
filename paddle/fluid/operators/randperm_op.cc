@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
@@ -24,15 +25,18 @@ class RandpermOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::NotFound(
                           "The output(Out) of randperm op must not be null."));
     int n = ctx->Attrs().Get<int>("n");
     PADDLE_ENFORCE_GT(
-        n, 0, platform::errors::InvalidArgument(
-                  "The input 'n' of randperm op should be greater than 0. "
-                  "But received %d.",
-                  n));
+        n,
+        0,
+        platform::errors::InvalidArgument(
+            "The input 'n' of randperm op should be greater than 0. "
+            "But received %d.",
+            n));
 
     ctx->SetOutputDim("Out", phi::make_ddim({n}));
   }
@@ -84,7 +88,9 @@ class RandpermOpVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 REGISTER_OPERATOR(
-    randperm, paddle::operators::RandpermOp, paddle::operators::RandpermOpMaker,
+    randperm,
+    paddle::operators::RandpermOp,
+    paddle::operators::RandpermOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::RandpermOpVarTypeInference);

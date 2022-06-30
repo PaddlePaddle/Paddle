@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/transpose_op.h"
@@ -35,7 +36,8 @@ struct UniqueOpFunctor {
   const framework::Tensor* in_;
   framework::Tensor* count_;
 
-  UniqueOpFunctor(framework::Tensor* out, framework::Tensor* index,
+  UniqueOpFunctor(framework::Tensor* out,
+                  framework::Tensor* index,
                   const framework::Tensor* in,
                   framework::Tensor* count = nullptr)
       : out_(out), index_(index), in_(in), count_(count) {}
@@ -52,7 +54,8 @@ struct UniqueOpFunctor {
     std::vector<InT> uniq;
 
     PADDLE_ENFORCE_LT(
-        in_->numel(), pow(2, 31),
+        in_->numel(),
+        pow(2, 31),
         platform::errors::InvalidArgument(
             "The num of Input(X) elements should be less then INT_MAX, "
             "but received num is %d.",
@@ -80,7 +83,8 @@ struct UniqueOpFunctor {
       const auto& index_type = framework::TransToProtoVarType(index_->dtype());
       bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                               index_type == framework::proto::VarType::INT64;
-      PADDLE_ENFORCE_EQ(index_type_match, true,
+      PADDLE_ENFORCE_EQ(index_type_match,
+                        true,
                         platform::errors::InvalidArgument(
                             "Index holds the wrong type, it holds %s, "
                             "but desires to be %s or %s",
@@ -134,8 +138,10 @@ static bool Equal(const framework::Tensor& a, const framework::Tensor& b) {
 template <typename InT, typename IndexT>
 static void UniqueFlattendTensor(const framework::ExecutionContext& context,
                                  const framework::Tensor& in,
-                                 framework::Tensor* out, bool return_index,
-                                 bool return_inverse, bool return_counts) {
+                                 framework::Tensor* out,
+                                 bool return_index,
+                                 bool return_inverse,
+                                 bool return_counts) {
   const InT* in_data = in.data<InT>();
   std::set<InT> unique(in_data, in_data + in.numel());
   out->Resize(phi::make_ddim({static_cast<int64_t>(unique.size())}));
@@ -191,7 +197,8 @@ static void UniqueFlattendTensor(const framework::ExecutionContext& context,
 
 template <class ForwardIt, typename InT, typename IndexT>
 static ForwardIt UniqueDimImpl(const framework::ExecutionContext& context,
-                               ForwardIt first, ForwardIt last,
+                               ForwardIt first,
+                               ForwardIt last,
                                const std::vector<IndexT>& sorted_indices_vec,
                                std::vector<IndexT>* inverse_vec,
                                std::vector<IndexT>* counts_vec,
@@ -225,9 +232,12 @@ static ForwardIt UniqueDimImpl(const framework::ExecutionContext& context,
 
 template <typename DeviceContext, typename InT, typename IndexT>
 static void UniqueDim(const framework::ExecutionContext& context,
-                      const framework::Tensor& in, framework::Tensor* out,
-                      bool return_index, bool return_inverse,
-                      bool return_counts, int axis) {
+                      const framework::Tensor& in,
+                      framework::Tensor* out,
+                      bool return_index,
+                      bool return_inverse,
+                      bool return_counts,
+                      int axis) {
   // transpose tensor: eg. axis=1, [dim0, dim1, dim2] -> [dim1, dim0, dim2]
   std::vector<int> permute(in.dims().size());
   std::iota(permute.begin(), permute.end(), 0);
@@ -241,8 +251,8 @@ static void UniqueDim(const framework::ExecutionContext& context,
   in_trans.Resize(in_trans_dims);
   in_trans.mutable_data<InT>(context.GetPlace());
   auto& dev_ctx = context.template device_context<DeviceContext>();
-  TransCompute<DeviceContext, InT>(in.dims().size(), dev_ctx, in, &in_trans,
-                                   permute);
+  TransCompute<DeviceContext, InT>(
+      in.dims().size(), dev_ctx, in, &in_trans, permute);
   // reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
   framework::DDim in_trans_flat_dims = phi::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
@@ -252,7 +262,8 @@ static void UniqueDim(const framework::ExecutionContext& context,
   std::iota(sorted_indices_vec.begin(), sorted_indices_vec.end(), 0);
   int64_t col = in_trans.dims()[1];
   const InT* in_trans_data = in_trans.data<InT>();
-  std::sort(sorted_indices_vec.begin(), sorted_indices_vec.end(),
+  std::sort(sorted_indices_vec.begin(),
+            sorted_indices_vec.end(),
             [&](int64_t a, int64_t b) -> bool {
               for (int64_t i = 0; i < col; ++i) {
                 InT lhs = in_trans_data[i + a * col];
@@ -282,8 +293,13 @@ static void UniqueDim(const framework::ExecutionContext& context,
   std::vector<IndexT> counts_vec(sorted_indices_vec.size(), 0);
   std::vector<IndexT> indices_vec(sorted_indices_vec.size(), 0);
   auto last = UniqueDimImpl<std::vector<framework::Tensor>::iterator, InT>(
-      context, input_unbind.begin(), input_unbind.end(), sorted_indices_vec,
-      &inverse_vec, &counts_vec, &indices_vec);
+      context,
+      input_unbind.begin(),
+      input_unbind.end(),
+      sorted_indices_vec,
+      &inverse_vec,
+      &counts_vec,
+      &indices_vec);
   input_unbind.erase(last, input_unbind.end());
   counts_vec.erase(counts_vec.begin() + input_unbind.size(), counts_vec.end());
   indices_vec.erase(indices_vec.begin() + input_unbind.size(),
@@ -299,8 +315,8 @@ static void UniqueDim(const framework::ExecutionContext& context,
   out->Resize(phi::make_ddim(out_trans_dims_vec));
   out->mutable_data<InT>(context.GetPlace());
   concat_functor(dev_ctx, input_unbind, 0, &out_trans);
-  TransCompute<DeviceContext, InT>(out_trans.dims().size(), dev_ctx, out_trans,
-                                   out, permute);
+  TransCompute<DeviceContext, InT>(
+      out_trans.dims().size(), dev_ctx, out_trans, out, permute);
 
   if (return_inverse) {
     auto* inverse = context.Output<framework::Tensor>("Index");
@@ -329,8 +345,10 @@ struct UniqueFlattendTensorFunctor {
 
   UniqueFlattendTensorFunctor(const framework::ExecutionContext& context,
                               const framework::Tensor& in,
-                              framework::Tensor* out, bool return_index,
-                              bool return_inverse, bool return_counts)
+                              framework::Tensor* out,
+                              bool return_index,
+                              bool return_inverse,
+                              bool return_counts)
       : ctx_(context),
         in_(in),
         out_(out),
@@ -340,8 +358,8 @@ struct UniqueFlattendTensorFunctor {
 
   template <typename IndexT>
   void apply() const {
-    UniqueFlattendTensor<InT, IndexT>(ctx_, in_, out_, return_index_,
-                                      return_inverse_, return_counts_);
+    UniqueFlattendTensor<InT, IndexT>(
+        ctx_, in_, out_, return_index_, return_inverse_, return_counts_);
   }
 };
 
@@ -356,8 +374,11 @@ struct UniqueDimFunctor {
   const bool return_counts_;
 
   UniqueDimFunctor(const framework::ExecutionContext& context,
-                   const framework::Tensor& in, framework::Tensor* out,
-                   const int axis, bool return_index, bool return_inverse,
+                   const framework::Tensor& in,
+                   framework::Tensor* out,
+                   const int axis,
+                   bool return_index,
+                   bool return_inverse,
                    bool return_counts)
       : ctx_(context),
         in_(in),
@@ -384,7 +405,8 @@ class UniqueKernel : public framework::OpKernel<T> {
         context.Attr<int>("dtype"));
     if (data_type == framework::proto::VarType::INT32) {
       PADDLE_ENFORCE_LE(
-          x->numel(), INT_MAX,
+          x->numel(),
+          INT_MAX,
           platform::errors::InvalidArgument(
               "The number of elements in Input(X) should be less than or "
               "equal to INT_MAX, but received num is %d. Please set `dtype` to "
@@ -414,9 +436,14 @@ class UniqueKernel : public framework::OpKernel<T> {
     } else {
       int axis = axis_vec[0];
       framework::VisitDataTypeTiny(
-          data_type, UniqueDimFunctor<DeviceContext, T>(
-                         context, *x, out, axis, return_index, return_inverse,
-                         return_counts));
+          data_type,
+          UniqueDimFunctor<DeviceContext, T>(context,
+                                             *x,
+                                             out,
+                                             axis,
+                                             return_index,
+                                             return_inverse,
+                                             return_counts));
     }
   }
 };

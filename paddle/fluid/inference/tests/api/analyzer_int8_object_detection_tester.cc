@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -33,7 +34,8 @@ void SetConfig(AnalysisConfig *cfg) {
   if (FLAGS_enable_mkldnn) cfg->EnableMKLDNN();
 }
 
-std::vector<size_t> ReadObjectsNum(std::ifstream &file, size_t offset,
+std::vector<size_t> ReadObjectsNum(std::ifstream &file,
+                                   size_t offset,
                                    int64_t total_images) {
   std::vector<size_t> num_objects;
   num_objects.resize(total_images);
@@ -111,8 +113,8 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   TensorReader<float> image_reader(file, image_beginning_offset, "image");
   TensorReader<int64_t> label_reader(file, labels_beginning_offset, "gt_label");
   TensorReader<float> bbox_reader(file, bbox_beginning_offset, "gt_bbox");
-  TensorReader<int64_t> difficult_reader(file, difficult_beginning_offset,
-                                         "gt_difficult");
+  TensorReader<int64_t> difficult_reader(
+      file, difficult_beginning_offset, "gt_difficult");
   auto iterations_max = total_images / batch_size;
   auto iterations = iterations_max;
   if (FLAGS_iterations > 0 && FLAGS_iterations < iterations_max) {
@@ -135,9 +137,11 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
     auto difficult_tensor = difficult_reader.NextBatch(
         {static_cast<int>(batch_num_objects), 1}, batch_lod);
 
-    inputs->emplace_back(std::vector<PaddleTensor>{
-        std::move(images_tensor), std::move(bbox_tensor),
-        std::move(labels_tensor), std::move(difficult_tensor)});
+    inputs->emplace_back(
+        std::vector<PaddleTensor>{std::move(images_tensor),
+                                  std::move(bbox_tensor),
+                                  std::move(labels_tensor),
+                                  std::move(difficult_tensor)});
   }
 }
 
@@ -147,7 +151,8 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
   int test_data_batch_size = test_data[0][0].shape[0];
   auto iterations = test_data.size();
   PADDLE_ENFORCE_LE(
-      static_cast<size_t>(num_images), iterations * test_data_batch_size,
+      static_cast<size_t>(num_images),
+      iterations * test_data_batch_size,
       paddle::platform::errors::Fatal(
           "The requested quantization warmup data size " +
           std::to_string(num_images) + " is bigger than all test data size."));
@@ -165,7 +170,8 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
   accum_lod.push_back(0UL);
   for (int i = 0; i < batches; i++) {
     std::transform(test_data[i][1].lod[0].begin() + 1,
-                   test_data[i][1].lod[0].end(), std::back_inserter(accum_lod),
+                   test_data[i][1].lod[0].end(),
+                   std::back_inserter(accum_lod),
                    [&num_objects](size_t lodtemp) -> size_t {
                      return lodtemp + num_objects;
                    });
@@ -239,7 +245,8 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
     objects_accum = objects_accum + objects_remain;
   }
   PADDLE_ENFORCE_EQ(
-      static_cast<size_t>(num_objects), static_cast<size_t>(objects_accum),
+      static_cast<size_t>(num_objects),
+      static_cast<size_t>(objects_accum),
       paddle::platform::errors::Fatal("The requested num of objects " +
                                       std::to_string(num_objects) +
                                       " is the same as objects_accum."));

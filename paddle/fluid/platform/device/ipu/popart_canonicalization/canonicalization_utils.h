@@ -65,15 +65,16 @@ SymbolHandler GetHandler(const std::string &);
 void ConnectNodes(Node *first_node, Node *next_node);
 void DisConnectNodes(Node *first_node, Node *next_node);
 void ClearNode(Node *node);
-void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
+void CopyOpAttr(const std::string &attr_name,
+                OpDesc *op,
+                OpDesc *new_op,
                 bool override = false);
 
-const int VarType2OnnxDtype(const int type);
-const std::string VarType2PopStr(const int type);
-
-Node *GetInputVarNode(const std::string &input_name, const Node *op_node,
+Node *GetInputVarNode(const std::string &input_name,
+                      const Node *op_node,
                       const int id = 0);
-Node *GetOutputVarNode(const std::string &output_name, const Node *op_node,
+Node *GetOutputVarNode(const std::string &output_name,
+                       const Node *op_node,
                        const int id = 0);
 Node *GetInputVarNodeByVarName(const std::string &var_name,
                                const Node *op_node);
@@ -81,8 +82,9 @@ Node *GetOutputVarNodeByVarName(const std::string &var_name,
                                 const Node *op_node);
 
 const bool is_float_equal(float a, float b, float eps = 1e-8);
-const int GetOutputVarDtype(const Node *node,
-                            const std::string &output_name = "Out");
+const ONNXDataType GetVarDType(const Node *node);
+const ONNXDataType GetOutputVarDType(const Node *node,
+                                     const std::string &output_name = "Out");
 
 }  // namespace ipu
 }  // namespace platform

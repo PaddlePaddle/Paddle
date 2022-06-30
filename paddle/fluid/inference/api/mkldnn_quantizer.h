@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
@@ -85,7 +86,8 @@ class AnalysisPredictor::MkldnnQuantizer {
       const framework::LoDTensor& var_tensor, bool is_unsigned) const;
 
   std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
-      const framework::LoDTensor& var_tensor, bool is_unsigned,
+      const framework::LoDTensor& var_tensor,
+      bool is_unsigned,
       bool is_transposed) const;
 
   std::pair<bool, framework::LoDTensor> GetMaxChGRUScalingFactor(
@@ -101,12 +103,16 @@ class AnalysisPredictor::MkldnnQuantizer {
 
   // Returns histogram and bin width
   std::pair<std::vector<int>, float> Histogram(
-      const framework::LoDTensor& var_tensor, float min_val, float max_val,
+      const framework::LoDTensor& var_tensor,
+      float min_val,
+      float max_val,
       size_t num_bins = 2048) const;
 
   // Calculate the entropy.
-  float SafeEntropy(std::vector<int> reference_distr_P, int P_sum,
-                    std::vector<int> candidate_distr_Q, int Q_sum) const;
+  float SafeEntropy(std::vector<int> reference_distr_P,
+                    int P_sum,
+                    std::vector<int> candidate_distr_Q,
+                    int Q_sum) const;
 
  private:
   AnalysisPredictor& predictor_;

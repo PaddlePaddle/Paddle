@@ -27,6 +27,7 @@
 #include <gloo/broadcast.h>
 #include <gloo/reduce.h>
 #include <gloo/scatter.h>
+
 #include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
@@ -164,9 +165,13 @@ ProcessGroupGloo::GlooTask::GlooTask(
     : ProcessGroup::Task(rank, inputs, comm_type) {}
 
 ProcessGroupGloo::ProcessGroupGloo(
-    const std::shared_ptr<distributed::Store>& store, int rank, int world_size,
-    int gid, const std::shared_ptr<GlooOptions> options)
-    : ProcessGroup(rank, world_size, gid),
+    const std::shared_ptr<distributed::Store>& store,
+    int rank,
+    int world_size,
+    const platform::Place& place,
+    int gid,
+    const std::shared_ptr<GlooOptions> options)
+    : ProcessGroup(rank, world_size, place, gid),
       _tag(0),
       _store(new GlooStore(store)) {
   _context = std::make_shared<gloo::rendezvous::Context>(rank, world_size);
@@ -180,7 +185,9 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
   BroadcastGlooTask(const std::shared_ptr<gloo::Context>& context,
                     std::vector<phi::DenseTensor>& inputs,   // NOLINT
                     std::vector<phi::DenseTensor>& outputs,  // NOLINT
-                    int rank, int root, uint32_t tag)
+                    int rank,
+                    int root,
+                    uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, inputs, CommType::BROADCAST),
         _context(context),
         _root(root),
@@ -212,23 +219,26 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Broadcast(
     std::vector<phi::DenseTensor>& inputs,
-    std::vector<phi::DenseTensor>& outputs, const BroadcastOptions& opts) {
+    std::vector<phi::DenseTensor>& outputs,
+    const BroadcastOptions& opts) {
   auto root = opts.source_rank;
   std::unique_ptr<BroadcastGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
-  task = std::make_unique<BroadcastGlooTask>(context, inputs, outputs, rank_,
-                                             root, tag);
+  task = std::make_unique<BroadcastGlooTask>(
+      context, inputs, outputs, rank_, root, tag);
   task->Run();
   return task;
 }
 
 class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
  public:
-  AllreduceGlooTask(int rank, const std::shared_ptr<gloo::Context>& context,
+  AllreduceGlooTask(int rank,
+                    const std::shared_ptr<gloo::Context>& context,
                     std::vector<phi::DenseTensor>& inputs,   // NOLINT
                     std::vector<phi::DenseTensor>& outputs,  // NOLINT
-                    ReduceOp reduce_op, uint32_t tag)
+                    ReduceOp reduce_op,
+                    uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, inputs, CommType::ALLREDUCE),
         _context(context),
         _inputs(inputs),
@@ -272,12 +282,13 @@ class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllReduce(
     std::vector<phi::DenseTensor>& inputs,
-    std::vector<phi::DenseTensor>& outputs, const AllreduceOptions& opts) {
+    std::vector<phi::DenseTensor>& outputs,
+    const AllreduceOptions& opts) {
   auto tag = next_tag();
   std::shared_ptr<GlooTask> task;
   auto context = get_context();
-  task = std::make_shared<AllreduceGlooTask>(rank_, context, inputs, outputs,
-                                             opts.reduce_op, tag);
+  task = std::make_shared<AllreduceGlooTask>(
+      rank_, context, inputs, outputs, opts.reduce_op, tag);
   task->Run();
   return task;
 }
@@ -285,8 +296,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllReduce(
 class BarrierGlooTask : public ProcessGroupGloo::GlooTask {
  public:
   BarrierGlooTask(int rank, const std::shared_ptr<gloo::Context>& context)
-      : ProcessGroupGloo::GlooTask(rank, std::vector<phi::DenseTensor>{},
-                                   CommType::BARRIER),
+      : ProcessGroupGloo::GlooTask(
+            rank, std::vector<phi::DenseTensor>{}, CommType::BARRIER),
         _context(context) {}
 
   void Run() override { _do_barrier(); }
@@ -311,7 +322,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Barrier(
 
 class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
  public:
-  AllgatherGlooTask(int rank, const std::shared_ptr<gloo::Context>& context,
+  AllgatherGlooTask(int rank,
+                    const std::shared_ptr<gloo::Context>& context,
                     std::vector<phi::DenseTensor>& inputs,   // NOLINT
                     std::vector<phi::DenseTensor>& outputs,  // NOLINT
                     uint32_t tag)
@@ -346,18 +358,21 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
   std::shared_ptr<AllgatherGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
-  task = std::make_shared<AllgatherGlooTask>(rank_, context, in_tensors,
-                                             out_tensors, tag);
+  task = std::make_shared<AllgatherGlooTask>(
+      rank_, context, in_tensors, out_tensors, tag);
   task->Run();
   return task;
 }
 
 class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
  public:
-  ReduceGlooTask(int rank, const std::shared_ptr<gloo::Context>& context,
+  ReduceGlooTask(int rank,
+                 const std::shared_ptr<gloo::Context>& context,
                  std::vector<phi::DenseTensor>& inputs,   // NOLINT
                  std::vector<phi::DenseTensor>& outputs,  // NOLINT
-                 ReduceOp reduce_op, int dst, uint32_t tag)
+                 ReduceOp reduce_op,
+                 int dst,
+                 uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, inputs, CommType::REDUCE),
         _context(context),
         _inputs(inputs),
@@ -405,22 +420,26 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
     std::vector<phi::DenseTensor>& inputs,
-    std::vector<phi::DenseTensor>& outputs, const ReduceOptions& opts) {
+    std::vector<phi::DenseTensor>& outputs,
+    const ReduceOptions& opts) {
   std::shared_ptr<ReduceGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
-  task = std::make_shared<ReduceGlooTask>(rank_, context, inputs, outputs,
-                                          opts.reduce_op, opts.root_rank, tag);
+  task = std::make_shared<ReduceGlooTask>(
+      rank_, context, inputs, outputs, opts.reduce_op, opts.root_rank, tag);
   task->Run();
   return task;
 }
 
 class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
  public:
-  ScatterGlooTask(int rank, const std::shared_ptr<gloo::Context>& context,
+  ScatterGlooTask(int rank,
+                  const std::shared_ptr<gloo::Context>& context,
                   std::vector<phi::DenseTensor>& inputs,   // NOLINT
                   std::vector<phi::DenseTensor>& outputs,  // NOLINT
-                  int src, int size, uint32_t tag)
+                  int src,
+                  int size,
+                  uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, inputs, CommType::SCATTER),
         _context(context),
         _inputs(inputs),
@@ -456,7 +475,8 @@ class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
     std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors, const ScatterOptions& opts) {
+    std::vector<phi::DenseTensor>& out_tensors,
+    const ScatterOptions& opts) {
   std::shared_ptr<ScatterGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
@@ -484,8 +504,10 @@ std::shared_ptr<::gloo::transport::Device>
 ProcessGroupGloo::createDefaultDevice() {
   std::array<char, HOST_NAME_MAX> hostname{};
   auto ret = ::gethostname(hostname.data(), HOST_NAME_MAX);
-  PADDLE_ENFORCE_EQ(ret, 0, platform::errors::Fatal(
-                                "Get hostname error for createDefaultDevice."));
+  PADDLE_ENFORCE_EQ(
+      ret,
+      0,
+      platform::errors::Fatal("Get hostname error for createDefaultDevice."));
   ::addrinfo* result;
   result = tcputils::get_addr_info(hostname.data(), "", 0, AF_UNSPEC);
   ::addrinfo* cur;

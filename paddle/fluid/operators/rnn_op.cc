@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -188,10 +189,13 @@ class NotImpleKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(rnn, RnnInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(rnn,
+                            RnnInferShapeFunctor,
                             PD_INFER_META(phi::RnnInferMeta));
 
-REGISTER_OPERATOR(rnn, ops::RNNOp, ops::RNNOpMaker,
+REGISTER_OPERATOR(rnn,
+                  ops::RNNOp,
+                  ops::RNNOpMaker,
                   ops::RNNGradOpMaker<paddle::framework::OpDesc>,
                   ops::RNNGradOpMaker<paddle::imperative::OpBase>,
                   RnnInferShapeFunctor);

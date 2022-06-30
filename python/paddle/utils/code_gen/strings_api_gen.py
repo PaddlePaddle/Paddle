@@ -18,11 +18,13 @@ import argparse
 import re
 
 from api_gen import ForwardAPI
+
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
 
 
 class StringsAPI(ForwardAPI):
+
     def __init__(self, api_item_yaml):
         super(StringsAPI, self).__init__(api_item_yaml)
 
@@ -32,7 +34,7 @@ class StringsAPI(ForwardAPI):
     def gene_api_declaration(self):
         return f"""
 // {", ".join(self.outputs['names'])}
-PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_str['args_declare']});
+{super(StringsAPI, self).gene_api_declaration()}
 """
 
     def get_kernel_tensor_out_type(self, output_name):
@@ -49,15 +51,16 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
         return tensor_type_dict[kernel_tensor_out_type]
 
     def gene_output(self,
-                    output_type_list,
-                    set_out_func,
-                    code_indent,
+                    out_dtype_list,
+                    out_tensor_type_list=None,
+                    code_indent='',
                     inplace_flag=False):
         kernel_output = ""
         output_names = []
         output_create = ""
+        return_type = self.get_return_type(inplace_flag)
 
-        if len(output_type_list) == 1:
+        if len(out_dtype_list) == 1:
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
             kernel_tensor_out_type = self.get_kernel_tensor_out_type(
@@ -67,15 +70,14 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
-  {self.outputs['return_type']} api_output{inplace_assign};
-  
-  {tensor_type}* kernel_out = dynamic_cast<{tensor_type}*>({set_out_func}(kernel_backend, &api_output, {kernel_tensor_out_type}));"""
+  {return_type} api_output{inplace_assign};
+  {tensor_type}* kernel_out = dynamic_cast<{tensor_type}*>(SetStringsKernelOutput(kernel_backend, &api_output, {kernel_tensor_out_type}));"""
 
-        elif len(output_type_list) > 1:
+        elif len(out_dtype_list) > 1:
             output_create = f"""
-  {self.outputs['return_type']} api_output;"""
+  {return_type} api_output;"""
 
-            for i in range(len(output_type_list)):
+            for i in range(len(out_dtype_list)):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
                 kernel_tensor_out_type = self.get_kernel_tensor_out_type(
@@ -87,7 +89,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
   std::get<{i}>(api_output) = {self.inplace_map[self.outputs['names'][i]]};"""
 
                 output_create = output_create + f"""
-  {tensor_type}* kernel_out_{i} = dynamic_cast<{tensor_type}*>({set_out_func}(&std::get<{i}>(api_output), {kernel_tensor_out_type}));"""
+  {tensor_type}* kernel_out_{i} = dynamic_cast<{tensor_type}*>(SetStringsKernelOutput(&std::get<{i}>(api_output), {kernel_tensor_out_type}));"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -99,7 +101,8 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
 
     def get_kernel_args(self, code_indent):
         input_trans_map = {
-            'const Tensor&': 'const phi::StringTensor&',
+            'const Tensor&':
+            'const phi::StringTensor&',
             'const std::vector<Tensor>&':
             'const std::vector<const phi::StringTensor*>&',
             'const paddle::optional<Tensor>&':
@@ -151,8 +154,8 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
                     kernel_args_type_list.append('const phi::Scalar&')
                     param = 'phi::Scalar(' + param + ')'
                 else:
-                    kernel_args_type_list.append(self.attrs['attr_info'][param][
-                        0])
+                    kernel_args_type_list.append(
+                        self.attrs['attr_info'][param][0])
                 kernel_args = kernel_args + param + ", "
             elif isinstance(param, bool):
                 kernel_args = kernel_args + str(param).lower() + ", "
@@ -171,7 +174,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
         input_tensors, kernel_args, kernel_signature = self.get_kernel_args(
             code_indent)
         outputs_args, kernel_output_names, output_create = self.gene_output(
-            self.outputs['types'], 'SetStringsKernelOutput', '', inplace_flag)
+            self.outputs['types'], None, '', inplace_flag)
 
         return f"""
   // 1. Get kernel signature and kernel
@@ -194,7 +197,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  (*kernel_fn)({kernel_args}, {outputs_args});
 
-{code_indent}  return {self.gene_return_code()};"""
+{code_indent}  {self.gene_return_code()}"""
 
     def gene_kernel_select(self) -> str:
         api = self.api
@@ -225,7 +228,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
                 assert len(
                     vars_list
                 ) == 2, f"{api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
-                assert (vars_list[0].strip() in attrs['names']) and (attrs['attr_info'][vars_list[0].strip()][0] == 'Place'), \
+                assert (vars_list[0].strip() in attrs['names']) and (attrs['attr_info'][vars_list[0].strip()][0] == 'const Place&'), \
                     f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
                 kernel_select_code = kernel_select_code + f"""
   kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
@@ -249,11 +252,6 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
         kernel_select_code = kernel_key_item_init + kernel_select_code
 
         if len(input_names) > 0:
-            if self.support_selected_rows_kernel:
-                kernel_select_code = kernel_select_code + f"""
-  KernelType kernel_type = ParseKernelTypeByInputArgs({", ".join(input_names)});
-"""
-
             kernel_select_code = kernel_select_code + f"""
   auto kernel_key_set = ParseKernelKeyByInputArgs({kernel_select_args});
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
@@ -264,7 +262,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
     def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()
         return f"""
-PADDLE_API {self.outputs['return_type']} {api_func_name}({self.args_str["args_define"]}) {{
+PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{
 {self.gene_kernel_select()}
 {self.gen_string_tensor_kernel_code(inplace_flag)}
 }}
@@ -351,20 +349,17 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 def main():
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle C++ Strings API files')
-    parser.add_argument(
-        '--api_yaml_path',
-        help='path to sparse api yaml file',
-        default='python/paddle/utils/code_gen/strings_api.yaml')
+    parser.add_argument('--api_yaml_path',
+                        help='path to sparse api yaml file',
+                        default='python/paddle/utils/code_gen/strings_api.yaml')
 
-    parser.add_argument(
-        '--api_header_path',
-        help='output of generated api header code file',
-        default='paddle/phi/api/include/strings_api.h')
+    parser.add_argument('--api_header_path',
+                        help='output of generated api header code file',
+                        default='paddle/phi/api/include/strings_api.h')
 
-    parser.add_argument(
-        '--api_source_path',
-        help='output of generated api source code file',
-        default='paddle/phi/api/lib/strings_api.cc')
+    parser.add_argument('--api_source_path',
+                        help='output of generated api source code file',
+                        default='paddle/phi/api/lib/strings_api.cc')
 
     options = parser.parse_args()
 

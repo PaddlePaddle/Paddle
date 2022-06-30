@@ -76,7 +76,8 @@ class VBroadcastCreator : public JitCodeCreator<int64_t> {
   }
   std::unique_ptr<GenBase> CreateJitCode(const int64_t& w) const override {
     PADDLE_ENFORCE_GT(
-        w, 0,
+        w,
+        0,
         platform::errors::InvalidArgument(
             "The width of VBroadcast should be larger than 0. But w is %d.",
             w));

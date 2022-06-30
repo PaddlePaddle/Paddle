@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/detection/box_coder_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -19,11 +20,17 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void EncodeCenterSizeKernel(
-    const T* prior_box_data, const T* prior_box_var_data,
-    const T* target_box_data, const int row, const int col, const int len,
-    const bool normalized, const T prior_box_var_size, const float* variance,
-    const int var_size, T* output) {
+__global__ void EncodeCenterSizeKernel(const T* prior_box_data,
+                                       const T* prior_box_var_data,
+                                       const T* target_box_data,
+                                       const int row,
+                                       const int col,
+                                       const int len,
+                                       const bool normalized,
+                                       const T prior_box_var_size,
+                                       const float* variance,
+                                       const int var_size,
+                                       T* output) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < row * col) {
     const int row_idx = idx / col;
@@ -70,11 +77,18 @@ __global__ void EncodeCenterSizeKernel(
 }
 
 template <typename T>
-__global__ void DecodeCenterSizeKernel(
-    const T* prior_box_data, const T* prior_box_var_data,
-    const T* target_box_data, const int row, const int col, const int len,
-    const bool normalized, const T prior_box_var_size, const float* variance,
-    const int var_size, const int axis, T* output) {
+__global__ void DecodeCenterSizeKernel(const T* prior_box_data,
+                                       const T* prior_box_var_data,
+                                       const T* target_box_data,
+                                       const int row,
+                                       const int col,
+                                       const int len,
+                                       const bool normalized,
+                                       const T prior_box_var_size,
+                                       const float* variance,
+                                       const int var_size,
+                                       const int axis,
+                                       T* output) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   int prior_box_offset = 0;
   if (idx < row * col) {
@@ -141,7 +155,8 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     const T* prior_box_var_data = nullptr;
     auto prior_box_var_size = 0;
     if (prior_box_var) {
-      PADDLE_ENFORCE_EQ(variance.empty(), true,
+      PADDLE_ENFORCE_EQ(variance.empty(),
+                        true,
                         platform::errors::InvalidArgument(
                             "Input 'PriorBoxVar' and attribute 'variance'"
                             " of BoxCoder operator should not be used at the "
@@ -150,7 +165,8 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
       prior_box_var_size = prior_box_var->dims().size();
     }
     if (!(variance.empty())) {
-      PADDLE_ENFORCE_EQ(static_cast<int>(variance.size()), 4,
+      PADDLE_ENFORCE_EQ(static_cast<int>(variance.size()),
+                        4,
                         platform::errors::InvalidArgument(
                             "Size of attribute 'variance' in BoxCoder operator"
                             " should be 4. But received size is %d",
@@ -158,7 +174,8 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     }
 
     if (target_box->lod().size()) {
-      PADDLE_ENFORCE_EQ(target_box->lod().size(), 1,
+      PADDLE_ENFORCE_EQ(target_box->lod().size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "Input 'TargetBox' of BoxCoder operator only"
                             " supports LoD with one level."));
@@ -184,20 +201,39 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     float* dev_var_data = reinterpret_cast<float*>(dev_var->ptr());
     auto cplace = platform::CPUPlace();
     const auto gplace = context.GetPlace();
-    memory::Copy(gplace, dev_var_data, cplace, &variance[0], bytes,
-                 device_ctx.stream());
+    memory::Copy(
+        gplace, dev_var_data, cplace, &variance[0], bytes, device_ctx.stream());
 
     output_box->mutable_data<T>({row, col, len}, context.GetPlace());
     T* output = output_box->data<T>();
 
     if (code_type == BoxCodeType::kEncodeCenterSize) {
-      EncodeCenterSizeKernel<T><<<grid, block, 0, device_ctx.stream()>>>(
-          prior_box_data, prior_box_var_data, target_box_data, row, col, len,
-          normalized, prior_box_var_size, dev_var_data, var_size, output);
+      EncodeCenterSizeKernel<T>
+          <<<grid, block, 0, device_ctx.stream()>>>(prior_box_data,
+                                                    prior_box_var_data,
+                                                    target_box_data,
+                                                    row,
+                                                    col,
+                                                    len,
+                                                    normalized,
+                                                    prior_box_var_size,
+                                                    dev_var_data,
+                                                    var_size,
+                                                    output);
     } else if (code_type == BoxCodeType::kDecodeCenterSize) {
-      DecodeCenterSizeKernel<T><<<grid, block, 0, device_ctx.stream()>>>(
-          prior_box_data, prior_box_var_data, target_box_data, row, col, len,
-          normalized, prior_box_var_size, dev_var_data, var_size, axis, output);
+      DecodeCenterSizeKernel<T>
+          <<<grid, block, 0, device_ctx.stream()>>>(prior_box_data,
+                                                    prior_box_var_data,
+                                                    target_box_data,
+                                                    row,
+                                                    col,
+                                                    len,
+                                                    normalized,
+                                                    prior_box_var_size,
+                                                    dev_var_data,
+                                                    var_size,
+                                                    axis,
+                                                    output);
     }
   }
 };

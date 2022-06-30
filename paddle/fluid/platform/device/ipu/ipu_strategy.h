@@ -17,6 +17,7 @@ limitations under the License. */
 #include <popart/patterns/patterns.hpp>
 #include <popart/sessionoptions.hpp>
 #include <popart/tensorlocation.hpp>
+
 #include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -42,9 +43,6 @@ class IpuStrategy {
 
   // Flag for fp16, true for pure fp16
   bool enable_fp16 = false;
-
-  // Enable transfer cast Op target from fp32 to fp16 in fp16 mode
-  bool transfer_cast_op = true;
 
   // The mode of Adam/Lamb optimizer
   // false: The standard Adam/Lamb optimizer
@@ -117,14 +115,21 @@ class IpuStrategy {
   void AddDoubleOption(const std::string &option, double value);
   void AddStringOption(const std::string &option, const std::string &value);
   void InsertStringOption(const std::string &option, const std::string &value);
-  void InsertStringPairOption(const std::string &option, const std::string &key,
+  void InsertStringPairOption(const std::string &option,
+                              const std::string &key,
                               const std::string &value);
-  void SetTensorLocation(const std::string &tensor, const std::string &option,
+  void SetTensorLocation(const std::string &tensor,
+                         const std::string &option,
                          std::uint64_t value);
+  void SetReplicatedCollectivesSettings(const std::string &opt, bool value);
   void SetAccumulateOuterFragmentSettings(const std::uint64_t &schedule,
                                           const std::vector<int> &values);
-  void AddCustomOp(const std::string &paddle_op, const std::string &popart_op,
-                   const std::string &domain, int version);
+  void AddCustomOp(const std::string &paddle_op,
+                   const std::string &popart_op,
+                   const std::string &domain,
+                   int version);
+  void SetCompilationProgressLogger(
+      const std::function<void(int, int)> &logger);
 
   std::string GetOption(const std::string &);
   std::vector<std::string> GetVectorOption(const std::string &);
@@ -139,14 +144,18 @@ class IpuStrategy {
  private:
   template <typename ValueType>
   void set(
-      const std::string &key, ValueType value,
+      const std::string &key,
+      ValueType value,
       std::map<std::string, std::function<void(ValueType)>> &options,  // NOLINT
       const std::string &type_str) {
     auto it = options.find(key);
-    PADDLE_ENFORCE_NE(it, options.end(), platform::errors::InvalidArgument(
-                                             "Cannot find option: %s, type: %s "
-                                             "when setting IpuStrategy options",
-                                             key, type_str));
+    PADDLE_ENFORCE_NE(
+        it,
+        options.end(),
+        platform::errors::InvalidArgument("Cannot find option: %s, type: %s "
+                                          "when setting IpuStrategy options",
+                                          key,
+                                          type_str));
     it->second(value);
   }
 
@@ -156,7 +165,8 @@ class IpuStrategy {
       std::map<std::string, std::function<ValueType()>> &options) {  // NOLINT
     auto it = options.find(key);
     PADDLE_ENFORCE_NE(
-        it, options.end(),
+        it,
+        options.end(),
         platform::errors::InvalidArgument(
             "Cannot find option name: %s when trying to get IpuStrategy option",
             key));

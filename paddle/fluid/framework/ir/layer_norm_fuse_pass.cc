@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/ir/layer_norm_fuse_pass.h"
+
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/layer_norm_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -81,14 +82,17 @@ bool validateReduceOpAttrs(const Node* node,
   return true;
 }
 
-void setIntermediateOut(OpDesc* desc, const std::string& out_name,
+void setIntermediateOut(OpDesc* desc,
+                        const std::string& out_name,
                         const std::string& scope_name) {
   std::string new_name = scope_name + "/at." + out_name + ".new";
   desc->SetOutput(out_name, {new_name});
 }
 
-void addIntermediateOut(Node* op_node, const std::string& out_name,
-                        const std::string& scope_name, Graph* graph) {
+void addIntermediateOut(Node* op_node,
+                        const std::string& out_name,
+                        const std::string& scope_name,
+                        Graph* graph) {
   std::string new_name = scope_name + "/at." + out_name + ".new";
   VarDesc out_var(new_name);
   out_var.SetPersistable(false);
@@ -237,23 +241,23 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(x_mean, x_mean, layer_norm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(x_mean_out, x_mean_out, layer_norm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(x_sub_mean, x_sub_mean, layer_norm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(x_sub_mean_out, x_sub_mean_out,
-                              layer_norm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        x_sub_mean_out, x_sub_mean_out, layer_norm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(sqr_pow, sqr_pow, layer_norm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(x_sub_mean_sqr, x_sub_mean_sqr,
-                              layer_norm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(x_sub_mean_sqr_out, x_sub_mean_sqr_out,
-                              layer_norm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        x_sub_mean_sqr, x_sub_mean_sqr, layer_norm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        x_sub_mean_sqr_out, x_sub_mean_sqr_out, layer_norm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(std_dev, std_dev, layer_norm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(std_dev_out, std_dev_out, layer_norm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eps, eps, layer_norm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(std_dev_eps, std_dev_eps, layer_norm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(std_dev_eps_out, std_dev_eps_out,
-                              layer_norm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(std_dev_eps_sqrt, std_dev_eps_sqrt,
-                              layer_norm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(std_dev_eps_sqrt_out, std_dev_eps_sqrt_out,
-                              layer_norm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        std_dev_eps_out, std_dev_eps_out, layer_norm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        std_dev_eps_sqrt, std_dev_eps_sqrt, layer_norm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        std_dev_eps_sqrt_out, std_dev_eps_sqrt_out, layer_norm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(division, division, layer_norm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(division_out, division_out, layer_norm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gamma, gamma, layer_norm_pattern);
@@ -391,27 +395,28 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     IR_NODE_LINK_TO(new_gamma_node, ln_op);
     IR_NODE_LINK_TO(new_beta_node, ln_op);
     IR_OP_VAR_LINK(ln_op, shift_out);
-    GraphSafeRemoveNodes(g, {x_mean,
-                             x_mean_out,
-                             x_sub_mean,
-                             x_sub_mean_out,
-                             sqr_pow,
-                             x_sub_mean_sqr,
-                             x_sub_mean_sqr_out,
-                             std_dev,
-                             std_dev_out,
-                             eps,
-                             std_dev_eps,
-                             std_dev_eps_out,
-                             std_dev_eps_sqrt,
-                             std_dev_eps_sqrt_out,
-                             division,
-                             division_out,
-                             scale,
-                             scale_out,
-                             shift,
-                             gamma,
-                             beta});
+    GraphSafeRemoveNodes(g,
+                         {x_mean,
+                          x_mean_out,
+                          x_sub_mean,
+                          x_sub_mean_out,
+                          sqr_pow,
+                          x_sub_mean_sqr,
+                          x_sub_mean_sqr_out,
+                          std_dev,
+                          std_dev_out,
+                          eps,
+                          std_dev_eps,
+                          std_dev_eps_out,
+                          std_dev_eps_sqrt,
+                          std_dev_eps_sqrt_out,
+                          division,
+                          division_out,
+                          scale,
+                          scale_out,
+                          shift,
+                          gamma,
+                          beta});
     found_layer_norm_count++;
   };
 
