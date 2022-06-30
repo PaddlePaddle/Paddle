@@ -50,8 +50,8 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     if (platform::is_cpu_place(local_count->place())) {
       cpu_local_count_data = local_count->data<int64_t>();
     } else {
-      framework::TensorCopySync(*local_count, platform::CPUPlace(),
-                                &cpu_local_count);
+      framework::TensorCopySync(
+          *local_count, platform::CPUPlace(), &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
     }
     auto global_count_len = 0;
@@ -60,8 +60,8 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
       cpu_global_count_data = global_count->data<int64_t>();
       global_count_len = global_count->numel();
     } else {
-      framework::TensorCopySync(*global_count, platform::CPUPlace(),
-                                &cpu_global_count);
+      framework::TensorCopySync(
+          *global_count, platform::CPUPlace(), &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
       global_count_len = cpu_global_count.numel();
     }
@@ -71,7 +71,8 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
 
     int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for global scatter op must be non-negative.",
             ring_id));
@@ -113,13 +114,19 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
           PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::ncclSend(send_buf + expert_ptr[idx] * in_feat,
                                           cpu_local_count_data[idx] * in_feat,
-                                          dtype, j, comm->comm(), stream));
+                                          dtype,
+                                          j,
+                                          comm->comm(),
+                                          stream));
         }
         if (cpu_global_count_data[idx]) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::ncclRecv(recv_buf + recv_ptr * in_feat,
                                           cpu_global_count_data[idx] * in_feat,
-                                          dtype, j, comm->comm(), stream));
+                                          dtype,
+                                          j,
+                                          comm->comm(),
+                                          stream));
           recv_ptr += cpu_global_count_data[idx];
         }
       }
@@ -164,8 +171,8 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
     if (platform::is_cpu_place(local_count->place())) {
       cpu_local_count_data = local_count->data<int64_t>();
     } else {
-      framework::TensorCopySync(*local_count, platform::CPUPlace(),
-                                &cpu_local_count);
+      framework::TensorCopySync(
+          *local_count, platform::CPUPlace(), &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
     }
     auto global_count_len = 0;
@@ -174,15 +181,16 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
       cpu_global_count_data = global_count->data<int64_t>();
       global_count_len = global_count->numel();
     } else {
-      framework::TensorCopySync(*global_count, platform::CPUPlace(),
-                                &cpu_global_count);
+      framework::TensorCopySync(
+          *global_count, platform::CPUPlace(), &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
       global_count_len = cpu_global_count.numel();
     }
 
     int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for global scatter op must be non-negative.",
             ring_id));
@@ -216,11 +224,15 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
         int idx = i + j * n_expert;
         if (cpu_local_count_data[idx]) {
           phi::DenseTensor tmp = *x;
-          pg->Send_Partial(tmp, j, expert_ptr[idx] * in_feat,
+          pg->Send_Partial(tmp,
+                           j,
+                           expert_ptr[idx] * in_feat,
                            cpu_local_count_data[idx] * in_feat);
         }
         if (cpu_global_count_data[idx]) {
-          pg->Recv_Partial(*out, j, recv_ptr * in_feat,
+          pg->Recv_Partial(*out,
+                           j,
+                           recv_ptr * in_feat,
                            cpu_global_count_data[idx] * in_feat);
           recv_ptr += cpu_global_count_data[idx];
         }
@@ -267,7 +279,8 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(global_scatter, ops::GlobalScatterOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(global_scatter,
+                        ops::GlobalScatterOpCUDAKernel<float>,
                         ops::GlobalScatterOpCUDAKernel<double>,
                         ops::GlobalScatterOpCUDAKernel<int>,
                         ops::GlobalScatterOpCUDAKernel<int64_t>,

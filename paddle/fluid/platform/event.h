@@ -43,8 +43,11 @@ class Event {
  public:
   // The DeviceContext is used to get the cuda stream.
   // If CPU profiling mode, can pass nullptr.
-  Event(EventType type, std::string name, uint32_t thread_id,
-        EventRole role = EventRole::kOrdinary, std::string attr = "none");
+  Event(EventType type,
+        std::string name,
+        uint32_t thread_id,
+        EventRole role = EventRole::kOrdinary,
+        std::string attr = "none");
 
   const EventType &type() const;
   Event *parent() const { return parent_; }
@@ -96,8 +99,13 @@ using ThreadEvents = std::map<uint64_t, EventWithStartNs>;
 
 class MemEvent {
  public:
-  MemEvent(EventType type, uint64_t start_ns, uint64_t end_ns, size_t bytes,
-           Place place, int64_t thread_id, const std::string &annotation)
+  MemEvent(EventType type,
+           uint64_t start_ns,
+           uint64_t end_ns,
+           size_t bytes,
+           Place place,
+           int64_t thread_id,
+           const std::string &annotation)
       : type_(type),
         start_ns_(start_ns),
         end_ns_(end_ns),

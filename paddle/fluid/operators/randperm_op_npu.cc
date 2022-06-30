@@ -19,5 +19,5 @@ template <typename T>
 using kernel =
     paddle::operators::RandpermKernel<paddle::platform::NPUDeviceContext, T>;
 
-REGISTER_OP_NPU_KERNEL(randperm, kernel<int64_t>, kernel<int>, kernel<float>,
-                       kernel<double>);
+REGISTER_OP_NPU_KERNEL(
+    randperm, kernel<int64_t>, kernel<int>, kernel<float>, kernel<double>);

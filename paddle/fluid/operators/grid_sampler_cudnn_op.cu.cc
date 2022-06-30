@@ -37,7 +37,8 @@ template <typename T>
 class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+                      true,
                       platform::errors::InvalidArgument(
                           "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -69,8 +70,14 @@ class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
         DataLayout::kNCHW, phi::vectorize<int>(output->dims()));
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSpatialTfSamplerForward(
-        handle, cudnn_st_desc, CudnnDataType<T>::kOne(), cudnn_input_desc,
-        input_data, grid_data, CudnnDataType<T>::kZero(), cudnn_output_desc,
+        handle,
+        cudnn_st_desc,
+        CudnnDataType<T>::kOne(),
+        cudnn_input_desc,
+        input_data,
+        grid_data,
+        CudnnDataType<T>::kZero(),
+        cudnn_output_desc,
         output_data));
   }
 };
@@ -79,7 +86,8 @@ template <typename T>
 class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+                      true,
                       platform::errors::InvalidArgument(
                           "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -122,10 +130,19 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
             DataLayout::kNCHW, phi::vectorize<int>(output_grad->dims()));
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSpatialTfSamplerBackward(
-        handle, cudnn_st_dest, CudnnDataType<T>::kOne(), cudnn_input_desc,
-        input_data, CudnnDataType<T>::kZero(), cudnn_input_grad_desc,
-        input_grad_data, CudnnDataType<T>::kOne(), cudnn_output_grad_desc,
-        output_grad_data, grid_data, CudnnDataType<T>::kZero(),
+        handle,
+        cudnn_st_dest,
+        CudnnDataType<T>::kOne(),
+        cudnn_input_desc,
+        input_data,
+        CudnnDataType<T>::kZero(),
+        cudnn_input_grad_desc,
+        input_grad_data,
+        CudnnDataType<T>::kOne(),
+        cudnn_output_grad_desc,
+        output_grad_data,
+        grid_data,
+        CudnnDataType<T>::kZero(),
         grid_grad_data));
   }
 };
@@ -134,10 +151,14 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace plat = paddle::platform;
-REGISTER_OP_KERNEL(grid_sampler, CUDNN, plat::CUDAPlace,
+REGISTER_OP_KERNEL(grid_sampler,
+                   CUDNN,
+                   plat::CUDAPlace,
                    paddle::operators::CUDNNGridSampleOpKernel<float>,
                    paddle::operators::CUDNNGridSampleOpKernel<double>);
-REGISTER_OP_KERNEL(grid_sampler_grad, CUDNN, plat::CUDAPlace,
+REGISTER_OP_KERNEL(grid_sampler_grad,
+                   CUDNN,
+                   plat::CUDAPlace,
                    paddle::operators::CUDNNGridSampleGradOpKernel<float>,
                    paddle::operators::CUDNNGridSampleGradOpKernel<double>);
 

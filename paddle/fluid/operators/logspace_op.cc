@@ -67,10 +67,13 @@ class LogspaceOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(logspace, LogspaceInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(logspace,
+                            LogspaceInferShapeFunctor,
                             PD_INFER_META(phi::LogspaceInferMeta));
 REGISTER_OPERATOR(
-    logspace, ops::LogspaceOp, ops::LogspaceOpMaker,
+    logspace,
+    ops::LogspaceOp,
+    ops::LogspaceOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     LogspaceInferShapeFunctor);

@@ -30,12 +30,14 @@ class PlacementPassTest {
       auto& all_kernels = OperatorWithKernel::AllOpKernels();
 
       platform::CUDAPlace place = platform::CUDAPlace(0);
-      OpKernelType plain_kernel_type =
-          OpKernelType(proto::VarType::FP32, place, DataLayout::kAnyLayout,
-                       LibraryType::kPlain);
-      OpKernelType cudnn_kernel_type =
-          OpKernelType(proto::VarType::FP32, place, DataLayout::kAnyLayout,
-                       LibraryType::kCUDNN);
+      OpKernelType plain_kernel_type = OpKernelType(proto::VarType::FP32,
+                                                    place,
+                                                    DataLayout::kAnyLayout,
+                                                    LibraryType::kPlain);
+      OpKernelType cudnn_kernel_type = OpKernelType(proto::VarType::FP32,
+                                                    place,
+                                                    DataLayout::kAnyLayout,
+                                                    LibraryType::kCUDNN);
 
       auto fake_kernel_func = [](const ExecutionContext&) -> void {
         static int num_calls = 0;

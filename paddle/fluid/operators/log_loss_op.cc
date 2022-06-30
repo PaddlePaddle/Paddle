@@ -66,25 +66,30 @@ class LogLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Predicted"), "Input", "Predicted",
-                   "LogLossGrad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Predicted"), "Input", "Predicted", "LogLossGrad");
     OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Labels", "LogLossGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input",
-                   framework::GradVarName("Loss"), "LogLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")),
+                   "Input",
+                   framework::GradVarName("Loss"),
+                   "LogLossGrad");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Predicted")),
-                   "Output", framework::GradVarName("Predicted"),
+                   "Output",
+                   framework::GradVarName("Predicted"),
                    "LogLossGrad");
 
     auto pred_dims = ctx->GetInputDim("Predicted");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));
-    PADDLE_ENFORCE_EQ(loss_grad_dims, pred_dims,
+    PADDLE_ENFORCE_EQ(loss_grad_dims,
+                      pred_dims,
                       platform::errors::InvalidArgument(
                           "The dimensions of loss_grad must be equal to the "
                           "dimensions of Predicted,"
                           "But received dimensions of loss_grad is [%s], "
                           "received Predicted is "
                           "[%s]",
-                          loss_grad_dims, pred_dims));
+                          loss_grad_dims,
+                          pred_dims));
 
     auto pred_grad_name = framework::GradVarName("Predicted");
     ctx->SetOutputDim(pred_grad_name, pred_dims);
@@ -112,9 +117,12 @@ class LogLossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(log_loss, LogLossInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(log_loss,
+                            LogLossInferShapeFunctor,
                             PD_INFER_META(phi::LogLossInferMeta));
-REGISTER_OPERATOR(log_loss, ops::LogLossOp, ops::LogLossOpMaker<float>,
+REGISTER_OPERATOR(log_loss,
+                  ops::LogLossOp,
+                  ops::LogLossOpMaker<float>,
                   ops::LogLossGradMaker<paddle::framework::OpDesc>,
                   ops::LogLossGradMaker<paddle::imperative::OpBase>,
                   LogLossInferShapeFunctor);

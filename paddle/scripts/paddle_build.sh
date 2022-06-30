@@ -199,6 +199,7 @@ function cmake_base() {
     if [ "$SYSTEM" == "Darwin" ]; then
         WITH_DISTRIBUTE="OFF"
         WITH_AVX=${WITH_AVX:-ON}
+        WITH_ARM=${WITH_ARM:-OFF}
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
     else
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
@@ -567,6 +568,15 @@ function combine_avx_noavx_build() {
     NOAVX_CORE_FILE=`find ${PADDLE_ROOT}/build.noavx/python/paddle/fluid/ -name "core_noavx.*"`
     WITH_AVX=ON
 
+    cmake_base ${PYTHON_ABI:-""}
+    build_base
+}
+
+function mac_m1_arm_build() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    WITH_AVX=OFF
+    WITH_ARM=ON
     cmake_base ${PYTHON_ABI:-""}
     build_base
 }
@@ -955,6 +965,9 @@ function fetch_upstream_develop_if_not_exist() {
 }
 
 function check_whl_size() {
+    if [ ${BRANCH} != 'develop' ];then
+        return
+    fi
 
     set +x
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/*.whl|awk '{print $1}'`
@@ -1094,6 +1107,10 @@ function check_approvals_of_unittest() {
             fi
         fi
     elif [ $check_times == 3 ]; then
+        if [ ${BRANCH} != 'develop' ];then
+            return
+        fi
+
         rm -f fluidInference_so_size
         curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
         oriBuildSize=`cat fluidInference_so_size`
@@ -2017,6 +2034,26 @@ function get_failedUts_precise_map_file {
     fi
 }
 
+function parallel_test_base_gpups() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit GpuPS tests ...
+    ========================================
+EOF
+        ut_startTime_s=`date +%s`
+        ctest -L "RUN_TYPE=GPUPS" --timeout 120
+        ut_endTime_s=`date +%s`
+        echo "GPUPS testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi
+}
+
 function parallel_test_base_xpu() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -2713,6 +2750,8 @@ function parallel_test() {
     ut_total_startTime_s=`date +%s`
     if [ "$WITH_CINN" == "ON" ];then
         parallel_test_base_cinn
+    elif [ "$WITH_GPU" == "ON" ] && [ "$WITH_HETERPS" == "ON" ];then
+        parallel_test_base_gpups
     elif [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu_test
     elif [ "$WITH_XPU" == "ON" ];then
@@ -3111,6 +3150,7 @@ function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
 }
 
+
 # origin name: example
 function exec_samplecode_test() {
     if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
@@ -3143,11 +3183,11 @@ function collect_ccache_hits() {
 
 function test_op_benchmark() {
     # The PR will pass quickly when get approval from specific person.
-    # Xreki 12538138, luotao1 6836917, ZzSean 32410583
+    # Xreki 12538138, luotao1 6836917, ZzSean 32410583, JamesLim-sy 61349199
     set +x
     approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
     if [ "${approval_line}" != "" ]; then
-        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917)
+        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917 61349199)
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "TRUE" ]; then
             echo "==================================="
@@ -3166,30 +3206,14 @@ function test_model_benchmark() {
 
 function summary_check_problems() {
     set +x
-    local check_style_code=$1
-    local example_code=$2
-    local check_style_info=$3
-    local example_info=$4
-    if [ $check_style_code -ne 0 -o $example_code -ne 0 ];then
-      echo "========================================"
-      echo "summary problems:"
-      if [ $check_style_code -ne 0 -a $example_code -ne 0 ];then
-        echo "There are 2 errors: Code format error and Example code error."
-      else
-        [ $check_style_code -ne 0 ] && echo "There is 1 error: Code format error."
-        [ $example_code -ne 0 ] && echo "There is 1 error: Example code error."
-      fi
-      echo "========================================"
-      if [ $check_style_code -ne 0 ];then
-        echo "*****Code format error***** Please fix it according to the diff information:"
-        echo "$check_style_info" | grep "code format error" -A $(echo "$check_style_info" | wc -l)
-      fi
-      if [ $example_code -ne 0 ];then
+    local example_code=$1
+    local example_info=$2
+    if [ $example_code -ne 0 ];then
+        echo "==============================================================================="
         echo "*****Example code error***** Please fix the error listed in the information:"
+        echo "==============================================================================="
         echo "$example_info" | grep "API check -- Example Code" -A $(echo "$example_info" | wc -l)
-      fi
-      [ $check_style_code -ne 0 ] && exit $check_style_code
-      [ $example_code -ne 0 ] && exit $example_code
+        exit $example_code
     fi
     set -x
 }
@@ -3276,6 +3300,10 @@ function build_develop() {
 }
 
 function check_coverage_build() {
+    if [ ${BRANCH} != 'develop' ];then
+        return
+    fi
+
     rm -f build_size
     curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
     curl -O https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/coverage_build_size
@@ -3312,14 +3340,11 @@ function main() {
         build_pr_and_develop
         ;;
       build_dev_test)
-        #build_develop
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         get_build_time_file
         ;;
       build_and_check)
         set +e
-        check_style_info=$(check_style)
-        check_style_code=$?
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
@@ -3333,7 +3358,7 @@ function main() {
         fi
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
-        summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
+        summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
         ;;
       build_and_check_cpu)
@@ -3346,8 +3371,6 @@ function main() {
       build_and_check_gpu)
         set +e
         set +x
-        check_style_info=$(check_style)
-        check_style_code=$?
         example_info_gpu=""
         example_code_gpu=0
         if [ "${WITH_GPU}" == "ON" ] ; then
@@ -3356,7 +3379,7 @@ function main() {
         fi
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
-        summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
+        summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
         set -x
         assert_api_spec_approvals
         ;;
@@ -3371,6 +3394,10 @@ function main() {
         ;;
       combine_avx_noavx)
         combine_avx_noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
+        ;;
+      mac_m1_arm)
+        mac_m1_arm_build
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       combine_avx_noavx_build_and_test)
@@ -3501,8 +3528,9 @@ function main() {
       cicheck_py37)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        
-        #parallel_test
+        ;;
+      test_cicheck_py37)
+        run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       cpu_cicheck_py35)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
@@ -3566,9 +3594,7 @@ function main() {
       api_example)
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
-        check_style_code=0
-        check_style_info=
-        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
+        summary_check_problems $example_code "$example_info"
         ;;
       test_op_benchmark)
         test_op_benchmark

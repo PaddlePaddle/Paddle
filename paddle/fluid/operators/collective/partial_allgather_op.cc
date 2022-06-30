@@ -26,14 +26,17 @@ class PartialAllGatherOp : public framework::OperatorWithKernel {
     int nranks = ctx->Attrs().Get<int>("nranks");
     int rank = ctx->Attrs().Get<int>("rank");
 
-    PADDLE_ENFORCE_GE(nranks, 2,
+    PADDLE_ENFORCE_GE(nranks,
+                      2,
                       platform::errors::InvalidArgument(
                           "The value of nranks should be >=2."));
     PADDLE_ENFORCE_EQ(
-        (rank >= 0 && rank < nranks), true,
+        (rank >= 0 && rank < nranks),
+        true,
         platform::errors::InvalidArgument(
             "The rank (%d) for partial_allgather op must >=0 and <nranks (%d)",
-            rank, nranks));
+            rank,
+            nranks));
 
     framework::DDim dim = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", dim);
@@ -78,7 +81,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(
-    partial_allgather, ops::PartialAllGatherOp, ops::PartialAllGatherOpMaker,
+    partial_allgather,
+    ops::PartialAllGatherOp,
+    ops::PartialAllGatherOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::PartialAllGatherOpInplaceInferer)

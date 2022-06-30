@@ -52,6 +52,7 @@ list(
   conv3d_op.cc
   mish_op.cc
   nearest_interp_v2_op.cc
+  bilinear_interp_v2_op.cc
   pool3d_op.cc
   deformable_conv_op.cc
   preln_emb_eltwise_layernorm.cc
@@ -59,9 +60,15 @@ list(
   preln_skip_layernorm.cc
   roll_op.cc
   transformer_input_convert_op.cc
+  cast_op.cc
   remove_padding_op.cc
+  equal_op.cc
   recover_padding_op.cc
-  top_k_op.cc)
+  preln_residual_bias.cc
+  c_allreduce_op.cc
+  top_k_op.cc
+  squeeze2_op.cc
+  unsqueeze2_op.cc)
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)

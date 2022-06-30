@@ -31,8 +31,8 @@ TEST(OpConverter, ConvertBlock) {
   engine_.reset(new TensorRTEngine(5, 1 << 15));
   engine_->InitNetwork();
 
-  engine_->DeclareInput("conv2d-X", nvinfer1::DataType::kFLOAT,
-                        nvinfer1::Dims3(2, 5, 5));
+  engine_->DeclareInput(
+      "conv2d-X", nvinfer1::DataType::kFLOAT, nvinfer1::Dims3(2, 5, 5));
 
   conv2d_op->SetType("conv2d");
   conv2d_op->SetInput("Input", {"conv2d-X"});
@@ -58,8 +58,8 @@ TEST(OpConverter, ConvertBlock) {
   x_tensor->mutable_data<float>(platform::CUDAPlace(0));
 
   OpConverter converter;
-  converter.ConvertBlock(*block->Proto(), {"conv2d-Y"}, scope,
-                         engine_.get() /*TensorRTEngine*/);
+  converter.ConvertBlock(
+      *block->Proto(), {"conv2d-Y"}, scope, engine_.get() /*TensorRTEngine*/);
 }
 
 }  // namespace tensorrt

@@ -44,8 +44,11 @@ class DropoutMLUKernel : public framework::OpKernel<T> {
       int seed_data = 0;
       if (seed_tensor) {
         if (platform::is_mlu_place(seed_tensor->place())) {
-          memory::Copy(platform::CPUPlace(), &seed_data, seed_tensor->place(),
-                       seed_tensor->data<int>(), sizeof(int));
+          memory::Copy(platform::CPUPlace(),
+                       &seed_data,
+                       seed_tensor->place(),
+                       seed_tensor->data<int>(),
+                       sizeof(int));
         } else {
           seed_data = *(seed_tensor->data<int>());
         }
@@ -59,9 +62,15 @@ class DropoutMLUKernel : public framework::OpKernel<T> {
       // Special case when dropout_prob is 1.0
       if (dropout_prob == 1.0f) {
         auto value_t = static_cast<T>(0.0f);
-        MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &value_t, out_desc.get(),
+        MLUCnnl::Fill(ctx,
+                      CNNL_POINTER_MODE_HOST,
+                      &value_t,
+                      out_desc.get(),
                       GetBasePtr(out));
-        MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &value_t, mask_desc.get(),
+        MLUCnnl::Fill(ctx,
+                      CNNL_POINTER_MODE_HOST,
+                      &value_t,
+                      mask_desc.get(),
                       GetBasePtr(mask));
         return;
       }
@@ -71,31 +80,47 @@ class DropoutMLUKernel : public framework::OpKernel<T> {
       auto mlu_gen_random = GetMLURandomGenerator(ctx, device_id, seed_data);
 
       const float prob = is_upscale ? dropout_prob : 0.0f;
-      MLUCnnl::FusedDropout(
-          ctx, mlu_gen_random->get(), x_desc.get(), GetBasePtr(x), prob,
-          GetBasePtr(&(mlu_gen_random->get_state())), mask_desc.get(),
-          GetBasePtr(mask), out_desc.get(), GetBasePtr(out));
+      MLUCnnl::FusedDropout(ctx,
+                            mlu_gen_random->get(),
+                            x_desc.get(),
+                            GetBasePtr(x),
+                            prob,
+                            GetBasePtr(&(mlu_gen_random->get_state())),
+                            mask_desc.get(),
+                            GetBasePtr(mask),
+                            out_desc.get(),
+                            GetBasePtr(out));
     } else {
       // exec dropout op for inference only.
       if (is_upscale) {
         framework::TensorCopy(
-            *x, ctx.GetPlace(),
-            ctx.template device_context<platform::MLUDeviceContext>(), out);
+            *x,
+            ctx.GetPlace(),
+            ctx.template device_context<platform::MLUDeviceContext>(),
+            out);
       } else {
         auto scale = static_cast<T>(1.0f - dropout_prob);
         Tensor scale_tensor(x->dtype());
         scale_tensor.mutable_data<T>({1}, ctx.GetPlace());
         MLUCnnlTensorDesc scale_desc(scale_tensor);
-        MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &scale, scale_desc.get(),
+        MLUCnnl::Fill(ctx,
+                      CNNL_POINTER_MODE_HOST,
+                      &scale,
+                      scale_desc.get(),
                       GetBasePtr(&scale_tensor));
 
         auto data_type = ToCnnlDataType<T>();
-        MLUCnnlOpTensorDesc op_tensor_desc(CNNL_OP_TENSOR_MUL, data_type,
-                                           CNNL_NOT_PROPAGATE_NAN);
-        MLUCnnl::OpTensor(ctx, op_tensor_desc.get(), x_desc.get(),
-                          GetBasePtr(x), scale_desc.get(),
-                          GetBasePtr(&scale_tensor), out_desc.get(),
-                          GetBasePtr(out), data_type);
+        MLUCnnlOpTensorDesc op_tensor_desc(
+            CNNL_OP_TENSOR_MUL, data_type, CNNL_NOT_PROPAGATE_NAN);
+        MLUCnnl::OpTensor(ctx,
+                          op_tensor_desc.get(),
+                          x_desc.get(),
+                          GetBasePtr(x),
+                          scale_desc.get(),
+                          GetBasePtr(&scale_tensor),
+                          out_desc.get(),
+                          GetBasePtr(out),
+                          data_type);
       }
     }
   }
@@ -105,7 +130,8 @@ template <typename T>
 class DropoutGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(!ctx.Attr<bool>("is_test"), true,
+    PADDLE_ENFORCE_EQ(!ctx.Attr<bool>("is_test"),
+                      true,
                       platform::errors::InvalidArgument(
                           "GradOp is only callable when is_test is false"));
     auto* grad_x = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -119,7 +145,10 @@ class DropoutGradMLUKernel : public framework::OpKernel<T> {
 
     if (dropout_prob == 1.) {
       auto value_t = static_cast<T>(0.0f);
-      MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &value_t, grad_x_desc.get(),
+      MLUCnnl::Fill(ctx,
+                    CNNL_POINTER_MODE_HOST,
+                    &value_t,
+                    grad_x_desc.get(),
                     GetBasePtr(grad_x));
       return;
     }
@@ -135,20 +164,30 @@ class DropoutGradMLUKernel : public framework::OpKernel<T> {
         GetCastDataType(framework::TransToProtoVarType(mask->dtype()),
                         framework::TransToProtoVarType(cast_mask.dtype()));
 
-    MLUCnnl::Cast(ctx, cast_type, mask_desc.get(), GetBasePtr(mask),
-                  cast_mask_desc.get(), GetBasePtr(&cast_mask));
+    MLUCnnl::Cast(ctx,
+                  cast_type,
+                  mask_desc.get(),
+                  GetBasePtr(mask),
+                  cast_mask_desc.get(),
+                  GetBasePtr(&cast_mask));
 
     const bool is_upscale = (dropout_impl == "upscale_in_train");
     const float scale = is_upscale ? (1.0f / (1.0f - dropout_prob)) : (1.0f);
 
     auto data_type = ToCnnlDataType<T>();
     MLUCnnlTensorDesc grad_out_desc(*grad_out);
-    MLUCnnlOpTensorDesc op_tensor_desc(CNNL_OP_TENSOR_MUL, data_type,
-                                       CNNL_NOT_PROPAGATE_NAN);
-    MLUCnnl::OpTensor(ctx, op_tensor_desc.get(), cast_mask_desc.get(),
-                      GetBasePtr(&cast_mask), grad_out_desc.get(),
-                      GetBasePtr(grad_out), grad_x_desc.get(),
-                      GetBasePtr(grad_x), data_type, scale);
+    MLUCnnlOpTensorDesc op_tensor_desc(
+        CNNL_OP_TENSOR_MUL, data_type, CNNL_NOT_PROPAGATE_NAN);
+    MLUCnnl::OpTensor(ctx,
+                      op_tensor_desc.get(),
+                      cast_mask_desc.get(),
+                      GetBasePtr(&cast_mask),
+                      grad_out_desc.get(),
+                      GetBasePtr(grad_out),
+                      grad_x_desc.get(),
+                      GetBasePtr(grad_x),
+                      data_type,
+                      scale);
   }
 };
 
@@ -158,8 +197,10 @@ class DropoutGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(dropout, ops::DropoutMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(dropout,
+                       ops::DropoutMLUKernel<float>,
                        ops::DropoutMLUKernel<plat::float16>);
 
-REGISTER_OP_MLU_KERNEL(dropout_grad, ops::DropoutGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(dropout_grad,
+                       ops::DropoutGradMLUKernel<float>,
                        ops::DropoutGradMLUKernel<plat::float16>);

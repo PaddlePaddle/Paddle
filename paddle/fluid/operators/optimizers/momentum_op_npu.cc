@@ -57,11 +57,13 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
       Tensor regularized_grad;
       if (regularization_flag == phi::RegularizationType::kL2DECAY) {
         regularized_grad.mutable_data<T>(grad->dims(), ctx.GetPlace());
-        const auto& runner1 = NpuOpRunner("Muls", {*param}, {regularized_grad},
+        const auto& runner1 = NpuOpRunner("Muls",
+                                          {*param},
+                                          {regularized_grad},
                                           {{"value", regularization_coeff}});
         runner1.Run(dev_ctx.stream());
-        const auto& runner2 = NpuOpRunner("Add", {regularized_grad, *grad},
-                                          {regularized_grad}, {});
+        const auto& runner2 = NpuOpRunner(
+            "Add", {regularized_grad, *grad}, {regularized_grad}, {});
         runner2.Run(dev_ctx.stream());
       } else {
         regularized_grad.ShareDataWith(*grad);
@@ -69,18 +71,23 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*param, ctx.GetPlace(), dev_ctx, param_out);
       framework::TensorCopy(*velocity, ctx.GetPlace(), dev_ctx, velocity_out);
       // NOTE: ApplyMomentum will change the input
-      const auto& runner =
-          NpuOpRunner("ApplyMomentum",
-                      {*param_out, *velocity_out, *learning_rate,
-                       regularized_grad, mu_tensor},
-                      {*param_out}, {{"use_nesterov", use_nesterov}});
+      const auto& runner = NpuOpRunner("ApplyMomentum",
+                                       {*param_out,
+                                        *velocity_out,
+                                        *learning_rate,
+                                        regularized_grad,
+                                        mu_tensor},
+                                       {*param_out},
+                                       {{"use_nesterov", use_nesterov}});
       runner.Run(dev_ctx.stream());
     } else if (grad_var->IsType<phi::SelectedRows>()) {
       PADDLE_ENFORCE_EQ(
-          false, true,
+          false,
+          true,
           platform::errors::PermissionDenied("Unsupport SparseMomentum"));
     } else {
-      PADDLE_ENFORCE_EQ(false, true,
+      PADDLE_ENFORCE_EQ(false,
+                        true,
                         platform::errors::PermissionDenied(
                             "Unsupported Variable Type of Grad "
                             "in MomentumOp. Excepted LodTensor "
@@ -94,5 +101,6 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_NPU_KERNEL(momentum, ops::NPUMomentumOpKernel<float>,
+REGISTER_OP_NPU_KERNEL(momentum,
+                       ops::NPUMomentumOpKernel<float>,
                        ops::NPUMomentumOpKernel<plat::float16>);

@@ -82,7 +82,8 @@ static void ReshapeTensorIntoMatrixSequence(
  */
 static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
                                            framework::Tensor *y,
-                                           framework::Tensor *out, bool trans_x,
+                                           framework::Tensor *out,
+                                           bool trans_x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
   auto y_dim = ColumnMatrixFromVector(y->dims());
@@ -92,7 +93,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {
     out->Resize({std::max(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
-                 mat_dim_x.height_, mat_dim_y.width_});
+                 mat_dim_x.height_,
+                 mat_dim_y.width_});
   }
 
   ReshapeTensorIntoMatrixSequence(x, mat_dim_x);
@@ -100,8 +102,11 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
 }
 
 template <typename T, typename FCT>
-static void MatMulXPUFunction(const Tensor *x, const Tensor *y, Tensor *out,
-                              bool trans_x, bool trans_y,
+static void MatMulXPUFunction(const Tensor *x,
+                              const Tensor *y,
+                              Tensor *out,
+                              bool trans_x,
+                              bool trans_y,
                               const paddle::framework::ExecutionContext &ctx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto &x_dims = x->dims();
@@ -134,22 +139,28 @@ static void MatMulXPUFunction(const Tensor *x, const Tensor *y, Tensor *out,
     }
   }
 
-  PADDLE_ENFORCE_EQ(mat_dim_a.width_, mat_dim_b.height_,
+  PADDLE_ENFORCE_EQ(mat_dim_a.width_,
+                    mat_dim_b.height_,
                     platform::errors::InvalidArgument(
                         "Shape mistake in matmul_op, the "
                         "first tensor width must be same as "
                         "second tensor height, but received "
                         "width:%d, height:%d x_dims = %s , y_dims = %s",
-                        mat_dim_a.width_, mat_dim_b.height_,
-                        x_dims.to_str().c_str(), y_dims.to_str().c_str()));
-  PADDLE_ENFORCE_EQ(mat_dim_a.batch_size_, mat_dim_b.batch_size_,
+                        mat_dim_a.width_,
+                        mat_dim_b.height_,
+                        x_dims.to_str().c_str(),
+                        y_dims.to_str().c_str()));
+  PADDLE_ENFORCE_EQ(mat_dim_a.batch_size_,
+                    mat_dim_b.batch_size_,
                     platform::errors::InvalidArgument(
                         "Shape mistake in matmul_op, the two input"
                         "tensor batch_size must be same, but received first "
                         "tensor batch_size:%d, second "
                         "tensor batch_size:%d, x_dims = %s , y_dims = %s",
-                        mat_dim_a.batch_size_, mat_dim_b.batch_size_,
-                        x_dims.to_str().c_str(), y_dims.to_str().c_str()));
+                        mat_dim_a.batch_size_,
+                        mat_dim_b.batch_size_,
+                        x_dims.to_str().c_str(),
+                        y_dims.to_str().c_str()));
 
   float alpha = static_cast<T>(ctx.Attr<float>("alpha"));
   T *data_c = out->data<T>();
@@ -163,15 +174,30 @@ static void MatMulXPUFunction(const Tensor *x, const Tensor *y, Tensor *out,
   if (batch_size <= 1) {
     int r = 0;
     r = xpu_fc_wrapper<XPUType, FCT>(
-        dev_ctx.x_context(), reinterpret_cast<const XPUType *>(x->data<T>()),
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType *>(x->data<T>()),
         reinterpret_cast<const XPUType *>(y->data<T>()),
-        reinterpret_cast<XPUType *>(data_c), m, n, k, mat_dim_a.trans_,
-        mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx, ldy, ldout, alpha, 0,
-        nullptr, xpu::Activation_t::LINEAR);
+        reinterpret_cast<XPUType *>(data_c),
+        m,
+        n,
+        k,
+        mat_dim_a.trans_,
+        mat_dim_b.trans_,
+        nullptr,
+        nullptr,
+        nullptr,
+        ldx,
+        ldy,
+        ldout,
+        alpha,
+        0,
+        nullptr,
+        xpu::Activation_t::LINEAR);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU fc kernel return wrong value[%d %s]", r,
-                                   XPUAPIErrorMsg[r]));
+        r,
+        XPU_SUCCESS,
+        platform::errors::External(
+            "XPU fc kernel return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
   } else {
     // batch matmul
     int r = xpu::fc_batched<XPUType, XPUType, XPUType, FCT>(
@@ -193,11 +219,14 @@ static void MatMulXPUFunction(const Tensor *x, const Tensor *y, Tensor *out,
         nullptr,   // const float* x_maxptr,
         nullptr);  // const float* w_maxptr
 
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
                           "XPU fc_batched kernel return wrong value[%d %s] "
                           "x_dims = %s , y_dims = %s",
-                          r, XPUAPIErrorMsg[r], x_dims.to_str().c_str(),
+                          r,
+                          XPUAPIErrorMsg[r],
+                          x_dims.to_str().c_str(),
                           y_dims.to_str().c_str()));
   }
 }
@@ -245,12 +274,16 @@ static framework::Tensor XPUFoldHeadAndLastDims(
                                     static_cast<int>(in_dims[1]),
                                     static_cast<int>(in_dims[2])};
   std::vector<int> axis_host = {1, 0, 2};
-  int r = xpu::transpose(
-      context.x_context(), reinterpret_cast<const XPUType *>(input.data<T>()),
-      reinterpret_cast<XPUType *>(output.data<T>()), in_shape_host, axis_host);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+  int r = xpu::transpose(context.x_context(),
+                         reinterpret_cast<const XPUType *>(input.data<T>()),
+                         reinterpret_cast<XPUType *>(output.data<T>()),
+                         in_shape_host,
+                         axis_host);
+  PADDLE_ENFORCE_EQ(r,
+                    XPU_SUCCESS,
                     platform::errors::External(
-                        "XPU transpose kernel return wrong value[%d %s]", r,
+                        "XPU transpose kernel return wrong value[%d %s]",
+                        r,
                         XPUAPIErrorMsg[r]));
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
 
@@ -286,8 +319,10 @@ template <typename DeviceContext, typename T>
 class MatMulGradXPUKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext &context,
-              const framework::Tensor &a, bool trans_a,
-              const framework::Tensor &b, bool trans_b,
+              const framework::Tensor &a,
+              bool trans_a,
+              const framework::Tensor &b,
+              bool trans_b,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
     if (std::is_same<paddle::platform::float16, T>::value) {
@@ -304,9 +339,12 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
   }
 
   void CalcInputGrad(const framework::ExecutionContext &context,
-                     const framework::Tensor &a, bool trans_a,
-                     bool is_fold_init_dims_a, const framework::Tensor &b,
-                     bool trans_b, bool is_fold_init_dims_b,
+                     const framework::Tensor &a,
+                     bool trans_a,
+                     bool is_fold_init_dims_a,
+                     const framework::Tensor &b,
+                     bool trans_b,
+                     bool is_fold_init_dims_b,
                      framework::Tensor *out) const {
     if (out == nullptr) return;
     bool need_combine = (a.dims().size() == 3 || b.dims().size() == 3) &&
@@ -323,7 +361,8 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
              is_fold_init_dims_b
                  ? FoldInitDims(b)
                  : XPUFoldHeadAndLastDims<DeviceContext, T>(dev_ctx, b),
-             trans_b, out);
+             trans_b,
+             out);
     }
   }
 
@@ -390,7 +429,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_XPU_KERNEL(
-    matmul, ops::MatMulXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    matmul,
+    ops::MatMulXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::MatMulXPUKernel<paddle::platform::XPUDeviceContext, plat::float16>);
 REGISTER_OP_XPU_KERNEL(
     matmul_grad,
