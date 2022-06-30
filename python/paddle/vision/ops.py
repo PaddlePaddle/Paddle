@@ -26,7 +26,7 @@ from paddle import _C_ops
 __all__ = [  #noqa
     'yolo_loss', 'yolo_box', 'deform_conv2d', 'DeformConv2D', 'read_file',
     'decode_jpeg', 'roi_pool', 'RoIPool', 'psroi_pool', 'PSRoIPool',
-    'roi_align', 'RoIAlign', 'nms', 'generate_proposals', 'GenerateProposals'
+    'roi_align', 'RoIAlign', 'nms', 'generate_proposals'
 ]
 
 
@@ -1595,7 +1595,6 @@ def generate_proposals(scores,
             None by default.
 
     Returns:
-        tuple, result with format ``(rpn_rois, rpn_roi_probs, rpn_rois_num)``.
         - **rpn_rois**: The generated RoIs. 2-D Tensor with shape ``[N, 4]`` while ``N`` is the number of RoIs. The data type is the same as ``scores``.
         - **rpn_roi_probs**: The scores of generated RoIs. 2-D Tensor with shape ``[N, 1]`` while ``N`` is the number of RoIs. The data type is the same as ``scores``.
         - **rpn_rois_num**: Rois's num of each image in one batch. 1-D Tensor with shape ``[B,]`` while ``B`` is the batch size. And its sum equals to RoIs number ``N`` .
@@ -1674,81 +1673,3 @@ def generate_proposals(scores,
         rpn_rois_num = None
 
     return rpn_rois, rpn_roi_probs, rpn_rois_num
-
-
-class GenerateProposals(Layer):
-    """
-    This interface is used to construct a callable object of the ``GenerateProposals`` class. Please
-    refer to :ref:`api_paddle_vision_ops_generate_proposals`.
-
-    Args:
-        pre_nms_top_n (float): Number of total bboxes to be kept per
-            image before NMS. The data type must be float32. `6000` by default.
-        post_nms_top_n (float): Number of total bboxes to be kept per
-            image after NMS. The data type must be float32. `1000` by default.
-        nms_thresh (float): Threshold in NMS. The data type must be float32. `0.5` by default.
-        min_size (float): Remove predicted boxes with either height or
-            width < min_size. The data type must be float32. `0.1` by default.
-        eta(float): Apply in adaptive NMS, if adaptive `threshold > 0.5`,
-            `adaptive_threshold = adaptive_threshold * eta` in each iteration.
-        return_rois_num (bool): When setting True, it will return a 1D Tensor with shape [N, ] that includes Rois's
-            num of each image in one batch. The N is the image's num. For example, the tensor has values [4,5] that represents
-            the first image has 4 Rois, the second image has 5 Rois. It only used in rcnn model.
-            'False' by default.
-        name(str, optional): For detailed information, please refer
-            to :ref:`api_guide_Name`. Usually name is no need to set and
-            None by default.
-    
-    Shape:
-        - scores: 4-D Tensor with shape (N, A, H, W).
-        - bbox_deltas: 2-D Tensor with shape (N, 4*A, H, W).
-        - im_info: 4-D Tensor with shape (N, 2).
-        - anchors: 4-D Tensor with shape (H, W, A, A).
-        - variances: 4-D Tensor with shape (H, W, num_priors, 4)
-
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            
-            generate_proposals_module = paddle.vision.ops.GenerateProposals(return_rois_num=True)
-
-            scores = paddle.rand((2,4,5,5), dtype=paddle.float32)
-            bbox_deltas = paddle.rand((2, 16, 5, 5), dtype=paddle.float32)
-            im_shape = paddle.to_tensor([[224.0, 224.0], [224.0, 224.0]])
-            anchors = paddle.rand((2,5,4,4), dtype=paddle.float32)
-            variances = paddle.rand((2,5,10,4), dtype=paddle.float32)
-            rois, roi_probs, roi_nums = generate_proposals_module(scores, bbox_deltas,
-                         im_shape, anchors, variances)
-            print(rois, roi_probs, roi_nums)
-
-    """
-
-    def __init__(self,
-                 pre_nms_top_n=6000,
-                 post_nms_top_n=1000,
-                 nms_thresh=0.5,
-                 min_size=0.1,
-                 eta=1.0,
-                 pixel_offset=False,
-                 return_rois_num=False,
-                 name=None):
-        super(GenerateProposals, self).__init__()
-        self.pre_nms_top_n = pre_nms_top_n
-        self.post_nms_top_n = post_nms_top_n
-        self.nms_thresh = nms_thresh
-        self.min_size = min_size
-        self.eta = eta
-        self.pixel_offset = pixel_offset
-        self.return_rois_num = return_rois_num
-        self.name = name
-
-    def forward(self, scores, bbox_deltas, im_info, anchors, variances):
-        return generate_proposals(scores, bbox_deltas, im_info, anchors,
-                                  variances, self.pre_nms_top_n,
-                                  self.post_nms_top_n, self.nms_thresh,
-                                  self.min_size, self.eta, self.pixel_offset,
-                                  self.return_rois_num, self.name)

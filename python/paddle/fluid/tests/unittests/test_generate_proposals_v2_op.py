@@ -254,7 +254,7 @@ class TestGenerateProposalsV2OpNoOffset(TestGenerateProposalsV2Op):
         self.pixel_offset = False
 
 
-class testGenerateProposalsFunctionAPI(unittest.TestCase):
+class testGenerateProposalsAPI(unittest.TestCase):
 
     def setUp(self):
         np.random.seed(678)
@@ -328,93 +328,6 @@ class testGenerateProposalsFunctionAPI(unittest.TestCase):
             pre_nms_top_n=10,
             post_nms_top_n=5,
             return_rois_num=True)
-        exe = paddle.static.Executor()
-        rois, roi_probs, rois_num = exe.run(
-            paddle.static.default_main_program(),
-            feed={
-                'scores': self.scores_np,
-                'bbox_deltas': self.bbox_deltas_np,
-                'im_shape': self.im_shape_np,
-                'anchors': self.anchors_np,
-                'variances': self.variances_np,
-            },
-            fetch_list=[rois.name, roi_probs.name, rois_num.name],
-            return_numpy=False)
-
-        self.assertTrue(np.allclose(self.roi_expected, np.array(rois)))
-        self.assertTrue(
-            np.allclose(self.roi_probs_expected, np.array(roi_probs)))
-        self.assertTrue(np.allclose(self.rois_num_expected, np.array(rois_num)))
-
-
-class testGenerateProposalsClassAPI(unittest.TestCase):
-
-    def setUp(self):
-        np.random.seed(678)
-        self.scores_np = np.random.rand(2, 3, 4, 4).astype('float32')
-        self.bbox_deltas_np = np.random.rand(2, 12, 4, 4).astype('float32')
-        self.im_shape_np = np.array([[8, 8], [6, 6]]).astype('float32')
-        self.anchors_np = np.reshape(np.arange(4 * 4 * 3 * 4),
-                                     [4, 4, 3, 4]).astype('float32')
-        self.variances_np = np.ones((4, 4, 3, 4)).astype('float32')
-
-        self.roi_expected, self.roi_probs_expected, self.rois_num_expected = generate_proposals_v2_in_python(
-            self.scores_np,
-            self.bbox_deltas_np,
-            self.im_shape_np,
-            self.anchors_np,
-            self.variances_np,
-            pre_nms_topN=10,
-            post_nms_topN=5,
-            nms_thresh=0.5,
-            min_size=0.1,
-            eta=1.0,
-            pixel_offset=False)
-        self.roi_expected = np.array(self.roi_expected).squeeze(1)
-        self.roi_probs_expected = np.array(self.roi_probs_expected).squeeze(1)
-        self.rois_num_expected = np.array(self.rois_num_expected)
-
-    def test_dynamic(self):
-        paddle.disable_static()
-
-        generate_proposals_module = paddle.vision.ops.GenerateProposals(
-            pre_nms_top_n=10, post_nms_top_n=5, return_rois_num=True)
-        scores = paddle.to_tensor(self.scores_np)
-        bbox_deltas = paddle.to_tensor(self.bbox_deltas_np)
-        im_shape = paddle.to_tensor(self.im_shape_np)
-        anchors = paddle.to_tensor(self.anchors_np)
-        variances = paddle.to_tensor(self.variances_np)
-
-        rois, roi_probs, rois_num = generate_proposals_module(
-            scores, bbox_deltas, im_shape, anchors, variances)
-
-        self.assertTrue(np.allclose(self.roi_expected, rois.numpy()))
-        self.assertTrue(np.allclose(self.roi_probs_expected, roi_probs.numpy()))
-        self.assertTrue(np.allclose(self.rois_num_expected, rois_num.numpy()))
-
-    def test_static(self):
-        paddle.enable_static()
-
-        generate_proposals_module = paddle.vision.ops.GenerateProposals(
-            pre_nms_top_n=10, post_nms_top_n=5, return_rois_num=True)
-
-        scores = paddle.static.data(name='scores',
-                                    shape=[2, 3, 4, 4],
-                                    dtype='float32')
-        bbox_deltas = paddle.static.data(name='bbox_deltas',
-                                         shape=[2, 12, 4, 4],
-                                         dtype='float32')
-        im_shape = paddle.static.data(name='im_shape',
-                                      shape=[2, 2],
-                                      dtype='float32')
-        anchors = paddle.static.data(name='anchors',
-                                     shape=[4, 4, 3, 4],
-                                     dtype='float32')
-        variances = paddle.static.data(name='variances',
-                                       shape=[4, 4, 3, 4],
-                                       dtype='float32')
-        rois, roi_probs, rois_num = generate_proposals_module(
-            scores, bbox_deltas, im_shape, anchors, variances)
         exe = paddle.static.Executor()
         rois, roi_probs, rois_num = exe.run(
             paddle.static.default_main_program(),
