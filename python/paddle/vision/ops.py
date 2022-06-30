@@ -1534,7 +1534,7 @@ def nms(boxes,
 
 def generate_proposals(scores,
                        bbox_deltas,
-                       im_shape,
+                       img_size,
                        anchors,
                        variances,
                        pre_nms_top_n=6000,
@@ -1547,19 +1547,18 @@ def generate_proposals(scores,
                        name=None):
     """
     This operation proposes RoIs according to each box with their
-    probability to be a foreground object and 
-    the box can be calculated by anchors. Bbox_deltais and scores
-    to be an object are the output of RPN. Final proposals
+    probability to be a foreground object. And 
+    the proposals of RPN output are  calculated by anchors, bbox_deltas and scores. Final proposals 
     could be used to train detection net.
 
     For generating proposals, this operation performs following steps:
 
-    1. Transposes and resizes scores and bbox_deltas in size of
-       (H*W*A, 1) and (H*W*A, 4)
+    1. Transpose and resize scores and bbox_deltas in size of
+       (H * W * A, 1) and (H * W * A, 4)
     2. Calculate box locations as proposals candidates. 
     3. Clip boxes to image
     4. Remove predicted boxes with small area. 
-    5. Apply NMS to get final proposals as output.
+    5. Apply non-maximum suppression (NMS) to get final proposals as output.
 
     Args:
         scores (Tensor): A 4-D Tensor with shape [N, A, H, W] represents
@@ -1569,7 +1568,7 @@ def generate_proposals(scores,
         bbox_deltas (Tensor): A 4-D Tensor with shape [N, 4*A, H, W]
             represents the difference between predicted box location and
             anchor location. The data type must be float32.
-        im_info (Tensor): A 2-D Tensor with shape [N, 2] represents origin
+        img_size (Tensor): A 2-D Tensor with shape [N, 2] represents origin
             image shape information for N batch, including height and width of the input sizes.
             The data type can be float32 or float64.
         anchors (Tensor):   A 4-D Tensor represents the anchors with a layout
@@ -1579,27 +1578,26 @@ def generate_proposals(scores,
         variances (Tensor): A 4-D Tensor. The expanded variances of anchors with a layout of
             [H, W, num_priors, 4]. Each variance is in
             (xcenter, ycenter, w, h) format. The data type must be float32.
-        pre_nms_top_n (float): Number of total bboxes to be kept per
-            image before NMS. The data type must be float32. `6000` by default.
-        post_nms_top_n (float): Number of total bboxes to be kept per
-            image after NMS. The data type must be float32. `1000` by default.
-        nms_thresh (float): Threshold in NMS. The data type must be float32. `0.5` by default.
-        min_size (float): Remove predicted boxes with either height or
-            width < min_size. The data type must be float32. `0.1` by default.
-        eta(float): Apply in adaptive NMS, if adaptive `threshold > 0.5`,
-            `adaptive_threshold = adaptive_threshold * eta` in each iteration.
-        return_rois_num (bool): When setting True, it will return a 1D Tensor with shape [N, ] that includes Rois's
-            num of each image in one batch. The N is the image's num. For example, the tensor has values [4,5] that represents
-            the first image has 4 Rois, the second image has 5 Rois. It only used in rcnn model.
-            'False' by default.
+        pre_nms_top_n (float, optional): Number of total bboxes to be kept per
+            image before NMS. `6000` by default.
+        post_nms_top_n (float, optional): Number of total bboxes to be kept per
+            image after NMS. `1000` by default.
+        nms_thresh (float, optional): Threshold in NMS. The data type must be float32. `0.5` by default.
+        min_size (float, optional): Remove predicted boxes with either height or
+            width less than this value. `0.1` by default.
+        eta(float, optional): Apply in adaptive NMS, only works if adaptive `threshold > 0.5`,
+            `adaptive_threshold = adaptive_threshold * eta` in each iteration. 1.0 by default.
+        pixel_offset (bool, optional): Whether there is pixel offset. If True, the offset of `img_size` will be 1. 'False' by default.
+        return_rois_num (bool, optional): Whether to return `rpn_rois_num` . When setting True, it will return a 1D Tensor with shape [N, ] that includes Rois's
+            num of each image in one batch. 'False' by default.
         name(str, optional): For detailed information, please refer
             to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.
 
     Returns:
-        - **rpn_rois**: The generated RoIs. 2-D Tensor with shape ``[N, 4]`` while ``N`` is the number of RoIs. The data type is the same as ``scores``.
-        - **rpn_roi_probs**: The scores of generated RoIs. 2-D Tensor with shape ``[N, 1]`` while ``N`` is the number of RoIs. The data type is the same as ``scores``.
-        - **rpn_rois_num**: Rois's num of each image in one batch. 1-D Tensor with shape ``[B,]`` while ``B`` is the batch size. And its sum equals to RoIs number ``N`` .
+        - rpn_rois (Tensor): The generated RoIs. 2-D Tensor with shape ``[N, 4]`` while ``N`` is the number of RoIs. The data type is the same as ``scores``.
+        - rpn_roi_probs (Tensor): The scores of generated RoIs. 2-D Tensor with shape ``[N, 1]`` while ``N`` is the number of RoIs. The data type is the same as ``scores``.
+        - rpn_rois_num (Tensor): Rois's num of each image in one batch. 1-D Tensor with shape ``[B,]`` while ``B`` is the batch size. And its sum equals to RoIs number ``N`` .
 
     Examples:
         .. code-block:: python
@@ -1608,11 +1606,11 @@ def generate_proposals(scores,
 
             scores = paddle.rand((2,4,5,5), dtype=paddle.float32)
             bbox_deltas = paddle.rand((2, 16, 5, 5), dtype=paddle.float32)
-            im_shape = paddle.to_tensor([[224.0, 224.0], [224.0, 224.0]])
+            img_size = paddle.to_tensor([[224.0, 224.0], [224.0, 224.0]])
             anchors = paddle.rand((2,5,4,4), dtype=paddle.float32)
             variances = paddle.rand((2,5,10,4), dtype=paddle.float32)
             rois, roi_probs, roi_nums = paddle.vision.ops.generate_proposals(scores, bbox_deltas,
-                         im_shape, anchors, variances, return_rois_num=True)
+                         img_size, anchors, variances, return_rois_num=True)
             print(rois, roi_probs, roi_nums)
     """
 
@@ -1622,7 +1620,7 @@ def generate_proposals(scores,
                  'nms_thresh', nms_thresh, 'min_size', min_size, 'eta', eta,
                  'pixel_offset', pixel_offset)
         rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals_v2(
-            scores, bbox_deltas, im_shape, anchors, variances, *attrs)
+            scores, bbox_deltas, img_size, anchors, variances, *attrs)
 
         return rpn_rois, rpn_roi_probs, rpn_rois_num
 
@@ -1632,7 +1630,7 @@ def generate_proposals(scores,
                              'generate_proposals_v2')
     check_variable_and_dtype(bbox_deltas, 'bbox_deltas', ['float32'],
                              'generate_proposals_v2')
-    check_variable_and_dtype(im_shape, 'im_shape', ['float32', 'float64'],
+    check_variable_and_dtype(img_size, 'img_size', ['float32', 'float64'],
                              'generate_proposals_v2')
     check_variable_and_dtype(anchors, 'anchors', ['float32'],
                              'generate_proposals_v2')
@@ -1656,7 +1654,7 @@ def generate_proposals(scores,
                      inputs={
                          'Scores': scores,
                          'BboxDeltas': bbox_deltas,
-                         'ImShape': im_shape,
+                         'ImShape': img_size,
                          'Anchors': anchors,
                          'Variances': variances
                      },
