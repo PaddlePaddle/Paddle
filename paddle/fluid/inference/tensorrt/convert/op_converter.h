@@ -236,7 +236,7 @@ class OpConverter {
       framework::OpDesc op_desc(op, nullptr);
       std::vector<std::string> a = {
           "reshape2", "unsqueeze2", "transpose2", "transpose"};
-      std::vector<std::string> b = {"slice"};
+      std::vector<std::string> b = {"slice", "conv2d"};
       framework::Variable* X_v = nullptr;
       std::string X_name;
       if (std::find(a.begin(), a.end(), op_desc.Type()) != a.end()) {
@@ -297,8 +297,8 @@ class OpConverter {
           continue;
         }
         std::vector<int64_t> input_shape;
-        input_shape.push_back(-1);
-        for (size_t i = 1; i < ranks; i++) {
+        // input_shape.push_back(-1);
+        for (size_t i = 0; i < ranks; i++) {
           if (min_input_shape[i] != max_input_shape[i]) {
             input_shape.push_back(-1);
           } else {
@@ -569,8 +569,17 @@ class OpConverter {
     auto var_dims = var_t->dims();
     nvinfer1::Dims trt_in_shape;
     trt_in_shape.nbDims = var_t->dims().size();
-    for (int64_t i = 0; i < var_t->dims().size(); i++) {
+    for (int64_t i = 0; i < trt_in_shape.nbDims; i++) {
       trt_in_shape.d[i] = var_dims[i];
+    }
+    // in fatc , this is not always right
+    // just for run chenqu's model
+    if (!engine_->with_dynamic_shape())
+    {
+      trt_in_shape.nbDims --;
+      for (int i = 0; i < trt_in_shape.nbDims; i++) {
+        trt_in_shape.d[i] = trt_in_shape.d[i + 1];
+      }
     }
     TensorRTEngine::Weight weight{trt_dtype, trt_ptr, trt_num};
     nvinfer1::ILayer* layer =
