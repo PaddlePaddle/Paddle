@@ -503,12 +503,12 @@ class GraphTable : public Table {
   int32_t load_edges(const std::string &path, bool reverse,
                      const std::string &edge_type);
 
-  std::vector<std::vector<uint64_t>> get_all_id(int type, int slice_num);
-  std::vector<std::vector<uint64_t>> get_all_neighbor_id(int type, int slice_num);
-  std::vector<std::vector<uint64_t>> get_all_id(int type, int idx,
-                                                int slice_num);
-  std::vector<std::vector<uint64_t>> get_all_neighbor_id(int type_id, int idx,
-                                                         int slice_num);
+  int get_all_id(int type, int slice_num, std::vector<std::vector<uint64_t>> *output);
+  int get_all_neighbor_id(int type, int slice_num, std::vector<std::vector<uint64_t>> *output);
+  int get_all_id(int type, int idx,
+                 int slice_num, std::vector<std::vector<uint64_t>> *output);
+  int get_all_neighbor_id(int type_id, int id,
+                          int slice_num, std::vector<std::vector<uint64_t>> *output);
   int get_all_feature_ids(int type, int idx,
                         int slice_num, std::vector<std::vector<uint64_t>>* output);
   int32_t load_nodes(const std::string &path, std::string node_type = std::string());

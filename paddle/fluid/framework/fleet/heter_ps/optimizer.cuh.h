@@ -116,7 +116,8 @@ class SparseAdagradOptimizer : public Optimizer {
             (ptr[feature_value_accessor_.common_feature_value.ShowIndex()] - 
                 ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) +
               optimizer_config.clk_coeff * ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) {
-        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] = mf_dim;
+        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 
+                feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float);
 
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;
@@ -245,14 +246,14 @@ class SparseAdamOptimizer : public Optimizer {
               grad + feature_value_accessor_.common_push_value.EmbedGIndex(),
               g_show);
     int mf_dim = int(ptr[feature_value_accessor_.common_feature_value.MfDimIndex()]);
-    // printf("mf_dim: %f, lr_gsum: %f, ", mf_dim, ptr[feature_value_accessor_.common_feature_value.EmbedG2SumIndex()]);
     if (ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] == 0) {
       if (optimizer_config.mf_create_thresholds <=
           optimizer_config.nonclk_coeff * 
             (ptr[feature_value_accessor_.common_feature_value.ShowIndex()] - 
                 ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) +
               optimizer_config.clk_coeff * ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) {
-        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] = mf_dim;
+        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] =
+                feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float);
 
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;
@@ -261,10 +262,6 @@ class SparseAdamOptimizer : public Optimizer {
           ptr[feature_value_accessor_.common_feature_value.EmbedxWIndex() + i] = 
               (curand_uniform(&state)) * optimizer_config.mf_initial_range;
         }
-        ptr[feature_value_accessor_.common_feature_value.EmbedG2SumIndex() + Beta1PowIndex()] = 
-          optimizer_config.beta1_decay_rate;
-        ptr[feature_value_accessor_.common_feature_value.EmbedG2SumIndex() + Beta2PowIndex()] = 
-          optimizer_config.beta2_decay_rate;
         ptr[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + EmbedxBeta1PowIndex()] = 
           optimizer_config.beta1_decay_rate;
         ptr[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + EmbedxBeta2PowIndex()] = 
@@ -357,7 +354,6 @@ class SparseAdamSharedOptimizer : public Optimizer {
     float g_show = grad[feature_value_accessor_.common_push_value.ShowIndex()];
     float g_click = grad[feature_value_accessor_.common_push_value.ClickIndex()];
 
-
     ptr[feature_value_accessor_.common_feature_value.SlotIndex()] =
         grad[feature_value_accessor_.common_push_value.SlotIndex()];
     ptr[feature_value_accessor_.common_feature_value.ShowIndex()] += g_show;
@@ -378,7 +374,8 @@ class SparseAdamSharedOptimizer : public Optimizer {
             (ptr[feature_value_accessor_.common_feature_value.ShowIndex()] - 
                 ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) +
               optimizer_config.clk_coeff * ptr[feature_value_accessor_.common_feature_value.ClickIndex()]) {
-        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] = mf_dim;
+        ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 
+                feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float);
 
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;
@@ -387,10 +384,6 @@ class SparseAdamSharedOptimizer : public Optimizer {
           ptr[feature_value_accessor_.common_feature_value.EmbedxWIndex() + i] = 
               (curand_uniform(&state)) * optimizer_config.mf_initial_range;
         }
-        ptr[feature_value_accessor_.common_feature_value.EmbedG2SumIndex() + Beta1PowIndex()] = 
-          optimizer_config.beta1_decay_rate;
-        ptr[feature_value_accessor_.common_feature_value.EmbedG2SumIndex() + Beta2PowIndex()] = 
-          optimizer_config.beta2_decay_rate;
         ptr[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + EmbedxBeta1PowIndex()] = 
           optimizer_config.beta1_decay_rate;
         ptr[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + EmbedxBeta2PowIndex()] = 

@@ -29,6 +29,7 @@ int CtrDymfAccessor::Initialize() {
   _embedx_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
   _embedx_sgd_rule->LoadConfig(_config.embedx_sgd_param(),
                                _config.embedx_dim());
+  common_feature_value.optimizer_name = name;
 
   common_feature_value.embed_sgd_dim = _embed_sgd_rule->Dim();
   common_feature_value.embedx_dim = _config.embedx_dim();
@@ -182,7 +183,8 @@ int32_t CtrDymfAccessor::Create(float** values, size_t num) {
     value[common_feature_value.SlotIndex()] = -1;
     value[common_feature_value.MfDimIndex()] = -1;
     _embed_sgd_rule->InitValue(value + common_feature_value.EmbedWIndex(),
-                               value + common_feature_value.EmbedG2SumIndex());
+                               value + common_feature_value.EmbedG2SumIndex(),
+                               false); // adam embed init not zero, adagrad embed init zero
     _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
                                 value + common_feature_value.EmbedxG2SumIndex(),
                                 false);
@@ -288,18 +290,17 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
   os << v[0] << " " << v[1] << " " << v[2] << " " << v[3] << " " << v[4];
   //    << v[5] << " " << v[6];
   for (int i = common_feature_value.EmbedG2SumIndex();
-       i < common_feature_value.SlotIndex(); i++) {
+       i < common_feature_value.EmbedxG2SumIndex(); i++) {
     os << " " << v[i];
   }
-  os << " " << common_feature_value.Slot(const_cast<float*>(v)) << " "
-     << common_feature_value.MfDim(const_cast<float*>(v));
   auto show = common_feature_value.Show(const_cast<float*>(v));
   auto click = common_feature_value.Click(const_cast<float*>(v));
   auto score = ShowClickScore(show, click);
+  auto mf_dim = int(common_feature_value.MfDim(const_cast<float*>(v)));
   if (score >= _config.embedx_threshold() &&
       param > common_feature_value.EmbedxG2SumIndex()) {
     for (auto i = common_feature_value.EmbedxG2SumIndex();
-         i < common_feature_value.Dim(); ++i) {
+         i < common_feature_value.Dim(mf_dim); ++i) {
       os << " " << v[i];
     }
   }

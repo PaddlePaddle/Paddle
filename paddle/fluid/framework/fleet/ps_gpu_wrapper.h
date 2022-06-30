@@ -329,8 +329,6 @@ class PSGPUWrapper {
     }
 
     feature_value_accessor_.Configure(config);
-    VLOG(0) << "INIT feature_value_accessor_:" << feature_value_accessor_.GetAccessorInfo().dim
-            << "  EMBX:" << feature_value_accessor_.common_feature_value.embedx_sgd_dim;
     InitializeGPUServer(config);
   }
   #endif
@@ -509,13 +507,9 @@ class PSGPUWrapper {
     for (size_t i = 0; i < slot_index_vec_.size(); i++) {
       slot_index_vec_[i] = dim_index_map[slot_mf_dim_vector_[i]];
     }
-    //TODO(FENGDANLEI): max_mf 
-    VLOG(0) << "InitSlotInfo embed_sgd_dim_:" << embed_sgd_dim_ << " embedx_sgd_dim_:"
-            << embedx_sgd_dim_ << "  embedx_dim_:" << embedx_dim_
-            << " optimizer_type_:" << optimizer_type_;
-    VLOG(0) << "InitSlotInfo:" << feature_value_accessor_.GetAccessorInfo().size;
-    val_type_size_ =TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().size);
-    grad_type_size_ = TYPEALIGN(8, feature_value_accessor_.GetAccessorInfo().update_size);
+    val_type_size_ = TYPEALIGN(8, feature_value_accessor_.common_feature_value.Size(max_mf_dim_));
+    grad_type_size_ = TYPEALIGN(8, feature_value_accessor_.common_push_value.Size(max_mf_dim_));
+    VLOG(0) << "InitSlotInfo: val_type_size_" << val_type_size_ << " grad_type_size_:" << grad_type_size_;
     slot_info_initialized_ = true;
   }
 #endif

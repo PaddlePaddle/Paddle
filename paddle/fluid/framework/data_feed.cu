@@ -206,6 +206,8 @@ __global__ void GraphFillFeatureKernel(uint64_t *id_tensor, int *fill_ins_num,
     }
   }
 
+  __syncthreads();
+
   if (threadIdx.x == 0) {
     global_num = atomicAdd(fill_ins_num, local_num);
   }
@@ -244,6 +246,8 @@ __global__ void GraphFillIdKernel(uint64_t *id_tensor, int *fill_ins_num,
       local_key[dst * 2 + 1] = walk[src + step];
     }
   }
+
+  __syncthreads();
 
   if (threadIdx.x == 0) {
     global_num = atomicAdd(fill_ins_num, local_num);
@@ -340,7 +344,6 @@ int GraphDataGenerator::FillInsBuf() {
   int h_pair_num;
   cudaMemcpyAsync(&h_pair_num, d_pair_num, sizeof(int), cudaMemcpyDeviceToHost,
                   stream_);
-
   if (!FLAGS_enable_opt_get_features && slot_num_ > 0) {
     uint64_t *feature_buf = reinterpret_cast<uint64_t *>(d_feature_buf_->ptr());
     uint64_t *feature = reinterpret_cast<uint64_t *>(d_feature_->ptr());

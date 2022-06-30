@@ -36,9 +36,8 @@ class GraphGpuWrapper {
   void init_service();
   void set_up_types(std::vector<std::string>& edge_type,
                     std::vector<std::string>& node_type);
-  void upload_batch(int etype_id, std::vector<std::vector<uint64_t>>& ids);
-  void upload_batch(std::vector<std::vector<uint64_t>>& ids,
-                    int slot_num);
+  void upload_batch(int type, int idx, int slice_num, const std::string &edge_type);
+  void upload_batch(int type, int slice_num, int slot_num);
   void add_table_feat_conf(std::string table_name, std::string feat_name,
                            std::string feat_dtype, int feat_shape);
   void load_edge_file(std::string name, std::string filepath, bool reverse);
@@ -54,12 +53,10 @@ class GraphGpuWrapper {
   void make_complementary_graph(int idx, int64_t byte_size);
   void set_search_level(int level);
   void init_search_level(int level);
-  std::vector<std::vector<uint64_t>> get_all_id(int type, int slice_num);
-  std::vector<std::vector<uint64_t>> get_all_neighbor_id(int type, int slice_num);
-  std::vector<std::vector<uint64_t>> get_all_id(int type, int idx,
-                                                int slice_num);
-  std::vector<std::vector<uint64_t>> get_all_neighbor_id(int type, int idx,
-                                                int slice_num);
+  int get_all_id(int type, int slice_num, std::vector<std::vector<uint64_t>>* output);
+  int get_all_neighbor_id(int type, int slice_num, std::vector<std::vector<uint64_t>>* output);
+  int get_all_id(int type, int idx, int slice_num, std::vector<std::vector<uint64_t>>* output);
+  int get_all_neighbor_id(int type, int idx, int slice_num, std::vector<std::vector<uint64_t>>* output);
   int get_all_feature_ids(int type, int idx, int slice_num,
                         std::vector<std::vector<uint64_t>>* output);
   NodeQueryResult query_node_list(int gpu_id, int idx, int start,
@@ -85,6 +82,8 @@ class GraphGpuWrapper {
   std::vector<int> device_id_mapping;
   int search_level = 1;
   void* graph_table;
+  int upload_num = 8;
+  std::shared_ptr<::ThreadPool> upload_task_pool;
   std::string feature_separator_ = std::string(" ");
 };
 #endif

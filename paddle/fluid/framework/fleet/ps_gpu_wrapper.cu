@@ -96,7 +96,8 @@ __global__ void PullCopy(float** dest, const float* src,
       }
     } else {
       for (int j = 0; j < mf_dim; j++) {
-        *(dest[x] + y * (mf_dim + 3) + 3 + j) = feature_value_ptr[feature_value_accessor.common_feature_value.EmbedxWIndex() + j];
+        *(dest[x] + y * (mf_dim + 3) + 3 + j) = 
+            feature_value_ptr[feature_value_accessor.common_feature_value.EmbedxWOffsetIndex(feature_value_ptr) + j];
       }
     }
   }

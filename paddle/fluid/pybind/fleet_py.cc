@@ -351,15 +351,16 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("load_edge_file", &GraphGpuWrapper::load_edge_file)
       .def("load_node_and_edge", &GraphGpuWrapper::load_node_and_edge)
       .def("upload_batch",
-           py::overload_cast<int, std::vector<std::vector<uint64_t>>&>(
+           py::overload_cast<int, int, int, const std::string&>(
                &GraphGpuWrapper::upload_batch))
       .def("upload_batch",
-           py::overload_cast<std::vector<std::vector<uint64_t>>&, int>(
+           py::overload_cast<int, int, int>(
                &GraphGpuWrapper::upload_batch))
-      .def("get_all_id", py::overload_cast<int, int, int>(&GraphGpuWrapper::get_all_id))
-      .def("get_all_id", py::overload_cast<int, int>(&GraphGpuWrapper::get_all_id))
-      .def("get_all_neighbor_id", py::overload_cast<int, int, int>(&GraphGpuWrapper::get_all_neighbor_id))
-      .def("get_all_neighbor_id", py::overload_cast<int, int>(&GraphGpuWrapper::get_all_neighbor_id))
+      .def("get_all_id", 
+            py::overload_cast<int, int, int, std::vector<std::vector<uint64_t>>*>(
+               &GraphGpuWrapper::get_all_id))
+      .def("get_all_id", py::overload_cast<int, int, std::vector<std::vector<uint64_t>>*>(
+            &GraphGpuWrapper::get_all_id))
       .def("load_next_partition", &GraphGpuWrapper::load_next_partition)
       .def("make_partitions", &GraphGpuWrapper::make_partitions)
       .def("make_complementary_graph",

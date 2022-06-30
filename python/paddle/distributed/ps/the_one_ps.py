@@ -587,8 +587,11 @@ class SparseTable(Table):
             if proto.table_name == self.common.table_name:
                 usr_table_proto = proto
                 break
-        table_proto.table_class = 'MemorySparseTable'
-        warnings.warn("The PS mode must use MemorySparseTable.")
+        if usr_table_proto.HasField("table_class"):
+            table_proto.table_class = usr_table_proto.table_class
+        else:
+            table_proto.table_class = 'MemorySparseTable'
+            warnings.warn("The PS mode must use MemorySparseTable.")
         if usr_table_proto.HasField("shard_num"):
             table_proto.shard_num = usr_table_proto.shard_num
         else:
