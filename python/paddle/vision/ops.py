@@ -884,14 +884,14 @@ def distribute_fpn_proposals(fpn_rois,
         rois_num_per_level(List): A list of 1-D Tensor and each Tensor is 
             the RoIs' number in each image on the corresponding level. The shape 
             is [B] and data type of int32. B is the number of images
+
     Examples:
         .. code-block:: python
+
             import paddle
-            from ppdet.modeling import ops
-            paddle.enable_static()
-            fpn_rois = paddle.static.data(
-                name='data', shape=[None, 4], dtype='float32', lod_level=1)
-            multi_rois, restore_ind = ops.distribute_fpn_proposals(
+
+            fpn_rois = paddle.rand((10, 4))
+            multi_rois, restore_ind = paddle.vision.ops.distribute_fpn_proposals(
                 fpn_rois=fpn_rois,
                 min_level=2,
                 max_level=5,
@@ -900,7 +900,7 @@ def distribute_fpn_proposals(fpn_rois,
     """
     num_lvl = max_level - min_level + 1
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
         attrs = ('min_level', min_level, 'max_level', max_level, 'refer_level',
                  refer_level, 'refer_scale', refer_scale, 'pixel_offset',
