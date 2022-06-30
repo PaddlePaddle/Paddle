@@ -45,18 +45,18 @@ void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
       std::unordered_map<std::string, std::string> attrs_map;
 
       if (act_type == "swish")
-        attrs_map.emplace("beta", "activation_alpha");
+        attrs_map.emplace("beta", "fuse_alpha");
       else if (act_type == "relu6")
-        attrs_map.emplace("threshold", "activation_alpha");
+        attrs_map.emplace("threshold", "fuse_alpha");
       else if (act_type == "hard_sigmoid") {
-        attrs_map.emplace("slope", "activation_alpha");
-        attrs_map.emplace("offset", "activation_beta");
+        attrs_map.emplace("slope", "fuse_alpha");
+        attrs_map.emplace("offset", "fuse_beta");
       } else if (act_type == "clip") {
-        attrs_map.emplace("min", "activation_alpha");
-        attrs_map.emplace("max", "activation_beta");
+        attrs_map.emplace("min", "fuse_alpha");
+        attrs_map.emplace("max", "fuse_beta");
       } else {
-        attrs_map.emplace("alpha", "activation_alpha");
-        attrs_map.emplace("beta", "activation_beta");
+        attrs_map.emplace("alpha", "fuse_alpha");
+        attrs_map.emplace("beta", "fuse_beta");
       }
       FuseMatmulAct(graph, matmul_type, act_type, attrs_map);
     }
@@ -105,10 +105,10 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
       act_type = BOOST_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
                      ? "gelu_tanh"
                      : "gelu_erf";
-      matmul_op->SetAttr("activation_alpha", 0.0f);
-      matmul_op->SetAttr("activation_beta", 0.0f);
+      matmul_op->SetAttr("fuse_alpha", 0.0f);
+      matmul_op->SetAttr("fuse_beta", 0.0f);
     }
-    matmul_op->SetAttr("activation_type", act_type);
+    matmul_op->SetAttr("fuse_activation", act_type);
     matmul_op->SetOutput("Out", {activation_out->Name()});
 
     IR_NODE_LINK_TO(matmul, activation_out);

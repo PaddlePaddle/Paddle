@@ -104,7 +104,7 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
         BOOST_GET_CONST(bool, activation_op->GetAttr("approximate")))
       softplus_op->SetAttr("fuse_activation", std::string("gelu_tanh"));
     else
-      softplus_op->SetAttr("fuse_activation", fuse_activation_type);
+      softplus_op->SetAttr("fuse_activation", fuse_activation);
 
     softplus_op->SetAttr("use_mkldnn", true);
 
