@@ -14,10 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# note: install the following requirements,
+# apt install time
+# pip install psutil
+
 CMAKE_BINARY_DIR=$1
 shift
 start=$(date +%s.%N)
 duration=$("/usr/bin/time" -f "%C, %E elapsed, %U user, %S sys" "$@" 2>&1)
 end=$(date +%s.%N)
+usage=$(printf "%b" "import psutil\nprint('{}%'.format(psutil.cpu_percent(interval=0)))" | python)
 
-echo ${duration}, 'start', $start, 'end', $end, 'process', $$ >> $CMAKE_BINARY_DIR/build-time
+echo ${duration}, 'start', $start, 'end', $end, 'process', $$, 'usage', $usage >> $CMAKE_BINARY_DIR/build-time
