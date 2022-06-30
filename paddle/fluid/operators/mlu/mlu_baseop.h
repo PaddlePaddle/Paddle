@@ -1391,6 +1391,15 @@ class MLUCnnl {
                    const cnnlTensorDescriptor_t output_desc,
                    void* output);
 
+  static void IndexSelect(const ExecutionContext& ctx,
+                          const int dim,
+                          cnnlTensorDescriptor_t input_desc,
+                          const void* input,
+                          const cnnlTensorDescriptor_t index_desc,
+                          const void* index,
+                          const cnnlTensorDescriptor_t output_desc,
+                          void* output);
+
   static void IsFinite(const ExecutionContext& ctx,
                        const cnnlTensorDescriptor_t input_desc,
                        const void* input,

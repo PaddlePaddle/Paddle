@@ -2597,6 +2597,19 @@ MLURNNDesc::~MLURNNDesc() {
       cnnlSign(handle, input_desc, input, output_desc, output));
 }
 
+/* static */ void MLUCnnl::IndexSelect(const ExecutionContext& ctx,
+                                       const int dim,
+                                       cnnlTensorDescriptor_t input_desc,
+                                       const void* input,
+                                       const cnnlTensorDescriptor_t index_desc,
+                                       const void* index,
+                                       const cnnlTensorDescriptor_t output_desc,
+                                       void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlIndexSelect(
+      handle, dim, input_desc, input, index_desc, index, output_desc, output));
+}
+
 /* static */ void MLUCnnl::IsFinite(const ExecutionContext& ctx,
                                     const cnnlTensorDescriptor_t input_desc,
                                     const void* input,
