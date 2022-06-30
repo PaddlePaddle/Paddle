@@ -73,19 +73,19 @@ class AutoTuneBase {
             "kernel num must be greater than 0, now is %d", kernels_.size()));
     is_init_ = true;
 
-    bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
-    if (!use_autotune) {
-      kernels_[0].Run(args...);
+    auto& cache = AutoTuneCache::Instance().Get(algo);
+    if (cache.Find(key)) {
+      auto best_idx = cache.Get(key);
+      kernels_[best_idx].Run(args...);
     } else {
-      auto& cache = AutoTuneCache::Instance().Get(algo);
-      if (cache.Find(key)) {
-        auto best_idx = cache.Get(key);
-        kernels_[best_idx].Run(args...);
-      } else {
+      bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
+      if (use_autotune) {
         // All avaliable kernels have ran while picking the best kernel,
         // so there may be no need for another kernel run.
         auto best_idx = PickBestKernel(ctx, args...);
         cache.Set(key, best_idx);
+      } else {
+        kernels_[0].Run(args...);
       }
     }
   }
