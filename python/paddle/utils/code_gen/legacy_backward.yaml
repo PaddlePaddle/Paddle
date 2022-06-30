@@ -1565,6 +1565,17 @@
   kernel :
     func : prod_grad
 
+- backward_api : relu6_grad
+  forward : relu6 (Tensor x, float threshold) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, float threshold)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : relu6_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_api : relu_double_grad
   forward : relu_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor out, Tensor grad_x_grad)
