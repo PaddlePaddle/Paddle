@@ -195,10 +195,13 @@ fused_gate_attentionGradNodeCompat::operator()(
   }
 
   if (merge_qkv) {
+    if (outs0.find("QKVWeight@GRAD") != outs0.end()) {
+      outputs[5] = egr::EagerUtils::GetOutputs(outs0["QKVWeight@GRAD"]);
+    }
+  } else {
     if (outs0.find("Key@GRAD") != outs0.end()) {
       outputs[1] = egr::EagerUtils::GetOutputs(outs0["Key@GRAD"]);
     }
-  } else {
     if (outs0.find("QueryWeight@GRAD") != outs0.end()) {
       outputs[2] = egr::EagerUtils::GetOutputs(outs0["QueryWeight@GRAD"]);
     }
