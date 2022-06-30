@@ -51,6 +51,37 @@
     data_type : out_grad
   no_need_buffer : x
 
+- backward_api : digamma_grad
+  forward : digamma (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : digamma_grad
+
+- backward_api : dist_grad
+  forward : dist (Tensor x, Tensor y, float p) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out, Tensor out_grad, float p)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : dist_grad
+
+- backward_api : dot_grad
+  forward : dot (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : dot_grad
+    data_type : out_grad
+
 - backward_api : erf_grad
   forward : erf (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)

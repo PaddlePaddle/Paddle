@@ -82,14 +82,15 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Softplus,
                                "softplus",
                                "beta" comma "threshold");  // NOLINT
 
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu, "relu", );              // NOLINT
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Tanh, "tanh", );              // NOLINT
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sigmoid, "sigmoid", );        // NOLINT
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Exp, "exp", );                // NOLINT
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Expm1, "expm1", );            // NOLINT
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Reciprocal, "reciprocal", );  // NOLINT
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sqrt, "sqrt", );              // NOLINT
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Rsqrt, "rsqrt", );            // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu, "relu", );               // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Tanh, "tanh", );               // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sigmoid, "sigmoid", );         // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Exp, "exp", );                 // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Expm1, "expm1", );             // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Reciprocal, "reciprocal", );   // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sqrt, "sqrt", );               // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Rsqrt, "rsqrt", );             // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu6, "relu6", "threshold");  // NOLINT
 
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(HardSigmoid,
                                  "hard_sigmoid",
@@ -282,6 +283,7 @@ PD_REGISTER_ARG_MAPPING_FN(leaky_relu_grad_grad,
                            phi::LeakyReluDoubleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(thresholded_relu_grad,
                            phi::ThresholdedReluGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(relu6_grad, phi::Relu6GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(softshrink_grad,
                            phi::SoftShrinkGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(hard_shrink_grad,

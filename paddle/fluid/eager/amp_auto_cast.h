@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
+#include "paddle/fluid/eager/api/manual/fluid_manual/dygraph_forward_api.h"
 #include "paddle/fluid/framework/convert_utils.h"
 
 namespace egr {
