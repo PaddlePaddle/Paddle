@@ -34,7 +34,6 @@ class DenseTensor;
 namespace paddle {
 namespace framework {}  // namespace framework
 namespace platform {
-class CPUDeviceContext;
 class MKLDNNDeviceContext;
 }  // namespace platform
 }  // namespace paddle
