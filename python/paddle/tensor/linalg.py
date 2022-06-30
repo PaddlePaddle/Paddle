@@ -1017,11 +1017,12 @@ def dot(x, y, name=None):
         print(z)
 
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_dot(x, y)
+    if _in_legacy_dygraph():
+        return _C_ops.dot(x, y)
+
     op_type = 'dot'
-    # skip var type check in dygraph mode to improve efficiency
-    if paddle.in_dynamic_mode():
-        op = getattr(_C_ops, op_type)
-        return op(x, y)
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)

@@ -3206,30 +3206,14 @@ function test_model_benchmark() {
 
 function summary_check_problems() {
     set +x
-    local check_style_code=$1
-    local example_code=$2
-    local check_style_info=$3
-    local example_info=$4
-    if [ $check_style_code -ne 0 -o $example_code -ne 0 ];then
-      echo "========================================"
-      echo "summary problems:"
-      if [ $check_style_code -ne 0 -a $example_code -ne 0 ];then
-        echo "There are 2 errors: Code format error and Example code error."
-      else
-        [ $check_style_code -ne 0 ] && echo "There is 1 error: Code format error."
-        [ $example_code -ne 0 ] && echo "There is 1 error: Example code error."
-      fi
-      echo "========================================"
-      if [ $check_style_code -ne 0 ];then
-        echo "*****Code format error***** Please fix it according to the diff information:"
-        echo "$check_style_info" | grep "code format error" -A $(echo "$check_style_info" | wc -l)
-      fi
-      if [ $example_code -ne 0 ];then
+    local example_code=$1
+    local example_info=$2
+    if [ $example_code -ne 0 ];then
+        echo "==============================================================================="
         echo "*****Example code error***** Please fix the error listed in the information:"
+        echo "==============================================================================="
         echo "$example_info" | grep "API check -- Example Code" -A $(echo "$example_info" | wc -l)
-      fi
-      [ $check_style_code -ne 0 ] && exit $check_style_code
-      [ $example_code -ne 0 ] && exit $example_code
+        exit $example_code
     fi
     set -x
 }
@@ -3356,14 +3340,11 @@ function main() {
         build_pr_and_develop
         ;;
       build_dev_test)
-        #build_develop
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         get_build_time_file
         ;;
       build_and_check)
         set +e
-        check_style_info=$(check_style)
-        check_style_code=$?
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
@@ -3377,7 +3358,7 @@ function main() {
         fi
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
-        summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
+        summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
         ;;
       build_and_check_cpu)
@@ -3390,8 +3371,6 @@ function main() {
       build_and_check_gpu)
         set +e
         set +x
-        check_style_info=$(check_style)
-        check_style_code=$?
         example_info_gpu=""
         example_code_gpu=0
         if [ "${WITH_GPU}" == "ON" ] ; then
@@ -3400,7 +3379,7 @@ function main() {
         fi
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
-        summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
+        summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
         set -x
         assert_api_spec_approvals
         ;;
@@ -3549,8 +3528,9 @@ function main() {
       cicheck_py37)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        
-        #parallel_test
+        ;;
+      test_cicheck_py37)
+        run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       cpu_cicheck_py35)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
@@ -3614,9 +3594,7 @@ function main() {
       api_example)
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
-        check_style_code=0
-        check_style_info=
-        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
+        summary_check_problems $example_code "$example_info"
         ;;
       test_op_benchmark)
         test_op_benchmark

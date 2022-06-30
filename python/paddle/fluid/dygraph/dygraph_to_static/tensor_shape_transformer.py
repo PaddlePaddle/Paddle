@@ -14,22 +14,16 @@
 
 from __future__ import print_function
 
-import copy
 from paddle.utils import gast
 
-from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import slice_is_num
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
-from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 
 
 class TensorShapeTransformer(gast.NodeTransformer):
     """
     This class transforms variable.shape  into Static Graph Ast.
-    All 'xxx.shape' will be converted int '_jst.convert_shape(x)'.
+    All 'xxx.shape' will be converted int '_jst.Shape(x)'.
     """
 
     def __init__(self, wrapper_root):
@@ -48,7 +42,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
             # NOTE(dev): we can deal with paddle.shape in this case, but it's
             # not pretty to modify into 'convert_shape(paddle)(x)[0]'.
             if args != 'paddle':
-                convert_shape_func = "_jst.convert_shape({})".format(args)
+                convert_shape_func = "_jst.Shape({})".format(args)
                 shape_node = gast.parse(convert_shape_func).body[0].value
                 return shape_node
         return node

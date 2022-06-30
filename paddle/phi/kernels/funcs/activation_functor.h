@@ -1097,6 +1097,44 @@ struct ThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+// relu6(x) = min(max(0, x), 6)
+template <typename T>
+struct Relu6Functor : public BaseActivationFunctor<T> {
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) =
+        x.cwiseMax(static_cast<T>(0)).cwiseMin(static_cast<T>(threshold));
+  }
+};
+
+template <typename T>
+struct Relu6GradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * ((out > static_cast<T>(0)) * (out < static_cast<T>(threshold)))
+                   .template cast<T>();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
 // tanhshrink(x) = x - tanh(x)
 // where tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
 template <typename T>
@@ -2712,6 +2750,41 @@ struct CudaThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+template <typename T>
+struct CudaRelu6Functor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // relu6(x) = min(max(0, x), 6)
+  __device__ __forceinline__ T operator()(const T x) const {
+    T t = static_cast<T>(threshold);
+    return x <= zero ? zero : (x < t ? x : t);
+  }
+};
+
+template <typename T>
+struct CudaRelu6GradFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // dx = (out > 0 && out < t) ? dout : 0
+  __device__ __forceinline__ T operator()(const T dout, const T out) const {
+    T t = static_cast<T>(threshold);
+    return (out > zero && out < t) ? dout : zero;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
 template <typename T>
 struct CudaLeakyReluFunctor : public BaseActivationFunctor<T> {
   T zero = static_cast<T>(0.0f);

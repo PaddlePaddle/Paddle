@@ -30,9 +30,6 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
   bool is_transferred = false;
   auto* src_var_name = &var_name;
 
-  Scope* local_scope = use_local_scope ? var_scope_->GetMutableLocalScope()
-                                       : var_scope_->GetMutableScope();
-
   // 1. layout transform
   if (need_layout_transform(kernel_type_for_var, expected_kernel_key)) {
     auto op = TransferLayout(*src_var_name,
@@ -40,7 +37,7 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
                              kernel_type_for_var.data_layout_,
                              expected_kernel_key.data_layout_,
                              var_scope_,
-                             local_scope,
+                             scope_,
                              is_fetch_v2);
     if (op) {
       RunAndConstructOpFuncNode(
@@ -57,7 +54,7 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
                             kernel_type_for_var.data_type_,
                             expected_kernel_key.data_type_,
                             var_scope_,
-                            local_scope);
+                            scope_);
     if (op) {
       RunAndConstructOpFuncNode(
           op, *src_var_name, *new_var_name, op_func_nodes);
@@ -71,12 +68,8 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
     auto src_place = kernel_type_for_var.place_;
     auto dst_place = expected_kernel_key.place_;
 
-    auto op = TransferDevice(*src_var_name,
-                             new_var_name,
-                             src_place,
-                             dst_place,
-                             var_scope_,
-                             local_scope);
+    auto op = TransferDevice(
+        *src_var_name, new_var_name, src_place, dst_place, var_scope_, scope_);
     if (op) {
       RunAndConstructOpFuncNode(
           op, *src_var_name, *new_var_name, op_func_nodes);
@@ -114,8 +107,8 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
 
   // 1. Construct RuntimeContext
   RuntimeContext runtime_context({}, {});
-  runtime_context.inputs["X"] = {var_scope_->Var(var_name)};
-  runtime_context.outputs["Out"] = {var_scope_->Var(new_var_name)};
+  runtime_context.inputs["X"] = {scope_->FindVar(var_name)};
+  runtime_context.outputs["Out"] = {scope_->Var(new_var_name)};
   InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
 
   // 2. Execute infer shape and choose kernel
@@ -188,19 +181,19 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
                   std::to_string(static_cast<int>(out_layout));
 
   if (var_scope->HasVar(*new_var_name) &&
-      IsTensorOfVarInitialized(var_scope->Var(*new_var_name))) {
+      IsTensorOfVarInitialized(local_scope->FindVar(*new_var_name))) {
     // already has same var
     VLOG(4) << "Use cached variable: " << *new_var_name;
     return nullptr;
   }
 
   auto* ptr = local_scope->Var(*new_var_name);
-  auto var_type = var_scope->Var(var_name)->Type();
+  auto var_type = local_scope->FindVar(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
   VLOG(3) << "Create Variable " << *new_var_name
           << " locally, which pointer is " << ptr << "Variable Type "
           << var_type;
-  var_scope->SetVarDesc(*new_var_name, nullptr);
+  var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
@@ -227,27 +220,27 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
                                             std::string* new_var_name,
                                             proto::VarType::Type in_dtype,
                                             proto::VarType::Type out_dtype,
-                                            VariableScope* var_scope,
+                                            framework::VariableScope* var_scope,
                                             framework::Scope* local_scope) {
   // 1. Generate new_var_name and Initialize it
   *new_var_name = var_name + "_dtype_" +
                   std::to_string(static_cast<int>(in_dtype)) + "_" +
                   std::to_string(static_cast<int>(out_dtype));
   if (var_scope->HasVar(*new_var_name) &&
-      IsTensorOfVarInitialized(var_scope->Var(*new_var_name))) {
+      IsTensorOfVarInitialized(local_scope->FindVar(*new_var_name))) {
     // already has same var
     VLOG(4) << "Use cached variable: " << *new_var_name;
     return nullptr;
   }
 
   auto* ptr = local_scope->Var(*new_var_name);
-  auto var_type = var_scope->Var(var_name)->Type();
+  auto var_type = local_scope->FindVar(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
 
   VLOG(3) << "Create Variable " << *new_var_name
           << " locally, which pointer is " << ptr << "Variable Type "
           << var_type;
-  var_scope->SetVarDesc(*new_var_name, nullptr);
+  var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
@@ -283,20 +276,20 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   *new_var_name = var_name + "_device_" + src_place.DebugString() + "_" +
                   dst_place.DebugString();
 
-  if (var_scope->HasVar(*new_var_name) &&
-      IsTensorOfVarInitialized(var_scope->Var(*new_var_name))) {
+  if (local_scope->FindVar(*new_var_name) &&
+      IsTensorOfVarInitialized(local_scope->FindVar(*new_var_name))) {
     // already has same var
     VLOG(4) << "Use cached variable: " << *new_var_name;
     return nullptr;
   }
 
   auto* ptr = local_scope->Var(*new_var_name);
-  auto var_type = var_scope->Var(var_name)->Type();
+  auto var_type = local_scope->FindVar(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
   VLOG(3) << "Create Variable " << *new_var_name
           << " locally, which pointer is " << ptr << "Variable Type "
           << var_type;
-  var_scope->SetVarDesc(*new_var_name, nullptr);
+  var_scope->AddVar(*new_var_name, nullptr);
 
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
@@ -350,6 +343,9 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         OpFuncNode* op_func_node,
                         std::vector<OpFuncNode>* new_op_func_nodes,
                         bool use_local_scope) {
+  Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
+                                       : var_scope->GetMutableScope();
+
   auto op_base = op_func_node->operator_base_.get();
   PADDLE_ENFORCE_NOT_NULL(op_base,
                           platform::errors::PreconditionNotMet(
@@ -372,7 +368,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   }
 
   bool transfered = false;
-  DataTranferHelper data_transfer_helper(place, var_scope);
+  DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
   for (auto& var_name_item : *ins_map_temp) {
     bool should_skip_input =
         no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
@@ -414,9 +410,6 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                        "but kNHWC layout"
                     << var_name_item.first << " in Operator "
                     << op_base->Type();
-            Scope* local_scope = use_local_scope
-                                     ? var_scope->GetMutableLocalScope()
-                                     : var_scope->GetMutableScope();
             auto op = TransferLayout(var_name,
                                      &new_var_name,
                                      tensor_in->layout(),
@@ -458,7 +451,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
         // update RuntimeContext.inputs and original op_func_node inputs
         op_func_node->input_index[var_name_item.first][i] =
             var_scope->VarId(new_var_name);
-        var_name_item.second[i] = var_scope->Var(new_var_name);
+        var_name_item.second[i] = local_scope->FindVar(new_var_name);
         new_ins[var_name_item.first][i] = new_var_name;
         for (auto& pair : new_outs) {
           for (size_t j = 0; j < pair.second.size(); ++j) {
@@ -467,7 +460,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               VLOG(4) << "Found inplace between input(" << var_name_item.first
                       << ") and output(" << pair.first
                       << "), the variable name is " << var_name;
-              (*outs_map_temp)[pair.first][j] = var_scope->Var(new_var_name);
+              (*outs_map_temp)[pair.first][j] =
+                  local_scope->FindVar(new_var_name);
               new_outs[pair.first][j] = new_var_name;
               op_func_node
                   ->inplace_back_map[var_scope->GetIdByName(new_var_name)] =
@@ -508,7 +502,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
                                  VariableScope* var_scope,
                                  std::vector<OpFuncNode>* op_func_nodes,
                                  framework::Scope* local_scope) {
-  DataTranferHelper data_transfer_helper(place, var_scope);
+  DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
   for (auto& var_name_item : out_names) {
     std::vector<Variable*>& vars = out_vars->at(var_name_item.first);
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
@@ -548,7 +542,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
       }
 
       // 2. find forward var & check whether need to cast
-      auto* var = var_scope->FindVar(orig_var_name);
+      auto* var = local_scope->FindVar(orig_var_name);
       // if forward var not exists, do nothing
       if (var == nullptr) {
         VLOG(3) << "skip " << orig_var_name << " with not found in var_scope";
