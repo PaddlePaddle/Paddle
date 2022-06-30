@@ -1360,6 +1360,10 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
   config.SetInValid();
   auto predictor_p = dynamic_cast<AnalysisPredictor *>(predictor.get());
 
+#ifdef PADDLE_WITH_TENSORRT
+  paddle::framework::ir::patterns::KeyCounter::Instance().CleanCounter();
+#endif
+
   if (!predictor_p->Init(nullptr)) {
     return nullptr;
   }
@@ -2083,6 +2087,7 @@ USE_TRT_CONVERTER(transformer_input_convert)
 USE_TRT_CONVERTER(cast)
 USE_TRT_CONVERTER(recover_padding)
 USE_TRT_CONVERTER(remove_padding)
+USE_TRT_CONVERTER(equal);
 USE_TRT_CONVERTER(top_k)
 USE_TRT_CONVERTER(top_k_v2)
 USE_TRT_CONVERTER(squeeze2)
