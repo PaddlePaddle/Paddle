@@ -30,7 +30,7 @@ using FetchType = paddle::variant<LoDTensor, LoDTensorArray, framework::Vocab>;
 using FetchList = std::vector<FetchType>;
 
 using FetchUnmergedList = std::vector<std::vector<FetchType>>;
-using FetchResultType = boost::variant<FetchList, FetchUnmergedList>;
+using FetchResultType = paddle::variant<FetchList, FetchUnmergedList>;
 
 inline bool data_is_lod_tensor(const FetchType &data) {
   if (data.type() == typeid(LoDTensor)) {
