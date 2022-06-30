@@ -107,6 +107,7 @@ def select_input(inputs, mask):
 
 def select_input_with_buildin_type(inputs, mask):
     from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
+    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_var_like
     support_ret_buildin_type = (bool, float, six.integer_types)
     false_var, true_var = inputs
 
@@ -132,6 +133,27 @@ def select_input_with_buildin_type(inputs, mask):
             "Return results from different branches in cond are not same type: "
             "false_var returned by fasle_fn is '{}' and true_var of true_fn is "
             "'{}'".format(type(false_var), type(true_var)))
+    elif ((isinstance(false_var, UndefinedVar)
+           and isinstance(true_var, (Variable, ) + support_ret_buildin_type))
+          or (isinstance(true_var, UndefinedVar)
+              and isinstance(false_var,
+                             (Variable, ) + support_ret_buildin_type))):
+
+        def create_var_if_not_undefined_var(a):
+            if isinstance(a, UndefinedVar): return a
+            return to_static_variable(a)
+
+        def create_like_if_undefined_var(a, b):
+            if isinstance(a, UndefinedVar): return create_undefined_var_like(b)
+            return a
+
+        # TODO(xiongkun): add warning here.
+        true_var, false_var = create_var_if_not_undefined_var(
+            true_var), create_var_if_not_undefined_var(false_var)
+        inputs = [
+            create_like_if_undefined_var(false_var, true_var),
+            create_like_if_undefined_var(true_var, false_var)
+        ]
     else:
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "

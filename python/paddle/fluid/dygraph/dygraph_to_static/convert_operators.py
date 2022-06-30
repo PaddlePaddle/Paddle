@@ -226,13 +226,11 @@ def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
     def new_true_fn():
         set_args(init_args)
         outs = true_fn()
-        _check_no_undefined_var(outs, return_name_ids, 'if_body')
         return outs
 
     def new_false_fn():
         set_args(init_args)
         outs = false_fn()
-        _check_no_undefined_var(outs, return_name_ids, 'else_body')
         return outs
 
     cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn)
