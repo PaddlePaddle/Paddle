@@ -38,9 +38,11 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
   virtual ir::Node *FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
-      const std::vector<ir::Node *> &sgd_ops, ir::Graph *graph) const {
+      const std::vector<ir::Node *> &sgd_ops,
+      ir::Graph *graph) const {
     PADDLE_ENFORCE_GT(
-        sgd_ops.size(), static_cast<size_t>(0),
+        sgd_ops.size(),
+        static_cast<size_t>(0),
         platform::errors::InvalidArgument("SGD ops must not be empyt."));
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have

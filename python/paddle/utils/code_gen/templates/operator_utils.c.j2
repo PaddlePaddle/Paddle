@@ -6,9 +6,7 @@ class {{api_name | to_pascal_case}}OpMaker : public framework::OpProtoAndChecker
   void Make() override {
   {% filter indent(4, True) %}
     {% for input in api["inputs"] %}
-      {% if input["name"] in api["kernel"]["param"] %}
 {{add_input(loop.index0, input, api_name)}};
-      {% endif %}
     {% endfor %}
     {% for output in api["outputs"] %}
 {{add_output(loop.index0, output, api_name)}};
@@ -32,10 +30,12 @@ TODO: Documentation of {{api_name}} op.
   {% set name = input["name"] %}
   {% set typename = input["typename"] %}
 AddInput({{name| to_opmaker_name}}, "({{typename}}), input {{i}} of {{op_name}} op.")
-  {%- if typename is vec +%}
+  {%- if typename is vec %}
+
     .AsDuplicable()
   {%- endif %}
-  {%- if input["optional"] +%}
+  {%- if input["optional"] %}
+
     .AsDispensable()
   {%- endif %}
 {%- endmacro %}
@@ -46,10 +46,12 @@ AddInput({{name| to_opmaker_name}}, "({{typename}}), input {{i}} of {{op_name}} 
   {% set typename = output["typename"] %}
   {% set is_intermediate = output["intermediate"] %}
 AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name}} op.")
-  {%- if typename is vec +%}
+  {%- if typename is vec %}
+
     .AsDuplicable()
   {%- endif %}
-  {%- if is_intermediate +%}
+  {%- if is_intermediate %}
+
     .AsIntermediate()
   {%- endif %}
 {%- endmacro %}
@@ -69,7 +71,7 @@ AddInput("{{name | to_pascal_case}}TensorList", "attribute {{i}} for {{op_name}}
     .AsDispensable();
   {% endif %}
 AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_type}}), attribute {{i}} for {{op_name}} op.")
-  {%- if "default_value" in attr +%}
+  {% if "default_value" in attr %}
     .SetDefault({{process_default_value(attr)}})
   {%- endif %}
 {%- endmacro %}
@@ -102,8 +104,24 @@ KernelSignature {{api["name"] | to_pascal_case }}OpArgumentMapping(const Argumen
   {% endfilter %}
   {% endfor %}
   {{get_output_list(api["outputs"], kernel_args)}};
-  return KernelSignature("{{api["name"]}}", std::move(inputs), std::move(attrs), std::move(outputs));
+  {% if api["kernel"]["func"] | length == 1 %}
+  KernelSignature sig("{{api["name"]}}", std::move(inputs), std::move(attrs), std::move(outputs));
+  return sig;
+  {% else %}{# it has kernel for selected rows #}
+  const char* kernel_name = ctx.IsSelectedRowsInput({{kernel_args[0] | to_opmaker_name_cstr}}) ? "{{api["kernel"]["func"][1]}}" : "{{api["kernel"]["func"][0]}}";
+  KernelSignature sig (kernel_name, std::move(inputs), std::move(attrs), std::move(outputs));
+  return sig;
+  {%endif%}
 }
+
+/*
+******************************************************************
+NOTE: The following codes are for 'get_compat_kernel_signature.py'
+All possible KernelSignatures returned by {{api["name"] | to_pascal_case }}OpArgumentMapping:
+
+{{api | cartesian_prod_mapping}}
+******************************************************************
+*/
 {% endmacro %}
 
 
@@ -151,14 +169,46 @@ paddle::small_vector<const char*> outputs {
 }
 {%- endmacro %}
 
+{% macro get_expected_kernel(api) %}
+{% set kernel = api["kernel"] %}
+framework::OpKernelType GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const override {
+{%if kernel["data_type"] is not none %}{# data type ---------------------------------#}
+  {% if kernel["data_type"]["candidates"] | length == 1 %}
+    {% set data_type_arg = kernel["data_type"]["candidates"][0] %}
+    {% set inputs = api["inputs"] | map(attribute="name") | list %}
+    {% if data_type_arg in inputs %}
+  auto data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_arg | to_opmaker_name}});
+    {% else %}{# it is an attribute and probably named dtype#}
+  auto data_type = framework::proto::VarType::Type(ctx.Attr<int>("{{data_type_arg}}"));
+    {% endif %}
+  {% elif kernel["data_type"]["candidates"] | length == 2 %}
+    {% set data_type_args = kernel["data_type"]["candidates"] %}
+  auto data_type = framework::proto::VarType::Type(ctx.Attr<int>("{{data_type_args[0]}}");
+  if (data_type == static_cast<proto::VarType::Type>(-1)) {
+    data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_args[1] | to_opmaker_name}});
+  }
+  {% endif %}
+{% endif %}
+  return framework::OpKernelType(data_type, ctx.GetPlace());
+}
+{% endmacro %}
+
 {# --------------------------------------- operator  ---------------------------------------------- #}
 {% macro operator(api) %}
 class {{api["name"] | to_pascal_case}}Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+  {# ----------- get expected kernel type function -------------------------- #}
+  {% set kernel = api["kernel"] %}
+  {% if kernel["data_type"] is not none %}
+ protected:
+  {% filter indent(2, True)%}
+{{get_expected_kernel(api)}}
+  {% endfilter %}
+  {% endif %}
 };
 
-{# infershape functor #}
 DECLARE_INFER_SHAPE_FUNCTOR({{api["name"]}}, {{api["name"] | to_pascal_case}}InferShapeFunctor,
                             PD_INFER_META(phi::{{api["infer_meta"]["func"]}}));
 {# inplace inferer #}
@@ -189,6 +239,9 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
   {% set backward_name = api["backward"] %}
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::framework::OpDesc>,
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::imperative::OpBase>,
+{% else %}
+                  paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+                  paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
 {% endif %}
 {% if api is supports_inplace %}{# inplace#}
                   ops::{{name | to_pascal_case}}InplaceInferer,
@@ -197,6 +250,47 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
                   ops::{{name | to_pascal_case}}NoNeedBufferVarInferer,
 {% endif %}
                   ops::{{name | to_pascal_case}}InferShapeFunctor);
+{% endmacro %}
+
+{% macro register_op_version(api) %}
+{% if "version" in api %}
+{% set name = api["name"] %}
+REGISTER_OP_VERSION({{name}})
+  {% for checkpoint in api["version"]%}
+  .AddCheckpoint(
+    R"ROC({{checkpoint["checkpoint"]}})ROC",
+      paddle::framework::compatible::OpVersionDesc()
+    {% for action in checkpoint["action"]%}
+      {% if "add_input" in action %}
+        .NewInput("{{action["add_input"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "delete_input" in action %}
+        .DeleteInput("{{action["delete_input"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "modify_input" in action %}
+        .ModifyInput("{{action["modify_input"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "add_output" in action %}
+        .NewOutput("{{action["add_output"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "delete_output" in action %}
+        .DeleteOutput("{{action["delete_output"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "modify_output" in action %}
+        .ModifyOutput("{{action["modify_output"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "add_attr" in action %}
+        .NewAttr("{{action["add_attr"]}}", "{{action["comment"]}}", {{action["default"]}}){{")" if loop.last}}
+      {% endif %}
+      {% if "delete_attr" in action %}
+        .DeleteAttr("{{action["delete_attr"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "fix_bug" in action %}
+        .BugfixWithBehaviorChanged("{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+    {% endfor %}
+  {% endfor %};
+{% endif %}
 {% endmacro %}
 
 
@@ -219,18 +313,18 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
     grad_op->SetType("{{name}}");
 
   {% for input in api["inputs"] %}
-    grad_op->SetInput("{{input["name"] | to_pascal_case}}", this->{{extract_input_from_forward(
-      input["name"], 
-      forward_input_names, 
+    grad_op->SetInput({{input["name"] | to_opmaker_name}}, this->{{extract_input_from_forward(
+      input["name"],
+      forward_input_names,
       forward_output_names,
       forward_input_orig_names,
       forward_output_orig_names)}});
   {% endfor %}
 
   {% for output in api["outputs"] %}
-    grad_op->SetOutput("{{output["name"] | to_pascal_case}}", this->{{extract_output_from_forward(
-      output["name"], 
-      forward_input_names, 
+    grad_op->SetOutput({{output["name"] | to_opmaker_name}}, this->{{extract_output_from_forward(
+      output["name"],
+      forward_input_names,
       forward_output_names,
       forward_input_orig_names,
       forward_output_orig_names)}});
@@ -256,8 +350,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
 {% endmacro %}
 
 
-{% macro extract_input_from_forward(name, 
-  input_names, output_names, 
+{% macro extract_input_from_forward(name,
+  input_names, output_names,
   input_orig_names, output_orig_names) %}{# inline #}
   {% if name in input_names %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name)]%}
@@ -266,7 +360,7 @@ Input("{{name_in_forward_orig | to_pascal_case}}")
     {% set name_in_forward_orig = output_orig_names[output_names.index(name)]%}
 Output("{{name | to_pascal_case}}")
   {%- elif name.endswith("_grad") %}{# output grad#}
-    {% set name_in_forward = name.removesuffix("_grad") %}
+    {% set name_in_forward = name[:-5] %}
     {% if name_in_forward in output_names %}
       {% set name_in_forward_orig = output_orig_names[output_names.index(name_in_forward)] %}
 OutputGrad("{{name_in_forward_orig | to_pascal_case}}")
@@ -276,10 +370,10 @@ OutputGrad("{{name_in_forward_orig | to_pascal_case}}")
 
 {% macro extract_output_from_forward(name, input_names, output_names,
   input_orig_names, output_orig_names) %}{# inline #}
-  {% if name.removesuffix("_grad") in input_names %}
-    {% set name_in_forward = name.removesuffix("_grad") %}
+  {% if name[:-5] in input_names %}
+    {% set name_in_forward = name[:-5] %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
-InputGrad("{{name.removesuffix("_grad") | to_pascal_case}}")
+InputGrad("{{name[:-5] | to_pascal_case}}")
   {%- elif (name | to_input_name) in input_names %}
     {% set name_in_forward = name | to_input_name %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}

@@ -35,7 +35,8 @@ template <typename T>
 class BKCLBroadcastOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(ctx.GetPlace()),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "The place of ExecutionContext should be XPUPlace."));
 
@@ -46,13 +47,15 @@ class BKCLBroadcastOpKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     PADDLE_ENFORCE_EQ(
-        out->IsInitialized(), true,
+        out->IsInitialized(),
+        true,
         platform::errors::PreconditionNotMet(
             "Currently, the output of broadcast op must be initialized,"
             "because this op can only be an In-Place operation."));
     void* send_recv_buffer = out->mutable_data<T>(ctx.GetPlace());
     PADDLE_ENFORCE_EQ(
-        send_recv_buffer, in->data(),
+        send_recv_buffer,
+        in->data(),
         platform::errors::PreconditionNotMet("Currently, the broadcast op can "
                                              "only be an In-Place operation."));
 
@@ -68,10 +71,15 @@ class BKCLBroadcastOpKernel : public framework::OpKernel<T> {
     // BKCLDataType data_type = platform::ToBKCLDataType(in->type());
     BKCLDataType data_type = BKCL_FLOAT;
     size_t scale = sizeof(T) / sizeof(float);
-    auto ret = bkcl_broadcast(comm, send_recv_buffer, send_recv_buffer,
+    auto ret = bkcl_broadcast(comm,
+                              send_recv_buffer,
+                              send_recv_buffer,
                               static_cast<size_t>(in->numel()) * scale,
-                              data_type, root_dev_id, stream);
-    PADDLE_ENFORCE_EQ(ret, BKCL_SUCCESS,
+                              data_type,
+                              root_dev_id,
+                              stream);
+    PADDLE_ENFORCE_EQ(ret,
+                      BKCL_SUCCESS,
                       platform::errors::Unavailable("bkcl_broadcast failed"));
 
     VLOG(3) << "Bcast " << ctx.InputNames("X")[0] << ", (" << in->numel() << ")"
@@ -90,7 +98,8 @@ class BKCLBroadcastOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_XPU_KERNEL(broadcast, ops::BKCLBroadcastOpKernel<float>,
+REGISTER_OP_XPU_KERNEL(broadcast,
+                       ops::BKCLBroadcastOpKernel<float>,
                        ops::BKCLBroadcastOpKernel<double>,
                        ops::BKCLBroadcastOpKernel<int>,
                        ops::BKCLBroadcastOpKernel<int64_t>);

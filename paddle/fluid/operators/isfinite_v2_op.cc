@@ -89,7 +89,8 @@ element of X as a tensor.
 
 %s
 )DOC",
-                               GetName(), GetComments()));
+                               GetName(),
+                               GetComments()));
   }
 
  protected:
@@ -101,13 +102,16 @@ element of X as a tensor.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(isinf_v2, IsinfInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(isinf_v2,
+                            IsinfInferShapeFunctor,
                             PD_INFER_META(phi::IsfiniteInferMeta));
 
-DECLARE_INFER_SHAPE_FUNCTOR(isnan_v2, IsnanInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(isnan_v2,
+                            IsnanInferShapeFunctor,
                             PD_INFER_META(phi::IsfiniteInferMeta));
 
-DECLARE_INFER_SHAPE_FUNCTOR(isfinite_v2, IsfiniteInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(isfinite_v2,
+                            IsfiniteInferShapeFunctor,
                             PD_INFER_META(phi::IsfiniteInferMeta));
 
 #define REGISTER_V2OP_MAKER(op_type, comment)           \
@@ -127,19 +131,25 @@ REGISTER_V2OP_MAKER(isnan_v2, "isnanv2(X)")
 REGISTER_V2OP_MAKER(isfinite_v2, "isfinitev2(X)");
 
 REGISTER_OPERATOR(
-    isinf_v2, ops::OverflowV2Op, ops::_isinf_v2OverflowV2OpMaker,
+    isinf_v2,
+    ops::OverflowV2Op,
+    ops::_isinf_v2OverflowV2OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     IsinfInferShapeFunctor);
 
 REGISTER_OPERATOR(
-    isnan_v2, ops::OverflowV2Op, ops::_isnan_v2OverflowV2OpMaker,
+    isnan_v2,
+    ops::OverflowV2Op,
+    ops::_isnan_v2OverflowV2OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     IsnanInferShapeFunctor);
 
 REGISTER_OPERATOR(
-    isfinite_v2, ops::OverflowV2Op, ops::_isfinite_v2OverflowV2OpMaker,
+    isfinite_v2,
+    ops::OverflowV2Op,
+    ops::_isfinite_v2OverflowV2OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     IsfiniteInferShapeFunctor);

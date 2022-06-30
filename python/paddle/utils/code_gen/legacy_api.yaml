@@ -1,3 +1,6 @@
+# The apis in this file are unstandardized that may caused by a variety of reasons,
+# we are trying to fix these apis and will move standardized apis into api.yaml.
+
 - api : abs
   args : (Tensor x)
   output : Tensor
@@ -45,11 +48,17 @@
   kernel :
     func : adadelta
 
-- api : adam
+- api : adam_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, bool lazy_mode, int64_t min_row_size_to_use_multithread, bool multi_precision, bool use_global_beta_pow)
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
+  infer_meta :
+    func : AdamInferMeta
+  kernel :
+    func : adam {dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense},
+           adam_dense_param_sparse_grad {dense, selected_rows, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense}
+    data_type : param
   optional : master_param, skip_update
-  invoke : adam_impl(param, grad, learning_rate, moment1, moment2, beta1_pow, beta2_pow, master_param, skip_update, beta1, beta2, epsilon, lazy_mode, min_row_size_to_use_multithread, multi_precision, use_global_beta_pow)
+  inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
 
 - api : adamax
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment, Tensor inf_norm, Tensor beta1_pow, float beta1, float beta2, float epsilon)
@@ -149,9 +158,8 @@
   kernel :
     func : arg_min
 
-# argsort
 - api : argsort
-  args : (Tensor x, int axis, bool descending)
+  args : (Tensor x, int axis=-1, bool descending=false)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : ArgsortInferMeta
@@ -211,15 +219,6 @@
     func : atan
   backward : atan_grad
 
-- api : atan2
-  args : (Tensor x, Tensor y)
-  output : Tensor
-  infer_meta :
-    func : Atan2InferMeta
-  kernel :
-    func : atan2
-  backward : atan2_grad
-
 # atanh
 - api : atanh
   args : (Tensor x)
@@ -254,15 +253,6 @@
   kernel :
     func : bce_loss
   backward : bce_loss_grad
-
-# bernoulli
-- api : bernoulli
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : bernoulli
 
 # bitwise_and
 - api : bitwise_and
@@ -340,26 +330,6 @@
   kernel :
     func : celu
   backward : celu_grad
-
-# cholesky
-- api : cholesky
-  args : (Tensor x, bool upper)
-  output : Tensor
-  infer_meta :
-    func : CholeskyInferMeta
-  kernel :
-    func : cholesky
-  backward : cholesky_grad
-
-# cholesky_solve
-- api : cholesky_solve
-  args : (Tensor x, Tensor y, bool upper)
-  output : Tensor
-  infer_meta :
-    func : CholeskySolveInferMeta
-  kernel :
-    func : cholesky_solve
-  backward : cholesky_solve_grad
 
 - api : clip
   args : (Tensor x, Scalar(float) min, Scalar(float) max)
@@ -448,15 +418,6 @@
     func : cosh
   backward : cosh_grad
 
-- api : cross
-  args : (Tensor x, Tensor y, int axis = 9)
-  output : Tensor
-  infer_meta :
-    func : CrossInferMeta
-  kernel :
-    func : cross
-  backward : cross_grad
-
 # Part of python API paddle.nn.functional.cross_entropy
 - api : cross_entropy_with_softmax
   args : (Tensor input, Tensor label, bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index, int axis)
@@ -535,15 +496,6 @@
     func : DiagInferMeta
   kernel :
     func : diag
-
-- api : diagonal
-  args : (Tensor x, int offset, int axis1, int axis2)
-  output : Tensor
-  infer_meta :
-    func : DiagonalInferMeta
-  kernel :
-    func : diagonal
-  backward : diagonal_grad
 
 - api : digamma
   args : (Tensor x)
@@ -676,16 +628,6 @@
     func : CompareAllInferMeta
   kernel :
     func : equal_all
-
-# erf
-- api : erf
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : erf
-  backward : erf_grad
 
 # erfinv
 - api : erfinv
@@ -1079,7 +1021,8 @@
   infer_meta :
     func : IsfiniteInferMeta
   kernel :
-    func : isfinite, infinite_sr
+    func : isfinite {dense -> dense},
+           infinite_sr {selected_rows -> selected_rows}
 
 # isinf
 - api : isinf
@@ -1088,7 +1031,8 @@
   infer_meta :
     func : IsfiniteInferMeta
   kernel :
-    func : isinf, isinf_sr
+    func : isinf {dense -> dense},
+           isinf_sr {selected_rows -> selected_rows}
 
 # isnan
 - api : isnan
@@ -1097,7 +1041,8 @@
   infer_meta :
     func : IsfiniteInferMeta
   kernel :
-    func : isnan, isnan_sr
+    func : isnan {dense -> dense},
+           isnan_sr {selected_rows -> selected_rows}
 
 - api : kldiv_loss
   args : (Tensor x, Tensor label, str reduction)
@@ -1544,15 +1489,6 @@
     func : multiply
   backward : multiply_grad
 
-- api : mv
-  args : (Tensor x, Tensor vec)
-  output : Tensor
-  infer_meta :
-    func : MvInferMeta
-  kernel :
-    func : mv
-  backward : mv_grad
-
 - api : nll_loss
   args : (Tensor input, Tensor label, Tensor weight, int64_t ignore_index, str reduction)
   output : Tensor(out), Tensor(total_weight)
@@ -1632,16 +1568,6 @@
   kernel :
     func : pixel_shuffle
   backward : pixel_shuffle_grad
-
-# poisson
-- api : poisson
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : poisson
-  backward : poisson_grad
 
 - api : pool2d
   args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1779,13 +1705,23 @@
 
 - api : relu
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : relu
   inplace : (x -> out)
   backward : relu_grad
+
+- api : relu6
+  args : (Tensor x, float threshold)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : relu6
+  backward : relu6_grad
 
 - api : reshape
   args : (Tensor x, IntArray shape)
@@ -1852,12 +1788,13 @@
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : scale, scale_sr
+    func : scale {dense -> dense},
+           scale_sr {selected_rows -> selected_rows}
   inplace : (x -> out)
   backward : scale_grad
 
@@ -1912,11 +1849,20 @@
     func : selu
   backward : selu_grad
 
-- api : sgd
+- api : sgd_
   args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision)
   output : Tensor(param_out), Tensor(master_param_out)
-  invoke : sgd_impl(param, learning_rate, grad, master_param, multi_precision)
+  infer_meta :
+    func : SgdInferMeta
+  kernel :
+    func : sgd {dense, dense, dense, dense -> dense, dense},
+           sgd_dense_param_sparse_grad {dense, dense, selected_rows, dense -> dense, dense},
+           sgd_sparse_param_sparse_grad {selected_rows, dense, selected_rows, selected_rows -> selected_rows, selected_rows}
+    data_type : param
+  data_transform :
+    support_trans_dtype : learning_rate
   optional : master_param
+  inplace : (param -> param_out), (master_param -> master_param_out)
 
 - api : shape
   args : (Tensor input)
@@ -1924,7 +1870,8 @@
   infer_meta :
     func : ShapeInferMeta
   kernel :
-    func : shape, shape_sr
+    func : shape {dense -> dense},
+           shape_sr {selected_rows -> selected_rows}
   data_transform:
     skip_transform : input
 
@@ -2191,15 +2138,6 @@
     func : top_k
   backward : top_k_grad
 
-- api : trace
-  args : (Tensor x, int offset, int axis1, int axis2)
-  output : Tensor
-  infer_meta :
-    func : TraceInferMeta
-  kernel :
-    func : trace
-  backward : trace_grad
-
 - api : transpose
   args : (Tensor x, int[] axis)
   output : Tensor
@@ -2238,15 +2176,6 @@
   kernel :
     func : tril_triu
   backward : tril_triu_grad
-
-- api : trunc
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : trunc
-  backward : trunc_grad
 
 # python API: paddle.nn.initializer.TruncatedNormal
 - api : truncated_gaussian_random

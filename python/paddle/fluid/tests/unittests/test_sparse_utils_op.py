@@ -318,50 +318,40 @@ class TestSparseConvert(unittest.TestCase):
 
     def test_batch_csr(self):
         with _test_eager_guard():
-            shape = [3, 3, 3]
 
-            def verify(x, crows, cols, values):
-                x = paddle.to_tensor(x)
-                csr = x.to_sparse_csr()
-                assert np.allclose(crows, csr.crows().numpy())
-                assert np.allclose(cols, csr.cols().numpy())
-                assert np.allclose(values, csr.values().numpy())
+            def verify(dense_x):
+                sparse_x = dense_x.to_sparse_csr()
+                out = sparse_x.to_dense()
+                assert np.allclose(out.numpy(), dense_x.numpy())
 
-                dense = csr.to_dense()
-                assert np.allclose(x.numpy(), dense.numpy())
+            shape = np.random.randint(low=1, high=10, size=3)
+            shape = list(shape)
+            dense_x = paddle.randn(shape)
+            dense_x = paddle.nn.functional.dropout(dense_x, p=0.5)
+            verify(dense_x)
 
-            x = [
-                [[1.0, 0, 0], [0, 2.0, 0], [0, 0, 3.0]],
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
-                [[1.0, 0, 0], [0, 2.0, 0], [0, 0, 3.0]],
-            ]
-            crows = [[0, 1, 2, 3, 0, 0, 0, 0, 0, 1, 2, 3]]
-            cols = [0, 1, 2, 0, 1, 2]
-            values = [1.0, 2.0, 3.0, 1.0, 2.0, 3.0]
+            #test batchs=1
+            shape[0] = 1
+            dense_x = paddle.randn(shape)
+            dense_x = paddle.nn.functional.dropout(dense_x, p=0.5)
+            verify(dense_x)
 
-            verify(x, crows, cols, values)
+            shape = np.random.randint(low=2, high=10, size=3)
+            shape = list(shape)
+            dense_x = paddle.randn(shape)
+            #set the 0th batch to zero
+            dense_x[0] = 0
+            verify(dense_x)
 
-            x = [
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
-                [[1.0, 0, 0], [0, 2.0, 0], [0, 0, 3.0]],
-                [[1.0, 0, 0], [0, 2.0, 0], [0, 0, 3.0]],
-            ]
-            crows = [[0, 0, 0, 0, 0, 1, 2, 3, 0, 1, 2, 3]]
-            cols = [0, 1, 2, 0, 1, 2]
-            values = [1.0, 2.0, 3.0, 1.0, 2.0, 3.0]
+            dense_x = paddle.randn(shape)
+            #set the 1th batch to zero
+            dense_x[1] = 0
+            verify(dense_x)
 
-            verify(x, crows, cols, values)
-
-            x = [
-                [[1.0, 0, 0], [0, 2.0, 0], [0, 0, 3.0]],
-                [[1.0, 0, 0], [0, 2.0, 0], [0, 0, 3.0]],
-                [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
-            ]
-            crows = [[0, 1, 2, 3, 0, 1, 2, 3, 0, 0, 0, 0]]
-            cols = [0, 1, 2, 0, 1, 2]
-            values = [1.0, 2.0, 3.0, 1.0, 2.0, 3.0]
-
-            verify(x, crows, cols, values)
+            dense_x = paddle.randn(shape)
+            #set the 2th batch to zero
+            dense_x[2] = 0
+            verify(dense_x)
 
 
 class TestCooError(unittest.TestCase):

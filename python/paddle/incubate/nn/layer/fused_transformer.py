@@ -18,8 +18,11 @@ from paddle.framework import ParamAttr
 import paddle
 from paddle.nn.layer.transformer import _convert_attention_mask, _convert_param_attr_to_list
 from paddle.nn.initializer import Constant
-
-import collections
+from paddle.fluid.dygraph import no_grad
+from paddle.fluid.framework import convert_np_dtype_to_dtype_, _non_static_mode
+from paddle.fluid.core import VarDesc
+from paddle.fluid import core
+import numpy as np
 
 
 # for distributed tensor model parallel
@@ -29,11 +32,48 @@ def _set_var_distributed(var):
 
     var.is_distributed = True
 
-    # NOTE: use current_block and find_var_recursive to support while_loop
-    startup_block = paddle.static.default_startup_program().current_block()
-    main_block = paddle.static.default_main_program().current_block()
-    startup_block._find_var_recursive(var.name).is_distributed = True
-    main_block._find_var_recursive(var.name).is_distributed = True
+    if not _non_static_mode():
+        # NOTE: use current_block and find_var_recursive to support while_loop
+        startup_block = paddle.static.default_startup_program().current_block()
+        main_block = paddle.static.default_main_program().current_block()
+        startup_block._find_var_recursive(var.name).is_distributed = True
+        main_block._find_var_recursive(var.name).is_distributed = True
+
+
+def _to_dtype(t, dtype):
+    # this function is a prune of Layer._transform function to fix fused op under amp.decorator(O2)
+    if not paddle.is_floating_point(t):
+        return t
+
+    if type(dtype) is not VarDesc.VarType:
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if t.place.is_gpu_place():
+        size_dtype = core.size_of_dtype(dtype)
+        waiting_alloc_memory = (
+            (np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2
+        gpu_memory_available = core.gpu_memory_available()
+        if gpu_memory_available < waiting_alloc_memory:
+            t_used = t._copy_to(paddle.CPUPlace(), False)
+            t.value().get_tensor()._clear()
+        else:
+            t_used = t
+    else:
+        t_used = t
+
+    if dtype is not None and dtype != t_used.dtype:
+        with paddle.fluid.framework._dygraph_place_guard(place=t_used.place):
+            t_casted = t_used.cast(dtype=dtype)
+    else:
+        t_casted = t_used
+
+    new_t = t_casted
+
+    dst_tensor = t.value().get_tensor()
+    src_tensor = new_t.value().get_tensor()
+    dst_tensor._share_data_with(src_tensor)
+
+    return t
 
 
 class FusedBiasDropoutResidualLayerNorm(Layer):
@@ -374,6 +414,25 @@ class FusedMultiHeadAttention(Layer):
             self.attn_dropout_rate, self._epsilon, self.kdim, self.vdim,
             self.normalize_before, self.need_weights, self._dtype, name_str)
 
+    def _amp_decorate(self, dtype):
+        # tmp fix for amp.decorator(O2)
+        layer_norm_params_id = []
+        if self.normalize_before:
+            layer_norm_params_id.append(id(self.pre_ln_scale))
+            layer_norm_params_id.append(id(self.pre_ln_bias))
+        else:
+            layer_norm_params_id.append(id(self.ln_scale))
+            layer_norm_params_id.append(id(self.ln_bias))
+
+        for key, param in self._parameters.items():
+            if id(param) in layer_norm_params_id:
+                continue
+            if param is not None:
+                with no_grad():
+                    param_applied = _to_dtype(param, dtype)
+
+        self._dtype = dtype
+
 
 class FusedFeedForward(Layer):
     """
@@ -558,6 +617,25 @@ class FusedFeedForward(Layer):
             self._d_model, self._dim_feedforward, self._dropout_rate,
             self._epsilon, self._act_method, self._act_dropout_rate,
             self._normalize_before, self._dtype, name_str)
+
+    def _amp_decorate(self, dtype):
+        # tmp fix for amp.decorator(O2)
+        layer_norm_params_id = []
+        if self._normalize_before:
+            layer_norm_params_id.append(id(self._ln1_scale))
+            layer_norm_params_id.append(id(self._ln1_bias))
+        else:
+            layer_norm_params_id.append(id(self._ln2_scale))
+            layer_norm_params_id.append(id(self._ln2_bias))
+
+        for key, param in self._parameters.items():
+            if id(param) in layer_norm_params_id:
+                continue
+            if param is not None:
+                with no_grad():
+                    param_applied = _to_dtype(param, dtype)
+
+        self._dtype = dtype
 
 
 class FusedTransformerEncoderLayer(Layer):

@@ -25,8 +25,8 @@ class AddPositionEncodingOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AddPositionEncoding");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "AddPositionEncoding");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "AddPositionEncoding");
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
@@ -71,7 +71,8 @@ class AddPositionEncodingOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1.0f)
         .AddCustomChecker([](const float& alpha) {
           PADDLE_ENFORCE_GE(
-              alpha, 0.0f,
+              alpha,
+              0.0f,
               platform::errors::InvalidArgument(
                   "Attribute 'alpha' must be greater than or equal to 0.0."));
         });
@@ -79,7 +80,8 @@ class AddPositionEncodingOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1.0f)
         .AddCustomChecker([](const float& beta) {
           PADDLE_ENFORCE_GE(
-              beta, 0.0f,
+              beta,
+              0.0f,
               platform::errors::InvalidArgument(
                   "Attribute 'beta' must be greater than or equal to 0.0."));
         });
@@ -113,7 +115,8 @@ namespace ops = paddle::operators;
 namespace plt = paddle::platform;
 
 REGISTER_OPERATOR(
-    add_position_encoding, ops::AddPositionEncodingOp,
+    add_position_encoding,
+    ops::AddPositionEncodingOp,
     ops::AddPositionEncodingOpMaker,
     ops::AddPositionEncodingGradOpMaker<paddle::framework::OpDesc>,
     ops::AddPositionEncodingGradOpMaker<paddle::imperative::OpBase>);

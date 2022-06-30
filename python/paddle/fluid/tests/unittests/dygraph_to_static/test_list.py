@@ -277,6 +277,7 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
 
         with fluid.dygraph.guard():
             if to_static:
+                print(declarative(self.dygraph_func).code)
                 res = declarative(self.dygraph_func)(self.input, self.iter_num)
             else:
                 res = self.dygraph_func(self.input, self.iter_num)

@@ -27,20 +27,24 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("DistMat"), true,
+        ctx->HasInput("DistMat"),
+        true,
         platform::errors::InvalidArgument(
             "Input(DistMat) of BipartiteMatch should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("ColToRowMatchIndices"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("ColToRowMatchIndices"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(ColToRowMatchIndices) of BipartiteMatch "
                           "should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("ColToRowMatchDist"), true,
+        ctx->HasOutput("ColToRowMatchDist"),
+        true,
         platform::errors::InvalidArgument(
             "Output(ColToRowMatchDist) of BipartiteMatch should not be null."));
 
     auto dims = ctx->GetInputDim("DistMat");
-    PADDLE_ENFORCE_EQ(dims.size(), 2,
+    PADDLE_ENFORCE_EQ(dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The rank of Input(DistMat) must be 2."));
 
@@ -68,10 +72,12 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
  public:
   // The match_indices must be initialized to -1 at first.
   // The match_dist must be initialized to 0 at first.
-  void BipartiteMatch(const Tensor& dist, int* match_indices,
+  void BipartiteMatch(const Tensor& dist,
+                      int* match_indices,
                       T* match_dist) const {
     PADDLE_ENFORCE_EQ(
-        dist.dims().size(), 2,
+        dist.dims().size(),
+        2,
         platform::errors::InvalidArgument("The rank of dist must be 2."));
     int64_t row = dist.dims()[0];
     int64_t col = dist.dims()[1];
@@ -136,7 +142,8 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
           break;
         } else {
           PADDLE_ENFORCE_EQ(
-              match_indices[max_idx], -1,
+              match_indices[max_idx],
+              -1,
               platform::errors::InvalidArgument(
                   "The match_indices must be initialized to -1 at [%d].",
                   max_idx));
@@ -150,7 +157,9 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     }
   }
 
-  void ArgMaxMatch(const Tensor& dist, int* match_indices, T* match_dist,
+  void ArgMaxMatch(const Tensor& dist,
+                   int* match_indices,
+                   T* match_dist,
                    T overlap_threshold) const {
     constexpr T kEPS = static_cast<T>(1e-6);
     int64_t row = dist.dims()[0];
@@ -176,7 +185,8 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
       }
       if (max_row_idx != -1) {
         PADDLE_ENFORCE_EQ(
-            match_indices[j], -1,
+            match_indices[j],
+            -1,
             platform::errors::InvalidArgument(
                 "The match_indices must be initialized to -1 at [%d].", j));
         match_indices[j] = max_row_idx;
@@ -199,7 +209,8 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
                     : static_cast<int64_t>(dist_mat->lod().back().size() - 1);
     if (dist_mat->lod().size()) {
       PADDLE_ENFORCE_EQ(
-          dist_mat->lod().size(), 1UL,
+          dist_mat->lod().size(),
+          1UL,
           platform::errors::InvalidArgument("Only support 1 level of LoD."));
     }
     match_indices->mutable_data<int>({n, col}, context.GetPlace());
@@ -303,8 +314,11 @@ If Tensor, the height of ColToRowMatchIndices is 1.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    bipartite_match, ops::BipartiteMatchOp, ops::BipartiteMatchOpMaker,
+    bipartite_match,
+    ops::BipartiteMatchOp,
+    ops::BipartiteMatchOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(bipartite_match, ops::BipartiteMatchKernel<float>,
+REGISTER_OP_CPU_KERNEL(bipartite_match,
+                       ops::BipartiteMatchKernel<float>,
                        ops::BipartiteMatchKernel<double>);

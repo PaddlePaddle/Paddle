@@ -51,10 +51,12 @@ class VariableCompatTensor
     static_assert(
         paddle::framework::IsRegisteredVarType<T>(),
         "Not registered type. Please register T inside var_type_traits.h");
-    PADDLE_ENFORCE_NOT_NULL(holder_, paddle::platform::errors::NotFound(
-                                         "Variable is not initialized."));
+    PADDLE_ENFORCE_NOT_NULL(
+        holder_,
+        paddle::platform::errors::NotFound("Variable is not initialized."));
     PADDLE_ENFORCE_EQ(
-        holder_->Type(), paddle::framework::VarTypeTrait<T>::kId,
+        holder_->Type(),
+        paddle::framework::VarTypeTrait<T>::kId,
         paddle::platform::errors::InvalidArgument(
             "The Variable type must be %s, but the type it holds is %s.",
             paddle::framework::ToTypeName(
@@ -71,7 +73,8 @@ class VariableCompatTensor
       holder_.reset(new PlaceholderImpl<T>());
     } else {
       PADDLE_ENFORCE_EQ(
-          holder_->Type(), paddle::framework::VarTypeTrait<T>::kId,
+          holder_->Type(),
+          paddle::framework::VarTypeTrait<T>::kId,
           paddle::platform::errors::InvalidArgument(
               "The Variable type must be %s, but the type it holds is %s.",
               paddle::framework::ToTypeName(
@@ -90,8 +93,9 @@ class VariableCompatTensor
   void Clear() { holder_.reset(); }
 
   int Type() const {
-    PADDLE_ENFORCE_NOT_NULL(holder_, paddle::platform::errors::NotFound(
-                                         "Variable is not initialized."));
+    PADDLE_ENFORCE_NOT_NULL(
+        holder_,
+        paddle::platform::errors::NotFound("Variable is not initialized."));
     return holder_->Type();
   }
 
@@ -130,7 +134,8 @@ class VariableCompatTensor
 
   bool initialized() const override { return IsInitialized(); }
 
-  void* AllocateFrom(phi::Allocator* allocator, phi::DataType dtype,
+  void* AllocateFrom(phi::Allocator* allocator,
+                     phi::DataType dtype,
                      size_t requested_size = 0) override {
     PADDLE_THROW(paddle::platform::errors::Unavailable(
         "VariableCompatTensor does not support `AllocateFrom` method."));
@@ -270,7 +275,8 @@ class EagerVariable final {
     // Contruct framework::Tensor from egr::EagerVariable
     auto tensor_dense = std::dynamic_pointer_cast<VarType>(tensor.impl());
     PADDLE_ENFORCE_EQ(
-        (tensor_dense.get() && tensor_dense), true,
+        (tensor_dense.get() && tensor_dense),
+        true,
         paddle::platform::errors::Fatal(
             "Tensor %s does not hold phi::SelectedRows or phi::DenseTensor. "
             "Or it holds empty impl, this should not happend since we should "

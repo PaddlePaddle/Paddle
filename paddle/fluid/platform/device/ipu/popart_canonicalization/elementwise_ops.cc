@@ -21,7 +21,8 @@ namespace platform {
 namespace ipu {
 namespace {
 
-Node *elementwise_op_handler(Graph *graph, Node *node,
+Node *elementwise_op_handler(Graph *graph,
+                             Node *node,
                              const std::string &type) {
   auto *op = node->Op();
   auto x_shape = GetInputVarNode("X", node)->Var()->GetShape();
@@ -32,7 +33,9 @@ Node *elementwise_op_handler(Graph *graph, Node *node,
   auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
   if (axis == -1 || axis == x_rank - 1 || x_rank == y_rank) {
     auto new_node =
-        CreateBaseOp(graph, node, type,
+        CreateBaseOp(graph,
+                     node,
+                     type,
                      {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
                      node->outputs);
     return new_node;
@@ -49,12 +52,17 @@ Node *elementwise_op_handler(Graph *graph, Node *node,
     // constant
     auto new_node_const = CreateConst(graph, node, {}, {}, attrs);
     // reshape
-    auto new_node_reshape = CreateBaseOp(
-        graph, node, "popart_reshape",
-        {GetInputVarNode("Y", node), new_node_const->outputs[0]}, {});
+    auto new_node_reshape =
+        CreateBaseOp(graph,
+                     node,
+                     "popart_reshape",
+                     {GetInputVarNode("Y", node), new_node_const->outputs[0]},
+                     {});
     // elementwise_op
     auto new_node =
-        CreateBaseOp(graph, node, type,
+        CreateBaseOp(graph,
+                     node,
+                     type,
                      {GetInputVarNode("X", node), new_node_reshape->outputs[0]},
                      node->outputs);
     return new_node;

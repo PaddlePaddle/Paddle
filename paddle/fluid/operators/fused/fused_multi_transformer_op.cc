@@ -64,29 +64,34 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputsDim("QKVW")[0];
     PADDLE_ENFORCE_EQ(
-        x_dim.size(), 3,
+        x_dim.size(),
+        3,
         platform::errors::InvalidArgument("The dimensions of x must be 3"
                                           "(batch_size, seq_len, dim_embed),"
                                           "but received dimensions of"
                                           "Input is [%d]",
                                           x_dim.size()));
-    PADDLE_ENFORCE_EQ(y_dim.size(), 4,
+    PADDLE_ENFORCE_EQ(y_dim.size(),
+                      4,
                       platform::errors::InvalidArgument(
                           "The dimensions of qkv_weight must be 4"
                           "(3, num_head, dim_head, dim_embed),"
                           "but received dimensions of"
                           "Input is [%d]",
                           y_dim.size()));
-    PADDLE_ENFORCE_EQ(x_dim[2], y_dim[3],
+    PADDLE_ENFORCE_EQ(x_dim[2],
+                      y_dim[3],
                       platform::errors::InvalidArgument(
                           "ShapeError: the dimension of x_dim[2] and y_dim[3]"
                           "must be equal. But received: the shape "
                           "of input x = [%s], and the shape of "
                           "input qkv_weight = [%s]",
-                          x_dim, y_dim));
+                          x_dim,
+                          y_dim));
 
     if (ctx->Attrs().Get<int>("ring_id") == -1) {
-      PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2], y_dim[3],
+      PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2],
+                        y_dim[3],
                         platform::errors::InvalidArgument(
                             "The dimensions of qkv_weight must be 4"
                             "(3, num_head, dim_head, dim_embed),"
@@ -100,33 +105,42 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
       const auto &c_dim = c_dims[0];
 
       PADDLE_ENFORCE_EQ(
-          c_dim.size(), 5,
+          c_dim.size(),
+          5,
           paddle::platform::errors::InvalidArgument(
               "The CacheKV must be 5 dims, but got %d", c_dim.size()));
-      PADDLE_ENFORCE_EQ(c_dim[0], 2,
+      PADDLE_ENFORCE_EQ(c_dim[0],
+                        2,
                         paddle::platform::errors::InvalidArgument(
                             "The first dim of CacheKV must be 2, but got %d",
                             c_dim[0]));  // 2
-      PADDLE_ENFORCE_EQ(c_dim[1], x_dim[0],
+      PADDLE_ENFORCE_EQ(c_dim[1],
+                        x_dim[0],
                         paddle::platform::errors::InvalidArgument(
                             "The second dim of CacheKV must be equal with "
                             "batch size %d, but got %d",
-                            x_dim[0], c_dim[1]));  // batch_size
-      PADDLE_ENFORCE_EQ(c_dim[2], y_dim[1],
+                            x_dim[0],
+                            c_dim[1]));  // batch_size
+      PADDLE_ENFORCE_EQ(c_dim[2],
+                        y_dim[1],
                         paddle::platform::errors::InvalidArgument(
                             "The third dim of CacheKV must be equal with num "
                             "head %d, but got %d",
-                            y_dim[1], c_dim[2]));  // num_head
+                            y_dim[1],
+                            c_dim[2]));  // num_head
       PADDLE_ENFORCE_GT(
-          c_dim[3], 0,
+          c_dim[3],
+          0,
           paddle::platform::errors::InvalidArgument(
               "The forth dim of CacheKV must be greater than 0, but got %d",
               c_dim[3]));  // cache_seq_len
-      PADDLE_ENFORCE_EQ(c_dim[4], y_dim[2],
+      PADDLE_ENFORCE_EQ(c_dim[4],
+                        y_dim[2],
                         paddle::platform::errors::InvalidArgument(
                             "The fifth dim of CacheKV must be equal with head "
                             "size %d, but got %d",
-                            y_dim[2], c_dim[4]));  // head_size
+                            y_dim[2],
+                            c_dim[4]));  // head_size
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -140,14 +154,15 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "TimeStep") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -208,7 +223,8 @@ class FusedMultiTransformerOpOpMaker
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
-          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
+          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'epsilon' in Op(LayerNorm) should be between"
                                 "0.0 and 0.001, But received [%s].",
@@ -218,7 +234,8 @@ class FusedMultiTransformerOpOpMaker
     AddAttr<float>("dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
-          PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f, true,
+          PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'dropout_rate' must be between 0.0 and 1.0."));
         });
@@ -234,7 +251,8 @@ class FusedMultiTransformerOpOpMaker
         .SetDefault("downgrade_in_infer")
         .AddCustomChecker([](const std::string &type) {
           PADDLE_ENFORCE_EQ(
-              type == "downgrade_in_infer" || type == "upscale_in_train", true,
+              type == "downgrade_in_infer" || type == "upscale_in_train",
+              true,
               platform::errors::InvalidArgument(
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
@@ -255,7 +273,8 @@ class FusedMultiTransformerOpOpMaker
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    fused_multi_transformer, ops::FusedMultiTransformerOp,
+    fused_multi_transformer,
+    ops::FusedMultiTransformerOp,
     ops::FusedMultiTransformerOpOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

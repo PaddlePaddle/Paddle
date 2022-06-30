@@ -28,7 +28,8 @@ static inline T NormalizeL1(T* x, size_t len) {
   // Right now, we just bet that sum won't be zero. If this really happens, we
   // will figure out what should be done then.
   PADDLE_ENFORCE_GT(
-      sum, 0.,
+      sum,
+      0.,
       platform::errors::InvalidArgument(
           "The unnormalized probabilities of all possible unfinished "
           "sequences must be greater than 0."));
@@ -84,18 +85,22 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       length_data = label_length->data<int64_t>();
       seq_num = label_length->numel();
       PADDLE_ENFORCE_EQ(
-          seq_num, emission_dims[0],
+          seq_num,
+          emission_dims[0],
           platform::errors::InvalidArgument(
               "the size of Input(length) must be equal to "
               "emission_dims[0]. But input_size = %d, emission_dims[0] = %d.",
-              seq_num, emission_dims[0]));
+              seq_num,
+              emission_dims[0]));
       auto label_dims = label->dims();
       PADDLE_ENFORCE_EQ(
-          seq_num, label_dims[0],
+          seq_num,
+          label_dims[0],
           platform::errors::InvalidArgument(
               "the size of Input(length) must be equal to "
               "label_dims[0]. But input_size = %d, label_dims[0] = %d.",
-              seq_num, label_dims[0]));
+              seq_num,
+              label_dims[0]));
 
       batch_size = emission_dims[0] * emission_dims[1];
       tag_num = emission_dims[2];
@@ -107,7 +112,8 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       phi::funcs::set_constant(ctx.device_context(), alpha, 0.0);
     } else {
       in_lod = ctx.Input<LoDTensor>("Label")->lod();
-      PADDLE_ENFORCE_NE(in_lod.size(), 0,
+      PADDLE_ENFORCE_NE(in_lod.size(),
+                        0,
                         platform::errors::InvalidArgument(
                             "Input(Label) must be a sequence."));
       seq_num = in_lod[0].size() - 1;
@@ -157,16 +163,23 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       Tensor one_seq_exps = emission_exps_tmp.Slice(start_pos, end_pos);
       const Tensor one_seq_label = label_tmp.Slice(start_pos, end_pos);
       Tensor one_seq_alpha = alpha_tmp.Slice(start_pos, end_pos);
-      log_likelihood[i] = ForwardOneSequence(
-          one_seq, one_seq_row_max, one_seq_exps, *transition_weights,
-          *transition_exps, one_seq_label, &one_seq_alpha);
+      log_likelihood[i] = ForwardOneSequence(one_seq,
+                                             one_seq_row_max,
+                                             one_seq_exps,
+                                             *transition_weights,
+                                             *transition_exps,
+                                             one_seq_label,
+                                             &one_seq_alpha);
     }
   };
 
  private:
-  T ForwardOneSequence(const Tensor& emission, const Tensor& emission_row_max,
-                       const Tensor& emission_exps, const Tensor& trans_weights,
-                       const Tensor& trans_weight_exps, const Tensor& label,
+  T ForwardOneSequence(const Tensor& emission,
+                       const Tensor& emission_row_max,
+                       const Tensor& emission_exps,
+                       const Tensor& trans_weights,
+                       const Tensor& trans_weight_exps,
+                       const Tensor& label,
                        Tensor* alpha) const {
     const T* x = emission.data<T>();
     const T* x_row_max = emission_row_max.data<T>();
@@ -210,7 +223,8 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
 
     const int64_t* lbl = label.data<int64_t>();
     PADDLE_ENFORCE_LT(
-        static_cast<size_t>(*std::max_element(lbl, lbl + seq_length)), tag_num,
+        static_cast<size_t>(*std::max_element(lbl, lbl + seq_length)),
+        tag_num,
         platform::errors::InvalidArgument(
             "An invalid tag label that execesses the largest tag number."));
 
@@ -262,7 +276,8 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
     } else {
       in_lod = ctx.Input<LoDTensor>("Label")->lod();
-      PADDLE_ENFORCE_NE(in_lod.size(), 0,
+      PADDLE_ENFORCE_NE(in_lod.size(),
+                        0,
                         platform::errors::InvalidArgument(
                             "Input(Label) must be a sequence."));
       seq_num = static_cast<int64_t>(in_lod[0].size() - 1);
@@ -311,17 +326,26 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       Tensor one_seq_emission_grad =
           emission_grad_tmp.Slice(start_pos, end_pos);
       BackwardOneSequence(
-          ctx.template device_context<platform::CPUDeviceContext>(), ll_grad[i],
-          one_seq_emission_exps, *transition_exps, one_seq_alpha, one_seq_label,
-          &one_seq_beta, transition_grad, &one_seq_emission_grad);
+          ctx.template device_context<platform::CPUDeviceContext>(),
+          ll_grad[i],
+          one_seq_emission_exps,
+          *transition_exps,
+          one_seq_alpha,
+          one_seq_label,
+          &one_seq_beta,
+          transition_grad,
+          &one_seq_emission_grad);
     }
   };
 
  private:
   void BackwardOneSequence(const platform::CPUDeviceContext& ctx,
-                           const T ll_grad, const Tensor& emission_exps,
-                           const Tensor& transition_exps, const Tensor& alpha,
-                           const Tensor& label, Tensor* beta,
+                           const T ll_grad,
+                           const Tensor& emission_exps,
+                           const Tensor& transition_exps,
+                           const Tensor& alpha,
+                           const Tensor& label,
+                           Tensor* beta,
                            Tensor* transition_grad,
                            Tensor* emission_grad) const {
     const T* w_exps = transition_exps.data<T>();

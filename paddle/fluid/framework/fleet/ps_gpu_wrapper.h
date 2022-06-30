@@ -73,8 +73,10 @@ class AfsWrapper {
  public:
   AfsWrapper() {}
   virtual ~AfsWrapper() {}
-  void init(const std::string& fs_name, const std::string& fs_user,
-            const std::string& pass_wd, const std::string& conf);
+  void init(const std::string& fs_name,
+            const std::string& fs_user,
+            const std::string& pass_wd,
+            const std::string& conf);
   int remove(const std::string& path);
   int mkdir(const std::string& path);
   std::vector<std::string> list(const std::string& path);
@@ -110,45 +112,62 @@ class PSGPUWrapper {
     }
   }
 
-  void PullSparse(const paddle::platform::Place& place, const int table_id,
+  void PullSparse(const paddle::platform::Place& place,
+                  const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
-                  const std::vector<int>& slot_dim, const int hidden_size);
-  void PullSparse(const paddle::platform::Place& place, const int table_id,
+                  const std::vector<int>& slot_dim,
+                  const int hidden_size);
+  void PullSparse(const paddle::platform::Place& place,
+                  const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
                   const int hidden_size);
-  void PushSparseGrad(const paddle::platform::Place& place, const int table_id,
+  void PushSparseGrad(const paddle::platform::Place& place,
+                      const int table_id,
                       const std::vector<const uint64_t*>& keys,
                       const std::vector<const float*>& grad_values,
                       const std::vector<int64_t>& slot_lengths,
-                      const int hidden_size, const int batch_size);
-  void CopyKeys(const paddle::platform::Place& place, uint64_t** origin_keys,
-                uint64_t* total_keys, const int64_t* gpu_len, int slot_num,
+                      const int hidden_size,
+                      const int batch_size);
+  void CopyKeys(const paddle::platform::Place& place,
+                uint64_t** origin_keys,
+                uint64_t* total_keys,
+                const int64_t* gpu_len,
+                int slot_num,
                 int total_len);
-  void CopyForPull(const paddle::platform::Place& place, uint64_t** gpu_keys,
+  void CopyForPull(const paddle::platform::Place& place,
+                   uint64_t** gpu_keys,
                    const std::vector<float*>& values,
-                   const FeatureValue* total_values_gpu, const int64_t* gpu_len,
-                   const int slot_num, const int hidden_size,
+                   const FeatureValue* total_values_gpu,
+                   const int64_t* gpu_len,
+                   const int slot_num,
+                   const int hidden_size,
                    const int64_t total_length);
-  void CopyForPull(const paddle::platform::Place& place, uint64_t** gpu_keys,
+  void CopyForPull(const paddle::platform::Place& place,
+                   uint64_t** gpu_keys,
                    const std::vector<float*>& values,
-                   const FeatureValue* total_values_gpu, const int64_t* gpu_len,
-                   const int slot_num, const int hidden_size,
-                   const int64_t total_length, int* gpu_dim);
+                   const FeatureValue* total_values_gpu,
+                   const int64_t* gpu_len,
+                   const int slot_num,
+                   const int hidden_size,
+                   const int64_t total_length,
+                   int* gpu_dim);
   void CopyForPush(const paddle::platform::Place& place,
                    const std::vector<const float*>& grad_values,
                    FeaturePushValue* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
-                   const int hidden_size, const int64_t total_length,
+                   const int hidden_size,
+                   const int64_t total_length,
                    const int batch_size);
   void CopyForPush(const paddle::platform::Place& place,
                    const std::vector<const float*>& grad_values,
                    FeaturePushValue* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
-                   const uint64_t total_length, const int batch_size,
+                   const uint64_t total_length,
+                   const int batch_size,
                    size_t grad_value_size);
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
@@ -198,8 +217,8 @@ class PSGPUWrapper {
         // init inner comm
         inner_comms_.resize(dev_size);
         inter_ncclids_.resize(dev_size);
-        platform::dynload::ncclCommInitAll(&(inner_comms_[0]), dev_size,
-                                           &dev_ids[0]);
+        platform::dynload::ncclCommInitAll(
+            &(inner_comms_[0]), dev_size, &dev_ids[0]);
 // init inter comm
 #ifdef PADDLE_WITH_GLOO
         inter_comms_.resize(dev_size);
@@ -210,7 +229,8 @@ class PSGPUWrapper {
         }
 
         PADDLE_ENFORCE_EQ(
-            gloo->IsInitialized(), true,
+            gloo->IsInitialized(),
+            true,
             platform::errors::PreconditionNotMet(
                 "You must initialize the gloo environment first to use it."));
         gloo::BroadcastOptions opts(gloo->GetContext());
@@ -219,8 +239,8 @@ class PSGPUWrapper {
         gloo::broadcast(opts);
 
         for (int i = 0; i < dev_size; ++i) {
-          platform::dynload::ncclCommInitRank(&inter_comms_[i], gloo->Size(),
-                                              inter_ncclids_[i], gloo->Rank());
+          platform::dynload::ncclCommInitRank(
+              &inter_comms_[i], gloo->Size(), inter_ncclids_[i], gloo->Rank());
         }
         node_size_ = gloo->Size();
 #else
@@ -247,12 +267,19 @@ class PSGPUWrapper {
     }
   }
 
-  void SetSparseSGD(float nonclk_coeff, float clk_coeff, float min_bound,
-                    float max_bound, float learning_rate, float initial_g2sum,
+  void SetSparseSGD(float nonclk_coeff,
+                    float clk_coeff,
+                    float min_bound,
+                    float max_bound,
+                    float learning_rate,
+                    float initial_g2sum,
                     float initial_range);
-  void SetEmbedxSGD(float mf_create_thresholds, float mf_learning_rate,
-                    float mf_initial_g2sum, float mf_initial_range,
-                    float mf_min_bound, float mf_max_bound);
+  void SetEmbedxSGD(float mf_create_thresholds,
+                    float mf_learning_rate,
+                    float mf_initial_g2sum,
+                    float mf_initial_range,
+                    float mf_min_bound,
+                    float mf_max_bound);
   void InitializeGPUServer(std::unordered_map<std::string, float> config) {
     float nonclk_coeff = (config.find("nonclk_coeff") == config.end())
                              ? 1.0
@@ -301,10 +328,18 @@ class PSGPUWrapper {
 #elif defined(PADDLE_WITH_XPU_KP)
       PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(heter_devices_[i]));
 #endif
-      this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
-                         learning_rate, initial_g2sum, initial_range);
-      this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
-                         mf_initial_g2sum, mf_initial_range, mf_min_bound,
+      this->SetSparseSGD(nonclk_coeff,
+                         clk_coeff,
+                         min_bound,
+                         max_bound,
+                         learning_rate,
+                         initial_g2sum,
+                         initial_range);
+      this->SetEmbedxSGD(mf_create_thresholds,
+                         mf_learning_rate,
+                         mf_initial_g2sum,
+                         mf_initial_range,
+                         mf_min_bound,
                          mf_max_bound);
     }
   }
@@ -410,8 +445,10 @@ class PSGPUWrapper {
     return afs_handler_.open_reader(filename);
   }
 
-  void InitAfsApi(const std::string& fs_name, const std::string& fs_user,
-                  const std::string& pass_wd, const std::string& conf);
+  void InitAfsApi(const std::string& fs_name,
+                  const std::string& fs_user,
+                  const std::string& pass_wd,
+                  const std::string& conf);
 #endif
 
  private:
@@ -421,7 +458,8 @@ class PSGPUWrapper {
   paddle::ps::AfsApiWrapper afs_handler_;
 #endif
   std::unordered_map<
-      uint64_t, std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
+      uint64_t,
+      std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
       local_tables_;
   HeterPsBase* HeterPs_;
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse

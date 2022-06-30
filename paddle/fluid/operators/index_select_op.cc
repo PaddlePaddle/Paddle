@@ -43,12 +43,15 @@ class IndexSelectGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Index"), true,
+        ctx->HasInput("Index"),
+        true,
         platform::errors::InvalidArgument("Input(Index) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(X@GRAD) should be not null."));
 
@@ -107,11 +110,15 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexSelectGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(index_select, IndexSelectInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(index_select,
+                            IndexSelectInferShapeFunctor,
                             PD_INFER_META(phi::IndexSelectInferMeta));
-REGISTER_OPERATOR(index_select, ops::IndexSelectOp, ops::IndexSelectOpMaker,
+REGISTER_OPERATOR(index_select,
+                  ops::IndexSelectOp,
+                  ops::IndexSelectOpMaker,
                   ops::IndexSelectGradMaker<paddle::framework::OpDesc>,
                   ops::IndexSelectGradMaker<paddle::imperative::OpBase>,
                   IndexSelectInferShapeFunctor);
-REGISTER_OPERATOR(index_select_grad, ops::IndexSelectGradOp,
+REGISTER_OPERATOR(index_select_grad,
+                  ops::IndexSelectGradOp,
                   ops::IndexSelectGradNoNeedBufferVarsInferer);

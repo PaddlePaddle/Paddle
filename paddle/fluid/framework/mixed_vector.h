@@ -148,7 +148,8 @@ class MixVector {
     // get cuda ptr. immutable
     const T *CUDAData(platform::Place place) const {
       PADDLE_ENFORCE_EQ(
-          platform::is_gpu_place(place), true,
+          platform::is_gpu_place(place),
+          true,
           platform::errors::Unavailable(
               "Place mismatch, CUDA Data must be on CUDA place."));
       ImmutableCUDA(place);

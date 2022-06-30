@@ -61,7 +61,8 @@ class HeterWrapper {
 
   HeterWrapper() {}
 
-  static void HeterRpcCallBack(HeterResponse* response, brpc::Controller* cntl,
+  static void HeterRpcCallBack(HeterResponse* response,
+                               brpc::Controller* cntl,
                                HeterCpuWorker* worker,
                                std::shared_ptr<HeterTask> task);
 
@@ -71,27 +72,34 @@ class HeterWrapper {
 
   void StartXpuService(const std::string& ip, uint32_t port);
 
-  void CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker,
-                     int mpi_rank, std::vector<std::string>& send_vars);
+  void CallRemoteXpu(std::shared_ptr<HeterTask> task,
+                     HeterCpuWorker* worker,
+                     int mpi_rank,
+                     std::vector<std::string>& send_vars);
 
   void CallRemoteXpuSync(std::shared_ptr<HeterTask> task,
-                         HeterCpuWorker* worker, int mpi_rank,
+                         HeterCpuWorker* worker,
+                         int mpi_rank,
                          std::vector<std::string>& send_vars);
 
   void StopXpuService(int num);
 
   void EndPass(Scope* scope, int num);
 
-  void SerializeToReq(const std::string& varname, Scope* scope,
+  void SerializeToReq(const std::string& varname,
+                      Scope* scope,
                       VariableMessage* req_var);
 
   framework::proto::VarType::Type ToVarType(VariableMessage::Type type);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var,
-                           platform::Place place, gpuStream_t stream);
+  void DeSerializeToTensor(Scope* scope,
+                           const VariableMessage& req_var,
+                           platform::Place place,
+                           gpuStream_t stream);
 #endif
-  void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var,
+  void DeSerializeToTensor(Scope* scope,
+                           const VariableMessage& req_var,
                            platform::Place place);
   // HeterWrapper singleton
   static std::shared_ptr<HeterWrapper> GetInstance() {

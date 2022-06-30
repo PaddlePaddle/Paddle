@@ -35,18 +35,27 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template <typename InputIterator, typename OutputIterator, typename BinaryOp,
+template <typename InputIterator,
+          typename OutputIterator,
+          typename BinaryOp,
           typename Context>
-static void CubInclusiveScan(InputIterator x_iter, OutputIterator y_iter,
-                             size_t n, BinaryOp op, const Context &dev_ctx) {
+static void CubInclusiveScan(InputIterator x_iter,
+                             OutputIterator y_iter,
+                             size_t n,
+                             BinaryOp op,
+                             const Context &dev_ctx) {
   memory::AllocationPtr allocation;
   void *temp_storage = nullptr;
   size_t temp_storage_bytes = 0;
   for (size_t i = 0; i < 2; ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceScan::InclusiveScan(
-        temp_storage, temp_storage_bytes, x_iter, y_iter, op,
-        static_cast<int>(n),  // Maybe overflow?
-        dev_ctx.stream()));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cub::DeviceScan::InclusiveScan(temp_storage,
+                                       temp_storage_bytes,
+                                       x_iter,
+                                       y_iter,
+                                       op,
+                                       static_cast<int>(n),  // Maybe overflow?
+                                       dev_ctx.stream()));
     if (i == 0 && temp_storage_bytes > 0) {
       allocation = memory::Alloc(dev_ctx.GetPlace(), temp_storage_bytes);
       temp_storage = allocation->ptr();
@@ -62,9 +71,8 @@ static auto MakeThrustReverseIterator(T *x) {
 
 template <typename T, typename BinaryOp, bool kReverse>
 struct InclusiveScanOuterOrMidDimFunctor {
-  HOSTDEVICE InclusiveScanOuterOrMidDimFunctor(const T *x, T *y, size_t mid_dim,
-                                               size_t inner_dim, T init,
-                                               BinaryOp op)
+  HOSTDEVICE InclusiveScanOuterOrMidDimFunctor(
+      const T *x, T *y, size_t mid_dim, size_t inner_dim, T init, BinaryOp op)
       : x_(x),
         y_(y),
         mid_dim_(mid_dim),
@@ -110,12 +118,13 @@ struct InclusiveScanOuterOrMidDimFunctor {
 // Reference to
 // https://github.com/pytorch/pytorch/blob/master/aten/src/ATen/native/ReduceOps.cpp
 
-template <typename T, typename BinaryOp, size_t kThreadNumX, size_t kThreadNumY,
+template <typename T,
+          typename BinaryOp,
+          size_t kThreadNumX,
+          size_t kThreadNumY,
           bool kReverse>
-static __global__ void InclusiveScanInnerDimCUDAKernel(const T *x, T *y,
-                                                       size_t num_rows,
-                                                       size_t row_size, T init,
-                                                       BinaryOp op) {
+static __global__ void InclusiveScanInnerDimCUDAKernel(
+    const T *x, T *y, size_t num_rows, size_t row_size, T init, BinaryOp op) {
   using RealT = phi::dtype::Real<T>;
   constexpr auto kSharedBufferSize =
       framework::IsComplex<T>::value ? 4 * kThreadNumX : 2 * kThreadNumX;
@@ -187,9 +196,14 @@ static __global__ void InclusiveScanInnerDimCUDAKernel(const T *x, T *y,
 }
 
 template <typename T, typename BinaryOp, typename Context>
-static void InclusiveScanInnerDim(const T *x, T *y, size_t outer_dim,
-                                  size_t inner_dim, T init, BinaryOp op,
-                                  bool reverse, const Context &dev_ctx) {
+static void InclusiveScanInnerDim(const T *x,
+                                  T *y,
+                                  size_t outer_dim,
+                                  size_t inner_dim,
+                                  T init,
+                                  BinaryOp op,
+                                  bool reverse,
+                                  const Context &dev_ctx) {
   constexpr size_t kThreadNumX = 16;
   constexpr size_t kThreadNumY = 32;
 
@@ -197,21 +211,33 @@ static void InclusiveScanInnerDim(const T *x, T *y, size_t outer_dim,
   grid_dim = std::min<size_t>(grid_dim, dev_ctx.GetCUDAMaxGridDimSize()[0]);
   dim3 thread_dims(kThreadNumX, kThreadNumY);
   if (reverse) {
-    InclusiveScanInnerDimCUDAKernel<T, BinaryOp, kThreadNumX, kThreadNumY,
+    InclusiveScanInnerDimCUDAKernel<T,
+                                    BinaryOp,
+                                    kThreadNumX,
+                                    kThreadNumY,
                                     /*kReverse=*/true>
-        <<<grid_dim, thread_dims, 0, dev_ctx.stream()>>>(x, y, outer_dim,
-                                                         inner_dim, init, op);
+        <<<grid_dim, thread_dims, 0, dev_ctx.stream()>>>(
+            x, y, outer_dim, inner_dim, init, op);
   } else {
-    InclusiveScanInnerDimCUDAKernel<T, BinaryOp, kThreadNumX, kThreadNumY,
+    InclusiveScanInnerDimCUDAKernel<T,
+                                    BinaryOp,
+                                    kThreadNumX,
+                                    kThreadNumY,
                                     /*kReverse=*/false>
-        <<<grid_dim, thread_dims, 0, dev_ctx.stream()>>>(x, y, outer_dim,
-                                                         inner_dim, init, op);
+        <<<grid_dim, thread_dims, 0, dev_ctx.stream()>>>(
+            x, y, outer_dim, inner_dim, init, op);
   }
 }
 
 template <typename T, typename BinaryOp, typename Context>
-void InclusiveScan(const T *x, T *y, size_t outer_dim, size_t mid_dim,
-                   size_t inner_dim, T init, BinaryOp op, bool reverse,
+void InclusiveScan(const T *x,
+                   T *y,
+                   size_t outer_dim,
+                   size_t mid_dim,
+                   size_t inner_dim,
+                   T init,
+                   BinaryOp op,
+                   bool reverse,
                    const Context &dev_ctx) {
   if (outer_dim == 0 || mid_dim == 0 || inner_dim == 0) return;
 
@@ -235,8 +261,8 @@ void InclusiveScan(const T *x, T *y, size_t outer_dim, size_t mid_dim,
               x, y, mid_dim, inner_dim, init, op));
     }
   } else {
-    InclusiveScanInnerDim<T, BinaryOp>(x, y, outer_dim, mid_dim, init, op,
-                                       reverse, dev_ctx);
+    InclusiveScanInnerDim<T, BinaryOp>(
+        x, y, outer_dim, mid_dim, init, op, reverse, dev_ctx);
   }
 }
 

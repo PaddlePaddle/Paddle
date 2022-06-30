@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import six
 import copy
+import textwrap
 from collections import defaultdict
 
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
@@ -29,10 +30,14 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node, as
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_assign_node
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_nonlocal_stmt_node
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
+GET_ARGS_FUNC_PREFIX = 'get_args'
+SET_ARGS_FUNC_PREFIX = 'set_args'
+ARGS_NAME = '__args'
 
 
 class IfElseTransformer(gast.NodeTransformer):
@@ -56,13 +61,16 @@ class IfElseTransformer(gast.NodeTransformer):
 
     def visit_If(self, node):
         self.generic_visit(node)
-        new_vars_stmts, true_func_node, false_func_node, return_name_ids = transform_if_else(
+        new_vars_stmts, true_func_node, false_func_node, get_args_node, set_args_node, return_name_ids = transform_if_else(
             node, self.root)
 
         new_node = create_convert_ifelse_node(return_name_ids, node.test,
-                                              true_func_node, false_func_node)
+                                              true_func_node, false_func_node,
+                                              get_args_node, set_args_node)
 
-        return new_vars_stmts + [true_func_node, false_func_node] + [new_node]
+        return new_vars_stmts + [
+            get_args_node, set_args_node, true_func_node, false_func_node
+        ] + [new_node]
 
     def visit_Call(self, node):
         # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
@@ -80,7 +88,7 @@ class IfElseTransformer(gast.NodeTransformer):
         self.generic_visit(node)
 
         new_node = create_convert_ifelse_node(None, node.test, node.body,
-                                              node.orelse, True)
+                                              node.orelse, None, None, True)
         # Note: A blank line will be added separately if transform gast.Expr
         # into source code. Using gast.Expr.value instead to avoid syntax error
         # in python.
@@ -192,6 +200,12 @@ class NameVisitor(gast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
+        # NOTE: We skip to visit names of get_args and set_args, because they contains
+        # nonlocal statement such as 'nonlocal x, self' where 'self' should not be
+        # parsed as returned value in contron flow.
+        if GET_ARGS_FUNC_PREFIX in node.name or SET_ARGS_FUNC_PREFIX in node.name:
+            return
+
         if not self._in_range:
             self.generic_visit(node)
             return
@@ -269,7 +283,7 @@ def get_name_ids(nodes, after_node=None, end_node=None):
     return name_visitor.name_ids
 
 
-def parse_cond_args(parent_ids_dict,
+def parse_cond_args(parent_ids,
                     var_ids_dict,
                     modified_ids_dict=None,
                     ctx=gast.Load):
@@ -307,24 +321,9 @@ def parse_cond_args(parent_ids_dict,
     #   ```
     #
     #   In the above case, `v` should not be in the args of cond()
-    arg_name_ids = list(set(arg_name_ids) & set(parent_ids_dict))
+    arg_name_ids = set(arg_name_ids) & set(parent_ids)
 
-    arg_name_ids.sort()
-    args = [
-        gast.Name(id=name_id,
-                  ctx=gast.Load(),
-                  annotation=None,
-                  type_comment=None) for name_id in arg_name_ids
-    ]
-    arguments = gast.arguments(args=args,
-                               posonlyargs=[],
-                               vararg=None,
-                               kwonlyargs=[],
-                               kw_defaults=None,
-                               kwarg=None,
-                               defaults=[])
-
-    return arguments
+    return arg_name_ids
 
 
 def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
@@ -362,8 +361,8 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
         After transformed, q and z are created in parent scope. For example,
 
         x, y = 5, 10
-        q = paddle.jit.dy2static.data_layer_not_check(name='q', shape=[-1], dtype='float32')
-        z = paddle.jit.dy2static.data_layer_not_check(name='z', shape=[-1], dtype='float32')
+        q = paddle.jit.dy2static.UndefindVar('q')
+        z = paddle.jit.dy2static.UndefindVar('z')
 
         def true_func(x, y, q):
             x = x+1
@@ -454,10 +453,35 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
     return return_ids, modified_vars_from_parent, new_vars_to_create
 
 
+def _valid_nonlocal_names(return_name_ids, nonlocal_names):
+    """
+    All var in return_name_ids should be in nonlocal_names.
+    Moreover, we will always put return_name_ids in front of nonlocal_names.
+    
+    For Example:
+
+        return_name_ids: [x, y]
+        nonlocal_names : [a, y, b, x]
+
+    Return:
+        nonlocal_names : [x, y, a, b]
+    """
+    assert isinstance(return_name_ids, list)
+    for name in return_name_ids:
+        if name not in nonlocal_names:
+            raise ValueError(
+                "Required returned var '{}' must be in 'nonlocal' statement '', but not found."
+                .format(name))
+        nonlocal_names.remove(name)
+
+    return return_name_ids + nonlocal_names
+
+
 def transform_if_else(node, root):
     """
     Transform ast.If into control flow statement of Paddle static graph.
     """
+
     # TODO(liym27): Consider variable like `self.a` modified in if/else node.
     parent_name_ids = get_name_ids([root], end_node=node)
     body_name_ids = get_name_ids(node.body)
@@ -480,73 +504,159 @@ def transform_if_else(node, root):
     for name in new_vars_to_create:
         # NOTE: Consider variable like `self.a` modified in if/else node.
         if "." not in name:
-            create_new_vars_in_parent_stmts.append(
-                create_static_variable_gast_node(name))
+            create_new_vars_in_parent_stmts.append(create_undefined_var(name))
 
-    modified_name_ids = modified_name_ids_from_parent | new_vars_to_create
+    parent_ids_set = set()
+    for k, ctxs in parent_name_ids.items():
+        if any([not isinstance(ctx, gast.Load) for ctx in ctxs]):
+            parent_ids_set.add(k)
+
+    trun_args = parse_cond_args(parent_ids_set, body_name_ids,
+                                modified_name_ids_from_parent)
+    false_args = parse_cond_args(parent_ids_set, orelse_name_ids,
+                                 modified_name_ids_from_parent)
+    nonlocal_names = list(trun_args | false_args | new_vars_to_create)
+    nonlocal_names.sort()
+    # NOTE: All var in return_name_ids should be in nonlocal_names.
+    nonlocal_names = _valid_nonlocal_names(return_name_ids, nonlocal_names)
+
+    # TODO(dev): Need a better way to deal this.
+    if ARGS_NAME in nonlocal_names:
+        nonlocal_names.remove(ARGS_NAME)
+
+    nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)
+                          ] if nonlocal_names else []
+
+    empty_arg_node = gast.arguments(args=[],
+                                    posonlyargs=[],
+                                    vararg=None,
+                                    kwonlyargs=[],
+                                    kw_defaults=None,
+                                    kwarg=None,
+                                    defaults=[])
 
     true_func_node = create_funcDef_node(
-        node.body,
+        nonlocal_stmt_node + node.body,
         name=unique_name.generate(TRUE_FUNC_PREFIX),
-        input_args=parse_cond_args(parent_name_ids, body_name_ids,
-                                   modified_name_ids),
+        input_args=empty_arg_node,
         return_name_ids=return_name_ids)
     false_func_node = create_funcDef_node(
-        node.orelse,
+        nonlocal_stmt_node + node.orelse,
         name=unique_name.generate(FALSE_FUNC_PREFIX),
-        input_args=parse_cond_args(parent_name_ids, orelse_name_ids,
-                                   modified_name_ids),
+        input_args=empty_arg_node,
         return_name_ids=return_name_ids)
-    return create_new_vars_in_parent_stmts, true_func_node, false_func_node, return_name_ids
+
+    get_args_node = create_get_args_node(nonlocal_names)
+    set_args_node = create_set_args_node(nonlocal_names)
+
+    return create_new_vars_in_parent_stmts, true_func_node, false_func_node, get_args_node, set_args_node, return_name_ids
+
+
+def create_get_args_node(names):
+    """
+    Create get_args function as follows:
+
+        def get_args_0():
+            nonlocal x, y
+            return x, y
+    """
+
+    def empty_node():
+        func_def = """
+        def {func_name}():
+            return
+        """.format(func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX))
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
+    assert isinstance(names, (list, tuple))
+    if not names:
+        return empty_node()
+
+    template = """
+    def {func_name}():
+        nonlocal {vars}
+        return {vars}
+    """
+    func_def = template.format(
+        func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
+        vars=",".join(names))
+    return gast.parse(textwrap.dedent(func_def)).body[0]
+
+
+def create_set_args_node(names):
+    """
+    Create set_args function as follows:
+
+        def set_args_0(__args):
+            nonlocal x, y
+            x, y = __args
+    """
+
+    def empty_node():
+        func_def = """
+        def {func_name}({args}):
+            pass
+        """.format(func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
+                   args=ARGS_NAME)
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
+    assert isinstance(names, (list, tuple))
+    if not names:
+        return empty_node()
+
+    template = """
+    def {func_name}({args}):
+        nonlocal {vars}
+        {vars} = {args}
+    """
+    func_def = template.format(
+        func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
+        args=ARGS_NAME,
+        vars=",".join(names))
+    return gast.parse(textwrap.dedent(func_def)).body[0]
 
 
 def create_convert_ifelse_node(return_name_ids,
                                pred,
                                true_func,
                                false_func,
+                               get_args_func,
+                               set_args_func,
                                is_if_expr=False):
     """
     Create `paddle.jit.dy2static.convert_ifelse(
-            pred, true_fn, false_fn, true_args, false_args)`
+            pred, true_fn, false_fn, get_args, set_args, return_name_ids)`
     to replace original `python if/else` statement.
     """
 
-    def create_name_nodes(name_ids):
+    def create_name_str(name_ids):
+        """
+        Return "('x', 'y')" for [x, y]
+        """
         if not name_ids:
-            return gast.Tuple(elts=[], ctx=gast.Load())
+            return 'None'
 
-        gast_names = [
-            gast.Name(id=name_id,
-                      ctx=gast.Load(),
-                      annotation=None,
-                      type_comment=None) for name_id in name_ids
-        ]
-        name_node = gast.Tuple(elts=gast_names, ctx=gast.Load())
-        return name_node
+        names_str = ["'%s'" % name for name in name_ids]
+        return "(%s, )" % ','.join(names_str)
 
     if is_if_expr:
-        true_args = gast.Tuple(elts=[], ctx=gast.Load())
-        false_args = gast.Tuple(elts=[], ctx=gast.Load())
         true_func_source = "lambda : {}".format(ast_to_source_code(true_func))
         false_func_source = "lambda : {}".format(ast_to_source_code(false_func))
     else:
-        true_args = gast.Tuple(elts=true_func.args.args, ctx=gast.Load())
-        false_args = gast.Tuple(elts=false_func.args.args, ctx=gast.Load())
         true_func_source = true_func.name
         false_func_source = false_func.name
 
     convert_ifelse_layer = gast.parse(
-        '_jst.convert_ifelse('
-        '{pred}, {true_fn}, {false_fn}, {true_args}, {false_args})'.format(
+        '_jst.IfElse('
+        '{pred}, {true_fn}, {false_fn}, {get_args}, {set_args}, {return_name_ids})'
+        .format(
             pred=ast_to_source_code(pred),
             true_fn=true_func_source,
             false_fn=false_func_source,
-            true_args=ast_to_source_code(true_args),
-            false_args=ast_to_source_code(false_args))).body[0].value
+            get_args=get_args_func.name if not is_if_expr else
+            'lambda: None',  #TODO: better way to deal with this
+            set_args=set_args_func.name
+            if not is_if_expr else 'lambda args: None',
+            return_name_ids=create_name_str(return_name_ids))).body[0]
 
-    if return_name_ids:
-        _, cond_node = create_assign_node(return_name_ids, convert_ifelse_layer)
-    else:  # No variables can be returned if no assign statement in if.body.
-        cond_node = gast.Expr(value=convert_ifelse_layer)
-
-    return cond_node
+    return convert_ifelse_layer

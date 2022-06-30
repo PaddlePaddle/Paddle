@@ -48,8 +48,8 @@ CAllReducePluginDynamic::CAllReducePluginDynamic(void const* serialData,
 }
 nvinfer1::IPluginV2DynamicExt* CAllReducePluginDynamic::clone() const
     TRT_NOEXCEPT {
-  return new CAllReducePluginDynamic(ring_id_, use_calc_stream_, red_type_,
-                                     with_fp16_);
+  return new CAllReducePluginDynamic(
+      ring_id_, use_calc_stream_, red_type_, with_fp16_);
 }
 
 const char* CAllReducePluginDynamic::getPluginType() const TRT_NOEXCEPT {
@@ -72,23 +72,30 @@ void CAllReducePluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
 }
 
 nvinfer1::DimsExprs CAllReducePluginDynamic::getOutputDimensions(
-    int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
   return inputs[0];
 }
 
 bool CAllReducePluginDynamic::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc* in_out,
+    int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
-      in_out, platform::errors::InvalidArgument(
-                  "The input of CAllReduce plugin shoule not be nullptr."));
+      in_out,
+      platform::errors::InvalidArgument(
+          "The input of CAllReduce plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
-      pos, nb_inputs + nb_outputs,
+      pos,
+      nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
-                                        pos, nb_inputs + nb_outputs));
+                                        pos,
+                                        nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (pos == 0 || pos == 1) {
@@ -103,11 +110,14 @@ bool CAllReducePluginDynamic::supportsFormatCombination(
 }
 
 void CAllReducePluginDynamic::configurePlugin(
-    const nvinfer1::DynamicPluginTensorDesc* in, int nbInputs,
-    const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) TRT_NOEXCEPT {}
+    const nvinfer1::DynamicPluginTensorDesc* in,
+    int nbInputs,
+    const nvinfer1::DynamicPluginTensorDesc* out,
+    int nbOutputs) TRT_NOEXCEPT {}
 
 size_t CAllReducePluginDynamic::getWorkspaceSize(
-    const nvinfer1::PluginTensorDesc* inputs, int nbInputs,
+    const nvinfer1::PluginTensorDesc* inputs,
+    int nbInputs,
     const nvinfer1::PluginTensorDesc* outputs,
     int nbOutputs) const TRT_NOEXCEPT {
   return 0;
@@ -116,9 +126,11 @@ size_t CAllReducePluginDynamic::getWorkspaceSize(
 void CAllReducePluginDynamic::destroy() TRT_NOEXCEPT { delete this; }
 
 nvinfer1::DataType CAllReducePluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* input_types,
+    int index,
+    const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0,
+  PADDLE_ENFORCE_EQ(index,
+                    0,
                     platform::errors::InvalidArgument(
                         "The CAllReduce Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
@@ -128,8 +140,11 @@ nvinfer1::DataType CAllReducePluginDynamic::getOutputDataType(
 
 int CAllReducePluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc* input_desc,
-    const nvinfer1::PluginTensorDesc* output_desc, const void* const* inputs,
-    void* const* outputs, void* workspace, cudaStream_t stream) TRT_NOEXCEPT {
+    const nvinfer1::PluginTensorDesc* output_desc,
+    const void* const* inputs,
+    void* const* outputs,
+    void* workspace,
+    cudaStream_t stream) TRT_NOEXCEPT {
 #if defined(PADDLE_WITH_NCCL)
   auto input_dims = input_desc[0].dims;
   size_t numel = ProductDim(input_dims);
@@ -180,7 +195,8 @@ const char* CAllReducePluginDynamicCreator::getPluginVersion() const
 }
 
 nvinfer1::IPluginV2* CAllReducePluginDynamicCreator::deserializePlugin(
-    const char* name, const void* serial_data,
+    const char* name,
+    const void* serial_data,
     size_t serial_length) TRT_NOEXCEPT {
   auto plugin = new CAllReducePluginDynamic(serial_data, serial_length);
   return plugin;

@@ -106,8 +106,8 @@ TEST(StridedMemcpy, GPUCrop) {
   framework::DDim dst_dim({2, 2});
   framework::DDim dst_stride({2, 1});
 
-  StridedMemcpy<int>(ctx, gpu_src + 1, src_stride, dst_dim, dst_stride,
-                     gpu_dst);
+  StridedMemcpy<int>(
+      ctx, gpu_src + 1, src_stride, dst_dim, dst_stride, gpu_dst);
 
   memory::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx.stream());
   ctx.Wait();
@@ -146,8 +146,8 @@ TEST(StridedMemcpy, GPUConcat) {
   framework::DDim dst_stride({4, 1});
 
   StridedMemcpy<int>(ctx, gpu_src, src_stride, dst_dim, dst_stride, gpu_dst);
-  StridedMemcpy<int>(ctx, gpu_src, src_stride, dst_dim, dst_stride,
-                     gpu_dst + 2);
+  StridedMemcpy<int>(
+      ctx, gpu_src, src_stride, dst_dim, dst_stride, gpu_dst + 2);
 
   memory::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx.stream());
   ctx.Wait();

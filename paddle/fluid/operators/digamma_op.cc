@@ -19,7 +19,8 @@ namespace operators {
 
 class DigammaOp : public framework::OperatorWithKernel {
  public:
-  DigammaOp(const std::string &type, const framework::VariableNameMap &inputs,
+  DigammaOp(const std::string &type,
+            const framework::VariableNameMap &inputs,
             const framework::VariableNameMap &outputs,
             const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
@@ -54,11 +55,15 @@ class DigammaGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "DigammaGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@Grad",
+                   "DigammaGrad");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "DigammaGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@Grad", "DigammaGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@Grad",
+                   "DigammaGrad");
 
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
@@ -85,7 +90,9 @@ class DigammaGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(digamma, ops::DigammaOp, ops::DigammaOpMaker,
+REGISTER_OPERATOR(digamma,
+                  ops::DigammaOp,
+                  ops::DigammaOpMaker,
                   ops::DigammaGradOpMaker<paddle::framework::OpDesc>,
                   ops::DigammaGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(digamma_grad, ops::DigammaGradOp);

@@ -208,21 +208,15 @@ class TestDistBase(unittest.TestCase):
             with_gloo = '0'
         else:
             with_gloo = '1'
-        required_envs = {
-            "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
-            "FLAGS_eager_delete_tensor_gb": "0.0",
-            "PATH": os.getenv("PATH"),
-            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
-            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
-            "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
-            "FLAGS_call_stack_level": "2",
-            "GLOG_v": "3",
+        required_envs = os.environ.copy()
+        additional_envs = {
             "NCCL_P2P_DISABLE": "1",
             "STATIC_MODE": static_mode,
             "PADDLE_WITH_GLOO": with_gloo,
             "BACKEND": backend,
             "PATH_ID": path_id
         }
+        required_envs.update(additional_envs)
         required_envs.update(need_envs)
         if check_error_log:
             required_envs["GLOG_v"] = "3"

@@ -68,11 +68,15 @@ class AngleGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "angle_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@Grad",
+                   "angle_grad");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "Out@Grad", "angle_grad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@Grad", "angle_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@Grad",
+                   "angle_grad");
 
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
@@ -104,12 +108,15 @@ class AngleGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(angle, ops::AngleOp, ops::AngleOpMaker,
+REGISTER_OPERATOR(angle,
+                  ops::AngleOp,
+                  ops::AngleOpMaker,
                   ops::AngleGradMaker<paddle::framework::OpDesc>,
                   ops::AngleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
-    angle, ops::AngleKernel<paddle::platform::CPUDeviceContext, float>,
+    angle,
+    ops::AngleKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AngleKernel<paddle::platform::CPUDeviceContext, double>,
     ops::AngleKernel<paddle::platform::CPUDeviceContext,
                      paddle::platform::complex<float>>,
@@ -119,7 +126,8 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OPERATOR(angle_grad, ops::AngleGradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    angle_grad, ops::AngleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    angle_grad,
+    ops::AngleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AngleGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::AngleGradKernel<paddle::platform::CPUDeviceContext,
                          paddle::platform::complex<float>>,

@@ -34,8 +34,11 @@ namespace operators {
 namespace math {
 
 template <typename T1, typename T2 = T1>
-void SquaredL2Norm(const platform::CPUDeviceContext& ctx, const T1* x, T2* y,
-                   size_t numel, memory::Buffer* buffer = nullptr) {
+void SquaredL2Norm(const platform::CPUDeviceContext& ctx,
+                   const T1* x,
+                   T2* y,
+                   size_t numel,
+                   memory::Buffer* buffer = nullptr) {
   if (std::is_same<T1, T2>::value) {
     using EigenT = typename framework::EigenTensor<T1, 1>::Type;
     using ConstEigenT = typename framework::EigenTensor<T1, 1>::ConstType;
@@ -55,8 +58,11 @@ void SquaredL2Norm(const platform::CPUDeviceContext& ctx, const T1* x, T2* y,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T1, typename T2 = T1>
-void SquaredL2Norm(const platform::CUDADeviceContext& ctx, const T1* x, T2* y,
-                   size_t numel, memory::Buffer* buffer = nullptr) {
+void SquaredL2Norm(const platform::CUDADeviceContext& ctx,
+                   const T1* x,
+                   T2* y,
+                   size_t numel,
+                   memory::Buffer* buffer = nullptr) {
   if (UNLIKELY(buffer == nullptr)) {
     memory::Buffer tmp_buffer(ctx.GetPlace());
     return SquaredL2Norm(ctx, x, y, numel, &tmp_buffer);
@@ -72,9 +78,13 @@ void SquaredL2Norm(const platform::CUDADeviceContext& ctx, const T1* x, T2* y,
     if (temp_storage_bytes > 0) {
       d_temp_storage = buffer->Alloc<void>(temp_storage_bytes);
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cub::DeviceReduce::Reduce(d_temp_storage, temp_storage_bytes, iter, y,
-                                  numel, cub::Sum(), static_cast<T2>(0)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::Reduce(d_temp_storage,
+                                                         temp_storage_bytes,
+                                                         iter,
+                                                         y,
+                                                         numel,
+                                                         cub::Sum(),
+                                                         static_cast<T2>(0)));
   }
 }
 #endif

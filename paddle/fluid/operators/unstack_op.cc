@@ -65,30 +65,39 @@ class UnStackGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_GT(ctx->Inputs(framework::GradVarName("Y")).size(), 0,
+    PADDLE_ENFORCE_GT(ctx->Inputs(framework::GradVarName("Y")).size(),
+                      0,
                       platform::errors::InvalidArgument(
                           "The Inputs(Y@Grad) of unstack operator are empty."));
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output", "X",
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X",
                    "UnStackGrad");
     auto input_dims = ctx->GetInputsDim(framework::GradVarName("Y"));
     for (size_t i = 1; i < input_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(
-          input_dims[i], input_dims[0],
+          input_dims[i],
+          input_dims[0],
           platform::errors::InvalidArgument(
               "The dimensions of all Inputs(Y@Grad) must be the same,"
               "but received Inputs(Y@Grad)'s %d-th dimension is %d, "
               "Inputs(Y@Grad)'s 0-th to %d-th dimension is %d.",
-              i, input_dims[i], i - 1, input_dims[0]));
+              i,
+              input_dims[i],
+              i - 1,
+              input_dims[0]));
     }
 
     int axis = ctx->Attrs().Get<int>("axis");
     int rank = input_dims[0].size();
-    PADDLE_ENFORCE_GE(axis, -(rank + 1),
+    PADDLE_ENFORCE_GE(axis,
+                      -(rank + 1),
                       platform::errors::InvalidArgument(
                           "The attribute axis is out of range, it must be "
                           "inside [-(rank+1), rank+1), where rank = %d",
                           rank));
-    PADDLE_ENFORCE_LT(axis, rank + 1,
+    PADDLE_ENFORCE_LT(axis,
+                      rank + 1,
                       platform::errors::InvalidArgument(
                           "The attribute axis is out of range, it must be "
                           "inside [-(rank+1), rank+1), where rank = %d",
@@ -107,10 +116,13 @@ class UnStackGradOp : public framework::OperatorWithKernel {
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(unstack, UnStackInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(unstack,
+                            UnStackInferMetaFunctor,
                             PD_INFER_META(phi::UnStackInferMeta));
 
-REGISTER_OPERATOR(unstack, ops::UnStackOp, ops::UnStackOpMaker,
+REGISTER_OPERATOR(unstack,
+                  ops::UnStackOp,
+                  ops::UnStackOpMaker,
                   ops::UnStackGradOpMaker<paddle::framework::OpDesc>,
                   ops::UnStackGradOpMaker<paddle::imperative::OpBase>,
                   UnStackInferMetaFunctor);

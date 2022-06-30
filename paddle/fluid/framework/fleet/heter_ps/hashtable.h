@@ -51,11 +51,13 @@ namespace framework {
 #if defined(PADDLE_WITH_CUDA)
 template <typename KeyType, typename ValType>
 class TableContainer
-    : public concurrent_unordered_map<KeyType, ValType,
+    : public concurrent_unordered_map<KeyType,
+                                      ValType,
                                       std::numeric_limits<KeyType>::max()> {
  public:
   TableContainer(size_t capacity)
-      : concurrent_unordered_map<KeyType, ValType,
+      : concurrent_unordered_map<KeyType,
+                                 ValType,
                                  std::numeric_limits<KeyType>::max()>(
             capacity, ValType()) {}
 };
@@ -116,15 +118,23 @@ class HashTable {
   HashTable& operator=(const HashTable&) = delete;
 
   template <typename StreamType>
-  void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
+  void insert(const KeyType* d_keys,
+              const ValType* d_vals,
+              size_t len,
               StreamType stream);
 
   template <typename StreamType>
-  void insert(const KeyType* d_keys, size_t len, char* pool,
-              size_t feature_value_size, size_t start_index, StreamType stream);
+  void insert(const KeyType* d_keys,
+              size_t len,
+              char* pool,
+              size_t feature_value_size,
+              size_t start_index,
+              StreamType stream);
 
   template <typename StreamType>
-  void get(const KeyType* d_keys, ValType* d_vals, size_t len,
+  void get(const KeyType* d_keys,
+           ValType* d_vals,
+           size_t len,
            StreamType stream);
 
   template <typename StreamType>
@@ -141,20 +151,30 @@ class HashTable {
 #if defined(PADDLE_WITH_CUDA)
 
   template <typename GradType, typename Sgd, typename StreamType>
-  void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
-              Sgd sgd, StreamType stream);
+  void update(const KeyType* d_keys,
+              const GradType* d_grads,
+              size_t len,
+              Sgd sgd,
+              StreamType stream);
 
   template <typename Sgd, typename StreamType>
-  void update(const KeyType* d_keys, const char* d_grads, size_t len, Sgd sgd,
+  void update(const KeyType* d_keys,
+              const char* d_grads,
+              size_t len,
+              Sgd sgd,
               StreamType stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
   template <typename GradType, typename StreamType>
-  void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
+  void update(const KeyType* d_keys,
+              const GradType* d_grads,
+              size_t len,
               StreamType stream);
 
   template <typename StreamType>
-  void update(const KeyType* d_keys, const char* d_grads, size_t len,
+  void update(const KeyType* d_keys,
+              const char* d_grads,
+              size_t len,
               StreamType stream);
 
 #endif

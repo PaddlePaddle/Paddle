@@ -33,7 +33,8 @@ struct CastOpFunctor {
   const framework::Tensor* in_;
   framework::Tensor* out_;
   const DeviceContext& ctx_;
-  CastOpFunctor(const framework::Tensor* in, framework::Tensor* out,
+  CastOpFunctor(const framework::Tensor* in,
+                framework::Tensor* out,
                 const DeviceContext& ctx)
       : in_(in), out_(out), ctx_(ctx) {}
 
@@ -44,8 +45,8 @@ struct CastOpFunctor {
     auto* in_end = in_begin + numel;
     auto* out_begin = out_->mutable_data<OutT>(ctx_.GetPlace());
     platform::Transform<DeviceContext> trans;
-    trans(ctx_, in_begin, in_end, out_begin,
-          CastOpTransformFunctor<InT, OutT>());
+    trans(
+        ctx_, in_begin, in_end, out_begin, CastOpTransformFunctor<InT, OutT>());
   }
 };
 
@@ -69,7 +70,9 @@ class CastOpKernel : public framework::OpKernel<InT> {
     phi::CastKernel<InT>(
         static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        *in, pt_out_dtype, out);
+        *in,
+        pt_out_dtype,
+        out);
   }
 };
 

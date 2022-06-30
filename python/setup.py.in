@@ -281,6 +281,7 @@ packages=['paddle',
           'paddle.incubate.tensor',
           'paddle.incubate.multiprocessing',
           'paddle.incubate.nn',
+          'paddle.incubate.sparse',
           'paddle.incubate.asp',
           'paddle.incubate.passes',
           'paddle.distribution',
@@ -538,10 +539,8 @@ if '${WITH_ONNXRUNTIME}' == 'ON':
     shutil.copy('${PADDLE2ONNX_LIB}', libs_path)
     if os.name == 'nt':
         package_data['paddle.libs']+=['paddle2onnx.dll', 'onnxruntime.dll']
-    elif sys.platform == 'darwin':
-        package_data['paddle.libs']+=['libpaddle2onnx.dylib', 'libonnxruntime.1.10.0.dylib']
     else:
-        package_data['paddle.libs']+=['libpaddle2onnx.so', 'libonnxruntime.so.1.10.0']
+        package_data['paddle.libs']+=['${PADDLE2ONNX_LIB_NAME}', '${ONNXRUNTIME_LIB_NAME}']
 
 if '${WITH_XPU}' == 'ON':
     # only change rpath in Release mode,

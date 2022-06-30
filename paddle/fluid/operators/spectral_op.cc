@@ -48,7 +48,8 @@ class FFTC2COp : public framework::OperatorWithKernel {
     const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
     const auto x_dim = ctx->GetInputDim("X");
     for (size_t i = 0; i < axes.size(); i++) {
-      PADDLE_ENFORCE_GT(x_dim[axes[i]], 0,
+      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+                        0,
                         platform::errors::InvalidArgument(
                             "Invalid fft n-point (%d).", x_dim[axes[i]]));
     }
@@ -84,11 +85,11 @@ class FFTC2CGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     const auto out_grad_name = framework::GradVarName("Out");
-    OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
-                   "fft_c2c_grad");
+    OP_INOUT_CHECK(
+        ctx->HasInput(out_grad_name), "Input", out_grad_name, "fft_c2c_grad");
     const auto x_grad_name = framework::GradVarName("X");
-    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
-                   "fft_c2c_grad");
+    OP_INOUT_CHECK(
+        ctx->HasOutput(x_grad_name), "Output", x_grad_name, "fft_c2c_grad");
 
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim(out_grad_name));
   }
@@ -131,7 +132,8 @@ class FFTR2COp : public framework::OperatorWithKernel {
     const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
     const auto x_dim = ctx->GetInputDim("X");
     for (size_t i = 0; i < axes.size() - 1L; i++) {
-      PADDLE_ENFORCE_GT(x_dim[axes[i]], 0,
+      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+                        0,
                         platform::errors::InvalidArgument(
                             "Invalid fft n-point (%d).", x_dim[axes[i]]));
     }
@@ -177,13 +179,13 @@ class FFTR2CGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     const auto out_grad_name = framework::GradVarName("Out");
-    OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
-                   "fft_r2c_grad");
+    OP_INOUT_CHECK(
+        ctx->HasInput(out_grad_name), "Input", out_grad_name, "fft_r2c_grad");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fft_r2c_grad");
 
     const auto x_grad_name = framework::GradVarName("X");
-    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
-                   "fft_r2c_grad");
+    OP_INOUT_CHECK(
+        ctx->HasOutput(x_grad_name), "Output", x_grad_name, "fft_r2c_grad");
 
     ctx->ShareDim("X", /*->*/ x_grad_name);
   }
@@ -210,7 +212,8 @@ class FFTC2ROpMaker : public framework::OpProtoAndCheckerMaker {
                          "fft_norm_type, the fft normalization type.");
     AddAttr<bool>("forward", "bool, the fft direction.");
     AddAttr<int64_t>(
-        "last_dim_size", "int",
+        "last_dim_size",
+        "int",
         "Length of the transformed "
         "axis of the output. For n output points, last_dim_size//2 + 1 input"
         " points are necessary. If the input is longer than this,"
@@ -236,7 +239,8 @@ class FFTC2ROp : public framework::OperatorWithKernel {
     const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
     const auto x_dim = ctx->GetInputDim("X");
     for (size_t i = 0; i < axes.size() - 1L; i++) {
-      PADDLE_ENFORCE_GT(x_dim[axes[i]], 0,
+      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+                        0,
                         platform::errors::InvalidArgument(
                             "Invalid fft n-point (%d).", x_dim[axes[i]]));
     }
@@ -247,12 +251,14 @@ class FFTC2ROp : public framework::OperatorWithKernel {
     if (last_dim_size == 0) {
       const int64_t last_fft_dim_size = out_dim.at(last_fft_axis);
       const int64_t fft_n_point = (last_fft_dim_size - 1) * 2;
-      PADDLE_ENFORCE_GT(fft_n_point, 0,
+      PADDLE_ENFORCE_GT(fft_n_point,
+                        0,
                         platform::errors::InvalidArgument(
                             "Invalid fft n-point (%d).", fft_n_point));
       out_dim.at(last_fft_axis) = fft_n_point;
     } else {
-      PADDLE_ENFORCE_GT(last_dim_size, 0,
+      PADDLE_ENFORCE_GT(last_dim_size,
+                        0,
                         platform::errors::InvalidArgument(
                             "Invalid fft n-point (%d).", last_dim_size));
       out_dim.at(last_fft_axis) = last_dim_size;
@@ -289,12 +295,12 @@ class FFTC2RGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     const auto out_grad_name = framework::GradVarName("Out");
-    OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
-                   "fft_c2r_grad");
+    OP_INOUT_CHECK(
+        ctx->HasInput(out_grad_name), "Input", out_grad_name, "fft_c2r_grad");
 
     const auto x_grad_name = framework::GradVarName("X");
-    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
-                   "fft_c2r_grad");
+    OP_INOUT_CHECK(
+        ctx->HasOutput(x_grad_name), "Output", x_grad_name, "fft_c2r_grad");
 
     const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
 
@@ -340,11 +346,14 @@ FFTNormMode get_norm_from_string(const std::string& norm, bool forward) {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(fft_c2c, ops::FFTC2COp, ops::FFTC2COpMaker,
+REGISTER_OPERATOR(fft_c2c,
+                  ops::FFTC2COp,
+                  ops::FFTC2COpMaker,
                   ops::FFTC2CGradOpMaker<paddle::framework::OpDesc>,
                   ops::FFTC2CGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
-    fft_c2c, ops::FFTC2CKernel<paddle::platform::CPUDeviceContext, float>,
+    fft_c2c,
+    ops::FFTC2CKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FFTC2CKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OPERATOR(fft_c2c_grad, ops::FFTC2CGradOp);
@@ -353,11 +362,14 @@ REGISTER_OP_CPU_KERNEL(
     ops::FFTC2CGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FFTC2CGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OPERATOR(fft_r2c, ops::FFTR2COp, ops::FFTR2COpMaker,
+REGISTER_OPERATOR(fft_r2c,
+                  ops::FFTR2COp,
+                  ops::FFTR2COpMaker,
                   ops::FFTR2CGradOpMaker<paddle::framework::OpDesc>,
                   ops::FFTR2CGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
-    fft_r2c, ops::FFTR2CKernel<paddle::platform::CPUDeviceContext, float>,
+    fft_r2c,
+    ops::FFTR2CKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FFTR2CKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OPERATOR(fft_r2c_grad, ops::FFTR2CGradOp);
@@ -366,11 +378,14 @@ REGISTER_OP_CPU_KERNEL(
     ops::FFTR2CGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FFTR2CGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OPERATOR(fft_c2r, ops::FFTC2ROp, ops::FFTC2ROpMaker,
+REGISTER_OPERATOR(fft_c2r,
+                  ops::FFTC2ROp,
+                  ops::FFTC2ROpMaker,
                   ops::FFTC2RGradOpMaker<paddle::framework::OpDesc>,
                   ops::FFTC2RGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
-    fft_c2r, ops::FFTC2RKernel<paddle::platform::CPUDeviceContext, float>,
+    fft_c2r,
+    ops::FFTC2RKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FFTC2RKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OPERATOR(fft_c2r_grad, ops::FFTC2RGradOp);

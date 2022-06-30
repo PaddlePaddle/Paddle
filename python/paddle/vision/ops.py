@@ -857,33 +857,33 @@ def distribute_fpn_proposals(fpn_rois,
     where BBoxArea is a function to compute the area of each roi.
 
     Args:
-        fpn_rois(Tensor): 2-D Tensor with shape [N, 4] and data type is 
-            float32 or float64. The input fpn_rois.
-        min_level(int): The lowest level of FPN layer where the proposals come 
+        fpn_rois (Tensor): The input fpn_rois. 2-D Tensor with shape [N, 4] and data type can be
+            float32 or float64.
+        min_level (int): The lowest level of FPN layer where the proposals come 
             from.
-        max_level(int): The highest level of FPN layer where the proposals
+        max_level (int): The highest level of FPN layer where the proposals
             come from.
-        refer_level(int): The referring level of FPN layer with specified scale.
-        refer_scale(int): The referring scale of FPN layer with specified level.
-        rois_num(Tensor): 1-D Tensor contains the number of RoIs in each image. 
+        refer_level (int): The referring level of FPN layer with specified scale.
+        refer_scale (int): The referring scale of FPN layer with specified level.
+        pixel_offset (bool, optional): Whether there is pixel offset. If True, the offset of 
+            `img_size` will be 1. 'False' by default.
+        rois_num (Tensor, optional): 1-D Tensor contains the number of RoIs in each image. 
             The shape is [B] and data type is int32. B is the number of images.
-            If it is not None then return a list of 1-D Tensor. Each element 
+            If rois_num not None,  it will return a list of 1-D Tensor. Each element 
             is the output RoIs' number of each image on the corresponding level
             and the shape is [B]. None by default.
-        name(str, optional): For detailed information, please refer 
+        name (str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default. 
 
     Returns:
-        multi_rois(List) : A list of 2-D Tensor with shape [M, 4] 
-            and data type of float32 and float64. The length is 
-            max_level-min_level+1. The proposals in each FPN level.
-        restore_ind(Tensor): A 2-D Tensor with shape [N, 1], N is 
-            the number of total rois. The data type is int32. It is
-            used to restore the order of fpn_rois.
-        rois_num_per_level(List): A list of 1-D Tensor and each Tensor is 
+        multi_rois (List) : The proposals in each FPN level. It is a list of 2-D Tensor with shape [M, 4], where M is
+            and data type is same as `fpn_rois` . The length is max_level-min_level+1.         
+        restore_ind (Tensor): The index used to restore the order of fpn_rois. It is a 2-D Tensor with shape [N, 1]
+            , where N is the number of total rois. The data type is int32. 
+        rois_num_per_level (List): A list of 1-D Tensor and each Tensor is 
             the RoIs' number in each image on the corresponding level. The shape 
-            is [B] and data type of int32. B is the number of images
+            is [B] and data type of int32, where B is the number of images.
 
     Examples:
         .. code-block:: python
@@ -900,7 +900,7 @@ def distribute_fpn_proposals(fpn_rois,
     """
     num_lvl = max_level - min_level + 1
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
         attrs = ('min_level', min_level, 'max_level', max_level, 'refer_level',
                  refer_level, 'refer_scale', refer_scale, 'pixel_offset',
@@ -970,15 +970,14 @@ def read_file(filename, name=None):
             import cv2
             import paddle
 
-            fake_img = (np.random.random(
-                        (400, 300, 3)) * 255).astype('uint8')
+            fake_img = (paddle.rand((400, 300, 3)).numpy() * 255).astype('uint8')            
 
             cv2.imwrite('fake.jpg', fake_img)
 
             img_bytes = paddle.vision.ops.read_file('fake.jpg')
             
             print(img_bytes.shape)
-
+            # [142915]
     """
 
     if _non_static_mode():

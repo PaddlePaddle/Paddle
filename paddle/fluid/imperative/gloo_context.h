@@ -45,7 +45,8 @@ class GLOOParallelContext : public ParallelContext {
   void InitWithRingID(int ring_id) override;
 
   void AllReduceByStream(const framework::Variable& src,
-                         framework::Variable* dst, int ring_id,
+                         framework::Variable* dst,
+                         int ring_id,
                          bool use_calc_stream) override;
 
   void Broadcast(framework::Variable* src, int ring_id) override;
