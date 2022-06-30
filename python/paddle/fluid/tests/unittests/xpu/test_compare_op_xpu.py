@@ -61,13 +61,6 @@ class XPUTestLessThanOP(XPUOpTestWrapper):
 
     class LessThanOpTestCase1(TestCompareOpBase):
 
-        # def set_case(self):
-        #     self.dtype = self.in_type
-        #     self.op_type = 'less_than'
-
-        #     self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-        #     self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-        #     self.result = np.less(self.x, self.y)
         def config(self):
             self.dtype = self.in_type
             self.op_type = 'less_than'
