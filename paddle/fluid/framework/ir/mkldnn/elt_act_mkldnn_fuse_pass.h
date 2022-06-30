@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,19 +24,20 @@ namespace framework {
 namespace ir {
 
 /*
- * \brief   Fuse the softplus and another activation operators into
- *          softplus with another activation as post-op.
+ * \brief   Fuse the Elementwise and activation operators into single
+ * OneDNN's Elementwise with post-op.
  */
-class SoftplusActivationOneDNNPass : public FusePassBase {
+class ElementwiseActivationOneDNNPass : public FusePassBase {
  public:
-  virtual ~SoftplusActivationOneDNNPass() {}
+  virtual ~ElementwiseActivationOneDNNPass() {}
 
  protected:
-  void ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(Graph *graph) const override;
 
-  void FuseSoftplusActivation(
-      ir::Graph *graph,
-      const std::string &fuse_activation,
+  void FuseElementwiseAct(
+      Graph *graph,
+      const std::string &elt_types,
+      const std::string &act_types,
       const std::unordered_map<std::string, std::string> &attr_map) const;
 };
 

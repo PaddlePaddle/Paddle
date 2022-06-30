@@ -34,8 +34,7 @@ class TestConvGeluMkldnnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
         dilations = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
-        padding_algorithm = draw(
-            st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
+        padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
         groups = draw(st.sampled_from([1, 2, 4]))
         paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
         strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))

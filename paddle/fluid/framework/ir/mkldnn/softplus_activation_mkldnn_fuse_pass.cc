@@ -42,15 +42,15 @@ void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
     std::unordered_map<std::string, std::string> attr_map;
 
     if (act_type == "swish")
-      attr_map.emplace("beta", "fuse_activation_alpha");
+      attr_map.emplace("beta", "fuse_alpha");
     else if (act_type == "relu6")
-      attr_map.emplace("threshold", "fuse_activation_alpha");
+      attr_map.emplace("threshold", "fuse_alpha");
     else if (act_type == "clip") {
-      attr_map.emplace("min", "fuse_activation_alpha");
-      attr_map.emplace("max", "fuse_activation_beta");
+      attr_map.emplace("min", "fuse_alpha");
+      attr_map.emplace("max", "fuse_beta");
     } else {
-      attr_map.emplace("alpha", "fuse_activation_alpha");
-      attr_map.emplace("beta", "fuse_activation_beta");
+      attr_map.emplace("alpha", "fuse_alpha");
+      attr_map.emplace("beta", "fuse_beta");
     }
     FuseSoftplusActivation(graph, act_type, attr_map);
   }
@@ -58,7 +58,7 @@ void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
 
 void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     Graph *graph,
-    const std::string &fuse_activation_type,
+    const std::string &fuse_activation,
     const std::unordered_map<std::string, std::string> &attr_map) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
@@ -67,20 +67,20 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
   GraphPatternDetector gpd;
   patterns::OperatorActivation softplus_activation_pattern(
       gpd.mutable_pattern(), "softplus_activation");
-  softplus_activation_pattern("softplus", fuse_activation_type);
+  softplus_activation_pattern("softplus", fuse_activation);
 
   int found_softplus_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     VLOG(4) << "Fuse softplus with activation op.";
     GET_IR_NODE_FROM_SUBGRAPH(
-        softplus, preceding_op, softplus_activation_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(
         softplus_out, preceding_op_out, softplus_activation_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
-        activation, activation, softplus_activation_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(
         activation_out, activation_out, softplus_activation_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        softplus, preceding_op, softplus_activation_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        activation, activation, softplus_activation_pattern);
 
     auto *softplus_op = softplus->Op();
 
@@ -100,12 +100,11 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
       }
     }
 
-    if (fuse_activation_type == "gelu" &&
-        activation_op->HasAttr("approximate") &&
+    if (fuse_activation == "gelu" && activation_op->HasAttr("approximate") &&
         BOOST_GET_CONST(bool, activation_op->GetAttr("approximate")))
-      softplus_op->SetAttr("fuse_activation_type", std::string("gelu_tanh"));
+      softplus_op->SetAttr("fuse_activation", std::string("gelu_tanh"));
     else
-      softplus_op->SetAttr("fuse_activation_type", fuse_activation_type);
+      softplus_op->SetAttr("fuse_activation", fuse_activation_type);
 
     softplus_op->SetAttr("use_mkldnn", true);
 
@@ -121,7 +120,7 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
   if (!Has("disable_logs") || !Get<bool>("disable_logs"))
     PrettyLogDetail("---    fused %d softplus with %s activation",
                     found_softplus_activation_count,
-                    fuse_activation_type);
+                    fuse_activation);
 }
 }  // namespace ir
 }  // namespace framework

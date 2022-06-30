@@ -77,7 +77,6 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     VLOG(4) << "Fuse " << elt_type << " with activation op.";
-
     GET_IR_NODE_FROM_SUBGRAPH(
         elementwise, preceding_op, elementwise_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(

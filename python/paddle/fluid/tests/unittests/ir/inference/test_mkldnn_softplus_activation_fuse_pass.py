@@ -2,18 +2,25 @@
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import print_function
+from paddle.fluid.core import PassVersionChecker
+
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.core import PassVersionChecker
 
 
-@ @ -12, 137 + 12, 93 @ @
-# See the License for the specific language governing permissions and
-# limitations under the License.
+@ @ -22, 6 + 11, 9 @ @
 class SoftplusActivationReluOneDNNFusePassTest(InferencePassTest):
     fuse_activation_alpha = None
     fuse_activation_beta = None
@@ -35,7 +42,6 @@ class SoftplusActivationReluOneDNNFusePassTest(InferencePassTest):
                     softplus_out, self.fuse_activation_alpha)
             else:
                 activation_out = self.fuse_activation(softplus_out)
-
         self.feeds = {
             "data": np.random.random((1, 3, 100, 100)).astype("float32"),
         }
@@ -55,14 +61,12 @@ class SoftplusActivationReluOneDNNFusePassTest(InferencePassTest):
 
 class SoftplusActivationTanhOneDNNFusePassTest(
         SoftplusActivationReluOneDNNFusePassTest):
-
     def set_params(self):
         self.fuse_activation = fluid.layers.tanh
 
 
 class SoftplusActivationLeakyReluOneDNNFusePassTest(
         SoftplusActivationReluOneDNNFusePassTest):
-
     def set_params(self):
         self.fuse_activation = fluid.layers.leaky_relu
         self.fuse_activation_alpha = 0.3
@@ -70,7 +74,6 @@ class SoftplusActivationLeakyReluOneDNNFusePassTest(
 
 class SoftplusActivationSwishOneDNNFusePassTest(
         SoftplusActivationReluOneDNNFusePassTest):
-
     def set_params(self):
         self.fuse_activation = fluid.layers.swish
         self.fuse_activation_alpha = 3
@@ -78,28 +81,24 @@ class SoftplusActivationSwishOneDNNFusePassTest(
 
 class SoftplusActivationHardSwishOneDNNFusePassTest(
         SoftplusActivationReluOneDNNFusePassTest):
-
     def set_params(self):
         self.fuse_activation = fluid.layers.hard_swish
 
 
 class SoftplusActivationSqrtOneDNNFusePassTest(
         SoftplusActivationReluOneDNNFusePassTest):
-
     def set_params(self):
         self.fuse_activation = fluid.layers.hard_swish
 
 
 class SoftplusActivationAbsOneDNNFusePassTest(
         SoftplusActivationReluOneDNNFusePassTest):
-
     def set_params(self):
         self.fuse_activation = fluid.layers.abs
 
 
 class SoftplusActivationClipOneDNNFusePassTest(
         SoftplusActivationReluOneDNNFusePassTest):
-
     def set_params(self):
         self.fuse_activation = fluid.layers.clip
         self.fuse_activation_alpha = 1.1
@@ -108,14 +107,12 @@ class SoftplusActivationClipOneDNNFusePassTest(
 
 class SoftplusActivationGeluErfOneDNNFusePassTest(
         SoftplusActivationReluOneDNNFusePassTest):
-
     def set_params(self):
         self.fuse_activation = fluid.layers.gelu
 
 
 class SoftplusActivationGeluTanhOneDNNFusePassTest(
         SoftplusActivationReluOneDNNFusePassTest):
-
     def set_params(self):
         self.fuse_activation = fluid.layers.gelu
         self.fuse_activation_alpha = True  # simulated "Approximate" attr
@@ -123,17 +120,16 @@ class SoftplusActivationGeluTanhOneDNNFusePassTest(
 
 class SoftplusActivationRelu6OneDNNFusePassTest(
         SoftplusActivationReluOneDNNFusePassTest):
-
     def set_params(self):
         self.fuse_activation = fluid.layers.relu6
 
 
 class SoftplusActivationSigmoidOneDNNFusePassTest(
         SoftplusActivationReluOneDNNFusePassTest):
-
     def set_params(self):
         self.fuse_activation = fluid.layers.sigmoid
 
 
 if __name__ == "__main__":
     paddle.enable_static()
+    unittest.main()
