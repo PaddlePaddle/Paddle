@@ -429,7 +429,7 @@ fused_attention_dygraph_function(
         grad_node->SetGradOutMeta(QKVBias, 4);
 
         auto QKVBiasOut_accumulation_node =
-            std::shared_ptr<egr::GradNodeAccumulation>(p_autograd_QKVBiasOut);
+            std::make_shared<egr::GradNodeAccumulation>(p_autograd_QKVBiasOut);
         egr::EagerUtils::SetOutRankWithSlot(p_autograd_QKVBiasOut, 0);
         egr::EagerUtils::SetHistory(p_autograd_QKVBiasOut,
                                     QKVBiasOut_accumulation_node);
@@ -443,7 +443,7 @@ fused_attention_dygraph_function(
         grad_node->SetTensorWrapperSrcMaskOut(SrcMaskOut);
 
         auto SrcMaskOut_accumulation_node =
-            std::shared_ptr<egr::GradNodeAccumulation>(p_autograd_SrcMaskOut);
+            std::make_shared<egr::GradNodeAccumulation>(p_autograd_SrcMaskOut);
         egr::EagerUtils::SetOutRankWithSlot(p_autograd_SrcMaskOut, 0);
         egr::EagerUtils::SetHistory(p_autograd_SrcMaskOut,
                                     SrcMaskOut_accumulation_node);
@@ -470,7 +470,7 @@ fused_attention_dygraph_function(
           grad_node->SetTensorWrapperLnOut(LnOut);
 
           auto LnOut_accumulation_node =
-              std::shared_ptr<egr::GradNodeAccumulation>(p_autograd_LnOut);
+              std::make_shared<egr::GradNodeAccumulation>(p_autograd_LnOut);
           egr::EagerUtils::SetOutRankWithSlot(p_autograd_LnOut, 0);
           egr::EagerUtils::SetHistory(p_autograd_LnOut,
                                       LnOut_accumulation_node);
@@ -499,7 +499,7 @@ fused_attention_dygraph_function(
         grad_node->SetTensorWrapperLn2Variance(Ln2Variance);
 
         auto BiasDropoutResidualOut_accumulation_node =
-            std::shared_ptr<egr::GradNodeAccumulation>(
+            std::make_shared<egr::GradNodeAccumulation>(
                 p_autograd_BiasDropoutResidualOut);
         egr::EagerUtils::SetOutRankWithSlot(p_autograd_BiasDropoutResidualOut,
                                             0);
@@ -533,7 +533,7 @@ fused_attention_dygraph_function(
       egr::EagerUtils::CheckAndRetainGrad(Y);
 
       auto QKVOut_accumulation_node =
-          std::shared_ptr<egr::GradNodeAccumulation>(p_autograd_QKVOut);
+          std::make_shared<egr::GradNodeAccumulation>(p_autograd_QKVOut);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_QKVOut, 0);
       egr::EagerUtils::SetHistory(p_autograd_QKVOut, QKVOut_accumulation_node);
       QKVOut_accumulation_node->SetGradInMeta(QKVOut, 0);
@@ -541,7 +541,7 @@ fused_attention_dygraph_function(
       grad_node->SetGradOutMeta(QKVOut, 15);
 
       auto QKTVOut_accumulation_node =
-          std::shared_ptr<egr::GradNodeAccumulation>(p_autograd_QKTVOut);
+          std::make_shared<egr::GradNodeAccumulation>(p_autograd_QKTVOut);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_QKTVOut, 0);
       egr::EagerUtils::SetHistory(p_autograd_QKTVOut,
                                   QKTVOut_accumulation_node);
@@ -550,7 +550,7 @@ fused_attention_dygraph_function(
       grad_node->SetGradOutMeta(QKTVOut, 16);
 
       auto TransposeOut2_accumulation_node =
-          std::shared_ptr<egr::GradNodeAccumulation>(p_autograd_TransposeOut2);
+          std::make_shared<egr::GradNodeAccumulation>(p_autograd_TransposeOut2);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_TransposeOut2, 0);
       egr::EagerUtils::SetHistory(p_autograd_TransposeOut2,
                                   TransposeOut2_accumulation_node);
@@ -559,7 +559,7 @@ fused_attention_dygraph_function(
       grad_node->SetGradOutMeta(TransposeOut2, 17);
 
       auto QKOut_accumulation_node =
-          std::shared_ptr<egr::GradNodeAccumulation>(p_autograd_QKOut);
+          std::make_shared<egr::GradNodeAccumulation>(p_autograd_QKOut);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_QKOut, 0);
       egr::EagerUtils::SetHistory(p_autograd_QKOut, QKOut_accumulation_node);
       QKOut_accumulation_node->SetGradInMeta(QKOut, 0);
@@ -567,7 +567,7 @@ fused_attention_dygraph_function(
       grad_node->SetGradOutMeta(QKOut, 18);
 
       auto SoftmaxOut_accumulation_node =
-          std::shared_ptr<egr::GradNodeAccumulation>(p_autograd_SoftmaxOut);
+          std::make_shared<egr::GradNodeAccumulation>(p_autograd_SoftmaxOut);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_SoftmaxOut, 0);
       egr::EagerUtils::SetHistory(p_autograd_SoftmaxOut,
                                   SoftmaxOut_accumulation_node);
@@ -576,7 +576,8 @@ fused_attention_dygraph_function(
       grad_node->SetGradOutMeta(SoftmaxOut, 19);
 
       auto AttnDropoutOut_accumulation_node =
-          std::shared_ptr<egr::GradNodeAccumulation>(p_autograd_AttnDropoutOut);
+          std::make_shared<egr::GradNodeAccumulation>(
+              p_autograd_AttnDropoutOut);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_AttnDropoutOut, 0);
       egr::EagerUtils::SetHistory(p_autograd_AttnDropoutOut,
                                   AttnDropoutOut_accumulation_node);
@@ -585,7 +586,7 @@ fused_attention_dygraph_function(
       grad_node->SetGradOutMeta(AttnDropoutOut, 20);
 
       auto FMHAOut_accumulation_node =
-          std::shared_ptr<egr::GradNodeAccumulation>(p_autograd_FMHAOut);
+          std::make_shared<egr::GradNodeAccumulation>(p_autograd_FMHAOut);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_FMHAOut, 0);
       egr::EagerUtils::SetHistory(p_autograd_FMHAOut,
                                   FMHAOut_accumulation_node);
@@ -594,7 +595,7 @@ fused_attention_dygraph_function(
       grad_node->SetGradOutMeta(FMHAOut, 21);
 
       auto OutLinearOut_accumulation_node =
-          std::shared_ptr<egr::GradNodeAccumulation>(p_autograd_OutLinearOut);
+          std::make_shared<egr::GradNodeAccumulation>(p_autograd_OutLinearOut);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_OutLinearOut, 0);
       egr::EagerUtils::SetHistory(p_autograd_OutLinearOut,
                                   OutLinearOut_accumulation_node);
