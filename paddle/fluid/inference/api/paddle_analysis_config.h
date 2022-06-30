@@ -145,7 +145,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param[in] other another AnalysisConfig
   ///
-  explicit AnalysisConfig(const AnalysisConfig& other);
+  AnalysisConfig(const AnalysisConfig& other);
   ///
   /// \brief Construct a new AnalysisConfig from a no-combined model.
   ///
@@ -167,6 +167,14 @@ struct PD_INFER_DECL AnalysisConfig {
     kFloat32 = 0,  ///< fp32
     kInt8,         ///< int8
     kHalf,         ///< fp16
+    kBf16,         ///< bf16
+  };
+
+  enum class Backend {
+    kCPU = 0,
+    kGPU,
+    kXPU,
+    kNPU,
   };
 
   ///

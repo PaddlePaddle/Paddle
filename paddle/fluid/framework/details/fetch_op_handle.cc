@@ -84,7 +84,7 @@ void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
       for (auto &t : tensors_) {
         tensors_ptr.emplace_back(&BOOST_GET_CONST(LoDTensor, t));
       }
-      auto &val = boost::get<FetchList>(*data_);
+      auto &val = BOOST_GET(FetchList, *data_);
       LoDTensor var;
       MergeLoDTensor(&var, tensors_ptr, platform::CPUPlace());
       val.at(offset_) = std::move(var);
@@ -106,11 +106,11 @@ void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
         tmp_array.emplace_back();
         MergeLoDTensor(&(tmp_array.back()), tensors_ptr, platform::CPUPlace());
       }
-      auto &val = boost::get<FetchList>(*data_);
+      auto &val = BOOST_GET(FetchList, *data_);
       val.at(offset_) = std::move(tmp_array);
     }
   } else {
-    auto &val = boost::get<FetchUnmergedList>(*data_);
+    auto &val = BOOST_GET(FetchUnmergedList, *data_);
     val.at(offset_) = std::move(tensors_);
   }
 }
