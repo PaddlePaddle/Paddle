@@ -105,7 +105,7 @@ __all__ = ['cuda', 'cudnn', 'show']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
-    
+
     Returns:
         If paddle package is not tagged, the commit-id of paddle will be output.
         Otherwise, the following information will be output.
@@ -117,13 +117,13 @@ def show():
         minor: the minor version of paddle
 
         patch: the patch level version of paddle
-        
+
         rc: whether it's rc version
 
         cuda: the cuda version of package. It will return `False` if CPU version paddle package is installed
 
         cudnn: the cudnn version of package. It will return `False` if CPU version paddle package is installed
-    
+
     Examples:
         .. code-block:: python
 
@@ -164,7 +164,7 @@ def cuda():
 
     Returns:
         string: Return the version information of cuda. If paddle package is CPU version, it will return False.
-    
+
     Examples:
         .. code-block:: python
 
@@ -181,7 +181,7 @@ def cudnn():
 
     Returns:
         string: Return the version information of cudnn. If paddle package is CPU version, it will return False.
-    
+
     Examples:
         .. code-block:: python
 
@@ -366,6 +366,7 @@ packages=['paddle',
           'paddle.text',
           'paddle.text.datasets',
           'paddle.incubate',
+          'paddle.incubate.xpu',
           'paddle.incubate.nn',
           'paddle.incubate.nn.functional',
           'paddle.incubate.nn.layer',
@@ -460,7 +461,7 @@ package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + 
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 
 package_data['paddle.libs']+=[
-    os.path.basename('${LAPACK_LIB}'), 
+    os.path.basename('${LAPACK_LIB}'),
     os.path.basename('${BLAS_LIB}'),
     os.path.basename('${GFORTRAN_LIB}'),
     os.path.basename('${GNU_RT_LIB_1}')]
@@ -744,7 +745,7 @@ with redirect_stdout():
         project_urls = {
             'Homepage': 'https://www.paddlepaddle.org.cn/',
             'Downloads': 'https://github.com/paddlepaddle/paddle'
-        }, 
+        },
         license='Apache Software License',
         packages=packages,
         install_requires=setup_requires,
