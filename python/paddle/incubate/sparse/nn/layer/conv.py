@@ -82,9 +82,9 @@ class _Conv3D(Layer):
             shape=filter_shape,
             attr=self._param_attr,
             default_initializer=_get_default_param_initializer())
-        #self.bias = self.create_parameter(
-        #    attr=self._bias_attr, shape=[self._out_channels], is_bias=True)
-        self.bias = None
+        self.bias = self.create_parameter(attr=self._bias_attr,
+                                          shape=[self._out_channels],
+                                          is_bias=True)
 
     def forward(self, x):
         out = F.conv._conv3d(x,

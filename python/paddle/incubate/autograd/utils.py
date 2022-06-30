@@ -158,13 +158,6 @@ def get_output_var_list(op):
         ]
 
 
-def to_tensors(xs):
-    if isinstance(xs, paddle.fluid.framework.Variable):
-        return [xs]
-    else:
-        return xs
-
-
 def flatten(inp):
     if inp is None or isinstance(inp, paddle.fluid.framework.Variable):
         return [inp]

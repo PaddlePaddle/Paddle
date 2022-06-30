@@ -47,10 +47,12 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Output");
 
     PADDLE_ENFORCE_NE(
-        scale_in, 0.0f,
+        scale_in,
+        0.0f,
         platform::errors::InvalidArgument("Scale of input cannot be 0.0"));
     PADDLE_ENFORCE_NE(
-        scale_out, 0.0f,
+        scale_out,
+        0.0f,
         platform::errors::InvalidArgument("Scale of output cannot be 0.0"));
     if (shift_in != 0.0f) {
       PADDLE_ENFORCE_EQ(
@@ -68,8 +70,8 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
     float reorder_scale = scale_out / scale_in;
 
-    std::string key = platform::CreateKey(dev_ctx, src_tz, scale_in, scale_out,
-                                          ctx.OutputName("Output"));
+    std::string key = platform::CreateKey(
+        dev_ctx, src_tz, scale_in, scale_out, ctx.OutputName("Output"));
     key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
     const std::string key_prim = key + "@r";
     const std::string key_src_mem = key + "@s";
@@ -89,8 +91,8 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
       auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
 
       auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, input->format());
-      src_memory = std::make_shared<dnnl::memory>(src_md, engine,
-                                                  to_void_cast<T>(input_data));
+      src_memory = std::make_shared<dnnl::memory>(
+          src_md, engine, to_void_cast<T>(input_data));
       auto dst_md = platform::MKLDNNMemDesc({dst_tz}, dst_dt, input->format());
 
       dnnl::primitive_attr attri;
@@ -154,6 +156,9 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(requantize, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::ReQuantOpKernel<int8_t>, ops::ReQuantOpKernel<uint8_t>,
+REGISTER_OP_KERNEL(requantize,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::ReQuantOpKernel<int8_t>,
+                   ops::ReQuantOpKernel<uint8_t>,
                    ops::ReQuantOpKernel<paddle::platform::bfloat16>);

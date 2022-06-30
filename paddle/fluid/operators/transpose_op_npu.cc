@@ -83,7 +83,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::TransposeNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
     ops::TransposeNPUKernel<paddle::platform::NPUDeviceContext, int8_t>);
 
-REGISTER_OP_NPU_KERNEL(transpose2_grad, ops::TransposeGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(transpose2_grad,
+                       ops::TransposeGradNPUKernel<float>,
                        ops::TransposeGradNPUKernel<paddle::platform::float16>,
                        ops::TransposeGradNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64

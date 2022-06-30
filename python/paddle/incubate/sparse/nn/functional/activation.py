@@ -15,8 +15,10 @@
 __all__ = []
 
 from paddle import _C_ops, in_dynamic_mode
+from paddle.fluid.framework import dygraph_only
 
 
+@dygraph_only
 def relu(x, name=None):
     """
     sparse relu activation, requiring x to be a sparse coo or sparse csr tensor.
@@ -44,12 +46,63 @@ def relu(x, name=None):
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.incubate.sparse.nn.functional.relu(sparse_x) 
     """
+    return _C_ops.final_state_sparse_relu(x)
 
-    assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
 
-    if x.is_sparse_coo() or x.is_sparse_csr():
-        return _C_ops.final_state_sparse_relu(x)
-    else:
-        raise ValueError(
-            "Currently, sparse.relu only support the input of SparseCooTensor or SparseCsrTensor"
-        )
+@dygraph_only
+def softmax(x, axis=-1, name=None):
+    """
+    sparse softmax activation, x must be SparseCsrTensor or SparseCooTensor.
+
+    Note:
+        Only support axis=-1 for SparseCsrTensor, which is faster when read data 
+        by row (axis=-1).
+
+    From the point of view of dense matrix, for each row :math:`i` and each column :math:`j` 
+    in the matrix, we have:
+
+    .. math::
+
+        softmax_ij = \frac{\exp(x_ij - max_j(x_ij))}{\sum_j(exp(x_ij - max_j(x_ij))}
+    
+    Parameters:
+        x (Tensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
+        axis (int, optional): The axis along which to perform softmax calculations. Only support -1 for SparseCsrTensor.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: SparseCoo or SparseCsr, whose layout is the same with `x` .
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            from paddle.fluid.framework import _test_eager_guard
+
+            paddle.seed(100)
+
+            with _test_eager_guard():
+                mask = np.random.rand(3, 4) < 0.5
+                np_x = np.random.rand(3, 4) * mask
+                # [[0.         0.         0.96823406 0.19722934]
+                #  [0.94373937 0.         0.02060066 0.71456372]
+                #  [0.         0.         0.         0.98275049]]
+
+                csr = paddle.to_tensor(np_x).to_sparse_csr()
+                # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True, 
+                #        crows=[0, 2, 5, 6], 
+                #        cols=[2, 3, 0, 2, 3, 3], 
+                #        values=[0.96823406, 0.19722934, 0.94373937, 0.02060066, 0.71456372,
+                #                0.98275049])
+
+                out = paddle.incubate.sparse.nn.functional.softmax(csr)
+                # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True, 
+                #        crows=[0, 2, 5, 6], 
+                #        cols=[2, 3, 0, 2, 3, 3], 
+                #        values=[0.68373820, 0.31626180, 0.45610887, 0.18119845, 0.36269269,
+                #                1.        ])
+    
+    """
+    return _C_ops.final_state_sparse_softmax(x, axis)

@@ -38,10 +38,16 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     }
   };
 
-  void GetSegments(const int64_t* label, int length,
-                   std::vector<Segment>* segments, int num_chunk_types,
-                   int num_tag_types, int other_chunk_type, int tag_begin,
-                   int tag_inside, int tag_end, int tag_single) const {
+  void GetSegments(const int64_t* label,
+                   int length,
+                   std::vector<Segment>* segments,
+                   int num_chunk_types,
+                   int num_tag_types,
+                   int other_chunk_type,
+                   int tag_begin,
+                   int tag_inside,
+                   int tag_end,
+                   int tag_single) const {
     segments->clear();
     segments->reserve(length);
     int chunk_start = 0;
@@ -52,16 +58,26 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
       int prev_tag = tag;
       int prev_type = type;
       PADDLE_ENFORCE_LE(
-          label[i], num_chunk_types * num_tag_types,
+          label[i],
+          num_chunk_types * num_tag_types,
           platform::errors::InvalidArgument(
               "The value of Input(Label) should be less than the number of "
               "chunk types times the number of tag types, but received %d "
               "(Label) vs %d (chunk types) * %d (tag types).",
-              label[i], num_chunk_types, num_tag_types));
+              label[i],
+              num_chunk_types,
+              num_tag_types));
       tag = label[i] % num_tag_types;
       type = label[i] / num_tag_types;
-      if (in_chunk && ChunkEnd(prev_tag, prev_type, tag, type, other_chunk_type,
-                               tag_begin, tag_inside, tag_end, tag_single)) {
+      if (in_chunk && ChunkEnd(prev_tag,
+                               prev_type,
+                               tag,
+                               type,
+                               other_chunk_type,
+                               tag_begin,
+                               tag_inside,
+                               tag_end,
+                               tag_single)) {
         Segment segment{
             chunk_start,  // begin
             i - 1,        // end
@@ -70,8 +86,15 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
         segments->push_back(segment);
         in_chunk = false;
       }
-      if (ChunkBegin(prev_tag, prev_type, tag, type, other_chunk_type,
-                     tag_begin, tag_inside, tag_end, tag_single)) {
+      if (ChunkBegin(prev_tag,
+                     prev_type,
+                     tag,
+                     type,
+                     other_chunk_type,
+                     tag_begin,
+                     tag_inside,
+                     tag_end,
+                     tag_single)) {
         chunk_start = i;
         in_chunk = true;
       }
@@ -86,9 +109,15 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     }
   }
 
-  bool ChunkEnd(int prev_tag, int prev_type, int tag, int type,
-                int other_chunk_type, int tag_begin, int tag_inside,
-                int tag_end, int tag_single) const {
+  bool ChunkEnd(int prev_tag,
+                int prev_type,
+                int tag,
+                int type,
+                int other_chunk_type,
+                int tag_begin,
+                int tag_inside,
+                int tag_end,
+                int tag_single) const {
     if (prev_type == other_chunk_type) return false;
     if (type == other_chunk_type) return true;
     if (type != prev_type) return true;
@@ -99,9 +128,15 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     return false;
   }
 
-  bool ChunkBegin(int prev_tag, int prev_type, int tag, int type,
-                  int other_chunk_type, int tag_begin, int tag_inside,
-                  int tag_end, int tag_single) const {
+  bool ChunkBegin(int prev_tag,
+                  int prev_type,
+                  int tag,
+                  int type,
+                  int other_chunk_type,
+                  int tag_begin,
+                  int tag_inside,
+                  int tag_end,
+                  int tag_single) const {
     if (prev_type == other_chunk_type) return type != other_chunk_type;
     if (type == other_chunk_type) return false;
     if (type != prev_type) return true;
@@ -190,20 +225,33 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
 
       for (int i = 0; i < num_sequences; ++i) {
         int seq_length = seq_length_data[i];
-        EvalOneSeq(inference_data + i * dim1, label_data + i * dim1, seq_length,
-                   &output_segments, &label_segments, num_infer_chunks_data,
-                   num_label_chunks_data, num_correct_chunks_data,
-                   num_chunk_types, num_tag_types, other_chunk_type, tag_begin,
-                   tag_inside, tag_end, tag_single, excluded_chunk_types);
+        EvalOneSeq(inference_data + i * dim1,
+                   label_data + i * dim1,
+                   seq_length,
+                   &output_segments,
+                   &label_segments,
+                   num_infer_chunks_data,
+                   num_label_chunks_data,
+                   num_correct_chunks_data,
+                   num_chunk_types,
+                   num_tag_types,
+                   other_chunk_type,
+                   tag_begin,
+                   tag_inside,
+                   tag_end,
+                   tag_single,
+                   excluded_chunk_types);
       }
     } else {
       PADDLE_ENFORCE_EQ(
-          lod.size(), 1UL,
+          lod.size(),
+          1UL,
           platform::errors::InvalidArgument(
               "Only support one level LoD sequence now, but received %d.",
               lod.size()));
       PADDLE_ENFORCE_EQ(
-          lod, inference->lod(),
+          lod,
+          inference->lod(),
           platform::errors::InvalidArgument(
               "Input(Inference) and Input(Label) of Op(chunk_eval) should have "
               "same LoD information."));
@@ -211,11 +259,21 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
 
       for (int i = 0; i < num_sequences; ++i) {
         int seq_length = lod[0][i + 1] - lod[0][i];
-        EvalOneSeq(inference_data + lod[0][i], label_data + lod[0][i],
-                   seq_length, &output_segments, &label_segments,
-                   num_infer_chunks_data, num_label_chunks_data,
-                   num_correct_chunks_data, num_chunk_types, num_tag_types,
-                   other_chunk_type, tag_begin, tag_inside, tag_end, tag_single,
+        EvalOneSeq(inference_data + lod[0][i],
+                   label_data + lod[0][i],
+                   seq_length,
+                   &output_segments,
+                   &label_segments,
+                   num_infer_chunks_data,
+                   num_label_chunks_data,
+                   num_correct_chunks_data,
+                   num_chunk_types,
+                   num_tag_types,
+                   other_chunk_type,
+                   tag_begin,
+                   tag_inside,
+                   tag_end,
+                   tag_single,
                    excluded_chunk_types);
       }
     }
@@ -234,18 +292,42 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
                          ((*precision_data) + (*racall_data));
   }
 
-  void EvalOneSeq(const int64_t* output, const int64_t* label, int length,
+  void EvalOneSeq(const int64_t* output,
+                  const int64_t* label,
+                  int length,
                   std::vector<Segment>* output_segments,
                   std::vector<Segment>* label_segments,
-                  int64_t* num_output_segments, int64_t* num_label_segments,
-                  int64_t* num_correct, int num_chunk_types, int num_tag_types,
-                  int other_chunk_type, int tag_begin, int tag_inside,
-                  int tag_end, int tag_single,
+                  int64_t* num_output_segments,
+                  int64_t* num_label_segments,
+                  int64_t* num_correct,
+                  int num_chunk_types,
+                  int num_tag_types,
+                  int other_chunk_type,
+                  int tag_begin,
+                  int tag_inside,
+                  int tag_end,
+                  int tag_single,
                   const std::set<int>& excluded_chunk_types) const {
-    GetSegments(output, length, output_segments, num_chunk_types, num_tag_types,
-                other_chunk_type, tag_begin, tag_inside, tag_end, tag_single);
-    GetSegments(label, length, label_segments, num_chunk_types, num_tag_types,
-                other_chunk_type, tag_begin, tag_inside, tag_end, tag_single);
+    GetSegments(output,
+                length,
+                output_segments,
+                num_chunk_types,
+                num_tag_types,
+                other_chunk_type,
+                tag_begin,
+                tag_inside,
+                tag_end,
+                tag_single);
+    GetSegments(label,
+                length,
+                label_segments,
+                num_chunk_types,
+                num_tag_types,
+                other_chunk_type,
+                tag_begin,
+                tag_inside,
+                tag_end,
+                tag_single);
     size_t i = 0, j = 0;
     while (i < output_segments->size() && j < label_segments->size()) {
       if (output_segments->at(i) == label_segments->at(j) &&

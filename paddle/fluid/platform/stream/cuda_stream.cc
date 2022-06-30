@@ -23,9 +23,11 @@ namespace paddle {
 namespace platform {
 namespace stream {
 
-bool CUDAStream::Init(const Place& place, const Priority& priority,
+bool CUDAStream::Init(const Place& place,
+                      const Priority& priority,
                       const StreamFlag& flag) {
-  PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+  PADDLE_ENFORCE_EQ(is_gpu_place(place),
+                    true,
                     platform::errors::InvalidArgument(
                         "Cuda stream must be created using cuda place."));
   place_ = place;

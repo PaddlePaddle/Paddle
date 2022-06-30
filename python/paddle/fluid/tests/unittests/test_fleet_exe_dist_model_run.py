@@ -16,6 +16,7 @@ import unittest
 import paddle
 import numpy as np
 import os
+import tempfile
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -23,11 +24,18 @@ paddle.enable_static()
 
 class TestDistModelRun(unittest.TestCase):
 
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        # step 6: clean up the env, delete the saved model and params
+        print('cleaned up the env')
+        self.temp_dir.cleanup()
+
     def test_dist_model_run(self):
         # step 0: declare folder to save the model and params
-        folder = './dist_model_run_test/'
-        file = 'inf'
-        path_prefix = folder + file
+        path_prefix = os.path.join(self.temp_dir.name,
+                                   "dist_model_run_test/inf")
 
         # step 1: saving the inference model and params
         x = paddle.static.data(name='x', shape=[28, 28], dtype='float32')
@@ -79,12 +87,6 @@ class TestDistModelRun(unittest.TestCase):
 
         # step 5: compare two results
         self.assertTrue(np.allclose(dist_model_rst, load_inference_model_rst))
-
-        # step 6: clean up the env, delete the saved model and params
-        os.remove(path_prefix + '.pdiparams')
-        os.remove(path_prefix + '.pdmodel')
-        os.rmdir(folder)
-        print('cleaned up the env')
 
 
 if __name__ == '__main__':

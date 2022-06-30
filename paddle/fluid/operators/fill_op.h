@@ -32,8 +32,10 @@ struct FillOpVisitor {
   void apply() const {
     platform::CPUPlace cpu;
     auto *data = tensor_->mutable_data<T>(cpu);
-    std::transform(value_.data(), value_.data() + tensor_->numel(), data,
-                   [](float dat) { return static_cast<T>(dat); });
+    std::transform(
+        value_.data(), value_.data() + tensor_->numel(), data, [](float dat) {
+          return static_cast<T>(dat);
+        });
   }
 
   framework::LoDTensor *tensor_;
@@ -44,8 +46,8 @@ template <typename T>
 class FillKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto &out = GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Out"),
-                                "Output", "Out", "Fill");
+    auto &out = GET_DATA_SAFELY(
+        ctx.Output<framework::LoDTensor>("Out"), "Output", "Out", "Fill");
     out.Resize(phi::make_ddim(ctx.Attr<std::vector<int>>("shape")));
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
@@ -70,8 +72,10 @@ class FillKernel : public framework::OpKernel<T> {
     if (!force_cpu && platform::is_gpu_place(ctx.GetPlace())) {
       // Copy tensor to out
       framework::TensorCopy(
-          tensor, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &out);
+          tensor,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          &out);
     }
   }
 };

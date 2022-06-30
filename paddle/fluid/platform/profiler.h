@@ -30,6 +30,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.pb.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/mem_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
@@ -102,6 +104,22 @@ struct MemEvenRecorder {
  public:
   void PushMemRecord(const void* ptr, const Place& place, size_t size);
   void PopMemRecord(const void* ptr, const Place& place);
+  void PushMemRecord(const void* ptr,
+                     const Place& place,
+                     size_t size,
+                     TracerMemEventType type,
+                     uint64_t current_allocated,
+                     uint64_t current_reserved,
+                     uint64_t peak_allocated,
+                     uint64_t peak_reserved);
+  void PopMemRecord(const void* ptr,
+                    const Place& place,
+                    size_t size,
+                    TracerMemEventType type,
+                    uint64_t current_allocated,
+                    uint64_t current_reserved,
+                    uint64_t peak_allocated,
+                    uint64_t peak_reserved);
   void Flush();
   static MemEvenRecorder& Instance() { return recorder; }
 
@@ -160,7 +178,8 @@ struct EventList {
   std::vector<T> Reduce() {
     std::vector<T> result;
     for (auto& block : event_blocks) {
-      result.insert(result.begin(), std::make_move_iterator(block.begin()),
+      result.insert(result.begin(),
+                    std::make_move_iterator(block.begin()),
                     std::make_move_iterator(block.end()));
     }
     event_blocks.clear();
@@ -173,13 +192,21 @@ struct EventList {
 };
 
 void Mark(const std::string& name);
-void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                  const Place& place, const std::string& annotation);
-void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                 const Place& place, const std::string& annotation);
-Event* PushEvent(const std::string& name, const EventRole role,
+void PushMemEvent(uint64_t start_ns,
+                  uint64_t end_ns,
+                  size_t bytes,
+                  const Place& place,
+                  const std::string& annotation);
+void PopMemEvent(uint64_t start_ns,
+                 uint64_t end_ns,
+                 size_t bytes,
+                 const Place& place,
+                 const std::string& annotation);
+Event* PushEvent(const std::string& name,
+                 const EventRole role,
                  const std::string attr = "none");
-void PopEvent(const std::string& name, const EventRole role,
+void PopEvent(const std::string& name,
+              const EventRole role,
               const std::string attr = "none");
 // Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.

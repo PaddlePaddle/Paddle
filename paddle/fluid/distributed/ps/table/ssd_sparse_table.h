@@ -47,9 +47,11 @@ class SSDSparseTable : public MemorySparseTable {
     return PushSparse(keys, values, num);
   }
 
-  virtual int32_t PullSparse(float* pull_values, const uint64_t* keys,
+  virtual int32_t PullSparse(float* pull_values,
+                             const uint64_t* keys,
                              size_t num);
-  virtual int32_t PushSparse(const uint64_t* keys, const float* values,
+  virtual int32_t PushSparse(const uint64_t* keys,
+                             const float* values,
                              size_t num);
 
   int32_t Flush() override { return 0; }
@@ -63,15 +65,17 @@ class SSDSparseTable : public MemorySparseTable {
   virtual int32_t Save(const std::string& path,
                        const std::string& param) override;
   virtual int32_t SaveCache(
-      const std::string& path, const std::string& param,
+      const std::string& path,
+      const std::string& param,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel) override;
   virtual double GetCacheThreshold() override { return _local_show_threshold; }
   virtual int64_t CacheShuffle(
-      const std::string& path, const std::string& param, double cache_threshold,
-      std::function<std::future<int32_t>(int msg_type, int to_pserver_id,
-                                         std::string& msg)>
-          send_msg_func,
+      const std::string& path,
+      const std::string& param,
+      double cache_threshold,
+      std::function<std::future<int32_t>(
+          int msg_type, int to_pserver_id, std::string& msg)> send_msg_func,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel,
       const std::vector<Table*>& table_ptrs) override;
@@ -79,7 +83,8 @@ class SSDSparseTable : public MemorySparseTable {
   virtual int32_t Load(const std::string& path,
                        const std::string& param) override;
   //加载path目录下数据[start_idx, end_idx)
-  virtual int32_t Load(size_t start_idx, int end_idx,
+  virtual int32_t Load(size_t start_idx,
+                       size_t end_idx,
                        const std::vector<std::string>& file_list,
                        const std::string& param);
   int64_t LocalSize();

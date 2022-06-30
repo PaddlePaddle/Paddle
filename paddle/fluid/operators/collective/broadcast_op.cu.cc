@@ -30,7 +30,8 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         platform::errors::PreconditionNotMet(
             "The place of ExecutionContext should be CUDAPlace."));
 
@@ -41,13 +42,15 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     PADDLE_ENFORCE_EQ(
-        out->IsInitialized(), true,
+        out->IsInitialized(),
+        true,
         platform::errors::PreconditionNotMet(
             "Currently, the output of broadcast op must be initialized,"
             "because this op can only be an In-Place operation."));
     void* send_recv_buffer = out->mutable_data<T>(ctx.GetPlace());
     PADDLE_ENFORCE_EQ(
-        send_recv_buffer, in->data(),
+        send_recv_buffer,
+        in->data(),
         platform::errors::PreconditionNotMet("Currently, the broadcast op can "
                                              "only be an In-Place operation."));
 
@@ -56,9 +59,12 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
     auto stream = dev_ctx.stream();
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
-        send_recv_buffer, static_cast<size_t>(in->numel()),
+        send_recv_buffer,
+        static_cast<size_t>(in->numel()),
         platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype())),
-        root_dev_id, comm, stream));
+        root_dev_id,
+        comm,
+        stream));
 
     VLOG(3) << "Bcast " << ctx.InputNames("X")[0] << ", (" << in->numel() << ")"
             << " From " << root_dev_id << " to " << dev_id;
@@ -76,7 +82,8 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(broadcast, ops::NCCLBroadcastOpKernel<float>,
+REGISTER_OP_CUDA_KERNEL(broadcast,
+                        ops::NCCLBroadcastOpKernel<float>,
                         ops::NCCLBroadcastOpKernel<double>,
                         ops::NCCLBroadcastOpKernel<int>,
                         ops::NCCLBroadcastOpKernel<int64_t>,

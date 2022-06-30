@@ -182,7 +182,8 @@ class PostTrainingQuantization(object):
                 "mul"].
             round_type(str, optional): The method of converting the quantized weights
                 value float->int. Currently supports ['round', 'adaround'] methods.
-                Default is `round`, which is rounding nearest to the nearest whole number.
+                Default is `round`, which is rounding nearest to the integer.
+                'adaround' is refer to https://arxiv.org/abs/2004.10568.
             learning_rate(float, optional): The learning rate of adaround method.
             is_full_quantized(bool, optional): If set is_full_quantized as True, 
                 apply quantization to all supported quantizable op type. If set
@@ -459,6 +460,7 @@ class PostTrainingQuantization(object):
                      self._weight_op_pairs,
                      scale_dict,
                      num_iterations=self._batch_nums,
+                     bias_correction=self._bias_correction,
                      lr=self._learning_rate)
 
     def save_quantized_model(self,
@@ -654,9 +656,14 @@ class PostTrainingQuantization(object):
                 scale = s * abs_max_value
                 s += 0.02
                 bins = 2**(self._activation_bits - 1) - 1
-                quant_dequant_var = np.round(
-                    np.clip(var_tensor, 0.0, scale) / scale *
-                    bins) / bins * scale
+                if self._onnx_format:
+                    quant_var = np.clip(np.round(var_tensor / scale * bins),
+                                        -bins - 1, bins)
+                    quant_dequant_var = quant_var / bins * scale
+                else:
+                    quant_dequant_var = np.round(
+                        np.clip(var_tensor, 0.0, scale) / scale *
+                        bins) / bins * scale
                 mse_loss = ((var_tensor - quant_dequant_var)**2).mean()
                 if mse_loss <= self._best_calibration_loss[var_name]:
                     self._best_calibration_loss[var_name] = mse_loss
@@ -693,9 +700,14 @@ class PostTrainingQuantization(object):
                 scale = s * abs_max_value
                 s += 0.02
                 bins = 2**(self._activation_bits - 1) - 1
-                quant_dequant_var = np.round(
-                    np.clip(var_tensor, 0.0, scale) / scale *
-                    bins) / bins * scale
+                if self._onnx_format:
+                    quant_var = np.clip(np.round(var_tensor / scale * bins),
+                                        -bins - 1, bins)
+                    quant_dequant_var = quant_var / bins * scale
+                else:
+                    quant_dequant_var = np.round(
+                        np.clip(var_tensor, 0.0, scale) / scale *
+                        bins) / bins * scale
                 emd_loss = np.abs(
                     np.mean(var_tensor) - np.mean(quant_dequant_var)) + np.abs(
                         np.std(var_tensor) - np.std(quant_dequant_var))

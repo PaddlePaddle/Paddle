@@ -32,8 +32,10 @@ class SquaredL2NormKernel : public framework::OpKernel<T> {
     framework::Tensor *out = context.Output<framework::Tensor>("Out");
     auto *out_ptr = out->mutable_data<T>(context.GetPlace());
 
-    math::SquaredL2Norm(context.template device_context<DeviceContext>(), x_ptr,
-                        out_ptr, numel);
+    math::SquaredL2Norm(context.template device_context<DeviceContext>(),
+                        x_ptr,
+                        out_ptr,
+                        numel);
   }
 };
 
@@ -46,7 +48,8 @@ class SquaredL2NormGradKernel : public framework::OpKernel<T> {
     const framework::Tensor *dOut =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
     PADDLE_ENFORCE_EQ(
-        dOut->numel(), 1,
+        dOut->numel(),
+        1,
         platform::errors::InvalidArgument(
             "Input(GRAD@Out) of SquaredL2NormGradOP should be a scalar."));
     framework::Tensor *dX =

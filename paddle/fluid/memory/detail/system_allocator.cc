@@ -41,6 +41,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/platform/profiler/mem_tracing.h"
 
 DECLARE_bool(use_pinned_memory);
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -64,12 +65,14 @@ void* AlignedMalloc(size_t size) {
 #else
   int error = posix_memalign(&p, alignment, size);
   PADDLE_ENFORCE_EQ(
-      error, 0,
+      error,
+      0,
       platform::errors::ResourceExhausted(
           "Fail to alloc memory of %ld size, error code is %d.", size, error));
 #endif
-  PADDLE_ENFORCE_NOT_NULL(p, platform::errors::ResourceExhausted(
-                                 "Fail to alloc memory of %ld size.", size));
+  PADDLE_ENFORCE_NOT_NULL(p,
+                          platform::errors::ResourceExhausted(
+                              "Fail to alloc memory of %ld size.", size));
   return p;
 }
 
@@ -95,7 +98,8 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
   }
 
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
-
+  platform::RecordMemEvent(
+      p, CPUPlace(), size, platform::TracerMemEventType::ReservedAllocate);
   return p;
 }
 
@@ -114,6 +118,8 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
 #endif
 
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
+  platform::RecordMemEvent(
+      p, CPUPlace(), size, platform::TracerMemEventType::ReservedFree);
 }
 
 bool CPUAllocator::UseGpu() const { return false; }
@@ -146,7 +152,8 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
           "larger value. Currently `FLAGS_gpu_memory_limit_mb` is %d, so the "
           "maximum GPU memory usage is limited to %d MB.\n"
           "      The command is `export FLAGS_gpu_memory_limit_mb=xxx`.",
-          limit_size, limit_size);
+          limit_size,
+          limit_size);
     }
 
     PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
@@ -161,21 +168,29 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
         "please set it to a higher value but less than 1.0.\n"
         "      The command is "
         "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.%s\n\n",
-        gpu_id_, string::HumanReadableSize(size), gpu_id_,
-        string::HumanReadableSize(allocated), string::HumanReadableSize(avail),
-        gpu_id_, FLAGS_fraction_of_gpu_memory_to_use, err_msg));
+        gpu_id_,
+        string::HumanReadableSize(size),
+        gpu_id_,
+        string::HumanReadableSize(allocated),
+        string::HumanReadableSize(avail),
+        gpu_id_,
+        FLAGS_fraction_of_gpu_memory_to_use,
+        err_msg));
   }
 }
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {
-  PADDLE_ENFORCE_EQ(index, 0,
+  PADDLE_ENFORCE_EQ(index,
+                    0,
                     platform::errors::InvalidArgument(
                         "The index should be 0, index is %d", index));
-  PADDLE_ENFORCE_GE(gpu_alloc_size_, size,
+  PADDLE_ENFORCE_GE(gpu_alloc_size_,
+                    size,
                     platform::errors::InvalidArgument(
                         "The size of memory (%d) to free exceeds the size of "
                         "allocated gpu memory (%d)",
-                        size, gpu_alloc_size_));
+                        size,
+                        gpu_alloc_size_));
   gpu_alloc_size_ -= size;
 
   platform::RecordedGpuFree(p, size, gpu_id_);
@@ -213,6 +228,8 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
     *index = 1;  // PINNED memory
     cuda_pinnd_alloc_size_ += size;
     HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
+    platform::RecordMemEvent(
+        p, CPUPlace(), size, platform::TracerMemEventType::ReservedAllocate);
     return p;
   } else {
     LOG(WARNING) << "cudaHostAlloc failed.";
@@ -224,21 +241,25 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
 void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   gpuError_t err;
-  PADDLE_ENFORCE_EQ(index, 1,
+  PADDLE_ENFORCE_EQ(index,
+                    1,
                     platform::errors::InvalidArgument(
                         "The index should be 1, but got %d", index));
 
-  PADDLE_ENFORCE_GE(cuda_pinnd_alloc_size_, size,
+  PADDLE_ENFORCE_GE(cuda_pinnd_alloc_size_,
+                    size,
                     platform::errors::InvalidArgument(
                         "The size of memory (%d) to free exceeds the size of "
                         "allocated cuda pinned memory (%d)",
-                        size, cuda_pinnd_alloc_size_));
+                        size,
+                        cuda_pinnd_alloc_size_));
   cuda_pinnd_alloc_size_ -= size;
 #ifdef PADDLE_WITH_HIP
   err = hipHostFree(p);
   if (err != hipErrorDeinitialized) {
     PADDLE_ENFORCE_EQ(
-        err, hipSuccess,
+        err,
+        hipSuccess,
         platform::errors::Fatal(
             "hipFreeHost failed in GPUPinnedAllocator, error code is %d", err));
   }
@@ -252,13 +273,16 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   // cudaFreeHost succeeds.
   if (err != cudaErrorCudartUnloading) {
     PADDLE_ENFORCE_EQ(
-        err, 0,
+        err,
+        0,
         platform::errors::Fatal(
             "cudaFreeHost failed in GPUPinnedAllocator, error code is %d",
             err));
   }
 #endif
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
+  platform::RecordMemEvent(
+      p, CPUPlace(), size, platform::TracerMemEventType::ReservedFree);
 }
 
 bool CUDAPinnedAllocator::UseGpu() const { return false; }
@@ -289,7 +313,8 @@ void* NPUAllocator::Alloc(size_t* index, size_t size) {
           "larger value. Currently `FLAGS_gpu_memory_limit_mb` is %d, so the "
           "maximum GPU memory usage is limited to %d MB.\n"
           "      The command is `export FLAGS_gpu_memory_limit_mb=xxx`.",
-          limit_size, limit_size);
+          limit_size,
+          limit_size);
     }
 
     PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
@@ -304,22 +329,29 @@ void* NPUAllocator::Alloc(size_t* index, size_t size) {
         "please set it to a higher value but less than 1.0.\n"
         "      The command is "
         "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.%s\n\n",
-        npu_id_, string::HumanReadableSize(size), npu_id_,
-        string::HumanReadableSize(avail), npu_id_,
-        FLAGS_fraction_of_gpu_memory_to_use, err_msg));
+        npu_id_,
+        string::HumanReadableSize(size),
+        npu_id_,
+        string::HumanReadableSize(avail),
+        npu_id_,
+        FLAGS_fraction_of_gpu_memory_to_use,
+        err_msg));
   }
 }
 
 void NPUAllocator::Free(void* p, size_t size, size_t index) {
   VLOG(4) << "Free " << p << " size " << size;
-  PADDLE_ENFORCE_EQ(index, 0,
+  PADDLE_ENFORCE_EQ(index,
+                    0,
                     platform::errors::InvalidArgument(
                         "The index should be 0, index is %d", index));
-  PADDLE_ENFORCE_GE(npu_alloc_size_, size,
+  PADDLE_ENFORCE_GE(npu_alloc_size_,
+                    size,
                     platform::errors::InvalidArgument(
                         "The size of memory (%d) to free exceeds the size of "
                         "allocated gpu memory (%d)",
-                        size, npu_alloc_size_));
+                        size,
+                        npu_alloc_size_));
   npu_alloc_size_ -= size;
 
   platform::RecordedNPUFree(p, size, npu_id_);
@@ -358,21 +390,25 @@ void* NPUPinnedAllocator::Alloc(size_t* index, size_t size) {
 
 void NPUPinnedAllocator::Free(void* p, size_t size, size_t index) {
   aclError err;
-  PADDLE_ENFORCE_EQ(index, 1,
+  PADDLE_ENFORCE_EQ(index,
+                    1,
                     platform::errors::InvalidArgument(
                         "The index should be 1, but got %d", index));
 
-  PADDLE_ENFORCE_GE(npu_pinnd_alloc_size_, size,
+  PADDLE_ENFORCE_GE(npu_pinnd_alloc_size_,
+                    size,
                     platform::errors::InvalidArgument(
                         "The size of memory (%d) to free exceeds the size of "
                         "allocated npu pinned memory (%d)",
-                        size, npu_pinnd_alloc_size_));
+                        size,
+                        npu_pinnd_alloc_size_));
   npu_pinnd_alloc_size_ -= size;
   err = platform::NPUHostFree(p);
 
   if (err != ACL_ERROR_NONE) {
     PADDLE_ENFORCE_EQ(
-        err, 0,
+        err,
+        0,
         platform::errors::Fatal(
             "NPUHostFree failed in NPUPinnedAllocator, error code is %d", err));
   }
@@ -407,7 +443,8 @@ void* MLUAllocator::Alloc(size_t* index, size_t size) {
           "larger value. Currently `FLAGS_gpu_memory_limit_mb` is %d, so the "
           "maximum MLU memory usage is limited to %d MB.\n"
           "      The command is `export FLAGS_gpu_memory_limit_mb=xxx`.",
-          limit_size, limit_size);
+          limit_size,
+          limit_size);
     }
 
     PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
@@ -422,21 +459,29 @@ void* MLUAllocator::Alloc(size_t* index, size_t size) {
         "please set it to a higher value but less than 1.0.\n"
         "      The command is "
         "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.%s\n\n",
-        mlu_id_, string::HumanReadableSize(size), mlu_id_,
-        string::HumanReadableSize(allocated), string::HumanReadableSize(avail),
-        mlu_id_, FLAGS_fraction_of_gpu_memory_to_use, err_msg));
+        mlu_id_,
+        string::HumanReadableSize(size),
+        mlu_id_,
+        string::HumanReadableSize(allocated),
+        string::HumanReadableSize(avail),
+        mlu_id_,
+        FLAGS_fraction_of_gpu_memory_to_use,
+        err_msg));
   }
 }
 
 void MLUAllocator::Free(void* p, size_t size, size_t index) {
-  PADDLE_ENFORCE_EQ(index, 0,
+  PADDLE_ENFORCE_EQ(index,
+                    0,
                     platform::errors::InvalidArgument(
                         "The index should be 0, index is %d", index));
-  PADDLE_ENFORCE_GE(mlu_alloc_size_, size,
+  PADDLE_ENFORCE_GE(mlu_alloc_size_,
+                    size,
                     platform::errors::InvalidArgument(
                         "The size of memory (%d) to free exceeds the size of "
                         "allocated gpu memory (%d)",
-                        size, mlu_alloc_size_));
+                        size,
+                        mlu_alloc_size_));
   mlu_alloc_size_ -= size;
 
   platform::RecordedMLUFree(p, size, mlu_id_);
@@ -465,7 +510,9 @@ void* CustomAllocator::Alloc(size_t* index, size_t size) {
         "\n\nOut of memory error on %s %d. "
         "total memory is %s, used memory is %s, "
         "available memory is only %s.\n\n",
-        dev_type_, dev_id_, string::HumanReadableSize(total),
+        dev_type_,
+        dev_id_,
+        string::HumanReadableSize(total),
         string::HumanReadableSize(total - avail),
         string::HumanReadableSize(avail)));
   }
@@ -474,14 +521,17 @@ void* CustomAllocator::Alloc(size_t* index, size_t size) {
 
 void CustomAllocator::Free(void* p, size_t size, size_t index) {
   VLOG(4) << "CustomAllocator::Free " << p << " size " << size;
-  PADDLE_ENFORCE_EQ(index, 0,
+  PADDLE_ENFORCE_EQ(index,
+                    0,
                     platform::errors::InvalidArgument(
                         "The index should be 0, index is %d", index));
-  PADDLE_ENFORCE_GE(plug_alloc_size, size,
+  PADDLE_ENFORCE_GE(plug_alloc_size,
+                    size,
                     platform::errors::InvalidArgument(
                         "The size of memory (%d) to free exceeds the size of "
                         "allocated gpu memory (%d)",
-                        size, plug_alloc_size));
+                        size,
+                        plug_alloc_size));
   plug_alloc_size -= size;
   auto place = platform::CustomPlace(dev_type_, dev_id_);
   auto device = phi::DeviceManager::GetDeviceWithPlace(place);
