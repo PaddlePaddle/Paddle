@@ -27,19 +27,26 @@ class TestCompareOpBase(XPUOpTest):
 
     def setUp(self):
         self.place = paddle.XPUPlace(0)
-        self.init_dtype()
+        self.config()
         self.set_case()
         self.inputs = {'X': self.x, 'Y': self.y}
         self.outputs = {'Out': self.result}
 
     def set_case(self):
-        self.op_type = 'less_than'
-        self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-        self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-        self.result = np.less(self.x, self.y)
+        self.x = np.random.uniform(self.lbound, self.hbound,
+                                   self.x_shape).astype(self.dtype)
+        self.y = np.random.uniform(self.lbound, self.hbound,
+                                   self.y_shape).astype(self.dtype)
+        self.result = self.compute(self.x, self.y)
 
-    def init_dtype(self):
+    def config(self):
         self.dtype = np.float32
+        self.op_type = 'less_than'
+        self.compute = np.less
+        self.lbound = -100
+        self.hbound = 100
+        self.x_shape = [11, 17]
+        self.y_shape = [11, 17]
 
     def test_check_output(self):
         paddle.enable_static()
@@ -54,23 +61,65 @@ class XPUTestLessThanOP(XPUOpTestWrapper):
 
     class LessThanOpTestCase1(TestCompareOpBase):
 
-        def set_case(self):
+        # def set_case(self):
+        #     self.dtype = self.in_type
+        #     self.op_type = 'less_than'
+
+        #     self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+        #     self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
+        #     self.result = np.less(self.x, self.y)
+        def config(self):
             self.dtype = self.in_type
             self.op_type = 'less_than'
-
-            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.result = np.less(self.x, self.y)
+            self.compute = np.less
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [11, 17]
+            self.y_shape = [11, 17]
 
     class LessThanOpTestCase2(TestCompareOpBase):
 
-        def set_case(self):
+        def config(self):
             self.dtype = self.in_type
             self.op_type = 'less_than'
+            self.compute = np.less
+            self.lbound = -200
+            self.hbound = 200
+            self.x_shape = [11, 17]
+            self.y_shape = [1]
 
-            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
-            self.result = np.less(self.x, self.y)
+    class LessThanOpTestCase3(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'less_than'
+            self.compute = np.less
+            self.lbound = -300
+            self.hbound = 300
+            self.x_shape = [11, 17, 29]
+            self.y_shape = [1]
+
+    class LessThanOpTestCase4(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'less_than'
+            self.compute = np.less
+            self.lbound = -200
+            self.hbound = 200
+            self.x_shape = [128, 128, 512]
+            self.y_shape = [1]
+
+    class LessThanOpTestCase5(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'less_than'
+            self.compute = np.less
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [128, 128, 512]
+            self.y_shape = [128, 128, 512]
 
 
 support_types = get_xpu_op_support_types('less_than')
@@ -86,23 +135,58 @@ class XPUTestLessEqualOp(XPUOpTestWrapper):
 
     class LessEqualOpTestCase1(TestCompareOpBase):
 
-        def set_case(self):
+        def config(self):
             self.dtype = self.in_type
             self.op_type = 'less_equal'
-
-            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.result = np.less_equal(self.x, self.y)
+            self.compute = np.less_equal
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [11, 17]
+            self.y_shape = [11, 17]
 
     class LessEqualOpTestCase2(TestCompareOpBase):
 
-        def set_case(self):
+        def config(self):
             self.dtype = self.in_type
             self.op_type = 'less_equal'
+            self.compute = np.less_equal
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [11, 17, 255]
+            self.y_shape = [11, 17, 255]
 
-            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
-            self.result = np.less_equal(self.x, self.y)
+    class LessEqualOpTestCase3(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'less_equal'
+            self.compute = np.less_equal
+            self.lbound = -200
+            self.hbound = 200
+            self.x_shape = [11, 17, 255]
+            self.y_shape = [1]
+
+    class LessEqualOpTestCase4(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'less_equal'
+            self.compute = np.less_equal
+            self.lbound = -200
+            self.hbound = 200
+            self.x_shape = [11, 17]
+            self.y_shape = [1]
+
+    class LessEqualOpTestCase5(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'less_equal'
+            self.compute = np.less_equal
+            self.lbound = -200
+            self.hbound = 200
+            self.x_shape = [128, 128, 512]
+            self.y_shape = [128, 128, 512]
 
 
 support_types = get_xpu_op_support_types('less_equal')
@@ -118,23 +202,69 @@ class XPUTestGreaterThanOp(XPUOpTestWrapper):
 
     class GreaterThanOpTestCase1(TestCompareOpBase):
 
-        def set_case(self):
+        def config(self):
             self.dtype = self.in_type
             self.op_type = 'greater_than'
+            self.compute = np.greater
+            self.lbound = -200
+            self.hbound = 200
+            self.x_shape = [128, 128, 512]
+            self.y_shape = [128, 128, 512]
 
-            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.result = np.greater(self.x, self.y)
+    class GreaterThanOpTestCase1(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'greater_than'
+            self.compute = np.greater
+            self.lbound = -200
+            self.hbound = 200
+            self.x_shape = [128, 128, 512]
+            self.y_shape = [128, 128, 512]
 
     class GreaterThanOpTestCase2(TestCompareOpBase):
 
-        def set_case(self):
+        def config(self):
             self.dtype = self.in_type
             self.op_type = 'greater_than'
+            self.compute = np.greater
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [128, 128, 512]
+            self.y_shape = [1]
 
-            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
-            self.result = np.greater(self.x, self.y)
+    class GreaterThanOpTestCase3(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'greater_than'
+            self.compute = np.greater
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [11, 17]
+            self.y_shape = [1]
+
+    class GreaterThanOpTestCase4(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'greater_than'
+            self.compute = np.greater
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [11, 17]
+            self.y_shape = [11, 17]
+
+    class GreaterThanOpTestCase5(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'greater_than'
+            self.compute = np.greater
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [10, 10, 20, 20]
+            self.y_shape = [10, 10, 20, 20]
 
 
 support_types = get_xpu_op_support_types('greater_than')
@@ -150,23 +280,58 @@ class XPUTestGreaterEqualOp(XPUOpTestWrapper):
 
     class GreaterEqualOpTestCase1(TestCompareOpBase):
 
-        def set_case(self):
+        def config(self):
             self.dtype = self.in_type
             self.op_type = 'greater_equal'
-
-            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.result = np.greater_equal(self.x, self.y)
+            self.compute = np.greater_equal
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [10, 10, 20, 20]
+            self.y_shape = [10, 10, 20, 20]
 
     class GreaterEqualOpTestCase2(TestCompareOpBase):
 
-        def set_case(self):
+        def config(self):
             self.dtype = self.in_type
             self.op_type = 'greater_equal'
+            self.compute = np.greater_equal
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [10, 10]
+            self.y_shape = [10, 10]
 
-            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
-            self.result = np.greater_equal(self.x, self.y)
+    class GreaterEqualOpTestCase3(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'greater_equal'
+            self.compute = np.greater_equal
+            self.lbound = -200
+            self.hbound = 200
+            self.x_shape = [512, 512, 2]
+            self.y_shape = [1]
+
+    class GreaterEqualOpTestCase4(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'greater_equal'
+            self.compute = np.greater_equal
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [10, 10, 20, 20]
+            self.y_shape = [1]
+
+    class GreaterEqualOpTestCase5(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'greater_equal'
+            self.compute = np.greater_equal
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [10, 30, 15]
+            self.y_shape = [10, 30, 15]
 
 
 support_types = get_xpu_op_support_types('greater_equal')
@@ -182,23 +347,58 @@ class XPUTestEqualOp(XPUOpTestWrapper):
 
     class EqualOpTestCase1(TestCompareOpBase):
 
-        def set_case(self):
+        def config(self):
             self.dtype = self.in_type
             self.op_type = 'equal'
-
-            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.result = np.equal(self.x, self.y)
+            self.compute = np.equal
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [10, 30, 15]
+            self.y_shape = [10, 30, 15]
 
     class EqualOpTestCase2(TestCompareOpBase):
 
-        def set_case(self):
+        def config(self):
             self.dtype = self.in_type
             self.op_type = 'equal'
+            self.compute = np.equal
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [10, 30, 15]
+            self.y_shape = [1]
 
-            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
-            self.result = np.equal(self.x, self.y)
+    class EqualOpTestCase3(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'equal'
+            self.compute = np.equal
+            self.lbound = -200
+            self.hbound = 200
+            self.x_shape = [10, 30]
+            self.y_shape = [10, 30]
+
+    class EqualOpTestCase4(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'equal'
+            self.compute = np.equal
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [256, 256, 10]
+            self.y_shape = [256, 256, 10]
+
+    class EqualOpTestCase5(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'equal'
+            self.compute = np.equal
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [11, 17]
+            self.y_shape = [1]
 
 
 support_types = get_xpu_op_support_types('equal')
@@ -214,23 +414,58 @@ class XPUTestNotEqualOp(XPUOpTestWrapper):
 
     class NotEqualOpTestCase1(TestCompareOpBase):
 
-        def set_case(self):
+        def config(self):
             self.dtype = self.in_type
             self.op_type = 'not_equal'
-
-            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.y = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.result = np.not_equal(self.x, self.y)
+            self.compute = np.not_equal
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [11, 17]
+            self.y_shape = [1]
 
     class NotEqualOpTestCase2(TestCompareOpBase):
 
-        def set_case(self):
+        def config(self):
             self.dtype = self.in_type
             self.op_type = 'not_equal'
+            self.compute = np.not_equal
+            self.lbound = -200
+            self.hbound = 200
+            self.x_shape = [11, 17]
+            self.y_shape = [11, 17]
 
-            self.x = np.random.uniform(-100, 100, [11, 17]).astype(self.dtype)
-            self.y = np.random.uniform(-100, 100, [1]).astype(self.dtype)
-            self.result = np.not_equal(self.x, self.y)
+    class NotEqualOpTestCase3(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'not_equal'
+            self.compute = np.not_equal
+            self.lbound = -200
+            self.hbound = 200
+            self.x_shape = [11, 17, 30]
+            self.y_shape = [1]
+
+    class NotEqualOpTestCase4(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'not_equal'
+            self.compute = np.not_equal
+            self.lbound = -200
+            self.hbound = 200
+            self.x_shape = [256, 256, 10]
+            self.y_shape = [256, 256, 10]
+
+    class NotEqualOpTestCase5(TestCompareOpBase):
+
+        def config(self):
+            self.dtype = self.in_type
+            self.op_type = 'not_equal'
+            self.compute = np.not_equal
+            self.lbound = -100
+            self.hbound = 100
+            self.x_shape = [512, 128]
+            self.y_shape = [512, 128]
 
 
 support_types = get_xpu_op_support_types('not_equal')
