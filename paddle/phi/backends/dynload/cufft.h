@@ -40,7 +40,8 @@ extern void EnforceCUFFTLoaded(const char* fn_name);
         cufft_dso_handle = phi::dynload::GetCUFFTDsoHandle();        \
       });                                                            \
       EnforceCUFFTLoaded(#__name);                                   \
-      static void* p_##__name = dlsym(cufft_dso_handle, #__name);    \
+      static void* p_##__name =                                      \
+          dlvsym(cufft_dso_handle, #__name, "GLIBC_2.2.5");          \
       return reinterpret_cast<cufft_func>(p_##__name)(args...);      \
     }                                                                \
   };                                                                 \

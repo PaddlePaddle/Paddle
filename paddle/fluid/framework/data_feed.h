@@ -398,7 +398,7 @@ class CustomParser {
                             const char* str,
                             std::vector<Record>* instances) {
     return 0;
-  };
+  }
   virtual bool ParseOneInstance(
       const std::string& line,
       std::function<void(std::vector<SlotRecord>&, int)>
@@ -725,8 +725,8 @@ class DLManager {
       return nullptr;
     }
 
-    CreateParserObjectFunc create_parser_func =
-        (CreateParserObjectFunc)dlsym(handle.module, "CreateParserObject");
+    CreateParserObjectFunc create_parser_func = (CreateParserObjectFunc)dlvsym(
+        handle.module, "CreateParserObject", "GLIBC_2.2.5");
     handle.parser = create_parser_func();
     handle.parser->Init(conf);
     handle_map_.insert({name, handle});
@@ -753,8 +753,8 @@ class DLManager {
       return nullptr;
     }
 
-    CreateParserObjectFunc create_parser_func =
-        (CreateParserObjectFunc)dlsym(handle.module, "CreateParserObject");
+    CreateParserObjectFunc create_parser_func = (CreateParserObjectFunc)dlvsym(
+        handle.module, "CreateParserObject", "GLIBC_2.2.5");
     handle.parser = create_parser_func();
     handle.parser->Init(conf);
     handle_map_.insert({name, handle});
@@ -1388,7 +1388,7 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   virtual bool ParseOneInstanceFromPipe(Record* instance);
   virtual void ParseOneInstanceFromSo(const char* str,
                                       Record* instance,
-                                      CustomParser* parser){};
+                                      CustomParser* parser) {}
   virtual int ParseInstanceFromSo(int len,
                                   const char* str,
                                   std::vector<Record>* instances,

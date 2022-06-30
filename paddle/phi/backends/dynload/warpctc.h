@@ -39,7 +39,8 @@ extern void* warpctc_dso_handle;
       std::call_once(warpctc_dso_flag, []() {                        \
         warpctc_dso_handle = phi::dynload::GetWarpCTCDsoHandle();    \
       });                                                            \
-      static void* p_##_name = dlsym(warpctc_dso_handle, #__name);   \
+      static void* p_##_name =                                       \
+          dlvsym(warpctc_dso_handle, #__name, "GLIBC_2.2.5");        \
       return reinterpret_cast<warpctcFunc>(p_##_name)(args...);      \
     }                                                                \
   };                                                                 \

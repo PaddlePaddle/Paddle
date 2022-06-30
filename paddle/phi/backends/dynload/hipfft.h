@@ -33,7 +33,8 @@ extern void *hipfft_dso_handle;
       std::call_once(hipfft_dso_flag, []() {                         \
         hipfft_dso_handle = phi::dynload::GetROCFFTDsoHandle();      \
       });                                                            \
-      static void *p_##__name = dlsym(hipfft_dso_handle, #__name);   \
+      static void *p_##__name =                                      \
+          dlvsym(hipfft_dso_handle, #__name, "GLIBC_2.2.5");         \
       return reinterpret_cast<hipfftFunc>(p_##__name)(args...);      \
     }                                                                \
   };                                                                 \

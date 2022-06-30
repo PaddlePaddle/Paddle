@@ -23,18 +23,19 @@ namespace dynload {
 extern std::once_flag nvjpeg_dso_flag;
 extern void *nvjpeg_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_NVJPEG_WRAP(__name)                   \
-  struct DynLoad__##__name {                                       \
-    template <typename... Args>                                    \
-    nvjpegStatus_t operator()(Args... args) {                      \
-      using nvjpegFunc = decltype(&::__name);                      \
-      std::call_once(nvjpeg_dso_flag, []() {                       \
-        nvjpeg_dso_handle = phi::dynload::GetNvjpegDsoHandle();    \
-      });                                                          \
-      static void *p_##__name = dlsym(nvjpeg_dso_handle, #__name); \
-      return reinterpret_cast<nvjpegFunc>(p_##__name)(args...);    \
-    }                                                              \
-  };                                                               \
+#define DECLARE_DYNAMIC_LOAD_NVJPEG_WRAP(__name)                \
+  struct DynLoad__##__name {                                    \
+    template <typename... Args>                                 \
+    nvjpegStatus_t operator()(Args... args) {                   \
+      using nvjpegFunc = decltype(&::__name);                   \
+      std::call_once(nvjpeg_dso_flag, []() {                    \
+        nvjpeg_dso_handle = phi::dynload::GetNvjpegDsoHandle(); \
+      });                                                       \
+      static void *p_##__name =                                 \
+          dlvsym(nvjpeg_dso_handle, #__name, "GLIBC_2.2.5");    \
+      return reinterpret_cast<nvjpegFunc>(p_##__name)(args...); \
+    }                                                           \
+  };                                                            \
   extern DynLoad__##__name __name
 
 #define NVJPEG_RAND_ROUTINE_EACH(__macro) \

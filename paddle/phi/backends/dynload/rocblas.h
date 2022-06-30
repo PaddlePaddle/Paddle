@@ -36,18 +36,19 @@ extern void *rocblas_dso_handle;
  *
  * note: default dynamic linked libs
  */
-#define DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP(__name)                   \
-  struct DynLoad__##__name {                                        \
-    template <typename... Args>                                     \
-    rocblas_status operator()(Args... args) {                       \
-      using rocblas_func = decltype(&::__name);                     \
-      std::call_once(rocblas_dso_flag, []() {                       \
-        rocblas_dso_handle = phi::dynload::GetCublasDsoHandle();    \
-      });                                                           \
-      static void *p_##__name = dlsym(rocblas_dso_handle, #__name); \
-      return reinterpret_cast<rocblas_func>(p_##__name)(args...);   \
-    }                                                               \
-  };                                                                \
+#define DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP(__name)                 \
+  struct DynLoad__##__name {                                      \
+    template <typename... Args>                                   \
+    rocblas_status operator()(Args... args) {                     \
+      using rocblas_func = decltype(&::__name);                   \
+      std::call_once(rocblas_dso_flag, []() {                     \
+        rocblas_dso_handle = phi::dynload::GetCublasDsoHandle();  \
+      });                                                         \
+      static void *p_##__name =                                   \
+          dlvsym(rocblas_dso_handle, #__name, "GLIBC_2.2.5");     \
+      return reinterpret_cast<rocblas_func>(p_##__name)(args...); \
+    }                                                             \
+  };                                                              \
   extern DynLoad__##__name __name
 
 #define ROCBLAS_BLAS_ROUTINE_EACH(__macro) \

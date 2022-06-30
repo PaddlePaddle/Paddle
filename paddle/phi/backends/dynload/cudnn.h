@@ -38,7 +38,8 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
         cudnn_dso_handle = phi::dynload::GetCUDNNDsoHandle();        \
       });                                                            \
       EnforceCUDNNLoaded(#__name);                                   \
-      static void* p_##__name = dlsym(cudnn_dso_handle, #__name);    \
+      static void* p_##__name =                                      \
+          dlvsym(cudnn_dso_handle, #__name, "GLIBC_2.2.5");          \
       return reinterpret_cast<cudnn_func>(p_##__name)(args...);      \
     }                                                                \
   };                                                                 \

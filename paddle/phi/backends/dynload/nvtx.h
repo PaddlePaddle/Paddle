@@ -26,18 +26,19 @@ namespace dynload {
 extern std::once_flag nvtx_dso_flag;
 extern void *nvtx_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_NVTX_WRAP(__name)                   \
-  struct DynLoad__##__name {                                     \
-    template <typename... Args>                                  \
-    int operator()(Args... args) {                               \
-      using nvtxFunc = decltype(&::__name);                      \
-      std::call_once(nvtx_dso_flag, []() {                       \
-        nvtx_dso_handle = phi::dynload::GetNvtxDsoHandle();      \
-      });                                                        \
-      static void *p_##__name = dlsym(nvtx_dso_handle, #__name); \
-      return reinterpret_cast<nvtxFunc>(p_##__name)(args...);    \
-    }                                                            \
-  };                                                             \
+#define DECLARE_DYNAMIC_LOAD_NVTX_WRAP(__name)                \
+  struct DynLoad__##__name {                                  \
+    template <typename... Args>                               \
+    int operator()(Args... args) {                            \
+      using nvtxFunc = decltype(&::__name);                   \
+      std::call_once(nvtx_dso_flag, []() {                    \
+        nvtx_dso_handle = phi::dynload::GetNvtxDsoHandle();   \
+      });                                                     \
+      static void *p_##__name =                               \
+          dlvsym(nvtx_dso_handle, #__name, "GLIBC_2.2.5");    \
+      return reinterpret_cast<nvtxFunc>(p_##__name)(args...); \
+    }                                                         \
+  };                                                          \
   extern DynLoad__##__name __name
 
 #define NVTX_ROUTINE_EACH(__macro) \

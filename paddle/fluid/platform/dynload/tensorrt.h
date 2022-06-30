@@ -44,7 +44,8 @@ extern void* tensorrt_plugin_dso_handle;
       std::call_once(tensorrt_dso_flag, []() {                                \
         tensorrt_dso_handle = paddle::platform::dynload::GetTensorRtHandle(); \
       });                                                                     \
-      static void* p_##__name = dlsym(tensorrt_dso_handle, #__name);          \
+      static void* p_##__name =                                               \
+          dlvsym(tensorrt_dso_handle, #__name, "GLIBC_2.2.5");                \
       if (p_##__name == nullptr) {                                            \
         return nullptr;                                                       \
       }                                                                       \
@@ -62,7 +63,8 @@ extern void* tensorrt_plugin_dso_handle;
       std::call_once(tensorrt_dso_flag, []() {                                \
         tensorrt_dso_handle = paddle::platform::dynload::GetTensorRtHandle(); \
       });                                                                     \
-      static void* p_##__name = dlsym(tensorrt_dso_handle, #__name);          \
+      static void* p_##__name =                                               \
+          dlvsym(tensorrt_dso_handle, #__name, "GLIBC_2.2.5");                \
       PADDLE_ENFORCE_NOT_NULL(p_##__name,                                     \
                               platform::errors::Unavailable(                  \
                                   "Load tensorrt api %s failed", #__name));   \
@@ -80,7 +82,8 @@ extern void* tensorrt_plugin_dso_handle;
         tensorrt_plugin_dso_handle =                                           \
             paddle::platform::dynload::GetTensorRtPluginHandle();              \
       });                                                                      \
-      static void* p_##__name = dlsym(tensorrt_plugin_dso_handle, #__name);    \
+      static void* p_##__name =                                                \
+          dlvsym(tensorrt_plugin_dso_handle, #__name, "GLIBC_2.2.5");          \
       PADDLE_ENFORCE_NOT_NULL(p_##__name,                                      \
                               platform::errors::Unavailable(                   \
                                   "Load tensorrt plugin %s failed", #__name)); \

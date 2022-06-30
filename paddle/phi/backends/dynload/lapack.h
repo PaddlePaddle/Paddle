@@ -328,7 +328,8 @@ extern void *lapack_dso_handle;
       std::call_once(lapack_dso_flag, []() {                         \
         lapack_dso_handle = phi::dynload::GetLAPACKDsoHandle();      \
       });                                                            \
-      static void *p_##_name = dlsym(lapack_dso_handle, #__name);    \
+      static void *p_##_name =                                       \
+          dlvsym(lapack_dso_handle, #__name, "GLIBC_2.2.5");         \
       return reinterpret_cast<lapackFunc>(p_##_name)(args...);       \
     }                                                                \
   };                                                                 \

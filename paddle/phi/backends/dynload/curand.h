@@ -25,18 +25,19 @@ namespace dynload {
 extern std::once_flag curand_dso_flag;
 extern void *curand_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)                   \
-  struct DynLoad__##__name {                                       \
-    template <typename... Args>                                    \
-    curandStatus_t operator()(Args... args) {                      \
-      using curandFunc = decltype(&::__name);                      \
-      std::call_once(curand_dso_flag, []() {                       \
-        curand_dso_handle = phi::dynload::GetCurandDsoHandle();    \
-      });                                                          \
-      static void *p_##__name = dlsym(curand_dso_handle, #__name); \
-      return reinterpret_cast<curandFunc>(p_##__name)(args...);    \
-    }                                                              \
-  };                                                               \
+#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)                \
+  struct DynLoad__##__name {                                    \
+    template <typename... Args>                                 \
+    curandStatus_t operator()(Args... args) {                   \
+      using curandFunc = decltype(&::__name);                   \
+      std::call_once(curand_dso_flag, []() {                    \
+        curand_dso_handle = phi::dynload::GetCurandDsoHandle(); \
+      });                                                       \
+      static void *p_##__name =                                 \
+          dlvsym(curand_dso_handle, #__name, "GLIBC_2.2.5");    \
+      return reinterpret_cast<curandFunc>(p_##__name)(args...); \
+    }                                                           \
+  };                                                            \
   extern DynLoad__##__name __name
 
 #define CURAND_RAND_ROUTINE_EACH(__macro)      \

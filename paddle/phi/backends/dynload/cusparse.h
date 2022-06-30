@@ -26,18 +26,19 @@ namespace dynload {
 extern std::once_flag cusparse_dso_flag;
 extern void *cusparse_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP(__name)                   \
-  struct DynLoad__##__name {                                         \
-    template <typename... Args>                                      \
-    cusparseStatus_t operator()(Args... args) {                      \
-      using Func = decltype(&::__name);                              \
-      std::call_once(cusparse_dso_flag, []() {                       \
-        cusparse_dso_handle = phi::dynload::GetCusparseDsoHandle();  \
-      });                                                            \
-      static void *p_##__name = dlsym(cusparse_dso_handle, #__name); \
-      return reinterpret_cast<Func>(p_##__name)(args...);            \
-    }                                                                \
-  };                                                                 \
+#define DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP(__name)                  \
+  struct DynLoad__##__name {                                        \
+    template <typename... Args>                                     \
+    cusparseStatus_t operator()(Args... args) {                     \
+      using Func = decltype(&::__name);                             \
+      std::call_once(cusparse_dso_flag, []() {                      \
+        cusparse_dso_handle = phi::dynload::GetCusparseDsoHandle(); \
+      });                                                           \
+      static void *p_##__name =                                     \
+          dlvsym(cusparse_dso_handle, #__name, "GLIBC_2.2.5");      \
+      return reinterpret_cast<Func>(p_##__name)(args...);           \
+    }                                                               \
+  };                                                                \
   extern DynLoad__##__name __name
 
 #if defined(PADDLE_WITH_CUDA)

@@ -36,7 +36,8 @@ extern bool HasNVRTC();
       std::call_once(nvrtc_dso_flag, []() {                          \
         nvrtc_dso_handle = phi::dynload::GetNVRTCDsoHandle();        \
       });                                                            \
-      static void* p_##__name = dlsym(nvrtc_dso_handle, #__name);    \
+      static void* p_##__name =                                      \
+          dlvsym(nvrtc_dso_handle, #__name, "GLIBC_2.2.5");          \
       return reinterpret_cast<nvrtc_func>(p_##__name)(args...);      \
     }                                                                \
   };                                                                 \

@@ -36,7 +36,8 @@ extern bool HasCUDADriver();
       std::call_once(rocm_dso_flag, []() {                           \
         rocm_dso_handle = phi::dynload::GetCUDADsoHandle();          \
       });                                                            \
-      static void* p_##__name = dlsym(rocm_dso_handle, #__name);     \
+      static void* p_##__name =                                      \
+          dlvsym(rocm_dso_handle, #__name, "GLIBC_2.2.5");           \
       return reinterpret_cast<rocm_func>(p_##__name)(args...);       \
     }                                                                \
   };                                                                 \

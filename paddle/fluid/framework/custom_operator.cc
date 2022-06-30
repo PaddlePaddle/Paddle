@@ -50,7 +50,7 @@ namespace detail {
 // dynamic lib load func
 template <typename T>
 static T* DynLoad(void* handle, std::string name) {
-  T* func = reinterpret_cast<T*>(dlsym(handle, name.c_str()));
+  T* func = reinterpret_cast<T*>(dlvsym(handle, name.c_str()), "GLIBC_2.2.5");
 #if !defined(_WIN32)
   auto errorno = dlerror();
 #else

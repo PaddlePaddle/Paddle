@@ -36,7 +36,8 @@ extern bool HasCUDADriver();
       std::call_once(cuda_dso_flag, []() {                           \
         cuda_dso_handle = phi::dynload::GetCUDADsoHandle();          \
       });                                                            \
-      static void* p_##__name = dlsym(cuda_dso_handle, #__name);     \
+      static void* p_##__name =                                      \
+          dlvsym(cuda_dso_handle, #__name, "GLIBC_2.2.5");           \
       return reinterpret_cast<cuda_func>(p_##__name)(args...);       \
     }                                                                \
   };                                                                 \

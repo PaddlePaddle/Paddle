@@ -39,7 +39,7 @@
 #define S_ISDIR(mode) (((mode)&S_IFMT) == S_IFDIR)
 #endif  // S_ISDIR
 
-void *dlsym(void *handle, const char *symbol_name);
+void *dlvsym(void *handle, const char *symbol_name);
 
 void *dlopen(const char *filename, int flag);
 

@@ -46,7 +46,8 @@ extern void *cublas_dso_handle;
       std::call_once(cublas_dso_flag, []() {                                \
         cublas_dso_handle = phi::dynload::GetCublasDsoHandle();             \
       });                                                                   \
-      static void *p_##__name = dlsym(cublas_dso_handle, #__name);          \
+      static void *p_##__name =                                             \
+          dlvsym(cublas_dso_handle, #__name, "GLIBC_2.2.5");                \
       return reinterpret_cast<cublas_func>(p_##__name)(args...);            \
     }                                                                       \
   };                                                                        \

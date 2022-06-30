@@ -692,7 +692,8 @@ void LoadCustomRuntimeLib(const std::string& dso_lib_path, void* dso_handle) {
   runtime_params.interface->size = sizeof(C_DeviceInterface);
 
   RegisterDevicePluginFn init_plugin_fn =
-      reinterpret_cast<RegisterDevicePluginFn>(dlsym(dso_handle, "InitPlugin"));
+      reinterpret_cast<RegisterDevicePluginFn>(
+          dlvsym(dso_handle, "InitPlugin", "GLIBC_2.2.5"));
 
   if (init_plugin_fn == nullptr) {
     LOG(WARNING) << "Skipped lib [" << dso_lib_path << "]: fail to find "

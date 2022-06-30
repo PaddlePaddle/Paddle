@@ -25,18 +25,19 @@ namespace dynload {
 extern std::once_flag hiprand_dso_flag;
 extern void *hiprand_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)                    \
-  struct DynLoad__##__name {                                        \
-    template <typename... Args>                                     \
-    hiprandStatus_t operator()(Args... args) {                      \
-      using hiprandFunc = decltype(&::__name);                      \
-      std::call_once(hiprand_dso_flag, []() {                       \
-        hiprand_dso_handle = phi::dynload::GetCurandDsoHandle();    \
-      });                                                           \
-      static void *p_##__name = dlsym(hiprand_dso_handle, #__name); \
-      return reinterpret_cast<hiprandFunc>(p_##__name)(args...);    \
-    }                                                               \
-  };                                                                \
+#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)                 \
+  struct DynLoad__##__name {                                     \
+    template <typename... Args>                                  \
+    hiprandStatus_t operator()(Args... args) {                   \
+      using hiprandFunc = decltype(&::__name);                   \
+      std::call_once(hiprand_dso_flag, []() {                    \
+        hiprand_dso_handle = phi::dynload::GetCurandDsoHandle(); \
+      });                                                        \
+      static void *p_##__name =                                  \
+          dlvsym(hiprand_dso_handle, #__name, "GLIBC_2.2.5");    \
+      return reinterpret_cast<hiprandFunc>(p_##__name)(args...); \
+    }                                                            \
+  };                                                             \
   extern DynLoad__##__name __name
 
 #define HIPRAND_RAND_ROUTINE_EACH(__macro)      \

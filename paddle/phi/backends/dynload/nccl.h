@@ -34,7 +34,8 @@ extern void* nccl_dso_handle;
       std::call_once(nccl_dso_flag, []() {                       \
         nccl_dso_handle = phi::dynload::GetNCCLDsoHandle();      \
       });                                                        \
-      static void* p_##__name = dlsym(nccl_dso_handle, #__name); \
+      static void* p_##__name =                                  \
+          dlvsym(nccl_dso_handle, #__name, "GLIBC_2.2.5");       \
       return reinterpret_cast<nccl_func>(p_##__name)(args...);   \
     }                                                            \
   };                                                             \

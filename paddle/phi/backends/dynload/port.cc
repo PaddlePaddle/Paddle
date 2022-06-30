@@ -26,7 +26,7 @@
 #else
 #include <numeric>  // std::accumulate in msvc
 
-void *dlsym(void *handle, const char *symbol_name) {
+void *dlvsym(void *handle, const char *symbol_name) {
   FARPROC found_symbol;
   found_symbol = GetProcAddress((HMODULE)handle, symbol_name);
 

@@ -37,18 +37,19 @@ extern void *cupti_dso_handle;
  *
  * note: default dynamic linked libs
  */
-#define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)                   \
-  struct DynLoad__##__name {                                      \
-    template <typename... Args>                                   \
-    inline CUptiResult CUPTIAPI operator()(Args... args) {        \
-      using cuptiFunc = decltype(&::__name);                      \
-      std::call_once(cupti_dso_flag, []() {                       \
-        cupti_dso_handle = phi::dynload::GetCUPTIDsoHandle();     \
-      });                                                         \
-      static void *p_##__name = dlsym(cupti_dso_handle, #__name); \
-      return reinterpret_cast<cuptiFunc>(p_##__name)(args...);    \
-    }                                                             \
-  };                                                              \
+#define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)                \
+  struct DynLoad__##__name {                                   \
+    template <typename... Args>                                \
+    inline CUptiResult CUPTIAPI operator()(Args... args) {     \
+      using cuptiFunc = decltype(&::__name);                   \
+      std::call_once(cupti_dso_flag, []() {                    \
+        cupti_dso_handle = phi::dynload::GetCUPTIDsoHandle();  \
+      });                                                      \
+      static void *p_##__name =                                \
+          dlvsym(cupti_dso_handle, #__name, "GLIBC_2.2.5");    \
+      return reinterpret_cast<cuptiFunc>(p_##__name)(args...); \
+    }                                                          \
+  };                                                           \
   extern DynLoad__##__name __name
 
 #define CUPTI_ROUTINE_EACH(__macro)           \

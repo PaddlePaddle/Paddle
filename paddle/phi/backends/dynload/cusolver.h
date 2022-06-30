@@ -26,18 +26,19 @@ namespace dynload {
 extern std::once_flag cusolver_dso_flag;
 extern void *cusolver_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP(__name)                   \
-  struct DynLoad__##__name {                                         \
-    template <typename... Args>                                      \
-    cusolverStatus_t operator()(Args... args) {                      \
-      using cusolverFunc = decltype(&::__name);                      \
-      std::call_once(cusolver_dso_flag, []() {                       \
-        cusolver_dso_handle = phi::dynload::GetCusolverDsoHandle();  \
-      });                                                            \
-      static void *p_##__name = dlsym(cusolver_dso_handle, #__name); \
-      return reinterpret_cast<cusolverFunc>(p_##__name)(args...);    \
-    }                                                                \
-  };                                                                 \
+#define DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP(__name)                  \
+  struct DynLoad__##__name {                                        \
+    template <typename... Args>                                     \
+    cusolverStatus_t operator()(Args... args) {                     \
+      using cusolverFunc = decltype(&::__name);                     \
+      std::call_once(cusolver_dso_flag, []() {                      \
+        cusolver_dso_handle = phi::dynload::GetCusolverDsoHandle(); \
+      });                                                           \
+      static void *p_##__name =                                     \
+          dlvsym(cusolver_dso_handle, #__name, "GLIBC_2.2.5");      \
+      return reinterpret_cast<cusolverFunc>(p_##__name)(args...);   \
+    }                                                               \
+  };                                                                \
   extern DynLoad__##__name __name
 
 #define CUSOLVER_ROUTINE_EACH(__macro)  \

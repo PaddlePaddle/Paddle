@@ -40,7 +40,8 @@ extern void* mklrt_dso_handle;
       std::call_once(mklrt_dso_flag, []() {                          \
         mklrt_dso_handle = phi::dynload::GetMKLRTDsoHandle();        \
       });                                                            \
-      static void* p_##__name = dlsym(mklrt_dso_handle, #__name);    \
+      static void* p_##__name =                                      \
+          dlvsym(mklrt_dso_handle, #__name, "GLIBC_2.2.5");          \
       return reinterpret_cast<mklrtFunc>(p_##__name)(args...);       \
     }                                                                \
   };                                                                 \

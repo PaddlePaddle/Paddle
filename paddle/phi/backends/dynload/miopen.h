@@ -73,7 +73,8 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
         miopen_dso_handle = phi::dynload::GetCUDNNDsoHandle();       \
       });                                                            \
       EnforceCUDNNLoaded(#__name);                                   \
-      static void* p_##__name = dlsym(miopen_dso_handle, #__name);   \
+      static void* p_##__name =                                      \
+          dlvsym(miopen_dso_handle, #__name, "GLIBC_2.2.5");         \
       return reinterpret_cast<miopen_func>(p_##__name)(args...);     \
     }                                                                \
   };                                                                 \

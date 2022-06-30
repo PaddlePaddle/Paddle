@@ -40,7 +40,8 @@ extern void* hccl_dso_handle;
       std::call_once(hccl_dso_flag, []() {                               \
         hccl_dso_handle = paddle::platform::dynload::GetHCCLDsoHandle(); \
       });                                                                \
-      static void* p_##__name = dlsym(hccl_dso_handle, #__name);         \
+      static void* p_##__name =                                          \
+          dlvsym(hccl_dso_handle, #__name, "GLIBC_2.2.5");               \
       return reinterpret_cast<HCCL_func>(p_##__name)(args...);           \
     }                                                                    \
   };                                                                     \
