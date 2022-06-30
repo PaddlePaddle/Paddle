@@ -327,12 +327,10 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
         tensor = &cpu_tensor;
       }
       auto& dims = tensor->dims();
-      // if (dims.size() != 2 || dims[0] != static_cast<int>(batch_size)) {
       if (dims.size() != 2 || dims[0] <= 0) {
         VLOG(0) << "Note: field[" << field << "] cannot pass check, so it was "
                                               "skipped. Maybe the dimension is "
                                               "wrong ";
-        // VLOG(0) << dims.size() << " " << dims[0] << " * " << dims[1];
         continue;
       }
       size_t acutal_thread_num =
