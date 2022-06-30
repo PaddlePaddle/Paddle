@@ -1258,7 +1258,8 @@ int32_t GraphTable::random_sample_nodes(int type_id,
   std::set<int> separator_set;
   for (int i = 0; i < range_num - 1; i++) {
     while (separator_set.find(num = rand() % (sample_size - 1)) !=  // NOLINT
-           separator_set.end());
+           separator_set.end()) {
+    }
     separator_set.insert(num);
   }
   for (auto p : separator_set) {
@@ -1270,7 +1271,8 @@ int32_t GraphTable::random_sample_nodes(int type_id,
   separator_set.clear();
   for (int i = 0; i < range_num; i++) {
     while (separator_set.find(num = rand() % remain) !=  // NOLINT
-           separator_set.end());
+           separator_set.end()) {
+    }
     separator_set.insert(num);
   }
   int used = 0, index = 0;
