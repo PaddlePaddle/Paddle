@@ -74,7 +74,13 @@ class PadMKLDNNKernel : public framework::OpKernel<T> {
 
     auto* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
+    auto* paddings_tensor = ctx.Input<Tensor>("Paddings");
     std::vector<int> paddings(ctx.Attr<std::vector<int>>("paddings"));
+    if (paddings_tensor) {
+      std::copy(paddings_tensor->data<int>(),
+                paddings_tensor->data<int>() + paddings_tensor->numel(),
+                paddings.data());
+    }
     // pad2d has paddings in order top, bottom, left, right, so we need
     // to swap some of them to unify paddings between pad2d and pad3d
     if (ctx.Type() == "pad2d") {

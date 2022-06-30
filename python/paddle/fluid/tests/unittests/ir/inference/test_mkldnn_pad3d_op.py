@@ -21,23 +21,21 @@ from hypothesis import given, reproduce_failure
 import hypothesis.strategies as st
 
 
-@reproduce_failure('6.45.0', b'AAEAAAAAAAAAAAAAAQ==')
 class TestOneDNNPad3DOp(MkldnnAutoScanTest):
-
-    def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        # if mode is channel, and in_shape is 1 rank
-        if len(program_config.inputs['input_data'].shape
-               ) == 1 and program_config.ops[0].attrs['mode'] == 'channel':
-            return False
-        return True
 
     def sample_program_configs(self, *args, **kwargs):
 
         def generate_input(*args, **kwargs):
             return np.random.random(kwargs['in_shape']).astype(np.float32)
 
+        def generate_paddings():
+            return np.random.randint(0, 4, size=(6)).astype(np.int32)
+
         pad3d_op = OpConfig(type="pad3d",
-                            inputs={"X": ["input_data"]},
+                            inputs={
+                                "X": ["input_data"],
+                                "Paddings": ["paddings_data"]
+                            },
                             outputs={"Out": ["output_data"]},
                             attrs={
                                 "mode": "constant",
@@ -51,6 +49,8 @@ class TestOneDNNPad3DOp(MkldnnAutoScanTest):
             inputs={
                 "input_data":
                 TensorConfig(data_gen=partial(generate_input, *args, **kwargs)),
+                "paddings_data":
+                TensorConfig(data_gen=generate_paddings)
             },
             outputs=["output_data"])
 
@@ -61,6 +61,7 @@ class TestOneDNNPad3DOp(MkldnnAutoScanTest):
         yield config, (1e-5, 1e-5)
 
     @given(data_format=st.sampled_from(['NCDHW', 'NDHWC']),
+           use_paddings_tensor=st.sampled_from([True, False]),
            in_shape=st.lists(st.integers(min_value=1, max_value=10),
                              min_size=5,
                              max_size=5),
