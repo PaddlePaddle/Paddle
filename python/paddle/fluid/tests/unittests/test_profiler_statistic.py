@@ -16,6 +16,7 @@ import unittest
 
 import paddle
 import paddle.profiler as profiler
+import paddle.profiler.profiler_statistic as profiler_statistic
 
 
 class HostPythonNode:
@@ -30,6 +31,7 @@ class HostPythonNode:
         self.children_node = []
         self.runtime_node = []
         self.device_node = []
+        self.mem_node = []
 
 
 class DevicePythonNode:
@@ -43,6 +45,22 @@ class DevicePythonNode:
         self.device_id = device_id
         self.context_id = context_id
         self.stream_id = stream_id
+
+
+class MemPythonNode:
+    def __init__(self, timestamp_ns, addr, type, process_id, thread_id, increase_bytes, place, current_allocated, \
+        current_reserved, peak_allocated, peak_reserved):
+        self.timestamp_ns = timestamp_ns
+        self.addr = addr
+        self.type = type
+        self.process_id = process_id
+        self.thread_id = thread_id
+        self.increase_bytes = increase_bytes
+        self.place = place
+        self.current_allocated = current_allocated
+        self.current_reserved = current_reserved
+        self.peak_allocated = peak_allocated
+        self.peak_reserved = peak_reserved
 
 
 class TestProfilerStatistic(unittest.TestCase):
@@ -89,6 +107,9 @@ class TestProfilerStatistic(unittest.TestCase):
         conv2d_compute = HostPythonNode('conv2d::compute',
                                         profiler.TracerEventType.OperatorInner,
                                         30, 40, 1000, 1001)
+        conv2d_compute.mem_node.append(
+            MemPythonNode(33, 0, profiler_statistic.TracerMemEventType.Allocate,
+                          1000, 1001, 20, 'place(gpu:0)', 200, 200, 800, 800))
         conv2d_launchkernel = HostPythonNode(
             'cudalaunchkernel', profiler.TracerEventType.CudaRuntime, 30, 35,
             1000, 1001)
@@ -211,6 +232,24 @@ class TestProfilerStatistic(unittest.TestCase):
         self.assertEqual(
             event_summary.memory_manipulation_items['AsyncMemcpy'].
             general_gpu_time, 60)
+        self.assertEqual(
+            statistic_data.memory_summary.allocated_items['place(gpu:0)']
+            ['conv2d'].allocation_count, 1)
+        self.assertEqual(
+            statistic_data.memory_summary.allocated_items['place(gpu:0)']
+            ['conv2d'].allocation_size, 20)
+        self.assertEqual(
+            statistic_data.memory_summary.allocated_items['place(gpu:0)']
+            ['conv2d'].increase_size, 20)
+        self.assertEqual(
+            statistic_data.memory_summary.allocated_items['place(gpu:0)']
+            ['conv2d'].increase_size, 20)
+        self.assertEqual(
+            statistic_data.memory_summary.
+            peak_allocation_values['place(gpu:0)'], 800)
+        self.assertEqual(
+            statistic_data.memory_summary.peak_reserved_values['place(gpu:0)'],
+            800)
         print(
             profiler.profiler_statistic._build_table(
                 statistic_data,
