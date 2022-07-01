@@ -235,7 +235,7 @@ void set_constant_with_place<platform::CUDAPinnedPlace>(
   framework::VisitDataType(tensor->type(), TensorSetConstantCPU(tensor, value));
 }
 
-struct TensorSetConstantWithPlace : public boost::static_visitor<void> {
+struct TensorSetConstantWithPlace {
   TensorSetConstantWithPlace(const platform::DeviceContext& context,
                              framework::Tensor* tensor,
                              float value)

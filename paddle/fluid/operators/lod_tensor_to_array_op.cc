@@ -44,7 +44,8 @@ struct LoDTensorToArrayFunctorImpl {
   void apply();
 };
 
-struct LoDTensorToArrayFunctor : public boost::static_visitor<void> {
+struct LoDTensorToArrayFunctor
+    : public std::unary_function<platform::Place, void> {
   std::vector<const framework::Tensor *> ref_inputs_;
   mutable std::vector<framework::Tensor *> outputs_;
   const framework::Tensor &input_;

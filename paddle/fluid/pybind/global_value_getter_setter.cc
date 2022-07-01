@@ -217,7 +217,7 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
                        GlobalVarGetterSetterRegistry::CreateSetter(&var)); \
   } while (0)
 
-struct RegisterGetterSetterVisitor : public boost::static_visitor<void> {
+struct RegisterGetterSetterVisitor {
   RegisterGetterSetterVisitor(const std::string &name,
                               bool is_writable,
                               void *value_ptr)

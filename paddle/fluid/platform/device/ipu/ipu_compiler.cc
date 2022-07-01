@@ -32,7 +32,7 @@ namespace ipu {
 
 namespace {
 
-struct CustomOpAttrVisitor : public boost::static_visitor<void> {
+struct CustomOpAttrVisitor {
   CustomOpAttrVisitor(std::map<std::string, popart::any>* attr,
                       const std::string& attr_name)
       : attrs_(attr), attr_name_(attr_name) {}
@@ -82,7 +82,7 @@ struct CustomOpAttrVisitor : public boost::static_visitor<void> {
   }
 };
 
-struct ConstantOpAttrVisitor : public boost::static_visitor<void> {
+struct ConstantOpAttrVisitor {
   ConstantOpAttrVisitor(framework::LoDTensor* tensor, VarType::Type dtype)
       : tensor_(tensor), dtype_(dtype) {}
 

@@ -19,7 +19,7 @@ namespace operators {
 namespace math {
 
 template <typename T>
-struct MatrixBitCodeFunctorAdd : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorAdd {
   const framework::Tensor &vec_;
   framework::Tensor *tmat_;
 
@@ -51,7 +51,7 @@ void MatrixBitCodeFunctor<T>::Add(const framework::Tensor &vec,
 }
 
 template <typename T>
-struct MatrixBitCodeFunctorAddGrad : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorAddGrad {
   const framework::Tensor &tmat_;
   framework::Tensor *vec_;
   MatrixBitCodeFunctorAddGrad(const framework::Tensor &tmat,
@@ -83,7 +83,7 @@ void MatrixBitCodeFunctor<T>::AddGrad(const framework::Tensor &tmat,
 }
 
 template <typename T>
-struct MatrixBitCodeFunctorSum : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorSum {
   const framework::Tensor &tmat_;
   framework::Tensor *sum_;
   T scale_sum_;
@@ -125,7 +125,7 @@ void MatrixBitCodeFunctor<T>::Sum(const framework::Tensor &tmat,
 }
 
 template <typename T>
-struct MatrixBitCodeFunctorMul : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorMul {
   framework::Tensor *tmat_;
   const framework::Tensor &weight_;
   const framework::Tensor &input_;
@@ -175,7 +175,7 @@ class ReservedVector : public std::vector<T> {
 };
 
 template <typename T>
-struct MatrixBitCodeFunctorMulGradWeight : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorMulGradWeight {
   const framework::Tensor &tmat_;
   framework::Tensor *weight_;
   const framework::Tensor &input_;
@@ -226,8 +226,7 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::Tensor &tmat,
 }
 
 template <typename T>
-struct MatrixBitCodeFunctorMulGradWeightSR
-    : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorMulGradWeightSR {
   const framework::Tensor &tmat_;
   phi::SelectedRows *weight_;
   const framework::Tensor &input_;
@@ -283,7 +282,7 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::Tensor &tmat,
 }
 
 template <typename T>
-struct MatrixBitCodeFunctorMulGradError : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorMulGradError {
   const framework::Tensor &tmat_;
   const framework::Tensor &weight_;
   framework::Tensor *input_;
@@ -327,7 +326,7 @@ void MatrixBitCodeFunctor<T>::MulGradError(const framework::Tensor &tmat,
 }
 
 template <typename T>
-struct MatrixBitCodeFunctorSub : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorSub {
   framework::Tensor *tmat_;
 
   explicit MatrixBitCodeFunctorSub(framework::Tensor *tmat) : tmat_(tmat) {}

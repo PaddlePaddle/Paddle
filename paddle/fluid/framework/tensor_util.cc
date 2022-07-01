@@ -689,7 +689,7 @@ inline void AnyImpl(Predicate predicate,
 }
 
 template <typename Predicate>
-class AnyVisitor : public boost::static_visitor<bool> {
+class AnyVisitor : public std::unary_function<const Place&, bool> {
  private:
   const framework::Tensor& tensor_;
   Predicate predicate_;
@@ -774,7 +774,7 @@ class AnyVisitor : public boost::static_visitor<bool> {
 };
 
 template <typename Predicate>
-class AnyOutVisitor : public boost::static_visitor<> {
+class AnyOutVisitor : public std::unary_function<const Place&, void> {
  private:
   const framework::Tensor& tensor_;
   mutable framework::Tensor* out_;
@@ -843,7 +843,7 @@ inline void AllImpl(Predicate predicate,
 }
 
 template <typename Predicate>
-class AllOutVisitor : public boost::static_visitor<> {
+class AllOutVisitor : public std::unary_function<const Place&, void> {
  private:
   const framework::Tensor& tensor_;
   mutable framework::Tensor* out_;
@@ -942,7 +942,7 @@ static inline void __global__ BothFalse(const T* cmp, T* out, int element_num) {
 }
 #endif
 
-struct BothFalseVisitor : public boost::static_visitor<> {
+struct BothFalseVisitor : public std::unary_function<const Place&, void> {
   const framework::Tensor& in_;
   mutable framework::Tensor* out_;
   BothFalseVisitor(const framework::Tensor& in, framework::Tensor* out)
