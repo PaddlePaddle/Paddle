@@ -61,7 +61,8 @@ static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
   static auto type_to_dtype_map = CreateDLDataTypeMap();
   static auto type_to_dtype_map_end_it = type_to_dtype_map.end();
   auto it = type_to_dtype_map.find(static_cast<int>(type));
-  PADDLE_ENFORCE_NE(it, type_to_dtype_map_end_it,
+  PADDLE_ENFORCE_NE(it,
+                    type_to_dtype_map_end_it,
                     platform::errors::InvalidArgument(
                         "Unsupported data type (%s).", DataTypeToString(type)));
   return it->second;

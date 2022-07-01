@@ -47,7 +47,8 @@ struct Registry {
 
   template <typename ItemChild>
   void Register(const std::string& name) {
-    PADDLE_ENFORCE_EQ(items_.count(name), 0,
+    PADDLE_ENFORCE_EQ(items_.count(name),
+                      0,
                       platform::errors::AlreadyExists(
                           "Item `%s` has beed registered.", name));
     items_[name] = new ItemChild;

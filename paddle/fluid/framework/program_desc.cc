@@ -75,7 +75,8 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
         if (op->GetAttrType(attr_name) == proto::AttrType::BLOCK) {
           framework::BlockDesc *block_desc =
               BOOST_GET_CONST(framework::BlockDesc *, op->GetAttr(attr_name));
-          if (std::find(old_block_desc.begin(), old_block_desc.end(),
+          if (std::find(old_block_desc.begin(),
+                        old_block_desc.end(),
                         block_desc) != old_block_desc.end()) {
             // The block is owned by the origin program. Just use id to get
             // the corresponding block.
@@ -114,7 +115,8 @@ void ProgramDesc::CopyFrom(const proto::ProgramDesc &desc) {
 }
 
 ProgramDesc::ProgramDesc(const std::string &binary_str) {
-  PADDLE_ENFORCE_EQ(desc_.ParseFromString(binary_str), true,
+  PADDLE_ENFORCE_EQ(desc_.ParseFromString(binary_str),
+                    true,
                     platform::errors::InvalidArgument(
                         "Failed to parse program_desc from binary string."));
   InitFromProto();

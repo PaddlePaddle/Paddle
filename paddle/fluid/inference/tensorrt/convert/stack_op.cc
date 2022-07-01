@@ -34,7 +34,8 @@ namespace tensorrt {
 class StackOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert fluid stack op to tensorrt stack layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -64,8 +65,9 @@ class StackOpConverter : public OpConverter {
         new plugin::StackPluginDynamic(axis, input_num, with_fp16);
     layer = engine_->AddDynamicPlugin(inputs, input_num, plugin);
     PADDLE_ENFORCE_NOT_NULL(
-        layer, platform::errors::InvalidArgument(
-                   "trt stack layer in converter could not be created."));
+        layer,
+        platform::errors::InvalidArgument(
+            "trt stack layer in converter could not be created."));
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "You are running the TRT Dynamic Shape mode, need to confirm that "

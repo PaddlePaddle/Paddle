@@ -25,7 +25,6 @@
 
 #include <string>
 
-#include "boost/variant.hpp"
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
@@ -43,18 +42,21 @@
 #endif
 
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/utils/variant.h"
 
 namespace paddle {
 namespace distributed {
 
-#define NCCLCHECK(cmd)                                              \
-  do {                                                              \
-    ncclResult_t r = cmd;                                           \
-    if (r != ncclSuccess) {                                         \
-      printf("Failed, NCCL error %s:%d '%s'\n", __FILE__, __LINE__, \
-             platform::dynload::ncclGetErrorString(r));             \
-      exit(EXIT_FAILURE);                                           \
-    }                                                               \
+#define NCCLCHECK(cmd)                                  \
+  do {                                                  \
+    ncclResult_t r = cmd;                               \
+    if (r != ncclSuccess) {                             \
+      printf("Failed, NCCL error %s:%d '%s'\n",         \
+             __FILE__,                                  \
+             __LINE__,                                  \
+             platform::dynload::ncclGetErrorString(r)); \
+      exit(EXIT_FAILURE);                               \
+    }                                                   \
   } while (0)
 
 // NOTE(shenliang03): EventManager are movable not copyable CudaEvent wrapper.
@@ -107,11 +109,13 @@ class EventManager {
     if (!is_created_) {
       CreateEvent(device_index);
     }
-    PADDLE_ENFORCE_EQ(device_index, device_index_,
+    PADDLE_ENFORCE_EQ(device_index,
+                      device_index_,
                       platform::errors::PreconditionNotMet(
                           "CUDADeviceContext's device %d does not match"
                           "Event's device %d",
-                          device_index, device_index_));
+                          device_index,
+                          device_index_));
 
     platform::CUDADeviceGuard guard(device_index_);
 #ifdef PADDLE_WITH_CUDA
@@ -156,11 +160,13 @@ class EventManager {
   void Block(const paddle::platform::CUDADeviceContext& ctx) const {
     if (is_created_) {
       auto device_index = ctx.GetPlace().device;
-      PADDLE_ENFORCE_EQ(device_index, device_index_,
+      PADDLE_ENFORCE_EQ(device_index,
+                        device_index_,
                         platform::errors::PreconditionNotMet(
                             "CUDADeviceContext's device %d does not match"
                             "Event's device %d",
-                            device_index, device_index_));
+                            device_index,
+                            device_index_));
       platform::CUDADeviceGuard guard(device_index_);
 
 #ifdef PADDLE_WITH_HIP
@@ -213,11 +219,12 @@ class NCCLCommManager {
     }
   }
 
-  static std::shared_ptr<NCCLCommManager> Create(int num_ranks, int rank,
+  static std::shared_ptr<NCCLCommManager> Create(int num_ranks,
+                                                 int rank,
                                                  ncclUniqueId comm_id) {
     auto nccl_manager = std::make_shared<NCCLCommManager>();
-    NCCLCHECK(platform::dynload::ncclCommInitRank(&(nccl_manager->nccl_comm_),
-                                                  num_ranks, comm_id, rank));
+    NCCLCHECK(platform::dynload::ncclCommInitRank(
+        &(nccl_manager->nccl_comm_), num_ranks, comm_id, rank));
 
     nccl_manager->nccl_id_ = comm_id;
     nccl_manager->rank_ = rank;

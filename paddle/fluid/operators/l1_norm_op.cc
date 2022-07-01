@@ -39,10 +39,14 @@ class L1NormGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "L1NormGradOp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "L1NormGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@GRAD", "L1NormGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "L1NormGradOp");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@GRAD",
+                   "L1NormGradOp");
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
@@ -83,7 +87,9 @@ class L1NormGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(l1_norm, ops::L1NormOp, ops::L1NormOpMaker,
+REGISTER_OPERATOR(l1_norm,
+                  ops::L1NormOp,
+                  ops::L1NormOpMaker,
                   ops::L1NormGradMaker<paddle::framework::OpDesc>,
                   ops::L1NormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(l1_norm_grad, ops::L1NormGradOp);

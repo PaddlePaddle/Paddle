@@ -39,8 +39,8 @@ paddle::experimental::Tensor hook_function(
     const paddle::experimental::Tensor& t) {
   auto t_dense = std::dynamic_pointer_cast<phi::DenseTensor>(t.impl());
 
-  auto ret_meta = phi::DenseTensorMeta(t_dense->dtype(), t_dense->dims(),
-                                       t_dense->layout());
+  auto ret_meta = phi::DenseTensorMeta(
+      t_dense->dtype(), t_dense->dims(), t_dense->layout());
   auto place = t_dense->place();
   size_t bytes_size = phi::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<phi::DenseTensor>(
@@ -68,9 +68,13 @@ void test_sigmoid(bool is_remove_gradient_hook) {
   paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
 
   VLOG(6) << "Make paddle::experimental::Tensor";
-  paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 0.0, true);
+  paddle::experimental::Tensor tensor =
+      egr_utils_api::CreateTensorWithValue(ddim,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           0.0,
+                                           true);
 
   VLOG(6) << "Make ReduceHook function";
   auto reduce_hook = [&](void) -> void {
@@ -130,15 +134,23 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
-  paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
-      ddimX, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 3.0, true);
+  paddle::experimental::Tensor X =
+      egr_utils_api::CreateTensorWithValue(ddimX,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           3.0,
+                                           true);
   egr_utils_api::RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = phi::make_ddim({4, 16});
-  paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
-      ddimY, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 2.0, true);
+  paddle::experimental::Tensor Y =
+      egr_utils_api::CreateTensorWithValue(ddimY,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           2.0,
+                                           true);
 
   auto reduce_hook = [&]() -> void {
     auto* t_ptr =
@@ -187,15 +199,23 @@ void test_matmul(bool is_remove_gradient_hook) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
-  paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
-      ddimX, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 3.0, true);
+  paddle::experimental::Tensor X =
+      egr_utils_api::CreateTensorWithValue(ddimX,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           3.0,
+                                           true);
   egr_utils_api::RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
-  paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
-      ddimY, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 2.0, true);
+  paddle::experimental::Tensor Y =
+      egr_utils_api::CreateTensorWithValue(ddimY,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           2.0,
+                                           true);
 
   auto reduce_hook = [&](void) -> void {
     auto* t_ptr =

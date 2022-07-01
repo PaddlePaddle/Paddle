@@ -72,33 +72,51 @@ class StaticCode1():
                                             name='__return_value_init_0')
         __return_value_0 = __return_value_init_0
 
-        def true_fn_0(x_v):
+        def get_args_0():
+            nonlocal x_v
+            return x_v,
+
+        def set_args_0(__args):
+            nonlocal x_v
+            x_v, = __args
+
+        def true_fn_0():
+            nonlocal x_v
             x_v = x_v - 1
             return x_v
 
-        def false_fn_0(x_v):
+        def false_fn_0():
+            nonlocal x_v
             x_v = x_v + 1
             return x_v
 
-        x_v = _jst.convert_ifelse(
-            fluid.layers.mean(x_v)[0] > 5, true_fn_0, false_fn_0, (x_v, ),
-            (x_v, ))
+        _jst.IfElse(
+            fluid.layers.mean(x_v)[0] > 5, true_fn_0, false_fn_0, get_args_0,
+            set_args_0, ('x_v', ))
 
-        def true_fn_1(__return_value_0, label, x_v):
+        def get_args_1():
+            nonlocal __return_value_0, label, x_v
+            return __return_value_0, label, x_v,
+
+        def set_args_1(__args):
+            nonlocal __return_value_0, label, x_v
+            __return_value_0, label, x_v, = __args
+
+        def true_fn_1():
+            nonlocal __return_value_0, label, x_v
             loss = fluid.layers.cross_entropy(x_v, label)
             __return_0 = _jst.create_bool_as_type(label is not None, True)
             __return_value_0 = loss
             return __return_value_0
 
-        def false_fn_1(__return_value_0, label, x_v):
+        def false_fn_1():
+            nonlocal __return_value_0, label, x_v
             __return_1 = _jst.create_bool_as_type(label is not None, True)
             __return_value_0 = x_v
             return __return_value_0
 
-        __return_value_0 = _jst.convert_ifelse(label is not None, true_fn_1,
-                                               false_fn_1,
-                                               (__return_value_0, label, x_v),
-                                               (__return_value_0, label, x_v))
+        _jst.IfElse(label is not None, true_fn_1, false_fn_1, get_args_1,
+                    set_args_1, ('__return_value_0', ))
         return __return_value_0
 
 
@@ -111,33 +129,51 @@ class StaticCode2():
                                             name='__return_value_init_1')
         __return_value_1 = __return_value_init_1
 
-        def true_fn_2(x_v):
+        def get_args_2():
+            nonlocal x_v
+            return x_v,
+
+        def set_args_2(__args):
+            nonlocal x_v
+            x_v, = __args
+
+        def true_fn_2():
+            nonlocal x_v
             x_v = x_v - 1
             return x_v
 
-        def false_fn_2(x_v):
+        def false_fn_2():
+            nonlocal x_v
             x_v = x_v + 1
             return x_v
 
-        x_v = _jst.convert_ifelse(
-            fluid.layers.mean(x_v)[0] > 5, true_fn_2, false_fn_2, (x_v, ),
-            (x_v, ))
+        _jst.IfElse(
+            fluid.layers.mean(x_v)[0] > 5, true_fn_2, false_fn_2, get_args_2,
+            set_args_2, ('x_v', ))
 
-        def true_fn_3(__return_value_1, label, x_v):
+        def get_args_3():
+            nonlocal __return_value_1, label, x_v
+            return __return_value_1, label, x_v,
+
+        def set_args_3(__args):
+            nonlocal __return_value_1, label, x_v
+            __return_value_1, label, x_v, = __args
+
+        def true_fn_3():
+            nonlocal __return_value_1, label, x_v
             loss = fluid.layers.cross_entropy(x_v, label)
             __return_2 = _jst.create_bool_as_type(label is not None, True)
             __return_value_1 = loss
             return __return_value_1
 
-        def false_fn_3(__return_value_1, label, x_v):
+        def false_fn_3():
+            nonlocal __return_value_1, label, x_v
             __return_3 = _jst.create_bool_as_type(label is not None, True)
             __return_value_1 = x_v
             return __return_value_1
 
-        __return_value_1 = _jst.convert_ifelse(label is not None, true_fn_3,
-                                               false_fn_3,
-                                               (__return_value_1, label, x_v),
-                                               (__return_value_1, label, x_v))
+        _jst.IfElse(label is not None, true_fn_3, false_fn_3, get_args_3,
+                    set_args_3, ('__return_value_1', ))
         return __return_value_1
 
 
@@ -166,6 +202,7 @@ class TestDygraphToStaticCode(unittest.TestCase):
         answer = get_source_code(StaticCode2.dyfunc_with_if_else)
         program_translator = ProgramTranslator()
         code = program_translator.get_code(dyfunc_with_if_else)
+        # print(code)
         self.assertEqual(answer, code)
 
 

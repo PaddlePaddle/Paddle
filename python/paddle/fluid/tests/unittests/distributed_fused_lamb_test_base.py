@@ -315,7 +315,7 @@ class TestDistributedFusedLamb(unittest.TestCase):
         if use_fp16:
             atol = 8e-4 if use_master_param_norm else 1e-3
         else:
-            atol = 1e-7
+            atol = 1.5e-7
         for ret1, ret2 in zip(result1, result2):
             max_diff = np.max(np.abs(ret1 - ret2))
             msg = 'max_diff = {} atol = {} when use_fp16 = {} , use_master_param_norm = {}'.format(

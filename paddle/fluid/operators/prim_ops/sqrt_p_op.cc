@@ -26,7 +26,8 @@ namespace paddle {
 namespace operators {
 class SqrtPrimOp : public framework::OperatorBase {
  public:
-  SqrtPrimOp(const std::string &type, const framework::VariableNameMap &inputs,
+  SqrtPrimOp(const std::string &type,
+             const framework::VariableNameMap &inputs,
              const framework::VariableNameMap &outputs,
              const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
@@ -74,7 +75,8 @@ class SqrtPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(sqrt_p, paddle::operators::SqrtPrimOp,
+REGISTER_OPERATOR(sqrt_p,
+                  paddle::operators::SqrtPrimOp,
                   paddle::operators::SqrtPrimOpMaker,
                   paddle::operators::SqrtPrimOpShapeInference,
                   paddle::operators::SqrtPrimOpVarTypeInference);

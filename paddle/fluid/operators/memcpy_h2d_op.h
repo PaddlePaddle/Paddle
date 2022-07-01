@@ -46,12 +46,13 @@ class MemcpyH2DFunctor {
     auto stream = nullptr;
 #endif
     out_tensor.mutable_data(
-        dev_ctx_.GetPlace(), lod_tensor.dtype(),
+        dev_ctx_.GetPlace(),
+        lod_tensor.dtype(),
         phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
-    if (dst_place_type_ == 0 || dst_place_type_ == 1) {
-      framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
-                            &out_tensor);
+    if (dst_place_type_ == 0 || dst_place_type_ == 1 || dst_place_type_ == 2) {
+      framework::TensorCopy(
+          lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
@@ -68,7 +69,8 @@ class MemcpyH2DFunctor {
   template <typename T>
   void operator()(const T &v) const {
     PADDLE_ENFORCE_EQ(
-        true, false,
+        true,
+        false,
         platform::errors::PermissionDenied(
             "Not support type for Memcpy  op with type %s", typeid(T).name()));
   }

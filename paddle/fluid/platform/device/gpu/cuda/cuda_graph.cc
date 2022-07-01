@@ -72,7 +72,8 @@ static std::vector<cudaGraphNode_t> ToposortCUDAGraph(cudaGraph_t graph) {
     }
   }
   PADDLE_ENFORCE_EQ(
-      nodes.size(), num_nodes,
+      nodes.size(),
+      num_nodes,
       phi::errors::InvalidArgument("Toposort error, this may be a bug."));
   return nodes;
 }
@@ -110,7 +111,8 @@ void CUDAGraph::Reset() {
 
 void CUDAGraph::Replay() {
 #if CUDA_VERSION >= 10010
-  PADDLE_ENFORCE_EQ(is_reset_, false,
+  PADDLE_ENFORCE_EQ(is_reset_,
+                    false,
                     errors::PermissionDenied(
                         "Cannot replay the CUDA Graph after reset is called."));
   size_t n = exec_graphs_.size();
@@ -130,11 +132,13 @@ void CUDAGraph::BeginSegmentCapture() {
   ThrowErrorIfNotSupportCUDAGraph();
 #if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(
-      IsCapturing(), true,
+      IsCapturing(),
+      true,
       errors::PermissionDenied("BeginSegmentCapture should be called when CUDA "
                                "Graph is capturing."));
   if (IsThreadLocalCapturing()) {
-    PADDLE_ENFORCE_EQ(IsThisThreadCapturing(), true,
+    PADDLE_ENFORCE_EQ(IsThisThreadCapturing(),
+                      true,
                       platform::errors::PermissionDenied(
                           "When capturing CUDA Graph in the thread local mode, "
                           "you cannot begin segmented capturing in the thread "
@@ -142,7 +146,8 @@ void CUDAGraph::BeginSegmentCapture() {
   }
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamBeginCapture(
       capturing_graph_->stream_, capturing_graph_->capture_mode_));
-  PADDLE_ENFORCE_EQ(IsValidCapturing(), true,
+  PADDLE_ENFORCE_EQ(IsValidCapturing(),
+                    true,
                     platform::errors::PermissionDenied(
                         "CUDA Graph should not be invalidated."));
   VLOG(10) << "Begin to capture CUDA Graph with ID " << capturing_graph_->id_
@@ -151,16 +156,19 @@ void CUDAGraph::BeginSegmentCapture() {
 #endif
 }
 
-void CUDAGraph::BeginCapture(platform::CUDAPlace place, cudaStream_t stream,
+void CUDAGraph::BeginCapture(platform::CUDAPlace place,
+                             cudaStream_t stream,
                              cudaStreamCaptureMode mode) {
   ThrowErrorIfNotSupportCUDAGraph();
 #if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(
-      IsCapturing(), false,
+      IsCapturing(),
+      false,
       errors::PermissionDenied("CUDA Graph can only captured one by one."));
   PADDLE_ENFORCE_NOT_NULL(
-      stream, errors::PermissionDenied(
-                  "CUDA Graph cannot be captured in default CUDA stream 0."));
+      stream,
+      errors::PermissionDenied(
+          "CUDA Graph cannot be captured in default CUDA stream 0."));
   capturing_graph_.reset(new CUDAGraph());
   capturing_graph_->place_ = place;
   capturing_graph_->stream_ = stream;
@@ -177,7 +185,8 @@ void CUDAGraph::BeginCapture(platform::CUDAPlace place, cudaStream_t stream,
 void CUDAGraph::EndSegmentCapture() {
   ThrowErrorIfNotSupportCUDAGraph();
 #if CUDA_VERSION >= 10010
-  PADDLE_ENFORCE_EQ(IsCapturing(), true,
+  PADDLE_ENFORCE_EQ(IsCapturing(),
+                    true,
                     errors::PermissionDenied("No CUDA Graph is capturing."));
   cudaGraph_t graph;
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -226,7 +235,8 @@ void CUDAGraph::EndSegmentCapture() {
         }
       }
     }
-    PADDLE_ENFORCE_EQ(found, true,
+    PADDLE_ENFORCE_EQ(found,
+                      true,
                       phi::errors::InvalidArgument(
                           "Cannot find the corresponding random CUDA kernel."));
   }

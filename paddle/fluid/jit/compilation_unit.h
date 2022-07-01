@@ -14,23 +14,26 @@
 
 #pragma once
 
-#include <memory>
 #include <string>
 #include <unordered_map>
-#include <vector>
+
+#include "paddle/fluid/jit/base_function.h"
 
 namespace paddle {
 namespace jit {
-class BaseFunction;
 
 class CompilationUnit {
  public:
   CompilationUnit() = default;
   ~CompilationUnit() {}
 
+  std::shared_ptr<BaseFunction> Function(const std::string &name) const;
+
+  void SetFunction(const std::string &name,
+                   const std::shared_ptr<BaseFunction> &function);
+
  private:
-  std::vector<std::unique_ptr<BaseFunction>> functions_;
-  std::unordered_map<std::string, size_t> functions_idx_;
+  std::unordered_map<std::string, std::shared_ptr<BaseFunction>> function_dict_;
 };
 
 }  // namespace jit

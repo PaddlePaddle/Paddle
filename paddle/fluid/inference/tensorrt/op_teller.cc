@@ -55,7 +55,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
   }
 
-  bool operator()(const std::string& op_type, const framework::OpDesc& desc,
+  bool operator()(const std::string& op_type,
+                  const framework::OpDesc& desc,
                   bool use_no_calib_int8) override {
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
@@ -109,6 +110,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_mul",
       "elementwise_div",
       "elementwise_pow",
+      "equal",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -156,7 +158,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       "slice",
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
+      "preln_residual_bias",
+      "c_allreduce_sum",
+      "c_allreduce_min",
+      "c_allreduce_max",
+      "c_allreduce_prod",
       "roll",
+      "cast",
       "preln_skip_layernorm",
       "transformer_input_convert",
       "recover_padding",
@@ -206,6 +214,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_mul",
       "elementwise_div",
       "elementwise_pow",
+      "equal",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -254,7 +263,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
+      "preln_residual_bias",
+      "c_allreduce_sum",
+      "c_allreduce_min",
+      "c_allreduce_max",
+      "c_allreduce_prod",
       "roll",
+      "cast",
       "multiclass_nms3",
       "transformer_input_convert",
       "recover_padding",
@@ -263,7 +278,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2"};
 };
 
-bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
+bool OpTeller::Tell(const framework::ir::Node* node,
+                    bool use_no_calib_int8,
                     bool with_dynamic_shape) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
@@ -728,7 +744,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "arg_max") {
-      if (with_dynamic_shape) return false;
       int axis = desc.HasAttr("axis")
                      ? BOOST_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
@@ -809,8 +824,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "nearest_interp") {
-      std::vector<std::string> attrs{"interp_method", "align_corners", "scale",
-                                     "out_h", "out_w"};
+      std::vector<std::string> attrs{
+          "interp_method", "align_corners", "scale", "out_h", "out_w"};
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
@@ -850,9 +865,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "nearest_interp_v2") {
-      std::vector<std::string> attrs{"data_layout",   "interp_method",
-                                     "align_corners", "scale",
-                                     "out_h",         "out_w"};
+      std::vector<std::string> attrs{"data_layout",
+                                     "interp_method",
+                                     "align_corners",
+                                     "scale",
+                                     "out_h",
+                                     "out_w"};
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
@@ -878,9 +896,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "bilinear_interp_v2") {
-      std::vector<std::string> attrs{"data_layout",   "interp_method",
-                                     "align_corners", "scale",
-                                     "out_h",         "out_w"};
+      std::vector<std::string> attrs{"data_layout",
+                                     "interp_method",
+                                     "align_corners",
+                                     "scale",
+                                     "out_h",
+                                     "out_w"};
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) {
           VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
@@ -1023,8 +1044,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "batch_norm") {
-      const std::vector<std::string> bn_inputs = {"X", "Bias", "Mean", "Scale",
-                                                  "Variance"};
+      const std::vector<std::string> bn_inputs = {
+          "X", "Bias", "Mean", "Scale", "Variance"};
       for (unsigned int i = 0; i < bn_inputs.size(); i++) {
         if (desc.Input(bn_inputs[i]).size() != 1) {
           VLOG(3) << "Invalid " << bn_inputs[i]
@@ -1196,14 +1217,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
-        if (with_dynamic_shape) {
-          if (decrease_axis.size() > 1) {
-            return false;
-          }
-        } else {
-          if (decrease_axis.size() > 0) {
-            VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
-                       "is not supported in TensorRT";
+        if (!with_dynamic_shape) {
+          if (decrease_axis.end() !=
+              std::find(decrease_axis.begin(), decrease_axis.end(), 0)) {
             return false;
           }
         }
@@ -1235,6 +1251,28 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
               return false;
             }
           }
+        }
+      }
+      // not support following four inputs for slice in paddle-trt
+      auto slice_inputs = desc.Inputs();  // its size == 5
+      if (slice_inputs.find("StartsTensor") != slice_inputs.end()) {
+        if (desc.Input("StartsTensor").size()) {
+          return false;
+        }
+      }
+      if (slice_inputs.find("EndsTensor") != slice_inputs.end()) {
+        if (desc.Input("EndsTensor").size()) {
+          return false;
+        }
+      }
+      if (slice_inputs.find("StartsTensorList") != slice_inputs.end()) {
+        if (desc.Input("StartsTensorList").size()) {
+          return false;
+        }
+      }
+      if (slice_inputs.find("EndsTensorList") != slice_inputs.end()) {
+        if (desc.Input("EndsTensorList").size()) {
+          return false;
         }
       }
     }
@@ -1576,8 +1614,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the roi_align will change the batch size.";
         return false;
       }
-      std::vector<std::string> attrs{"pooled_height", "pooled_width",
-                                     "spatial_scale", "sampling_ratio",
+      std::vector<std::string> attrs{"pooled_height",
+                                     "pooled_width",
+                                     "spatial_scale",
+                                     "sampling_ratio",
                                      "aligned"};
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
@@ -1762,10 +1802,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           auto x_var_name = desc.Input("X")[0];
           auto* x_var_desc = block->FindVar(x_var_name);
           const auto x_shape = x_var_desc->GetShape();
-          int input_num = std::accumulate(x_shape.begin() + 1, x_shape.end(), 1,
-                                          std::multiplies<int>());
-          int shape_num = std::accumulate(shape.begin() + 1, shape.end(), 1,
-                                          std::multiplies<int>());
+          int input_num = std::accumulate(
+              x_shape.begin() + 1, x_shape.end(), 1, std::multiplies<int>());
+          int shape_num = std::accumulate(
+              shape.begin() + 1, shape.end(), 1, std::multiplies<int>());
           if (input_num == shape_num) {
             return true;
           }
@@ -1951,6 +1991,23 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "cast") {
+      int in_dtype = BOOST_GET_CONST(int, desc.GetAttr("in_dtype"));
+      int out_dtype = BOOST_GET_CONST(int, desc.GetAttr("out_dtype"));
+      if ((in_dtype == 4 || in_dtype == 5) && out_dtype == 4) {
+        VLOG(3) << "unsupport data type conversion";
+        return false;
+      }
+      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2 ||
+             in_dtype == 0) &&
+            (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
+        VLOG(3)
+            << "only valid conversions are: "
+               "(kFLOAT | kHALF | kINT32 | kBOOL) -> (kFLOAT | kHALF | kINT32)";
+        return false;
+      }
+    }
+
     if (op_type == "top_k_v2" || op_type == "top_k") {
       auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
@@ -1989,14 +2046,31 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 #endif
 
+    if (op_type == "equal") {
+#if !IS_TRT_VERSION_GE(8000)
+      VLOG(3) << "compare is not supported when TensorRT < 8.0";
+      return false;
+#else
+      int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+      if (axis == 0) {
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+#endif
+    }
+
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
 
   return false;
 }
-
 OpTeller::OpTeller() { tellers_.emplace_back(new SimpleOpTypeSetTeller); }
-
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

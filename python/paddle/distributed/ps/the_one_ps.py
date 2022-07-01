@@ -596,8 +596,11 @@ class SparseTable(Table):
             if proto.table_name == self.common.table_name:
                 usr_table_proto = proto
                 break
-        table_proto.table_class = 'MemorySparseTable'
-        warnings.warn("The PS mode must use MemorySparseTable.")
+        if usr_table_proto.HasField("table_class"):
+            table_proto.table_class = usr_table_proto.table_class
+        else:
+            table_proto.table_class = 'MemorySparseTable'
+            warnings.warn("The PS mode must use MemorySparseTable.")
         if usr_table_proto.HasField("shard_num"):
             table_proto.shard_num = usr_table_proto.shard_num
         else:
@@ -821,6 +824,7 @@ class PsDescBuilder(object):
                 self.barrier_table_id = table.idx
         self.service._set(
             self.ps_desc.server_param.downpour_server_param.service_param)
+        self.fs_client._set(self.ps_desc.fs_client_param)
         return text_format.MessageToString(self.ps_desc)
 
     def build_server_desc(self):
@@ -937,9 +941,10 @@ class TheOnePSRuntime(RuntimeBase):
                 main_program._fleet_opt = {}
             main_program._fleet_opt["use_ps_gpu"] = True
             gpus_env = os.getenv("FLAGS_selected_gpus")
-            main_program._fleet_opt["worker_places"] = [
-                int(s) for s in gpus_env.split(",")
-            ]
+            gpus_env = [int(s) for s in gpus_env.split(",")]
+            main_program._fleet_opt["worker_places"] = gpus_env
+            PSGPU = fluid.core.PSGPU()
+            PSGPU.init_gpu_ps(gpus_env)
 
         def sync_strategy_envs():
             kwargs = {}
@@ -1084,9 +1089,9 @@ class TheOnePSRuntime(RuntimeBase):
         if self.is_heter_ps_mode:
             trainers += len(self.role_maker._get_heter_worker_endpoints())
 
-        # debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        # if debug:
-        #     print("server: \n{}".format(server_desc))
+        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
+        if debug:
+            print("server: \n{}".format(server_desc))
 
         self._server = fluid.core.DistFleetWrapper()
         self._server.init_server(server_desc, self.string_hosts, role_id,

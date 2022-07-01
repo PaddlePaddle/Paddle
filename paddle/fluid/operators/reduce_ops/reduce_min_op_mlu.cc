@@ -66,18 +66,28 @@ class ReduceMinMLUKernel : public framework::OpKernel<T> {
       output->ShareDataWith(cast_out);
     }
 
-    MLUCnnlTensorDesc input_desc(*input, CNNL_LAYOUT_ARRAY,
-                                 ToCnnlDataType(input->dtype()));
-    MLUCnnlTensorDesc output_desc(*output, CNNL_LAYOUT_ARRAY,
-                                  ToCnnlDataType(output->dtype()));
+    MLUCnnlTensorDesc input_desc(
+        *input, CNNL_LAYOUT_ARRAY, ToCnnlDataType(input->dtype()));
+    MLUCnnlTensorDesc output_desc(
+        *output, CNNL_LAYOUT_ARRAY, ToCnnlDataType(output->dtype()));
 
-    MLUCnnlReduceDesc reduction_desc(
-        reduce_dims, CNNL_REDUCE_MIN, ToCnnlDataType<T>(),
-        CNNL_NOT_PROPAGATE_NAN, CNNL_REDUCE_NO_INDICES, CNNL_32BIT_INDICES);
+    MLUCnnlReduceDesc reduction_desc(reduce_dims,
+                                     CNNL_REDUCE_MIN,
+                                     ToCnnlDataType<T>(),
+                                     CNNL_NOT_PROPAGATE_NAN,
+                                     CNNL_REDUCE_NO_INDICES,
+                                     CNNL_32BIT_INDICES);
 
-    MLUCnnl::Reduce(context, true /*need_workspace*/, reduction_desc.get(),
-                    nullptr, input_desc.get(), GetBasePtr(input),
-                    0 /*indices_size*/, nullptr, nullptr, output_desc.get(),
+    MLUCnnl::Reduce(context,
+                    true /*need_workspace*/,
+                    reduction_desc.get(),
+                    nullptr,
+                    input_desc.get(),
+                    GetBasePtr(input),
+                    0 /*indices_size*/,
+                    nullptr,
+                    nullptr,
+                    output_desc.get(),
                     GetBasePtr(output));
   }
 };
@@ -88,6 +98,7 @@ class ReduceMinMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(reduce_min, ops::ReduceMinMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(reduce_min,
+                       ops::ReduceMinMLUKernel<float>,
                        ops::ReduceMinMLUKernel<plat::float16>,
                        ops::ReduceMinMLUKernel<int>);

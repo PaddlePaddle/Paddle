@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.common_ops_import import dygraph_only
 from paddle import _C_ops
+from paddle.fluid.framework import dygraph_only
 
 __all__ = []
 
@@ -21,8 +21,8 @@ __all__ = []
 @dygraph_only
 def matmul(x, y, name=None):
     """
-    Warning:    
-        This API is only used from ``CUDA 11.0`` .
+    Note:    
+        This API is only supported from ``CUDA 11.0`` .
 
     Applies matrix multiplication of two Tensors. 
     
@@ -83,8 +83,8 @@ def matmul(x, y, name=None):
 @dygraph_only
 def masked_matmul(x, y, mask, name=None):
     """
-    Warning:    
-        This API is only used from ``CUDA 11.3`` .
+    Note:    
+        This API is only supported from ``CUDA 11.3`` .
 
     Applies matrix multiplication of two Dense Tensors. 
     
@@ -141,3 +141,59 @@ def masked_matmul(x, y, mask, name=None):
 
     """
     return _C_ops.final_state_sparse_masked_matmul(x, y, mask)
+
+
+@dygraph_only
+def mv(x, vec, name=None):
+    """
+    Note:    
+        This API is only supported from ``CUDA 11.0`` .
+
+    Applies matrix-vector product of Sparse Matrix 'x' and Dense vector 'vec' . 
+    
+    The supported input/output Tensor layout are as follows:
+
+    Note:
+        x[SparseCsrTensor] @ y[DenseTensor] -> out[SparseCsrTensor]
+        x[SparseCooTensor] @ y[DenseTensor] -> out[SparseCooTensor]
+
+    It supports backward propagation.
+
+    The shape of `x` should be `[M, N]` , and the shape of `y` should be `[N]` , 
+    and the shape of `out` will be `[M]` .
+
+    Args:
+        x (Tensor): The input 2D tensor. It must be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
+        y (Tensor): The input 1D tensor. It must be DenseTensor vector. The data type can be float32 or float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Tensor: 1D Tensor.
+
+    Examples:
+
+        .. code-block:: python
+        
+            import paddle
+            from paddle.fluid.framework import _test_eager_guard 
+            paddle.seed(100)
+
+            # csr @ dense -> dense
+            with _test_eager_guard():         
+                crows = [0, 2, 3, 5]
+                cols = [1, 3, 2, 0, 1]
+                values = [1., 2., 3., 4., 5.]
+                dense_shape = [3, 4]
+                csr = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+                # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True, 
+                #        crows=[0, 2, 3, 5], 
+                #        cols=[1, 3, 2, 0, 1], 
+                #        values=[1., 2., 3., 4., 5.])
+                vec = paddle.randn([4])
+                
+                out = paddle.incubate.sparse.mv(csr, vec)
+                # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                #        [-3.85499096, -2.42975140, -1.75087738])
+
+    """
+    return _C_ops.final_state_sparse_mv(x, vec)

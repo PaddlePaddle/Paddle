@@ -27,7 +27,8 @@ namespace ir {
 
 namespace {
 
-void SetBatchNormAttrs(OpDesc* bn_op, bool is_test = true,
+void SetBatchNormAttrs(OpDesc* bn_op,
+                       bool is_test = true,
                        bool trainable_stats = true) {
   bn_op->SetAttr("is_test", is_test);
   bn_op->SetAttr("trainable_statistics", trainable_stats);
@@ -48,7 +49,8 @@ TEST(FuseBatchNormActOneDNNPass, ThrowIsTestTrainableStats) {
   auto prog = test::BuildProgramDesc(
       {"x", "m", "v", "bn_y", "act_y", "m_out", "var_out", "sm", "sv"},
       {"scale", "bias"});
-  auto* bn_op = test::CreateOp(&prog, "batch_norm",
+  auto* bn_op = test::CreateOp(&prog,
+                               "batch_norm",
                                {{"X", "x"},
                                 {"Scale", "scale"},
                                 {"Bias", "bias"},
@@ -66,15 +68,19 @@ TEST(FuseBatchNormActOneDNNPass, ThrowIsTestTrainableStats) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  EXPECT_THROW(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
-                                      "act_y", removed_nodes_count),
+  EXPECT_THROW(test::RunPassAndAssert(&graph,
+                                      "batch_norm_act_fuse_pass",
+                                      "x",
+                                      "act_y",
+                                      removed_nodes_count),
                paddle::platform::EnforceNotMet);
 }
 
 TEST(FuseBatchNormActOneDNNPass, FuseIsTest) {
   auto prog = test::BuildProgramDesc({"x", "m", "v", "bn_y", "act_y"},
                                      {"scale", "bias"});
-  auto* bn_op = test::CreateOp(&prog, "batch_norm",
+  auto* bn_op = test::CreateOp(&prog,
+                               "batch_norm",
                                {{"X", "x"},
                                 {"Scale", "scale"},
                                 {"Bias", "bias"},
@@ -87,8 +93,8 @@ TEST(FuseBatchNormActOneDNNPass, FuseIsTest) {
   Graph graph(prog);
   constexpr int removed_nodes_count = 2;
 
-  EXPECT_TRUE(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
-                                     "act_y", removed_nodes_count));
+  EXPECT_TRUE(test::RunPassAndAssert(
+      &graph, "batch_norm_act_fuse_pass", "x", "act_y", removed_nodes_count));
   EXPECT_TRUE(test::AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 0}}));
 
   for (const auto* node : graph.Nodes()) {
@@ -108,7 +114,8 @@ TEST(FuseBatchNormActOneDNNPass, ThrowTrainableStats) {
   auto prog = test::BuildProgramDesc(
       {"x", "m", "v", "bn_y", "act_y", "m_out", "var_out", "sm", "sv"},
       {"scale", "bias"});
-  auto* bn_op = test::CreateOp(&prog, "batch_norm",
+  auto* bn_op = test::CreateOp(&prog,
+                               "batch_norm",
                                {{"X", "x"},
                                 {"Scale", "scale"},
                                 {"Bias", "bias"},
@@ -126,8 +133,11 @@ TEST(FuseBatchNormActOneDNNPass, ThrowTrainableStats) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  EXPECT_THROW(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
-                                      "act_y", removed_nodes_count),
+  EXPECT_THROW(test::RunPassAndAssert(&graph,
+                                      "batch_norm_act_fuse_pass",
+                                      "x",
+                                      "act_y",
+                                      removed_nodes_count),
                paddle::platform::EnforceNotMet);
 }
 
@@ -135,7 +145,8 @@ TEST(FuseBatchNormActOneDNNPass, AllAttrsFalse) {
   auto prog = test::BuildProgramDesc(
       {"x", "m", "v", "bn_y", "act_y", "m_out", "var_out", "sm", "sv"},
       {"scale", "bias"});
-  auto* bn_op = test::CreateOp(&prog, "batch_norm",
+  auto* bn_op = test::CreateOp(&prog,
+                               "batch_norm",
                                {{"X", "x"},
                                 {"Scale", "scale"},
                                 {"Bias", "bias"},
@@ -153,8 +164,11 @@ TEST(FuseBatchNormActOneDNNPass, AllAttrsFalse) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  EXPECT_THROW(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
-                                      "act_y", removed_nodes_count),
+  EXPECT_THROW(test::RunPassAndAssert(&graph,
+                                      "batch_norm_act_fuse_pass",
+                                      "x",
+                                      "act_y",
+                                      removed_nodes_count),
                paddle::platform::EnforceNotMet);
 }
 
@@ -162,7 +176,8 @@ TEST(FuseBatchNormActOneDNNPass, ThrowUseMkldnn) {
   auto prog = test::BuildProgramDesc(
       {"x", "m", "v", "bn_y", "act_y", "m_out", "var_out", "sm", "sv"},
       {"scale", "bias"});
-  auto* bn_op = test::CreateOp(&prog, "batch_norm",
+  auto* bn_op = test::CreateOp(&prog,
+                               "batch_norm",
                                {{"X", "x"},
                                 {"Scale", "scale"},
                                 {"Bias", "bias"},
@@ -181,8 +196,11 @@ TEST(FuseBatchNormActOneDNNPass, ThrowUseMkldnn) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  EXPECT_THROW(test::RunPassAndAssert(&graph, "batch_norm_act_fuse_pass", "x",
-                                      "act_y", removed_nodes_count),
+  EXPECT_THROW(test::RunPassAndAssert(&graph,
+                                      "batch_norm_act_fuse_pass",
+                                      "x",
+                                      "act_y",
+                                      removed_nodes_count),
                paddle::platform::EnforceNotMet);
 }
 

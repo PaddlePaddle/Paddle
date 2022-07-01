@@ -29,7 +29,8 @@ REGISTER_PSCORE_CLASS(PSClient, GraphBrpcClient);
 int32_t PSClient::Configure(
     const PSParameter &config,
     const std::map<uint64_t, std::vector<paddle::distributed::Region>> &regions,
-    PSEnvironment &env, size_t client_id) {
+    PSEnvironment &env,
+    size_t client_id) {
   _env = &env;
   _config = config;
   _dense_pull_regions = regions;

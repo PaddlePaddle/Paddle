@@ -33,19 +33,23 @@ class HingeLossOp : public framework::OperatorWithKernel {
     auto label_dims = ctx->GetInputDim("Labels");
 
     PADDLE_ENFORCE_EQ(
-        pred_dims, label_dims,
+        pred_dims,
+        label_dims,
         platform::errors::InvalidArgument(
             "The Input(input) and Input(label) should have the same "
             "shape, but received input shape [%s] != label shape [%s]",
-            pred_dims, label_dims));
+            pred_dims,
+            label_dims));
 
     PADDLE_ENFORCE_EQ(
-        pred_dims.size(), 2,
+        pred_dims.size(),
+        2,
         platform::errors::InvalidArgument("Input(input) rank should be 2, "
                                           "but received input rank(%d) != 2",
                                           pred_dims.size()));
 
-    PADDLE_ENFORCE_EQ(pred_dims[1], 1,
+    PADDLE_ENFORCE_EQ(pred_dims[1],
+                      1,
                       platform::errors::InvalidArgument(
                           "The second dimension of Input(input) should be 1, "
                           "as each row of input contains a real value, "
@@ -94,20 +98,26 @@ class HingeLossGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Logits"), "Input", "Logits", "HingeLossGrad");
     OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Labels", "HingeLossGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input",
-                   "Loss@GRAD", "HingeLossGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")), "Output",
-                   "Logits@GRAD", "HingeLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")),
+                   "Input",
+                   "Loss@GRAD",
+                   "HingeLossGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")),
+                   "Output",
+                   "Logits@GRAD",
+                   "HingeLossGrad");
 
     auto pred_dims = ctx->GetInputDim("Logits");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));
 
-    PADDLE_ENFORCE_EQ(loss_grad_dims, pred_dims,
+    PADDLE_ENFORCE_EQ(loss_grad_dims,
+                      pred_dims,
                       platform::errors::InvalidArgument(
                           "The shape of loss gradient should be the same as "
                           "the shape of Input(input), but received the loss "
                           "gradient shape [%s] != input shape [%s]",
-                          loss_grad_dims, pred_dims));
+                          loss_grad_dims,
+                          pred_dims));
 
     auto pred_grad_name = framework::GradVarName("Logits");
     ctx->SetOutputDim(pred_grad_name, pred_dims);
@@ -134,7 +144,9 @@ class HingeLossGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(hinge_loss, ops::HingeLossOp, ops::HingeLossOpMaker<float>,
+REGISTER_OPERATOR(hinge_loss,
+                  ops::HingeLossOp,
+                  ops::HingeLossOpMaker<float>,
                   ops::HingeLossGradOpMaker<paddle::framework::OpDesc>,
                   ops::HingeLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(hinge_loss_grad, ops::HingeLossGradOp);

@@ -110,8 +110,10 @@ class ElementwiseFMinGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(elementwise_min, ops::ElementwiseOp,
-                  ops::ElementwiseMinOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_min,
+                  ops::ElementwiseOp,
+                  ops::ElementwiseMinOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMinGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseMinGradOpMaker<paddle::imperative::OpBase>);
 
@@ -126,8 +128,10 @@ REGISTER_OP_VERSION(elementwise_min)
             "using the operator of elementwise_min.",
             1.0f));
 
-REGISTER_OPERATOR(elementwise_fmin, ops::ElementwiseOp,
-                  ops::ElementwiseFMinOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_fmin,
+                  ops::ElementwiseOp,
+                  ops::ElementwiseFMinOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseFMinGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseFMinGradOpMaker<paddle::imperative::OpBase>);
 

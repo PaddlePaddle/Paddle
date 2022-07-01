@@ -26,23 +26,33 @@ using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 static void MatMul2D(const framework::ExecutionContext& ctx,
-                     const aclrtStream& stream, const Tensor& X,
-                     const Tensor& Y, Tensor* Out, const bool trans_x,
+                     const aclrtStream& stream,
+                     const Tensor& X,
+                     const Tensor& Y,
+                     Tensor* Out,
+                     const bool trans_x,
                      const bool trans_y) {
   Out->mutable_data<T>(ctx.GetPlace());
   const auto& runner =
-      NpuOpRunner("MatMul", {X, Y}, {*Out},
+      NpuOpRunner("MatMul",
+                  {X, Y},
+                  {*Out},
                   {{"transpose_x1", trans_x}, {"transpose_x2", trans_y}});
   runner.Run(stream);
 }
 
 template <typename T>
 static void MatMulND(const framework::ExecutionContext& ctx,
-                     const aclrtStream& stream, const Tensor& X,
-                     const Tensor& Y, Tensor* Out, const bool trans_x,
+                     const aclrtStream& stream,
+                     const Tensor& X,
+                     const Tensor& Y,
+                     Tensor* Out,
+                     const bool trans_x,
                      const bool trans_y) {
   Out->mutable_data<T>(ctx.GetPlace());
-  const auto& runner = NpuOpRunner("BatchMatMul", {X, Y}, {*Out},
+  const auto& runner = NpuOpRunner("BatchMatMul",
+                                   {X, Y},
+                                   {*Out},
                                    {{"adj_x1", trans_x}, {"adj_x2", trans_y}});
   runner.Run(stream);
 }
@@ -51,7 +61,8 @@ template <typename T>
 static void ReduceDims(const framework::ExecutionContext& ctx,
                        const aclrtStream& stream,
                        const std::vector<int64_t>& dims,
-                       const std::vector<int64_t>& brd_dims, const Tensor& in,
+                       const std::vector<int64_t>& brd_dims,
+                       const Tensor& in,
                        Tensor* out) {
   std::vector<int64_t> axes;
   int64_t size = brd_dims.size();
@@ -66,8 +77,8 @@ static void ReduceDims(const framework::ExecutionContext& ctx,
     }
   }
   out->mutable_data<T>(ctx.GetPlace());
-  const auto& runner = NpuOpRunner("ReduceSumD", {in}, {*out},
-                                   {{"axes", axes}, {"keep_dims", false}});
+  const auto& runner = NpuOpRunner(
+      "ReduceSumD", {in}, {*out}, {{"axes", axes}, {"keep_dims", false}});
   runner.Run(stream);
 }
 
@@ -93,12 +104,14 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
     // Case 1: [K] x [K] = [1]
     if (x_ndim == 1 && y_ndim == 1) {
       PADDLE_ENFORCE_EQ(
-          X->numel(), Y->numel(),
+          X->numel(),
+          Y->numel(),
           platform::errors::InvalidArgument(
               "X's numbers must be equal to Y's numbers,"
               "when X/Y's dims =1. But received X has [%d] elements,"
               "received Y has [%d] elements",
-              X->numel(), Y->numel()));
+              X->numel(),
+              Y->numel()));
       Out->Resize({1});
       Out->mutable_data<T>(ctx.GetPlace());
 
@@ -128,19 +141,27 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
 
     const int K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
     if (trans_y) {
-      PADDLE_ENFORCE_EQ(y_dims[y_ndim - 1], K,
-                        platform::errors::InvalidArgument(
-                            "Input(Y) has error dim."
-                            "Y'dims[%d] must be equal to %d"
-                            "But received Y'dims[%d] is %d",
-                            y_ndim - 1, K, y_ndim - 1, y_dims[y_ndim - 1]));
+      PADDLE_ENFORCE_EQ(
+          y_dims[y_ndim - 1],
+          K,
+          platform::errors::InvalidArgument("Input(Y) has error dim."
+                                            "Y'dims[%d] must be equal to %d"
+                                            "But received Y'dims[%d] is %d",
+                                            y_ndim - 1,
+                                            K,
+                                            y_ndim - 1,
+                                            y_dims[y_ndim - 1]));
     } else {
-      PADDLE_ENFORCE_EQ(y_dims[y_ndim - 2], K,
-                        platform::errors::InvalidArgument(
-                            "Input(Y) has error dim."
-                            "Y'dims[%d] must be equal to %d"
-                            "But received Y'dims[%d] is %d",
-                            y_ndim - 2, K, y_ndim - 2, y_dims[y_ndim - 2]));
+      PADDLE_ENFORCE_EQ(
+          y_dims[y_ndim - 2],
+          K,
+          platform::errors::InvalidArgument("Input(Y) has error dim."
+                                            "Y'dims[%d] must be equal to %d"
+                                            "But received Y'dims[%d] is %d",
+                                            y_ndim - 2,
+                                            K,
+                                            y_ndim - 2,
+                                            y_dims[y_ndim - 2]));
     }
 
     // Case 2: [M, K] x [K, N] = [M, N]
@@ -364,11 +385,11 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
         Tensor dx_temp(X->type());
         dx_temp.Resize(phi::make_ddim(x_broadcast_dims));
         if (trans_x) {
-          MatMulND<T>(ctx, stream, y_temp_brd, dout_temp, &dx_temp, trans_y,
-                      true);
+          MatMulND<T>(
+              ctx, stream, y_temp_brd, dout_temp, &dx_temp, trans_y, true);
         } else {
-          MatMulND<T>(ctx, stream, dout_temp, y_temp_brd, &dx_temp, false,
-                      !trans_y);
+          MatMulND<T>(
+              ctx, stream, dout_temp, y_temp_brd, &dx_temp, false, !trans_y);
         }
         ReduceDims<T>(ctx, stream, x_dims, x_broadcast_dims, dx_temp, dX);
       }
@@ -384,11 +405,11 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
         Tensor dy_temp(Y->type());
         dy_temp.Resize(phi::make_ddim(y_broadcast_dims));
         if (trans_y) {
-          MatMulND<T>(ctx, stream, dout_temp, x_temp_brd, &dy_temp, true,
-                      trans_x);
+          MatMulND<T>(
+              ctx, stream, dout_temp, x_temp_brd, &dy_temp, true, trans_x);
         } else {
-          MatMulND<T>(ctx, stream, x_temp_brd, dout_temp, &dy_temp, !trans_x,
-                      false);
+          MatMulND<T>(
+              ctx, stream, x_temp_brd, dout_temp, &dy_temp, !trans_x, false);
         }
         ReduceDims<T>(ctx, stream, y_dims, y_broadcast_dims, dy_temp, dY);
       }
@@ -401,7 +422,9 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(matmul_v2, ops::MatMulV2NPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(matmul_v2,
+                       ops::MatMulV2NPUKernel<float>,
                        ops::MatMulV2NPUKernel<paddle::platform::float16>);
-REGISTER_OP_NPU_KERNEL(matmul_v2_grad, ops::MatMulV2GradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(matmul_v2_grad,
+                       ops::MatMulV2GradNPUKernel<float>,
                        ops::MatMulV2GradNPUKernel<paddle::platform::float16>);

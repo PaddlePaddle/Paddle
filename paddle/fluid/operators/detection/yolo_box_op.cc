@@ -37,68 +37,81 @@ class YoloBoxOp : public framework::OperatorWithKernel {
     auto iou_aware_factor = ctx->Attrs().Get<float>("iou_aware_factor");
 
     PADDLE_ENFORCE_EQ(
-        dim_x.size(), 4,
+        dim_x.size(),
+        4,
         platform::errors::InvalidArgument("Input(X) should be a 4-D tensor."
                                           "But received X dimension(%s)",
                                           dim_x.size()));
     if (iou_aware) {
       PADDLE_ENFORCE_EQ(
-          dim_x[1], anchor_num * (6 + class_num),
+          dim_x[1],
+          anchor_num * (6 + class_num),
           platform::errors::InvalidArgument(
               "Input(X) dim[1] should be equal to (anchor_mask_number * (6 "
               "+ class_num)) while iou_aware is true."
               "But received dim[1](%s) != (anchor_mask_number * "
               "(6+class_num)(%s).",
-              dim_x[1], anchor_num * (6 + class_num)));
+              dim_x[1],
+              anchor_num * (6 + class_num)));
       PADDLE_ENFORCE_GE(
-          iou_aware_factor, 0,
+          iou_aware_factor,
+          0,
           platform::errors::InvalidArgument(
               "Attr(iou_aware_factor) should greater than or equal to 0."
               "But received iou_aware_factor (%s)",
               iou_aware_factor));
       PADDLE_ENFORCE_LE(
-          iou_aware_factor, 1,
+          iou_aware_factor,
+          1,
           platform::errors::InvalidArgument(
               "Attr(iou_aware_factor) should less than or equal to 1."
               "But received iou_aware_factor (%s)",
               iou_aware_factor));
     } else {
       PADDLE_ENFORCE_EQ(
-          dim_x[1], anchor_num * (5 + class_num),
+          dim_x[1],
+          anchor_num * (5 + class_num),
           platform::errors::InvalidArgument(
               "Input(X) dim[1] should be equal to (anchor_mask_number * (5 "
               "+ class_num))."
               "But received dim[1](%s) != (anchor_mask_number * "
               "(5+class_num)(%s).",
-              dim_x[1], anchor_num * (5 + class_num)));
+              dim_x[1],
+              anchor_num * (5 + class_num)));
     }
-    PADDLE_ENFORCE_EQ(dim_imgsize.size(), 2,
+    PADDLE_ENFORCE_EQ(dim_imgsize.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "Input(ImgSize) should be a 2-D tensor."
                           "But received Imgsize size(%s)",
                           dim_imgsize.size()));
     if ((dim_imgsize[0] > 0 && dim_x[0] > 0) || ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
-          dim_imgsize[0], dim_x[0],
+          dim_imgsize[0],
+          dim_x[0],
           platform::errors::InvalidArgument(
               "Input(ImgSize) dim[0] and Input(X) dim[0] should be same."));
     }
     PADDLE_ENFORCE_EQ(
-        dim_imgsize[1], 2,
+        dim_imgsize[1],
+        2,
         platform::errors::InvalidArgument("Input(ImgSize) dim[1] should be 2."
                                           "But received imgsize dim[1](%s).",
                                           dim_imgsize[1]));
-    PADDLE_ENFORCE_GT(anchors.size(), 0,
+    PADDLE_ENFORCE_GT(anchors.size(),
+                      0,
                       platform::errors::InvalidArgument(
                           "Attr(anchors) length should be greater than 0."
                           "But received anchors length(%s).",
                           anchors.size()));
-    PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
+    PADDLE_ENFORCE_EQ(anchors.size() % 2,
+                      0,
                       platform::errors::InvalidArgument(
                           "Attr(anchors) length should be even integer."
                           "But received anchors length (%s)",
                           anchors.size()));
-    PADDLE_ENFORCE_GT(class_num, 0,
+    PADDLE_ENFORCE_GT(class_num,
+                      0,
                       platform::errors::InvalidArgument(
                           "Attr(class_num) should be an integer greater than 0."
                           "But received class_num (%s)",
@@ -238,10 +251,13 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(yolo_box, YoloBoxInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(yolo_box,
+                            YoloBoxInferShapeFunctor,
                             PD_INFER_META(phi::YoloBoxInferMeta));
 REGISTER_OPERATOR(
-    yolo_box, ops::YoloBoxOp, ops::YoloBoxOpMaker,
+    yolo_box,
+    ops::YoloBoxOp,
+    ops::YoloBoxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     YoloBoxInferShapeFunctor);

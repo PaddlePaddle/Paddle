@@ -43,7 +43,8 @@ void CreateVarsOnScope(framework::Scope* scope) {
   var2->GetMutable<framework::LoDTensor>();
 }
 
-void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnClient(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
 
@@ -93,8 +94,8 @@ void TestShardSendRecv(
     int64_t data_size = 6 * sizeof(float);
     std::vector<std::string> send_var_names{"w", "x"};
     int group_id = 0;
-    int ret = heter_client_ptr_->Send(group_id, send_var_names, vars_len,
-                                      values.data(), data_size);
+    int ret = heter_client_ptr_->Send(
+        group_id, send_var_names, vars_len, values.data(), data_size);
     if (!ret) {
       LOG(INFO) << ">>>> TestShardSendRecv: worker send success";
     }
@@ -186,8 +187,8 @@ void TestScopeSendRecv(
   auto send_async = [&]() -> void {
     std::string message_name = std::to_string(distributed::PS_SAVE_WITH_SCOPE);
     std::vector<std::string> send_var_names{"w", "x"};
-    int ret = heter_client_ptr_->Send(ctx, *send_scope_ptr, message_name,
-                                      send_var_names);
+    int ret = heter_client_ptr_->Send(
+        ctx, *send_scope_ptr, message_name, send_var_names);
     if (!ret) {
       LOG(ERROR) << ">>>> TestScopeSendRecv: worker send success";
     }
@@ -198,8 +199,8 @@ void TestScopeSendRecv(
   std::vector<std::string> recv_var_names{"w", "x"};
   std::shared_ptr<framework::Scope> recv_scope_ptr =
       std::make_shared<framework::Scope>();
-  int ret = heter_client_ptr_->Recv(ctx, *recv_scope_ptr, message_name,
-                                    recv_var_names);
+  int ret = heter_client_ptr_->Recv(
+      ctx, *recv_scope_ptr, message_name, recv_var_names);
   if (!ret && recv_scope_ptr->FindVar("w") && recv_scope_ptr->FindVar("x")) {
     LOG(INFO) << "<<<< TestScopeSendRecv: worker recv success";
   } else {
@@ -223,7 +224,8 @@ TEST(HETERSENDANDRECV, CPU) {
   std::vector<std::string> end_points{switch_a_endpoint};
   std::vector<std::string> peer_endpoints{switch_b_endpoint_inter};
   std::thread switch_server_a_thread(StartSwitchServer,
-                                     std::ref(switch_server_ptr_a), end_points,
+                                     std::ref(switch_server_ptr_a),
+                                     end_points,
                                      peer_endpoints);
   switch_server_ptr_a->WaitServerReady();
 
@@ -232,7 +234,8 @@ TEST(HETERSENDANDRECV, CPU) {
   end_points = {switch_b_endpoint, switch_b_endpoint_inter};
   peer_endpoints = {};
   std::thread switch_server_b_thread(StartSwitchServer,
-                                     std::ref(switch_server_ptr_b), end_points,
+                                     std::ref(switch_server_ptr_b),
+                                     end_points,
                                      peer_endpoints);
   switch_server_ptr_b->WaitServerReady();
 
@@ -240,7 +243,8 @@ TEST(HETERSENDANDRECV, CPU) {
   peer_endpoints = {};
   std::thread switch_server_b_thread_inter(StartSwitchInterServer,
                                            std::ref(switch_server_ptr_b),
-                                           end_points, peer_endpoints);
+                                           end_points,
+                                           peer_endpoints);
   switch_server_ptr_b->WaitServerReady();
 
   // 获取 client 实例

@@ -72,7 +72,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("ValueTensor")) {
       auto *value_tensor = ctx.Input<framework::Tensor>("ValueTensor");
       PADDLE_ENFORCE_EQ(
-          value_tensor->numel(), 1,
+          value_tensor->numel(),
+          1,
           platform::errors::InvalidArgument(
               "When use Tensor as value to set Tensor value in fill_cosntant, "
               "value input(ValueTensor) size must be 1, but get %d",
@@ -82,8 +83,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
       auto tmp_place = value_tensor->place();
       if (platform::is_gpu_place(tmp_place) ||
           platform::is_xpu_place(tmp_place)) {
-        paddle::framework::TensorCopySync(*value_tensor, platform::CPUPlace(),
-                                          &cpu_tensor);
+        paddle::framework::TensorCopySync(
+            *value_tensor, platform::CPUPlace(), &cpu_tensor);
         tensor_data = cpu_tensor.data<T>();
       }
       value = tensor_data[0];
@@ -126,7 +127,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
       phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
       auto &dev_ctx = *pool.Get(platform::CPUPlace());
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
-              tensor, static_cast<T>(value));
+              tensor,
+              static_cast<T>(value));
     } else if (actual_place == 1) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       tensor->mutable_data(ctx.GetPlace(),
@@ -134,7 +136,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
       phi::funcs::SetConstant<platform::CUDADeviceContext, T> functor;
       auto &dev_ctx = *pool.Get(ctx.GetPlace());
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
-              tensor, static_cast<T>(value));
+              tensor,
+              static_cast<T>(value));
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU."));
@@ -147,7 +150,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
       auto &dev_ctx = *pool.Get(platform::CUDAPinnedPlace());
       functor(
           reinterpret_cast<const platform::CUDAPinnedDeviceContext &>(dev_ctx),
-          tensor, static_cast<T>(value));
+          tensor,
+          static_cast<T>(value));
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU."));
@@ -159,7 +163,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
       phi::funcs::SetConstant<platform::XPUDeviceContext, T> functor;
       auto &dev_ctx = *pool.Get(ctx.GetPlace());
       functor(reinterpret_cast<const platform::XPUDeviceContext &>(dev_ctx),
-              tensor, static_cast<T>(value));
+              tensor,
+              static_cast<T>(value));
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU."));

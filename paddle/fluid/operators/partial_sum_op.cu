@@ -27,9 +27,13 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
 template <class T>
-__global__ void SumArrayPartialCUDAKernel(T **in, T *out, int64_t lod_length,
-                                          size_t in_size, int64_t start_index,
-                                          int64_t length, int64_t row_length) {
+__global__ void SumArrayPartialCUDAKernel(T **in,
+                                          T *out,
+                                          int64_t lod_length,
+                                          size_t in_size,
+                                          int64_t start_index,
+                                          int64_t length,
+                                          int64_t row_length) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < lod_length) {
     T total = static_cast<T>(0);
@@ -48,9 +52,12 @@ __global__ void SumArrayPartialCUDAKernel(T **in, T *out, int64_t lod_length,
 }
 
 template <class T>
-__global__ void PartialSumGradCUDAKernel(T **res_grad, const T *out_grad,
-                                         int64_t lod_length, size_t in_size,
-                                         int64_t start_index, int64_t length,
+__global__ void PartialSumGradCUDAKernel(T **res_grad,
+                                         const T *out_grad,
+                                         int64_t lod_length,
+                                         size_t in_size,
+                                         int64_t start_index,
+                                         int64_t length,
                                          int64_t row_length) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < lod_length) {
@@ -74,7 +81,8 @@ class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
     Tensor *out = ctx.Output<Tensor>("Out");
 
     PADDLE_ENFORCE_EQ(
-        in_vars[0] != nullptr, true,
+        in_vars[0] != nullptr,
+        true,
         platform::errors::InvalidArgument("The input should not be null."));
 
     auto place = ctx.GetPlace();  // GPUPlace only now
@@ -116,16 +124,22 @@ class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
     if (!in_data.empty()) {
       auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
 
-      memory::Copy(dev_ctx.GetPlace(), tmp_in_array->ptr(),
+      memory::Copy(dev_ctx.GetPlace(),
+                   tmp_in_array->ptr(),
                    platform::CPUPlace(),
                    reinterpret_cast<void *>(in_data.data()),
-                   in_data.size() * sizeof(T *), dev_ctx.stream());
+                   in_data.size() * sizeof(T *),
+                   dev_ctx.stream());
 
       T **in_array_data = reinterpret_cast<T **>(tmp_in_array->ptr());
       ComputeKernelParameter(lod_length);
-      SumArrayPartialCUDAKernel<T><<<grids, blocks, 0, stream>>>(
-          in_array_data, out->data<T>(), lod_length, in_data.size(),
-          start_index, length, row_length);
+      SumArrayPartialCUDAKernel<T><<<grids, blocks, 0, stream>>>(in_array_data,
+                                                                 out->data<T>(),
+                                                                 lod_length,
+                                                                 in_data.size(),
+                                                                 start_index,
+                                                                 length,
+                                                                 row_length);
     }
   }
 };
@@ -139,7 +153,8 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
     auto outs = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
 
     PADDLE_ENFORCE_EQ(
-        ins[0] != nullptr, true,
+        ins[0] != nullptr,
+        true,
         platform::errors::InvalidArgument("The input should not be null."));
     auto start_index = ctx.Attr<int>("start_index");
     auto length = ctx.Attr<int>("length");
@@ -192,16 +207,23 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
       auto tmp_out_array =
           memory::Alloc(dev_ctx, out_data.size() * sizeof(T *));
 
-      memory::Copy(dev_ctx.GetPlace(), tmp_out_array->ptr(),
+      memory::Copy(dev_ctx.GetPlace(),
+                   tmp_out_array->ptr(),
                    platform::CPUPlace(),
                    reinterpret_cast<void *>(out_data.data()),
-                   out_data.size() * sizeof(T *), dev_ctx.stream());
+                   out_data.size() * sizeof(T *),
+                   dev_ctx.stream());
 
       T **out_grad_data = reinterpret_cast<T **>(tmp_out_array->ptr());
       ComputeKernelParameter(lod_length);
-      PartialSumGradCUDAKernel<T><<<grids, blocks, 0, stream>>>(
-          out_grad_data, out_grad->data<T>(), lod_length, out_data.size(),
-          start_index, length, row_length);
+      PartialSumGradCUDAKernel<T>
+          <<<grids, blocks, 0, stream>>>(out_grad_data,
+                                         out_grad->data<T>(),
+                                         lod_length,
+                                         out_data.size(),
+                                         start_index,
+                                         length,
+                                         row_length);
     }
   }
 };
@@ -210,7 +232,8 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(partial_sum, ops::PartialSumOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(partial_sum,
+                        ops::PartialSumOpCUDAKernel<float>,
                         ops::PartialSumOpCUDAKernel<double>,
                         ops::PartialSumOpCUDAKernel<int>,
                         ops::PartialSumOpCUDAKernel<int64_t>,

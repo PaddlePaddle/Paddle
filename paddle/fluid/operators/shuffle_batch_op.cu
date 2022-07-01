@@ -96,13 +96,16 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
 #endif
     thrust::random::default_random_engine engine(seed_int);
     thrust::counting_iterator<int64_t> cnt_iter(0);
-    thrust::shuffle_copy(exec_policy, cnt_iter, cnt_iter + elem_size,
-                         thrust::device_pointer_cast(shuffleidx_data), engine);
+    thrust::shuffle_copy(exec_policy,
+                         cnt_iter,
+                         cnt_iter + elem_size,
+                         thrust::device_pointer_cast(shuffleidx_data),
+                         engine);
     // TODO(zengjinle): for small data, direct cudaMemcpy may be better
     auto *x_data = x->data<T>();
     auto *out_data = out->mutable_data<T>(ctx.GetPlace());
-    ReorderFunctor<T, true> functor(x_data, shuffleidx_data, out_data,
-                                    x_embed_size);
+    ReorderFunctor<T, true> functor(
+        x_data, shuffleidx_data, out_data, x_embed_size);
     platform::ForRange<platform::CUDADeviceContext> for_range(
         dev_ctx, elem_size * x_embed_size);
     for_range(functor);
@@ -131,8 +134,8 @@ class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
     const auto *shuffleidx_data = shuffleidx->data<int64_t>();
     auto *x_grad_data = x_grad->mutable_data<T>(ctx.GetPlace());
     auto x_embed_size = x_grad->dims()[x_grad->dims().size() - 1];
-    ReorderFunctor<T, false> functor(out_grad_data, shuffleidx_data,
-                                     x_grad_data, x_embed_size);
+    ReorderFunctor<T, false> functor(
+        out_grad_data, shuffleidx_data, x_grad_data, x_embed_size);
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     // TODO(zengjinle): for small data, direct cudaMemcpy may be better
     platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
@@ -146,7 +149,8 @@ class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(shuffle_batch, ops::ShuffleBatchCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(shuffle_batch,
+                        ops::ShuffleBatchCUDAKernel<float>,
                         ops::ShuffleBatchCUDAKernel<double>,
                         ops::ShuffleBatchCUDAKernel<int32_t>,
                         ops::ShuffleBatchCUDAKernel<int64_t>);

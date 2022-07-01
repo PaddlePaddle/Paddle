@@ -56,20 +56,24 @@ class UniformRandomInplaceOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "UniformRandomInplaceOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "UniformRandomInplaceOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "UniformRandomInplaceOp");
     PADDLE_ENFORCE_LT(
-        ctx->Attrs().Get<float>("min"), ctx->Attrs().Get<float>("max"),
+        ctx->Attrs().Get<float>("min"),
+        ctx->Attrs().Get<float>("max"),
         platform::errors::InvalidArgument(
             "The uniform_random's min must less then max. But received min = "
             "%f great than or equal max = %f.",
-            ctx->Attrs().Get<float>("min"), ctx->Attrs().Get<float>("max")));
-    PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_num"), 0,
+            ctx->Attrs().Get<float>("min"),
+            ctx->Attrs().Get<float>("max")));
+    PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_num"),
+                      0,
                       platform::errors::InvalidArgument(
                           "The uniform_random's diag_num must greater than or "
                           "equal 0. But recevied diag_num (%d) < 0.",
                           ctx->Attrs().Get<int>("diag_num")));
-    PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_step"), 0,
+    PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_step"),
+                      0,
                       platform::errors::InvalidArgument(
                           "The uniform_random's diag_step must greater than or "
                           "equal 0. But recevied diag_step (%d) < 0.",
@@ -116,8 +120,10 @@ class UniformRandomInplaceGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out_Grad", "UniformRandomInplaceGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out_Grad",
+                   "UniformRandomInplaceGradOp");
     auto x_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
