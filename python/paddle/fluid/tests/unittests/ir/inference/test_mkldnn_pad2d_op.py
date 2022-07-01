@@ -23,13 +23,6 @@ import hypothesis.strategies as st
 
 class TestOneDNNPad2DOp(MkldnnAutoScanTest):
 
-    def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        # if mode is channel, and in_shape is 1 rank
-        if len(program_config.inputs['input_data'].shape
-               ) == 1 and program_config.ops[0].attrs['mode'] == 'channel':
-            return False
-        return True
-
     def sample_program_configs(self, *args, **kwargs):
 
         def generate_input(*args, **kwargs):
@@ -60,12 +53,10 @@ class TestOneDNNPad2DOp(MkldnnAutoScanTest):
         yield config, (1e-5, 1e-5)
 
     @given(data_format=st.sampled_from(['NCHW', 'NHWC']),
-           in_shape=st.lists(st.integers(min_value=1, max_value=10),
-                             min_size=4,
-                             max_size=4),
-           paddings=st.lists(st.integers(min_value=0, max_value=3),
-                             min_size=4,
-                             max_size=4))
+           in_shape=st.sampled_from([[2, 3, 4, 5], [1, 4, 1, 3], [4, 3, 2, 1],
+                                     [1, 1, 1, 1]]),
+           paddings=st.sampled_from([[0, 0, 0, 0], [1, 2, 0, 1], [2, 5, 11, 3],
+                                     [0, 5, 0, 1]]))
     def test(self, *args, **kwargs):
         self.run_test(quant=False, *args, **kwargs)
 
