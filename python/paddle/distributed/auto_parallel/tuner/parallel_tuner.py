@@ -44,7 +44,7 @@ class ParallelTuner:
     def __init__(self,
                  dist_context,
                  mode="main",
-                 max_trials=150,
+                 max_trials=50,
                  tuner_id=None,
                  seed=None,
                  logger=None,
@@ -63,16 +63,9 @@ class ParallelTuner:
         self._direction = "min"
         self._max_trials = max_trials
         self._tuner_id = tuner_id
+        self._seed = seed if seed is not None else 9999
+        # for pipeline random
         np.random.seed(999)
-        # self._seed = seed or np.random.randint(1, 10000)
-        self._seed = 9999
-        # self._seed = 9648
-        # self._seed = 5975 # 会hang，但看program是正确的
-        # self._seed = 6817 # erine pass的问题, 前向补全后面的assign trick关了就出错,并且不能开reshape2的trick
-        # self._seed = 2918 # fill_constant_batch_size_like shape设置问题
-        # self._seed = 4316 # reshape2的补全问题, [-1, -1, -1] [-1,0] [-1,-1,-1]
-        # self._seed = 9258 # 非均匀切分，问题定位出是补全的问题，OP推Tensor，tensor与OP的output_dims_mapping不一致
-
         
         print(
             "seed",
@@ -500,42 +493,6 @@ class ParallelTuner:
         self._num_trials += 1
         return trial
 
-    # def _apply_pipeline_partition(self, process_mesh_list):
-    #     op_id_to_process_mesh = {}
-    #     total_ops = len(self._dist_context._dist_ops_for_program)
-    #     total_stages = len(process_mesh_list)
-    #     ops_per_stages = total_ops // total_stages
-    #     if ops_per_stages == 0:
-    #         return None
-    #     # pipeline_starts = []
-    #     start = 0
-    #     # pipeline_starts.append(0)
-    #     # for _ in process_mesh_list:
-    #     #     start += ops_per_stages
-    #     #     pipeline_starts.append(start)
-    #     # pipeline_starts[-1] = total_ops
-        
-    #     random_times = total_stages - 1
-    #     pipeline_starts = [0, total_ops]
-    #     random_start = 0
-    #     while random_start < total_stages-1:
-    #         partition_index = np.random.randint(1, total_ops)
-    #         if partition_index not in pipeline_starts:
-    #             pipeline_starts.append(partition_index)
-    #             random_start += 1
-    #     pipeline_starts.sort()
-
-
-    #     start = 1
-    #     sorted_op_ids = sorted(self._dist_context._dist_ops_for_program.keys())
-    #     for idx, op_id in enumerate(sorted_op_ids):
-    #         if idx < pipeline_starts[start]:
-    #             op_id_to_process_mesh[op_id] = process_mesh_list[start - 1]
-    #         else:
-    #             start += 1
-    #             op_id_to_process_mesh[op_id] = process_mesh_list[start - 1]
-    #     return op_id_to_process_mesh
-
     def _generate_pipeline_starts(self, process_mesh_list):
         total_ops = len(self._dist_context._dist_ops_for_program)
         total_stages = len(process_mesh_list)
@@ -561,14 +518,14 @@ class ParallelTuner:
             # Don't change the first start
             new_pipeline_starts.append(0)
             # Consider the starts except the first and the last one
-            for _ in pipeline_starts[1:-2]:
+            for _ in pipeline_starts[1:-1]:
                 directions.append(Boolean("direction"))
                 sizes.append(
                     IntRange("size",
                              start=0,
                              stop=half_ops_per_stage,
                              endpoint=True))
-            for i, start in enumerate(pipeline_starts[1:-2]):
+            for i, start in enumerate(pipeline_starts[1:-1]):
                 direction = directions[i].random(self._seed)
                 size = sizes[i].random(self._seed)
                 if direction:
@@ -580,7 +537,7 @@ class ParallelTuner:
             # Don't change the last start
             new_pipeline_starts.append(pipeline_starts[-1])
             # Validate the new starts
-            print("Adjusted pipeline starts", new_pipeline_starts, half_ops_per_stage, flush=True)
+            print("Adjusted pipeline starts", new_pipeline_starts, half_ops_per_stage, pipeline_starts, flush=True)
             for i, new_start in enumerate(new_pipeline_starts[1:]):
                 assert new_start > new_pipeline_starts[i] 
             return new_pipeline_starts
@@ -596,13 +553,6 @@ class ParallelTuner:
         if ops_per_stage == 0:
             return None
         pipeline_starts = self._generate_pipeline_starts(process_mesh_list)
-        # pipeline_starts = []
-        # start = 0
-        # pipeline_starts.append(0)
-        # for _ in process_mesh_list:
-        #     start += ops_per_stage
-        #     pipeline_starts.append(start)
-        # pipeline_starts[-1] = total_ops
         start_idx = 1
         sorted_op_ids = sorted(self._dist_context._dist_ops_for_program.keys())
         for idx, op_id in enumerate(sorted_op_ids):
@@ -613,6 +563,34 @@ class ParallelTuner:
                 op_id_to_process_mesh[op_id] = process_mesh_list[start_idx - 1]
         return op_id_to_process_mesh
 
+    def _apply_pipeline_partition_random(self, process_mesh_list):
+        op_id_to_process_mesh = {}
+        total_ops = len(self._dist_context._dist_ops_for_program)
+        total_stages = len(process_mesh_list)
+        ops_per_stages = total_ops // total_stages
+        if ops_per_stages == 0:
+            return None
+        
+        random_times = total_stages - 1
+        pipeline_starts = [0, total_ops]
+        random_start = 0
+        while random_start < total_stages-1:
+            partition_index = np.random.randint(1, total_ops)
+            if partition_index not in pipeline_starts:
+                pipeline_starts.append(partition_index)
+                random_start += 1
+        pipeline_starts.sort()
+
+
+        start = 1
+        sorted_op_ids = sorted(self._dist_context._dist_ops_for_program.keys())
+        for idx, op_id in enumerate(sorted_op_ids):
+            if idx < pipeline_starts[start]:
+                op_id_to_process_mesh[op_id] = process_mesh_list[start - 1]
+            else:
+                start += 1
+                op_id_to_process_mesh[op_id] = process_mesh_list[start - 1]
+        return op_id_to_process_mesh
 
     def _amend_dist_attr(self):
         # 1) Reshape the process mesh of [1, x] to [x] or [x, 1] to [x],
@@ -701,10 +679,6 @@ class ParallelTuner:
             dist_op_impls = find_compatible_distributed_operator_impls(
                 dist_op, partial=False)
             if dist_op_impls is not None:
-                # Select the first compatible dist op impl
-                # if dist_op.serial_op.type == "reshape2":
-                #     if dist_op.serial_op.input("X")[0] == "fc_123.tmp_1":
-                #         print("parallel_tuner.py fc_123.tmp_1 dist_op: ", dist_op)
                 dist_op.dist_attr.impl_type = dist_op_impls[0].type
                 dist_op.dist_attr.impl_idx = dist_op_impls[0].idx
             else:
@@ -720,63 +694,8 @@ class ParallelTuner:
                 dist_op.dist_attr.impl_type = "default"
                 dist_op.dist_attr.impl_idx = 0
 
-            # if "concat_26.tmp_0" in  dist_op.serial_op.input_arg_names and dist_op.serial_op.type == "assign":
-            #     print("parallel_tuner.py concat_26.tmp_0", dist_op)
-
-            # if "fill_constant_batch_size_like_5.tmp_0" in  dist_op.serial_op.output_arg_names and dist_op.serial_op.type == "fill_constant_batch_size_like":
-            #     print("parallel_tuner.py fill_constant_batch_size_like_5.tmp_0", dist_op)
-
-            # if dist_op.serial_op.type == "write_to_array" or dist_op.serial_op.type == "read_from_array" or dist_op.serial_op.type == "while":
-            #     print("parallel_tuner.py array", dist_op)
-
-    def _eval_trial(self, trial):
-        results = None
-        start_time = time.time()
-        inter_node_partition = trial.space.values["inter_node_partitions"]
-        intra_node_partition = trial.space.values["intra_node_partitions"]
-        process_mesh_list = self._generate_process_mesh_list(
-            inter_node_partition, intra_node_partition)
-        print("process_mesh_list: ", process_mesh_list)
-        op_id_to_process_mesh = self._apply_pipeline_partition(
-            process_mesh_list)
-        if op_id_to_process_mesh is None:
-            print("Operators are less than pipeline stages", flush=True)
-            return results
-
-        op_id_to_dist_attr = {}
-        for name, value in trial.space.values.items():
-            if name != "inter_node_partitions" \
-                and name !="intra_node_partitions":
-                op_id_to_dist_attr[int(name)] = value
-        end_time = time.time()
-        print("sample time", end_time - start_time, flush=True)
-
-        assert len(op_id_to_process_mesh) == len(op_id_to_dist_attr)
-
-        start_time = time.time()
-        for op_id, process_mesh in op_id_to_process_mesh.items():
-            dist_op = self._dist_context._dist_ops_for_program[op_id]
-            dist_op.dist_attr = copy.deepcopy(op_id_to_dist_attr[op_id])
-            assert dist_op.dist_attr.impl_type == op_id_to_dist_attr[
-                op_id].impl_type
-            assert dist_op.dist_attr.impl_idx == op_id_to_dist_attr[
-                op_id].impl_idx
-            dist_op.dist_attr.process_mesh = process_mesh
-        self._amend_dist_attr()
-
-        # print("before complete_forward_annotation program")
-        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
-
-        # This is a trick to avoid reshape2 completion problem
-        reshape2_X_input_dims_mapping = {}
-        for dist_op in self._dist_context._dist_ops_for_program.values():
-            if dist_op.serial_op.type == "reshape2":
-                reshape2_X_input_dims_mapping[dist_op.serial_op.desc.id()] = {}
-                reshape2_X_input_dims_mapping[dist_op.serial_op.desc.id()]["X"] = dist_op.dist_attr.get_input_dims_mapping(dist_op.serial_op.input("X")[0])
-                reshape2_X_input_dims_mapping[dist_op.serial_op.desc.id()]["Out"] = dist_op.dist_attr.get_output_dims_mapping(dist_op.serial_op.output("Out")[0])
-                reshape2_X_input_dims_mapping[dist_op.serial_op.desc.id()]["XShape"] =  dist_op.dist_attr.get_output_dims_mapping(dist_op.serial_op.output("XShape")[0])
-        
-        # # This is a trick to complete tensor attr
+    def _complete_tensor_dist_attr_by_op(self):
+        # Complete tensor dist attr
         has_set_dist_attr = set()
         while_op = None
         for block in self._dist_context.serial_main_program.blocks:
@@ -795,7 +714,7 @@ class ParallelTuner:
                             tensor_dist_attr = TensorDistributedAttribute()
                             tensor_dist_attr.process_mesh = self._dist_context.get_dist_op_for_program(op).dist_attr.process_mesh
                             tensor_dist_attr.dims_mapping = self._dist_context.get_dist_op_for_program(op).dist_attr.get_input_dims_mapping(
-                                var_name)
+                                var_name) if var.is_parameter else [-1 for i in var.shape]
                             self._dist_context.set_tensor_dist_attr_for_program(
                             var, tensor_dist_attr)
                             has_set_dist_attr.add(var_name)
@@ -809,8 +728,8 @@ class ParallelTuner:
                         self._dist_context.set_tensor_dist_attr_for_program(
                         var, tensor_dist_attr)
                         has_set_dist_attr.add(var_name)
-        
-        # 修改while_op的process_mesh(他们的dims_mapping都为-1)，还有产生条件变量的那个OP的process_mesh，要设置成union的
+
+        # Find while op process mesh by ops in its sub block
         union_process_mesh = []
         block =  self._dist_context.serial_main_program.blocks[while_op.attr("sub_block").id]
         for op in block.ops:
@@ -818,7 +737,7 @@ class ParallelTuner:
                 continue
             process_mesh = self._dist_context.get_dist_op_for_program(op).dist_attr.process_mesh
 
-            # 找output_tensor的process_mesh，因为可能tensor会发生output reshard，忽略了导致while op缺失
+            # NOTE: The while op process mesh should contain output tensor process mesh
             for process in process_mesh.processes:
                 if process not in union_process_mesh:
                     union_process_mesh.append(process)
@@ -830,20 +749,19 @@ class ParallelTuner:
                     for process in output_process_mesh.processes:
                         if process not in union_process_mesh:
                             union_process_mesh.append(process)
-
         union_process_mesh.sort()
-        
-        # print("parallel_tuner.py union process mesh", union_process_mesh)
         self._dist_context.get_dist_op_for_program(while_op).dist_attr.process_mesh = union_process_mesh
-        # print("parallel_tuner.py while_op process mesh", self._dist_context.get_dist_op_for_program(while_op).dist_attr.process_mesh)
+
+        # Set array and fill_constant(it is relative with condition) op process mesh and tensor dist attr
         for block in self._dist_context.serial_main_program.blocks:
             for op in block.ops:
+                # This is a trick to set fill_constant dist attr
                 if op.type == "read_from_array" or  op.type == "write_to_array" or op.type == "fill_constant":
                     self._dist_context.get_dist_op_for_program(op).dist_attr.process_mesh = union_process_mesh
-                    # print("parallel_tuner.py array_op", self._dist_context.get_dist_op_for_program(op))
                     for var_name in op.output_arg_names:
                         var = block._var_recursive(var_name)  
                         tensor_dist_attr = TensorDistributedAttribute()
+                        # dims_mapping all -1
                         tensor_dist_attr.process_mesh = self._dist_context.get_dist_op_for_program(op).dist_attr.process_mesh
                         self._dist_context.set_tensor_dist_attr_for_program(
                         var, tensor_dist_attr)
@@ -858,7 +776,8 @@ class ParallelTuner:
                                 self._dist_context.set_tensor_dist_attr_for_program(
                                 var, tensor_dist_attr)
                                 has_set_dist_attr.add(var_name)
-
+        
+        # Set condition var and op process mesh
         condition_var = while_op.block._var_recursive(while_op.input("Condition")[0])
         for op in while_op.block.ops:
             if condition_var.name in op.output_arg_names:
@@ -867,7 +786,7 @@ class ParallelTuner:
                 break
         
 
-        # 组网里有没有用到的process_mesh, this is a trick to avoid.
+        # NOTE: Some special tensors are not as input or output of op, they need be tricked to set
         var = self._dist_context.serial_main_program.global_block().vars["pos_embedding_2d_extra"]
         self._dist_context.get_dist_tensor_for_program(var).dist_attr.process_mesh = self._dist_context.process_meshes[0]
         var = self._dist_context.serial_main_program.global_block().vars["array_0.out"]
@@ -886,20 +805,8 @@ class ParallelTuner:
         var = self._dist_context.serial_main_program.global_block().vars["array_4.out"]
         self._dist_context.get_dist_tensor_for_program(var).dist_attr.process_mesh =self._dist_context.get_dist_op_for_program(ops[assign_start_idx+4]).dist_attr.process_mesh
 
-        # self._completer.complete_forward_annotation()
-
-        for dist_op in self._dist_context._dist_ops_for_program.values():
-            if dist_op.serial_op.type == "reshape2":
-                dist_op.dist_attr.set_input_dims_mapping(dist_op.serial_op.input("X")[0], reshape2_X_input_dims_mapping[dist_op.serial_op.desc.id()]["X"])
-                dist_op.dist_attr.set_output_dims_mapping(dist_op.serial_op.output("Out")[0], reshape2_X_input_dims_mapping[dist_op.serial_op.desc.id()]["Out"])
-                dist_op.dist_attr.set_output_dims_mapping(dist_op.serial_op.output("XShape")[0], reshape2_X_input_dims_mapping[dist_op.serial_op.desc.id()]["XShape"])
-                self._dist_context.get_dist_tensor_for_program(dist_op.serial_op.block._var_recursive(dist_op.serial_op.output("Out")[0])).dist_attr.dims_mapping = reshape2_X_input_dims_mapping[dist_op.serial_op.desc.id()]["Out"]
-                self._dist_context.get_dist_tensor_for_program(dist_op.serial_op.block._var_recursive(dist_op.serial_op.output("XShape")[0])).dist_attr.dims_mapping = reshape2_X_input_dims_mapping[dist_op.serial_op.desc.id()]["XShape"]
-
-        # print("after complete_forward_annotation program")
-        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
   
-        # This is a trick to avoid assign dist attr problem
+        # NOTE: This is a trick to avoid assign dist attr problem if it is a inplace operation
         for dist_op in self._dist_context._dist_ops_for_program.values():
             if dist_op.serial_op.type == "assign":
                 output_tensor = dist_op.serial_op.block._var_recursive(
@@ -908,35 +815,67 @@ class ParallelTuner:
                     output_tensor).dist_attr.dims_mapping
                 output_dims_mapping = dist_op.dist_attr.get_output_dims_mapping(
                     output_tensor.name)
-                # print("parallel_tuner.py ", tensor_dims_mapping, output_dims_mapping)
-                if tensor_dims_mapping != output_dims_mapping:
-                    # print("parallel_tuner.py ", tensor_dims_mapping,
-                    #       output_dims_mapping)
-                    input_tensor = dist_op.serial_op.block._var_recursive(
-                        dist_op.serial_op.input("X")[0])
-                    dist_op.dist_attr.set_output_dims_mapping(
-                        output_tensor.name, tensor_dims_mapping)
-                    dist_op.dist_attr.set_input_dims_mapping(
-                        input_tensor.name, tensor_dims_mapping)
-                    # print("parallel_tuner.py dist_op assign", dist_op)
+                input_tensor = dist_op.serial_op.block._var_recursive(
+                    dist_op.serial_op.input("X")[0])
+                dist_op.dist_attr.set_output_dims_mapping(
+                    output_tensor.name, tensor_dims_mapping)
+                dist_op.dist_attr.set_input_dims_mapping(
+                    input_tensor.name, tensor_dims_mapping)
 
+    def _eval_trial(self, trial):
+        results = None
+        start_time = time.time()
+        inter_node_partition = trial.space.values["inter_node_partitions"]
+        intra_node_partition = trial.space.values["intra_node_partitions"]
+        process_mesh_list = self._generate_process_mesh_list(
+            inter_node_partition, intra_node_partition)
+        print("Parallel Tuner: process_mesh_list is ", process_mesh_list)
+        op_id_to_process_mesh = self._apply_pipeline_partition_random(
+            process_mesh_list)
+        if op_id_to_process_mesh is None:
+            print("Operators are less than pipeline stages", flush=True)
+            return results
+
+        op_id_to_dist_attr = {}
+        for name, value in trial.space.values.items():
+            if name != "inter_node_partitions" \
+                and name !="intra_node_partitions":
+                op_id_to_dist_attr[int(name)] = value
+        end_time = time.time()
+        print("Parallel Tuner: time of sampling a trial is {}s".format(end_time - start_time))
+
+        assert len(op_id_to_process_mesh) == len(op_id_to_dist_attr)
+
+        start_time = time.time()
+        for op_id, process_mesh in op_id_to_process_mesh.items():
+            dist_op = self._dist_context._dist_ops_for_program[op_id]
+            dist_op.dist_attr = copy.deepcopy(op_id_to_dist_attr[op_id])
+            assert dist_op.dist_attr.impl_type == op_id_to_dist_attr[
+                op_id].impl_type
+            assert dist_op.dist_attr.impl_idx == op_id_to_dist_attr[
+                op_id].impl_idx
+            dist_op.dist_attr.process_mesh = process_mesh
+        self._amend_dist_attr()
+        
+        complete_tensor_time = time.time()
+        self._complete_tensor_dist_attr_by_op()
+        end_time = time.time()
+        print("Parallel Tuner: time of completing tensor dist attr by op is {}s".format(end_time - complete_tensor_time), flush=True)
         self._dist_context.block_state.parse_forward_blocks(
             self._dist_context.serial_main_program)
 
         # For now, we only materialize the programs for all ranks for testing.
         # if self._materialized_for_all_ranks:
         #     self._parallelizer.parallel_all()
-
         end_time = time.time()
-        print("complete time", end_time - start_time, flush=True)
+        print("Parallel tuner: completing time is ", end_time - start_time, flush=True)
 
         start_time = time.time()
         estimate_time = self._estimate_trial()
-        print("time of cost model 0", estimate_time, flush=True)
+        print("Parallel Tuner: cost by cost model is ", estimate_time, "ms", flush=True)
         end_time = time.time()
-        print("estimate time", end_time - start_time, flush=True)
+        print("Parallel Tuner: time of estimating a trial by cost model is {}s".format(end_time - start_time), flush=True)
 
-        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
         results = {"estimate_time": estimate_time}
         return results
 
@@ -944,6 +883,296 @@ class ParallelTuner:
         for metric_name, metric_value in metrics.items():
             trial.recorder.update(metric_name, metric_value, step=step)
         return trial.status
+
+    def erine_pass(self, dist_context):
+        def is_union_process_mesh(process_mesh, dist_context):
+            sub_set_count = 0
+            for item in dist_context.process_meshes:
+                for process in item.processes:
+                    if process in process_mesh.processes:
+                        sub_set_count += 1
+                        break
+            if sub_set_count > 1:
+                return True
+            return False
+
+        # This is a trick to avoid output process mesh different from tensor process mesh (non-union process mesh) (for fill_constant_batch_size_like)
+        for block in self._dist_context.serial_main_program.blocks:
+            for serial_op in block.ops:
+                if serial_op.type == "fill_constant_batch_size_like":
+                    output_name = serial_op.output("Out")[0]
+                    var = serial_op.block._var_recursive(output_name)
+                    dist_tensor = self._dist_context.get_dist_tensor_for_program(var)
+                    for item in self._dist_context.serial_main_program.blocks:
+                        for op in item.ops:
+                            dist_op = self._dist_context.get_dist_op_for_program(op)
+                            for var_name in op.input_arg_names:
+                                if var_name == output_name:
+                                    # set op process mesh and dims_mapping the same as tensor
+                                    if not is_union_process_mesh(dist_tensor.dist_attr.process_mesh, self._dist_context) and not is_union_process_mesh(dist_op.dist_attr.process_mesh, self._dist_context):
+                                        if dist_tensor.dist_attr.process_mesh != dist_op.dist_attr.process_mesh:
+                                            dist_op.dist_attr.process_mesh = dist_tensor.dist_attr.process_mesh
+                                        if dist_tensor.dist_attr.dims_mapping != dist_op.dist_attr.get_input_dims_mapping(var_name):
+                                            if op.type == "while":
+                                                continue
+                                            dist_op.dist_attr.get_input_dist_attr(var_name).dims_mapping = dist_tensor.dist_attr.dims_mapping
+                                            if op.type == "concat":
+                                                for _ in op.input_arg_names:
+                                                    if _ != var_name:
+                                                        dist_op.dist_attr.get_input_dist_attr(_).dims_mapping = dist_tensor.dist_attr.dims_mapping
+                                            # Gather in Erine, output dims_mapping should be the same with fill dims_mapping
+                                            # Set output_dims_mapping
+                                            output_var_name = op.output_arg_names[0]
+                                            output_var = op.block._var_recursive(output_var_name)
+                                            output_dist_tensor = self._dist_context.get_dist_tensor_for_program(output_var)
+                                            output_dist_tensor.dist_attr.dims_mapping = dist_tensor.dist_attr.dims_mapping
+                                            output_dist_tensor.dist_attr.process_mesh = dist_tensor.dist_attr.process_mesh
+                                            # Set output tensor dims_mapping
+                                            dist_op.dist_attr.get_output_dist_attr(output_var_name).dims_mapping = dist_tensor.dist_attr.dims_mapping
+
+
+                            for var_name in op.output_arg_names:
+                                if var_name == output_name:
+                                    if not is_union_process_mesh(dist_tensor.dist_attr.process_mesh, self._dist_context) and not is_union_process_mesh(dist_op.dist_attr.process_mesh, self._dist_context):
+                                        if dist_tensor.dist_attr.process_mesh != dist_op.dist_attr.process_mesh:
+                                            dist_op.dist_attr.process_mesh = dist_tensor.dist_attr.process_mesh
+                                        if dist_tensor.dist_attr.dims_mapping != dist_op.dist_attr.get_output_dims_mapping(var_name):
+                                            dist_op.dist_attr.get_output_dist_attr(var_name).dims_mapping = dist_tensor.dist_attr.dims_mapping
+
+        # This is a trick to avoid assign op dist attr problem
+        for dist_op in self._dist_context._dist_ops_for_program.values():
+            if dist_op.serial_op.type == "assign":
+                output_tensor = dist_op.serial_op.block._var_recursive(
+                    dist_op.serial_op.output("Out")[0])
+                tensor_dims_mapping = self._dist_context.get_dist_tensor_for_program(
+                    output_tensor).dist_attr.dims_mapping
+                output_dims_mapping = dist_op.dist_attr.get_output_dims_mapping(
+                    output_tensor.name)
+                input_tensor = dist_op.serial_op.block._var_recursive(
+                    dist_op.serial_op.input("X")[0])
+                dist_op.dist_attr.set_output_dims_mapping(
+                    output_tensor.name, tensor_dims_mapping)
+                dist_op.dist_attr.set_input_dims_mapping(
+                    input_tensor.name, tensor_dims_mapping)
+
+        # This is a trick to avoid shared parameter completion problem
+        params_set = set()
+        for dist_op in self._dist_context._dist_ops_for_program.values():
+            serial_op = dist_op.serial_op
+            if serial_op.type == "while":
+                continue
+            else:
+                for var_name in serial_op.input_arg_names:
+                    var = dist_op.serial_op.block._var_recursive(var_name)
+                    if var.is_parameter:
+                        if var.name not in params_set:
+                            params_set.add(var_name)
+                            dist_tensor = self._dist_context.get_dist_tensor_for_program(var)
+                            input_dims_mapping = dist_op.dist_attr.get_input_dims_mapping(var_name)
+                            dist_tensor.dist_attr.dims_mapping = input_dims_mapping
+
+        # step1. find fill_const_batch_size_like op output whose shape is dynamic
+        # step2. find assign and concat op whose input is tensor step founded.
+        # step3. find op order
+        # step4. change step3 op and tensor process_mesh
+
+        # step1 and step 2
+        dynamic_fill_constant_tensors = []
+        fixed_indexs = {}
+        dynamic_indexs = {}
+        concat_and_assign_op_indexs = {}
+        concat_output_tensors = []
+        ref_mapping = {}
+        concat_input_x_to_fill_constant_tensor = {}
+        unsqueeze2_index = None # process_mesh and tensor process_mesh should be the same as while op
+        for block_idx, block in enumerate(dist_context.serial_main_program.blocks):
+            fixed_indexs[block_idx] = []
+            dynamic_indexs[block_idx] = []
+            concat_and_assign_op_indexs[block_idx] = []
+            ref_mapping[block_idx] = {}
+            for idx, serial_op in enumerate(block.ops):
+                # the first unsqueeze2 should on all
+                if serial_op.type == "unsqueeze2":
+                    if block_idx > 0 and unsqueeze2_index is None:
+                        unsqueeze2_index = idx
+                if serial_op.type == "fill_constant_batch_size_like":
+                    if serial_op.attr('shape').count(0) >= 1:
+                        dynamic_fill_constant_tensors.append(serial_op.output("Out")[0])
+                if serial_op.type == "concat":
+                    input_X = serial_op.input("X")
+                    for var_name in input_X:
+                        if var_name in dynamic_fill_constant_tensors:
+                            concat_and_assign_op_indexs[block_idx].append(idx)
+                            ref_mapping[block_idx][idx] = var_name
+                            break
+                        # hard code
+                        if "gather" in var_name:
+                            concat_and_assign_op_indexs[block_idx].append(idx)
+                            ref_mapping[block_idx][idx] = var_name
+                            break
+                    # concat output
+                    if idx in ref_mapping[block_idx]:
+                        concat_output = serial_op.output("Out")[0]
+                        concat_output_tensors.append(concat_output)
+                        concat_input_x_to_fill_constant_tensor[concat_output] = ref_mapping[block_idx][idx]
+                if serial_op.type == "assign":
+                    output = serial_op.output("Out")[0]
+                    if output in dynamic_fill_constant_tensors:
+                        concat_and_assign_op_indexs[block_idx].append(idx)
+                        ref_mapping[block_idx][idx] = output
+                if serial_op.type == "matmul_v2":
+                    if serial_op.input("Y")[0] in concat_output_tensors:
+                        if serial_op.attr("trans_y"):
+                            dynamic_indexs[block_idx].append(idx)
+                            ref_mapping[block_idx][idx] = concat_input_x_to_fill_constant_tensor[serial_op.input("Y")[0]]
+                        else:
+                            fixed_indexs[block_idx].append(idx)
+
+        # NOTE: dims_mapping is not considered, so it stil will have dynamic shape
+        # change assign and concat first，then change op among them, last change the unsqueeze2
+        # unsqueeze2的，op process_mesh 和 output的process_mesh,取它output，它output作为input的process_mesh的并集
+        for block_idx in concat_and_assign_op_indexs:
+            block =  dist_context.serial_main_program.blocks[block_idx]
+            ops = block.ops
+            for op_idx in concat_and_assign_op_indexs[block_idx]:
+                ref_tensor = ref_mapping[block_idx][op_idx]
+                ref_process_mesh = dist_context.get_dist_tensor_for_program(block._var_recursive(ref_tensor)).dist_attr.process_mesh
+                op_dist_attr = dist_context.get_dist_op_for_program(ops[op_idx]).dist_attr
+                op_process_mesh = op_dist_attr.process_mesh
+                if op_process_mesh != ref_process_mesh:
+                    op_dist_attr.process_mesh = ref_process_mesh
+                    if ops[op_idx].type == "concat":
+                        output = ops[op_idx].output("Out")[0]
+                        output_dist_attr = dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr
+                        if output_dist_attr.process_mesh != ref_process_mesh:
+                            output_dist_attr.process_mesh = ref_process_mesh
+
+                if ops[op_idx].type == "assign":
+                    op_dist_attr.process_mesh = ref_process_mesh
+                    output = ops[op_idx].output("Out")[0]
+                    output_dist_attr =  dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr
+                    if output_dist_attr.process_mesh != ref_process_mesh:
+                        output_dist_attr.process_mesh = ref_process_mesh
+                    output_tensor = block._var_recursive(
+                        ops[op_idx].output("Out")[0])
+                    op_dist_attr = self._dist_context.get_dist_op_for_program(ops[op_idx]).dist_attr
+                    tensor_dims_mapping = self._dist_context.get_dist_tensor_for_program(
+                        output_tensor).dist_attr.dims_mapping
+                    output_dims_mapping = op_dist_attr.get_output_dims_mapping(
+                        output_tensor.name)
+                    input_tensor = block._var_recursive(
+                            ops[op_idx].input("X")[0])
+                    op_dist_attr.set_output_dims_mapping(
+                        output_tensor.name, tensor_dims_mapping)
+                    op_dist_attr.set_input_dims_mapping(
+                        input_tensor.name, tensor_dims_mapping)
+
+
+            for i in range(len(dynamic_indexs[block_idx])):
+                ref_tensor = ref_mapping[block_idx][dynamic_indexs[block_idx][i]]
+                ref_process_mesh = dist_context.get_dist_tensor_for_program(block._var_recursive(ref_tensor)).dist_attr.process_mesh
+                for op_idx in range(dynamic_indexs[block_idx][i], fixed_indexs[block_idx][i]):
+                    op_dist_attr = dist_context.get_dist_op_for_program(ops[op_idx]).dist_attr
+                    op_process_mesh = op_dist_attr.process_mesh
+                    if op_process_mesh != ref_process_mesh:
+                        op_dist_attr.process_mesh = ref_process_mesh
+                        for output in ops[op_idx].output_arg_names:
+                            output_dist_attr = dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr
+                            if output_dist_attr.process_mesh != ref_process_mesh:
+                                output_dist_attr.process_mesh = ref_process_mesh
+
+        assert unsqueeze2_index is not None
+        block = dist_context.serial_main_program.blocks[1]
+        unsqueeze2_op = block.ops[unsqueeze2_index]
+        output = unsqueeze2_op.output("Out")[0]
+        unsqueeze2_op_union_process_mesh = []
+        for op in block.ops:
+            if op.type == "while":
+                continue
+            for input in op.input_arg_names:
+                if input == output:
+                    process_mesh = dist_context.get_dist_op_for_program(op).dist_attr.process_mesh
+                    for process in process_mesh.processes:
+                        if process not in unsqueeze2_op_union_process_mesh:
+                            unsqueeze2_op_union_process_mesh.append(process)
+        unsqueeze2_op_union_process_mesh.sort()
+        dist_context.get_dist_op_for_program(unsqueeze2_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
+        dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
+        dist_context.get_dist_tensor_for_program(block._var_recursive(unsqueeze2_op.output("XShape")[0])).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
+
+        # deal with scale
+        scale_op_output = unsqueeze2_op.input("X")[0]
+        scale_op = None
+        for idx, op in enumerate(block.ops):
+            if op.type == "while":
+                continue
+            if scale_op_output in op.output_arg_names:
+                scale_op = op
+                break
+        assert scale_op is not None
+        dist_context.get_dist_op_for_program(scale_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
+        dist_context.get_dist_tensor_for_program(block._var_recursive(scale_op_output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
+
+        # deal with concat
+        concat_op_output = scale_op.input("X")[0]
+        concat_op = None
+        for idx, op in enumerate(block.ops):
+            if op.type == "while":
+                continue
+            if concat_op_output in op.output_arg_names:
+                concat_op = op
+                break
+        assert concat_op is not None
+        dist_context.get_dist_op_for_program(concat_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
+        dist_context.get_dist_tensor_for_program(block._var_recursive(concat_op_output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
+
+        # deal with op whose input is concat_op_output
+        for idx, op in enumerate(block.ops):
+            if op.type == "while":
+                continue
+            if concat_op_output in op.input_arg_names:
+                op_dist_attr = dist_context.get_dist_op_for_program(op).dist_attr
+                if op_dist_attr.process_mesh != unsqueeze2_op_union_process_mesh:
+                    op_dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
+                    for output in op.output_arg_names:
+                        dist_tensor = dist_context.get_dist_tensor_for_program(block._var_recursive(output))
+                        if dist_tensor.dist_attr.process_mesh != unsqueeze2_op_union_process_mesh:
+                            dist_tensor.dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
+
+        # deal with gather
+        gather_output = "gather_1.tmp_0"
+        gather_op = None
+        for idx, op in enumerate(block.ops):
+            if op.type == "while":
+                continue
+            if gather_output in op.output_arg_names:
+                gather_op = op
+                break
+        assert gather_op is not None
+        dist_context.get_dist_op_for_program(gather_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
+        dist_context.get_dist_tensor_for_program(block._var_recursive(gather_output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
+
+        # deal with read_from_array
+        read_array_output = gather_op.input("X")[0]
+        read_array_op = None
+        for idx, op in enumerate(block.ops):
+            if op.type == "while":
+                continue
+            if read_array_output in op.output_arg_names:
+                read_array_op = op
+                break
+        assert read_array_op is not None
+        dist_context.get_dist_op_for_program(read_array_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
+        dist_context.get_dist_tensor_for_program(block._var_recursive(read_array_output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
+
+        # deal with assign_value
+        block = self._dist_context.serial_main_program.global_block()
+        for op in block.ops:
+            if op.type == "assign_value":
+                for output in op.output_arg_names:
+                    dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr.dims_mapping = [-1 for i in range(len(block._var_recursive(output).shape))]
+                    dist_context.get_dist_op_for_program(op).dist_attr.set_output_dims_mapping(output, [-1 for i in range(len(block._var_recursive(output).shape))])
+                    dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr.process_mesh = dist_context.get_dist_op_for_program(op).dist_attr.process_mesh
 
     def _estimate_trial(self):
         assert self._cluster is not None
@@ -970,342 +1199,18 @@ class ParallelTuner:
 
             self._estimator = CostEstimator(
                 serial_main_program, self._cluster, loop_count=self._loop_count)
-        
-        # print("before erine pass program****")
-        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
-        # 先跑通最后一个，再挪到estimate cost前！
-        def is_union_process_mesh(process_mesh, dist_context):
-            sub_set_count = 0
-            for item in dist_context.process_meshes:
-                for process in item.processes:
-                    if process in process_mesh.processes:
-                        sub_set_count += 1
-                        break
-            if sub_set_count > 1:
-                return True
-            return False
 
-        # This is a trick to avoid output process mesh different from tensor process mesh (non-union process mesh) (for fill_constant_batch_size_like)
-        for block in self._dist_context.serial_main_program.blocks:
-            for serial_op in block.ops:
-                if serial_op.type == "fill_constant_batch_size_like":
-                    output_name = serial_op.output("Out")[0]
-                    var = serial_op.block._var_recursive(output_name)
-                    dist_tensor = self._dist_context.get_dist_tensor_for_program(var)
-                    # 改变输入的分布式属性？不用改！
-                    # self._dist_context.get_dist_op_for_program(serial_op).dist_attr.set_input_dims_mapping(serial_op.input("Input")[0], dist_tensor.dist_attr.dims_mapping)
-                    # 需要改变shape，在tuner那的 6.17: 不用改了，是由玉龙的补全bug引发出来的
-                    # new_shape = []
-                    # for idx, item in enumerate(serial_op.attr("shape")):
-                    #     dim = dist_tensor.dist_attr.dims_mapping[idx]
-                    #     if dim == -1:
-                    #         new_shape.append(item)
-                    #     else:
-                    #         new_shape.append(item // dist_tensor.dist_attr.process_mesh.topology[dim])
-                    #     # print("dims_mapping, dim, new_shape", dist_tensor.dist_attr.dims_mapping, dim, new_shape)
-                    # serial_op._set_attr("shape", new_shape)
-                    for item in self._dist_context.serial_main_program.blocks:
-                        for op in item.ops:
-                            dist_op = self._dist_context.get_dist_op_for_program(op)
-                            for var_name in op.input_arg_names:
-                                if var_name == output_name:
-                                    # set op process mesh and dims_mapping the same as tensor
-                                    if not is_union_process_mesh(dist_tensor.dist_attr.process_mesh, self._dist_context) and not is_union_process_mesh(dist_op.dist_attr.process_mesh, self._dist_context):
-                                        if dist_tensor.dist_attr.process_mesh != dist_op.dist_attr.process_mesh:
-                                            dist_op.dist_attr.process_mesh = dist_tensor.dist_attr.process_mesh
-                                        if dist_tensor.dist_attr.dims_mapping != dist_op.dist_attr.get_input_dims_mapping(var_name):
-                                            if op.type == "while":
-                                                continue
-                                            # if op.type != "gather":
-                                            #     raise ValueError("Unsupported op {}".format(op))
-                                            dist_op.dist_attr.get_input_dist_attr(var_name).dims_mapping = dist_tensor.dist_attr.dims_mapping
-                                            if op.type == "concat":
-                                                for _ in op.input_arg_names:
-                                                    if _ != var_name:
-                                                        dist_op.dist_attr.get_input_dist_attr(_).dims_mapping = dist_tensor.dist_attr.dims_mapping
-                                            # gather in Erine, output dims_mapping should be the same with fill dims_mapping
-                                            # set output_dims_mapping
-                                            output_var_name = op.output_arg_names[0]
-                                            output_var = op.block._var_recursive(output_var_name)
-                                            output_dist_tensor = self._dist_context.get_dist_tensor_for_program(output_var)
-                                            output_dist_tensor.dist_attr.dims_mapping = dist_tensor.dist_attr.dims_mapping
-                                            output_dist_tensor.dist_attr.process_mesh = dist_tensor.dist_attr.process_mesh
-                                            # set output tensor dims_mapping
-                                            dist_op.dist_attr.get_output_dist_attr(output_var_name).dims_mapping = dist_tensor.dist_attr.dims_mapping
-
-                                    
-                            for var_name in op.output_arg_names:
-                                if var_name == output_name:
-                                    if not is_union_process_mesh(dist_tensor.dist_attr.process_mesh, self._dist_context) and not is_union_process_mesh(dist_op.dist_attr.process_mesh, self._dist_context):
-                                        if dist_tensor.dist_attr.process_mesh != dist_op.dist_attr.process_mesh:
-                                            dist_op.dist_attr.process_mesh = dist_tensor.dist_attr.process_mesh
-                                        if dist_tensor.dist_attr.dims_mapping != dist_op.dist_attr.get_output_dims_mapping(var_name):
-                                            dist_op.dist_attr.get_output_dist_attr(var_name).dims_mapping = dist_tensor.dist_attr.dims_mapping
-
-        # This is a trick to avoid assign op dist attr problem
-        for dist_op in self._dist_context._dist_ops_for_program.values():
-            if dist_op.serial_op.type == "assign":
-                output_tensor = dist_op.serial_op.block._var_recursive(
-                    dist_op.serial_op.output("Out")[0])
-                tensor_dims_mapping = self._dist_context.get_dist_tensor_for_program(
-                    output_tensor).dist_attr.dims_mapping
-                output_dims_mapping = dist_op.dist_attr.get_output_dims_mapping(
-                    output_tensor.name)
-                # print("parallel_tuner.py ", tensor_dims_mapping, output_dims_mapping)
-                if tensor_dims_mapping != output_dims_mapping:
-                    # print("parallel_tuner.py best", tensor_dims_mapping,
-                    #       output_dims_mapping)
-                    input_tensor = dist_op.serial_op.block._var_recursive(
-                        dist_op.serial_op.input("X")[0])
-                    dist_op.dist_attr.set_output_dims_mapping(
-                        output_tensor.name, tensor_dims_mapping)
-                    dist_op.dist_attr.set_input_dims_mapping(
-                        input_tensor.name, tensor_dims_mapping)
-        
-        # This is a trick to avoid shared parameter completion problem
-        params_set = set()
-        for dist_op in self._dist_context._dist_ops_for_program.values():
-            serial_op = dist_op.serial_op
-            if serial_op.type == "while":
-                continue
-            else:
-                for var_name in serial_op.input_arg_names:
-                    var = dist_op.serial_op.block._var_recursive(var_name)
-                    if var.is_parameter:
-                        if var.name not in params_set:
-                            params_set.add(var_name)
-                            dist_tensor = self._dist_context.get_dist_tensor_for_program(var)
-                            input_dims_mapping = dist_op.dist_attr.get_input_dims_mapping(var_name)
-                            dist_tensor.dist_attr.dims_mapping = input_dims_mapping
-        
-        
-        def erine_pass(dist_context):
-            
-            # step1. find fill_const_batch_size_like op output whose shape is dynamic
-            # step2. find assign and concat op whose input is tensor step founded.
-            # step3. find op order
-            # step4. change step3 op and tensor process_mesh
-
-            # step1 and step 2
-            dynamic_fill_constant_tensors = []
-            fixed_indexs = {}
-            dynamic_indexs = {}
-            concat_and_assign_op_indexs = {}
-            concat_output_tensors = []
-            ref_mapping = {}
-            concat_input_x_to_fill_constant_tensor = {}
-            unsqueeze2_index = None # process_mesh and tensor process_mesh should be the same as while op
-            for block_idx, block in enumerate(dist_context.serial_main_program.blocks):
-                fixed_indexs[block_idx] = []
-                dynamic_indexs[block_idx] = []
-                concat_and_assign_op_indexs[block_idx] = []
-                ref_mapping[block_idx] = {}
-                for idx, serial_op in enumerate(block.ops):
-                    # the first unsqueeze2 should on all
-                    if serial_op.type == "unsqueeze2":
-                        if block_idx > 0 and unsqueeze2_index is None:
-                            unsqueeze2_index = idx
-                    if serial_op.type == "fill_constant_batch_size_like":
-                        if serial_op.attr('shape').count(0) >= 1:
-                            dynamic_fill_constant_tensors.append(serial_op.output("Out")[0])
-                    if serial_op.type == "concat":
-                        input_X = serial_op.input("X")
-                        for var_name in input_X:
-                            if var_name in dynamic_fill_constant_tensors:
-                                concat_and_assign_op_indexs[block_idx].append(idx)
-                                ref_mapping[block_idx][idx] = var_name
-                                break
-                            # hard code
-                            if "gather" in var_name:
-                                concat_and_assign_op_indexs[block_idx].append(idx)
-                                ref_mapping[block_idx][idx] = var_name
-                                break
-                        # concat output
-                        if idx in ref_mapping[block_idx]:
-                            concat_output = serial_op.output("Out")[0]
-                            concat_output_tensors.append(concat_output)
-                            concat_input_x_to_fill_constant_tensor[concat_output] = ref_mapping[block_idx][idx]
-                    if serial_op.type == "assign":
-                        output = serial_op.output("Out")[0]
-                        if output in dynamic_fill_constant_tensors:
-                            concat_and_assign_op_indexs[block_idx].append(idx)
-                            ref_mapping[block_idx][idx] = output
-                    if serial_op.type == "matmul_v2":
-                        if serial_op.input("Y")[0] in concat_output_tensors:
-                            if serial_op.attr("trans_y"):
-                                dynamic_indexs[block_idx].append(idx)
-                                ref_mapping[block_idx][idx] = concat_input_x_to_fill_constant_tensor[serial_op.input("Y")[0]]
-                            else:
-                                fixed_indexs[block_idx].append(idx)
-
-            print("parallel_tuner.py erine pass****", dynamic_fill_constant_tensors, fixed_indexs, dynamic_indexs, concat_and_assign_op_indexs, concat_output_tensors, ref_mapping)
-            
-            # dims_mapping先不考虑
-            # 先改assign和concat，再改中间的，最后改unsqueeze2_index
-            # assign的op process_mesh 与 ref相同
-            # concat的op process_mesh 和 output的 process_mesh 与ref相同
-            # 中间的，op process_mesh 和 output的process_mesh 与ref相同
-            # unsqueeze2的，op process_mesh 和 output的process_mesh,取它output，它output作为input的process_mesh的并集
-            for block_idx in concat_and_assign_op_indexs:
-                block =  dist_context.serial_main_program.blocks[block_idx]
-                ops = block.ops
-                for op_idx in concat_and_assign_op_indexs[block_idx]:
-                    ref_tensor = ref_mapping[block_idx][op_idx]
-                    ref_process_mesh = dist_context.get_dist_tensor_for_program(block._var_recursive(ref_tensor)).dist_attr.process_mesh
-                    op_dist_attr = dist_context.get_dist_op_for_program(ops[op_idx]).dist_attr
-                    op_process_mesh = op_dist_attr.process_mesh
-                    if op_process_mesh != ref_process_mesh:
-                        op_dist_attr.process_mesh = ref_process_mesh
-                        if ops[op_idx].type == "concat":
-                            output = ops[op_idx].output("Out")[0]
-                            output_dist_attr = dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr
-                            if output_dist_attr.process_mesh != ref_process_mesh:
-                                output_dist_attr.process_mesh = ref_process_mesh
-                    
-                    # 规避直接走玉龙补全的错误（mp4）
-                    if ops[op_idx].type == "assign":
-                        op_dist_attr.process_mesh = ref_process_mesh
-                        output = ops[op_idx].output("Out")[0]
-                        output_dist_attr =  dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr
-                        if output_dist_attr.process_mesh != ref_process_mesh:
-                            output_dist_attr.process_mesh = ref_process_mesh
-
-                        # 对assgin的op的input dims_mapping和output_dims_mapping做处理
-                        output_tensor = block._var_recursive(
-                            ops[op_idx].output("Out")[0])
-                        op_dist_attr = self._dist_context.get_dist_op_for_program(ops[op_idx]).dist_attr
-                        tensor_dims_mapping = self._dist_context.get_dist_tensor_for_program(
-                            output_tensor).dist_attr.dims_mapping
-                        output_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                            output_tensor.name)
-                        input_tensor = block._var_recursive(
-                                ops[op_idx].input("X")[0])
-                        op_dist_attr.set_output_dims_mapping(
-                            output_tensor.name, tensor_dims_mapping)
-                        op_dist_attr.set_input_dims_mapping(
-                            input_tensor.name, tensor_dims_mapping)
-                        # print("parallel_tuner.py assign op dist_op", op_dist_attr)
-
-
-                for i in range(len(dynamic_indexs[block_idx])):
-                    ref_tensor = ref_mapping[block_idx][dynamic_indexs[block_idx][i]]
-                    ref_process_mesh = dist_context.get_dist_tensor_for_program(block._var_recursive(ref_tensor)).dist_attr.process_mesh
-                    for op_idx in range(dynamic_indexs[block_idx][i], fixed_indexs[block_idx][i]):
-                        op_dist_attr = dist_context.get_dist_op_for_program(ops[op_idx]).dist_attr
-                        op_process_mesh = op_dist_attr.process_mesh
-                        if op_process_mesh != ref_process_mesh:
-                            op_dist_attr.process_mesh = ref_process_mesh
-                            for output in ops[op_idx].output_arg_names:
-                                output_dist_attr = dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr
-                                if output_dist_attr.process_mesh != ref_process_mesh:
-                                    output_dist_attr.process_mesh = ref_process_mesh
-            
-            assert unsqueeze2_index is not None
-            block = dist_context.serial_main_program.blocks[1]
-            unsqueeze2_op = block.ops[unsqueeze2_index]
-            output = unsqueeze2_op.output("Out")[0]
-            unsqueeze2_op_union_process_mesh = []
-            for op in block.ops:
-                if op.type == "while":
-                    continue
-                for input in op.input_arg_names:
-                    if input == output:
-                        # print("parallel_tuner.py op", op)
-                        process_mesh = dist_context.get_dist_op_for_program(op).dist_attr.process_mesh
-                        # print("parallel_tuner.py op", op)
-                        # print("parallel_tuner.py op process mesh", process_mesh)
-                        for process in process_mesh.processes:
-                            if process not in unsqueeze2_op_union_process_mesh:
-                                unsqueeze2_op_union_process_mesh.append(process)
-                            # print("parallel_tuner.py unsqueeze2_op_union_process_mesh", unsqueeze2_op_union_process_mesh)
-            unsqueeze2_op_union_process_mesh.sort()
-            dist_context.get_dist_op_for_program(unsqueeze2_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            dist_context.get_dist_tensor_for_program(block._var_recursive(unsqueeze2_op.output("XShape")[0])).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            
-            # deal with scale
-            scale_op_output = unsqueeze2_op.input("X")[0]
-            scale_op = None
-            for idx, op in enumerate(block.ops):
-                if op.type == "while":
-                    continue
-                if scale_op_output in op.output_arg_names:
-                    scale_op = op
-                    break
-            assert scale_op is not None
-            dist_context.get_dist_op_for_program(scale_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            dist_context.get_dist_tensor_for_program(block._var_recursive(scale_op_output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-
-            # deal with concat
-            concat_op_output = scale_op.input("X")[0]
-            concat_op = None
-            for idx, op in enumerate(block.ops):
-                if op.type == "while":
-                    continue
-                if concat_op_output in op.output_arg_names:
-                    concat_op = op
-                    break
-            assert concat_op is not None
-            dist_context.get_dist_op_for_program(concat_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            dist_context.get_dist_tensor_for_program(block._var_recursive(concat_op_output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            # deal with op whose input is concat_op_output
-            for idx, op in enumerate(block.ops):
-                if op.type == "while":
-                    continue
-                if concat_op_output in op.input_arg_names:
-                    op_dist_attr = dist_context.get_dist_op_for_program(op).dist_attr
-                    if op_dist_attr.process_mesh != unsqueeze2_op_union_process_mesh:
-                        op_dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-                        for output in op.output_arg_names:
-                            dist_tensor = dist_context.get_dist_tensor_for_program(block._var_recursive(output))
-                            if dist_tensor.dist_attr.process_mesh != unsqueeze2_op_union_process_mesh:
-                                dist_tensor.dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            
-            # deal with gather
-            gather_output = "gather_1.tmp_0"
-            gather_op = None
-            for idx, op in enumerate(block.ops):
-                if op.type == "while":
-                    continue
-                if gather_output in op.output_arg_names:
-                    gather_op = op
-                    break
-            assert gather_op is not None
-            dist_context.get_dist_op_for_program(gather_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            dist_context.get_dist_tensor_for_program(block._var_recursive(gather_output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-
-            # deal with read_from_array
-            read_array_output = gather_op.input("X")[0]
-            read_array_op = None
-            for idx, op in enumerate(block.ops):
-                if op.type == "while":
-                    continue
-                if read_array_output in op.output_arg_names:
-                    read_array_op = op
-                    break
-            assert read_array_op is not None
-            dist_context.get_dist_op_for_program(read_array_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            dist_context.get_dist_tensor_for_program(block._var_recursive(read_array_output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-
-            # deal with assign_value
-            block = self._dist_context.serial_main_program.global_block()
-            for op in block.ops:
-                if op.type == "assign_value":
-                    for output in op.output_arg_names:
-                        dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr.dims_mapping = [-1 for i in range(len(block._var_recursive(output).shape))]
-                        dist_context.get_dist_op_for_program(op).dist_attr.set_output_dims_mapping(output, [-1 for i in range(len(block._var_recursive(output).shape))])
-                        dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr.process_mesh = dist_context.get_dist_op_for_program(op).dist_attr.process_mesh
-
-
-                    
-        erine_pass(self._dist_context)
         max_memory = self._estimator._estimate_max_memory(self._dist_context)
-        print("\tmax_memory", "{:,}".format(max_memory), flush=True)
+        print("Parallel Tuner: max_memory", "{:,}".format(max_memory), flush=True)
         # The max memory must be less than 80% of 32GB (hard code)
         if max_memory > 32 * 0.8 * 1024* 1024 * 1024:
             return math.inf
         else:
             global_cost = self._estimator.estimate(self._dist_context)
+            return global_cost.time
+
+        self.erine_pass(self._dist_context)
+        global_cost = self._estimator.estimate(self._dist_context)
         return global_cost.time
 
     def _store_init_parallel_strategy(self):
@@ -1329,7 +1234,10 @@ class ParallelTuner:
             print("Use dp as the init parallel strategy!", flush=True)
 
         # Do the sharding propagation
+        start_time = time.time()
         self._completer.complete_forward_annotation()
+        end_time = time.time()
+        print("Parallel Tuner: time of completing forward annotation is {}s".format(end_time-start_time))
         self._dist_context.block_state.parse_forward_blocks(
             self._dist_context.serial_main_program)
 
@@ -1367,27 +1275,29 @@ class ParallelTuner:
     def tune(self):
         s_time = time.time()
         self._dist_context._backup(serial=True, dist=True)
+        print("Start tuner")
         # This store statement must follow the above backup statement
         self._store_init_parallel_strategy()
-        # init_time = self._estimate_trial() # estimate_trial when init
-        # print("init time", init_time, flush=True)
+        init_time = self._estimate_trial() # estimate_trial when init
+        print("init time", init_time, flush=True)
         # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
         # We have to restore the distributed context, because the estimation of one trail need to
         # generate the backward and update parts. Since we will do the tuning process,
         # here we only need to reset all distributed information to the default one.
+        
         self._dist_context._restore(
             serial=True,
             serial_mode="to_backup",
             dist=True,
             dist_mode="to_default")
-        
-        # init_time = 1
-        # best_time = init_time
-        best_time = 100000000 # for debug
+
+        best_time = init_time
+        # For debug, the best time is by searched
+        best_time = 1000000000 
         start_time = time.time()
         self.construct_space()
         end_time = time.time()
-        print("construct trial time", end_time - start_time, flush=True)
+        print("Parallel Tuner: time of constructing space is {}s".format(end_time - start_time), flush=True)
         times = 0
         while True:
             times += 1
@@ -1402,17 +1312,14 @@ class ParallelTuner:
             start_time = time.time()
             results = self._eval_trial(trial)
             end_time = time.time()
-            print("eval trial time", end_time - start_time, flush=True)
+            print("Parallel Tuner: time of evaling a trial is ".format(end_time - start_time), flush=True)
 
             cur_time = results["estimate_time"]
-            # print("random program****")
-            # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
-            # print("{} cur_time: {}, best_time: {}".format(times, cur_time, best_time), flush=True)
             if cur_time < best_time:
                 self._update_trail(trial, results)
                 self._store_best_parallel_strategy()
                 best_time = cur_time
-            print("{} cur_time: {}, best_time: {}".format(times, cur_time, best_time), flush=True)
+            print("Parallel Tuner: {} cur_time: {}ms, best_time: {}ms".format(times, cur_time, best_time), flush=True)
             # We need to restore the distributed context and reset the distributed information to the default.
             self._dist_context._restore(
                 serial=True,
@@ -1426,373 +1333,16 @@ class ParallelTuner:
             1]
         self._dist_context._process_meshes = self._best_parallel_strategy[2]
 
-        # print("before erine pass program****")
-        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
-        # 先跑通最后一个，再挪到estimate cost前！
-        def is_union_process_mesh(process_mesh, dist_context):
-            sub_set_count = 0
-            for item in dist_context.process_meshes:
-                for process in item.processes:
-                    if process in process_mesh.processes:
-                        sub_set_count += 1
-                        break
-            if sub_set_count > 1:
-                return True
-            return False
-
-        # This is a trick to avoid output process mesh different from tensor process mesh (non-union process mesh) (for fill_constant_batch_size_like)
-        for block in self._dist_context.serial_main_program.blocks:
-            for serial_op in block.ops:
-                if serial_op.type == "fill_constant_batch_size_like":
-                    output_name = serial_op.output("Out")[0]
-                    var = serial_op.block._var_recursive(output_name)
-                    dist_tensor = self._dist_context.get_dist_tensor_for_program(var)
-                    # 改变输入的分布式属性？不用改！
-                    # self._dist_context.get_dist_op_for_program(serial_op).dist_attr.set_input_dims_mapping(serial_op.input("Input")[0], dist_tensor.dist_attr.dims_mapping)
-                    # 需要改变shape，在tuner那的 6.17: 不用改了，是由玉龙的补全bug引发出来的
-                    # new_shape = []
-                    # for idx, item in enumerate(serial_op.attr("shape")):
-                    #     dim = dist_tensor.dist_attr.dims_mapping[idx]
-                    #     if dim == -1:
-                    #         new_shape.append(item)
-                    #     else:
-                    #         new_shape.append(item // dist_tensor.dist_attr.process_mesh.topology[dim])
-                    #     # print("dims_mapping, dim, new_shape", dist_tensor.dist_attr.dims_mapping, dim, new_shape)
-                    # serial_op._set_attr("shape", new_shape)
-                    for item in self._dist_context.serial_main_program.blocks:
-                        for op in item.ops:
-                            dist_op = self._dist_context.get_dist_op_for_program(op)
-                            for var_name in op.input_arg_names:
-                                if var_name == output_name:
-                                    # set op process mesh and dims_mapping the same as tensor
-                                    if not is_union_process_mesh(dist_tensor.dist_attr.process_mesh, self._dist_context) and not is_union_process_mesh(dist_op.dist_attr.process_mesh, self._dist_context):
-                                        if dist_tensor.dist_attr.process_mesh != dist_op.dist_attr.process_mesh:
-                                            dist_op.dist_attr.process_mesh = dist_tensor.dist_attr.process_mesh
-                                        if dist_tensor.dist_attr.dims_mapping != dist_op.dist_attr.get_input_dims_mapping(var_name):
-                                            if op.type == "while":
-                                                continue
-                                            # if op.type != "gather":
-                                            #     raise ValueError("Unsupported op {}".format(op))
-                                            dist_op.dist_attr.get_input_dist_attr(var_name).dims_mapping = dist_tensor.dist_attr.dims_mapping
-                                            if op.type == "concat":
-                                                for _ in op.input_arg_names:
-                                                    if _ != var_name:
-                                                        dist_op.dist_attr.get_input_dist_attr(_).dims_mapping = dist_tensor.dist_attr.dims_mapping
-                                            # gather in Erine, output dims_mapping should be the same with fill dims_mapping
-                                            # set output_dims_mapping
-                                            output_var_name = op.output_arg_names[0]
-                                            output_var = op.block._var_recursive(output_var_name)
-                                            output_dist_tensor = self._dist_context.get_dist_tensor_for_program(output_var)
-                                            output_dist_tensor.dist_attr.dims_mapping = dist_tensor.dist_attr.dims_mapping
-                                            output_dist_tensor.dist_attr.process_mesh = dist_tensor.dist_attr.process_mesh
-                                            # set output tensor dims_mapping
-                                            dist_op.dist_attr.get_output_dist_attr(output_var_name).dims_mapping = dist_tensor.dist_attr.dims_mapping
-
-                                    
-                            for var_name in op.output_arg_names:
-                                if var_name == output_name:
-                                    if not is_union_process_mesh(dist_tensor.dist_attr.process_mesh, self._dist_context) and not is_union_process_mesh(dist_op.dist_attr.process_mesh, self._dist_context):
-                                        if dist_tensor.dist_attr.process_mesh != dist_op.dist_attr.process_mesh:
-                                            dist_op.dist_attr.process_mesh = dist_tensor.dist_attr.process_mesh
-                                        if dist_tensor.dist_attr.dims_mapping != dist_op.dist_attr.get_output_dims_mapping(var_name):
-                                            dist_op.dist_attr.get_output_dist_attr(var_name).dims_mapping = dist_tensor.dist_attr.dims_mapping
-
-        # This is a trick to avoid assign op dist attr problem
-        for dist_op in self._dist_context._dist_ops_for_program.values():
-            if dist_op.serial_op.type == "assign":
-                output_tensor = dist_op.serial_op.block._var_recursive(
-                    dist_op.serial_op.output("Out")[0])
-                tensor_dims_mapping = self._dist_context.get_dist_tensor_for_program(
-                    output_tensor).dist_attr.dims_mapping
-                output_dims_mapping = dist_op.dist_attr.get_output_dims_mapping(
-                    output_tensor.name)
-                # print("parallel_tuner.py ", tensor_dims_mapping, output_dims_mapping)
-                if tensor_dims_mapping != output_dims_mapping:
-                    # print("parallel_tuner.py best", tensor_dims_mapping,
-                    #       output_dims_mapping)
-                    input_tensor = dist_op.serial_op.block._var_recursive(
-                        dist_op.serial_op.input("X")[0])
-                    dist_op.dist_attr.set_output_dims_mapping(
-                        output_tensor.name, tensor_dims_mapping)
-                    dist_op.dist_attr.set_input_dims_mapping(
-                        input_tensor.name, tensor_dims_mapping)
+        self.erine_pass(self._dist_context)
         
-        # This is a trick to avoid shared parameter completion problem
-        params_set = set()
-        for dist_op in self._dist_context._dist_ops_for_program.values():
-            serial_op = dist_op.serial_op
-            if serial_op.type == "while":
-                continue
-            else:
-                for var_name in serial_op.input_arg_names:
-                    var = dist_op.serial_op.block._var_recursive(var_name)
-                    if var.is_parameter:
-                        if var.name not in params_set:
-                            params_set.add(var_name)
-                            dist_tensor = self._dist_context.get_dist_tensor_for_program(var)
-                            input_dims_mapping = dist_op.dist_attr.get_input_dims_mapping(var_name)
-                            dist_tensor.dist_attr.dims_mapping = input_dims_mapping
-        
-        
-        def erine_pass(dist_context):
-            
-            # step1. find fill_const_batch_size_like op output whose shape is dynamic
-            # step2. find assign and concat op whose input is tensor step founded.
-            # step3. find op order
-            # step4. change step3 op and tensor process_mesh
-
-            # step1 and step 2
-            dynamic_fill_constant_tensors = []
-            fixed_indexs = {}
-            dynamic_indexs = {}
-            concat_and_assign_op_indexs = {}
-            concat_output_tensors = []
-            ref_mapping = {}
-            concat_input_x_to_fill_constant_tensor = {}
-            unsqueeze2_index = None # process_mesh and tensor process_mesh should be the same as while op
-            for block_idx, block in enumerate(dist_context.serial_main_program.blocks):
-                fixed_indexs[block_idx] = []
-                dynamic_indexs[block_idx] = []
-                concat_and_assign_op_indexs[block_idx] = []
-                ref_mapping[block_idx] = {}
-                for idx, serial_op in enumerate(block.ops):
-                    # the first unsqueeze2 should on all
-                    if serial_op.type == "unsqueeze2":
-                        if block_idx > 0 and unsqueeze2_index is None:
-                            unsqueeze2_index = idx
-                    if serial_op.type == "fill_constant_batch_size_like":
-                        if serial_op.attr('shape').count(0) >= 1:
-                            dynamic_fill_constant_tensors.append(serial_op.output("Out")[0])
-                    if serial_op.type == "concat":
-                        input_X = serial_op.input("X")
-                        for var_name in input_X:
-                            if var_name in dynamic_fill_constant_tensors:
-                                concat_and_assign_op_indexs[block_idx].append(idx)
-                                ref_mapping[block_idx][idx] = var_name
-                                break
-                            # hard code
-                            if "gather" in var_name:
-                                concat_and_assign_op_indexs[block_idx].append(idx)
-                                ref_mapping[block_idx][idx] = var_name
-                                break
-                        # concat output
-                        if idx in ref_mapping[block_idx]:
-                            concat_output = serial_op.output("Out")[0]
-                            concat_output_tensors.append(concat_output)
-                            concat_input_x_to_fill_constant_tensor[concat_output] = ref_mapping[block_idx][idx]
-                    if serial_op.type == "assign":
-                        output = serial_op.output("Out")[0]
-                        if output in dynamic_fill_constant_tensors:
-                            concat_and_assign_op_indexs[block_idx].append(idx)
-                            ref_mapping[block_idx][idx] = output
-                    if serial_op.type == "matmul_v2":
-                        if serial_op.input("Y")[0] in concat_output_tensors:
-                            if serial_op.attr("trans_y"):
-                                dynamic_indexs[block_idx].append(idx)
-                                ref_mapping[block_idx][idx] = concat_input_x_to_fill_constant_tensor[serial_op.input("Y")[0]]
-                            else:
-                                fixed_indexs[block_idx].append(idx)
-
-            print("parallel_tuner.py erine pass****", dynamic_fill_constant_tensors, fixed_indexs, dynamic_indexs, concat_and_assign_op_indexs, concat_output_tensors, ref_mapping)
-            
-            # dims_mapping先不考虑
-            # 先改assign和concat，再改中间的，最后改unsqueeze2_index
-            # assign的op process_mesh 与 ref相同
-            # concat的op process_mesh 和 output的 process_mesh 与ref相同
-            # 中间的，op process_mesh 和 output的process_mesh 与ref相同
-            # unsqueeze2的，op process_mesh 和 output的process_mesh,取它output，它output作为input的process_mesh的并集
-            for block_idx in concat_and_assign_op_indexs:
-                block =  dist_context.serial_main_program.blocks[block_idx]
-                ops = block.ops
-                for op_idx in concat_and_assign_op_indexs[block_idx]:
-                    ref_tensor = ref_mapping[block_idx][op_idx]
-                    ref_process_mesh = dist_context.get_dist_tensor_for_program(block._var_recursive(ref_tensor)).dist_attr.process_mesh
-                    op_dist_attr = dist_context.get_dist_op_for_program(ops[op_idx]).dist_attr
-                    op_process_mesh = op_dist_attr.process_mesh
-                    if op_process_mesh != ref_process_mesh:
-                        op_dist_attr.process_mesh = ref_process_mesh
-                        if ops[op_idx].type == "concat":
-                            output = ops[op_idx].output("Out")[0]
-                            output_dist_attr = dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr
-                            if output_dist_attr.process_mesh != ref_process_mesh:
-                                output_dist_attr.process_mesh = ref_process_mesh
-                    
-                    # 规避直接走玉龙补全的错误（mp4）
-                    if ops[op_idx].type == "assign":
-                        op_dist_attr.process_mesh = ref_process_mesh
-                        output = ops[op_idx].output("Out")[0]
-                        output_dist_attr =  dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr
-                        if output_dist_attr.process_mesh != ref_process_mesh:
-                            output_dist_attr.process_mesh = ref_process_mesh
-
-                        # 对assgin的op的input dims_mapping和output_dims_mapping做处理
-                        output_tensor = block._var_recursive(
-                            ops[op_idx].output("Out")[0])
-                        op_dist_attr = self._dist_context.get_dist_op_for_program(ops[op_idx]).dist_attr
-                        tensor_dims_mapping = self._dist_context.get_dist_tensor_for_program(
-                            output_tensor).dist_attr.dims_mapping
-                        output_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                            output_tensor.name)
-                        input_tensor = block._var_recursive(
-                                ops[op_idx].input("X")[0])
-                        op_dist_attr.set_output_dims_mapping(
-                            output_tensor.name, tensor_dims_mapping)
-                        op_dist_attr.set_input_dims_mapping(
-                            input_tensor.name, tensor_dims_mapping)
-                        # print("parallel_tuner.py assign op dist_op", op_dist_attr)
-
-
-                for i in range(len(dynamic_indexs[block_idx])):
-                    ref_tensor = ref_mapping[block_idx][dynamic_indexs[block_idx][i]]
-                    ref_process_mesh = dist_context.get_dist_tensor_for_program(block._var_recursive(ref_tensor)).dist_attr.process_mesh
-                    for op_idx in range(dynamic_indexs[block_idx][i], fixed_indexs[block_idx][i]):
-                        op_dist_attr = dist_context.get_dist_op_for_program(ops[op_idx]).dist_attr
-                        op_process_mesh = op_dist_attr.process_mesh
-                        if op_process_mesh != ref_process_mesh:
-                            op_dist_attr.process_mesh = ref_process_mesh
-                            for output in ops[op_idx].output_arg_names:
-                                output_dist_attr = dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr
-                                if output_dist_attr.process_mesh != ref_process_mesh:
-                                    output_dist_attr.process_mesh = ref_process_mesh
-            
-            assert unsqueeze2_index is not None
-            block = dist_context.serial_main_program.blocks[1]
-            unsqueeze2_op = block.ops[unsqueeze2_index]
-            output = unsqueeze2_op.output("Out")[0]
-            unsqueeze2_op_union_process_mesh = []
-            for op in block.ops:
-                if op.type == "while":
-                    continue
-                for input in op.input_arg_names:
-                    if input == output:
-                        # print("parallel_tuner.py op", op)
-                        process_mesh = dist_context.get_dist_op_for_program(op).dist_attr.process_mesh
-                        # print("parallel_tuner.py op", op)
-                        # print("parallel_tuner.py op process mesh", process_mesh)
-                        for process in process_mesh.processes:
-                            if process not in unsqueeze2_op_union_process_mesh:
-                                unsqueeze2_op_union_process_mesh.append(process)
-                            # print("parallel_tuner.py unsqueeze2_op_union_process_mesh", unsqueeze2_op_union_process_mesh)
-            unsqueeze2_op_union_process_mesh.sort()
-            dist_context.get_dist_op_for_program(unsqueeze2_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            dist_context.get_dist_tensor_for_program(block._var_recursive(unsqueeze2_op.output("XShape")[0])).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            
-            # deal with scale
-            scale_op_output = unsqueeze2_op.input("X")[0]
-            scale_op = None
-            for idx, op in enumerate(block.ops):
-                if op.type == "while":
-                    continue
-                if scale_op_output in op.output_arg_names:
-                    scale_op = op
-                    break
-            assert scale_op is not None
-            dist_context.get_dist_op_for_program(scale_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            dist_context.get_dist_tensor_for_program(block._var_recursive(scale_op_output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-
-            # deal with concat
-            concat_op_output = scale_op.input("X")[0]
-            concat_op = None
-            for idx, op in enumerate(block.ops):
-                if op.type == "while":
-                    continue
-                if concat_op_output in op.output_arg_names:
-                    concat_op = op
-                    break
-            assert concat_op is not None
-            dist_context.get_dist_op_for_program(concat_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            dist_context.get_dist_tensor_for_program(block._var_recursive(concat_op_output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            # deal with op whose input is concat_op_output
-            for idx, op in enumerate(block.ops):
-                if op.type == "while":
-                    continue
-                if concat_op_output in op.input_arg_names:
-                    op_dist_attr = dist_context.get_dist_op_for_program(op).dist_attr
-                    if op_dist_attr.process_mesh != unsqueeze2_op_union_process_mesh:
-                        op_dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-                        for output in op.output_arg_names:
-                            dist_tensor = dist_context.get_dist_tensor_for_program(block._var_recursive(output))
-                            if dist_tensor.dist_attr.process_mesh != unsqueeze2_op_union_process_mesh:
-                                dist_tensor.dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            
-            # deal with gather
-            gather_output = "gather_1.tmp_0"
-            gather_op = None
-            for idx, op in enumerate(block.ops):
-                if op.type == "while":
-                    continue
-                if gather_output in op.output_arg_names:
-                    gather_op = op
-                    break
-            assert gather_op is not None
-            dist_context.get_dist_op_for_program(gather_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            dist_context.get_dist_tensor_for_program(block._var_recursive(gather_output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-
-            # deal with read_from_array
-            read_array_output = gather_op.input("X")[0]
-            read_array_op = None
-            for idx, op in enumerate(block.ops):
-                if op.type == "while":
-                    continue
-                if read_array_output in op.output_arg_names:
-                    read_array_op = op
-                    break
-            assert read_array_op is not None
-            dist_context.get_dist_op_for_program(read_array_op).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-            dist_context.get_dist_tensor_for_program(block._var_recursive(read_array_output)).dist_attr.process_mesh = unsqueeze2_op_union_process_mesh
-
-            # deal with assign_value
-            block = self._dist_context.serial_main_program.global_block()
-            for op in block.ops:
-                if op.type == "assign_value":
-                    for output in op.output_arg_names:
-                        dist_context.get_dist_tensor_for_program(block._var_recursive(output)).dist_attr.dims_mapping = [-1 for i in range(len(block._var_recursive(output).shape))]
-                        dist_context.get_dist_op_for_program(op).dist_attr.set_output_dims_mapping(output, [-1 for i in range(len(block._var_recursive(output).shape))])
-
-
-                    
-        erine_pass(self._dist_context)
-        
-        # # hybrid mp hack to avoid 半自动补全错误
-        # for block in self._dist_context.serial_main_program.blocks:
-        #     for op in block.ops:
-        #         if op.type == "scale":
-        #             if "transpose" in op.input("X")[0]:
-        #                 dist_op = self._dist_context.get_dist_op_for_program(op)
-        #                 dist_op.dist_attr.set_input_dims_mapping(op.input("X")[0], [-1, 0, -1, -1])
-        #                 dist_op.dist_attr.set_output_dims_mapping(op.output("Out")[0], [-1, 0, -1, -1])
-        #                 output_dist_tensor = self._dist_context.get_dist_tensor_for_program(block._var_recursive(op.output("Out")[0]))
-        #                 output_dist_tensor.dist_attr.dims_mapping = [-1, 0, -1, -1]
-
-        # for hybrid cost
+        # Calc cost again after erine_pass
         self._estimator = CostEstimator(
             self._dist_context.serial_main_program,
             self._cluster,
             loop_count=self._loop_count)
         global_cost = self._estimator.estimate(self._dist_context)
-        print("exec cost is {}s ".format(global_cost.time/1000))
-
-        # This is a trick to avoid lod_tensor (output by read_from_array) reshard
-        # for block in self._dist_context.serial_main_program.blocks:
-        #     for serial_op in block.ops:
-        #         if serial_op.type == "read_from_array" or serial_op.type == "write_to_array":
-        #             output_name = serial_op.output("Out")[0]
-        #             dist_op = self._dist_context.get_dist_op_for_program(serial_op)
-        #             process_mesh = dist_op.dist_attr.process_mesh
-        #             for item in self._dist_context.serial_main_program.blocks:
-        #                 for op in item.ops:
-        #                     for var_name in op.input_arg_names:
-        #                         if var_name == output_name:
-        #                             # set op process mesh and dims_mapping the same as tensor
-        #                             self._dist_context.get_dist_op_for_program(op).dist_attr.process_mesh = process_mesh
-        #                             var = op.block._var_recursive(var_name)
-        #                             self._dist_context.get_dist_tensor_for_program(var).dist_attr.process_mesh = process_mesh
-        #                             for output_var_name in op.output_arg_names:
-        #                                 var = op.block._var_recursive(output_var_name)
-        #                                 self._dist_context.get_dist_tensor_for_program(var).dist_attr.process_mesh = process_mesh
-
-        print("best strategy program********")
-        print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
         end_time = time.time()
-        print("search {} times cost {}s and best time is {}s".format(self._max_trials, end_time-s_time, best_time/1000))
+        print("Parallel Tuner: searching {} times cost {}s and best time is {}ms".format(self._max_trials, end_time-s_time, global_cost.time))
+        print("Parallel Tuner: best strategy program")
+        print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
+
