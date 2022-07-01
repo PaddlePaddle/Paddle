@@ -666,8 +666,8 @@ class Normalize(BaseTransform):
     ``output[channel] = (input[channel] - mean[channel]) / std[channel]``
 
     Args:
-        mean (int|float|list|tuple): Sequence of means for each channel.
-        std (int|float|list|tuple): Sequence of standard deviations for each channel.
+        mean (int|float|list|tuple, optional): Sequence of means for each channel.
+        std (int|float|list|tuple, optional): Sequence of standard deviations for each channel.
         data_format (str, optional): Data format of img, should be 'HWC' or 
             'CHW'. Default: 'CHW'.
         to_rgb (bool, optional): Whether to convert to rgb. Default: False.
@@ -683,20 +683,21 @@ class Normalize(BaseTransform):
     Examples:
     
         .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
+          :name: code-example
+            import paddle
             from paddle.vision.transforms import Normalize
 
-            normalize = Normalize(mean=[127.5, 127.5, 127.5], 
+            normalize = Normalize(mean=[127.5, 127.5, 127.5],
                                   std=[127.5, 127.5, 127.5],
                                   data_format='HWC')
 
-            fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
+            fake_img = paddle.rand([300,320,3]).numpy() * 255.
 
             fake_img = normalize(fake_img)
             print(fake_img.shape)
-            print(fake_img.max, fake_img.max)
+            # (300, 320, 3)
+            print(fake_img.max(), fake_img.min())
+            # 0.99999905 -0.999974
     
     """
 

@@ -471,7 +471,7 @@ class OpTest(unittest.TestCase):
             np.dtype(np.int16),
             np.dtype(np.int8),
             np.dtype(np.uint8),
-            np.dtype(np.bool)
+            np.dtype(np.bool_)
         ]
         # check the dtype in dtype_list in order, select the first dtype that in dtype_set
         for dtype in dtype_list:
@@ -1685,7 +1685,8 @@ class OpTest(unittest.TestCase):
         # Currently not support ParallelExecutor on XPUPlace.
         if not paddle.is_compiled_with_xpu(
         ) and not paddle.is_compiled_with_npu(
-        ) and not paddle.is_compiled_with_mlu():
+        ) and not paddle.is_compiled_with_mlu() and not isinstance(
+                place, core.CustomPlace):
             self.check_inplace_output_with_place(place,
                                                  no_check_set=no_check_set,
                                                  inplace_atol=inplace_atol)

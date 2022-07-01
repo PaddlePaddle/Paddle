@@ -83,11 +83,14 @@ class SaveOpVarTypeInference : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(save, ops::SaveOp, ops::SaveOpProtoMaker,
+REGISTER_OPERATOR(save,
+                  ops::SaveOp,
+                  ops::SaveOpProtoMaker,
                   ops::SaveOpVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(
-    save, ops::SaveOpKernel<paddle::platform::CPUDeviceContext, float>,
+    save,
+    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext,
                       paddle::platform::float16>,

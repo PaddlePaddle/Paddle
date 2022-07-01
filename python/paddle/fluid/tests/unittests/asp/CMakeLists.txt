@@ -10,7 +10,7 @@ list(REMOVE_ITEM TEST_OPS "test_fleet_with_asp_sharding")
 
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
-endforeach(TEST_OP)
+endforeach()
 
 if(WITH_DISTRIBUTE)
   if(WITH_GPU

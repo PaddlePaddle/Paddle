@@ -32,7 +32,8 @@ namespace analysis {
 void PD_run() {
   auto model_dir = FLAGS_infer_model;
   PD_Config* config = PD_ConfigCreate();
-  PD_ConfigSetModel(config, (model_dir + "/__model__").c_str(),
+  PD_ConfigSetModel(config,
+                    (model_dir + "/__model__").c_str(),
                     (model_dir + "/__params__").c_str());
   PD_Predictor* predictor = PD_PredictorCreate(config);
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
@@ -61,7 +62,8 @@ void PD_run() {
       PD_PredictorGetOutputHandle(predictor, output_names->data[0]);
   PD_OneDimArrayInt32* output_shape = PD_TensorGetShape(output_tensor);
   int32_t out_num = std::accumulate(output_shape->data,
-                                    output_shape->data + output_shape->size, 1,
+                                    output_shape->data + output_shape->size,
+                                    1,
                                     std::multiplies<int32_t>());
   out_data.resize(out_num);
   PD_TensorCopyToCpuFloat(output_tensor, out_data.data());
@@ -84,7 +86,8 @@ TEST(PD_Tensor, PD_run) { PD_run(); }
 TEST(PD_Tensor, int32) {
   auto model_dir = FLAGS_infer_model;
   PD_Config* config = PD_ConfigCreate();
-  PD_ConfigSetModel(config, (model_dir + "/__model__").c_str(),
+  PD_ConfigSetModel(config,
+                    (model_dir + "/__model__").c_str(),
                     (model_dir + "/__params__").c_str());
   PD_Predictor* predictor = PD_PredictorCreate(config);
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
@@ -114,7 +117,8 @@ TEST(PD_Tensor, int32) {
 TEST(PD_Tensor, int64) {
   auto model_dir = FLAGS_infer_model;
   PD_Config* config = PD_ConfigCreate();
-  PD_ConfigSetModel(config, (model_dir + "/__model__").c_str(),
+  PD_ConfigSetModel(config,
+                    (model_dir + "/__model__").c_str(),
                     (model_dir + "/__params__").c_str());
   PD_Predictor* predictor = PD_PredictorCreate(config);
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
@@ -144,7 +148,8 @@ TEST(PD_Tensor, int64) {
 TEST(PD_Tensor, uint8) {
   auto model_dir = FLAGS_infer_model;
   PD_Config* config = PD_ConfigCreate();
-  PD_ConfigSetModel(config, (model_dir + "/__model__").c_str(),
+  PD_ConfigSetModel(config,
+                    (model_dir + "/__model__").c_str(),
                     (model_dir + "/__params__").c_str());
   PD_Predictor* predictor = PD_PredictorCreate(config);
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
@@ -185,8 +190,11 @@ TEST(PD_Tensor, from_buffer) {
   std::string prog_str = read_file(prog_file);
   std::string params_str = read_file(params_file);
 
-  PD_ConfigSetModelBuffer(config, prog_str.c_str(), prog_str.size(),
-                          params_str.c_str(), params_str.size());
+  PD_ConfigSetModelBuffer(config,
+                          prog_str.c_str(),
+                          prog_str.size(),
+                          params_str.c_str(),
+                          params_str.size());
 
   bool model_from_memory = PD_ConfigModelFromMemory(config);
   EXPECT_TRUE(model_from_memory);

@@ -47,7 +47,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         self.shape = self.get_x_shape()
         self.axis = self.get_axis()
 
-        x = np.random.uniform(0.1, 1, self.shape).astype(np.float)
+        x = np.random.uniform(0.1, 1, self.shape).astype(np.float64)
         out = convert_float_to_uint16(
             np.apply_along_axis(stable_softmax, self.axis, x))
 

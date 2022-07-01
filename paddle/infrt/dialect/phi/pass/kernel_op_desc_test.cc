@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clang-format off
+#include "paddle/infrt/dialect/phi/pass/kernel_op_desc.h"
+
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <vector>
 
-#include "paddle/infrt/dialect/phi/pass/kernel_op_desc.h"
 #include "paddle/phi/kernels/declarations.h"
-// clang-format on
 
 namespace infrt {
 

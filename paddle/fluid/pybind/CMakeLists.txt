@@ -123,9 +123,13 @@ set(PYBIND_SRCS
     communication.cc
     cuda_streams_py.cc)
 
+if(WITH_CUSTOM_DEVICE)
+  set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
+endif()
+
 if(NOT ON_INFER)
   set(PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
-  if(WITH_NCCL)
+  if(WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
     if(WITH_PSCORE)
       set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
@@ -376,17 +380,10 @@ if(WITH_PYTHON)
     # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
     if(WITH_ONNXRUNTIME)
-      if(APPLE)
-        set(PADDLE2ONNX_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.dylib)
-        set(ONNXRUNTIME_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.dylib)
-      else()
-        set(PADDLE2ONNX_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so)
-        set(ONNXRUNTIME_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so)
-      endif()
+      set(PADDLE2ONNX_PYBIND_OUT
+          ${CMAKE_CURRENT_BINARY_DIR}/${PADDLE2ONNX_LIB_NAME})
+      set(ONNXRUNTIME_PYBIND_OUT
+          ${CMAKE_CURRENT_BINARY_DIR}/${ONNXRUNTIME_LIB_NAME})
 
       add_custom_command(
         OUTPUT ${PADDLE2ONNX_PYBIND_OUT}
@@ -491,7 +488,7 @@ if(WITH_PYTHON)
   cc_library(
     paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ${GLOB_DEV_LIB})
+    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 
   if(NOT APPLE AND NOT WIN32)
     target_link_libraries(paddle_pybind rt)

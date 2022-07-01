@@ -42,7 +42,9 @@ static void InitRandom(framework::Tensor *tensor,
 
 template <typename T>
 struct LeakyReluGradGradEachElementFunctor {
-  LeakyReluGradGradEachElementFunctor(const T *ddx, const T *x, T alpha,
+  LeakyReluGradGradEachElementFunctor(const T *ddx,
+                                      const T *x,
+                                      T alpha,
                                       T *ddout)
       : ddx_(ddx), x_(x), alpha_(alpha), ddout_(ddout) {}
 
@@ -85,9 +87,10 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
 
   framework::Tensor ddout_actual;
   ddout_actual.mutable_data<T>(dim, place);
-  LeakyReluGradGradEachElementFunctor<T> actual_functor(
-      ddx.data<T>(), x.data<T>(), static_cast<T>(alpha),
-      ddout_actual.data<T>());
+  LeakyReluGradGradEachElementFunctor<T> actual_functor(ddx.data<T>(),
+                                                        x.data<T>(),
+                                                        static_cast<T>(alpha),
+                                                        ddout_actual.data<T>());
 
   int64_t limit = x.numel();
 
@@ -113,10 +116,11 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
 
   framework::Tensor ddout_cpu, ddout_actual_cpu;
   framework::TensorCopySync(ddout, platform::CPUPlace(), &ddout_cpu);
-  framework::TensorCopySync(ddout_actual, platform::CPUPlace(),
-                            &ddout_actual_cpu);
+  framework::TensorCopySync(
+      ddout_actual, platform::CPUPlace(), &ddout_actual_cpu);
 
-  bool is_equal = std::equal(ddout_cpu.data<T>(), ddout_cpu.data<T>() + limit,
+  bool is_equal = std::equal(ddout_cpu.data<T>(),
+                             ddout_cpu.data<T>() + limit,
                              ddout_actual_cpu.data<T>());
   return is_equal;
 }

@@ -68,8 +68,10 @@ class NormOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "NormOpGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Input",
-                   "X@GRAD", "NormOpGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Input",
+                   "X@GRAD",
+                   "NormOpGrad");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
@@ -100,10 +102,13 @@ class NormOpGradOpMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
-DECLARE_INFER_SHAPE_FUNCTOR(norm, NormInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(norm,
+                            NormInferShapeFunctor,
                             PD_INFER_META(phi::NormInferMeta));
 
-REGISTER_OPERATOR(norm, ops::NormOp, ops::NormOpMaker,
+REGISTER_OPERATOR(norm,
+                  ops::NormOp,
+                  ops::NormOpMaker,
                   ops::NormOpGradOpMaker<paddle::framework::OpDesc>,
                   ops::NormOpGradOpMaker<paddle::imperative::OpBase>,
                   NormInferShapeFunctor);

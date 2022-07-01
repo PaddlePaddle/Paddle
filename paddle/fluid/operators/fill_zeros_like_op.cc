@@ -80,11 +80,14 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(FillZerosLikeOp2NoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, ops::FillZerosLikeOp,
+REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like,
+                             ops::FillZerosLikeOp,
                              ops::FillZerosLikeOpMaker);
 
 REGISTER_OPERATOR(
-    fill_zeros_like2, ops::FillZerosLikeOp2, ops::FillZerosLikeOp2Maker,
+    fill_zeros_like2,
+    ops::FillZerosLikeOp2,
+    ops::FillZerosLikeOp2Maker,
     ops::FillZerosLikeOp2NoNeedBufferVarsInferer,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

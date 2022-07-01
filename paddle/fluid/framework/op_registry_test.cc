@@ -59,7 +59,8 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddOutput("output", "output of cosine op").AsIntermediate();
     auto my_checker = [](int i) {
       PADDLE_ENFORCE_EQ(
-          i % 2, 0,
+          i % 2,
+          0,
           platform::errors::InvalidArgument("'test_attr' must be even!"));
     };
     AddAttr<int>("test_attr", "a simple test attribute")
@@ -78,9 +79,11 @@ static void BuildVar(const std::string& param_name,
     var->add_arguments(arg_name);
   }
 }
-REGISTER_OP_WITHOUT_GRADIENT(cos_sim, paddle::framework::CosineOp,
+REGISTER_OP_WITHOUT_GRADIENT(cos_sim,
+                             paddle::framework::CosineOp,
                              paddle::framework::CosineOpProtoAndCheckerMaker);
-REGISTER_OP_WITHOUT_GRADIENT(my_test_op, paddle::framework::MyTestOp,
+REGISTER_OP_WITHOUT_GRADIENT(my_test_op,
+                             paddle::framework::MyTestOp,
                              paddle::framework::MyTestOpProtoAndCheckerMaker);
 
 TEST(OpRegistry, CreateOp) {
@@ -233,9 +236,10 @@ REGISTER_OP_CPU_KERNEL(
     op_with_kernel,
     paddle::framework::OpKernelTest<paddle::platform::CPUDeviceContext, float>);
 
-REGISTER_OP_CUDA_KERNEL(op_with_kernel,
-                        paddle::framework::OpKernelTest<
-                            paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    op_with_kernel,
+    paddle::framework::OpKernelTest<paddle::platform::CUDADeviceContext,
+                                    float>);
 
 TEST(OperatorRegistrar, CPU) {
   paddle::framework::proto::OpDesc op_desc;
@@ -277,7 +281,8 @@ class OpWithMultiKernelTest : public OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(proto::VarType::FP32, platform::CUDAPlace(0),
+    return framework::OpKernelType(proto::VarType::FP32,
+                                   platform::CUDAPlace(0),
                                    DataLayout::kAnyLayout,
                                    framework::LibraryType::kCUDNN);
   }
@@ -338,16 +343,24 @@ REGISTER_OP_WITHOUT_GRADIENT(op_with_multi_kernel,
                              paddle::framework::OpWithMultiKernelTest,
                              paddle::framework::OpKernelTestMaker);
 REGISTER_OP_KERNEL(
-    op_with_multi_kernel, CPU, paddle::platform::CPUPlace,
+    op_with_multi_kernel,
+    CPU,
+    paddle::platform::CPUPlace,
     paddle::framework::OpMultiKernelTest<CPUDeviceContext, float>);
 REGISTER_OP_KERNEL(
-    op_with_multi_kernel, MKLDNN, paddle::platform::CPUPlace,
+    op_with_multi_kernel,
+    MKLDNN,
+    paddle::platform::CPUPlace,
     paddle::framework::OpMultiKernelTest2<CPUDeviceContext, float>);
 REGISTER_OP_KERNEL(
-    op_with_multi_kernel, CUDA, paddle::platform::CUDAPlace,
+    op_with_multi_kernel,
+    CUDA,
+    paddle::platform::CUDAPlace,
     paddle::framework::OpMultiKernelTest<CUDADeviceContext, float>);
 REGISTER_OP_KERNEL(
-    op_with_multi_kernel, CUDNN, paddle::platform::CUDAPlace,
+    op_with_multi_kernel,
+    CUDNN,
+    paddle::platform::CUDAPlace,
     paddle::framework::OpMultiKernelTest2<CUDADeviceContext, float>);
 
 TEST(OperatorRegistrar, OpWithMultiKernel) {

@@ -73,8 +73,8 @@ class LoDArrayLengthInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "LDArrayLength");
-    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out",
-                   "LoDArrayLength");
+    OP_INOUT_CHECK(
+        context->HasOutput("Out"), "Output", "Out", "LoDArrayLength");
     context->SetOutputDim("Out", {1});
   }
 };
@@ -84,7 +84,9 @@ class LoDArrayLengthInferShape : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    lod_array_length, ops::LoDArrayLengthOp, ops::LoDArrayLengthInferShape,
+    lod_array_length,
+    ops::LoDArrayLengthOp,
+    ops::LoDArrayLengthInferShape,
     ops::LoDArrayLengthProtoMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

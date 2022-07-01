@@ -15,9 +15,10 @@
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
 
+#include "paddle/phi/kernels/matrix_rank_kernel.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/matrix_rank_kernel.h"
 #include "paddle/phi/kernels/matrix_rank_tol_kernel.h"
 
 namespace phi {

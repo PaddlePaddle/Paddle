@@ -28,6 +28,18 @@ def loss_fn(x, lable):
     return loss
 
 
+def dyfunc_empty_nonlocal(x):
+    flag = True
+    if flag:
+        print("It's a test for empty nonlocal stmt")
+
+    if paddle.mean(x) < 0:
+        x + 1
+
+    out = x * 2
+    return out
+
+
 def dyfunc_with_if_else(x_v, label=None):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
@@ -60,10 +72,8 @@ def dyfunc_with_if_else3(x):
     # The var is created only in one of If.body or If.orelse node, and it used as gast.Load firstly after gast.If node.
     # The transformed code:
     """
-    q = paddle.jit.dy2static.
-        data_layer_not_check(name='q', shape=[-1], dtype='float32')
-    z = paddle.jit.dy2static.
-            data_layer_not_check(name='z', shape=[-1], dtype='float32')
+    q = paddle.jit.dy2static.UndefinedVar('q')
+    z = paddle.jit.dy2static.UndefinedVar('z')
 
     def true_fn_0(q, x, y):
         x = x + 1
@@ -98,6 +108,30 @@ def dyfunc_with_if_else3(x):
     n = q + 2
     x = n
     return x
+
+
+def dyfunc_with_if_else_early_return1():
+    x = paddle.to_tensor([10])
+    if x == 0:
+        a = paddle.zeros([2, 2])
+        b = paddle.zeros([3, 3])
+        return a, b
+    a = paddle.zeros([2, 2]) + 1
+    return a
+
+
+def dyfunc_with_if_else_early_return2():
+    x = paddle.to_tensor([10])
+    if x == 0:
+        a = paddle.zeros([2, 2])
+        b = paddle.zeros([3, 3])
+        return a, b
+    elif x == 1:
+        c = paddle.zeros([2, 2]) + 1
+        d = paddle.zeros([3, 3]) + 1
+        return c, d
+    e = paddle.zeros([2, 2]) + 3
+    return e
 
 
 def dyfunc_with_if_else_with_list_geneator(x):

@@ -34,13 +34,19 @@ HeterPs::HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource) {
 
 HeterPs::~HeterPs() {}
 
-void HeterPs::pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals,
+void HeterPs::pull_sparse(int num,
+                          FeatureKey* d_keys,
+                          FeatureValue* d_vals,
                           size_t len) {
   comm_->pull_sparse(num, d_keys, d_vals, len);
 }
 
-void HeterPs::build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
-                       size_t len, size_t chunk_size, int stream_num) {
+void HeterPs::build_ps(int num,
+                       FeatureKey* h_keys,
+                       FeatureValue* h_vals,
+                       size_t len,
+                       size_t chunk_size,
+                       int stream_num) {
   comm_->build_ps(num, h_keys, h_vals, len, chunk_size, stream_num);
 }
 
@@ -60,8 +66,10 @@ void HeterPs::end_pass() { comm_->end_pass(); }
 
 void HeterPs::show_one_table(int gpu_num) { comm_->show_one_table(gpu_num); }
 
-void HeterPs::push_sparse(int num, FeatureKey* d_keys,
-                          FeaturePushValue* d_grads, size_t len) {
+void HeterPs::push_sparse(int num,
+                          FeatureKey* d_keys,
+                          FeaturePushValue* d_grads,
+                          size_t len) {
   comm_->push_sparse(num, d_keys, d_grads, len);
   // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
 }

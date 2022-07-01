@@ -430,7 +430,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         reduce_all = True if axis == None or axis == [] or asvector == True else False
         axis = axis if axis != None and axis != [] else [0]
 
-        reduce_type = 'reduce_max' if porder == np.float(
+        reduce_type = 'reduce_max' if porder == np.float64(
             'inf') else 'reduce_min'
         helper.append_op(type=reduce_type,
                          inputs={'X': out},
@@ -588,13 +588,13 @@ def dist(x, y, p=2, name=None):
 
         ||z||_{0}=\lim_{p \\rightarrow 0}\sum_{i=1}^{m}|z_i|^{p}
 
-    When p = inf, the inf-norm of z is the maximum element of z.
+    When p = inf, the inf-norm of z is the maximum element of the absolute value of z.
 
     .. math::
 
         ||z||_\infty=\max_i |z_i|
 
-    When p = -inf, the negative-inf-norm of z is the minimum element of z.
+    When p = -inf, the negative-inf-norm of z is the minimum element of the absolute value of z.
 
     .. math::
 
@@ -1017,11 +1017,12 @@ def dot(x, y, name=None):
         print(z)
 
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_dot(x, y)
+    if _in_legacy_dygraph():
+        return _C_ops.dot(x, y)
+
     op_type = 'dot'
-    # skip var type check in dygraph mode to improve efficiency
-    if paddle.in_dynamic_mode():
-        op = getattr(_C_ops, op_type)
-        return op(x, y)
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)

@@ -50,7 +50,6 @@ PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
             args = []
             for input_name in api.inputs['names']:
                 if input_name in kernel_params:
-                    print("type", api.inputs['input_info'])
                     args.append(
                         tensor_type_map[api.inputs['input_info'][input_name]] +
                         ' ' + input_name)

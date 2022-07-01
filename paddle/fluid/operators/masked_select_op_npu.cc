@@ -29,13 +29,15 @@ class MaskedSelectedNPUKernel : public framework::OpKernel<T> {
     auto input_dim = input->dims();
     auto mask_dim = mask->dims();
     PADDLE_ENFORCE_EQ(
-        input_dim, mask_dim,
+        input_dim,
+        mask_dim,
         platform::errors::InvalidArgument(
             "The dim size of input and mask in OP(masked_selected) "
             "must be equal, but got input dim:(%ld), mask dim: "
             "(%ld). Please check input "
             "value.",
-            input_dim, mask_dim));
+            input_dim,
+            mask_dim));
 
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
@@ -46,10 +48,13 @@ class MaskedSelectedNPUKernel : public framework::OpKernel<T> {
     mask_int32.mutable_data<int32_t>(mask->dims(), ctx.GetPlace());
     out_size.mutable_data<int32_t>({1}, ctx.GetPlace());
     {
-      const auto& cast_runner =
-          NpuOpRunner("Cast", {*mask}, {mask_int32},
-                      {{"dst_type", static_cast<int32_t>(ConvertToNpuDtype(
-                                        framework::proto::VarType::INT32))}});
+      const auto& cast_runner = NpuOpRunner(
+          "Cast",
+          {*mask},
+          {mask_int32},
+          {{"dst_type",
+            static_cast<int32_t>(
+                ConvertToNpuDtype(framework::proto::VarType::INT32))}});
       cast_runner.Run(stream);
 
       mask_int32.Resize({mask_int32.numel()});
@@ -121,10 +126,13 @@ class MaskedSelectedGradNPUKernel : public framework::OpKernel<T> {
     mask_int32.mutable_data<int32_t>(mask->dims(), ctx.GetPlace());
     out_size.mutable_data<int32_t>({1}, ctx.GetPlace());
     {
-      const auto& cast_runner =
-          NpuOpRunner("Cast", {*mask}, {mask_int32},
-                      {{"dst_type", static_cast<int32_t>(ConvertToNpuDtype(
-                                        framework::proto::VarType::INT32))}});
+      const auto& cast_runner = NpuOpRunner(
+          "Cast",
+          {*mask},
+          {mask_int32},
+          {{"dst_type",
+            static_cast<int32_t>(
+                ConvertToNpuDtype(framework::proto::VarType::INT32))}});
       cast_runner.Run(stream);
 
       mask_int32.Resize({mask_int32.numel()});

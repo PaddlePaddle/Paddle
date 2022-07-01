@@ -33,24 +33,29 @@ class PadConstantLikeOp : public framework::OperatorWithKernel {
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(x_dim.size(), y_dim.size(),
+    PADDLE_ENFORCE_EQ(x_dim.size(),
+                      y_dim.size(),
                       platform::errors::InvalidArgument(
                           "The size of Input(X)'s dimension and the size of "
                           "Input(Y)'s dimension should be the same, but "
                           "received %d for Input(X) vs %d for Input(Y).",
-                          x_dim.size(), y_dim.size()));
+                          x_dim.size(),
+                          y_dim.size()));
 
     for (int i = 0; i < x_dim.size(); ++i) {
       if ((!ctx->IsRuntime()) && ((x_dim[i] == -1) || (y_dim[i] == -1))) {
         continue;
       } else {
         PADDLE_ENFORCE_GE(
-            x_dim[i], y_dim[i],
+            x_dim[i],
+            y_dim[i],
             platform::errors::InvalidArgument(
                 "The size of each dimension of Input(X) expected to be greater "
                 "than or equal to size of corresponding dimension of Input(Y) "
                 "(X_dim[i] >= Y_dim[i]), but received %d < %d for dimension %d",
-                x_dim[i], y_dim[i], i));
+                x_dim[i],
+                y_dim[i],
+                i));
       }
     }
 
@@ -163,19 +168,23 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "PadConstantLike@Grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "PadConstantLike@Grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "PadConstantLike@Grad");
 
     auto y_dim = ctx->GetInputDim("Y");
     auto dout_dim = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_EQ(
-        dout_dim.size(), y_dim.size(),
+        dout_dim.size(),
+        y_dim.size(),
         platform::errors::InvalidArgument(
             "Op(PadConstantLike@Grad) the size of Input(Out@Grad)'s dimension "
             "and the size of Input(Y)'s dimension should be the same, but "
             "received %d for Input(Out@Grad) vs %d for Input(Y).",
-            dout_dim.size(), y_dim.size()));
+            dout_dim.size(),
+            y_dim.size()));
 
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(y_grad_name)) {
@@ -187,13 +196,16 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
           continue;
         } else {
           PADDLE_ENFORCE_GE(
-              dout_dim[i], y_dim[i],
+              dout_dim[i],
+              y_dim[i],
               platform::errors::InvalidArgument(
                   "The size of each dimension of Input(Out@Grad) expected to "
                   "be greater than or equal to size of corresponding dimension "
                   "of Input(Y) (Out_dim[i] >= Y_dim[i]), but received %d < %d "
                   "for dimension %d",
-                  dout_dim[i], y_dim[i], i));
+                  dout_dim[i],
+                  y_dim[i],
+                  i));
         }
       }
     }
@@ -228,7 +240,8 @@ class PadConstantLikeOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(pad_constant_like, ops::PadConstantLikeOp,
+REGISTER_OPERATOR(pad_constant_like,
+                  ops::PadConstantLikeOp,
                   ops::PadConstantLikeOpMaker,
                   ops::PadConstantLikeOpGradMaker<paddle::framework::OpDesc>,
                   ops::PadConstantLikeOpGradMaker<paddle::imperative::OpBase>);

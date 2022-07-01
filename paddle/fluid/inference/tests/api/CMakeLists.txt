@@ -799,7 +799,7 @@ if(WITH_MKLDNN)
   if(NOT LINUX)
     download_quant_data_without_verify(${QUANT2_MobileNetV1_MODEL_DIR}
                                        "MobileNet_qat_perf.tar.gz")
-  endif(NOT LINUX)
+  endif()
   download_quant_data_without_verify(${QUANT2_INT8_MobileNetV1_MODEL_DIR}
                                      "MobileNet_qat_perf_int8.tar.gz")
   inference_analysis_api_quant_test_run(
@@ -829,7 +829,7 @@ if(WITH_MKLDNN)
     download_quant_data_without_verify(
       ${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR}
       ${QUANT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE})
-  endif(NOT LINUX)
+  endif()
   set(QUANT2_RESNET50_MODEL
       ${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR}/ResNet50_qat_channelwise)
   inference_analysis_api_quant_test_run(
@@ -869,10 +869,8 @@ endif()
 set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")
 download_model_and_data_without_verify(
   ${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
-if(WITH_GPU)
-  inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR}
-                              analyzer_bert_tester.cc)
-endif()
+inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR}
+                            analyzer_bert_tester.cc)
 
 # multiple models prediction
 set(MMP_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/multi_model_prediction")

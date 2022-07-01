@@ -81,7 +81,9 @@ class TestCompatibility(unittest.TestCase):
         return ret
 
     def run_raw_executor(self, feed):
+        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '0'
         out = self._run(feed)
+        del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
         print("GT:", out)
         return out
 

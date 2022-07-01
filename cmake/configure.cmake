@@ -14,19 +14,19 @@
 
 if(NOT WITH_PYTHON)
   add_definitions(-DPADDLE_NO_PYTHON)
-endif(NOT WITH_PYTHON)
+endif()
 
 if(WITH_TESTING)
   add_definitions(-DPADDLE_WITH_TESTING)
-endif(WITH_TESTING)
+endif()
 
 if(WITH_INFERENCE_API_TEST)
   add_definitions(-DPADDLE_WITH_INFERENCE_API_TEST)
-endif(WITH_INFERENCE_API_TEST)
+endif()
 
 if(NOT WITH_PROFILER)
   add_definitions(-DPADDLE_DISABLE_PROFILER)
-endif(NOT WITH_PROFILER)
+endif()
 
 if(WITH_AVX AND AVX_FOUND)
   set(SIMD_FLAG ${AVX_FLAG})
@@ -60,8 +60,8 @@ if(WIN32)
       FATAL
       "Windows build only support msvc. Which was binded by the nvcc compiler of NVIDIA."
     )
-  endif(NOT MSVC)
-endif(WIN32)
+  endif()
+endif()
 
 if(WITH_MUSL)
   add_definitions(-DPADDLE_WITH_MUSL)
@@ -195,9 +195,9 @@ if(WITH_MKLML AND MKLML_IOMP_LIB)
   if(WIN32)
     # openmp not support well for now on windows
     set(OPENMP_FLAGS "")
-  else(WIN32)
+  else()
     set(OPENMP_FLAGS "-fopenmp")
-  endif(WIN32)
+  endif()
   set(CMAKE_C_CREATE_SHARED_LIBRARY_FORBIDDEN_FLAGS ${OPENMP_FLAGS})
   set(CMAKE_CXX_CREATE_SHARED_LIBRARY_FORBIDDEN_FLAGS ${OPENMP_FLAGS})
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPENMP_FLAGS}")
@@ -221,15 +221,15 @@ endif()
 
 if(WITH_BRPC_RDMA)
   add_definitions(-DPADDLE_WITH_BRPC_RDMA)
-endif(WITH_BRPC_RDMA)
+endif()
 
 if(ON_INFER)
   add_definitions(-DPADDLE_ON_INFERENCE)
-endif(ON_INFER)
+endif()
 
 if(WITH_CRYPTO)
   add_definitions(-DPADDLE_WITH_CRYPTO)
-endif(WITH_CRYPTO)
+endif()
 
 if(WITH_CUSTOM_DEVICE AND NOT WIN32)
   add_definitions(-DPADDLE_WITH_CUSTOM_DEVICE)

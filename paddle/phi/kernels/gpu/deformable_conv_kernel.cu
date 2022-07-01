@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/deformable_conv_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/deformable_conv_kernel.h"
 #include "paddle/phi/kernels/impl/deformable_conv_kernel_impl.h"
 
 PD_REGISTER_KERNEL(deformable_conv,

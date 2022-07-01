@@ -252,7 +252,7 @@ class ListTransformer(gast.NodeTransformer):
         # 2. pop stmt for a list or dict if len(args_str) == 1
         # 3. pop stmt for a dict if len(args_str) == 2
         if len(args_str) <= 2:
-            new_pop_str = "_jst.convert_pop({}, {})"\
+            new_pop_str = "_jst.Pop({}, {})"\
                 .format(target_str, ",".join(args_str))
             new_pop_node = gast.parse(new_pop_str).body[0].value
             return new_pop_node

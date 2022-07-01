@@ -15,7 +15,7 @@
 
 if(APPLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
-endif(APPLE)
+endif()
 
 add_subdirectory(details)
 
@@ -82,16 +82,17 @@ if(WITH_ONNXRUNTIME)
          ir_pass_manager
          op_compatible_info
          infer_io_utils
+         model_utils
          onnxruntime
          paddle2onnx)
-else(WITH_ONNXRUNTIME)
+else()
   cc_library(
     analysis_predictor
     SRCS analysis_predictor.cc resource_manager.cc infer_context.cc
          ${mkldnn_quantizer_src}
     DEPS ${inference_deps} zero_copy_tensor ir_pass_manager op_compatible_info
-         infer_io_utils)
-endif(WITH_ONNXRUNTIME)
+         infer_io_utils model_utils)
+endif()
 
 cc_test(
   test_paddle_inference_api

@@ -73,7 +73,8 @@ int main(int argc, char* argv[]) {
   std::vector<std::string> end_points{switch_a_endpoint};
   std::vector<std::string> peer_endpoints{switch_b_endpoint_inter};
   std::thread switch_server_a_thread(StartSwitchServer,
-                                     std::ref(switch_server_ptr_a), end_points,
+                                     std::ref(switch_server_ptr_a),
+                                     end_points,
                                      peer_endpoints);
   switch_server_ptr_a->WaitServerReady();
 
@@ -81,7 +82,8 @@ int main(int argc, char* argv[]) {
   peer_endpoints = {switch_b_endpoint_inter};
   std::thread switch_server_a_thread_inter(StartSwitchInterServer,
                                            std::ref(switch_server_ptr_a),
-                                           end_points, peer_endpoints);
+                                           end_points,
+                                           peer_endpoints);
   switch_server_ptr_a->WaitServerReady();
 
   switch_server_a_thread.join();

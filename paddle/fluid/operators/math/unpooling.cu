@@ -19,10 +19,13 @@ namespace paddle {
 namespace operators {
 namespace math {
 template <typename T>
-__global__ void KernelUnpool2dMax(const int nthreads, const T* input_data,
+__global__ void KernelUnpool2dMax(const int nthreads,
+                                  const T* input_data,
                                   const int* indices_data,
-                                  const int input_height, const int input_width,
-                                  const int channels, T* output_data,
+                                  const int input_height,
+                                  const int input_width,
+                                  const int channels,
+                                  T* output_data,
                                   const int output_height,
                                   const int output_width) {
   CUDA_KERNEL_LOOP(linearIndex, nthreads) {
@@ -35,11 +38,17 @@ __global__ void KernelUnpool2dMax(const int nthreads, const T* input_data,
 }
 
 template <typename T>
-__global__ void KernelUnpool2dMaxGrad(
-    const int nthreads, const T* input_data, const int* indices_data,
-    const int input_height, const int input_width, const int channels,
-    const T* output_data, const T* output_grad, const int output_height,
-    const int output_width, T* input_grad) {
+__global__ void KernelUnpool2dMaxGrad(const int nthreads,
+                                      const T* input_data,
+                                      const int* indices_data,
+                                      const int input_height,
+                                      const int input_width,
+                                      const int channels,
+                                      const T* output_data,
+                                      const T* output_grad,
+                                      const int output_height,
+                                      const int output_width,
+                                      T* input_grad) {
   CUDA_KERNEL_LOOP(linearIndex, nthreads) {
     int c = (linearIndex / input_width / input_height) % channels;
     int n = linearIndex / input_width / input_height / channels;
@@ -53,11 +62,15 @@ __global__ void KernelUnpool2dMaxGrad(
  */
 
 template <typename T>
-__global__ void KernelUnpool3dMax(const int nthreads, const T* input_data,
+__global__ void KernelUnpool3dMax(const int nthreads,
+                                  const T* input_data,
                                   const int* indices_data,
-                                  const int input_depth, const int input_height,
-                                  const int input_width, const int channels,
-                                  T* output_data, const int output_depth,
+                                  const int input_depth,
+                                  const int input_height,
+                                  const int input_width,
+                                  const int channels,
+                                  T* output_data,
+                                  const int output_depth,
                                   const int output_height,
                                   const int output_width) {
   CUDA_KERNEL_LOOP(linearIndex, nthreads) {
@@ -71,12 +84,19 @@ __global__ void KernelUnpool3dMax(const int nthreads, const T* input_data,
 }
 
 template <typename T>
-__global__ void KernelUnpool3dMaxGrad(
-    const int nthreads, const T* input_data, const int* indices_data,
-    const int input_depth, const int input_height, const int input_width,
-    const int channels, const T* output_data, const T* output_grad,
-    const int output_depth, const int output_height, const int output_width,
-    T* input_grad) {
+__global__ void KernelUnpool3dMaxGrad(const int nthreads,
+                                      const T* input_data,
+                                      const int* indices_data,
+                                      const int input_depth,
+                                      const int input_height,
+                                      const int input_width,
+                                      const int channels,
+                                      const T* output_data,
+                                      const T* output_grad,
+                                      const int output_depth,
+                                      const int output_height,
+                                      const int output_width,
+                                      T* input_grad) {
   CUDA_KERNEL_LOOP(linearIndex, nthreads) {
     int c = (linearIndex / input_depth / input_width / input_height) % channels;
     int n = linearIndex / input_depth / input_width / input_height / channels;
@@ -95,7 +115,8 @@ class Unpool2dMaxFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
-                  const framework::Tensor& indices, framework::Tensor* output) {
+                  const framework::Tensor& indices,
+                  framework::Tensor* output) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -111,9 +132,16 @@ class Unpool2dMaxFunctor<platform::CUDADeviceContext, T> {
     int threads = 1024;
 #endif
     int grid = (input.numel() + threads - 1) / threads;
-    KernelUnpool2dMax<T><<<grid, threads, 0, context.stream()>>>(
-        input.numel(), input_data, indices_data, input_height, input_width,
-        output_channels, output_data, output_height, output_width);
+    KernelUnpool2dMax<T>
+        <<<grid, threads, 0, context.stream()>>>(input.numel(),
+                                                 input_data,
+                                                 indices_data,
+                                                 input_height,
+                                                 input_width,
+                                                 output_channels,
+                                                 output_data,
+                                                 output_height,
+                                                 output_width);
   }
 };
 /*
@@ -145,10 +173,18 @@ class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, T> {
     int threads = 1024;
 #endif
     int grid = (input.numel() + threads - 1) / threads;
-    KernelUnpool2dMaxGrad<T><<<grid, threads, 0, context.stream()>>>(
-        input.numel(), input_data, indices_data, input_height, input_width,
-        output_channels, output_data, output_grad_data, output_height,
-        output_width, input_grad_data);
+    KernelUnpool2dMaxGrad<T>
+        <<<grid, threads, 0, context.stream()>>>(input.numel(),
+                                                 input_data,
+                                                 indices_data,
+                                                 input_height,
+                                                 input_width,
+                                                 output_channels,
+                                                 output_data,
+                                                 output_grad_data,
+                                                 output_height,
+                                                 output_width,
+                                                 input_grad_data);
   }
 };
 
@@ -157,7 +193,8 @@ class Unpool3dMaxFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
-                  const framework::Tensor& indices, framework::Tensor* output) {
+                  const framework::Tensor& indices,
+                  framework::Tensor* output) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -175,10 +212,18 @@ class Unpool3dMaxFunctor<platform::CUDADeviceContext, T> {
     int threads = 1024;
 #endif
     int grid = (input.numel() + threads - 1) / threads;
-    KernelUnpool3dMax<T><<<grid, threads, 0, context.stream()>>>(
-        input.numel(), input_data, indices_data, input_depth, input_height,
-        input_width, output_channels, output_data, output_depth, output_height,
-        output_width);
+    KernelUnpool3dMax<T>
+        <<<grid, threads, 0, context.stream()>>>(input.numel(),
+                                                 input_data,
+                                                 indices_data,
+                                                 input_depth,
+                                                 input_height,
+                                                 input_width,
+                                                 output_channels,
+                                                 output_data,
+                                                 output_depth,
+                                                 output_height,
+                                                 output_width);
   }
 };
 /*
@@ -212,10 +257,20 @@ class Unpool3dMaxGradFunctor<platform::CUDADeviceContext, T> {
     int threads = 1024;
 #endif
     int grid = (input.numel() + threads - 1) / threads;
-    KernelUnpool3dMaxGrad<T><<<grid, threads, 0, context.stream()>>>(
-        input.numel(), input_data, indices_data, input_depth, input_height,
-        input_width, output_channels, output_data, output_grad_data,
-        output_depth, output_height, output_width, input_grad_data);
+    KernelUnpool3dMaxGrad<T>
+        <<<grid, threads, 0, context.stream()>>>(input.numel(),
+                                                 input_data,
+                                                 indices_data,
+                                                 input_depth,
+                                                 input_height,
+                                                 input_width,
+                                                 output_channels,
+                                                 output_data,
+                                                 output_grad_data,
+                                                 output_depth,
+                                                 output_height,
+                                                 output_width,
+                                                 input_grad_data);
   }
 };
 

@@ -495,7 +495,7 @@ def _as_lodtensor(data, place, dtype=None):
             data = np.array([data]).astype(dtype)
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
-            if data.dtype == np.object:
+            if data.dtype == np.object_:
                 raise TypeError(
                     "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
                     "this means the input data contains nested lists with different lengths. "
@@ -549,7 +549,7 @@ class _StandaloneExecutor(object):
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, feed_names, fetch_list, return_numpy=True):
+    def run(self, scope, feed_names, fetch_list, return_numpy=True):
         """
         Args:
             feed_names(list): This parameter represents the input names of the model.
@@ -561,7 +561,8 @@ class _StandaloneExecutor(object):
         """
         fetch_list = self._check_fetch(fetch_list)
 
-        tensors = self._new_exe.run(feed_names, fetch_list)._move_to_list()
+        tensors = self._new_exe.run(scope, feed_names,
+                                    fetch_list)._move_to_list()
         if return_numpy:
             return as_numpy(tensors, copy=True)
         else:
@@ -1404,9 +1405,9 @@ class Executor(object):
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
-            if core.is_compiled_with_npu() or core.is_compiled_with_xpu(
-            ) or core.is_compiled_with_mlu() or core.is_compiled_with_ipu(
-            ) or isinstance(place, core.CustomPlace):
+            if core.is_compiled_with_npu() or core.is_compiled_with_mlu(
+            ) or core.is_compiled_with_ipu() or isinstance(
+                    place, core.CustomPlace):
                 return False
 
             compiled = isinstance(program, compiler.CompiledProgram)
@@ -1491,7 +1492,8 @@ class Executor(object):
                     cpu_tensor = _as_lodtensor(data, core.CPUPlace())
                     tensor._copy_from(cpu_tensor, self.place)
 
-                return new_exe.run(list(feed.keys()), fetch_list, return_numpy)
+                return new_exe.run(scope, list(feed.keys()), fetch_list,
+                                   return_numpy)
 
         compiled = isinstance(program, compiler.CompiledProgram)
 

@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
-import numpy
-import paddle.nn.functional as F
-import tempfile
-import warnings
-import json
 import os
+import json
+import tempfile
+import unittest
+import warnings
+import numpy
+
+import paddle
+import paddle.nn.functional as F
 from paddle.fluid.framework import _enable_legacy_dygraph
 
 _enable_legacy_dygraph()
@@ -133,6 +134,32 @@ class LayoutAutoTune(unittest.TestCase):
 
         self.assertEqual(conv_out.shape, [1, 14, 12, 8])
         self.assertEqual(out.shape, [1, 112, 12])
+
+    def test_argmax_op_transposer_keep_dims(self):
+        if not self.use_autoune():
+            return
+        conv = paddle.nn.Conv2D(3, 8, (3, 3))
+        data = paddle.rand([1, 3, 16, 14])
+        with paddle.amp.auto_cast(level="O2"):
+            conv_out = conv(data)
+            # conv_out.shape = [1, 14, 12, 8] with NHWC
+            out = paddle.argmax(conv_out, axis=1, keepdim=True)
+
+        self.assertEqual(conv_out.shape, [1, 14, 12, 8])
+        self.assertEqual(out.shape, [1, 14, 1, 8])
+
+    def test_argmax_op_transposer(self):
+        if not self.use_autoune():
+            return
+        conv = paddle.nn.Conv2D(3, 8, (3, 3))
+        data = paddle.rand([1, 3, 16, 14])
+        with paddle.amp.auto_cast(level="O2"):
+            conv_out = conv(data)
+            # conv_out.shape = [1, 14, 12, 8] with NHWC
+            out = paddle.argmax(conv_out)
+
+        self.assertEqual(conv_out.shape, [1, 14, 12, 8])
+        self.assertEqual(out.shape, [1])
 
 
 class TestAutoTuneAPI(unittest.TestCase):

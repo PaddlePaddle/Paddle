@@ -21,17 +21,13 @@ import time
 import logging
 import shutil
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.fluid.core import PassVersionChecker
-import paddle.fluid.core as core
-from paddle import compat as cpt
 import paddle.inference as paddle_infer
-from typing import Optional, List, Callable, Dict, Any, Set
-from program_config import TensorConfig, OpConfig, ProgramConfig, create_fake_model, create_quant_model
+from typing import Optional, List, Callable, Dict, Any
+from program_config import OpConfig, ProgramConfig, create_fake_model, create_quant_model
 
 import hypothesis
-from hypothesis import given, settings, seed, reproduce_failure
+from hypothesis import given, settings
 import hypothesis.strategies as st
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -605,7 +601,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
             dic['use_trt'] = False
         return str(dic)
 
-    def run_test(self, quant=False, *args, **kwargs):
+    def run_test(self, quant=False, skip_baseline=False, *args, **kwargs):
         status = True
         run_flags = []
         for prog_config in self.sample_program_configs(*args, **kwargs):
@@ -636,14 +632,14 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 }
 
             results: List[Dict[str, np.ndarray]] = []
-
-            # baseline: gpu run
-            logging.info('RUN program_config: ' + str(prog_config))
-            gpu_config = self.create_inference_config(use_trt=False)
-            results.append(
-                self.run_test_config(model, params, prog_config, gpu_config,
-                                     feed_data))
-            self.success_log('RUN_GPU_BASELINE done')
+            if not skip_baseline:
+                #baseline: gpu run
+                logging.info('RUN program_config: ' + str(prog_config))
+                gpu_config = self.create_inference_config(use_trt=False)
+                results.append(
+                    self.run_test_config(model, params, prog_config, gpu_config,
+                                         feed_data))
+                self.success_log('RUN_GPU_BASELINE done')
 
             for pred_config, nodes_num, threshold in self.sample_predictor_configs(
                     prog_config):

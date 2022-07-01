@@ -29,7 +29,8 @@ namespace tensorrt {
 class MultiClassNMS3OpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid multiclassNMS3 op to tensorrt plugin";
 
     // for now, only work for static shape and regular tensor
@@ -75,14 +76,20 @@ class MultiClassNMS3OpConverter : public OpConverter {
 
     const std::vector<nvinfer1::PluginField> fields{
         {"shareLocation", &shareLocation, nvinfer1::PluginFieldType::kINT32, 1},
-        {"backgroundLabelId", &background_label,
-         nvinfer1::PluginFieldType::kINT32, 1},
+        {"backgroundLabelId",
+         &background_label,
+         nvinfer1::PluginFieldType::kINT32,
+         1},
         {"numClasses", &num_classes, nvinfer1::PluginFieldType::kINT32, 1},
         {"topK", &nms_top_k, nvinfer1::PluginFieldType::kINT32, 1},
         {"keepTopK", &keep_top_k, nvinfer1::PluginFieldType::kINT32, 1},
-        {"scoreThreshold", &score_threshold,
-         nvinfer1::PluginFieldType::kFLOAT32, 1},
-        {"iouThreshold", &nms_threshold, nvinfer1::PluginFieldType::kFLOAT32,
+        {"scoreThreshold",
+         &score_threshold,
+         nvinfer1::PluginFieldType::kFLOAT32,
+         1},
+        {"iouThreshold",
+         &nms_threshold,
+         nvinfer1::PluginFieldType::kFLOAT32,
          1},
         {"isNormalized", &normalized, nvinfer1::PluginFieldType::kINT32, 1},
         {"clipBoxes", &clip_boxes, nvinfer1::PluginFieldType::kINT32, 1},
@@ -128,16 +135,18 @@ class MultiClassNMS3OpConverter : public OpConverter {
     // multiclass_nms3
     std::vector<uint32_t> index(1, 0);
     auto constant_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Constant, nvinfer1::Dims2(1, 1),
-        nvinfer1::Weights{nvinfer1::DataType::kINT32,
-                          static_cast<void*>(index.data()), 1});
+        engine_,
+        Constant,
+        nvinfer1::Dims2(1, 1),
+        nvinfer1::Weights{
+            nvinfer1::DataType::kINT32, static_cast<void*>(index.data()), 1});
 
-    RreplenishLayerAndOutput(batch_nms_layer, "multiclass_nms3",
-                             {rois_num_name}, test_mode);
-    RreplenishLayerAndOutput(nms_concat_layer, "multiclass_nms3", {output_name},
-                             test_mode);
-    RreplenishLayerAndOutput(constant_layer, "multiclass_nms3", {index_name},
-                             test_mode);
+    RreplenishLayerAndOutput(
+        batch_nms_layer, "multiclass_nms3", {rois_num_name}, test_mode);
+    RreplenishLayerAndOutput(
+        nms_concat_layer, "multiclass_nms3", {output_name}, test_mode);
+    RreplenishLayerAndOutput(
+        constant_layer, "multiclass_nms3", {index_name}, test_mode);
   }
 };
 

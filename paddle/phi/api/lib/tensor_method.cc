@@ -19,9 +19,11 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_base.h"
 
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 // clang-format off
 
@@ -113,9 +115,15 @@ void Tensor::copy_(const Tensor &src,
     // Deep Copy AutoGrad info from src to self.
     *autograd_meta_ = *(src.autograd_meta_);
   }
-
+  kernel_key_set.backend_set =
+      kernel_key_set.backend_set |
+      BackendSet(phi::TransToPhiBackend(target_place));
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-  auto *dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto place = phi::TransToPhiPlace(kernel_key.backend());
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.GetMutable(
+      place.GetType() == target_place.GetType() ? target_place : place);
+
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::UNDEFINED;
   DataType kernel_data_type = DataType::UNDEFINED;
@@ -135,83 +143,45 @@ void Tensor::copy_(const Tensor &src,
   }
 
   if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
-    auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-        "copy", {kernel_backend, kernel_layout, kernel_data_type});
-    VLOG(6) << "copy API kernel key: " << kernel_key;
-    VLOG(6) << "copy API kernel: " << kernel;
-    using kernel_signature = void (*)(const platform::DeviceContext &,
-                                      const phi::DenseTensor &,
-                                      phi::Place,
-                                      bool,
-                                      phi::DenseTensor *);
     SetKernelOutput(kernel_backend, this);
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(
         MakeMetaTensor(
             *(std::static_pointer_cast<phi::DenseTensor>(src.impl_))),
         &meta_out);
-    auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-    (*kernel_fn)(*dev_ctx,
-                 (*(std::static_pointer_cast<phi::DenseTensor>(src.impl_))),
-                 target_place,
-                 blocking,
-                 static_cast<phi::DenseTensor *>(impl_.get()));
+    phi::Copy(*dev_ctx,
+              (*(std::static_pointer_cast<phi::DenseTensor>(src.impl_))),
+              target_place,
+              blocking,
+              static_cast<phi::DenseTensor *>(impl_.get()));
   } else if (kernel_type == KernelType::SELECTED_ROWS_KENREL) {
-    auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-        "copy_sr", {kernel_backend, kernel_layout, kernel_data_type});
-    VLOG(6) << "copy API kernel key: " << kernel_key;
-    VLOG(6) << "copy API kernel: " << kernel;
-    using kernel_signature = void (*)(const platform::DeviceContext &,
-                                      const phi::SelectedRows &,
-                                      phi::Place,
-                                      bool,
-                                      phi::SelectedRows *);
     SetSelectedRowsKernelOutput(kernel_backend, this);
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(
         MakeMetaTensor(
             *(std::static_pointer_cast<phi::SelectedRows>(src.impl_))),
         &meta_out);
-    auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-    (*kernel_fn)(*dev_ctx,
-                 (*(std::static_pointer_cast<phi::SelectedRows>(src.impl_))),
-                 target_place,
-                 blocking,
-                 static_cast<phi::SelectedRows *>(impl_.get()));
+    phi::Copy(*dev_ctx,
+              (*(std::static_pointer_cast<phi::SelectedRows>(src.impl_))),
+              target_place,
+              blocking,
+              static_cast<phi::SelectedRows *>(impl_.get()));
   } else if (kernel_type == KernelType::SPARSE_COO_KERNEL) {
-    auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-        "copy_sparse_coo", {kernel_backend, kernel_layout, kernel_data_type});
-    VLOG(6) << "copy API kernel key: " << kernel_key;
-    VLOG(6) << "copy API kernel: " << kernel;
-    using kernel_signature = void (*)(const platform::DeviceContext &,
-                                      const phi::SparseCooTensor &,
-                                      phi::Place,
-                                      bool,
-                                      phi::SparseCooTensor *);
-    this->set_impl(std::make_shared<phi::SparseCooTensor>());
-    auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-    (*kernel_fn)(*dev_ctx,
-                 (*(std::static_pointer_cast<phi::SparseCooTensor>(src.impl_))),
-                 target_place,
-                 blocking,
-                 static_cast<phi::SparseCooTensor *>(impl_.get()));
+    SetSparseKernelOutput(this, TensorType::SPARSE_COO);
+    // TODO(zhangkaihuo) add sparse infer_meta
+    phi::Copy(*dev_ctx,
+              (*(std::static_pointer_cast<phi::SparseCooTensor>(src.impl_))),
+              target_place,
+              blocking,
+              static_cast<phi::SparseCooTensor *>(impl_.get()));
   } else if (kernel_type == KernelType::SPARSE_CSR_KERNEL) {
-    auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-        "copy_sparse_csr", {kernel_backend, kernel_layout, kernel_data_type});
-    VLOG(6) << "copy API kernel key: " << kernel_key;
-    VLOG(6) << "copy API kernel: " << kernel;
-    using kernel_signature = void (*)(const platform::DeviceContext &,
-                                      const phi::SparseCsrTensor &,
-                                      phi::Place,
-                                      bool,
-                                      phi::SparseCsrTensor *);
-    this->set_impl(std::make_shared<phi::SparseCsrTensor>());
-    auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-    (*kernel_fn)(*dev_ctx,
-                 (*(std::static_pointer_cast<phi::SparseCsrTensor>(src.impl_))),
-                 target_place,
-                 blocking,
-                 static_cast<phi::SparseCsrTensor *>(impl_.get()));
+    SetSparseKernelOutput(this, TensorType::SPARSE_CSR);
+    // TODO(zhangkaihuo) add sparse infer_meta
+    phi::Copy(*dev_ctx,
+              (*(std::static_pointer_cast<phi::SparseCsrTensor>(src.impl_))),
+              target_place,
+              blocking,
+              static_cast<phi::SparseCsrTensor *>(impl_.get()));
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "We currently only support dense tensor copy for now and if u need to "

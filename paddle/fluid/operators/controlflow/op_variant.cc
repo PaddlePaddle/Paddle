@@ -53,19 +53,19 @@ struct RawPointerVisitor : public boost::static_visitor<const void *> {
 };
 
 const framework::VariableNameMap &OpVariant::Inputs() const {
-  return *boost::apply_visitor(InputsVisitor(), op_);
+  return *paddle::visit(InputsVisitor(), op_);
 }
 
 const framework::VariableNameMap &OpVariant::Outputs() const {
-  return *boost::apply_visitor(OutputsVisitor(), op_);
+  return *paddle::visit(OutputsVisitor(), op_);
 }
 
 const framework::AttributeMap &OpVariant::Attrs() const {
-  return *boost::apply_visitor(AttributeMapVisitor(), op_);
+  return *paddle::visit(AttributeMapVisitor(), op_);
 }
 
 const void *OpVariant::RawPointer() const {
-  return boost::apply_visitor(RawPointerVisitor(), op_);
+  return paddle::visit(RawPointerVisitor(), op_);
 }
 
 void AppendOpVariantByOpName(const std::vector<framework::OpDesc *> &op_descs,
@@ -75,8 +75,9 @@ void AppendOpVariantByOpName(const std::vector<framework::OpDesc *> &op_descs,
       result_ops,
       platform::errors::Unavailable("result_ops should not be a null_ptr."));
   for (auto *op_desc : op_descs) {
-    PADDLE_ENFORCE_NOT_NULL(op_desc, platform::errors::Unavailable(
-                                         "op_desc should not be a null_ptr."));
+    PADDLE_ENFORCE_NOT_NULL(
+        op_desc,
+        platform::errors::Unavailable("op_desc should not be a null_ptr."));
     if (op_desc->Type() == candidate_op_name) {
       result_ops->emplace_back(op_desc);
     }
