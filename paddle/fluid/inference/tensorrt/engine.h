@@ -422,7 +422,7 @@ class TensorRTEngine {
   // so as to avoid repeatedly setting weights with the same name.
   void SetWeights(std::string w_name,
                   std::unique_ptr<framework::Tensor> w_tensor) {
-    static int suffix_counter;
+    static int suffix_counter = 0;
     std::string suffix = std::to_string(suffix_counter);
     std::string splitter = "__";
     std::string name_with_suffix = w_name + splitter + suffix;
