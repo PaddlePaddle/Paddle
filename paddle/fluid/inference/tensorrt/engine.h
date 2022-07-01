@@ -268,6 +268,7 @@ class TensorRTEngine {
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
+  std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::IExecutionContext* context() {
@@ -405,9 +406,9 @@ class TensorRTEngine {
   void SetTensorDynamicRange(nvinfer1::ITensor* tensor, float range) {
     quant_dynamic_range_[tensor] = range;
   }
-
-  float* GetWeightCPUData(const std::string& name,
-                          framework::Tensor* weight_tensor);
+  template <typename T = float>
+  T* GetWeightCPUData(const std::string& name,
+                      framework::Tensor* weight_tensor);
 
   // A pointer to CPU memory is needed of the TRT weight.
   // Before TRT runs, fluid loads weight into GPU storage.
@@ -421,7 +422,6 @@ class TensorRTEngine {
   // so as to avoid repeatedly setting weights with the same name.
   void SetWeights(std::string w_name,
                   std::unique_ptr<framework::Tensor> w_tensor) {
-    static int suffix_counter = 0;
     std::string suffix = std::to_string(suffix_counter);
     std::string splitter = "__";
     weight_map[w_name + splitter + suffix] = std::move(w_tensor);
@@ -664,6 +664,8 @@ class TensorRTEngine {
   // max data size for the buffers.
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
       itensor_map_;
+  // counter for weight_map
+  static int suffix_counter;
 
   std::vector<std::unique_ptr<plugin::PluginTensorRT>> owned_plugin_;
   std::vector<std::unique_ptr<plugin::PluginTensorRTV2Ext>> owned_plugin_v2ext_;

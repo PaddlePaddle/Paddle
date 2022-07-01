@@ -390,14 +390,21 @@ nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name) {
   return itensor_map_[name];
 }
 
+std::unordered_map<std::string, nvinfer1::ITensor *>
+    *TensorRTEngine::GetITensorMap() {
+  return &itensor_map_;
+}
+
 void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
   runtime_batch_ = batch_size;
 }
 
-float *TensorRTEngine::GetWeightCPUData(const std::string &name,
-                                        framework::Tensor *weight_tensor) {
-  static int name_suffix_counter = 0;
-  std::string name_suffix = std::to_string(name_suffix_counter);
+int TensorRTEngine::suffix_counter = 0;
+
+template <typename T = float>
+T *TensorRTEngine::GetWeightCPUData(const std::string &name,
+                                    framework::Tensor *weight_tensor) {
+  std::string name_suffix = std::to_string(suffix_counter);
   std::string splitter = "__";
   std::string name_with_suffix = name + splitter + name_suffix;
   platform::CPUPlace cpu_place;
@@ -411,11 +418,18 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
   weight_map[name_with_suffix]->Resize(weight_tensor->dims());
   paddle::framework::TensorCopySync(
       *weight_tensor, cpu_place, weight_map[name_with_suffix].get());
-  float *weight_data =
-      weight_map[name_with_suffix]->mutable_data<float>(cpu_place);
-  name_suffix_counter += 1;
+  T *weight_data = weight_map[name_with_suffix]->mutable_data<T>(cpu_place);
+  suffix_counter += 1;
   return weight_data;
 }
+
+template float *TensorRTEngine::GetWeightCPUData(
+    const std::string &name, framework::Tensor *weight_tensor);
+template int32_t *TensorRTEngine::GetWeightCPUData(
+    const std::string &name, framework::Tensor *weight_tensor);
+
+template int64_t *TensorRTEngine::GetWeightCPUData(
+    const std::string &name, framework::Tensor *weight_tensor);
 
 int TensorRTEngine::GetRuntimeBatch() { return runtime_batch_; }
 
