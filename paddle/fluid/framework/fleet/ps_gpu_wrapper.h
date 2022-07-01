@@ -176,7 +176,6 @@ class PSGPUWrapper {
   void LoadIntoMemory(bool is_shuffle);
   void BeginPass();
   void EndPass();
-  void start_build_thread();
   void build_task();
 
   void Finalize() {
@@ -255,9 +254,6 @@ class PSGPUWrapper {
       gpu_free_channel_->Put(current_task_);
 
       table_id_ = 0;
-
-      // start build cpu&gpu ps thread
-      // start_build_thread();
     }
   }
 
