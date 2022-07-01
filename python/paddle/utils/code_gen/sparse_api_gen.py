@@ -31,18 +31,10 @@ class SparseAPI(ForwardAPI):
 {super(SparseAPI, self).gene_api_declaration()}
 """
 
-    def get_kernel_tensor_out_type(self, output_name):
-        sparse_type = 'TensorType::DENSE_TENSOR'
-        if output_name.endswith('@SparseCooTensor'):
-            sparse_type = 'TensorType::SPARSE_COO'
-        elif output_name.endswith('@SparseCsrTensor'):
-            sparse_type = 'TensorType::SPARSE_CSR'
-        return sparse_type
-
     def gene_output(self,
-                    output_type_list,
-                    set_out_func,
-                    code_indent,
+                    out_dtype_list,
+                    out_tensor_type_list=None,
+                    code_indent='',
                     inplace_flag=False):
         kernel_output = ""
         output_names = []
@@ -54,7 +46,7 @@ class SparseAPI(ForwardAPI):
             'sparse_csr': 'TensorType::SPARSE_CSR'
         }
 
-        if len(output_type_list) == 1:
+        if len(out_dtype_list) == 1:
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
             inplace_assign = " = " + self.inplace_map[self.outputs['names'][
@@ -62,9 +54,9 @@ class SparseAPI(ForwardAPI):
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
     {return_type} api_output{inplace_assign};
-    auto* kernel_out = {set_out_func}(&api_output, {output_type_map[output_type_list[0]]});"""
+    auto* kernel_out = SetSparseKernelOutput(&api_output, {output_type_map[out_dtype_list[0]]});"""
 
-        elif len(output_type_list) > 1:
+        elif len(out_dtype_list) > 1:
             output_create = f"""
     {return_type} api_output;"""
 
@@ -80,11 +72,11 @@ class SparseAPI(ForwardAPI):
                         output_create += 'Tensor(), '
                 output_create = output_create[:-2] + '};'
 
-            for i in range(len(output_type_list)):
+            for i in range(len(out_dtype_list)):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
                 output_create = output_create + f"""
-    auto* kernel_out_{i} = {set_out_func}(&std::get<{i}>(api_output), {output_type_map[output_type_list[i]]});"""
+    auto* kernel_out_{i} = SetSparseKernelOutput(&std::get<{i}>(api_output), {output_type_map[out_dtype_list[i]]});"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -148,8 +140,7 @@ class SparseAPI(ForwardAPI):
 
     def gen_sparse_kernel_code(self, kernel_name, inplace_flag=False):
         _, kernel_output_names, output_create = self.gene_output(
-            self.kernel['dispatch'][kernel_name][1], 'SetSparseKernelOutput',
-            '', inplace_flag)
+            self.kernel['dispatch'][kernel_name][1], None, '', inplace_flag)
 
         kernel_context_code = self.gen_sparse_kernel_context(
             kernel_output_names)
@@ -189,7 +180,6 @@ class SparseAPI(ForwardAPI):
         return " && ".join(condition_list)
 
     def gene_dispatch_code(self, kernel_name, inplace_flag=False):
-        dispatch_code = ""
         return f"""
   if ({self.get_condition_code(kernel_name)}) {{
 {self.gen_sparse_kernel_code(kernel_name, inplace_flag)}

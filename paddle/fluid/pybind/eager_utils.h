@@ -17,11 +17,15 @@ typedef SSIZE_T ssize_t;
 
 #include <Python.h>
 
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/selected_rows.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 namespace paddle {
