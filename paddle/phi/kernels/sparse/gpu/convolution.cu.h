@@ -137,11 +137,9 @@ __global__ void UniqueKernel(const IntT* in_indexs,
                              int* out_index_table,
                              int* out_indexs,
                              int* nnz) {
-  extern __shared__ int cache[];
-  __shared__ int count, start;
+  __shared__ int count;
   if (threadIdx.x == 0) {
     count = 0;
-    start = 0;
   }
   __syncthreads();
 
@@ -149,7 +147,7 @@ __global__ void UniqueKernel(const IntT* in_indexs,
   if (i < rulebook_len) {
     // atomicOr only support int
     int index = static_cast<int>(in_indexs[i]);
-    int change_index = index == 0 ? 1 : index;
+    int change_index = index == 0 ? -1 : index;
     int flag = atomicOr(out_index_table + index, change_index);
     if (flag == 0) {
       int j = atomicAdd(&count, 1);
@@ -159,11 +157,7 @@ __global__ void UniqueKernel(const IntT* in_indexs,
   __syncthreads();
 
   if (threadIdx.x == 0) {
-    start = atomicAdd(nnz, count);
-  }
-  __syncthreads();
-  for (int i = threadIdx.x; i < count; i += blockDim.x) {
-    out_indexs[start + i] = cache[i];
+    atomicAdd(nnz, count);
   }
 }
 
@@ -330,6 +324,7 @@ __global__ void GetOutIndexTable(const int* indexs,
                                  IntT* out_indices) {
   CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
     IntT index = static_cast<IntT>(indexs[i]);
+    index = index == -1 ? 0 : index;
     out_index_table[index] = i;
     IntT batch, x, y, z;
     phi::funcs::sparse::IndexToPoint<Dims4D>(
@@ -748,10 +743,9 @@ int ProductRuleBook(const Context& dev_ctx,
     cudaMemsetAsync(unique_key_ptr, 0, sizeof(int), dev_ctx.stream());
 
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
-    size_t cache_size = sizeof(int) * config.thread_per_block.x;
     UniqueKernel<IntT><<<config.block_per_grid,
                          config.thread_per_block,
-                         cache_size,
+                         0,
                          dev_ctx.stream()>>>(rulebook_ptr + rulebook_len,
                                              rulebook_len,
                                              out_index_table_ptr,
@@ -776,9 +770,14 @@ int ProductRuleBook(const Context& dev_ctx,
 
     IntT* out_indices_ptr = out_indices.data<IntT>();
 
-    thrust::sort(thrust::cuda::par.on(dev_ctx.stream()),
-                 out_index_ptr,
-                 out_index_ptr + out_nnz);
+    // thrust::sort(thrust::cuda::par.on(dev_ctx.stream()),
+    //              out_index_ptr,
+    //              out_index_ptr + out_nnz);
+    thrust::remove_copy(thrust::cuda::par.on(dev_ctx.stream()),
+                        out_index_table_ptr,
+                        out_index_table_ptr + table_size,
+                        out_index_ptr,
+                        0);
 
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
     GetOutIndexTable<IntT><<<config.block_per_grid,
