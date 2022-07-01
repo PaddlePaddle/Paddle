@@ -1630,7 +1630,7 @@ def _memcpy(input, place=None, output=None):
             be created as :attr:`output`. Default: None.
 
     Returns:
-        Tensor: A tensor with the same shape, data type and value as :attr:`input`.
+        Tensor, A tensor with the same shape, data type and value as :attr:`input`.
 
     Examples:
         .. code-block:: python

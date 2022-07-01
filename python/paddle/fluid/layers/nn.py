@@ -13284,9 +13284,6 @@ def space_to_depth(x, blocksize, name=None):
         The output, which should be 4 dims Tensor or LodTensor, with the shape \
             [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]
 
-    Return Type: 
-        Variable
-
     Raises:
         TypeError: blocksize type must be int64.
 

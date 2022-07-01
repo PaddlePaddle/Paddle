@@ -1334,7 +1334,6 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                     
     Returns: 
         a Tensor padded according to pad and mode and data type is same as input.
-    Return Type: Tensor
 
     Examples:
         .. code-block:: text
@@ -1553,7 +1552,8 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         name(str, optional): The default value is None. Normally there is no need for user
             to set this property.
 
-    Returns：Tensor，padded with 0 according to pad and data type is same as input.
+    Returns：
+        Tensor，padded with 0 according to pad and data type is same as input.
 
     Examples:
         .. code-block:: python
@@ -1591,7 +1591,6 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
                     
     Returns: 
         a Tensor representing cosine similarity between x1 and x2 along axis.
-    Return Type: Tensor
 
     Examples:
         .. code-block:: text

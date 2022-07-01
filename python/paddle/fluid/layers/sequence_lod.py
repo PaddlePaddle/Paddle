@@ -135,7 +135,7 @@ def sequence_conv(input,
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: LoDTensor with the same length as input. The data type is float32 or float64, which is same as input.
+        Variable, LoDTensor with the same length as input. The data type is float32 or float64, which is same as input.
 
     Examples:
 
@@ -231,7 +231,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
                               For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: A LoD-Tensor which has the same shape and data type with input.
+        Variable, A LoD-Tensor which has the same shape and data type with input.
 
     Examples:
 
@@ -332,7 +332,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
         pad_value (float): Used to pad the pooling result for empty input sequence. Default: 0.0
 
     Returns:
-        Variable: LoDTensor after pooling with data type float32 or float64.
+        Variable, LoDTensor after pooling with data type float32 or float64.
 
     Examples:
 
@@ -414,7 +414,7 @@ def sequence_concat(input, name=None):
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: Output the concatenated LoDTensor. The data type is same as input.
+        Variable, Output the concatenated LoDTensor. The data type is same as input.
 
     Examples:
         .. code-block:: python
@@ -484,7 +484,7 @@ def sequence_first_step(input):
         input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32 or float64.
 
     Returns:
-        Variable: LoDTensor consist of the sequence's first step vector. The data type is float32 or float64.
+        Variable, LoDTensor consist of the sequence's first step vector. The data type is float32 or float64.
 
     Examples:
 
@@ -543,7 +543,7 @@ def sequence_last_step(input):
         input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32.
 
     Returns:
-        Variable: LoDTensor consist of the sequence's last step vector. The data type is float32.
+        Variable, LoDTensor consist of the sequence's last step vector. The data type is float32.
 
     Examples:
 
@@ -605,7 +605,7 @@ def sequence_slice(input, offset, length, name=None):
                         please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The output subsequences.
+        Variable, The output subsequences.
 
     Examples:
 
@@ -726,9 +726,6 @@ def sequence_expand(x, y, ref_level=-1, name=None):
         The expanded variable which is a LoDTensor, with dims ``[N, K]``. \
             ``N`` depends on the lod info of ``x`` and ``y``. \
             The data type is same as input.
-
-    Return Type: 
-        Variable
 
     Examples:
         .. code-block:: python
@@ -851,9 +848,6 @@ def sequence_expand_as(x, y, name=None):
         The expanded variable which is a LoDTensor with the dims ``[N, K]``. \
             ``N`` depends on the lod of ``y``, and the lod level must be 1. \
             The data type is same as input.
-
-    Return Type: 
-        Variable
 
     Examples:
         .. code-block:: python
@@ -987,9 +981,6 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             ``Out``, with the shape ``[batch_size, maxlen, K]``; the second is the original \
             sequences length infor ``Length``, which should be a 0-level 1D LodTensor. \
             The size of ``Length`` is equal to batch size, and the data type is int64.
-
-    Return Type: 
-        tuple
 
     Examples:
         .. code-block:: python
@@ -1311,9 +1302,6 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
             shape ``[d_1, win_size]`` and 1-level lod info. \
             The data type is same as ``input``.
 
-    Return Type: 
-        Variable
-
     Examples:
         .. code-block:: python
 
@@ -1383,9 +1371,6 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
         The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
             and data type of :code:`dtype`. The data type should be bool, float32, float64, int8, \
             int32 or int64.
-
-    Return Type: 
-        Tensor
 
     Examples:
         .. code-block:: python
