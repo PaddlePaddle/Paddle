@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <chrono>
 
 #ifdef PADDLE_WITH_PSLIB
 #include "common_value.h"  // NOLINT
@@ -87,8 +88,16 @@ class XPUCacheArray {
     KeyType* keys = get_cpu_keys();
     ValType* vals = get_cpu_vals();
 
+    sleep(1);
+    auto now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    struct tm* ptm = localtime(&now_time);
+    char date[100] = {0};
+    snprintf(date, 100, "%d%02d%02d%02d%02d%02d",
+                    (int)ptm->tm_year + 1900, (int)ptm->tm_mon + 1, (int)ptm->tm_mday,
+                    (int)ptm->tm_hour, (int)ptm->tm_min, (int)ptm->tm_sec);
+
     std::stringstream name_ss;
-    name_ss << "cache_array-" << xpu_id_ << ".dump";
+    name_ss << "cache_array-" << xpu_id_ << "." << date << ".dump";
     
     std::stringstream data_ss;
     data_ss << "xpu_id/num:" << xpu_id_ << "/" << xpu_num_ << "\n";
@@ -106,9 +115,11 @@ class XPUCacheArray {
   }
 
   void set_xpu_id(uint32_t xpu_id) { xpu_id_ = xpu_id; }
+  void set_xpu_idx(uint32_t xpu_idx) { xpu_idx_ = xpu_idx; }
   void set_xpu_num(uint32_t xpu_num) { xpu_num_ = xpu_num; }
   void set_size(long long size) { size_ = size; }
   uint32_t get_xpu_id() {return xpu_id_;}
+  uint32_t get_xpu_idx() {return xpu_idx_;}
   uint32_t get_xpu_num() {return xpu_num_;}
   KeyType* get_keys() {return keys_;}
   ValType* get_vals() {return vals_;}
@@ -133,6 +144,7 @@ class XPUCacheArray {
   KeyType* cpu_keys_;
   ValType* cpu_vals_;
   uint32_t xpu_id_ = 0;
+  uint32_t xpu_idx_ = 0;
   uint32_t xpu_num_ = 1;
 };
 #endif
@@ -157,6 +169,7 @@ class HashTable {
 
 #if defined(PADDLE_WITH_XPU_KP)
   void set_xpu_id(uint32_t xpu_id) { container_->set_xpu_id(xpu_id); }
+  void set_xpu_idx(uint32_t xpu_idx) { container_->set_xpu_idx(xpu_idx); }
   void set_xpu_num(uint32_t xpu_num) { container_->set_xpu_num(xpu_num); }
 #endif
 

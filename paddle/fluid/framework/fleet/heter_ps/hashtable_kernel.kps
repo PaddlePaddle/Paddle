@@ -101,7 +101,7 @@ void HashTable<KeyType, ValType>::get(const paddle::platform::Place& place,
   }
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   ValType* d_vals_in = container_->get_vals();
-  uint32_t xpu_id = container_->get_xpu_id();
+  uint32_t xpu_idx = container_->get_xpu_idx();
   uint32_t xpu_num = container_->get_xpu_num();
   uint32_t xpu_size = container_->size();
   PADDLE_ENFORCE_GE(
@@ -111,7 +111,7 @@ void HashTable<KeyType, ValType>::get(const paddle::platform::Place& place,
   auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
   int r = xpu::get_pairs<KeyType, ValType>(
       ctx_xpu, d_keys, d_vals_in, len,  d_vals,
-      xpu_id, xpu_num
+      xpu_idx, xpu_num
      );
   PADDLE_ENFORCE_EQ(
       r, XPU_SUCCESS,
@@ -133,7 +133,7 @@ void HashTable<uint32_t, FeatureValue>::get(const paddle::platform::Place& place
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   FeatureValue* d_vals_in = container_->get_vals();
-  uint32_t xpu_id = container_->get_xpu_id();
+  uint32_t xpu_idx = container_->get_xpu_idx();
   uint32_t xpu_num = container_->get_xpu_num();
   uint32_t xpu_size = container_->size();
   auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -144,7 +144,7 @@ void HashTable<uint32_t, FeatureValue>::get(const paddle::platform::Place& place
       reinterpret_cast<xpu::FeatureValue*>(d_vals_in),
       len,
       reinterpret_cast<xpu::FeatureValue*>(d_vals),
-      xpu_id, xpu_num
+      xpu_idx, xpu_num
      );
   PADDLE_ENFORCE_EQ(
       r, XPU_SUCCESS,
@@ -201,7 +201,7 @@ void HashTable<KeyType, ValType>::insert(const paddle::platform::Place& place,
   KeyType* d_keys_out = container_->get_keys();
   ValType* d_vals_out = container_->get_vals();
 
-  uint32_t xpu_id = container_->get_xpu_id();
+  uint32_t xpu_idx = container_->get_xpu_idx();
   uint32_t xpu_num = container_->get_xpu_num();
   int r = xpu::insert<KeyType, ValType>(
       ctx_xpu,
@@ -210,7 +210,7 @@ void HashTable<KeyType, ValType>::insert(const paddle::platform::Place& place,
       d_keys_out,
       d_vals_out,
       len,
-      xpu_id,
+      xpu_idx,
       xpu_num);
   PADDLE_ENFORCE_EQ(
       r, XPU_SUCCESS,
@@ -236,7 +236,7 @@ void HashTable<uint32_t, FeatureValue>::insert(const paddle::platform::Place& pl
   auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
   uint32_t* d_keys_out = container_->get_keys();
   FeatureValue* d_vals_out = container_->get_vals();
-  uint32_t xpu_id = container_->get_xpu_id();
+  uint32_t xpu_idx = container_->get_xpu_idx();
   uint32_t xpu_num = container_->get_xpu_num();
   // TODO: remove cast.
   //xpu::ctx_guard RAII_GUARD(ctx_xpu);
@@ -256,7 +256,7 @@ void HashTable<uint32_t, FeatureValue>::insert(const paddle::platform::Place& pl
       d_keys_out,
       reinterpret_cast<xpu::FeatureValue*>(d_vals_out),
       len,
-      xpu_id,
+      xpu_idx,
       xpu_num);
   PADDLE_ENFORCE_EQ(
       r, XPU_SUCCESS,
@@ -330,7 +330,7 @@ void HashTable<KeyType, ValType>::update(const paddle::platform::Place& place,
 
   KeyType* d_keys_out = container_->get_keys();
   ValType* d_vals_out = container_->get_vals();
-  uint32_t xpu_id = container_->get_xpu_id();
+  uint32_t xpu_idx = container_->get_xpu_idx();
   uint32_t xpu_num = container_->get_xpu_num();
   size_t len2 = container_->size();
   int r = xpu::update<KeyType, GradType, ValType>(
@@ -342,7 +342,7 @@ void HashTable<KeyType, ValType>::update(const paddle::platform::Place& place,
       d_keys_out,
       d_vals_out,
       len2,
-      xpu_id,
+      xpu_idx,
       xpu_num);
   PADDLE_ENFORCE_EQ(
       r, XPU_SUCCESS,
@@ -364,7 +364,7 @@ void HashTable<uint32_t, FeatureValue>::update(const paddle::platform::Place& pl
 
   uint32_t* d_keys_out = container_->get_keys();
   FeatureValue* d_vals_out = container_->get_vals();
-  uint32_t xpu_id = container_->get_xpu_id();
+  uint32_t xpu_idx = container_->get_xpu_idx();
   uint32_t xpu_num = container_->get_xpu_num();
   size_t len2 = container_->size();
   // TODO: remove cast.
@@ -389,7 +389,7 @@ void HashTable<uint32_t, FeatureValue>::update(const paddle::platform::Place& pl
       d_keys_out,
       reinterpret_cast<xpu::FeatureValue*>(d_vals_out),
       len2,
-      xpu_id,
+      xpu_idx,
       xpu_num);
   PADDLE_ENFORCE_EQ(
       r, XPU_SUCCESS,

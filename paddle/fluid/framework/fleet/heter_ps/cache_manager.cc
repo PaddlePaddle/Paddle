@@ -121,8 +121,19 @@ uint32_t CacheManager::query_sign2fid(const FeatureKey & key) {
 }
 
 void CacheManager::dump_to_file() {
+  sleep(1);
+  auto now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  struct tm* ptm = localtime(&now_time);
+  char date[100] = {0};
+  snprintf(date, 100, "%d%02d%02d%02d%02d%02d",
+      (int)ptm->tm_year + 1900, (int)ptm->tm_mon + 1, (int)ptm->tm_mday,
+      (int)ptm->tm_hour, (int)ptm->tm_min, (int)ptm->tm_sec);
+
+  std::stringstream name_ss;
+  name_ss << "cache_manager." << date << ".dump";
+
   std::ofstream ofs;
-  ofs.open("cache_manager.dump", std::ios::app);
+  ofs.open(name_ss.str(), std::ios::app);
   for (size_t i = 0; i < fid2meta_.size(); i++) {
     int dev_id = i % worker_num_;
     int offset = int(i / worker_num_);
