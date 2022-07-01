@@ -43,34 +43,13 @@ struct DynamicGradMerger {
 
   __device__ __forceinline__ void update_one(float* output, const float* input,
                                             CommonFeatureValueAccessor& feature_value_accessor) {
-    output[feature_value_accessor.common_push_value.SlotIndex()] = 
-        input[feature_value_accessor.common_push_value.SlotIndex()];
-    output[feature_value_accessor.common_push_value.ShowIndex()] = 
-        input[feature_value_accessor.common_push_value.ShowIndex()];
-    output[feature_value_accessor.common_push_value.ClickIndex()] = 
-        input[feature_value_accessor.common_push_value.ClickIndex()];
-    output[feature_value_accessor.common_push_value.MfDimIndex()] = 
-        input[feature_value_accessor.common_push_value.MfDimIndex()];
-    output[feature_value_accessor.common_push_value.EmbedGIndex()] = 
-        input[feature_value_accessor.common_push_value.EmbedGIndex()];
-    for (int j = 0; j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]); j++) {
-      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] = 
-          input[feature_value_accessor.common_push_value.EmbedxGIndex() + j];
-    }
+    feature_value_accessor.PushValueFill(output, input);
   }
 
   __device__ __forceinline__ void merge_one(float* output, const float* input,
                                           CommonFeatureValueAccessor& feature_value_accessor) {
-    output[feature_value_accessor.common_push_value.ShowIndex()] += 
-        input[feature_value_accessor.common_push_value.ShowIndex()];
-    output[feature_value_accessor.common_push_value.ClickIndex()] += 
-        input[feature_value_accessor.common_push_value.ClickIndex()];
-    output[feature_value_accessor.common_push_value.EmbedGIndex()] += 
-        input[feature_value_accessor.common_push_value.EmbedGIndex()];
-    for (int j = 0; j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]); j++) {
-      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] += 
-          input[feature_value_accessor.common_push_value.EmbedxGIndex() + j];
-    }
+    feature_value_accessor.MergePushValue(output, input);
+  
   }
 };
 

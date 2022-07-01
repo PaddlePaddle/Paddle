@@ -90,26 +90,7 @@ __global__ void PullCopy(float** dest,
     float* feature_value_ptr =
         (float*)((char*)src + uint64_t(i) * uint64_t(max_val_size));
     int mf_dim = gpu_dim[x] - 3;
-    if (*(keys[x] + y) == 0) {
-      *(dest[x] + y * (mf_dim + 3)) = 0;
-      *(dest[x] + y * (mf_dim + 3) + 1) = 0;
-      *(dest[x] + y * (mf_dim + 3) + 2) = 0;
-    } else {
-      *(dest[x] + y * (mf_dim + 3)) = feature_value_ptr[feature_value_accessor.common_feature_value.ShowIndex()];
-      *(dest[x] + y * (mf_dim + 3) + 1) = feature_value_ptr[feature_value_accessor.common_feature_value.ClickIndex()];
-      *(dest[x] + y * (mf_dim + 3) + 2) = feature_value_ptr[feature_value_accessor.common_feature_value.EmbedWIndex()];
-    }
-
-    if (feature_value_ptr[feature_value_accessor.common_feature_value.MfSizeIndex()] == 0 || *(keys[x] + y) == 0) {
-      for (int j = 0; j < mf_dim; j++) {
-        *(dest[x] + y * (mf_dim + 3) + 3 + j) = 0;
-      }
-    } else {
-      for (int j = 0; j < mf_dim; j++) {
-        *(dest[x] + y * (mf_dim + 3) + 3 + j) = 
-            feature_value_ptr[feature_value_accessor.common_feature_value.EmbedxWOffsetIndex(feature_value_ptr) + j];
-      }
-    }
+    feature_value_accessor.Select(dest[x] + y * (mf_dim + 3), feature_value_ptr, keys[x] + y, mf_dim);
   }
 }
 

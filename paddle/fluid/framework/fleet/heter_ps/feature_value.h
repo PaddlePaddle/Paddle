@@ -19,6 +19,7 @@ limitations under the License. */
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
+#include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
 
 
 namespace paddle {
@@ -185,6 +186,35 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
     }
   };
 
+  struct CommonPullValue {
+    /*
+       float show;
+       float click;
+       float embed_w;
+       std::vector<float> embedx_w;
+       */
+
+    __host__ __device__ static int Dim(int embedx_dim) { return 3 + embedx_dim; }
+    __host__ __device__ int DimSize(size_t dim) { return sizeof(float); }
+    __host__ __device__ int Size(int embedx_dim) { return Dim(embedx_dim) * sizeof(float); }
+    __host__ __device__ int ShowIndex() { return 0; }
+    __host__ __device__ int ClickIndex() { return 1; }
+    __host__ __device__ int EmbedWIndex() { return 2; }
+    __host__ __device__ int EmbedxWIndex() { return 3; }
+    __host__ __device__ float& Show(float* val) {
+      return val[CommonPullValue::ShowIndex()];
+    }
+    __host__ __device__ float& Click(float* val) {
+      return val[CommonPullValue::ClickIndex()];
+    }
+    __host__ __device__ float& EmbedW(float* val) {
+      return val[CommonPullValue::EmbedWIndex()];
+    }
+    __host__ __device__ float* EmbedxW(float* val) {
+      return val + CommonPullValue::EmbedxWIndex();
+    }
+  };
+
  
   __host__ __device__ CommonFeatureValueAccessor() {}
   __host__ __device__ ~CommonFeatureValueAccessor() {}
@@ -211,6 +241,183 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
 
     return 0;
   }
+
+
+// build阶段从cpu_val赋值给gpu_val
+__host__ __device__ void BuildFill(float* gpu_val, 
+                                float* cpu_val,
+                                paddle::distributed::CtrDymfAccessor* cpu_table_accessor,
+                                int mf_dim,
+                                size_t cpu_fv_dim) {
+
+  gpu_val[common_feature_value.DeltaScoreIndex()] =
+      cpu_val[cpu_table_accessor->common_feature_value.DeltaScoreIndex()];
+  gpu_val[common_feature_value.ShowIndex()] =
+      cpu_val[cpu_table_accessor->common_feature_value.ShowIndex()];
+  gpu_val[common_feature_value.ClickIndex()] = 
+      cpu_val[cpu_table_accessor->common_feature_value.ClickIndex()];
+  gpu_val[common_feature_value.SlotIndex()] = 
+      cpu_val[cpu_table_accessor->common_feature_value.SlotIndex()];
+  gpu_val[common_feature_value.EmbedWIndex()] = 
+      cpu_val[cpu_table_accessor->common_feature_value.EmbedWIndex()];
+  for (int i = 0; i < common_feature_value.EmbedDim(); i++) {
+    gpu_val[common_feature_value.EmbedG2SumIndex() + i] =
+      cpu_val[cpu_table_accessor->common_feature_value.EmbedG2SumIndex() + i];
+  }
+
+  cpu_val[cpu_table_accessor->common_feature_value.MfDimIndex()] = float(mf_dim);
+  gpu_val[common_feature_value.MfDimIndex()] = mf_dim;
+  if (cpu_fv_dim > cpu_table_accessor->GetAccessorInfo().dim - 
+          cpu_table_accessor->GetAccessorInfo().mf_size / sizeof(float)) {
+    gpu_val[common_feature_value.MfSizeIndex()] = 
+        common_feature_value.MFSize(mf_dim) / sizeof(float);
+
+    for (int x = 0; x < int(common_feature_value.MFSize(mf_dim) / sizeof(float));
+            x++) {
+      gpu_val[common_feature_value.EmbedxG2SumIndex() + x]  =
+        cpu_val[cpu_table_accessor->common_feature_value.EmbedxG2SumIndex() + x];
+    }
+  } else {
+    gpu_val[common_feature_value.MfSizeIndex()] = 0;
+    for (int x = common_feature_value.EmbedxG2SumIndex(); 
+          x < int(common_feature_value.Size(mf_dim) / sizeof(float)); x++){
+      gpu_val[x] = 0;
+    }
+  }
+}
+
+
+// dump_to_cpu阶段从gpu_val赋值给cpu_val
+__host__ __device__ void DumpFill(float* cpu_val, 
+                                float* gpu_val,
+                                paddle::distributed::CtrDymfAccessor* cpu_table_accessor,
+                                int mf_dim) {
+
+  cpu_val[cpu_table_accessor->common_feature_value.DeltaScoreIndex()] =
+      gpu_val[common_feature_value.DeltaScoreIndex()];
+  cpu_val[cpu_table_accessor->common_feature_value.ShowIndex()] = 
+      gpu_val[common_feature_value.ShowIndex()];
+  cpu_val[cpu_table_accessor->common_feature_value.ClickIndex()] = 
+      gpu_val[common_feature_value.ClickIndex()];
+  cpu_val[cpu_table_accessor->common_feature_value.EmbedWIndex()] = 
+      gpu_val[common_feature_value.EmbedWIndex()];
+  cpu_val[cpu_table_accessor->common_feature_value.SlotIndex()] = 
+      gpu_val[common_feature_value.SlotIndex()];
+
+  for (int i = 0; i < common_feature_value.EmbedDim(); i++) {
+    cpu_val[cpu_table_accessor->common_feature_value.EmbedG2SumIndex() + i] = 
+      gpu_val[common_feature_value.EmbedG2SumIndex() + i];
+  }
+
+  if (gpu_val[common_feature_value.MfSizeIndex()] > 0) {
+    
+    for (int x = 0; x < int(common_feature_value.MFSize(mf_dim) / sizeof(float));
+              x++) {
+        cpu_val[cpu_table_accessor->common_feature_value.EmbedxG2SumIndex() + x]  = 
+          gpu_val[common_feature_value.EmbedxG2SumIndex() + x];
+    }
+  }
+}
+
+
+// dy_mf_fill_dvals_kernel, dy_mf_search_kernel 阶段 gpukernel 中从src_val赋值给dest_val
+__host__ __device__ void FeatureValueFill(float* dest_val, 
+                                float* src_val,
+                                int mf_dim) {
+  *(reinterpret_cast<uint64_t*>(dest_val + common_feature_value.CpuPtrIndex())) =
+    *(reinterpret_cast<uint64_t*>(src_val + common_feature_value.CpuPtrIndex()));
+  dest_val[common_feature_value.DeltaScoreIndex()] = src_val[common_feature_value.DeltaScoreIndex()];
+  dest_val[common_feature_value.ShowIndex()] = src_val[common_feature_value.ShowIndex()];
+  dest_val[common_feature_value.ClickIndex()] = src_val[common_feature_value.ClickIndex()];
+  dest_val[common_feature_value.EmbedWIndex()] = src_val[common_feature_value.EmbedWIndex()];
+  for (int i = 0; i < common_feature_value.EmbedDim(); i++) {
+    dest_val[common_feature_value.EmbedG2SumIndex() + i] = 
+      src_val[common_feature_value.EmbedG2SumIndex() + i];
+  }
+  dest_val[common_feature_value.SlotIndex()] = src_val[common_feature_value.SlotIndex()];
+  dest_val[common_feature_value.MfDimIndex()] = mf_dim;
+  dest_val[common_feature_value.MfSizeIndex()] = src_val[common_feature_value.MfSizeIndex()];
+
+  for (int x = common_feature_value.EmbedxG2SumIndex();
+          x < int(common_feature_value.Size(mf_dim) / sizeof(float)); x++){
+    dest_val[x] = src_val[x];
+  }
+}
+
+
+// dy_mf_fill_shard_grads_kernel,update_one 阶段 gpukernel 中从src_val赋值给dest_val
+__host__ __device__ void PushValueFill(float* dest_val, 
+                                const float* src_val) {
+  dest_val[common_push_value.SlotIndex()] = src_val[common_push_value.SlotIndex()];
+  dest_val[common_push_value.ShowIndex()] = src_val[common_push_value.ShowIndex()];
+  dest_val[common_push_value.ClickIndex()] = src_val[common_push_value.ClickIndex()];
+  dest_val[common_push_value.MfDimIndex()] = src_val[common_push_value.MfDimIndex()];
+  dest_val[common_push_value.EmbedGIndex()] = src_val[common_push_value.EmbedGIndex()];
+
+  for (int x = 0; x < int(src_val[common_push_value.MfDimIndex()]); x++) {
+    dest_val[common_push_value.EmbedxGIndex() + x] =  src_val[common_push_value.EmbedxGIndex() + x];
+  }
+}
+
+// update_basic 阶段 gpukernel 中从src_val赋值给dest_val
+__host__ __device__ void PushValueFillBasic(float* dest_val, 
+                                const float* src_val) {
+  dest_val[common_push_value.SlotIndex()] = src_val[common_push_value.SlotIndex()];
+  dest_val[common_push_value.ShowIndex()] = src_val[common_push_value.ShowIndex()];
+  dest_val[common_push_value.ClickIndex()] = src_val[common_push_value.ClickIndex()];
+  dest_val[common_push_value.MfDimIndex()] = src_val[common_push_value.MfDimIndex()];
+  dest_val[common_push_value.EmbedGIndex()] = src_val[common_push_value.EmbedGIndex()];
+
+}
+
+
+// merge_one 阶段 gpukernel 中 PushValue 从src_val赋值给dest_val
+__host__ __device__ void MergePushValue(float* dest_val, 
+                                const float* src_val) {
+  dest_val[common_push_value.ShowIndex()] +=  src_val[common_push_value.ShowIndex()];
+  dest_val[common_push_value.ClickIndex()] += src_val[common_push_value.ClickIndex()];
+  dest_val[common_push_value.EmbedGIndex()] += src_val[common_push_value.EmbedGIndex()];
+  for (int j = 0; j < int(dest_val[common_push_value.MfDimIndex()]); j++) {
+    dest_val[common_push_value.EmbedxGIndex() + j] += src_val[common_push_value.EmbedxGIndex() + j];
+  }
+}
+
+
+// merge_basic 阶段 gpukernel 中 PushValue 从src_val赋值给dest_val
+__host__ __device__ void MergePushValueBasic(float* dest_val, 
+                                const float* src_val) {
+  dest_val[common_push_value.ShowIndex()] +=  src_val[common_push_value.ShowIndex()];
+  dest_val[common_push_value.ClickIndex()] += src_val[common_push_value.ClickIndex()];
+  dest_val[common_push_value.EmbedGIndex()] += src_val[common_push_value.EmbedGIndex()];
+}
+
+// PullCopy 阶段 gpukernel 中  FeatureValue回填到PullValue
+__host__ __device__ void Select(float* dest_val, 
+                                float* src_val,
+                                uint64_t* key,
+                                int mf_dim) {
+  if (*key == 0) {
+      *(dest_val + common_pull_value.ShowIndex()) = 0;
+      *(dest_val + common_pull_value.ClickIndex()) = 0;
+      *(dest_val + common_pull_value.EmbedWIndex()) = 0;
+    } else {
+      *(dest_val + common_pull_value.ShowIndex()) = src_val[common_feature_value.ShowIndex()];
+      *(dest_val + common_pull_value.ClickIndex()) = src_val[common_feature_value.ClickIndex()];
+      *(dest_val + common_pull_value.EmbedWIndex()) = src_val[common_feature_value.EmbedWIndex()];
+    }
+
+    if (src_val[common_feature_value.MfSizeIndex()] == 0 || *key == 0) {
+      for (int j = 0; j < mf_dim; j++) {
+        *(dest_val + common_pull_value.EmbedxWIndex() + j) = 0;
+      }
+    } else {
+      for (int j = 0; j < mf_dim; j++) {
+        *(dest_val + common_pull_value.EmbedxWIndex() + j) = 
+            src_val[common_feature_value.EmbedxWOffsetIndex(src_val) + j];
+      }
+    }
+}
+
 
   __host__ __device__ std::string ParseToString(const float* v, int param_size) {
     /*
@@ -251,6 +458,7 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
  public:
   CommonFeatureValue common_feature_value;
   CommonPushValue common_push_value;
+  CommonPullValue common_pull_value;
 };
 
 

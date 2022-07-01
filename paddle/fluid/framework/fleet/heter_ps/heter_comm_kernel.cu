@@ -143,21 +143,7 @@ __global__ void dy_mf_fill_shard_grads_kernel(KeyType* d_shard_keys,
     float* cur = (float*)((char*)d_shard_grads + i * grad_value_size);
     float* shard_val = (float*)((char*)d_grads + uint64_t(idx[i]) * grad_value_size);
 
-    cur[feature_value_accessor.common_push_value.SlotIndex()] =
-      shard_val[feature_value_accessor.common_push_value.SlotIndex()];
-    cur[feature_value_accessor.common_push_value.ShowIndex()] =
-      shard_val[feature_value_accessor.common_push_value.ShowIndex()];
-    cur[feature_value_accessor.common_push_value.ClickIndex()] =
-      shard_val[feature_value_accessor.common_push_value.ClickIndex()];
-    cur[feature_value_accessor.common_push_value.MfDimIndex()] =
-      shard_val[feature_value_accessor.common_push_value.MfDimIndex()];
-    cur[feature_value_accessor.common_push_value.EmbedGIndex()] =
-      shard_val[feature_value_accessor.common_push_value.EmbedGIndex()];
-
-    for (int x = 0; x < int(shard_val[feature_value_accessor.common_push_value.MfDimIndex()]); x++) {
-      cur[feature_value_accessor.common_push_value.EmbedxGIndex() + x] = 
-        shard_val[feature_value_accessor.common_push_value.EmbedxGIndex() + x];
-    }
+    feature_value_accessor.PushValueFill(cur, shard_val);
   }
 }
 
@@ -202,30 +188,7 @@ __global__ void dy_mf_fill_dvals_kernel(float* d_shard_vals,
     float* shard_val = (float*)((char*)d_shard_vals + uint64_t(i) * val_size);
     int mf_dim = int(shard_val[feature_value_accessor.common_feature_value.MfDimIndex()]);
 
-    *(reinterpret_cast<uint64_t*>(cur + feature_value_accessor.common_feature_value.CpuPtrIndex())) =
-      *(reinterpret_cast<uint64_t*>(shard_val + feature_value_accessor.common_feature_value.CpuPtrIndex()));
-    cur[feature_value_accessor.common_feature_value.DeltaScoreIndex()] =
-      shard_val[feature_value_accessor.common_feature_value.DeltaScoreIndex()];
-    cur[feature_value_accessor.common_feature_value.ShowIndex()] =
-      shard_val[feature_value_accessor.common_feature_value.ShowIndex()];
-    cur[feature_value_accessor.common_feature_value.ClickIndex()] =
-      shard_val[feature_value_accessor.common_feature_value.ClickIndex()];
-    cur[feature_value_accessor.common_feature_value.EmbedWIndex()] =
-      shard_val[feature_value_accessor.common_feature_value.EmbedWIndex()];
-    for (int i = 0; i < feature_value_accessor.common_feature_value.EmbedDim(); i++) {
-      cur[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + i] = 
-        shard_val[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + i];
-    }
-    cur[feature_value_accessor.common_feature_value.SlotIndex()] =
-      shard_val[feature_value_accessor.common_feature_value.SlotIndex()];
-    cur[feature_value_accessor.common_feature_value.MfDimIndex()] = mf_dim;
-    cur[feature_value_accessor.common_feature_value.MfSizeIndex()] =
-      shard_val[feature_value_accessor.common_feature_value.MfSizeIndex()];
-
-    for (int x = feature_value_accessor.common_feature_value.EmbedxG2SumIndex();
-            x < int(feature_value_accessor.common_feature_value.Size(mf_dim) / sizeof(float)); x++){
-      cur[x] = shard_val[x];
-    }
+    feature_value_accessor.FeatureValueFill(cur, shard_val, mf_dim);
   }
 }
 

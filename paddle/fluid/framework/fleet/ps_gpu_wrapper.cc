@@ -774,42 +774,8 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_PSCORE
       VLOG(5) << "cpu build "<< k << " cpuptr: " << (uint64_t)(device_dim_ptrs[k])
               << " |: "<< cpu_table_accessor_->ParseToString(ptr_val, dim);
-      val[feature_value_accessor_.common_feature_value.DeltaScoreIndex()] =
-          ptr_val[cpu_table_accessor_->common_feature_value.DeltaScoreIndex()];
-      val[feature_value_accessor_.common_feature_value.ShowIndex()] =
-         ptr_val[cpu_table_accessor_->common_feature_value.ShowIndex()];
-      val[feature_value_accessor_.common_feature_value.ClickIndex()] = 
-          ptr_val[cpu_table_accessor_->common_feature_value.ClickIndex()];
-      val[feature_value_accessor_.common_feature_value.SlotIndex()] = 
-          ptr_val[cpu_table_accessor_->common_feature_value.SlotIndex()];
-      val[feature_value_accessor_.common_feature_value.EmbedWIndex()] = 
-          ptr_val[cpu_table_accessor_->common_feature_value.EmbedWIndex()];
-      for (int i = 0; i < feature_value_accessor_.common_feature_value.EmbedDim(); i++) {
-        val[feature_value_accessor_.common_feature_value.EmbedG2SumIndex() + i] =
-          ptr_val[cpu_table_accessor_->common_feature_value.EmbedG2SumIndex() + i];
-      }
-
+      feature_value_accessor_.BuildFill(val, ptr_val, cpu_table_accessor_, mf_dim, dim);
       *(reinterpret_cast<uint64_t*>(val + feature_value_accessor_.common_feature_value.CpuPtrIndex())) = (uint64_t)(device_dim_ptrs[k]);
-
-      ptr_val[cpu_table_accessor_->common_feature_value.MfDimIndex()] = float(mf_dim);
-      val[feature_value_accessor_.common_feature_value.MfDimIndex()] = mf_dim;
-      if (dim > cpu_table_accessor_->GetAccessorInfo().dim - 
-              cpu_table_accessor_->GetAccessorInfo().mf_size / sizeof(float)) {
-        val[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 
-            feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float);
-
-        for (int x = 0; x < int(feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float));
-                x++) {
-          val[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + x]  =
-            ptr_val[cpu_table_accessor_->common_feature_value.EmbedxG2SumIndex() + x];
-        }
-      } else {
-        val[feature_value_accessor_.common_feature_value.MfSizeIndex()] = 0;
-        for (int x = feature_value_accessor_.common_feature_value.EmbedxG2SumIndex(); 
-              x < int(feature_value_accessor_.common_feature_value.Size(mf_dim) / sizeof(float)); x++){
-          val[x] = 0;
-        }
-      }
       VLOG(5) << "build "<< k << " : "<< feature_value_accessor_.ParseToString(val, feature_value_accessor_.common_feature_value.Dim(mf_dim));
     }
 #endif
@@ -1041,30 +1007,7 @@ void PSGPUWrapper::EndPass() {
       }
       float* cpu_val = downpour_value->data();
 
-      cpu_val[cpu_table_accessor_->common_feature_value.DeltaScoreIndex()] =
-          gpu_val[feature_value_accessor_.common_feature_value.DeltaScoreIndex()];
-      cpu_val[cpu_table_accessor_->common_feature_value.ShowIndex()] = 
-          gpu_val[feature_value_accessor_.common_feature_value.ShowIndex()];
-      cpu_val[cpu_table_accessor_->common_feature_value.ClickIndex()] = 
-          gpu_val[feature_value_accessor_.common_feature_value.ClickIndex()];
-      cpu_val[cpu_table_accessor_->common_feature_value.EmbedWIndex()] = 
-          gpu_val[feature_value_accessor_.common_feature_value.EmbedWIndex()];
-      cpu_val[cpu_table_accessor_->common_feature_value.SlotIndex()] = 
-          gpu_val[feature_value_accessor_.common_feature_value.SlotIndex()];
-
-      for (int i = 0; i < feature_value_accessor_.common_feature_value.EmbedDim(); i++) {
-        cpu_val[cpu_table_accessor_->common_feature_value.EmbedG2SumIndex() + i] = 
-          gpu_val[feature_value_accessor_.common_feature_value.EmbedG2SumIndex() + i];
-      }
-
-      if (gpu_val[feature_value_accessor_.common_feature_value.MfSizeIndex()] > 0) {
-        
-        for (int x = 0; x < int(feature_value_accessor_.common_feature_value.MFSize(mf_dim) / sizeof(float));
-                  x++) {
-            cpu_val[cpu_table_accessor_->common_feature_value.EmbedxG2SumIndex() + x]  = 
-              gpu_val[feature_value_accessor_.common_feature_value.EmbedxG2SumIndex() + x];
-        }
-      }
+      feature_value_accessor_.DumpFill(cpu_val, gpu_val, cpu_table_accessor_, mf_dim);
       VLOG(5) << "dump to cpu "<< index << " : "<< feature_value_accessor_.ParseToString(gpu_val, feature_value_accessor_.common_feature_value.Dim(mf_dim))
             << " ===== CPU:" << cpu_table_accessor_->ParseToString(cpu_val, downpour_value->size());
 
