@@ -21,7 +21,7 @@ from .. import core
 from ..framework import Program, Variable, Operator, _non_static_mode, static_only, _in_legacy_dygraph, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
+from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, padding_to_same_structure
 import numpy
 import warnings
 import six
@@ -2559,6 +2559,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
 
     # Merge ture and false output if they are not None
     try:
+        #from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+        #true_output, false_outpute = padding_to_same_structure(true_output, false_output, UndefinedVar("no value"))
         assert_same_structure(true_output, false_output, check_types=False)
     except ValueError as e:
         raise ValueError(

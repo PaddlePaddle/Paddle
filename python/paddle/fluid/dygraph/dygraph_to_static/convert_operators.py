@@ -41,11 +41,9 @@ def convert_while_loop(cond, body, getter, setter):
     # If loop_vars is changed during cond callable, then it causes bug, but current logical_and/logical_not/... doesn't change the loop_vars.
     pred = cond()
     if isinstance(pred, Variable):
-        loop_vars = _run_paddle_while(cond, body, getter, setter)
+        _run_paddle_while(cond, body, getter, setter)
     else:
-        loop_vars = _run_py_while(cond, body, getter, setter)
-
-    return loop_vars
+        _run_py_while(cond, body, getter, setter)
 
 
 def _run_paddle_while(cond, body, getter, setter):
@@ -62,14 +60,11 @@ def _run_paddle_while(cond, body, getter, setter):
     loop_vars = control_flow.while_loop(cond, body, loop_vars)
     setter(loop_vars if len(loop_vars) > 1 else
            loop_vars[0])  # change the non-local var to variable
-    return loop_vars
 
 
 def _run_py_while(cond, body, getter, setter):
-    loop_vars = getter()
     while cond():
-        loop_vars = body()
-    return loop_vars
+        body()
 
 
 def convert_logical_and(x_func, y_func):
@@ -236,13 +231,13 @@ def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
 
     def new_true_fn():
         set_args(init_args)
-        outs = true_fn()
-        return outs
+        true_fn()
+        return get_args()
 
     def new_false_fn():
         set_args(init_args)
-        outs = false_fn()
-        return outs
+        false_fn()
+        return get_args()
 
     cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn)
     return _recover_args_state(cond_outs, get_args, set_args, return_name_ids)
@@ -254,8 +249,6 @@ def _run_py_ifelse(pred, true_fn, false_fn, get_args, set_args,
     Evaluate python original branch function if-else.
     """
     py_outs = true_fn() if pred else false_fn()
-    py_outs = _remove_no_value_return_var(py_outs)
-    return _recover_args_state(py_outs, get_args, set_args, return_name_ids)
 
 
 def _remove_no_value_return_var(out):

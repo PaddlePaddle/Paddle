@@ -260,6 +260,16 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
         _recursive_assert_same_structure(n1, n2, check_types)
 
 
+def padding_to_same_structure(nest1, nest2, obj=None):
+    len_nest1 = len(nest1) if is_sequence(nest1) else 1
+    len_nest2 = len(nest2) if is_sequence(nest2) else 1
+    diff = abs(len_nest2 - len_nest1)
+    if len_nest1 >= len_nest2:
+        return nest1, tuple(nest2) + (obj, ) * diff
+    if len_nest2 >= len_nest1:
+        return nest1 + (obj, ) * diff, tuple(nest2)
+
+
 def assert_same_structure(nest1, nest2, check_types=True):
     """
     Confirm two nested structures with the same structure.

@@ -30,7 +30,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
-from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_node, create_get_args_node, create_set_args_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_nodes, create_get_args_node, create_set_args_node
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import ARGS_NAME
 
 __all__ = ['LoopTransformer', 'NameVisitor']
@@ -569,7 +569,7 @@ class LoopTransformer(gast.NodeTransformer):
         if ARGS_NAME in nonlocal_names:
             nonlocal_names.remove(ARGS_NAME)
 
-        nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)]
+        nonlocal_stmt_node = create_nonlocal_stmt_nodes(nonlocal_names)
 
         # 4. append init statements
         new_stmts.extend(init_stmts)
@@ -641,7 +641,7 @@ class LoopTransformer(gast.NodeTransformer):
         if ARGS_NAME in nonlocal_names:
             nonlocal_names.remove(ARGS_NAME)
 
-        nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)]
+        nonlocal_stmt_node = create_nonlocal_stmt_nodes(nonlocal_names)
 
         # Python can create variable in loop and use it out of loop, E.g.
         #

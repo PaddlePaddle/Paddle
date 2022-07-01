@@ -1799,21 +1799,24 @@ def create_get_args_node(names):
         return gast.parse(textwrap.dedent(func_def)).body[0]
 
     assert isinstance(names, (list, tuple))
-    if not names:
-        return empty_node()
-
     mapped = list(filter(lambda n: '.' not in n, names))
     nonlocal_names = sorted(
         mapped,
         key=mapped.index)  # to keep the order, we can't use set() to unique
+    if not names:
+        return empty_node()
+    if not nonlocal_names:
+        nonlocal_vars = "\n"
+    else:
+        nonlocal_vars = "nonlocal " + ",".join(nonlocal_names)
     template = """
     def {func_name}():
-        nonlocal {nonlocal_vars}
+        {nonlocal_vars}
         return {vars}
     """
     func_def = template.format(
         func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
-        nonlocal_vars=','.join(nonlocal_names),
+        nonlocal_vars=nonlocal_vars,
         vars=",".join(names))
     return gast.parse(textwrap.dedent(func_def)).body[0]
 
@@ -1841,32 +1844,37 @@ def create_set_args_node(names):
         return gast.parse(textwrap.dedent(func_def)).body[0]
 
     assert isinstance(names, (list, tuple))
-    if not names:
-        return empty_node()
-
     mapped = list(filter(lambda n: '.' not in n, names))
     nonlocal_names = sorted(
         mapped,
         key=mapped.index)  # to keep the order, we can't use set() to unique
+    if not names:
+        return empty_node()
+    if not nonlocal_names:
+        nonlocal_vars = "\n"
+    else:
+        nonlocal_vars = "nonlocal " + ",".join(nonlocal_names)
     template = """
     def {func_name}({args}):
-        nonlocal {nonlocal_vars}
+        {nonlocal_vars}
         {vars} = {args}
     """
     func_def = template.format(
         func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
         args=ARGS_NAME,
-        nonlocal_vars=','.join(nonlocal_names),
+        nonlocal_vars=nonlocal_vars,
         vars=",".join(names))
     return gast.parse(textwrap.dedent(func_def)).body[0]
 
 
-def create_nonlocal_stmt_node(names):
+def create_nonlocal_stmt_nodes(names):
     assert isinstance(names, (list, tuple))
 
     mapped = list(filter(lambda n: '.' not in n, names))
     names = sorted(
         mapped,
         key=mapped.index)  # to keep the order, we can't use set() to unique
+    if not names:
+        return []
     func_code = "nonlocal {}".format(','.join(names))
-    return gast.parse(func_code).body[0]
+    return [gast.parse(func_code).body[0]]

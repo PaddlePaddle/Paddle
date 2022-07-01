@@ -31,7 +31,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import create_assign_node, Fun
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
-from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_nodes
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_get_args_node, create_set_args_node
 
 TRUE_FUNC_PREFIX = 'true_fn'
@@ -305,8 +305,6 @@ def transform_if_else(node, root):
 
     # TODO(liym27): Consider variable like `self.a` modified in if/else node.
     new_vars_to_create = node.pd_scope.created_vars()
-    modified_name_ids_from_parent = node.pd_scope.modified_vars(
-    ) - new_vars_to_create
     return_name_ids = list(node.pd_scope.modified_vars())
     # NOTE: Python can create variable only in if body or only in else body, and use it out of if/else.
     # E.g.
@@ -331,8 +329,7 @@ def transform_if_else(node, root):
     if ARGS_NAME in nonlocal_names:
         nonlocal_names.remove(ARGS_NAME)
 
-    nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)
-                          ] if nonlocal_names else []
+    nonlocal_stmt_node = create_nonlocal_stmt_nodes(nonlocal_names)
 
     empty_arg_node = gast.arguments(args=[],
                                     posonlyargs=[],
@@ -346,12 +343,12 @@ def transform_if_else(node, root):
         nonlocal_stmt_node + node.body,
         name=unique_name.generate(TRUE_FUNC_PREFIX),
         input_args=empty_arg_node,
-        return_name_ids=return_name_ids)
+        return_name_ids=[])
     false_func_node = create_funcDef_node(
         nonlocal_stmt_node + node.orelse,
         name=unique_name.generate(FALSE_FUNC_PREFIX),
         input_args=empty_arg_node,
-        return_name_ids=return_name_ids)
+        return_name_ids=[])
 
     get_args_node = create_get_args_node(nonlocal_names)
     set_args_node = create_set_args_node(nonlocal_names)
