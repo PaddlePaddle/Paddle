@@ -1209,7 +1209,7 @@ class TestJitSaveCombine(unittest.TestCase):
         with unique_name.guard():
             net = Net()
         #save
-        paddle.jit.save(net, model_path, use_combine=True)
+        paddle.jit.save(net, model_path, combine_params=True)
 
 
 class LayerLoadFinetune(paddle.nn.Layer):
