@@ -587,6 +587,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           engine->engine()->getBindingIndex(output_maps[output_index].c_str()) +
           binding_offset;
       std::vector<int> ddim;
+
       if (!engine->with_dynamic_shape()) {
         auto dims = engine->engine()->getBindingDimensions(bind_index);
         ddim.push_back(runtime_batch);
