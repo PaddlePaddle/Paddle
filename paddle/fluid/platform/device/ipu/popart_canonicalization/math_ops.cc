@@ -209,7 +209,7 @@ Node *scale_handler(Graph *graph, Node *node) {
       CreateCast(graph, node, {GetInputVarNode("X", node)}, {}, VarType::FP32);
 
   Node *result = nullptr;
-  if (!op->Input("ScaleTensor").empty()) {
+  if (op->InputArgumentNames().size() > 1) {
     auto scale = GetInputVarNode("ScaleTensor", node);
     if (is_float_equal(bias_, 0.0)) {
       result = CreateBaseOp(
