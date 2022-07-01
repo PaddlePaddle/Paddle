@@ -86,7 +86,7 @@ void build_op_func_list(const platform::Place& place,
                         const framework::BlockDesc& block,
                         const std::set<std::string>& skip_gc_vars,
                         std::vector<OpFuncNode>* vec_func_list,
-                        VariableScope* var_scope,
+                        VariableScope* scope,
                         bool use_local_scope = true);
 
 std::map<int, std::list<int>> build_op_downstream_map(

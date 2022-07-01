@@ -50,6 +50,7 @@ namespace interpreter {
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 constexpr size_t kPrepareWorkQueueIdx = 2;
+const char blocking_queue_prefix[] = "lod_tensor_blocking_queue";
 
 const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
     size_t host_num_threads, size_t device_num_threads, EventsWaiter* waiter) {
@@ -225,6 +226,7 @@ void build_variable_scope(const framework::BlockDesc& block,
     if (var_name == framework::kEmptyVarName) {
       continue;
     }
+
     if (var_desc->Persistable()) {
       auto* ptr = inner_scope->Var(var_name);
 
@@ -241,7 +243,7 @@ void build_variable_scope(const framework::BlockDesc& block,
               << ptr << "Variable Type "
               << static_cast<int>(var_desc->GetType());
     }
-    var_scope->SetVarDesc(var_name, var_desc);
+    var_scope->AddVar(var_name, var_desc);
   }
 }
 
@@ -279,6 +281,7 @@ void create_all_ops(const framework::BlockDesc& block,
 std::tuple<VariableValueMap, VariableIdMap> build_variable_map(
     const VariableNameMap& var_name_map,
     VariableScope* var_scope,
+    Scope* local_scope,
     bool enforce_exist = true) {
   VariableValueMap name2var;
   VariableIdMap name2id;
@@ -288,14 +291,22 @@ std::tuple<VariableValueMap, VariableIdMap> build_variable_map(
     vars.reserve(item.second.size());
 
     for (auto& var_name : item.second) {
-      if (!enforce_exist && !var_scope->HasVar(var_name)) {
-        // skip the non-exist variable: such as recurrent_grad
-        VLOG(4) << var_name << " don't exist in variable scope, skip it!";
-        continue;
+      if (!var_scope->HasVar(var_name)) {
+        // Hot fix for variables used in dataloader, like
+        // 'lod_tensor_blocking_queue_0' These variables may be created in
+        // scope, and it is not existed as variable in program.
+        if (var_name.find(blocking_queue_prefix) != std::string::npos &&
+            local_scope->FindVar(var_name)) {
+          var_scope->AddVar(var_name, nullptr);
+        } else if (!enforce_exist) {
+          // skip the non-exist variable: such as recurrent_grad
+          VLOG(4) << var_name << " don't exist in variable scope, skip it!";
+          continue;
+        }
       }
+      auto* var = local_scope->FindVar(var_name);
       auto var_id = var_scope->VarId(var_name);
-      auto* in_var = var_scope->Var(var_id);
-      vars.push_back(in_var);
+      vars.push_back(var);
       ids.push_back(var_id);
     }
     name2var[item.first] = std::move(vars);
@@ -421,12 +432,12 @@ void build_op_func_list(const platform::Place& place,
       enforce_exist = false;
     }
     std::tie(ins_map, ins_name2id) =
-        build_variable_map(inputs_names, var_scope, enforce_exist);
+        build_variable_map(inputs_names, var_scope, local_scope, enforce_exist);
 
     VariableValueMap outs_map;
     VariableIdMap outs_name2id;
-    std::tie(outs_map, outs_name2id) =
-        build_variable_map(outputs_names, var_scope, enforce_exist);
+    std::tie(outs_map, outs_name2id) = build_variable_map(
+        outputs_names, var_scope, local_scope, enforce_exist);
 
     // step 1: build OpFuncNode
     OpFuncNode op_func_node;
@@ -573,9 +584,9 @@ void build_op_func_list(const platform::Place& place,
         for (auto& p : m) {
           auto* transformed_tensor =
               GetMutableLoDTensorOrSelectedRowsValueFromVar(
-                  var_scope->Var(p.first));
+                  local_scope->FindVar(var_scope->GetNameById(p.first)));
           auto* original_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
-              var_scope->Var(p.second));
+              local_scope->FindVar(var_scope->GetNameById(p.second)));
           original_tensor->ShareDataWith(*transformed_tensor);
           VLOG(4) << "Transfer inplace variable back form "
                   << var_scope->GetNameById(p.first) << " to "
@@ -600,7 +611,7 @@ void build_op_func_list(const platform::Place& place,
         new std::deque<std::shared_ptr<memory::Allocation>>();
 
     for (auto& var_name : delete_vars) {
-      auto* var = var_scope->FindVar(var_name);
+      auto* var = local_scope->FindVar(var_name);
       if (var == nullptr || skip_gc_vars.find(var_name) != skip_gc_vars.end()) {
         continue;
       }
