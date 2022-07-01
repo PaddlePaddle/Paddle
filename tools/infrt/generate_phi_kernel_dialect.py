@@ -72,12 +72,11 @@ def get_skipped_kernel_list():
 
 def get_api_yaml_info(file_path):
     apis = []
-    with open(file_path + "/python/paddle/utils/code_gen/api.yaml", 'r') as f:
+    with open(file_path + "/paddle/phi/api/yaml/api.yaml", 'r') as f:
         api_list = yaml.load(f, Loader=yaml.FullLoader)
         if api_list:
             apis.extend(api_list)
-    with open(file_path + "/python/paddle/utils/code_gen/legacy_api.yaml",
-              'r') as f:
+    with open(file_path + "/paddle/phi/api/yaml/legacy_api.yaml", 'r') as f:
         legacy_api_list = yaml.load(f, Loader=yaml.FullLoader)
         if legacy_api_list:
             apis.extend(legacy_api_list)

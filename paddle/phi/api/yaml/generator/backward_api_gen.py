@@ -133,7 +133,7 @@ class BackwardAPI(BaseAPI):
                 0] == 'dense' else 'SetSelectedRowsKernelOutput'
             if out_dtype_list[0] == 'std::vector<Tensor>':
                 assert self.outputs['out_size_expr'] is not None, \
-                     f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                     f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
                 output_create = output_create + f"""
 {code_indent}  auto kernel_out = {set_out_func}(&{self.outputs['names'][0]});"""
 
@@ -164,7 +164,7 @@ class BackwardAPI(BaseAPI):
 {code_indent}  *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
 
                     assert self.outputs['out_size_expr'][i] is not None, \
-                        f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                        f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
                     output_create = output_create + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}(&{self.outputs['names'][i]});"""
 
@@ -279,7 +279,7 @@ def main():
     parser.add_argument('--backward_yaml_path',
                         help='path to backward yaml file',
                         nargs='+',
-                        default='python/paddle/utils/code_gen/backward.yaml')
+                        default='paddle/phi/api/yaml/backward.yaml')
     parser.add_argument('--backward_header_path',
                         help='output of generated backward header code file',
                         default='paddle/phi/api/backward/backward_api.h')
