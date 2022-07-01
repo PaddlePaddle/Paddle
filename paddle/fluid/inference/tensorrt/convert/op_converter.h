@@ -572,11 +572,10 @@ class OpConverter {
     for (int64_t i = 0; i < trt_in_shape.nbDims; i++) {
       trt_in_shape.d[i] = var_dims[i];
     }
-    // in fatc , this is not always right
-    // just for run chenqu's model
-    if (!engine_->with_dynamic_shape())
-    {
-      trt_in_shape.nbDims --;
+    // in fatc , this is not always right, because we can't determine if the 0th
+    // dimension is batch. Just for run chenqu's model
+    if (!engine_->with_dynamic_shape()) {
+      trt_in_shape.nbDims--;
       for (int i = 0; i < trt_in_shape.nbDims; i++) {
         trt_in_shape.d[i] = trt_in_shape.d[i + 1];
       }
