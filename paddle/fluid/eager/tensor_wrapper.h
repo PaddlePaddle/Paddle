@@ -28,6 +28,7 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 
 namespace egr {
 class TensorWrapper {
@@ -57,9 +58,10 @@ class TensorWrapper {
         // Only Copy Meta
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(tensor.impl().get());
-        auto tw_dense_tensor = std::make_shared<phi::DenseTensor>();
-        tw_dense_tensor->set_meta(dense_tensor->meta());
-        intermidiate_tensor_.set_impl(tw_dense_tensor);
+        intermidiate_tensor_.set_impl(
+            std::move(std::make_shared<phi::DenseTensor>(
+                std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
+                std::move(dense_tensor->meta()))));
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unrecognized tensor type for no_need_buffer feature"));

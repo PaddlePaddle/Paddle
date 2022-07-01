@@ -24,6 +24,7 @@
 namespace egr {
 
 void GradTensorHolder::SetBufferSlotRankZeros(size_t slot_id, size_t rank) {
+  // Set not grad var to zero and set stop gradient as default value: true
   buffer_[slot_id][rank] =
       paddle::experimental::zeros_like(buffer_[slot_id][rank]);
 }
