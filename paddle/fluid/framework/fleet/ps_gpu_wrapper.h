@@ -177,7 +177,6 @@ class PSGPUWrapper {
   void BeginPass();
   void EndPass();
   void start_build_thread();
-  // void pre_build_thread();
   void build_task();
 
   void Finalize() {
@@ -188,8 +187,6 @@ class PSGPUWrapper {
     buildcpu_ready_channel_->Close();
     gpu_free_channel_->Close();
     running_ = false;
-    // VLOG(3) << "begin stop pre_build_threads_";
-    // pre_build_threads_.join();
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
   }
@@ -516,7 +513,6 @@ class PSGPUWrapper {
       gpu_free_channel_ =
           paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
   std::shared_ptr<HeterContext> current_task_ = nullptr;
-  // std::thread pre_build_threads_;
   bool running_ = false;
   std::vector<std::shared_ptr<ThreadPool>> pull_thread_pool_;
   std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
