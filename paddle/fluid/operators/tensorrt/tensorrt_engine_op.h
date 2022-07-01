@@ -467,12 +467,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
 
-    // PADDLE_ENFORCE_EQ(
-    //     runtime_input_names_.empty(), false,
-    //     platform::errors::PreconditionNotMet(
-    //         "TensorRT engine needs at least one input, but no input is found.
-    //         " "Please check if you set the input correctly."));
-
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
 
