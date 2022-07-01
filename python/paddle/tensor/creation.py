@@ -1596,7 +1596,8 @@ def clone(x, name=None):
         x (Tensor): The input Tensor.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
-    Returns: A Tensor copied from ``input`` .
+    Returns: 
+        A Tensor copied from ``input`` .
 
     Examples:
         .. code-block:: python
