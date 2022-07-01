@@ -289,7 +289,7 @@ def sequence_conv_pool(input,
             is not set, the bias is initialized zero. Default: None.
 
     Returns:
-        Variable, The final result after sequence_conv and sequence_pool. 
+        The final result after sequence_conv and sequence_pool. 
         It is a 2-D Tensor, with the same data type as :attr:`input`
 
     Examples:

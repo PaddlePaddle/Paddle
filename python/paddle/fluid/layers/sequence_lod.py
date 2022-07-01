@@ -605,7 +605,7 @@ def sequence_slice(input, offset, length, name=None):
                         please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable, The output subsequences.
+        Tensor, The output subsequences.
 
     Examples:
 

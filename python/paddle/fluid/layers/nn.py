@@ -5853,7 +5853,7 @@ def im2sequence(input,
                     user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-            Variable, The output is a 2-D LoDTensor with shape {input.batch\_size * output\_height * output\_width, \
+            Tensor, The output is a 2-D LoDTensor with shape {input.batch\_size * output\_height * output\_width, \
             filter\_size\_height * filter\_size\_width * input.channels}. The data type is float32.
 
     Examples:
@@ -7002,7 +7002,7 @@ def pad(x, paddings, pad_value=0., name=None):
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable, The padded tensor, with the same data type and rank as :attr:`x`
+        Tensor, The padded tensor, with the same data type and rank as :attr:`x`
 
     Examples:
         .. code-block:: python
@@ -7093,7 +7093,7 @@ def pad_constant_like(x, y, pad_value=0., name=None):
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable, The padded tensor, with the same shape as :attr:`x` and the same data type as :attr:`y`
+        Tensor, The padded tensor, with the same shape as :attr:`x` and the same data type as :attr:`y`
 
     Examples:
         .. code-block:: python
@@ -9363,7 +9363,7 @@ def crop(x, shape=None, offsets=None, name=None):
             None by default.
 
     Returns:
-        Variable, The cropped Tensor, which has the same rank and data type with `x`
+        Tensor, The cropped Tensor, which has the same rank and data type with `x`
         
     Raises:
         ValueError: If shape is not a list, tuple or Variable.

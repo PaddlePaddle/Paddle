@@ -98,7 +98,7 @@ def data(name,
             Default: True. 
 
     Returns:
-        Variable, The global variable that gives access to the data.
+        Tensor, The global variable that gives access to the data.
         
     Examples:
         .. code-block:: python
@@ -598,7 +598,7 @@ def py_reader(capacity,
             from CPU to GPU. Default is True.
 
     Returns:
-       Variable, A Reader from which we can get feeding data.
+        Tensor, A Reader from which we can get feeding data.
 
     Examples:
        1. The basic usage of :code:`py_reader` is as follows:
