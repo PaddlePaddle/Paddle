@@ -151,7 +151,6 @@ __global__ void UniqueKernel(const IntT* in_indexs,
     int flag = atomicOr(out_index_table + index, change_index);
     if (flag == 0) {
       int j = atomicAdd(&count, 1);
-      cache[j] = index;
     }
   }
   __syncthreads();
