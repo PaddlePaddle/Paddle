@@ -122,7 +122,7 @@ class Blas {
             int ldb,
             T beta,
             T* C,
-             int ldc) const;
+            int ldc) const;
 
 #ifdef PADDLE_WITH_MKLDNN
   template <typename T>
