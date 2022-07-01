@@ -669,8 +669,9 @@ void CPUQuantizePass::QuantizePriorBox(Graph* graph) const {
   LogQuantizedOpsCounter("prior_box", quantize_prior_box_count);
 }
 
-void CPUQuantizePass::QuantizeImmutable(
-    Graph* graph, const std::string immutable_type, const std::string input_name) const {
+void CPUQuantizePass::QuantizeImmutable(Graph* graph,
+                                        const std::string immutable_type,
+                                        const std::string input_name) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::Immutable immutable_pattern{pattern, name_scope_};

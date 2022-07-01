@@ -1796,8 +1796,8 @@ PDNode *patterns::Conv::operator()() {
   return output_var;
 }
 
-PDNode *patterns::Immutable::operator()(
-    const std::string immutable_type, const std::string input_name) {
+PDNode *patterns::Immutable::operator()(const std::string immutable_type,
+                                        const std::string input_name) {
   auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
 
   auto immutable_op =
