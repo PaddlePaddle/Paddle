@@ -41,7 +41,7 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const VariableNameMap& inputs,
     const VariableNameMap& outputs,
     const AttributeMap& attrs,
-    const RuntimeAttributeMap& runtime_attrs,
+    const AttributeMap& runtime_attrs,
     bool attr_check) {
   auto op_base = CreateOp(type, inputs, outputs, attrs, attr_check);
   op_base->SetRuntimeAttributeMap(runtime_attrs);

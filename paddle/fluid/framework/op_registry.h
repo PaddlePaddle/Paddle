@@ -137,7 +137,7 @@ class OpRegistry {
       const VariableNameMap& inputs,
       const VariableNameMap& outputs,
       const AttributeMap& attrs,
-      const RuntimeAttributeMap& runtime_attrs,
+      const AttributeMap& runtime_attrs,
       bool attr_check = true);
 
   static std::unique_ptr<OperatorBase> CreateOp(const proto::OpDesc& op_desc);

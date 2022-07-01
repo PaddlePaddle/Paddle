@@ -581,106 +581,80 @@ void OpDesc::RemoveAttr(const std::string &name) {
   need_update_ = true;
 }
 
+static bool IsGradOp(const std::string &name) {
+  std::string suffix = "_grad";
+  size_t pos = name.rfind(suffix);
+  return pos != std::string::npos && pos == (name.length() - suffix.length());
+}
+
 void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
-  bool is_proto_attr = false;
-  proto::OpProto::Attr attr;
-  const auto &op_info = OpInfoMap::Instance().Get(Type());
-  if (op_info.proto_ != nullptr) {
-    const proto::OpProto &proto = op_info.Proto();
-    for (int i = 0; i != proto.attrs_size(); ++i) {
-      const proto::OpProto::Attr &cur_attr = proto.attrs(i);
-      if (cur_attr.name() == name) {
-        attr = cur_attr;
-        is_proto_attr = true;
-        break;
-      }
-    }
+  AttributeMap *attrs_ptr = &(this->attrs_);
+  if (!HasProtoAttr(name) && IsGradOp(Type())) {
+    attrs_ptr = &(this->runtime_attrs_);
   }
-  if (is_proto_attr) {
-    // NOTICE(minqiyang): pybind11 will take the empty list in python as
-    // the std::vector<int> type in C++; so we have to change the attr's type
-    // here if we meet this issue
-    proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
-    if (attr_type == proto::AttrType::INTS &&
-        BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
-      // Find current attr via attr name and set the correct attribute value
-      const proto::OpProto::Attr &attr = GetProtoAttr(name);
-      switch (attr.type()) {
-        case proto::AttrType::BOOLEANS: {
-          VLOG(11) << "SetAttr: " << Type() << ", " << name
-                   << " from INTS to BOOLEANS";
-          this->attrs_[name] = std::vector<bool>();
-          break;
-        }
-        case proto::AttrType::INTS: {
-          VLOG(11) << "SetAttr: " << Type() << ", " << name
-                   << " from INTS to INTS";
-          this->attrs_[name] = std::vector<int>();
-          break;
-        }
-        case proto::AttrType::LONGS: {
-          VLOG(11) << "SetAttr: " << Type() << ", " << name
-                   << " from LONGS to LONGS";
-          this->attrs_[name] = std::vector<int64_t>();
-          break;
-        }
-        case proto::AttrType::FLOATS: {
-          VLOG(11) << "SetAttr: " << Type() << ", " << name
-                   << " from INTS to FLOATS";
-          this->attrs_[name] = std::vector<float>();
-          break;
-        }
-        case proto::AttrType::STRINGS: {
-          VLOG(11) << "SetAttr: " << Type() << ", " << name
-                   << " from INTS to STRINGS";
-          this->attrs_[name] = std::vector<std::string>();
-          break;
-        }
-        case proto::AttrType::BLOCKS: {
-          VLOG(11) << "SetAttr: " << Type() << ", " << name
-                   << " from INTS to BLOCKS";
-          this->SetBlocksAttr(name, std::vector<BlockDesc *>());
-          return;
-        }
-        default:
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported attribute type (code %d).", attr.type()));
-      }
-      need_update_ = true;
-      return;
-    }
-
-    // In order to set bool attr properly
-    if (attr_type == proto::AttrType::INT && HasProtoAttr(name) &&
-        GetProtoAttr(name).type() == proto::AttrType::BOOLEAN) {
-      this->attrs_[name] = static_cast<bool>(BOOST_GET_CONST(int, v));
-      need_update_ = true;
-      return;
-    }
-
-    this->attrs_[name] = v;
-    need_update_ = true;
-  } else {
-    proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
-    switch (attr_type) {
-      case proto::AttrType::BOOLEAN: {
-        this->runtime_attrs_[name] = BOOST_GET_CONST(bool, v);
+  // NOTICE(minqiyang): pybind11 will take the empty list in python as
+  // the std::vector<int> type in C++; so we have to change the attr's type
+  // here if we meet this issue
+  proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
+  if (attr_type == proto::AttrType::INTS &&
+      BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
+    // Find current attr via attr name and set the correct attribute value
+    const proto::OpProto::Attr &attr = GetProtoAttr(name);
+    switch (attr.type()) {
+      case proto::AttrType::BOOLEANS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to BOOLEANS";
+        attrs_ptr->operator[](name) = std::vector<bool>();
         break;
       }
-      case proto::AttrType::FLOAT: {
-        this->runtime_attrs_[name] = BOOST_GET_CONST(float, v);
+      case proto::AttrType::INTS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to INTS";
+        attrs_ptr->operator[](name) = std::vector<int>();
         break;
       }
-      case proto::AttrType::STRING: {
-        this->runtime_attrs_[name] = BOOST_GET_CONST(std::string, v);
+      case proto::AttrType::LONGS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from LONGS to LONGS";
+        attrs_ptr->operator[](name) = std::vector<int64_t>();
         break;
+      }
+      case proto::AttrType::FLOATS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to FLOATS";
+        attrs_ptr->operator[](name) = std::vector<float>();
+        break;
+      }
+      case proto::AttrType::STRINGS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to STRINGS";
+        attrs_ptr->operator[](name) = std::vector<std::string>();
+        break;
+      }
+      case proto::AttrType::BLOCKS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to BLOCKS";
+        attrs_ptr->operator[](name) = std::vector<BlockDesc *>();
+        return;
       }
       default:
         PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported runtime config type."));
+            "Unsupported attribute type (code %d).", attr.type()));
     }
+    need_update_ = true;
     return;
   }
+
+  // In order to set bool attr properly
+  if (attr_type == proto::AttrType::INT && HasProtoAttr(name) &&
+      GetProtoAttr(name).type() == proto::AttrType::BOOLEAN) {
+    attrs_ptr->operator[](name) = static_cast<bool>(BOOST_GET_CONST(int, v));
+    need_update_ = true;
+    return;
+  }
+
+  attrs_ptr->operator[](name) = v;
+  need_update_ = true;
 }
 
 void OpDesc::SetBlockAttr(const std::string &name, BlockDesc *block) {
@@ -763,9 +737,7 @@ const std::unordered_map<std::string, Attribute> &OpDesc::GetAttrMap() const {
   return attrs_;
 }
 
-const RuntimeAttributeMap &OpDesc::GetRuntimeAttrMap() const {
-  return runtime_attrs_;
-}
+const AttributeMap &OpDesc::GetRuntimeAttrMap() const { return runtime_attrs_; }
 
 void OpDesc::Rename(const std::string &old_name, const std::string &new_name) {
   RenameInput(old_name, new_name);

@@ -258,7 +258,7 @@ void create_all_ops(const framework::BlockDesc& block,
     const VariableNameMap& outputs_names = op->Outputs();
 
     AttributeMap op_attr_map = op->GetAttrMap();
-    RuntimeAttributeMap op_runtime_attr_map = op->GetRuntimeAttrMap();
+    AttributeMap op_runtime_attr_map = op->GetRuntimeAttrMap();
 
     if (info.Checker() != nullptr) {
       info.Checker()->Check(&op_attr_map);

@@ -57,7 +57,6 @@ using Attribute = paddle::variant<boost::blank,
                                   std::vector<int64_t>,
                                   std::vector<double>>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
-using RuntimeAttributeMap = std::unordered_map<std::string, Attribute>;
 
 #ifdef PADDLE_WITH_ASCEND_CL
 using NPUAttribute = paddle::variant<boost::blank,

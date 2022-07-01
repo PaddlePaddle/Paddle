@@ -195,8 +195,8 @@ class OperatorBase {
     attrs_[name] = v;
   }
   const AttributeMap& Attrs() const { return attrs_; }
-  const RuntimeAttributeMap& RuntimeAttrs() const { return runtime_attrs_; }
-  void SetRuntimeAttributeMap(const RuntimeAttributeMap& runtime_attrs) {
+  const AttributeMap& RuntimeAttrs() const { return runtime_attrs_; }
+  void SetRuntimeAttributeMap(const AttributeMap& runtime_attrs) {
     runtime_attrs_ = runtime_attrs;
   }
 
@@ -253,7 +253,7 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
-  RuntimeAttributeMap runtime_attrs_;
+  AttributeMap runtime_attrs_;
 
   // OpInfo
   const OpInfo* info_;
