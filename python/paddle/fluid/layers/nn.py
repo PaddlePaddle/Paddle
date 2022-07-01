@@ -9721,7 +9721,8 @@ def pad2d(input,
         name (str, optional) : The default value is None.  Normally there is no need for
                     user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
-    Returns: Tensor, a 4-D Tensor padded according to paddings and mode and data type is same as input.
+    Returns: 
+        Tensor, a 4-D Tensor padded according to paddings and mode and data type is same as input.
 
     Examples:
         .. code-block:: text
@@ -13279,10 +13280,12 @@ def space_to_depth(x, blocksize, name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: The output, which should be 4 dims Tensor or LodTensor, with the shape \
+    Returns: 
+        The output, which should be 4 dims Tensor or LodTensor, with the shape \
             [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]
 
-    Return Type: Variable
+    Return Type: 
+        Variable
 
     Raises:
         TypeError: blocksize type must be int64.

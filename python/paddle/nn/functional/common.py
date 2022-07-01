@@ -1332,7 +1332,8 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
                     
-    Returns: a Tensor padded according to pad and mode and data type is same as input.
+    Returns: 
+        a Tensor padded according to pad and mode and data type is same as input.
     Return Type: Tensor
 
     Examples:
@@ -1588,7 +1589,8 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
         axis (int): Dimension of vectors to compute cosine similarity. Default is 1.
         eps(float): Small value to avoid division by zero. Default is 1e-8.
                     
-    Returns: a Tensor representing cosine similarity between x1 and x2 along axis.
+    Returns: 
+        a Tensor representing cosine similarity between x1 and x2 along axis.
     Return Type: Tensor
 
     Examples:
