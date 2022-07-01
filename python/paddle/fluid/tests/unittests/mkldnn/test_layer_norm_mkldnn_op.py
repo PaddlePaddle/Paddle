@@ -23,7 +23,7 @@ import paddle.fluid as fluid
 from paddle import enable_static
 from functools import reduce
 
-from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator
+from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator, OpTestTool
 
 np.random.random(123)
 
@@ -135,6 +135,10 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
             if not with_is_test:
                 self.__assert_close(mean, out[1], "mean")
                 self.__assert_close(variance, out[2], "variance", 1e-3)
+
+    @OpTestTool.skip_if_not_cpu_bf16()
+    def test_check_forward_non_last_begin_norm_axis(self):
+        self.check_forward(shape=[2, 3, 4, 5], begin_norm_axis=2)
 
     def test_check_forward_with_scale_and_bias(self):
         self.check_forward(shape=[2, 3, 4, 5], begin_norm_axis=3)

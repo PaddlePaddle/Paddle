@@ -34,9 +34,16 @@ using LoD = framework::LoD;
 
 template <typename DeviceContext, typename T>
 void call_gemm(const phi::funcs::BlasT<DeviceContext, T>& blas,
-               const CBLAS_TRANSPOSE TransA, const CBLAS_TRANSPOSE TransB,
-               const int M, const int N, const int K, const T alpha, const T* A,
-               const T* B, const T beta, T* C) {
+               const CBLAS_TRANSPOSE TransA,
+               const CBLAS_TRANSPOSE TransB,
+               const int M,
+               const int N,
+               const int K,
+               const T alpha,
+               const T* A,
+               const T* B,
+               const T beta,
+               T* C) {
   int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
@@ -44,9 +51,16 @@ void call_gemm(const phi::funcs::BlasT<DeviceContext, T>& blas,
 
 template <typename T>
 void call_gemm(const framework::ExecutionContext& ctx,
-               const CBLAS_TRANSPOSE TransA, const CBLAS_TRANSPOSE TransB,
-               const int M, const int N, const int K, const T alpha, const T* A,
-               const T* B, const T beta, T* C) {
+               const CBLAS_TRANSPOSE TransA,
+               const CBLAS_TRANSPOSE TransB,
+               const int M,
+               const int N,
+               const int K,
+               const T alpha,
+               const T* A,
+               const T* B,
+               const T beta,
+               T* C) {
   int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
   auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
@@ -56,9 +70,16 @@ void call_gemm(const framework::ExecutionContext& ctx,
 template <typename DeviceContext, typename T>
 void call_gemm_with_lda(const phi::funcs::BlasT<DeviceContext, T>& blas,
                         const CBLAS_TRANSPOSE TransA,
-                        const CBLAS_TRANSPOSE TransB, const int M, const int N,
-                        const int K, const T alpha, const T* A, const T* B,
-                        const T beta, T* C, int lda) {
+                        const CBLAS_TRANSPOSE TransB,
+                        const int M,
+                        const int N,
+                        const int K,
+                        const T alpha,
+                        const T* A,
+                        const T* B,
+                        const T beta,
+                        T* C,
+                        int lda) {
   int ldb = (TransB == CblasNoTrans) ? N : K;
 
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
@@ -67,9 +88,16 @@ void call_gemm_with_lda(const phi::funcs::BlasT<DeviceContext, T>& blas,
 template <typename T>
 void call_gemm_batched(const framework::ExecutionContext& ctx,
                        const CBLAS_TRANSPOSE TransA,
-                       const CBLAS_TRANSPOSE TransB, const int M, const int N,
-                       const int K, const T alpha, const T** A, const T** B,
-                       const T beta, T** C, const int batch) {
+                       const CBLAS_TRANSPOSE TransB,
+                       const int M,
+                       const int N,
+                       const int K,
+                       const T alpha,
+                       const T** A,
+                       const T** B,
+                       const T beta,
+                       T** C,
+                       const int batch) {
   for (int i = 0; i < batch; ++i) {
     call_gemm(ctx, TransA, TransB, M, N, K, alpha, A[i], B[i], beta, C[i]);
   }
@@ -163,7 +191,9 @@ inline void axpy_noadd(const T* x, T* y, size_t len, const T alpha) {
   }
 }
 
-inline void axpy_noadd(const int8_t* x, int8_t* y, size_t len,
+inline void axpy_noadd(const int8_t* x,
+                       int8_t* y,
+                       size_t len,
                        const float alpha) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "int8_t input of axpy_noadd is not supported"));

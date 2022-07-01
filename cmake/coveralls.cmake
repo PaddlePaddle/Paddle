@@ -96,7 +96,7 @@ if(WITH_COVERAGE)
       if(NOT ${EXCLUDE_DIR_FOUND} EQUAL -1)
         list(REMOVE_ITEM PADDLE_SOURCES ${TMP_PATH})
       endif()
-    endforeach(TMP_PATH)
+    endforeach()
   endforeach()
 
   # convert to absolute path

@@ -50,7 +50,9 @@ inline int ElementsCeil(int seq_len) {
 }
 
 template <typename T, int VEC_SIZE, int ELEMENTS_PER_THREADS>
-__global__ void FusedSoftmaxMaskVecKernel(T* dst, const T* src, const T* mask,
+__global__ void FusedSoftmaxMaskVecKernel(T* dst,
+                                          const T* src,
+                                          const T* mask,
                                           int seq_len) {
   constexpr int block_size = 128;
   constexpr int warp_size = 32;
@@ -149,11 +151,16 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst, const T* src, const T* mask,
 
 // template <typename T, typename MaskT = T>
 template <typename T>
-void LaunchFusedSoftmaxMaskKernel(const T* src, const T* mask, T* dst,
-                                  const int batch_size, const int head_num,
-                                  const int seq_len, cudaStream_t stream) {
+void LaunchFusedSoftmaxMaskKernel(const T* src,
+                                  const T* mask,
+                                  T* dst,
+                                  const int batch_size,
+                                  const int head_num,
+                                  const int seq_len,
+                                  cudaStream_t stream) {
   PADDLE_ENFORCE_EQ(
-      seq_len > 0 && seq_len <= 4096, true,
+      seq_len > 0 && seq_len <= 4096,
+      true,
       platform::errors::InvalidArgument("seq_len must be between (0, 4096] "
                                         "received the seq_len is %d",
                                         seq_len));

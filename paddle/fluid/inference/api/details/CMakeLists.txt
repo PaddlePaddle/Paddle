@@ -26,13 +26,13 @@ if(WITH_ONNXRUNTIME)
     zero_copy_tensor_dummy
     SRCS zero_copy_tensor_dummy.cc
     DEPS onnxruntime)
-else(WITH_ONNXRUNTIME)
+else()
   cc_library(
     zero_copy_tensor
     SRCS zero_copy_tensor.cc
     DEPS scope lod_tensor enforce)
   cc_library(zero_copy_tensor_dummy SRCS zero_copy_tensor_dummy.cc)
-endif(WITH_ONNXRUNTIME)
+endif()
 
 cc_test(
   zero_copy_tensor_test

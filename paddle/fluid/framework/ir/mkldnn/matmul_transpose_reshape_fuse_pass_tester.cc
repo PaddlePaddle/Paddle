@@ -20,7 +20,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc *prog, const std::string &type,
+void SetOp(ProgramDesc *prog,
+           const std::string &type,
            const std::vector<std::string> &inputs,
            const std::vector<std::string> &outputs) {
   auto *op = prog->MutableBlock(0)->AppendOp();

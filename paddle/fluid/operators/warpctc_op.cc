@@ -33,8 +33,10 @@ class WarpCTCOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"), ctx.GetPlace(),
-        layout_, library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
+        ctx.GetPlace(),
+        layout_,
+        library_);
   }
 };
 
@@ -132,10 +134,12 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("WarpCTCGrad"), "Input", "WarpCTCGrad",
+    OP_INOUT_CHECK(
+        ctx->HasInput("WarpCTCGrad"), "Input", "WarpCTCGrad", "WarpCTCGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")),
+                   "Output",
+                   framework::GradVarName("Logits"),
                    "WarpCTCGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")), "Output",
-                   framework::GradVarName("Logits"), "WarpCTCGrad");
     ctx->SetOutputDim(framework::GradVarName("Logits"),
                       ctx->GetInputDim("Logits"));
     ctx->ShareLoD("Logits", /*->*/ framework::GradVarName("Logits"));
@@ -157,11 +161,15 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(WarpCTCGradOpNoNeedBufferVarInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(warpctc, WarpctcInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(warpctc,
+                            WarpctcInferShapeFunctor,
                             PD_INFER_META(phi::WarpctcInferMeta));
-REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
+REGISTER_OPERATOR(warpctc,
+                  ops::WarpCTCOp,
+                  ops::WarpCTCOpMaker,
                   ops::WarpCTCGradOpMaker<paddle::framework::OpDesc>,
                   ops::WarpCTCGradOpMaker<paddle::imperative::OpBase>,
                   WarpctcInferShapeFunctor);
-REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp,
+REGISTER_OPERATOR(warpctc_grad,
+                  ops::WarpCTCGradOp,
                   ops::WarpCTCGradOpNoNeedBufferVarInferer);

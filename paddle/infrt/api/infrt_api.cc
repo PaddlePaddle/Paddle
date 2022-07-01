@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clang-format off
 #include "paddle/infrt/api/infrt_api.h"
 
 #include <llvm/ADT/SmallVector.h>
@@ -31,6 +30,7 @@
 #include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
+#include "paddle/infrt/dialect/infrt/pass/infrt_weights_unfold_pass.h"
 #include "paddle/infrt/dialect/mlir_loader.h"
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
 #include "paddle/infrt/dialect/phi/pass/phi_op_convert_pass.h"
@@ -51,18 +51,14 @@
 #include "paddle/infrt/kernel/test_kernels.h"
 #include "paddle/infrt/tensor/tensor_map.h"
 
-#include "paddle/infrt/dialect/infrt/pass/infrt_weights_unfold_pass.h"
-
 #if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
-#include "paddle/infrt/kernel/tensorrt/registry.h"
-
 #include "paddle/infrt/dialect/tensorrt/trt_graph_fuse_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_graph_split_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_op_converter_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_op_teller_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_type_convert_pass.h"
+#include "paddle/infrt/kernel/tensorrt/registry.h"
 #endif
-// clang-format on
 
 using namespace infrt::host_context;  // NOLINT
 using namespace infrt::tensor;        // NOLINT

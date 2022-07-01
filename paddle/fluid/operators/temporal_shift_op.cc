@@ -148,15 +148,19 @@ class TemporalShiftGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(temporal_shift, TemporalShiftInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(temporal_shift,
+                            TemporalShiftInferShapeFunctor,
                             PD_INFER_META(phi::TemporalShiftInferMeta));
-REGISTER_OPERATOR(temporal_shift, ops::TemporalShiftOp,
+REGISTER_OPERATOR(temporal_shift,
+                  ops::TemporalShiftOp,
                   ops::TemporalShiftOpMaker,
                   ops::TemporalShiftGradOpMaker<paddle::framework::OpDesc>,
                   ops::TemporalShiftGradOpMaker<paddle::imperative::OpBase>,
                   TemporalShiftInferShapeFunctor);
 REGISTER_OPERATOR(temporal_shift_grad, ops::TemporalShiftOpGrad);
-REGISTER_OP_CPU_KERNEL(temporal_shift, ops::TemporalShiftKernel<float>,
+REGISTER_OP_CPU_KERNEL(temporal_shift,
+                       ops::TemporalShiftKernel<float>,
                        ops::TemporalShiftKernel<double>);
-REGISTER_OP_CPU_KERNEL(temporal_shift_grad, ops::TemporalShiftGradKernel<float>,
+REGISTER_OP_CPU_KERNEL(temporal_shift_grad,
+                       ops::TemporalShiftGradKernel<float>,
                        ops::TemporalShiftGradKernel<double>);

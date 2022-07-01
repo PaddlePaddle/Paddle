@@ -35,6 +35,9 @@ class TestBase(IPUOpTest):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_path = os.path.join(self.temp_dir.name, "weight_decay")
 
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def set_atol(self):
         self.atol = 1e-6
 

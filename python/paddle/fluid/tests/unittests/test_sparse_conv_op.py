@@ -117,3 +117,44 @@ class TestSparseConv(unittest.TestCase):
                 #Currently, only support data_format='NDHWC'
                 conv3d = paddle.incubate.sparse.nn.SubmConv3D(
                     1, 1, (1, 3, 3), data_format='NCDHW')
+
+    def test_Conv3D_bias(self):
+        with _test_eager_guard():
+            paddle.seed(0)
+            shape = [1, 4, 4, 4, 3]
+            x = paddle.randn(shape)
+            sp_x = x.to_sparse_coo(4)
+            conv3d = paddle.nn.Conv3D(3, 2, 3, data_format='NDHWC')
+
+            sp_conv3d = paddle.incubate.sparse.nn.Conv3D(3,
+                                                         2,
+                                                         3,
+                                                         data_format='NDHWC')
+            sp_conv3d.weight.set_value(
+                paddle.to_tensor(conv3d.weight.numpy().transpose(2, 3, 4, 1,
+                                                                 0)))
+            sp_conv3d.bias.set_value(paddle.to_tensor(conv3d.bias.numpy()))
+
+            x.stop_gradient = False
+            out = conv3d(x)
+            loss = out.mean()
+            loss.backward()
+
+            sp_x.stop_gradient = False
+            sp_out = sp_conv3d(sp_x)
+            dense_out = sp_out.to_dense()
+            sp_loss = dense_out.mean()
+            sp_loss.backward()
+            assert np.allclose(out.numpy(),
+                               dense_out.numpy(),
+                               atol=1e-3,
+                               rtol=1e-3)
+            assert np.allclose(conv3d.weight.grad.numpy().transpose(
+                2, 3, 4, 1, 0),
+                               sp_conv3d.weight.grad.numpy(),
+                               atol=1e-3,
+                               rtol=1e-3)
+            assert np.allclose(conv3d.bias.grad.numpy(),
+                               sp_conv3d.bias.grad.numpy(),
+                               atol=1e-5,
+                               rtol=1e-5)

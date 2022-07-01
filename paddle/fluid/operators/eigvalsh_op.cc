@@ -25,24 +25,27 @@ class EigvalshOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Eigvalsh");
-    OP_INOUT_CHECK(ctx->HasOutput("Eigenvalues"), "Output", "Eigenvalues",
-                   "Eigvalsh");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Eigenvalues"), "Output", "Eigenvalues", "Eigvalsh");
 
     auto input_dim = ctx->GetInputDim("X");
     auto rank = input_dim.size();
 
-    PADDLE_ENFORCE_GE(rank, 2,
+    PADDLE_ENFORCE_GE(rank,
+                      2,
                       platform::errors::InvalidArgument(
                           "The Input(X) should have at least 2 dimensions."
                           "But received a %d dimension tensor.",
                           rank));
     PADDLE_ENFORCE_EQ(
-        input_dim[rank - 2], input_dim[rank - 1],
+        input_dim[rank - 2],
+        input_dim[rank - 1],
         platform::errors::InvalidArgument(
             "Eigvalsh op is designed for square matrix, consequently"
             "inner-most 2 dimensions of Input(X) should be symmetric."
             "But received X's shape[-2] = %d and shape[-1] = %d.",
-            input_dim[rank - 2], input_dim[rank - 1]));
+            input_dim[rank - 2],
+            input_dim[rank - 1]));
 
     std::vector<int64_t> values_dim;
 
@@ -98,10 +101,12 @@ class EigvalshGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors",
-                   "EigvalshGrad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors", "EigvalshGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Eigenvalues")),
-                   "Input", "Eigenvalues@GRAD", "EigvalshGrad");
+                   "Input",
+                   "Eigenvalues@GRAD",
+                   "EigvalshGrad");
     auto dims = ctx->GetInputDim("Eigenvectors");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -139,7 +144,9 @@ class EigvalshGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(eigvalsh, ops::EigvalshOp, ops::EigvalshOpMaker,
+REGISTER_OPERATOR(eigvalsh,
+                  ops::EigvalshOp,
+                  ops::EigvalshOpMaker,
                   ops::EigvalshGradOpMaker<paddle::framework::OpDesc>,
                   ops::EigvalshGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(eigvalsh_grad, ops::EigvalshGradOp);
@@ -148,16 +155,20 @@ REGISTER_OP_CPU_KERNEL(
     eigvalsh,
     ops::EigvalshKernel<paddle::platform::CPUDeviceContext, float, float>,
     ops::EigvalshKernel<paddle::platform::CPUDeviceContext, double, double>,
-    ops::EigvalshKernel<paddle::platform::CPUDeviceContext, float,
+    ops::EigvalshKernel<paddle::platform::CPUDeviceContext,
+                        float,
                         paddle::platform::complex<float>>,
-    ops::EigvalshKernel<paddle::platform::CPUDeviceContext, double,
+    ops::EigvalshKernel<paddle::platform::CPUDeviceContext,
+                        double,
                         paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     eigvalsh_grad,
     ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext, float, float>,
     ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext, double, double>,
-    ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext, float,
+    ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext,
+                            float,
                             paddle::platform::complex<float>>,
-    ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext, double,
+    ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext,
+                            double,
                             paddle::platform::complex<double>>);

@@ -114,22 +114,24 @@ class BackwardAPI(BaseAPI):
         return 'void'
 
     def gene_output(self,
-                    output_type_list,
-                    set_out_func,
-                    code_indent,
+                    out_dtype_list,
+                    out_tensor_type_list=None,
+                    code_indent='',
                     inplace_flag=False):
         kernel_output = ""
         output_names = []
         output_create = ""
 
-        if len(output_type_list) == 1:
+        if len(out_dtype_list) == 1:
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
             inplace_assign = " = " + self.inplace_map[self.outputs['names'][
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = ""
-            if output_type_list[0] == 'std::vector<Tensor>':
+            set_out_func = 'SetKernelOutput' if out_tensor_type_list is None or out_tensor_type_list[
+                0] == 'dense' else 'SetSelectedRowsKernelOutput'
+            if out_dtype_list[0] == 'std::vector<Tensor>':
                 assert self.outputs['out_size_expr'] is not None, \
                      f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
                 output_create = output_create + f"""
@@ -139,11 +141,13 @@ class BackwardAPI(BaseAPI):
                 output_create = output_create + f"""
 {code_indent}  auto kernel_out = {set_out_func}(kernel_backend, {self.outputs['names'][0]});"""
 
-        elif len(output_type_list) > 1:
+        elif len(out_dtype_list) > 1:
             output_create = ""
-            for i, out_type_item in enumerate(output_type_list):
+            for i, out_type_item in enumerate(out_dtype_list):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
+                set_out_func = 'SetKernelOutput' if out_tensor_type_list is None or out_tensor_type_list[
+                    i] == 'dense' else 'SetSelectedRowsKernelOutput'
                 if out_type_item == 'Tensor':
                     if inplace_flag and self.inplace_map is not None and self.outputs[
                             'names'][i] in self.inplace_map:

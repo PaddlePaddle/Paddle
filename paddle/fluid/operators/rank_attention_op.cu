@@ -48,13 +48,16 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
     auto para_col = para_dims[1];
     auto rank_offset_dims = rank_offset->dims();
     PADDLE_ENFORCE_EQ(
-        rank_offset_dims[0], ins_num,
+        rank_offset_dims[0],
+        ins_num,
         platform::errors::InvalidArgument("Input(RankOffset) has wrong rows."));
-    PADDLE_ENFORCE_EQ((rank_offset_dims[1] - 1) / 2, max_rank,
+    PADDLE_ENFORCE_EQ((rank_offset_dims[1] - 1) / 2,
+                      max_rank,
                       platform::errors::InvalidArgument(
                           "Input(RankOffset) has wrong columns."));
     PADDLE_ENFORCE_EQ(
-        max_rank * max_rank * x_fea_dim, para_row,
+        max_rank * max_rank * x_fea_dim,
+        para_row,
         platform::errors::InvalidArgument("Input(RankParam) has wrong rows."));
 
     int block_matrix_row = max_rank * x_fea_dim;
@@ -96,16 +99,33 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
     T *ins_rank_data = ins_rank->data<T>();
     T *out_data = Out->data<T>();
 
-    expand_rank_attention_input(
-        ctx.cuda_device_context().stream(), X->data<T>(), ins_num, x_fea_dim,
-        input_help_data, ins_num, block_matrix_row, rank_offset->data<int>(),
-        rank_offset_dims[0], rank_offset_dims[1], ins_rank_data, max_rank);
+    expand_rank_attention_input(ctx.cuda_device_context().stream(),
+                                X->data<T>(),
+                                ins_num,
+                                x_fea_dim,
+                                input_help_data,
+                                ins_num,
+                                block_matrix_row,
+                                rank_offset->data<int>(),
+                                rank_offset_dims[0],
+                                rank_offset_dims[1],
+                                ins_rank_data,
+                                max_rank);
 
-    expand_rank_attention_param(
-        ctx.cuda_device_context().stream(), X->data<T>(), ins_num, x_fea_dim,
-        rank_offset->data<int>(), rank_offset_dims[0], rank_offset_dims[1],
-        param->data<T>(), para_row, para_col, param_help_data,
-        ins_num * block_matrix_row, para_col, max_rank);
+    expand_rank_attention_param(ctx.cuda_device_context().stream(),
+                                X->data<T>(),
+                                ins_num,
+                                x_fea_dim,
+                                rank_offset->data<int>(),
+                                rank_offset_dims[0],
+                                rank_offset_dims[1],
+                                param->data<T>(),
+                                para_row,
+                                para_col,
+                                param_help_data,
+                                ins_num * block_matrix_row,
+                                para_col,
+                                max_rank);
 
     CBLAS_TRANSPOSE transA = CblasNoTrans;
     CBLAS_TRANSPOSE transB = CblasNoTrans;
@@ -116,9 +136,19 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
     int64_t strideB = block_matrix_row * para_col;
 
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
-    blas.BatchedGEMM(transA, transB, 1, para_col, block_matrix_row, alpha,
-                     input_help_data, param_help_data, beta, out_data, ins_num,
-                     strideA, strideB);
+    blas.BatchedGEMM(transA,
+                     transB,
+                     1,
+                     para_col,
+                     block_matrix_row,
+                     alpha,
+                     input_help_data,
+                     param_help_data,
+                     beta,
+                     out_data,
+                     ins_num,
+                     strideA,
+                     strideB);
   }
 };
 
@@ -180,14 +210,31 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
     CBLAS_TRANSPOSE transB = CblasNoTrans;
     int64_t strideA = block_matrix_row;
     int64_t strideB = para_col;
-    blas.BatchedGEMM(transA, transB, block_matrix_row, para_col, 1, alpha,
-                     input_help_data, dout->data<T>(), beta, param_grad_data,
-                     ins_num, strideA, strideB);
+    blas.BatchedGEMM(transA,
+                     transB,
+                     block_matrix_row,
+                     para_col,
+                     1,
+                     alpha,
+                     input_help_data,
+                     dout->data<T>(),
+                     beta,
+                     param_grad_data,
+                     ins_num,
+                     strideA,
+                     strideB);
     // merge param_grad to get drank_para
-    merge_rank_attention_param_grad(
-        ctx.cuda_device_context().stream(), param_grad_data,
-        ins_num * block_matrix_row, para_col, drank_para->data<T>(), para_row,
-        para_col, ins_rank_data, ins_num, max_rank, x_fea_dim);
+    merge_rank_attention_param_grad(ctx.cuda_device_context().stream(),
+                                    param_grad_data,
+                                    ins_num * block_matrix_row,
+                                    para_col,
+                                    drank_para->data<T>(),
+                                    para_row,
+                                    para_col,
+                                    ins_rank_data,
+                                    ins_num,
+                                    max_rank,
+                                    x_fea_dim);
   }
 };
 

@@ -48,8 +48,8 @@ void CheckOpHasNanOrInfInDygraph(const std::string& op_type,
     for (const auto& ivar : pair.second) {
       auto* var = ivar->MutableVar();
       if (var == nullptr) continue;
-      CheckVarHasNanOrInf(op_type, paddle::imperative::GetNameFromVar(ivar),
-                          var, place);
+      CheckVarHasNanOrInf(
+          op_type, paddle::imperative::GetNameFromVar(ivar), var, place);
     }
   }
 }

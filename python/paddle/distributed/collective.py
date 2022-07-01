@@ -1181,9 +1181,9 @@ def _mp_allreduce(tensor,
     if in_dygraph_mode():
         assert op == ReduceOp.SUM, "Unknown parameter: {}.".format(op)
 
-        from paddle.autograd import EagerPyLayer
+        from paddle.autograd import PyLayer
 
-        class mp_allreduce_eager(EagerPyLayer):
+        class mp_allreduce_eager(PyLayer):
 
             @staticmethod
             def forward(ctx, tensor, use_calc_stream, ring_id,

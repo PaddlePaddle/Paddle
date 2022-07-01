@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle import _C_ops
+from paddle.fluid.framework import dygraph_only
+
 __all__ = []
 
-from paddle import _C_ops, in_dynamic_mode
 
-
+@dygraph_only
 def tanh(x, name=None):
     """
     sparse tanh activation, requiring x to be a sparse coo or sparse csr tensor.
@@ -44,17 +46,10 @@ def tanh(x, name=None):
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.incubate.sparse.tanh(sparse_x)
     """
-
-    assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
-
-    if x.is_sparse_coo() or x.is_sparse_csr():
-        return _C_ops.final_state_sparse_tanh(x)
-    else:
-        raise ValueError(
-            "Currently, sparse.tanh only support the input of SparseCooTensor or SparseCsrTensor"
-        )
+    return _C_ops.final_state_sparse_tanh(x)
 
 
+@dygraph_only
 def sqrt(x, name=None):
     """
     Calculate square root of x, requiring x to be a sparse coo or sparse csr tensor.
@@ -82,17 +77,10 @@ def sqrt(x, name=None):
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.incubate.sparse.sqrt(sparse_x)
     """
-
-    assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
-
-    if x.is_sparse_coo() or x.is_sparse_csr():
-        return _C_ops.final_state_sparse_sqrt(x)
-    else:
-        raise ValueError(
-            "Currently, sparse.sqrt only support the input of SparseCooTensor or SparseCsrTensor"
-        )
+    return _C_ops.final_state_sparse_sqrt(x)
 
 
+@dygraph_only
 def sin(x, name=None):
     """
     Calculate sin of x, requiring x to be a sparse coo or sparse csr tensor.
@@ -120,12 +108,4 @@ def sin(x, name=None):
                 sparse_x = dense_x.to_sparse_coo(1)
                 out = paddle.incubate.sparse.sin(sparse_x)
     """
-
-    assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
-
-    if x.is_sparse_coo() or x.is_sparse_csr():
-        return _C_ops.final_state_sparse_sin(x)
-    else:
-        raise ValueError(
-            "Currently, sparse.sin only support the input of SparseCooTensor or SparseCsrTensor"
-        )
+    return _C_ops.final_state_sparse_sin(x)

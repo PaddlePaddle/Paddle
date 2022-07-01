@@ -28,12 +28,14 @@ class CheckFiniteAndUnscaleOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     if (ctx->HasInputs("X") || ctx->HasOutputs("Out")) {
       PADDLE_ENFORCE_EQ(
-          ctx->Inputs("X").size(), ctx->Outputs("Out").size(),
+          ctx->Inputs("X").size(),
+          ctx->Outputs("Out").size(),
           platform::errors::InvalidArgument(
               "The input(X) and output(Out) should have same size in "
               "Operator(check_finite_and_unscale), size of input(X) is %d "
               "and size of output(Out) is %d.",
-              ctx->Inputs("X").size(), ctx->Outputs("Out").size()));
+              ctx->Inputs("X").size(),
+              ctx->Outputs("Out").size()));
       auto x_dims = ctx->GetInputsDim("X");
       ctx->SetOutputsDim("Out", x_dims);
     }
@@ -137,7 +139,8 @@ class CheckFiniteAndUnscaleCpuKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    check_finite_and_unscale, ops::CheckFiniteAndUnscaleOp,
+    check_finite_and_unscale,
+    ops::CheckFiniteAndUnscaleOp,
     ops::CheckFiniteAndUnscaleOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

@@ -22,8 +22,8 @@ set(api_gen_base ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api_base.py)
 # forward api file
 set(api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api_gen.py)
 set(api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml)
-set(new_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/new_api.yaml)
+set(legacy_api_yaml_file
+    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/legacy_api.yaml)
 set(api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/api.h)
 set(api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
@@ -34,8 +34,8 @@ set(bw_api_gen_file
     ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/backward_api_gen.py)
 set(bw_api_yaml_file
     ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/backward.yaml)
-set(new_bw_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/new_backward.yaml)
+set(legacy_bw_api_yaml_file
+    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/legacy_backward.yaml)
 set(bw_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/backward_api.h)
 set(bw_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/backward_api.cc)
@@ -95,12 +95,18 @@ set(wrapped_infermeta_header_file
 set(wrapped_infermeta_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
-if(NOT PYTHON_EXECUTABLE)
+if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
 endif()
 
 # install extra dependencies
-execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml jinja2)
+if(${PYTHON_VERSION_STRING} VERSION_LESS "3.6.2")
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml
+                          typing-extensions>=4.1.1 jinja2==2.11.3)
+else()
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml jinja2
+                          typing-extensions)
+endif()
 
 # parse apis
 set(parsed_api_dir ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/parsed_apis)
@@ -111,21 +117,21 @@ set(generated_argument_mapping_path
 message(
   "parse api yamls:
 - ${api_yaml_file}
-- ${new_api_yaml_file}
+- ${legacy_api_yaml_file}
 - ${bw_api_yaml_file}
-- ${new_bw_api_yaml_file}")
+- ${legacy_bw_api_yaml_file}")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_api_dir}
   COMMAND ${PYTHON_EXECUTABLE} parse_api.py --api_yaml_path ./api.yaml
           --output_path ./parsed_apis/api.parsed.yaml
-  COMMAND ${PYTHON_EXECUTABLE} parse_api.py --api_yaml_path ./new_api.yaml
-          --output_path ./parsed_apis/new_api.parsed.yaml
+  COMMAND ${PYTHON_EXECUTABLE} parse_api.py --api_yaml_path ./legacy_api.yaml
+          --output_path ./parsed_apis/legacy_api.parsed.yaml
   COMMAND ${PYTHON_EXECUTABLE} parse_api.py --api_yaml_path ./backward.yaml
           --output_path ./parsed_apis/backward_api.parsed.yaml --backward
   COMMAND
-    ${PYTHON_EXECUTABLE} parse_api.py --api_yaml_path ./new_backward.yaml
-    --output_path ./parsed_apis/new_backward_api.parsed.yaml --backward
+    ${PYTHON_EXECUTABLE} parse_api.py --api_yaml_path ./legacy_backward.yaml
+    --output_path ./parsed_apis/legacy_backward_api.parsed.yaml --backward
     RESULTS_VARIABLE _results)
 foreach(_result in ${_results})
   if(${_result})
@@ -135,15 +141,15 @@ endforeach()
 
 # validation of api yamls
 message("validate api yaml:
-- ${parsed_api_dir}/new_api.parsed.yaml
-- ${parsed_api_dir}/new_backward_api.parsed.yaml")
+- ${parsed_api_dir}/api.parsed.yaml
+- ${parsed_api_dir}/backward_api.parsed.yaml")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
-    ./parsed_apis/api.parsed.yaml ./parsed_apis/new_api.parsed.yaml
+    ./parsed_apis/api.parsed.yaml ./parsed_apis/legacy_api.parsed.yaml
     --backward_yaml_paths ./parsed_apis/backward_api.parsed.yaml
-    ./parsed_apis/new_backward_api.parsed.yaml
+    ./parsed_apis/legacy_backward_api.parsed.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "api validation failed, exiting.")
@@ -158,9 +164,10 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
   COMMAND
     ${PYTHON_EXECUTABLE} generate_op.py --api_yaml_path
-    ./parsed_apis/new_api.parsed.yaml --backward_api_yaml_path
-    ./parsed_apis/new_backward_api.parsed.yaml --output_op_path
-    "${generated_op_path}.tmp" --output_arg_map_path
+    ./parsed_apis/api.parsed.yaml --backward_api_yaml_path
+    ./parsed_apis/backward_api.parsed.yaml --api_version_yaml_path
+    api_version.yaml --api_args_compat_yaml_path args_compat.yaml
+    --output_op_path "${generated_op_path}.tmp" --output_arg_map_path
     "${generated_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
 if(${_result})
@@ -209,7 +216,7 @@ add_custom_command(
   COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
   COMMAND
     ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path ${api_yaml_file}
-    ${new_api_yaml_file} --api_header_path ${api_header_file_tmp}
+    ${legacy_api_yaml_file} --api_header_path ${api_header_file_tmp}
     --api_header_path ${api_header_file_tmp} --api_source_path
     ${api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp}
@@ -217,7 +224,8 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
           ${api_source_file}
   COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
-  DEPENDS ${api_yaml_file} ${api_gen_file} ${api_gen_base}
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${api_gen_file}
+          ${api_gen_base}
   VERBATIM)
 
 # generate backward api
@@ -226,14 +234,15 @@ add_custom_command(
          ${bw_api_source_file_tmp}
   COMMAND
     ${PYTHON_EXECUTABLE} ${bw_api_gen_file} --backward_yaml_path
-    ${bw_api_yaml_file} ${new_bw_api_yaml_file} --backward_header_path
+    ${bw_api_yaml_file} ${legacy_bw_api_yaml_file} --backward_header_path
     ${bw_api_header_file_tmp} --backward_source_path ${bw_api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_header_file_tmp}
           ${bw_api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_source_file_tmp}
           ${bw_api_source_file}
   COMMENT "copy_if_different ${bw_api_header_file} ${bw_api_source_file}"
-  DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file} ${api_gen_base}
+  DEPENDS ${bw_api_yaml_file} ${legacy_bw_api_yaml_file} ${bw_api_gen_file}
+          ${api_gen_base}
   VERBATIM)
 
 # generate sparse api
@@ -293,7 +302,7 @@ add_custom_command(
   OUTPUT ${dygraph_api_header_file} ${dygraph_api_source_file}
   COMMAND
     ${PYTHON_EXECUTABLE} ${im_api_gen_file} --api_yaml_path ${api_yaml_file}
-    ${new_api_yaml_file} --sparse_api_yaml_path ${sparse_api_yaml_file}
+    ${legacy_api_yaml_file} --sparse_api_yaml_path ${sparse_api_yaml_file}
     --dygraph_api_header_path ${dygraph_api_header_file_tmp}
     --dygraph_api_source_path ${dygraph_api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dygraph_api_header_file_tmp}
@@ -309,7 +318,7 @@ add_custom_command(
   OUTPUT ${wrapped_infermeta_header_file} ${wrapped_infermeta_source_file}
   COMMAND
     ${PYTHON_EXECUTABLE} ${wrapped_infermeta_gen_file} --api_yaml_path
-    ${api_yaml_file} ${new_api_yaml_file} --wrapped_infermeta_header_path
+    ${api_yaml_file} ${legacy_api_yaml_file} --wrapped_infermeta_header_path
     ${wrapped_infermeta_header_file} --wrapped_infermeta_source_path
     ${wrapped_infermeta_source_file}
   DEPENDS ${api_yaml_file} ${wrapped_infermeta_gen_file} ${api_gen_base}
@@ -326,7 +335,7 @@ cc_library(
 cc_library(
   context_pool
   SRCS context_pool.cc
-  DEPS phi_context phi_enforce place)
+  DEPS phi_context phi_enforce place init)
 
 cc_library(
   kernel_dispatch
@@ -335,11 +344,12 @@ cc_library(
 cc_library(
   api_gen_utils
   SRCS api_gen_utils.cc
-  DEPS phi_tensor_raw selected_rows sparse_csr_tensor sparse_coo_tensor)
+  DEPS phi_tensor_raw selected_rows sparse_csr_tensor sparse_coo_tensor
+       infermeta_utils)
 cc_library(
   phi_data_transform
   SRCS data_transform.cc
-  DEPS phi_tensor_raw transfer_layout_kernel cast_kernel copy_kernel tensor)
+  DEPS phi_tensor_raw phi tensor)
 cc_library(
   api_custom_impl
   SRCS api_custom_impl.cc
@@ -404,7 +414,7 @@ cc_library(
 cc_library(
   tensor_copy
   SRCS tensor_copy.cc
-  DEPS phi_tensor_raw copy_kernel kernel_dispatch api_gen_utils)
+  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils)
 cc_library(
   api_scalar
   SRCS scalar.cc

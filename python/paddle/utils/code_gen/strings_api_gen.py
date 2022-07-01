@@ -51,16 +51,16 @@ class StringsAPI(ForwardAPI):
         return tensor_type_dict[kernel_tensor_out_type]
 
     def gene_output(self,
-                    output_type_list,
-                    set_out_func,
-                    code_indent,
+                    out_dtype_list,
+                    out_tensor_type_list=None,
+                    code_indent='',
                     inplace_flag=False):
         kernel_output = ""
         output_names = []
         output_create = ""
         return_type = self.get_return_type(inplace_flag)
 
-        if len(output_type_list) == 1:
+        if len(out_dtype_list) == 1:
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
             kernel_tensor_out_type = self.get_kernel_tensor_out_type(
@@ -71,13 +71,13 @@ class StringsAPI(ForwardAPI):
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
   {return_type} api_output{inplace_assign};
-  {tensor_type}* kernel_out = dynamic_cast<{tensor_type}*>({set_out_func}(kernel_backend, &api_output, {kernel_tensor_out_type}));"""
+  {tensor_type}* kernel_out = dynamic_cast<{tensor_type}*>(SetStringsKernelOutput(kernel_backend, &api_output, {kernel_tensor_out_type}));"""
 
-        elif len(output_type_list) > 1:
+        elif len(out_dtype_list) > 1:
             output_create = f"""
   {return_type} api_output;"""
 
-            for i in range(len(output_type_list)):
+            for i in range(len(out_dtype_list)):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
                 kernel_tensor_out_type = self.get_kernel_tensor_out_type(
@@ -89,7 +89,7 @@ class StringsAPI(ForwardAPI):
   std::get<{i}>(api_output) = {self.inplace_map[self.outputs['names'][i]]};"""
 
                 output_create = output_create + f"""
-  {tensor_type}* kernel_out_{i} = dynamic_cast<{tensor_type}*>({set_out_func}(&std::get<{i}>(api_output), {kernel_tensor_out_type}));"""
+  {tensor_type}* kernel_out_{i} = dynamic_cast<{tensor_type}*>(SetStringsKernelOutput(&std::get<{i}>(api_output), {kernel_tensor_out_type}));"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -174,7 +174,7 @@ class StringsAPI(ForwardAPI):
         input_tensors, kernel_args, kernel_signature = self.get_kernel_args(
             code_indent)
         outputs_args, kernel_output_names, output_create = self.gene_output(
-            self.outputs['types'], 'SetStringsKernelOutput', '', inplace_flag)
+            self.outputs['types'], None, '', inplace_flag)
 
         return f"""
   // 1. Get kernel signature and kernel
@@ -252,11 +252,6 @@ class StringsAPI(ForwardAPI):
         kernel_select_code = kernel_key_item_init + kernel_select_code
 
         if len(input_names) > 0:
-            if self.support_selected_rows_kernel:
-                kernel_select_code = kernel_select_code + f"""
-  KernelType kernel_type = ParseKernelTypeByInputArgs({", ".join(input_names)});
-"""
-
             kernel_select_code = kernel_select_code + f"""
   auto kernel_key_set = ParseKernelKeyByInputArgs({kernel_select_args});
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();

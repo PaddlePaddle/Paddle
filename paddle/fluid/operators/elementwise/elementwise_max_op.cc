@@ -110,8 +110,10 @@ class ElementwiseFMaxGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(elementwise_max, ops::ElementwiseOp,
-                  ops::ElementwiseMaxOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_max,
+                  ops::ElementwiseOp,
+                  ops::ElementwiseMaxOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMaxGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseMaxGradOpMaker<paddle::imperative::OpBase>);
 
@@ -126,8 +128,10 @@ REGISTER_OP_VERSION(elementwise_max)
             "using the operator of elementwise_max.",
             1.0f));
 
-REGISTER_OPERATOR(elementwise_fmax, ops::ElementwiseOp,
-                  ops::ElementwiseFMaxOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_fmax,
+                  ops::ElementwiseOp,
+                  ops::ElementwiseFMaxOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseFMaxGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseFMaxGradOpMaker<paddle::imperative::OpBase>);
 

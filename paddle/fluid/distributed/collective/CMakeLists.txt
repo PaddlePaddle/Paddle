@@ -14,7 +14,7 @@ if(WITH_DISTRIBUTE)
     DEPS phi_api eager_api gloo_wrapper)
 endif()
 
-if(WITH_NCCL)
+if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     processgroup_nccl
     SRCS ProcessGroupNCCL.cc NCCLTools.cc Common.cc

@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 
 import math
@@ -48,7 +49,7 @@ def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
     anchor_loc[:, 2] = all_anchors[:, 0] + 0.5 * anchor_loc[:, 0]
     anchor_loc[:, 3] = all_anchors[:, 1] + 0.5 * anchor_loc[:, 1]
 
-    # predicted bbox: bbox_center_x, bbox_center_y, bbox_width, bbox_height 
+    # predicted bbox: bbox_center_x, bbox_center_y, bbox_width, bbox_height
     pred_bbox = np.zeros_like(bbox_deltas, dtype=np.float32)
     if variances is not None:
         for i in range(bbox_deltas.shape[0]):
@@ -64,10 +65,12 @@ def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
                     1000 / 16.0))) * anchor_loc[i, 1]
     else:
         for i in range(bbox_deltas.shape[0]):
-            pred_bbox[i, 0] = bbox_deltas[i, 0] * anchor_loc[i, 0] + anchor_loc[
-                i, 2]
-            pred_bbox[i, 1] = bbox_deltas[i, 1] * anchor_loc[i, 1] + anchor_loc[
-                i, 3]
+            pred_bbox[i,
+                      0] = bbox_deltas[i, 0] * anchor_loc[i, 0] + anchor_loc[i,
+                                                                             2]
+            pred_bbox[i,
+                      1] = bbox_deltas[i, 1] * anchor_loc[i, 1] + anchor_loc[i,
+                                                                             3]
             pred_bbox[i, 2] = math.exp(
                 min(bbox_deltas[i, 2], math.log(1000 / 16.0))) * anchor_loc[i,
                                                                             0]
@@ -91,17 +94,21 @@ def clip_tiled_boxes(boxes, im_shape, pixel_offset=True):
     )
     offset = 1 if pixel_offset else 0
     # x1 >= 0
-    boxes[:, 0::4] = np.maximum(
-        np.minimum(boxes[:, 0::4], im_shape[1] - offset), 0)
+    boxes[:,
+          0::4] = np.maximum(np.minimum(boxes[:, 0::4], im_shape[1] - offset),
+                             0)
     # y1 >= 0
-    boxes[:, 1::4] = np.maximum(
-        np.minimum(boxes[:, 1::4], im_shape[0] - offset), 0)
+    boxes[:,
+          1::4] = np.maximum(np.minimum(boxes[:, 1::4], im_shape[0] - offset),
+                             0)
     # x2 < im_shape[1]
-    boxes[:, 2::4] = np.maximum(
-        np.minimum(boxes[:, 2::4], im_shape[1] - offset), 0)
+    boxes[:,
+          2::4] = np.maximum(np.minimum(boxes[:, 2::4], im_shape[1] - offset),
+                             0)
     # y2 < im_shape[0]
-    boxes[:, 3::4] = np.maximum(
-        np.minimum(boxes[:, 3::4], im_shape[0] - offset), 0)
+    boxes[:,
+          3::4] = np.maximum(np.minimum(boxes[:, 3::4], im_shape[0] - offset),
+                             0)
     return boxes
 
 
@@ -116,8 +123,8 @@ def filter_boxes(boxes, min_size, im_shape, pixel_offset=True):
     if pixel_offset:
         x_ctr = boxes[:, 0] + ws / 2.
         y_ctr = boxes[:, 1] + hs / 2.
-        keep = np.where((ws >= min_size) & (hs >= min_size) & (x_ctr < im_shape[
-            1]) & (y_ctr < im_shape[0]))[0]
+        keep = np.where((ws >= min_size) & (hs >= min_size)
+                        & (x_ctr < im_shape[1]) & (y_ctr < im_shape[0]))[0]
     else:
         keep = np.where((ws >= min_size) & (hs >= min_size))[0]
     return keep
@@ -309,10 +316,11 @@ def anchor_generator_in_python(input_feat, anchor_sizes, aspect_ratios,
                     scale_h = anchor_size / stride[1]
                     w = scale_w * base_w
                     h = scale_h * base_h
-                    out_anchors[h_idx, w_idx, idx, :] = [
-                        (x_ctr - 0.5 * (w - 1)), (y_ctr - 0.5 * (h - 1)),
-                        (x_ctr + 0.5 * (w - 1)), (y_ctr + 0.5 * (h - 1))
-                    ]
+                    out_anchors[h_idx, w_idx,
+                                idx, :] = [(x_ctr - 0.5 * (w - 1)),
+                                           (y_ctr - 0.5 * (h - 1)),
+                                           (x_ctr + 0.5 * (w - 1)),
+                                           (y_ctr + 0.5 * (h - 1))]
                     idx += 1
 
     # set the variance.
@@ -323,11 +331,13 @@ def anchor_generator_in_python(input_feat, anchor_sizes, aspect_ratios,
 
 
 class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'generate_proposals_v2'
         self.use_dynamic_create_class = False
 
     class TestGenerateProposalsV2Op(XPUOpTest):
+
         def set_data(self):
             self.init_input_shape()
             self.init_test_params()
@@ -413,6 +423,7 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
                 self.nms_thresh, self.min_size, self.eta, self.pixel_offset)
 
     class TestGenerateProposalsV2OutLodOp(TestGenerateProposalsV2Op):
+
         def set_data(self):
             self.init_input_shape()
             self.init_test_params()
@@ -439,11 +450,11 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
             self.outputs = {
                 'RpnRois': (self.rpn_rois[0], [self.rois_num]),
                 'RpnRoiProbs': (self.rpn_roi_probs[0], [self.rois_num]),
-                'RpnRoisNum': (np.asarray(
-                    self.rois_num, dtype=np.int32))
+                'RpnRoisNum': (np.asarray(self.rois_num, dtype=np.int32))
             }
 
     class TestGenerateProposalsV2OpNoBoxLeft(TestGenerateProposalsV2Op):
+
         def init_test_params(self):
             self.pre_nms_topN = 12000  # train 12000, test 2000
             self.post_nms_topN = 5000  # train 6000, test 1000
@@ -453,6 +464,7 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
             self.pixel_offset = True
 
     class TestGenerateProposalsV2OpNoOffset(TestGenerateProposalsV2Op):
+
         def init_test_params(self):
             self.pre_nms_topN = 12000  # train 12000, test 2000
             self.post_nms_topN = 5000  # train 6000, test 1000
@@ -461,11 +473,12 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
             self.eta = 1.
             self.pixel_offset = False
 
-    # """
     class TestGenerateProposalsV2OpMaskRcnn1XPU(TestGenerateProposalsV2Op):
+
         def init_input_shape(self):
             self.input_feat_shape = (1, 20, 48, 64)
-            self.im_shape = np.array([[768, 1024]]).astype(self.dtype)
+            # Another case is [768, 1024]
+            self.im_shape = np.array([[192, 256]]).astype(self.dtype)
 
         def init_test_params(self):
             self.pre_nms_topN = 12000  # train 12000, test 2000
@@ -526,19 +539,17 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
             self.outputs = {
                 'RpnRois': (self.rpn_rois[0], [self.rois_num]),
                 'RpnRoiProbs': (self.rpn_roi_probs[0], [self.rois_num]),
-                'RpnRoisNum': (np.asarray(
-                    self.rois_num, dtype=np.int32))
+                'RpnRoisNum': (np.asarray(self.rois_num, dtype=np.int32))
             }
 
 
 support_types = get_xpu_op_support_types('generate_proposals_v2')
 for stype in support_types:
-    create_test_class(
-        globals(),
-        XPUGenerateProposalsV2Op,
-        stype,
-        test_grad=False,
-        ignore_deivce_version=[core.XPUVersion.XPU1])
+    create_test_class(globals(),
+                      XPUGenerateProposalsV2Op,
+                      stype,
+                      test_grad=False,
+                      ignore_deivce_version=[core.XPUVersion.XPU1])
 
 if __name__ == '__main__':
     unittest.main()

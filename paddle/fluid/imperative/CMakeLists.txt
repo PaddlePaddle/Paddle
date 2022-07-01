@@ -22,7 +22,8 @@ if(WITH_XPU)
          nan_inf_utils
          phi_api
          phi_utils
-         var_helper)
+         var_helper
+         profiler)
 else()
   cc_library(
     prepared_operator
@@ -38,7 +39,8 @@ else()
          nan_inf_utils
          phi_api
          phi_utils
-         var_helper)
+         var_helper
+         profiler)
 endif()
 cc_library(
   layer
@@ -156,7 +158,7 @@ if(NOT WIN32)
     data_loader
     SRCS data_loader.cc
     DEPS enforce)
-endif(NOT WIN32)
+endif()
 if(WITH_GLOO)
   cc_library(
     imperative_gloo_context

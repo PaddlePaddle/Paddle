@@ -29,10 +29,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
-        for x in attrs[0]["decrease_axis"]:
-            if x < 0:
-                return False
+        out_shape = list(inputs['input_data'].shape)
         for x in range(len(attrs[0]["axes"])):
             start = 0
             end = 0
@@ -48,19 +45,24 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                 end = attrs[0]["ends"][x]
             start = max(0, start)
             end = max(0, end)
+            out_shape[attrs[0]["axes"][x]] = end - start
             if start >= end:
                 return False
-
+        for x in attrs[0]["decrease_axis"]:
+            if x < 0:
+                return False
+            if (out_shape[x] != 1):
+                return False
         return True
 
     def sample_program_configs(self):
 
         def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.ones([6, 6, 64, 64]).astype(np.float32)
+            return np.random.random([6, 6, 64, 64]).astype(np.float32)
 
         for axes in [[0, 1], [1, 3], [2, 3]]:
             for starts in [[0, 1]]:
-                for ends in [[2, 2], [5, 5]]:
+                for ends in [[2, 2], [5, 5], [1, -1]]:
                     for decrease_axis in [[], [1], [2], [-1], [-100]]:
                         for infer_flags in [[-1]]:
                             dics = [{
@@ -109,17 +111,6 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            inputs = program_config.inputs
-            if dynamic_shape == True and len(attrs[0]["decrease_axis"]) == 0:
-                return 1, 2
-            if dynamic_shape == True and len(attrs[0]["decrease_axis"]) != 1:
-                return 0, 3
-            if dynamic_shape == False and len(attrs[0]["decrease_axis"]) != 0:
-                return 0, 3
-            if dynamic_shape:
-                for i in range(len(attrs[0]["starts"])):
-                    if attrs[0]["starts"][i] < 0 or attrs[0]["ends"][i] < 0:
-                        return 0, 3
             if not dynamic_shape:
                 for x in attrs[0]["axes"]:
                     if x == 0:

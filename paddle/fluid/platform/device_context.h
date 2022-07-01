@@ -645,7 +645,6 @@ class CUDADeviceContext : public phi::GPUContext {
   // NOTE: Just for compatibility with the past, please delete if there is an
   // elegant way.
   std::unique_ptr<stream::CUDAStream> cuda_stream_;
-  std::unique_ptr<phi::DnnWorkspaceHandle> workspace_{nullptr};
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
@@ -883,11 +882,15 @@ struct DefaultDeviceContextType<platform::CustomPlace> {
 };
 #endif
 
+void EmplaceDeviceContexts(
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        place_to_device_context,
+    const std::vector<platform::Place>& places,
+    bool disable_setting_default_stream_for_allocator);
+
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
-  explicit DeviceContextPool(const std::vector<platform::Place>& places);
-
   static DeviceContextPool& Instance() {
     PADDLE_ENFORCE_NOT_NULL(pool,
                             platform::errors::PreconditionNotMet(
@@ -902,6 +905,8 @@ class DeviceContextPool {
     }
     return *pool;
   }
+
+  static bool IsInitialized() { return pool != nullptr; }
 
   static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
 
@@ -925,12 +930,14 @@ class DeviceContextPool {
                      std::shared_future<std::unique_ptr<DeviceContext>>>*);
 
  private:
+  explicit DeviceContextPool(const std::vector<platform::Place>& places);
+
   static DeviceContextPool* pool;
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;
-  static thread_local const std::map<
-      Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
-      external_device_contexts_;  // not owned
+  static thread_local const std::
+      map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+          external_device_contexts_;  // not owned
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

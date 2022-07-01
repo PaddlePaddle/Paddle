@@ -77,19 +77,23 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
   // Make pool2d followed by transpose
 
   auto ksize = std::vector<int>(2, 2);
-  auto op_pool = framework::OpRegistry::CreateOp(
-      "pool2d", {{"X", {"x"}}}, {{"Out", {"y"}}},
-      {{"pooling_type", {std::string("max")}},
-       {"ksize", {ksize}},
-       {"data_format", {std::string("NHWC")}},
-       {"use_mkldnn", {true}}});
+  auto op_pool =
+      framework::OpRegistry::CreateOp("pool2d",
+                                      {{"X", {"x"}}},
+                                      {{"Out", {"y"}}},
+                                      {{"pooling_type", {std::string("max")}},
+                                       {"ksize", {ksize}},
+                                       {"data_format", {std::string("NHWC")}},
+                                       {"use_mkldnn", {true}}});
 
   auto axis = std::vector<int>(4, 0);
   axis[1] = 2;
   axis[2] = 3;
   axis[3] = 1;
   auto op_transpose = framework::OpRegistry::CreateOp(
-      "transpose", {{"X", {"y"}}}, {{"Out", {"z"}}},
+      "transpose",
+      {{"X", {"y"}}},
+      {{"Out", {"z"}}},
       {{"axis", {axis}}, {"use_mkldnn", {true}}});
 
   op_pool->Run(scope, p);
@@ -97,7 +101,8 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
   pool.Get(p)->Wait();
 
   // Verify shape of output
-  PADDLE_ENFORCE_EQ(z->dims(), expected_dims,
+  PADDLE_ENFORCE_EQ(z->dims(),
+                    expected_dims,
                     platform::errors::InvalidArgument(
                         "Computed shape does not match expected shape"));
 }
@@ -131,19 +136,23 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   // relu(oneDNN). Second relu should make a shape rotation to NCHW
 
   auto ksize = std::vector<int>(2, 2);
-  auto op_pool = framework::OpRegistry::CreateOp(
-      "pool2d", {{"X", {"x"}}}, {{"Out", {"y"}}},
-      {{"pooling_type", {std::string("max")}},
-       {"ksize", {ksize}},
-       {"data_format", {std::string("NHWC")}},
-       {"use_mkldnn", {true}}});
+  auto op_pool =
+      framework::OpRegistry::CreateOp("pool2d",
+                                      {{"X", {"x"}}},
+                                      {{"Out", {"y"}}},
+                                      {{"pooling_type", {std::string("max")}},
+                                       {"ksize", {ksize}},
+                                       {"data_format", {std::string("NHWC")}},
+                                       {"use_mkldnn", {true}}});
 
   auto axis = std::vector<int>(4, 0);
   axis[1] = 2;
   axis[2] = 3;
   axis[3] = 1;
   auto op_relu1 = framework::OpRegistry::CreateOp(
-      "relu", {{"X", {"y"}}}, {{"Out", {"u"}}},
+      "relu",
+      {{"X", {"y"}}},
+      {{"Out", {"u"}}},
       {{"axis", {axis}}, {"use_mkldnn", {false}}});
 
   auto op_relu2 = framework::OpRegistry::CreateOp(
@@ -156,7 +165,8 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   pool.Get(p)->Wait();
 
   // Verify shape of output
-  PADDLE_ENFORCE_EQ(z->dims(), expected_dims,
+  PADDLE_ENFORCE_EQ(z->dims(),
+                    expected_dims,
                     platform::errors::InvalidArgument(
                         "Computed shape does not match expected shape"));
 }
@@ -189,12 +199,14 @@ TEST(test_pool2d_shape_nhwc, cpu_place) {
   // as output tensor not-rotated shape of Pool (
 
   auto ksize = std::vector<int>(2, 2);
-  auto op_pool = framework::OpRegistry::CreateOp(
-      "pool2d", {{"X", {"x"}}}, {{"Out", {"y"}}},
-      {{"pooling_type", {std::string("max")}},
-       {"ksize", {ksize}},
-       {"data_format", {std::string("NHWC")}},
-       {"use_mkldnn", {true}}});
+  auto op_pool =
+      framework::OpRegistry::CreateOp("pool2d",
+                                      {{"X", {"x"}}},
+                                      {{"Out", {"y"}}},
+                                      {{"pooling_type", {std::string("max")}},
+                                       {"ksize", {ksize}},
+                                       {"data_format", {std::string("NHWC")}},
+                                       {"use_mkldnn", {true}}});
 
   auto op_shape = framework::OpRegistry::CreateOp(
       "shape", {{"Input", {"y"}}}, {{"Out", {"z"}}}, {{"use_mkldnn", {true}}});
@@ -209,7 +221,8 @@ TEST(test_pool2d_shape_nhwc, cpu_place) {
   std::vector<int32_t> vzdata(zdata, zdata + z->numel());
 
   // Verify shape of output
-  PADDLE_ENFORCE_EQ(vzdata, expected_dims,
+  PADDLE_ENFORCE_EQ(vzdata,
+                    expected_dims,
                     platform::errors::InvalidArgument(
                         "Computed shape does not match expected shape"));
 }
@@ -236,11 +249,13 @@ TEST(test_pool2d_crop_nhwc, cpu_place) {
   // Second input (Y) to crop is having no buffer
   // but as it is MKLDNN then its shape order should be NCHW
   auto expected_dims_nchw = phi::vectorize<int64_t>(expected_dims);
-  std::rotate(expected_dims_nchw.begin() + 1, expected_dims_nchw.end() - 1,
+  std::rotate(expected_dims_nchw.begin() + 1,
+              expected_dims_nchw.end() - 1,
               expected_dims_nchw.end());
   second_crop_input_name.tensor->Resize(phi::make_ddim(expected_dims_nchw));
   const auto second_crop_input_md =
-      dnnl::memory::desc(expected_dims_nchw, dnnl::memory::data_type::f32,
+      dnnl::memory::desc(expected_dims_nchw,
+                         dnnl::memory::data_type::f32,
                          dnnl::memory::format_tag::nhwc);
   second_crop_input_name.tensor->set_mem_desc(second_crop_input_md);
 
@@ -254,17 +269,20 @@ TEST(test_pool2d_crop_nhwc, cpu_place) {
   // that is followed by CPU kernel with non-buffered Input
 
   auto ksize = std::vector<int>(2, 2);
-  auto op_pool = framework::OpRegistry::CreateOp(
-      "pool2d", {{"X", {"x"}}}, {{"Out", {"y"}}},
-      {{"pooling_type", {std::string("max")}},
-       {"ksize", {ksize}},
-       {"data_format", {std::string("NHWC")}},
-       {"use_mkldnn", {true}}});
+  auto op_pool =
+      framework::OpRegistry::CreateOp("pool2d",
+                                      {{"X", {"x"}}},
+                                      {{"Out", {"y"}}},
+                                      {{"pooling_type", {std::string("max")}},
+                                       {"ksize", {ksize}},
+                                       {"data_format", {std::string("NHWC")}},
+                                       {"use_mkldnn", {true}}});
 
   std::vector<int> offsets{0, 0, 0, 0};
-  auto op_crop = framework::OpRegistry::CreateOp(
-      "crop", {{"X", {"y"}}, {"Y", {"v"}}}, {{"Out", {"z"}}},
-      {{"offsets", {offsets}}});
+  auto op_crop = framework::OpRegistry::CreateOp("crop",
+                                                 {{"X", {"y"}}, {"Y", {"v"}}},
+                                                 {{"Out", {"z"}}},
+                                                 {{"offsets", {offsets}}});
 
   op_pool->Run(scope, p);
   op_crop->Run(scope, p);
@@ -272,7 +290,8 @@ TEST(test_pool2d_crop_nhwc, cpu_place) {
   pool.Get(p)->Wait();
 
   // Verify shape of output
-  PADDLE_ENFORCE_EQ(z->dims(), expected_dims,
+  PADDLE_ENFORCE_EQ(z->dims(),
+                    expected_dims,
                     platform::errors::InvalidArgument(
                         "Output shape does not match expected output shape"));
 }

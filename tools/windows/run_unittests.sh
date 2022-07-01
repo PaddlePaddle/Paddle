@@ -85,6 +85,7 @@ disable_win_inference_api_test="^trt_quant_int8_yolov3_r50_test$|\
 ^lite_resnet50_test$|\
 ^test_trt_dynamic_shape_transformer_prune$|\
 ^lite_mul_model_test$|\
+^trt_split_converter_test$|\
 ^paddle_infer_api_copy_tensor_tester$"
 
 
@@ -191,10 +192,6 @@ if [ -f "$PADDLE_ROOT/added_ut" ];then
         echo "========================================"
         exit 8;
     fi
-    if nvcc --version | grep 11.2; then
-        echo "Only test added_ut temporarily when running in CI-Windows-inference of CUDA 11.2."
-        exit 0;
-    fi
 fi
 set -e
 
@@ -207,21 +204,10 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
     echo "Windows 1 card TestCases count is $num"
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
         python ${PADDLE_ROOT}/tools/get_pr_ut.py || echo "Failed to obtain ut_list !"
-        if [[ -f "ut_list" ]]; then
-            echo "PREC length: "`wc -l ut_list`
-            precision_cases=`cat ut_list`
-            if [[ "$precision_cases" != "" ]];then
-                python ${PADDLE_ROOT}/tools/windows/get_prec_ut_list.py
-            fi
-        fi
     fi
-
-    # sys.argv[1] may exceed max_arg_length when busybox run parallel_UT_rule in windows
-    output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py)
-    cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
-    tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
-    two_parallel_job=$(echo $output | cut -d ";" -f 3)
-    non_parallel_job=$(echo $output | cut -d ";" -f 4)
+    
+    python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
+    
 fi
 
 failed_test_lists=''
@@ -271,7 +257,7 @@ function unittests_retry(){
     wintest_error=1
     retry_time=3
     exec_times=0
-    exec_retry_threshold=10
+    exec_retry_threshold=30
     retry_unittests=$(echo "${failed_test_lists}" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
     need_retry_ut_counts=$(echo "$retry_unittests" |awk -F ' ' '{print }'| sed '/^$/d' | wc -l)
     retry_unittests_regular=$(echo "$retry_unittests" |awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
@@ -309,7 +295,7 @@ function unittests_retry(){
                     exec_times=$(echo $exec_times | awk '{print $0+1}')
                 done
     else
-        # There are more than 10 failed unit tests, so no unit test retry
+        # There are more than 30 failed unit tests, so no unit test retry
         is_retry_execuate=1
     fi
     rm -f $tmp_dir/*
@@ -319,7 +305,7 @@ function show_ut_retry_result() {
     if [[ "$is_retry_execuate" != "0" ]];then
         failed_test_lists_ult=`echo "${failed_test_lists}"`
         echo "========================================="
-        echo "There are more than 10 failed unit tests, so no unit test retry!!!"
+        echo "There are more than 30 failed unit tests, so no unit test retry!!!"
         echo "========================================="
         echo "${failed_test_lists_ult}"
         exit 8;
@@ -367,10 +353,86 @@ if nvcc --version | grep 11.2; then
 fi
 
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
-    run_unittest_gpu $cpu_parallel_job 10
-    run_unittest_gpu $tetrad_parallel_job 4
-    run_unittest_gpu $two_parallel_job 2
-    run_unittest_gpu $non_parallel_job
+
+    single_ut_mem_0_startTime_s=`date +%s`
+    while read line
+    do
+        run_unittest_gpu "$line" 16
+    done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
+    single_ut_mem_0_endTime_s=`date +%s`
+    single_ut_mem_0_Time_s=`expr $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s`
+    echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $single_ut_mem_0_Time_s s" 
+
+    single_ut_startTime_s=`date +%s`
+    while read line
+    do
+        num=`echo $line | awk -F"$" '{print NF-1}'`
+        para_num=`expr $num / 3`
+        if [ $para_num -eq 0 ]; then
+            para_num=4
+        fi
+        run_unittest_gpu "$line" $para_num
+    done < $PADDLE_ROOT/tools/single_card_tests_new
+    single_ut_endTime_s=`date +%s`
+    single_ut_Time_s=`expr $single_ut_endTime_s - $single_ut_startTime_s`
+    echo "ipipe_log_param_1_TestCases_Total_Time: $single_ut_Time_s s" 
+
+    multiple_ut_mem_0_startTime_s=`date +%s`
+    while read line
+    do
+        run_unittest_gpu "$line" 10
+    done < $PADDLE_ROOT/tools/multiple_card_tests_mem0_new
+    multiple_ut_mem_0_endTime_s=`date +%s`
+    multiple_ut_mem_0_Time_s=`expr $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s`
+    echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $multiple_ut_mem_0_Time_s s" 
+    
+    multiple_ut_startTime_s=`date +%s`
+    while read line
+    do
+        num=`echo $line | awk -F"$" '{print NF-1}'`
+        para_num=`expr $num / 3`
+        if [ $para_num -eq 0 ]; then
+            para_num=4
+        fi
+        run_unittest_gpu "$line" $para_num
+
+    done < $PADDLE_ROOT/tools/multiple_card_tests_new
+    multiple_ut_endTime_s=`date +%s`
+    multiple_ut_Time_s=`expr $multiple_ut_endTime_s - $multiple_ut_startTime_s`
+    echo "ipipe_log_param_2_TestCases_Total_Time: $multiple_ut_Time_s s"
+
+
+    exclusive_ut_mem_0_startTime_s=`date +%s`
+    while read line
+    do
+        run_unittest_gpu "$line" 10
+    done < $PADDLE_ROOT/tools/exclusive_card_tests_mem0_new
+    exclusive_ut_mem_0_endTime_s=`date +%s`
+    exclusive_ut_mem_0_Time_s=`expr $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s`
+    echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $exclusive_ut_mem_0_Time_s s" 
+
+    exclusive_ut_startTime_s=`date +%s`
+    while read line
+    do
+        num=`echo $line | awk -F"$" '{print NF-1}'`
+        para_num=`expr $num / 3`
+        if [ $para_num -eq 0 ]; then
+            para_num=4
+        fi
+        run_unittest_gpu "$line" $para_num
+    done < $PADDLE_ROOT/tools/exclusive_card_tests_new
+    exclusive_ut_endTime_s=`date +%s`
+    exclusive_ut_Time_s=`expr $exclusive_ut_endTime_s - $exclusive_ut_startTime_s`
+    echo "ipipe_log_param_-1_TestCases_Total_Time: $exclusive_ut_Time_s s"
+
+    noparallel_ut_startTime_s=`date +%s`
+    while read line
+    do
+        run_unittest_gpu "$line" 3
+    done < $PADDLE_ROOT/tools/no_parallel_case_file
+    noparallel_ut_endTime_s=`date +%s`
+    noparallel_ut_Time_s=`expr $noparallel_ut_endTime_s - $noparallel_ut_startTime_s`
+    echo "ipipe_log_param_noparallel_TestCases_Total_Time: $noparallel_ut_Time_s s"
 else
     run_unittest_cpu
 fi

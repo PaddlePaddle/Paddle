@@ -95,7 +95,8 @@ class MergeSelectedRowsOpInferVarType
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OPERATOR(merge_selected_rows, ops::MergeSelectedRowsOp,
+REGISTER_OPERATOR(merge_selected_rows,
+                  ops::MergeSelectedRowsOp,
                   ops::MergeSelectedRowsOpMaker,
                   ops::MergeSelectedRowsOpInferVarType);
 

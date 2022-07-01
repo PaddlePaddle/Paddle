@@ -29,9 +29,17 @@ using DataLayout = framework::DataLayout;
 template <typename place, typename T>
 struct LRNFunctor {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor& input, framework::Tensor* out,
-                  framework::Tensor* mid, int N, int C, int H, int W, int n,
-                  T k, T alpha, T beta,
+                  const framework::Tensor& input,
+                  framework::Tensor* out,
+                  framework::Tensor* mid,
+                  int N,
+                  int C,
+                  int H,
+                  int W,
+                  int n,
+                  T k,
+                  T alpha,
+                  T beta,
                   const DataLayout data_layout = DataLayout::kAnyLayout);
 };
 
@@ -70,17 +78,20 @@ class LRNKernel : public framework::OpKernel<T> {
     T k = ctx.Attr<float>("k");
 
     PADDLE_ENFORCE_GE(
-        alpha, 0UL,
+        alpha,
+        0UL,
         platform::errors::InvalidArgument("Argument(alpha) should >= 0.0, "
                                           "but received alpha(%d) less than 0",
                                           alpha));
     PADDLE_ENFORCE_GE(
-        beta, 0UL,
+        beta,
+        0UL,
         platform::errors::InvalidArgument("Argument(beta) should >= 0.0, "
                                           "but received beta(%d) less than 0",
                                           beta));
     PADDLE_ENFORCE_GE(
-        k, 0UL,
+        k,
+        0UL,
         platform::errors::InvalidArgument("Argument(k) should >= 0.0, "
                                           "but received k(%d) less than 0",
                                           k));
@@ -93,10 +104,18 @@ class LRNKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 struct LRNGradFunctor {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor& x, const framework::Tensor& out,
-                  const framework::Tensor& mid, framework::Tensor* x_g,
-                  const framework::Tensor& out_g, int N, int C, int H, int W,
-                  int n, T alpha, T beta,
+                  const framework::Tensor& x,
+                  const framework::Tensor& out,
+                  const framework::Tensor& mid,
+                  framework::Tensor* x_g,
+                  const framework::Tensor& out_g,
+                  int N,
+                  int C,
+                  int H,
+                  int W,
+                  int n,
+                  T alpha,
+                  T beta,
                   const DataLayout data_layout = DataLayout::kAnyLayout);
 };
 
@@ -146,7 +165,8 @@ class LRNGradKernel : public framework::OpKernel<T> {
     T beta = ctx.Attr<T>("beta");
 
     PADDLE_ENFORCE_EQ(
-        !ctx.Attr<bool>("is_test"), true,
+        !ctx.Attr<bool>("is_test"),
+        true,
         platform::errors::InvalidArgument(
             "is_test attribute should be set to False in training phase. "
             "but received is_test == True in training phase."));

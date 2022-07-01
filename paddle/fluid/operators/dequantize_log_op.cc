@@ -34,7 +34,8 @@ namespace operators {
 template <typename T>
 struct DequantizeFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& dev_ctx,
-                  const framework::Tensor* in, const framework::Tensor* dict,
+                  const framework::Tensor* in,
+                  const framework::Tensor* dict,
                   framework::Tensor* out) {
     const float* dict_data = dict->data<float>();
     const T* input_data = in->data<T>();
@@ -61,10 +62,12 @@ class DequantizeLogOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::NotFound(
                           "Input(X) of DequantizeLogOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::NotFound(
                           "Output(Out) of DequantizeLogOp is not found."));
 
@@ -108,7 +111,9 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(
-    dequantize_log, ops::DequantizeLogOp, ops::DequantizeLogOpMaker,
+    dequantize_log,
+    ops::DequantizeLogOp,
+    ops::DequantizeLogOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(dequantize_log, ops::DequantizeLogKernel<CPU, int8_t>);

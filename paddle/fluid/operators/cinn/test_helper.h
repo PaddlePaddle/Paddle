@@ -36,7 +36,8 @@ using Node = framework::ir::Node;
 using framework::paddle2cinn::Name2VarInfoMap;
 
 std::unique_ptr<Graph> CreateOnlyElementwiseAddGraph(
-    const std::string& x_name, const std::string& y_name,
+    const std::string& x_name,
+    const std::string& y_name,
     const std::string& out_name) {
   auto g = std::make_unique<Graph>(framework::ProgramDesc());
   framework::OpDesc feed_op_x, feed_op_y;
@@ -111,10 +112,10 @@ void InitVariablesWithRandomValue(const std::vector<std::string>& var_names,
 template <typename DataType>
 void CompareOpResult(Variable* test_out, Variable* expected_out) {
   LoDTensor test_tensor, expected_tensor;
-  paddle::framework::TensorCopySync(test_out->Get<LoDTensor>(),
-                                    platform::CPUPlace(), &test_tensor);
-  paddle::framework::TensorCopySync(expected_out->Get<LoDTensor>(),
-                                    platform::CPUPlace(), &expected_tensor);
+  paddle::framework::TensorCopySync(
+      test_out->Get<LoDTensor>(), platform::CPUPlace(), &test_tensor);
+  paddle::framework::TensorCopySync(
+      expected_out->Get<LoDTensor>(), platform::CPUPlace(), &expected_tensor);
 
   ASSERT_TRUE(test_tensor.IsInitialized());
   ASSERT_TRUE(expected_tensor.IsInitialized());

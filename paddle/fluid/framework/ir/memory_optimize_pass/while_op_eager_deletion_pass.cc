@@ -39,7 +39,8 @@ class WhileOpEagerDeletionPass : public ir::Pass {
     // may be constructed only by forward or backward program, so we use
     // OpVariant here instead of OperatorBase.
     std::unordered_map<
-        size_t, std::pair<std::vector<OpVariant>, std::vector<OpVariant>>>
+        size_t,
+        std::pair<std::vector<OpVariant>, std::vector<OpVariant>>>
         target_ops;
     for (auto *op : all_ops) {
       auto compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
@@ -56,7 +57,8 @@ class WhileOpEagerDeletionPass : public ir::Pass {
     if (graph->IsConstructedByPartialProgram()) {
       VLOG(4) << "Is Paritial Program";
       PADDLE_ENFORCE_LE(
-          target_ops.size(), 1,
+          target_ops.size(),
+          1,
           platform::errors::InvalidArgument(
               "Unsupported multi device if graph is constructed by "
               "partial program."));
@@ -66,11 +68,11 @@ class WhileOpEagerDeletionPass : public ir::Pass {
 
       auto all_ops = graph->OriginProgram().Block(0).AllOps();
       if (while_ops.empty()) {
-        operators::AppendOpVariantByOpName(all_ops, std::string("while"),
-                                           &while_ops);
+        operators::AppendOpVariantByOpName(
+            all_ops, std::string("while"), &while_ops);
       } else if (while_grad_ops.empty()) {
-        operators::AppendOpVariantByOpName(all_ops, std::string("while_grad"),
-                                           &while_grad_ops);
+        operators::AppendOpVariantByOpName(
+            all_ops, std::string("while_grad"), &while_grad_ops);
       } else {
         PADDLE_THROW("One of while_ops or while_grad_ops should be empty.");
       }

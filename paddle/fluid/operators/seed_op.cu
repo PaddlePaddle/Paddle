@@ -34,13 +34,18 @@ class GPUSeedKernel : public framework::OpKernel<T> {
       out->mutable_data<T>(platform::CPUPlace());
       phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
-              out, static_cast<T>(seed));
+              out,
+              static_cast<T>(seed));
     } else {
       auto *out_data = out->mutable_data<T>(context.GetPlace());
       auto target_gpu_place = context.GetPlace();
       auto stream = context.cuda_device_context().stream();
-      memory::Copy(target_gpu_place, out_data, platform::CPUPlace(), &seed,
-                   sizeof(int), stream);
+      memory::Copy(target_gpu_place,
+                   out_data,
+                   platform::CPUPlace(),
+                   &seed,
+                   sizeof(int),
+                   stream);
     }
   }
 };

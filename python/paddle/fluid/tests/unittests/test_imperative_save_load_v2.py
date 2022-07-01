@@ -29,6 +29,8 @@ import six
 import paddle
 from paddle.fluid.framework import _test_eager_guard
 
+import tempfile
+
 
 class SimpleLSTMRNN(fluid.Layer):
 
@@ -219,6 +221,12 @@ class PtbModel(fluid.Layer):
 
 class TestDygraphPtbRnn(unittest.TestCase):
 
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def func_setUp(self):
         seed = 90
         hidden_size = 10
@@ -295,7 +303,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 else:
                     self.base_opti[k] = v
 
-            paddle.save(self.opti_dict, "./test_dy_v2.pdopt")
+            paddle.save(self.opti_dict,
+                        os.path.join(self.temp_dir.name, "test_dy_v2.pdopt"))
 
             self.state_dict = ptb_model.state_dict()
 
@@ -304,10 +313,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 np_t = v.numpy()
                 self.model_base[k] = np_t
 
-            paddle.save(self.state_dict, "./test_dy_v2.pdparams")
+            paddle.save(self.state_dict,
+                        os.path.join(self.temp_dir.name, "test_dy_v2.pdparams"))
 
     def func_testLoadAndSetVarBase(self):
-        self.setUp()
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -383,8 +392,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                     self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
 
-            para_state_dict = paddle.load("./test_dy_v2.pdparams")
-            opti_state_dict = paddle.load("./test_dy_v2.pdopt")
+            para_state_dict = paddle.load(
+                os.path.join(self.temp_dir.name, "test_dy_v2.pdparams"))
+            opti_state_dict = paddle.load(
+                os.path.join(self.temp_dir.name, "test_dy_v2.pdopt"))
             adam.set_state_dict(opti_state_dict)
 
             opti_dict = adam.state_dict()
@@ -752,7 +763,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_hidden = None
             last_cell = None
 
-            state_dict, opti_dict = fluid.load_dygraph("./test_dy_v2")
+            state_dict, opti_dict = fluid.load_dygraph(
+                os.path.join(self.temp_dir.name, "test_dy_v2"))
             adam.set_state_dict(opti_dict)
             ptb_model.set_dict(state_dict)
 
@@ -907,19 +919,23 @@ class TestDygraphPtbRnn(unittest.TestCase):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy.pdparams'))
+            paddle.save(
+                state_dict,
+                os.path.join(self.temp_dir.name, 'saved_dy', 'emb_dy.pdparams'))
 
             para_state_dict = paddle.load(
-                os.path.join('saved_dy', 'emb_dy.pdparams'))
+                os.path.join(self.temp_dir.name, 'saved_dy', 'emb_dy.pdparams'))
 
     def func_test_no_state_in_input_dict(self):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy.pdparams'))
+            paddle.save(
+                state_dict,
+                os.path.join(self.temp_dir.name, 'saved_dy', 'emb_dy.pdparams'))
 
             para_state_dict = paddle.load(
-                os.path.join('saved_dy', 'emb_dy.pdparams'))
+                os.path.join(self.temp_dir.name, 'saved_dy', 'emb_dy.pdparams'))
             para_state_dict.pop('weight')
 
             emb.set_state_dict(para_state_dict)
@@ -928,9 +944,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy.pdparams'))
+            paddle.save(
+                state_dict,
+                os.path.join(self.temp_dir.name, 'saved_dy', 'emb_dy.pdparams'))
 
-            para_state_dict = paddle.load(os.path.join('saved_dy',
+            para_state_dict = paddle.load(os.path.join(self.temp_dir.name,
+                                                       'saved_dy',
                                                        'emb_dy.pdparams'),
                                           return_numpy=True)
             para_state_dict['weight'] = np.expand_dims(

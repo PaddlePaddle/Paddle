@@ -102,14 +102,18 @@ class SlogDeterminantGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input",
+    OP_INOUT_CHECK(
+        ctx->HasInput("Input"), "Input", "Input", "SlogDeterminantGradOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Out"), "Input", "Out", "SlogDeterminantGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
                    "SlogDeterminantGradOp");
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out",
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Input")),
+                   "Output",
+                   framework::GradVarName("Input"),
                    "SlogDeterminantGradOp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "SlogDeterminantGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Input")), "Output",
-                   framework::GradVarName("Input"), "SlogDeterminantGradOp");
 
     ctx->SetOutputDim(framework::GradVarName("Input"),
                       ctx->GetInputDim("Input"));
@@ -149,19 +153,25 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SlogDeterminantGradNoNeedBufferVarsInferer,
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-DECLARE_INFER_SHAPE_FUNCTOR(determinant, DeterminantInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(determinant,
+                            DeterminantInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
-REGISTER_OPERATOR(determinant, ops::DeterminantOp, ops::DeterminantOpMaker,
+REGISTER_OPERATOR(determinant,
+                  ops::DeterminantOp,
+                  ops::DeterminantOpMaker,
                   ops::DeterminantGradOpMaker<paddle::framework::OpDesc>,
                   ops::DeterminantGradOpMaker<paddle::imperative::OpBase>,
                   DeterminantInferShapeFunctor);
 
-DECLARE_INFER_SHAPE_FUNCTOR(determinant_grad, DeterminantGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(determinant_grad,
+                            DeterminantGradInferShapeFunctor,
                             PD_INFER_META(phi::GeneralUnaryGradInferMeta));
-REGISTER_OPERATOR(determinant_grad, ops::DeterminantGradOp,
+REGISTER_OPERATOR(determinant_grad,
+                  ops::DeterminantGradOp,
                   DeterminantGradInferShapeFunctor);
 
-REGISTER_OPERATOR(slogdeterminant, ops::SlogDeterminantOp,
+REGISTER_OPERATOR(slogdeterminant,
+                  ops::SlogDeterminantOp,
                   ops::SlogDeterminantOpMaker,
                   ops::SlogDeterminantGradOpMaker<paddle::framework::OpDesc>,
                   ops::SlogDeterminantGradOpMaker<paddle::imperative::OpBase>);
@@ -170,7 +180,8 @@ REGISTER_OPERATOR(slogdeterminant_grad,
                   ops::SlogDeterminantGradOp)  // reuse det grad op
 
 REGISTER_OP_CPU_KERNEL(
-    slogdeterminant, ops::SlogDeterminantKernel<plat::CPUDeviceContext, float>,
+    slogdeterminant,
+    ops::SlogDeterminantKernel<plat::CPUDeviceContext, float>,
     ops::SlogDeterminantKernel<plat::CPUDeviceContext, double>);
 
 REGISTER_OP_CPU_KERNEL(

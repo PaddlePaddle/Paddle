@@ -12,12 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/fsp_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(fsp, ops::FSPOpKernel<plat::CUDADeviceContext, float>,
+REGISTER_OP_CUDA_KERNEL(fsp,
+                        ops::FSPOpKernel<plat::CUDADeviceContext, float>,
                         ops::FSPOpKernel<plat::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(fsp_grad,
                         ops::FSPGradOpKernel<plat::CUDADeviceContext, float>,

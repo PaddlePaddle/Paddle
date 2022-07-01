@@ -5,7 +5,7 @@ if(WITH_PSLIB)
     if(NOT WITH_HETERPS)
       set(BRPC_DEPS brpc)
     endif()
-  endif(WITH_PSLIB_BRPC)
+  endif()
   cc_library(
     fleet_wrapper
     SRCS fleet_wrapper.cc
@@ -21,7 +21,7 @@ else()
     fleet_wrapper
     SRCS fleet_wrapper.cc
     DEPS framework_proto variable_helper scope)
-endif(WITH_PSLIB)
+endif()
 
 if(WITH_HETERPS)
   if(WITH_NCCL AND WITH_GPU)
@@ -48,7 +48,7 @@ else()
     ps_gpu_wrapper
     SRCS ps_gpu_wrapper.cc
     DEPS gloo_wrapper)
-endif(WITH_HETERPS)
+endif()
 
 if(WITH_NCCL OR WITH_RCCL)
   cc_library(
@@ -74,7 +74,7 @@ else()
     box_wrapper
     SRCS box_wrapper.cc
     DEPS framework_proto lod_tensor)
-endif(WITH_BOX_PS)
+endif()
 
 if(WITH_GLOO)
   cc_library(
@@ -94,7 +94,7 @@ else()
     metrics
     SRCS metrics.cc
     DEPS gloo_wrapper)
-endif(WITH_GLOO)
+endif()
 
 if(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS

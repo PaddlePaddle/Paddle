@@ -30,19 +30,22 @@ class LSTMPOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("ProjWeight"), "Input", "ProjWeight", "LSTMP");
     OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "LSTMP");
 
-    OP_INOUT_CHECK(ctx->HasOutput("Projection"), "Output", "Projection",
-                   "LSTMP");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Projection"), "Output", "Projection", "LSTMP");
     OP_INOUT_CHECK(ctx->HasOutput("Cell"), "Output", "Cell", "LSTMP");
     OP_INOUT_CHECK(ctx->HasOutput("BatchGate"), "Output", "BatchGate", "LSTMP");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchCellPreAct"), "Output",
-                   "BatchCellPreAct", "LSTMP");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchHidden"), "Output", "BatchHidden",
+    OP_INOUT_CHECK(ctx->HasOutput("BatchCellPreAct"),
+                   "Output",
+                   "BatchCellPreAct",
                    "LSTMP");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("BatchHidden"), "Output", "BatchHidden", "LSTMP");
 
     auto in_dims = ctx->GetInputDim("Input");
 
     PADDLE_ENFORCE_EQ(
-        in_dims.size(), 2,
+        in_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(X)'s rank of LSTMP operator must be 2, but received %d.",
             in_dims.size()));
@@ -51,66 +54,81 @@ class LSTMPOp : public framework::OperatorWithKernel {
     auto w_dims = ctx->GetInputDim("Weight");
     auto proj_dims = ctx->GetInputDim("ProjWeight");
     PADDLE_ENFORCE_EQ(
-        w_dims.size(), 2,
+        w_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The rank of Input(Weight) should be 2, but received %d.",
             w_dims.size()));
     PADDLE_ENFORCE_EQ(
-        w_dims[0], proj_dims[1],
+        w_dims[0],
+        proj_dims[1],
         platform::errors::InvalidArgument(
             "The first dimension of Input(Weight) and the second dimension of "
             "Input(ProjWeight) should be the same, but received %d vs %d.",
-            w_dims[0], proj_dims[1]));
-    PADDLE_ENFORCE_EQ(w_dims[1], 4 * frame_size,
+            w_dims[0],
+            proj_dims[1]));
+    PADDLE_ENFORCE_EQ(w_dims[1],
+                      4 * frame_size,
                       platform::errors::InvalidArgument(
                           "The second dimension of Input(Weight) should be 4 * "
                           "%d, but received %d.",
-                          frame_size, w_dims[1]));
+                          frame_size,
+                          w_dims[1]));
 
     PADDLE_ENFORCE_EQ(
-        proj_dims.size(), 2,
+        proj_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The rank of Input(ProjWeight) should be 2, but received %d.",
             proj_dims.size()));
-    PADDLE_ENFORCE_EQ(proj_dims[0], frame_size,
+    PADDLE_ENFORCE_EQ(proj_dims[0],
+                      frame_size,
                       platform::errors::InvalidArgument(
                           "The first dimension of Input(ProjWeight) should be "
                           "%d, but received %d.",
-                          frame_size, proj_dims[0]));
+                          frame_size,
+                          proj_dims[0]));
 
     if (ctx->HasInput("H0")) {
       PADDLE_ENFORCE_EQ(
-          ctx->HasInput("C0"), true,
+          ctx->HasInput("C0"),
+          true,
           platform::errors::NotFound("Input(C0) of LSTMP operator should not "
                                      "be null after Input(H0) provided."));
     }
 
     auto b_dims = ctx->GetInputDim("Bias");
     PADDLE_ENFORCE_EQ(
-        b_dims.size(), 2,
+        b_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The rank of Input(Bias) should be 2, but received %d.",
             b_dims.size()));
     PADDLE_ENFORCE_EQ(
-        b_dims[0], 1,
+        b_dims[0],
+        1,
         platform::errors::InvalidArgument(
             "The first dimension of Input(Bias) should be 1, but received %d.",
             b_dims[0]));
 
     if (ctx->Attrs().Get<bool>("use_peepholes")) {
       PADDLE_ENFORCE_EQ(
-          b_dims[1], 7 * frame_size,
+          b_dims[1],
+          7 * frame_size,
           platform::errors::InvalidArgument(
               "The second dimension of Input(Bias) should be 7 * %d if enable "
               "peepholes connection, but received %d.",
-              frame_size, b_dims[1]));
+              frame_size,
+              b_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
-          b_dims[1], 4 * frame_size,
+          b_dims[1],
+          4 * frame_size,
           platform::errors::InvalidArgument(
               "The second dimension of Input(Bias) should be 4 * %d if disable "
               "peepholes connection, but received %d.",
-              frame_size, b_dims[1]));
+              frame_size,
+              b_dims[1]));
     }
 
     framework::DDim out_dims({in_dims[0], frame_size});
@@ -333,17 +351,19 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Projection"), "Input", "Projection",
-                   "LSTMP@Grad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Projection"), "Input", "Projection", "LSTMP@Grad");
     OP_INOUT_CHECK(ctx->HasInput("Cell"), "Input", "Cell", "LSTMP@Grad");
     OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "LSTMP@Grad");
-    OP_INOUT_CHECK(ctx->HasInput("ProjWeight"), "Input", "ProjWeight",
-                   "LSTMP@Grad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("ProjWeight"), "Input", "ProjWeight", "LSTMP@Grad");
     OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "LSTMP@Grad");
 
-    OP_INOUT_CHECK(ctx->HasInput("BatchGate"), "Input", "BatchGate",
-                   "LSTMP@Grad");
-    OP_INOUT_CHECK(ctx->HasInput("BatchCellPreAct"), "Input", "BatchCellPreAct",
+    OP_INOUT_CHECK(
+        ctx->HasInput("BatchGate"), "Input", "BatchGate", "LSTMP@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("BatchCellPreAct"),
+                   "Input",
+                   "BatchCellPreAct",
                    "LSTMP@Grad");
 
     auto SetOutGradDim = [&ctx](const std::string& name) {
@@ -374,13 +394,17 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lstmp, ops::LSTMPOp, ops::LSTMPOpMaker,
+REGISTER_OPERATOR(lstmp,
+                  ops::LSTMPOp,
+                  ops::LSTMPOpMaker,
                   ops::LSTMPGradMaker<paddle::framework::OpDesc>,
                   ops::LSTMPGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstmp_grad, ops::LSTMPGradOp);
 REGISTER_OP_CPU_KERNEL(
-    lstmp, ops::LSTMPKernel<paddle::platform::CPUDeviceContext, float>,
+    lstmp,
+    ops::LSTMPKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LSTMPKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    lstmp_grad, ops::LSTMPGradKernel<paddle::platform::CPUDeviceContext, float>,
+    lstmp_grad,
+    ops::LSTMPGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LSTMPGradKernel<paddle::platform::CPUDeviceContext, double>);

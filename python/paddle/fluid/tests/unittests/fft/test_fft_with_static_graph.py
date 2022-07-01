@@ -370,7 +370,7 @@ class TestIrfft2(unittest.TestCase):
                                          4), None, -1, 'backward', TypeError),
     ('test_bool_input',
      (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
-         np.bool8), None, -1, 'backward', TypeError),
+         np.bool_), None, -1, 'backward', TypeError),
     ('test_n_nagative', np.random.randn(4, 4, 4) +
      1j * np.random.randn(4, 4, 4), -1, -1, 'backward', ValueError),
     ('test_n_zero', np.random.randn(4, 4) + 1j * np.random.randn(4, 4), 0, -1,
@@ -406,7 +406,7 @@ class TestHfftException(unittest.TestCase):
                                          4), None, -1, 'backward', TypeError),
     ('test_bool_input',
      (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
-         np.bool8), None, -1, 'backward', TypeError),
+         np.bool_), None, -1, 'backward', TypeError),
     ('test_n_nagative', np.random.randn(4, 4, 4) +
      1j * np.random.randn(4, 4, 4), -1, -1, 'backward', ValueError),
     ('test_n_zero', np.random.randn(4, 4) + 1j * np.random.randn(4, 4), 0, -1,
@@ -444,7 +444,7 @@ class TestIrfftException(unittest.TestCase):
         4, 4, 4), None, None, 'backward', TypeError),
      ('test_bool_input',
       (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
-          np.bool8), None, (-2, -1), 'backward', TypeError),
+          np.bool_), None, (-2, -1), 'backward', TypeError),
      ('test_n_nagative',
       np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (-1, -2),
       (-2, -1), 'backward', ValueError),
@@ -485,7 +485,7 @@ class TestHfft2Exception(unittest.TestCase):
         4, 4, 4), None, None, 'backward', TypeError),
      ('test_bool_input',
       (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
-          np.bool8), None, (-2, -1), 'backward', TypeError),
+          np.bool_), None, (-2, -1), 'backward', TypeError),
      ('test_n_nagative',
       np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (-1, -2),
       (-2, -1), 'backward', ValueError),
@@ -526,7 +526,7 @@ class TestIrfft2Exception(unittest.TestCase):
         4, 4, 4), None, None, 'backward', TypeError),
      ('test_bool_input',
       (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)).astype(
-          np.bool8), None, (-2, -1), 'backward', TypeError),
+          np.bool_), None, (-2, -1), 'backward', TypeError),
      ('test_n_nagative',
       np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (-1, -2),
       (-2, -1), 'backward', ValueError),
@@ -568,7 +568,7 @@ class TestHfftnException(unittest.TestCase):
             4, 4, 4), None, None, 'backward', TypeError),
         #  ('test_bool_input',
         #                (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)
-        #                 ).astype(np.bool8), None, (-2, -1), 'backward', ValueError),
+        #                 ).astype(np.bool_), None, (-2, -1), 'backward', ValueError),
         ('test_n_nagative',
          np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (-1, -2),
          (-2, -1), 'backward', ValueError),

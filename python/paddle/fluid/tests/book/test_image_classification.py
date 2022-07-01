@@ -22,6 +22,7 @@ import sys
 import numpy
 import unittest
 import os
+import tempfile
 import numpy as np
 
 paddle.enable_static()
@@ -244,10 +245,13 @@ def main(net_type, use_cuda, is_local=True):
         return
 
     # Directory for saving the trained model
-    save_dirname = "image_classification_" + net_type + ".inference.model"
+    temp_dir = tempfile.TemporaryDirectory()
+    save_dirname = os.path.join(
+        temp_dir.name, "image_classification_" + net_type + ".inference.model")
 
     train(net_type, use_cuda, save_dirname, is_local)
     infer(use_cuda, save_dirname)
+    temp_dir.cleanup()
 
 
 class TestImageClassification(unittest.TestCase):

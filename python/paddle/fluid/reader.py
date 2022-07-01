@@ -145,7 +145,7 @@ class DataLoaderBase(object):
     @classmethod
     def _check_input_array(cls, item):
         arr = np.asarray(item)
-        if arr.dtype == np.object:
+        if arr.dtype == np.object_:
             raise TypeError(
                 "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
                 "this means the input data contains nested lists with different lengths. "

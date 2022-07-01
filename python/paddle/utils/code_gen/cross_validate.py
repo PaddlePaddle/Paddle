@@ -43,7 +43,7 @@ if __name__ == "__main__":
     parser.add_argument('--backward_yaml_paths',
                         type=str,
                         nargs='+',
-                        default=str(current_dir / "backward.yaml.yaml"),
+                        default=str(current_dir / "backward_api.parsed.yaml"),
                         help="backward api yaml file.")
 
     args = parser.parse_args()

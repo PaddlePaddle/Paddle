@@ -53,7 +53,8 @@ class EyeNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    eye, ops::EyeNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    eye,
+    ops::EyeNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::EyeNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::EyeNPUKernel<paddle::platform::NPUDeviceContext,
                       paddle::platform::float16>);

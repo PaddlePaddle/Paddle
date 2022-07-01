@@ -181,8 +181,8 @@ void ExecutorThreadWorker::BindingDataFeedMemory() {
 void ExecutorThreadWorker::SetFetchVarNames(
     const std::vector<std::string>& fetch_var_names) {
   fetch_var_names_.clear();
-  fetch_var_names_.insert(fetch_var_names_.end(), fetch_var_names.begin(),
-                          fetch_var_names.end());
+  fetch_var_names_.insert(
+      fetch_var_names_.end(), fetch_var_names.begin(), fetch_var_names.end());
 }
 
 void ExecutorThreadWorker::SetDevice() {
@@ -285,8 +285,11 @@ void ExecutorThreadWorker::TrainFilesWithTimer() {
     if (thread_id_ == 0) {
       if (batch_cnt > 0 && batch_cnt % 100 == 0) {
         for (size_t i = 0; i < ops_.size(); ++i) {
-          fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
-                  op_name[i].c_str(), op_total_time[i] / batch_cnt);
+          fprintf(stderr,
+                  "op_name:[%zu][%s], op_mean_time:[%fs]\n",
+                  i,
+                  op_name[i].c_str(),
+                  op_total_time[i] / batch_cnt);
         }
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         int fetch_var_num = fetch_var_names_.size();
@@ -482,8 +485,8 @@ void AsyncExecutorThreadWorker::PushDense(int table_id) {
     regions.emplace_back(std::move(reg));
   }
 
-  auto status = _pslib_ptr->_worker_ptr->push_dense(regions.data(),
-                                                    regions.size(), table_id);
+  auto status = _pslib_ptr->_worker_ptr->push_dense(
+      regions.data(), regions.size(), table_id);
   _push_dense_status.push_back(std::move(status));
 }
 
@@ -559,11 +562,13 @@ void AsyncExecutorThreadWorker::FillSparse(int table_id) {
 
     for (auto index = 0u; index < len; ++index) {
       if (ids[index] == 0u) {
-        memcpy(ptr + slot_dim * index, init_value.data() + 2,
+        memcpy(ptr + slot_dim * index,
+               init_value.data() + 2,
                sizeof(float) * slot_dim);
         continue;
       }
-      memcpy(ptr + slot_dim * index, fea_value[fea_idx].data() + 2,
+      memcpy(ptr + slot_dim * index,
+             fea_value[fea_idx].data() + 2,
              sizeof(float) * slot_dim);
       fea_idx++;
     }
@@ -642,9 +647,11 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
   for (auto i = 0u; i < features.size(); ++i) {
     push_g_vec.push_back(push_g[i].data());
   }
-  auto status = _pslib_ptr->_worker_ptr->push_sparse(
-      table_id, features.data(), (const float**)push_g_vec.data(),
-      features.size());
+  auto status =
+      _pslib_ptr->_worker_ptr->push_sparse(table_id,
+                                           features.data(),
+                                           (const float**)push_g_vec.data(),
+                                           features.size());
   _push_sparse_status.push_back(std::move(status));
 }
 
@@ -681,7 +688,8 @@ void AsyncExecutorThreadWorker::collect_feasign_info(int table_id) {
 
 void AsyncExecutorThreadWorker::check_pull_push_memory(
     const std::vector<uint64_t>& features,
-    std::vector<std::vector<float>>* push_g, int dim) {
+    std::vector<std::vector<float>>* push_g,
+    int dim) {
   push_g->resize(features.size() + 1);
   for (auto& t : *push_g) {
     t.resize(dim);
@@ -689,7 +697,8 @@ void AsyncExecutorThreadWorker::check_pull_push_memory(
 }
 
 void AsyncExecutorThreadWorker::check_pull_push_memory(
-    const std::vector<uint64_t>& features, std::vector<float*>* push_g,
+    const std::vector<uint64_t>& features,
+    std::vector<float*>* push_g,
     int dim) {
   if (features.size() > push_g->size()) {
     push_g->reserve(features.size() + 1);

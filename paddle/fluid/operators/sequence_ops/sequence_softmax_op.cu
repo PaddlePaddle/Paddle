@@ -38,8 +38,10 @@ template <typename T, int BlockDim>
 using BlockReduceTempStorage = typename BlockReduce<T, BlockDim>::TempStorage;
 
 template <typename T, int BlockDim>
-__global__ void sequence_softmax_kernel(const T *in_data, const size_t *ref_lod,
-                                        const size_t src_hight, T *out_data) {
+__global__ void sequence_softmax_kernel(const T *in_data,
+                                        const size_t *ref_lod,
+                                        const size_t src_hight,
+                                        T *out_data) {
   __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
   __shared__ T shared_max_data;
   __shared__ T shared_sum_data;
@@ -136,7 +138,9 @@ struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
     paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
     sequence_softmax_kernel<T, kThreadsPerBlock>
         <<<grid_size, block_size, 0, context.stream()>>>(
-            x.data<T>(), mixv_ref_lod.CUDAData(context.GetPlace()), height,
+            x.data<T>(),
+            mixv_ref_lod.CUDAData(context.GetPlace()),
+            height,
             out->mutable_data<T>(context.GetPlace()));
   }
 };
@@ -144,7 +148,8 @@ struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
 template <typename T>
 struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext &context,
-                  const LoDTensor &dout, const LoDTensor &out,
+                  const LoDTensor &dout,
+                  const LoDTensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *dx) {
     size_t height = ref_lod.size() - 1;
@@ -160,8 +165,10 @@ struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
     paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
     sequence_softmax_grad_kernel<T, kThreadsPerBlock>
         <<<grid_size, block_size, 0, context.stream()>>>(
-            dout.data<T>(), out.data<T>(),
-            mixv_ref_lod.CUDAData(context.GetPlace()), height,
+            dout.data<T>(),
+            out.data<T>(),
+            mixv_ref_lod.CUDAData(context.GetPlace()),
+            height,
             dx->mutable_data<T>(context.GetPlace()));
   }
 };
