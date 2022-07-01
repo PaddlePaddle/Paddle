@@ -35,12 +35,12 @@ class SoftplusActivationReluOneDNNFusePassTest(InferencePassTest):
                               dtype="float32")
             softplus_out = fluid.layers.softplus(data)
             if self.fuse_beta is not None:
-                activation_out = self.fuse_activation(
-                    softplus_out, self.fuse_alpha,
-                    self.fuse_beta)
+                activation_out = self.fuse_activation(softplus_out,
+                                                      self.fuse_alpha,
+                                                      self.fuse_beta)
             elif self.fuse_alpha is not None:
-                activation_out = self.fuse_activation(
-                    softplus_out, self.fuse_alpha)
+                activation_out = self.fuse_activation(softplus_out,
+                                                      self.fuse_alpha)
             else:
                 activation_out = self.fuse_activation(softplus_out)
 
