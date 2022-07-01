@@ -56,7 +56,6 @@ class FillConstantOpConverter : public OpConverter {
     nvinfer1::Dims trt_in_shape;
     trt_in_shape.nbDims = shape.size();
     for (size_t i = 0; i < shape.size(); i++) trt_in_shape.d[i] = shape[i];
-
     nvinfer1::ILayer* layer =
         TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_in_shape, weight.get());
     auto output_name = op_desc.Output("Out")[0];
