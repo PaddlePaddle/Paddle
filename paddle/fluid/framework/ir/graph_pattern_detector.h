@@ -1127,7 +1127,7 @@ struct Immutable : public PatternBase {
   Immutable(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "immutable") {}
 
-  PDNode* operator()(const std::string immutable_type);
+  PDNode* operator()(const std::string immutable_type, const std::string input_name);
   PATTERN_DECL_NODE(prev_op);
   PATTERN_DECL_NODE(immutable_in);
   PATTERN_DECL_NODE(immutable_op);

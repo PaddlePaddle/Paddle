@@ -670,11 +670,11 @@ void CPUQuantizePass::QuantizePriorBox(Graph* graph) const {
 }
 
 void CPUQuantizePass::QuantizeImmutable(
-    Graph* graph, const std::string immutable_type) const {
+    Graph* graph, const std::string immutable_type, const std::string input_name) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::Immutable immutable_pattern{pattern, name_scope_};
-  immutable_pattern(immutable_type);
+  immutable_pattern(immutable_type, input_name);
 
   int quantize_immutable_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -706,10 +706,7 @@ void CPUQuantizePass::QuantizeImmutable(
 
     bool is_input_unsigned{false};
     auto input_scale = GetScaleValueForNode(immutable_out, &is_input_unsigned);
-    std::string input_name = "X";
-    if (immutable_type == "slice") {
-      input_name = "Input";
-    }
+
     QuantizeInput(g,
                   immutable_op,
                   immutable_in,
@@ -1135,11 +1132,11 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizePriorBox(graph);
   QuantizeFc(graph);
   QuantizeMatmul(graph);
-  QuantizeImmutable(graph, "reshape2");
-  QuantizeImmutable(graph, "transpose2");
-  QuantizeImmutable(graph, "slice");
-  QuantizeImmutable(graph, "nearest_interp");
-  QuantizeImmutable(graph, "nearest_interp_v2");
+  QuantizeImmutable(graph, "reshape2", "X");
+  QuantizeImmutable(graph, "transpose2", "X");
+  QuantizeImmutable(graph, "slice", "Input");
+  QuantizeImmutable(graph, "nearest_interp", "X");
+  QuantizeImmutable(graph, "nearest_interp_v2", "X");
   QuantizeElementwise(graph, "elementwise_add");
   QuantizeElementwise(graph, "elementwise_mul");
   QuantizeElementwise(graph, "elementwise_sub");
