@@ -30,7 +30,8 @@ using Tensor = framework::Tensor;
 
 inline void DealTensorArray(const framework::ExecutionContext& ctx,
                             const std::vector<int>& starts,
-                            const std::vector<int>& ends, bool out_is_array) {
+                            const std::vector<int>& ends,
+                            bool out_is_array) {
   auto in_array = ctx.Input<LoDTensorArray>("Input");
   // If the input is LoDTensorArray, the rank of input is 1.
   int in_size = in_array->size();
@@ -45,11 +46,13 @@ inline void DealTensorArray(const framework::ExecutionContext& ctx,
     end = start + 1;
   }
 
-  PADDLE_ENFORCE_GT(end, start,
+  PADDLE_ENFORCE_GT(end,
+                    start,
                     platform::errors::InvalidArgument(
                         "Attr(ends) should be greater than attr(starts) in "
                         "slice op. But received end = %d, start = %d.",
-                        ends[0], starts[0]));
+                        ends[0],
+                        starts[0]));
   int out_size = end - start;
 
   if (out_is_array) {
@@ -111,11 +114,13 @@ class SliceXPUKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_EQ(
-        starts.size(), axes.size(),
+        starts.size(),
+        axes.size(),
         platform::errors::InvalidArgument(
             "The size of starts must be equal to the size of axes."));
     PADDLE_ENFORCE_EQ(
-        ends.size(), axes.size(),
+        ends.size(),
+        axes.size(),
         platform::errors::InvalidArgument(
             "The size of ends must be equal to the size of axes."));
 
@@ -144,8 +149,8 @@ class SliceXPUKernel : public framework::OpKernel<T> {
       }
 
       phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
-      slice_dims = phi::funcs::GetSliceDims<int>(in_dims, axes, starts, ends,
-                                                 nullptr, nullptr);
+      slice_dims = phi::funcs::GetSliceDims<int>(
+          in_dims, axes, starts, ends, nullptr, nullptr);
       out_dims = phi::funcs::GetDecreasedDims(slice_dims, decrease_axis);
 
       out->Resize(out_dims);
@@ -181,8 +186,12 @@ class SliceXPUKernel : public framework::OpKernel<T> {
       const XPUType* in_data = reinterpret_cast<const XPUType*>(in->data<T>());
       XPUType* out_data =
           reinterpret_cast<XPUType*>(out->mutable_data<T>(ctx.GetPlace()));
-      int r = xpu::slice<XPUType>(dev_ctx.x_context(), in_data, out_data, shape,
-                                  starts_extension, ends_extension);
+      int r = xpu::slice<XPUType>(dev_ctx.x_context(),
+                                  in_data,
+                                  out_data,
+                                  shape,
+                                  starts_extension,
+                                  ends_extension);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "slice");
     }
   }
@@ -255,8 +264,13 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
         reinterpret_cast<const XPUType*>(dout->data<T>());
     XPUType* din_data =
         reinterpret_cast<XPUType*>(dinput->mutable_data<T>(ctx.GetPlace()));
-    int r = xpu::pad<XPUType>(dev_ctx.x_context(), dout_data, din_data,
-                              out_dims, pad_left, pad_right, XPUType(0));
+    int r = xpu::pad<XPUType>(dev_ctx.x_context(),
+                              dout_data,
+                              din_data,
+                              out_dims,
+                              pad_left,
+                              pad_right,
+                              XPUType(0));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "pad");
   }
 };
@@ -266,7 +280,8 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
-    slice, ops::SliceXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    slice,
+    ops::SliceXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::SliceXPUKernel<paddle::platform::XPUDeviceContext, int>,
     ops::SliceXPUKernel<paddle::platform::XPUDeviceContext,
                         paddle::platform::float16>);

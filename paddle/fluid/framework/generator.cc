@@ -73,14 +73,16 @@ const std::shared_ptr<Generator>& SetRandomSeedGenerator(
     const std::string& name, uint64_t seed) {
   auto& rng_map = GetRandomSeedGeneratorMap();
   auto iter = rng_map.find(name);
-  PADDLE_ENFORCE_EQ(iter == rng_map.end(), true,
+  PADDLE_ENFORCE_EQ(iter == rng_map.end(),
+                    true,
                     platform::errors::AlreadyExists(
                         "%s RandomSeedGenerator is already exist", name));
 
   auto generator = std::make_shared<Generator>(seed);
   bool emplace_success = rng_map.emplace(name, generator).second;
   PADDLE_ENFORCE_EQ(
-      emplace_success, true,
+      emplace_success,
+      true,
       platform::errors::PermissionDenied(
           "SetRandomSeedGenerator cannot emplace %s RandomSeedGenerator",
           name));
@@ -91,7 +93,8 @@ const std::shared_ptr<Generator>& GetRandomSeedGenerator(
     const std::string& name) {
   auto& rng_map = GetRandomSeedGeneratorMap();
   auto iter = rng_map.find(name);
-  PADDLE_ENFORCE_EQ(iter != rng_map.end(), true,
+  PADDLE_ENFORCE_EQ(iter != rng_map.end(),
+                    true,
                     platform::errors::NotFound(
                         "%s RandomSeedGenerator is not found, please "
                         "use `set_random_seed_generator` to set rng first",

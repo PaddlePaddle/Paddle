@@ -137,16 +137,21 @@ class HeterClient {
                         const std::vector<std::string>& recv_var_name,
                         const std::string& mode = "forward");
 
-  int Send(int group_id, const std::vector<std::string>& var_names,
-           const std::vector<int64_t>& vars_len, void* data_ptr,
+  int Send(int group_id,
+           const std::vector<std::string>& var_names,
+           const std::vector<int64_t>& vars_len,
+           void* data_ptr,
            int64_t data_size);
 
-  int Send(const platform::DeviceContext& ctx, const framework::Scope& scope,
+  int Send(const platform::DeviceContext& ctx,
+           const framework::Scope& scope,
            const std::string& message_name,
            const std::vector<std::string>& send_var_names);
 
-  int Recv(int group_id, const std::vector<std::string>& var_names,
-           void* data_ptr, int64_t data_size);
+  int Recv(int group_id,
+           const std::vector<std::string>& var_names,
+           void* data_ptr,
+           int64_t data_size);
 
   int Recv(const platform::DeviceContext& ctx,
            framework::Scope& recv_scope,  // NOLINT
@@ -195,7 +200,8 @@ class HeterClient {
 
   void Stop();
 
-  std::future<int32_t> SendCmd(uint32_t table_id, int cmd_id,
+  std::future<int32_t> SendCmd(uint32_t table_id,
+                               int cmd_id,
                                const std::vector<std::string>& params);
 
   std::future<int32_t> StartProfiler();

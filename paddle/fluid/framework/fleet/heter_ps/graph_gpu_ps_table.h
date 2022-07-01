@@ -97,18 +97,24 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
   NodeQueryResult graph_node_sample(int gpu_id, int sample_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
                                                 bool cpu_switch);
-  NeighborSampleResult graph_neighbor_sample(int gpu_id, int64_t *key,
-                                             int sample_size, int len);
-  NeighborSampleResult graph_neighbor_sample_v2(int gpu_id, int64_t *key,
-                                                int sample_size, int len,
+  NeighborSampleResult graph_neighbor_sample(int gpu_id,
+                                             int64_t *key,
+                                             int sample_size,
+                                             int len);
+  NeighborSampleResult graph_neighbor_sample_v2(int gpu_id,
+                                                int64_t *key,
+                                                int sample_size,
+                                                int len,
                                                 bool cpu_query_switch);
   void init_sample_status();
   void free_sample_status();
   NodeQueryResult query_node_list(int gpu_id, int start, int query_size);
   void clear_graph_info();
   void display_sample_res(void *key, void *val, int len, int sample_len);
-  void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
-                                                 int sample_size, int *h_left,
+  void move_neighbor_sample_result_to_source_gpu(int gpu_id,
+                                                 int gpu_num,
+                                                 int sample_size,
+                                                 int *h_left,
                                                  int *h_right,
                                                  int64_t *src_sample_res,
                                                  int *actual_sample_size);

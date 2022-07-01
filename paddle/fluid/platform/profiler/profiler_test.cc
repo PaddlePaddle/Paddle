@@ -23,6 +23,8 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
@@ -41,10 +43,10 @@ TEST(ProfilerTest, TestHostTracer) {
   profiler->Prepare();
   profiler->Start();
   {
-    RecordInstantEvent("TestTraceLevel_record1", TracerEventType::UserDefined,
-                       2);
-    RecordInstantEvent("TestTraceLevel_record2", TracerEventType::UserDefined,
-                       3);
+    RecordInstantEvent(
+        "TestTraceLevel_record1", TracerEventType::UserDefined, 2);
+    RecordInstantEvent(
+        "TestTraceLevel_record2", TracerEventType::UserDefined, 3);
   }
   auto profiler_result = profiler->Stop();
   auto nodetree = profiler_result->GetNodeTrees();
@@ -92,4 +94,50 @@ TEST(ProfilerTest, TestCudaTracer) {
 #ifdef PADDLE_WITH_CUPTI
   EXPECT_GT(runtime_events.size(), 0u);
 #endif
+}
+
+TEST(ProfilerTest, TestHostTracerForMem) {
+  using paddle::platform::CPUPlace;
+  using paddle::platform::EnableHostEventRecorder;
+  using paddle::platform::MemTraceEventNode;
+  using paddle::platform::Profiler;
+  using paddle::platform::ProfilerOptions;
+  using paddle::platform::ProfilerResult;
+  using paddle::platform::RecordEvent;
+  using paddle::platform::RecordInstantEvent;
+  using paddle::platform::RecordMemEvent;
+  using paddle::platform::TracerEventType;
+  using paddle::platform::TracerMemEventType;
+  ProfilerOptions options;
+  options.trace_level = 1;
+  options.trace_switch = 3;
+  auto profiler = Profiler::Create(options);
+  EXPECT_TRUE(profiler);
+  EnableHostEventRecorder();
+  profiler->Prepare();
+  profiler->Start();
+  {
+    RecordEvent event1(
+        "TestTracerForMem_phase1", TracerEventType::UserDefined, 1);
+    RecordMemEvent(reinterpret_cast<void*>(0),
+                   CPUPlace(),
+                   1024,
+                   TracerMemEventType::Allocate);
+    RecordMemEvent(
+        reinterpret_cast<void*>(0), CPUPlace(), 1024, TracerMemEventType::Free);
+  }
+  {
+    RecordEvent event2(
+        "TestTracerForMem_phase2", TracerEventType::UserDefined, 1);
+    RecordMemEvent(reinterpret_cast<void*>(1024),
+                   CPUPlace(),
+                   1024,
+                   TracerMemEventType::Allocate);
+    RecordMemEvent(reinterpret_cast<void*>(1024),
+                   CPUPlace(),
+                   1024,
+                   TracerMemEventType::Free);
+  }
+  auto profiler_result = profiler->Stop();
+  auto nodetree = profiler_result->GetNodeTrees();
 }

@@ -25,20 +25,20 @@ class UniqueConsecutiveOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "unique_consecutive");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "unique_consecutive");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "unique_consecutive");
 
     auto in_dims = ctx->GetInputDim("X");
     bool return_inverse = ctx->Attrs().Get<bool>("return_inverse");
     bool return_counts = ctx->Attrs().Get<bool>("return_counts");
     auto axis_vec = ctx->Attrs().Get<std::vector<int>>("axis");
     if (return_inverse) {
-      OP_INOUT_CHECK(ctx->HasOutput("Index"), "Output", "Index",
-                     "unique_consecutive");
+      OP_INOUT_CHECK(
+          ctx->HasOutput("Index"), "Output", "Index", "unique_consecutive");
     }
     if (return_counts) {
-      OP_INOUT_CHECK(ctx->HasOutput("Counts"), "Output", "Counts",
-                     "unique_consecutive");
+      OP_INOUT_CHECK(
+          ctx->HasOutput("Counts"), "Output", "Counts", "unique_consecutive");
     }
 
     if (axis_vec.empty()) {
@@ -52,10 +52,12 @@ class UniqueConsecutiveOp : public framework::OperatorWithKernel {
         axis += in_dims.size();
       }
       PADDLE_ENFORCE_LT(
-          axis, in_dims.size(),
+          axis,
+          in_dims.size(),
           platform::errors::InvalidArgument("The axis(%d) should be less than "
                                             "the dimension size(%d) of x.",
-                                            axis, in_dims.size()));
+                                            axis,
+                                            in_dims.size()));
       auto out_dims = in_dims;
       out_dims[axis] = -1;
       ctx->SetOutputDim("Out", out_dims);
@@ -113,7 +115,8 @@ class UniqueConsecutiveOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(unique_consecutive, ops::UniqueConsecutiveOp,
+REGISTER_OP_WITHOUT_GRADIENT(unique_consecutive,
+                             ops::UniqueConsecutiveOp,
                              ops::UniqueConsecutiveOpMaker);
 REGISTER_OP_CPU_KERNEL(
     unique_consecutive,

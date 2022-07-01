@@ -36,19 +36,23 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
     }
     if (check) {
       PADDLE_ENFORCE_EQ(
-          x_dims, y_dims,
+          x_dims,
+          y_dims,
           platform::errors::InvalidArgument(
               "Input(X) ans Input(Y) of SmoothL1LossOp should "
               "have the same size, but received X dim is %s, Y dim is %s",
-              x_dims.to_str(), y_dims.to_str()));
+              x_dims.to_str(),
+              y_dims.to_str()));
     }
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
+    PADDLE_ENFORCE_GE(x_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The tensor rank of Input(X) of SmoothL1LossOp "
                           "should not be less than 2, but received %d.",
                           x_dims.size()));
     if (ctx->HasInput("InsideWeight")) {
-      PADDLE_ENFORCE_EQ(ctx->HasInput("OutsideWeight"), true,
+      PADDLE_ENFORCE_EQ(ctx->HasInput("OutsideWeight"),
+                        true,
                         platform::errors::InvalidArgument(
                             "If weights are provided, must specify both "
                             "inside and outside weights."));
@@ -59,12 +63,14 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
         check = false;
       }
       if (check) {
-        PADDLE_ENFORCE_EQ(x_dims, dims,
+        PADDLE_ENFORCE_EQ(x_dims,
+                          dims,
                           platform::errors::InvalidArgument(
                               "Input(X) ans Input(InsideWeight) of "
                               "SmoothL1LossOp should have the same size, but "
                               "received X dim is %s, InsideWeight dim is %s",
-                              x_dims.to_str(), dims.to_str()));
+                              x_dims.to_str(),
+                              dims.to_str()));
       }
 
       dims = ctx->GetInputDim("OutsideWeight");
@@ -74,12 +80,14 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
         check = false;
       }
       if (check) {
-        PADDLE_ENFORCE_EQ(x_dims, dims,
+        PADDLE_ENFORCE_EQ(x_dims,
+                          dims,
                           platform::errors::InvalidArgument(
                               "Input(X) ans Input(OutsideWeight) of "
                               "SmoothL1LossOp should have the same size, but "
                               "received X dim is %s, OutsideWeight dim is %s",
-                              x_dims.to_str(), dims.to_str()));
+                              x_dims.to_str(),
+                              dims.to_str()));
       }
     }
 
@@ -154,18 +162,22 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_GE(
-        out_dims.size(), 2,
+        out_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The tensor rank of Input(Out@Grad) should be 2, but received %d.",
             out_dims.size()));
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
-          out_dims[0], in_dims[0],
+          out_dims[0],
+          in_dims[0],
           platform::errors::InvalidArgument(
               "The 1st dimension of Input(Out@Grad) must be "
               "same as input in SmoothL1LossGradOp, but received %d and %d.",
-              out_dims[0], in_dims[0]));
-      PADDLE_ENFORCE_EQ(out_dims[1], 1,
+              out_dims[0],
+              in_dims[0]));
+      PADDLE_ENFORCE_EQ(out_dims[1],
+                        1,
                         platform::errors::InvalidArgument(
                             "The 2nd dimension of Input(Out@Grad) must be 1 in "
                             "SmoothL1LossGradOp, but received %d.",
@@ -207,7 +219,9 @@ class SmoothL1LossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(smooth_l1_loss, ops::SmoothL1LossOp, ops::SmoothL1LossOpMaker,
+REGISTER_OPERATOR(smooth_l1_loss,
+                  ops::SmoothL1LossOp,
+                  ops::SmoothL1LossOpMaker,
                   ops::SmoothL1LossGradMaker<paddle::framework::OpDesc>,
                   ops::SmoothL1LossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(smooth_l1_loss_grad, ops::SmoothL1LossGradOp);

@@ -23,14 +23,16 @@ namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 struct SequenceExpandFunctor {
   void operator()(
-      const DeviceContext& ctx, const LoDTensor& x,
+      const DeviceContext& ctx,
+      const LoDTensor& x,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
       LoDTensor* out);
@@ -39,7 +41,8 @@ struct SequenceExpandFunctor {
 template <typename DeviceContext, typename T>
 struct SequenceExpandGradFunctor {
   void operator()(
-      const DeviceContext& ctx, const LoDTensor& dout,
+      const DeviceContext& ctx,
+      const LoDTensor& dout,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
       LoDTensor* dx);
@@ -48,7 +51,8 @@ struct SequenceExpandGradFunctor {
 template <typename T>
 struct SequenceExpandFunctor<platform::CPUDeviceContext, T> {
   void operator()(
-      const platform::CPUDeviceContext& context, const LoDTensor& x,
+      const platform::CPUDeviceContext& context,
+      const LoDTensor& x,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
       LoDTensor* out) {
@@ -93,7 +97,8 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     auto& y_lod = y->lod();
 
     PADDLE_ENFORCE_EQ(
-        y_lod.empty(), false,
+        y_lod.empty(),
+        false,
         platform::errors::InvalidArgument(
             "Input(Y) Tensor of SequenceExpandOp does not contain "
             "LoD information."));
@@ -135,8 +140,11 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
       std::iota(ref_x_lod.begin(), ref_x_lod.end(), 0);
     }
     SequenceExpandFunctor<DeviceContext, T> functor;
-    functor(context.template device_context<DeviceContext>(), *x, ref_x_lod,
-            y_lod[ref_level], out);
+    functor(context.template device_context<DeviceContext>(),
+            *x,
+            ref_x_lod,
+            y_lod[ref_level],
+            out);
   }
 };
 
@@ -155,7 +163,8 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
 template <typename T>
 struct SequenceExpandGradFunctor<platform::CPUDeviceContext, T> {
   void operator()(
-      const platform::CPUDeviceContext& context, const LoDTensor& dout,
+      const platform::CPUDeviceContext& context,
+      const LoDTensor& dout,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
       LoDTensor* dx) {
@@ -215,8 +224,11 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
       std::iota(ref_x_lod.begin(), ref_x_lod.end(), 0);
     }
     SequenceExpandGradFunctor<DeviceContext, T> functor;
-    functor(context.template device_context<DeviceContext>(), *g_out, ref_x_lod,
-            ref_lod, g_x);
+    functor(context.template device_context<DeviceContext>(),
+            *g_out,
+            ref_x_lod,
+            ref_lod,
+            g_x);
   }
 };
 

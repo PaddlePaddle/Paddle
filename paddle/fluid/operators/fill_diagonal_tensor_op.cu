@@ -21,10 +21,13 @@ using Tensor = framework::Tensor;
 using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
-__global__ void fill_diagonal_tensor_kernel(int64_t size, T *out_data,
+__global__ void fill_diagonal_tensor_kernel(int64_t size,
+                                            T *out_data,
                                             const T *fill_data,
-                                            int64_t *strides, int64_t *matdim,
-                                            int64_t offset, int64_t fill_dims0,
+                                            int64_t *strides,
+                                            int64_t *matdim,
+                                            int64_t offset,
+                                            int64_t fill_dims0,
                                             int64_t fill_dims1) {
   int64_t i = blockIdx.x;
   auto sumoff = matdim[i] + offset;
@@ -37,9 +40,13 @@ __global__ void fill_diagonal_tensor_kernel(int64_t size, T *out_data,
 }
 
 template <typename T>
-__global__ void fill_grad_kernel(int64_t size, T *out_data, int64_t *strides,
-                                 int64_t *matdim, int64_t offset,
-                                 int64_t fill_dims0, int64_t fill_dims1) {
+__global__ void fill_grad_kernel(int64_t size,
+                                 T *out_data,
+                                 int64_t *strides,
+                                 int64_t *matdim,
+                                 int64_t offset,
+                                 int64_t fill_dims0,
+                                 int64_t fill_dims1) {
   int64_t i = blockIdx.x;
   auto sumoff = matdim[i] + offset;
   for (int64_t j = threadIdx.x; j < fill_dims1; j += blockDim.x) {
@@ -82,17 +89,23 @@ class FillDiagonalTensorCUDAKernel : public framework::OpKernel<T> {
     int64_t *matdim = &(memory_block[2]);
     CalMatDims(out_dims, dim1, dim2, &offset, new_dims, strides, matdim);
     PADDLE_ENFORCE_EQ(
-        new_dims[0], fill_dims[0],
+        new_dims[0],
+        fill_dims[0],
         platform::errors::InvalidArgument("The dims should be %d x %d, but get "
                                           "%d x %d in fill tensor Y",
-                                          new_dims[0], new_dims[1],
-                                          fill_dims[0], fill_dims[1]));
+                                          new_dims[0],
+                                          new_dims[1],
+                                          fill_dims[0],
+                                          fill_dims[1]));
     PADDLE_ENFORCE_EQ(
-        new_dims[1], fill_dims[1],
+        new_dims[1],
+        fill_dims[1],
         platform::errors::InvalidArgument("The dims should be %d x %d, but get "
                                           "%d x %d in fill tensor Y",
-                                          new_dims[0], new_dims[1],
-                                          fill_dims[0], fill_dims[1]));
+                                          new_dims[0],
+                                          new_dims[1],
+                                          fill_dims[0],
+                                          fill_dims[1]));
 
     auto size = out->numel();
 
@@ -102,17 +115,26 @@ class FillDiagonalTensorCUDAKernel : public framework::OpKernel<T> {
     int64_t *memory_block_cu =
         tensor_tmp.mutable_data<int64_t>({2 + fill_dims[0]}, ctx.GetPlace());
     const auto gpu_place = ctx.GetPlace();
-    memory::Copy(gpu_place, memory_block_cu, platform::CPUPlace(),
-                 memory_block.data(), sizeof(int64_t) * (2 + fill_dims[0]),
+    memory::Copy(gpu_place,
+                 memory_block_cu,
+                 platform::CPUPlace(),
+                 memory_block.data(),
+                 sizeof(int64_t) * (2 + fill_dims[0]),
                  stream);
 
     int64_t *strides_cu = &memory_block_cu[0], *matdim_cu = &memory_block_cu[2];
 
     auto kGridDim = new_dims[0];
     auto kBlockDim = std::min(int64_t(new_dims[1]), kMaxBlockDim);
-    fill_diagonal_tensor_kernel<T><<<kGridDim, kBlockDim, 0, stream>>>(
-        size, out_data, fill_data, strides_cu, matdim_cu, offset, fill_dims[0],
-        fill_dims[1]);
+    fill_diagonal_tensor_kernel<T>
+        <<<kGridDim, kBlockDim, 0, stream>>>(size,
+                                             out_data,
+                                             fill_data,
+                                             strides_cu,
+                                             matdim_cu,
+                                             offset,
+                                             fill_dims[0],
+                                             fill_dims[1]);
   }
 };
 
@@ -160,8 +182,11 @@ class FillDiagonalTensorGradCUDAKernel : public framework::OpKernel<T> {
       int64_t *memory_block_cu =
           tensor_tmp.mutable_data<int64_t>({2 + matrows}, ctx.GetPlace());
       const auto gpu_place = ctx.GetPlace();
-      memory::Copy(gpu_place, memory_block_cu, platform::CPUPlace(),
-                   memory_block.data(), sizeof(int64_t) * (2 + matrows),
+      memory::Copy(gpu_place,
+                   memory_block_cu,
+                   platform::CPUPlace(),
+                   memory_block.data(),
+                   sizeof(int64_t) * (2 + matrows),
                    stream);
 
       int64_t *strides_cu = &memory_block_cu[0],
@@ -182,7 +207,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    fill_diagonal_tensor, ops::FillDiagonalTensorCUDAKernel<float>,
+    fill_diagonal_tensor,
+    ops::FillDiagonalTensorCUDAKernel<float>,
     ops::FillDiagonalTensorCUDAKernel<double>,
     ops::FillDiagonalTensorCUDAKernel<plat::float16>,
     ops::FillDiagonalTensorCUDAKernel<int>,
@@ -194,7 +220,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FillDiagonalTensorCUDAKernel<bool>);
 
 REGISTER_OP_CUDA_KERNEL(
-    fill_diagonal_tensor_grad, ops::FillDiagonalTensorGradCUDAKernel<float>,
+    fill_diagonal_tensor_grad,
+    ops::FillDiagonalTensorGradCUDAKernel<float>,
     ops::FillDiagonalTensorGradCUDAKernel<double>,
     ops::FillDiagonalTensorGradCUDAKernel<int>,
     ops::FillDiagonalTensorGradCUDAKernel<int64_t>,

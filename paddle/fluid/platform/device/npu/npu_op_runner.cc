@@ -53,7 +53,8 @@ static std::map<DataLayout, aclFormat> DATA_LAYOUT_2_ACL_FORMAT = {
 
 aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype) {
   auto iter = DTYPE_2_ACL_DTYPE.find(dtype);
-  PADDLE_ENFORCE_NE(iter, DTYPE_2_ACL_DTYPE.end(),
+  PADDLE_ENFORCE_NE(iter,
+                    DTYPE_2_ACL_DTYPE.end(),
                     platform::errors::NotFound(
                         "The data type (%s) can not convert to ACL data type.",
                         framework::DataTypeToString(dtype)));
@@ -63,7 +64,8 @@ aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype) {
 aclFormat ConvertToNpuFormat(DataLayout layout) {
   auto iter = DATA_LAYOUT_2_ACL_FORMAT.find(layout);
   PADDLE_ENFORCE_NE(
-      iter, DATA_LAYOUT_2_ACL_FORMAT.end(),
+      iter,
+      DATA_LAYOUT_2_ACL_FORMAT.end(),
       platform::errors::NotFound(
           "The data type (%s) can not convert to ACL data type.", layout));
   return iter->second;
@@ -192,7 +194,8 @@ NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
 NpuOpRunner &NpuOpRunner::AddAttrDataType(const std::string &name,
                                           const NPUAttribute &attr) {
   PADDLE_ENFORCE_EQ(
-      (attr.type() == typeid(int)), true,
+      (attr.type() == typeid(int)),
+      true,
       platform::errors::InvalidArgument(
           "Attr type is NOT equal to framework::proto::VarType::Type."));
   if (!attr_) {
@@ -314,12 +317,14 @@ NpuOpRunner &NpuOpRunner::AddInputs(const std::vector<Tensor> &tensors) {
 // NOTE(zhiqiu): For operators whose input is a list (such as concat, stack),
 // It is needed to set the name of each input tensor.
 NpuOpRunner &NpuOpRunner::AddInputNames(const std::vector<std::string> &names) {
-  PADDLE_ENFORCE_EQ(names.size(), input_descs_.size(),
+  PADDLE_ENFORCE_EQ(names.size(),
+                    input_descs_.size(),
                     platform::errors::InvalidArgument(
                         "The size of input names should be "
                         "equal to the size of input descs, but got the size "
                         "of input names is %d, the size of input descs is %d.",
-                        names.size(), input_descs_.size()));
+                        names.size(),
+                        input_descs_.size()));
   for (size_t i = 0; i < names.size(); ++i) {
     aclSetTensorDescName(input_descs_[i], names[i].c_str());
   }
@@ -339,20 +344,26 @@ NpuOpRunner &NpuOpRunner::AddOutputs(const std::vector<Tensor> &tensors) {
 }
 
 aclTensorDesc *NpuOpRunner::GetInputDesc(size_t index) {
-  PADDLE_ENFORCE_LT(index, input_descs_.size(),
+  PADDLE_ENFORCE_LT(index,
+                    input_descs_.size(),
                     platform::errors::OutOfRange(
                         "The index should be less than the size of inputs of "
                         "operator %s, but got index is %d and size is %d",
-                        Type(), index, input_descs_.size()));
+                        Type(),
+                        index,
+                        input_descs_.size()));
   return input_descs_[index];
 }
 
 aclTensorDesc *NpuOpRunner::GetOutputDesc(size_t index) {
-  PADDLE_ENFORCE_LT(index, output_descs_.size(),
+  PADDLE_ENFORCE_LT(index,
+                    output_descs_.size(),
                     platform::errors::OutOfRange(
                         "The index should be less than the size of output of "
                         "operator %s, but got index is %d and size is %d",
-                        Type(), index, output_descs_.size()));
+                        Type(),
+                        index,
+                        output_descs_.size()));
   return output_descs_[index];
 }
 
@@ -429,30 +440,41 @@ void NpuOpRunner::Run(aclrtStream stream) const {
     VLOG(4) << "set ACL_PRECISION_MODE: " << FLAGS_npu_precision_mode;
   }
 
-  aclError ret = aclopCompileAndExecute(
-      op_type_.c_str(), input_descs_.size(), input_descs_.data(),
-      input_buffers_.data(), output_descs_.size(), output_descs_.data(),
-      output_buffers_.data(), attr_, ACL_ENGINE_SYS, ACL_COMPILE_SYS, NULL,
-      stream);
+  aclError ret = aclopCompileAndExecute(op_type_.c_str(),
+                                        input_descs_.size(),
+                                        input_descs_.data(),
+                                        input_buffers_.data(),
+                                        output_descs_.size(),
+                                        output_descs_.data(),
+                                        output_buffers_.data(),
+                                        attr_,
+                                        ACL_ENGINE_SYS,
+                                        ACL_COMPILE_SYS,
+                                        NULL,
+                                        stream);
   VLOG(4) << "after aclopCompileAndExecute: " << ret;
   PADDLE_ENFORCE_NPU_SUCCESS(ret);
 }
 
 void NpuOpRunner::TypeAdapter(
-    const std::vector<Tensor> &inputs, const std::vector<Tensor> &outputs,
-    const NPUAttributeMap &attrs, const platform::NPUDeviceContext &dev_ctx,
-    std::function<void(const std::vector<Tensor> &, const std::vector<Tensor> &,
+    const std::vector<Tensor> &inputs,
+    const std::vector<Tensor> &outputs,
+    const NPUAttributeMap &attrs,
+    const platform::NPUDeviceContext &dev_ctx,
+    std::function<void(const std::vector<Tensor> &,
+                       const std::vector<Tensor> &,
                        const NPUAttributeMap &,
-                       const platform::NPUDeviceContext &)>
-        op_runner,
+                       const platform::NPUDeviceContext &)> op_runner,
     const std::vector<framework::proto::VarType::Type> &input_type,
     const std::vector<framework::proto::VarType::Type> &output_type) {
   PADDLE_ENFORCE_EQ(
-      inputs.size(), input_type.size(),
+      inputs.size(),
+      input_type.size(),
       platform::errors::InvalidArgument(
           "The number of inputs must be equal to input_type.size()."));
   PADDLE_ENFORCE_EQ(
-      outputs.size(), output_type.size(),
+      outputs.size(),
+      output_type.size(),
       platform::errors::InvalidArgument(
           "The number of outputs must be equal to output_type.size()."));
 
@@ -471,7 +493,9 @@ void NpuOpRunner::TypeAdapter(
                                  framework::TransToPhiDataType(input_type[i]));
 
       const auto &cast_runner = NpuOpRunner(
-          "Cast", {inputs[i]}, {tmp_inputs[i]},
+          "Cast",
+          {inputs[i]},
+          {tmp_inputs[i]},
           {{"dst_type", static_cast<int>(ConvertToNpuDtype(input_type[i]))}});
       cast_runner.Run(dev_ctx.stream());
     }
@@ -497,7 +521,9 @@ void NpuOpRunner::TypeAdapter(
          output_type[i] != framework::TransToProtoVarType(outputs[i].dtype()));
     if (cast_output) {
       const auto &cast_runner = NpuOpRunner(
-          "Cast", {tmp_outputs[i]}, {outputs[i]},
+          "Cast",
+          {tmp_outputs[i]},
+          {outputs[i]},
           {{"dst_type",
             static_cast<int>(ConvertToNpuDtype(
                 framework::TransToProtoVarType(outputs[i].dtype())))}});

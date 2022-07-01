@@ -32,11 +32,13 @@ class SoftmaxMaskFuseOp : public framework::OperatorWithKernel {
     auto mask_dims = ctx->GetInputDim("Mask");
 
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 4,
+        x_dims.size(),
+        4,
         platform::errors::InvalidArgument("Input x must be in 4D dimension but "
                                           "received the dimension of X is %d",
                                           x_dims.size()));
-    PADDLE_ENFORCE_EQ(mask_dims.size(), 4,
+    PADDLE_ENFORCE_EQ(mask_dims.size(),
+                      4,
                       platform::errors::InvalidArgument(
                           "Input mask must be in 4D dimension but "
                           "received the dimension of mask is %d",
@@ -80,8 +82,10 @@ class SoftmaxMaskFuseOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "SoftmaxMaskFuseGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "SoftmaxMaskFuseGrad");
 
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), out_dims);
@@ -107,7 +111,8 @@ class SoftmaxMaskFuseGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_softmax_mask, ops::SoftmaxMaskFuseOp,
+REGISTER_OPERATOR(fused_softmax_mask,
+                  ops::SoftmaxMaskFuseOp,
                   ops::SoftmaxMaskFuseOpMaker,
                   ops::SoftmaxMaskFuseGradOpMaker<paddle::framework::OpDesc>,
                   ops::SoftmaxMaskFuseGradOpMaker<paddle::imperative::OpBase>);

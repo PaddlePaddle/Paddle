@@ -77,7 +77,8 @@ void GLOOParallelContext::InitWithRingID(int ring_id) {
 
 void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
                                             framework::Variable *dst,
-                                            int ring_id, bool use_calc_stream) {
+                                            int ring_id,
+                                            bool use_calc_stream) {
   // AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
   if (src.IsType<framework::LoDTensor>()) {
     if (!dst->IsType<framework::LoDTensor>()) {
@@ -150,8 +151,8 @@ void GLOOParallelContext::AllReduce(const phi::SelectedRows &src,
   std::vector<size_t> rows_num_vector =
       gloo_wrapper->AllGather<size_t>(local_row_num);
   const auto *cpu_rows_num_ptr = rows_num_vector.data();
-  auto rows_num = std::accumulate(cpu_rows_num_ptr, cpu_rows_num_ptr + nranks,
-                                  static_cast<int64_t>(0));
+  auto rows_num = std::accumulate(
+      cpu_rows_num_ptr, cpu_rows_num_ptr + nranks, static_cast<int64_t>(0));
   dst->set_height(src.height());
   VLOG(3) << "Gather rows: " << string::join_strings(rows_num_vector, ',')
           << ", total rows number: " << rows_num
@@ -170,7 +171,8 @@ void GLOOParallelContext::AllReduce(const phi::SelectedRows &src,
   dst_tensor->Resize(dims);
 
   std::vector<size_t> element_nums = rows_num_vector;
-  std::for_each(element_nums.begin(), element_nums.end(),
+  std::for_each(element_nums.begin(),
+                element_nums.end(),
                 [feature_size](size_t &x) { x = x * feature_size; });
 
   auto *dst_tensor_ptr = dst_tensor->mutable_data(place, src_tensor.dtype());
@@ -182,8 +184,8 @@ void GLOOParallelContext::AllReduce(const phi::SelectedRows &src,
     GLOO_ALL_GATHER_CASE(framework::proto::VarType::FP32, float, gloo_wrapper);
     GLOO_ALL_GATHER_CASE(framework::proto::VarType::FP64, double, gloo_wrapper);
     GLOO_ALL_GATHER_CASE(framework::proto::VarType::INT32, int, gloo_wrapper);
-    GLOO_ALL_GATHER_CASE(framework::proto::VarType::INT64, int64_t,
-                         gloo_wrapper);
+    GLOO_ALL_GATHER_CASE(
+        framework::proto::VarType::INT64, int64_t, gloo_wrapper);
     default: {
       PADDLE_THROW(
           platform::errors::InvalidArgument("Invalid datatype for allreduce"));

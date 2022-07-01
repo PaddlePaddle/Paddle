@@ -29,7 +29,8 @@ set(COMMON_KERNEL_DEPS
     arg_map_context
     convert_utils
     lod_utils
-    custom_kernel)
+    custom_kernel
+    phi_tensor_utils)
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
     eigen_function
@@ -81,8 +82,6 @@ set(COMMON_KERNEL_DEPS
     utf8proc)
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
-# For strings kernels
-add_subdirectory(strings)
 
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
@@ -133,12 +132,21 @@ endif()
 
 if(WITH_XPU)
   if(WITH_XPU_KP)
-    file(GLOB kernel_xpu_kps "kps/*.cu")
-    xpu_add_library(phi_xpu STATIC ${kernel_xpu} ${kernel_xpu_kps})
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/kps/
+         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
+    file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.cu")
+    foreach(kernel ${kernel_xpu_kps})
+      get_filename_component(name ${kernel} NAME_WE)
+      file(RENAME ${kernel} "${CMAKE_CURRENT_BINARY_DIR}/kps/${name}.kps")
+    endforeach()
+    file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.kps")
+    xpu_add_library(phi_xpu STATIC ${kernel_xpu} ${kernel_xpu_kps} DEPENDS
+                    ${COMMON_KERNEL_DEPS})
   else()
     add_library(phi_xpu ${kernel_xpu})
   endif()
-  kernel_declare(${kernel_xpu})
+  kernel_declare("${kernel_xpu}")
+  kernel_declare("${kernel_xpu_kps}")
   target_link_libraries(phi_xpu ${COMMON_KERNEL_DEPS})
   set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu phi_xpu)
 endif()

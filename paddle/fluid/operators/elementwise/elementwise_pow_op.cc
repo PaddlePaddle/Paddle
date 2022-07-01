@@ -62,8 +62,10 @@ class ElementwisePowOpMaker : public ElementwiseOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_pow, ops::ElementwiseOp,
-                  ops::ElementwisePowOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_pow,
+                  ops::ElementwiseOp,
+                  ops::ElementwisePowOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwisePowOpGradMaker<paddle::framework::OpDesc>,
                   ops::ElementwisePowOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(elementwise_pow_grad, ops::ElementwiseOpGrad);

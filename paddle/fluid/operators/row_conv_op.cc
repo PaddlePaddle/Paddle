@@ -26,7 +26,8 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using framework::Tensor;
 
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
@@ -41,7 +42,8 @@ class RowConvOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto filter_dims = ctx->GetInputDim("Filter");
-    PADDLE_ENFORCE_EQ(filter_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(filter_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "Input(Filter)'s dimensions should be 2. Received: "
                           "Input(Filter)'s shape: [%s].",
@@ -58,8 +60,10 @@ class RowConvGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter", "row_conv_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "row_conv_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "row_conv_grad");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -343,7 +347,9 @@ class RowConvGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(row_conv, ops::RowConvOp, ops::RowConvOpMaker,
+REGISTER_OPERATOR(row_conv,
+                  ops::RowConvOp,
+                  ops::RowConvOpMaker,
                   ops::RowConvGradOpMaker<paddle::framework::OpDesc>,
                   ops::RowConvGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);

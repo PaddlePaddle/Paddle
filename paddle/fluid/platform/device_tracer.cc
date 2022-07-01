@@ -77,16 +77,20 @@ std::unordered_map<CUpti_CallbackId, std::string> runtime_cbid_str,
        ? ((buffer) + (align) - ((uintptr_t)(buffer) & ((align)-1))) \
        : (buffer))
 
-#define CUPTI_CALL(call)                                                   \
-  do {                                                                     \
-    CUptiResult _status = call;                                            \
-    if (_status != CUPTI_SUCCESS) {                                        \
-      const char *errstr;                                                  \
-      dynload::cuptiGetResultString(_status, &errstr);                     \
-      fprintf(stderr, "%s:%d: error: function %s failed with error %s.\n", \
-              __FILE__, __LINE__, #call, errstr);                          \
-      exit(-1);                                                            \
-    }                                                                      \
+#define CUPTI_CALL(call)                                           \
+  do {                                                             \
+    CUptiResult _status = call;                                    \
+    if (_status != CUPTI_SUCCESS) {                                \
+      const char *errstr;                                          \
+      dynload::cuptiGetResultString(_status, &errstr);             \
+      fprintf(stderr,                                              \
+              "%s:%d: error: function %s failed with error %s.\n", \
+              __FILE__,                                            \
+              __LINE__,                                            \
+              #call,                                               \
+              errstr);                                             \
+      exit(-1);                                                    \
+    }                                                              \
   } while (0)
 
 std::string MemcpyKind(CUpti_ActivityMemcpyKind kind) {
@@ -168,7 +172,8 @@ void DisableActivity() {
   // CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_OVERHEAD));
 }
 
-void CUPTIAPI bufferRequested(uint8_t **buffer, size_t *size,
+void CUPTIAPI bufferRequested(uint8_t **buffer,
+                              size_t *size,
                               size_t *maxNumRecords) {
   uint8_t *buf = reinterpret_cast<uint8_t *>(malloc(kBufSize + kAlignSize));
   *size = kBufSize;
@@ -176,13 +181,17 @@ void CUPTIAPI bufferRequested(uint8_t **buffer, size_t *size,
   *maxNumRecords = 0;
 }
 
-void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
-                              size_t size, size_t validSize) {
+void CUPTIAPI bufferCompleted(CUcontext ctx,
+                              uint32_t streamId,
+                              uint8_t *buffer,
+                              size_t size,
+                              size_t validSize) {
   static std::thread::id cupti_thread_id(0);
   if (cupti_thread_id == std::thread::id(0))
     cupti_thread_id = std::this_thread::get_id();
   PADDLE_ENFORCE_EQ(
-      std::this_thread::get_id(), cupti_thread_id,
+      std::this_thread::get_id(),
+      cupti_thread_id,
       platform::errors::PermissionDenied(
           "Only one thread is allowed to call bufferCompleted()."));
   CUptiResult status;
@@ -201,8 +210,11 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
             auto *kernel =
                 reinterpret_cast<const CUpti_ActivityKernel3 *>(record);
 #endif
-            tracer->AddKernelRecords(kernel->name, kernel->start, kernel->end,
-                                     kernel->deviceId, kernel->streamId,
+            tracer->AddKernelRecords(kernel->name,
+                                     kernel->start,
+                                     kernel->end,
+                                     kernel->deviceId,
+                                     kernel->streamId,
                                      kernel->correlationId);
             break;
           }
@@ -212,8 +224,12 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
             tracer->AddMemRecords(
                 MemcpyKind(
                     static_cast<CUpti_ActivityMemcpyKind>(memcpy->copyKind)),
-                memcpy->start, memcpy->end, memcpy->deviceId, memcpy->streamId,
-                memcpy->correlationId, memcpy->bytes);
+                memcpy->start,
+                memcpy->end,
+                memcpy->deviceId,
+                memcpy->streamId,
+                memcpy->correlationId,
+                memcpy->bytes);
             break;
           }
           case CUPTI_ACTIVITY_KIND_MEMCPY2: {
@@ -222,15 +238,22 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
             tracer->AddMemRecords(
                 MemcpyKind(
                     static_cast<CUpti_ActivityMemcpyKind>(memcpy->copyKind)),
-                memcpy->start, memcpy->end, memcpy->deviceId, memcpy->streamId,
-                memcpy->correlationId, memcpy->bytes);
+                memcpy->start,
+                memcpy->end,
+                memcpy->deviceId,
+                memcpy->streamId,
+                memcpy->correlationId,
+                memcpy->bytes);
             break;
           }
           case CUPTI_ACTIVITY_KIND_MEMSET: {
             auto *memset =
                 reinterpret_cast<const CUpti_ActivityMemset *>(record);
-            tracer->AddKernelRecords("MEMSET", memset->start, memset->end,
-                                     memset->deviceId, memset->streamId,
+            tracer->AddKernelRecords("MEMSET",
+                                     memset->start,
+                                     memset->end,
+                                     memset->deviceId,
+                                     memset->streamId,
                                      memset->correlationId);
             break;
           }
@@ -239,7 +262,10 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
             if (api->start != 0 && api->end != 0) {
               // -1 device id represents ActiveKind api call
               tracer->AddActiveKindRecords(
-                  DriverKind(api->cbid), api->start, api->end, -1,
+                  DriverKind(api->cbid),
+                  api->start,
+                  api->end,
+                  -1,
                   GetThreadIdFromSystemThreadId(api->threadId),
                   api->correlationId);
             }
@@ -250,7 +276,10 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
             if (api->start != 0 && api->end != 0) {
               // -1 device id represents ActiveKind api call
               tracer->AddActiveKindRecords(
-                  RuntimeKind(api->cbid), api->start, api->end, -1,
+                  RuntimeKind(api->cbid),
+                  api->start,
+                  api->end,
+                  -1,
                   GetThreadIdFromSystemThreadId(api->threadId),
                   api->correlationId);
             }
@@ -350,8 +379,11 @@ class DeviceTracerImpl : public DeviceTracer {
     }
   }
 
-  void AddCPURecords(const std::string &anno, uint64_t start_ns,
-                     uint64_t end_ns, int64_t device_id, uint64_t thread_id) {
+  void AddCPURecords(const std::string &anno,
+                     uint64_t start_ns,
+                     uint64_t end_ns,
+                     int64_t device_id,
+                     uint64_t thread_id) {
     if (anno.empty()) {
       VLOG(1) << "Empty timeline annotation.";
       return;
@@ -370,9 +402,13 @@ class DeviceTracerImpl : public DeviceTracer {
         CPURecord{anno, start_ns, end_ns, device_id, thread_id});
   }
 
-  void AddMemRecords(const std::string &name, uint64_t start_ns,
-                     uint64_t end_ns, int64_t device_id, int64_t stream_id,
-                     uint32_t correlation_id, uint64_t bytes) {
+  void AddMemRecords(const std::string &name,
+                     uint64_t start_ns,
+                     uint64_t end_ns,
+                     int64_t device_id,
+                     int64_t stream_id,
+                     uint32_t correlation_id,
+                     uint64_t bytes) {
     // 0 means timestamp information could not be collected for the kernel.
     if (start_ns == 0 || end_ns == 0 || start_ns == end_ns) {
       VLOG(3) << name << " cannot be traced";
@@ -380,13 +416,17 @@ class DeviceTracerImpl : public DeviceTracer {
       return;
     }
     // NOTE(liangdun): lock is not needed, only one thread call this function.
-    mem_records_.push_front(MemRecord{name, start_ns, end_ns, device_id,
-                                      stream_id, correlation_id, bytes});
+    mem_records_.push_front(MemRecord{
+        name, start_ns, end_ns, device_id, stream_id, correlation_id, bytes});
   }
 
-  void AddMemInfoRecord(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                        const Place &place, const std::string &alloc_in,
-                        const std::string &free_in, uint64_t thread_id) {
+  void AddMemInfoRecord(uint64_t start_ns,
+                        uint64_t end_ns,
+                        size_t bytes,
+                        const Place &place,
+                        const std::string &alloc_in,
+                        const std::string &free_in,
+                        uint64_t thread_id) {
     if (0 == start_ns || 0 == end_ns) {
       VLOG(3) << alloc_in << ", " << free_in << " Cannot be traced.";
       return;
@@ -406,9 +446,12 @@ class DeviceTracerImpl : public DeviceTracer {
         start_ns, end_ns, bytes, place, thread_id, alloc_in, free_in});
   }
 
-  void AddActiveKindRecords(const std::string &anno, uint64_t start_ns,
-                            uint64_t end_ns, int64_t device_id,
-                            uint64_t thread_id, uint32_t correlation_id) {
+  void AddActiveKindRecords(const std::string &anno,
+                            uint64_t start_ns,
+                            uint64_t end_ns,
+                            int64_t device_id,
+                            uint64_t thread_id,
+                            uint32_t correlation_id) {
     if (anno.empty()) {
       VLOG(1) << "Empty timeline annotation.";
       return;
@@ -429,8 +472,11 @@ class DeviceTracerImpl : public DeviceTracer {
         anno, start_ns, end_ns, device_id, thread_id, correlation_id});
   }
 
-  void AddKernelRecords(std::string name, uint64_t start, uint64_t end,
-                        int64_t device_id, int64_t stream_id,
+  void AddKernelRecords(std::string name,
+                        uint64_t start,
+                        uint64_t end,
+                        int64_t device_id,
+                        int64_t stream_id,
                         uint32_t correlation_id) {
     // 0 means timestamp information could not be collected for the kernel.
     if (start == 0 || end == 0 || start == end) {
@@ -683,8 +729,10 @@ class DeviceTracerImpl : public DeviceTracer {
 
  private:
 #ifdef PADDLE_WITH_CUPTI
-  static void CUPTIAPI ApiCallback(void *userdata, CUpti_CallbackDomain domain,
-                                   CUpti_CallbackId cbid, const void *cbdata) {
+  static void CUPTIAPI ApiCallback(void *userdata,
+                                   CUpti_CallbackDomain domain,
+                                   CUpti_CallbackId cbid,
+                                   const void *cbdata) {
     if (LIKELY(FLAGS_enable_host_event_recorder_hook)) {
       return;
     }

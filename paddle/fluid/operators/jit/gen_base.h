@@ -78,7 +78,9 @@ class JitCodeCreator : public GenCreator {
 
 // unify the method of packed groups
 // output the packed groups which used in weights, the block size and rest size
-std::vector<int> packed_groups(int n, int k, int* block = nullptr,
+std::vector<int> packed_groups(int n,
+                               int k,
+                               int* block = nullptr,
                                int* rest = nullptr);
 
 }  // namespace jit

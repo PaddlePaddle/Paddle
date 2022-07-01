@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/logcumsumexp_grad_kernel.h"
+
 #include <limits>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/logcumsumexp_grad_impl.h"
-#include "paddle/phi/kernels/logcumsumexp_grad_kernel.h"
 
 PD_REGISTER_KERNEL(logcumsumexp_grad,
                    GPU,

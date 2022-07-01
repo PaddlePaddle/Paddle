@@ -25,7 +25,8 @@ inline __device__ T SigmoidGPU(const T& x) {
 }
 
 template <typename T>
-__global__ void YoloBoxHeadCudaKernel(const T* input, T* output,
+__global__ void YoloBoxHeadCudaKernel(const T* input,
+                                      T* output,
                                       const int grid_size_x,
                                       const int grid_size_y,
                                       const int class_num,
@@ -85,12 +86,17 @@ class YoloBoxHeadKernel : public framework::OpKernel<T> {
     auto stream = device_ctx.stream();
     const int volume = x_dims[1] * h * w;
     dim3 block(16, 16, 4);
-    dim3 grid((grid_size_x / block.x) + 1, (grid_size_y / block.y) + 1,
+    dim3 grid((grid_size_x / block.x) + 1,
+              (grid_size_y / block.y) + 1,
               (anchors_num / block.z) + 1);
     for (int n = 0; n < batch_size; n++) {
       YoloBoxHeadCudaKernel<<<grid, block, 0, stream>>>(
-          input_data + n * volume, output_data + n * volume, grid_size_x,
-          grid_size_y, class_num, anchors_num);
+          input_data + n * volume,
+          output_data + n * volume,
+          grid_size_x,
+          grid_size_y,
+          class_num,
+          anchors_num);
     }
   }
 };

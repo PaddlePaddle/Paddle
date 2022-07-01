@@ -32,7 +32,8 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
                        "Input(X) of SequenceEraseOp should be a 2-D LoDTensor "
                        "with the 2nd dimension equal to 1,"
                        "but received size %d with the 2nd dimension %d.",
-                       x_dims.size(), x_dims[1]));
+                       x_dims.size(),
+                       x_dims[1]));
     ctx->SetOutputDim("Out", x_dims);
     // The output LoDTensor's lod_level should be input X's lod_level.
     // For compile-time, we call SetLoDLevel to set output's lod_level.
@@ -93,7 +94,8 @@ and end token.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(sequence_erase, ops::SequenceEraseOp,
+REGISTER_OP_WITHOUT_GRADIENT(sequence_erase,
+                             ops::SequenceEraseOp,
                              ops::SequenceEraseOpMaker);
 REGISTER_OP_CPU_KERNEL(
     sequence_erase,
