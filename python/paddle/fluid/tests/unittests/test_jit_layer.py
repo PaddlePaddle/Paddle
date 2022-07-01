@@ -64,7 +64,7 @@ class TestMultiLoad(unittest.TestCase):
         program_translator.enable(True)
 
         model_path = os.path.join(self.temp_dir.name, 'multi_program')
-        paddle.jit.save(model, model_path, use_combine=True)
+        paddle.jit.save(model, model_path, combine_params=True)
         place = paddle.CPUPlace()
         if paddle.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
