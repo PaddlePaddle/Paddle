@@ -17,7 +17,6 @@ if(WITH_XPU_BKCL)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_concat_op_xpu)
-list(REMOVE_ITEM TEST_OPS test_mean_op_xpu)
 
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
