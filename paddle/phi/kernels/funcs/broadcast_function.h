@@ -535,7 +535,8 @@ void BroadcastKernelForDifferentVecSize(
     int grid_size = 8;
     configs[0] = kps::details::BroadcastConfig(
         merge_dims.out_dims, merge_dims.in_dims[0], merge_dims.dim_size);
-    configs[0].buf_len = kps::details::GetXpuReadLens(numel, block_size, grid_size);
+    configs[0].buf_len =
+        kps::details::GetXpuReadLens(numel, block_size, grid_size);
   }
   auto type = kps::details::OptType::CanNotOptimize;
   bool is_optimize = configs[0].cmp_type != type;
