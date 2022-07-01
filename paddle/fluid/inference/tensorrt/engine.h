@@ -422,9 +422,17 @@ class TensorRTEngine {
   // so as to avoid repeatedly setting weights with the same name.
   void SetWeights(std::string w_name,
                   std::unique_ptr<framework::Tensor> w_tensor) {
+    static int suffix_counter;
     std::string suffix = std::to_string(suffix_counter);
     std::string splitter = "__";
-    weight_map[w_name + splitter + suffix] = std::move(w_tensor);
+    std::string name_with_suffix = w_name + splitter + suffix;
+    PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
+                      0,
+                      platform::errors::AlreadyExists(
+                          "The weight named %s is set into the weight map "
+                          "twice in TRT OP converter.",
+                          name_with_suffix));
+    weight_map[name_with_suffix] = std::move(w_tensor);
     suffix_counter += 1;
   }
 
@@ -664,8 +672,6 @@ class TensorRTEngine {
   // max data size for the buffers.
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
       itensor_map_;
-  // counter for weight_map
-  static int suffix_counter;
 
   std::vector<std::unique_ptr<plugin::PluginTensorRT>> owned_plugin_;
   std::vector<std::unique_ptr<plugin::PluginTensorRTV2Ext>> owned_plugin_v2ext_;

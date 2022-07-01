@@ -399,27 +399,16 @@ void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
   runtime_batch_ = batch_size;
 }
 
-int TensorRTEngine::suffix_counter = 0;
-
 template <typename T = float>
 T *TensorRTEngine::GetWeightCPUData(const std::string &name,
                                     framework::Tensor *weight_tensor) {
-  std::string name_suffix = std::to_string(suffix_counter);
-  std::string splitter = "__";
-  std::string name_with_suffix = name + splitter + name_suffix;
+  std::unique_ptr<framework::Tensor> cpu_weight_tensor(new framework::Tensor());
   platform::CPUPlace cpu_place;
-  PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
-                    0,
-                    platform::errors::AlreadyExists(
-                        "The weight named %s is set into the weight map "
-                        "twice in TRT OP converter.",
-                        name_with_suffix));
-  weight_map[name_with_suffix].reset(new framework::Tensor());
-  weight_map[name_with_suffix]->Resize(weight_tensor->dims());
+  cpu_weight_tensor->Resize(weight_tensor->dims());
   paddle::framework::TensorCopySync(
-      *weight_tensor, cpu_place, weight_map[name_with_suffix].get());
-  T *weight_data = weight_map[name_with_suffix]->mutable_data<T>(cpu_place);
-  suffix_counter += 1;
+      *weight_tensor, cpu_place, cpu_weight_tensor.get());
+  T *weight_data = cpu_weight_tensor->mutable_data<T>(cpu_place);
+  SetWeights(name, std::move(cpu_weight_tensor));
   return weight_data;
 }
 
