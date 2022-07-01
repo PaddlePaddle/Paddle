@@ -74,11 +74,11 @@ class StaticCode1():
 
         def get_args_0():
             nonlocal x_v
-            return x_v
+            return x_v,
 
         def set_args_0(__args):
             nonlocal x_v
-            x_v = __args
+            x_v, = __args
 
         def true_fn_0():
             nonlocal x_v
@@ -96,11 +96,11 @@ class StaticCode1():
 
         def get_args_1():
             nonlocal __return_value_0, label, x_v
-            return __return_value_0, label, x_v
+            return __return_value_0, label, x_v,
 
         def set_args_1(__args):
             nonlocal __return_value_0, label, x_v
-            __return_value_0, label, x_v = __args
+            __return_value_0, label, x_v, = __args
 
         def true_fn_1():
             nonlocal __return_value_0, label, x_v
@@ -131,11 +131,11 @@ class StaticCode2():
 
         def get_args_2():
             nonlocal x_v
-            return x_v
+            return x_v,
 
         def set_args_2(__args):
             nonlocal x_v
-            x_v = __args
+            x_v, = __args
 
         def true_fn_2():
             nonlocal x_v
@@ -153,11 +153,11 @@ class StaticCode2():
 
         def get_args_3():
             nonlocal __return_value_1, label, x_v
-            return __return_value_1, label, x_v
+            return __return_value_1, label, x_v,
 
         def set_args_3(__args):
             nonlocal __return_value_1, label, x_v
-            __return_value_1, label, x_v = __args
+            __return_value_1, label, x_v, = __args
 
         def true_fn_3():
             nonlocal __return_value_1, label, x_v
