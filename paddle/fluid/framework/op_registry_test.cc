@@ -232,9 +232,8 @@ class OpKernelTest : public paddle::framework::OpKernel<T> {
 REGISTER_OP_WITHOUT_GRADIENT(op_with_kernel,
                              paddle::framework::OpWithKernelTest,
                              paddle::framework::OpKernelTestMaker);
-REGISTER_OP_CPU_KERNEL(
-    op_with_kernel,
-    paddle::framework::OpKernelTest<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(op_with_kernel,
+                       paddle::framework::OpKernelTest<phi::CPUContext, float>);
 
 REGISTER_OP_CUDA_KERNEL(
     op_with_kernel,
@@ -265,9 +264,9 @@ TEST(OperatorRegistrar, CUDA) {
 
 static int op_test_value = 0;
 
-using paddle::platform::CPUDeviceContext;
 using paddle::platform::CUDADeviceContext;
 using paddle::platform::DeviceContext;
+using phi::CPUContext;
 
 namespace paddle {
 namespace framework {

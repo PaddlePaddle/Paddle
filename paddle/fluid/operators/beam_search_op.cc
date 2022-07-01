@@ -143,9 +143,8 @@ REGISTER_OPERATOR(beam_search,
                   ops::BeamSearchOp,
                   ops::BeamSearchOpMaker,
                   ops::BeamSearchInferVarType);
-REGISTER_OP_CPU_KERNEL(
-    beam_search,
-    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(beam_search,
+                       ops::BeamSearchOpKernel<phi::CPUContext, float>,
+                       ops::BeamSearchOpKernel<phi::CPUContext, double>,
+                       ops::BeamSearchOpKernel<phi::CPUContext, int>,
+                       ops::BeamSearchOpKernel<phi::CPUContext, int64_t>);

@@ -104,12 +104,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    send_and_recv,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(send_and_recv,
+                       ops::SendAndRecvKernel<phi::CPUContext, float>,
+                       ops::SendAndRecvKernel<phi::CPUContext, double>,
+                       ops::SendAndRecvKernel<phi::CPUContext, int>,
+                       ops::SendAndRecvKernel<phi::CPUContext, int64_t>);
 
 REGISTER_OP_VERSION(send_and_recv)
     .AddCheckpoint(

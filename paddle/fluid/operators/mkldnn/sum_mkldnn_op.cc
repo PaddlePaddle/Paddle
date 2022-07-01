@@ -41,8 +41,8 @@ class MKLDNNDeviceContext;
 namespace paddle {
 namespace operators {
 
-using paddle::platform::CPUDeviceContext;
 using paddle::platform::MKLDNNDeviceContext;
+using phi::CPUContext;
 using platform::to_void_cast;
 
 template <typename T>

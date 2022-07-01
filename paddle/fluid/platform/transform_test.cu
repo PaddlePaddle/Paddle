@@ -39,10 +39,10 @@ class Multiply {
 using paddle::memory::Alloc;
 using paddle::memory::Copy;
 
-using paddle::platform::CPUDeviceContext;
 using paddle::platform::CPUPlace;
 using paddle::platform::CUDADeviceContext;
 using paddle::platform::CUDAPlace;
+using phi::CPUContext;
 
 using paddle::platform::Transform;
 

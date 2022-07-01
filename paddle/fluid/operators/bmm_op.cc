@@ -172,11 +172,9 @@ REGISTER_OPERATOR(bmm,
                   ops::BmmOpGradMaker<paddle::framework::OpDesc>,
                   ops::BmmOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bmm_grad, ops::BmmOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    bmm,
-    ops::BmmKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BmmKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    bmm_grad,
-    ops::BmmGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BmmGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(bmm,
+                       ops::BmmKernel<phi::CPUContext, float>,
+                       ops::BmmKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(bmm_grad,
+                       ops::BmmGradKernel<phi::CPUContext, float>,
+                       ops::BmmGradKernel<phi::CPUContext, double>);

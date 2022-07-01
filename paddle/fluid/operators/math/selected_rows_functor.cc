@@ -25,8 +25,8 @@ namespace paddle {
 namespace operators {
 namespace math {
 template <typename T>
-struct SelectedRowsAdd<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& context,
+struct SelectedRowsAdd<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& context,
                   const phi::SelectedRows& input1,
                   const phi::SelectedRows& input2,
                   phi::SelectedRows* output) {
@@ -106,12 +106,12 @@ struct SelectedRowsAdd<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct SelectedRowsAdd<platform::CPUDeviceContext, float>;
-template struct SelectedRowsAdd<platform::CPUDeviceContext, double>;
+template struct SelectedRowsAdd<phi::CPUContext, float>;
+template struct SelectedRowsAdd<phi::CPUContext, double>;
 
 template <typename T>
-struct SelectedRowsAddTensor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& context,
+struct SelectedRowsAddTensor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& context,
                   const phi::SelectedRows& input1,
                   const framework::Tensor& input2,
                   framework::Tensor* output) {
@@ -156,7 +156,7 @@ struct SelectedRowsAddTensor<platform::CPUDeviceContext, T> {
             in1_row_numel,
             output->numel() / in1_height));
 
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+    phi::funcs::SetConstant<phi::CPUContext, T> functor;
     functor(context, output, 0.0);
 
     auto* in1_data = in1_value.data<T>();
@@ -175,12 +175,12 @@ struct SelectedRowsAddTensor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct SelectedRowsAddTensor<platform::CPUDeviceContext, float>;
-template struct SelectedRowsAddTensor<platform::CPUDeviceContext, double>;
+template struct SelectedRowsAddTensor<phi::CPUContext, float>;
+template struct SelectedRowsAddTensor<phi::CPUContext, double>;
 
 template <typename T>
-struct SelectedRowsAddTo<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& context,
+struct SelectedRowsAddTo<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& context,
                   const phi::SelectedRows& input1,
                   const int64_t input2_offset,
                   phi::SelectedRows* input2) {
@@ -225,14 +225,14 @@ struct SelectedRowsAddTo<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct SelectedRowsAddTo<platform::CPUDeviceContext, float>;
-template struct SelectedRowsAddTo<platform::CPUDeviceContext, double>;
-template struct SelectedRowsAddTo<platform::CPUDeviceContext, int>;
-template struct SelectedRowsAddTo<platform::CPUDeviceContext, int64_t>;
+template struct SelectedRowsAddTo<phi::CPUContext, float>;
+template struct SelectedRowsAddTo<phi::CPUContext, double>;
+template struct SelectedRowsAddTo<phi::CPUContext, int>;
+template struct SelectedRowsAddTo<phi::CPUContext, int64_t>;
 
 template <typename T>
-struct SelectedRowsSumTo<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& context,
+struct SelectedRowsSumTo<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& context,
                   const std::vector<phi::SelectedRows*>& input1,
                   const std::vector<int64_t>& input2_offsets,
                   phi::SelectedRows* input2) {
@@ -262,7 +262,7 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, T> {
 
     auto* in2_value = input2->mutable_value();
     auto* in2_data = in2_value->data<T>();
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
     size_t offset = 0u;
     for (size_t i = 0u; i != input1.size(); ++i) {
       auto& in_value = input1[i]->value();
@@ -273,8 +273,8 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct SelectedRowsSumTo<platform::CPUDeviceContext, float>;
-template struct SelectedRowsSumTo<platform::CPUDeviceContext, double>;
+template struct SelectedRowsSumTo<phi::CPUContext, float>;
+template struct SelectedRowsSumTo<phi::CPUContext, double>;
 
 template <typename T>
 struct SelectedRowsAddToTensor<phi::CPUContext, T> {
@@ -734,15 +734,15 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
 
 #endif
 template <typename T>
-struct MergeAverage<platform::CPUDeviceContext, T> {
-  phi::SelectedRows operator()(const platform::CPUDeviceContext& context,
+struct MergeAverage<phi::CPUContext, T> {
+  phi::SelectedRows operator()(const phi::CPUContext& context,
                                const phi::SelectedRows& input) {
     phi::SelectedRows out;
     (*this)(context, input, &out);
     return out;
   }
 
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const phi::SelectedRows& input,
                   phi::SelectedRows* output) {
     std::vector<const phi::SelectedRows*> inputs;
@@ -750,7 +750,7 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
     (*this)(context, inputs, output);
   }
 
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const std::vector<const phi::SelectedRows*>& inputs,
                   phi::SelectedRows* output) {
     if (inputs.size() == 0) {
@@ -803,7 +803,7 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
 
     out.set_rows(merge_rows);
 
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> constant_functor;
+    phi::funcs::SetConstant<phi::CPUContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), 0.0);
 
     std::unordered_map<int64_t, size_t> rows_to_id;
@@ -811,7 +811,7 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
       rows_to_id[merge_rows[i]] = i;
     }
 
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
     for (auto* input : inputs) {
       if (input->rows().size() == 0) {
         continue;
@@ -841,14 +841,14 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
 template struct MergeAdd<platform::XPUDeviceContext, float>;
 #endif
 
-template struct MergeAverage<platform::CPUDeviceContext, int>;
-template struct MergeAverage<platform::CPUDeviceContext, int64_t>;
-template struct MergeAverage<platform::CPUDeviceContext, float>;
-template struct MergeAverage<platform::CPUDeviceContext, double>;
+template struct MergeAverage<phi::CPUContext, int>;
+template struct MergeAverage<phi::CPUContext, int64_t>;
+template struct MergeAverage<phi::CPUContext, float>;
+template struct MergeAverage<phi::CPUContext, double>;
 
 template <typename T>
-struct UpdateToTensor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& context,
+struct UpdateToTensor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& context,
                   const ScatterOps& op,
                   const phi::SelectedRows& input1,
                   framework::Tensor* input2) {

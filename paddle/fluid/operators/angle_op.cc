@@ -116,20 +116,16 @@ REGISTER_OPERATOR(angle,
 
 REGISTER_OP_CPU_KERNEL(
     angle,
-    ops::AngleKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AngleKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::AngleKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex<float>>,
-    ops::AngleKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex<double>>);
+    ops::AngleKernel<phi::CPUContext, float>,
+    ops::AngleKernel<phi::CPUContext, double>,
+    ops::AngleKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::AngleKernel<phi::CPUContext, paddle::platform::complex<double>>);
 
 REGISTER_OPERATOR(angle_grad, ops::AngleGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     angle_grad,
-    ops::AngleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AngleGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::AngleGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::AngleGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>);
+    ops::AngleGradKernel<phi::CPUContext, float>,
+    ops::AngleGradKernel<phi::CPUContext, double>,
+    ops::AngleGradKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::AngleGradKernel<phi::CPUContext, paddle::platform::complex<double>>);
