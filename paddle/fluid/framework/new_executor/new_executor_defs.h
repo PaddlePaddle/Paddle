@@ -168,29 +168,7 @@ struct VariableMetaInfo {
       : var_ref_count_(var_ref_count), var_desc_(var_desc) {}
 };
 
-class VariableScope;
-class VariableScopeListener : public ScopeListener {
- public:
-  explicit VariableScopeListener(VariableScope* var_scope_);
-  void onCreateVariable(const std::string& name, Variable* v) override;
-  void onDeleteVariable(const std::string& name) override;
-  void onRenameVariable(const std::string& old_name,
-                        const std::string& new_name) override;
-  void onCreateScope(Scope* Scope) override;
-  void onDeleteScope(Scope* Scope) override;
-  void onClear() override;
-
- private:
-  VariableScope* var_scope_;  // not owned
-};
-
-// TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
-
-// NOTE(xiongkun03): Use scope as a member of VariableScope, we don't need
-// ScopeBase. Scope manager the variables and VariableScope is just a quick
-// access machanism. ScopeListener is the callback to sync changes in Original
-// Scope. We can make it a membership of VariableScope. Here we use inherent.
-class VariableScope : public ScopeBase {
+class VariableScope {
  public:
   explicit VariableScope(Scope* scope);
 
@@ -199,8 +177,6 @@ class VariableScope : public ScopeBase {
   Scope* GetMutableLocalScope() const;
 
   void SetLocalScope(Scope* local_scope);
-
-  Variable* FindVar(const std::string& name) const;
 
   ~VariableScope();
 
@@ -214,17 +190,11 @@ class VariableScope : public ScopeBase {
 
   int VarId(const std::string& name) const;
 
-  Variable* Var(int id) const;
-
-  Variable* Var(const std::string& name) const;
-
   size_t VarSize() const;
 
-  void AddVar(const std::string& name,
-              VarDesc* var_desc,
-              bool local_scope = false);
+  void AddVar(const std::string& name, VarDesc* var_desc);
 
-  void AddVar(const std::string& name, const Variable& var);
+  Variable* VarRef(int id) const;
 
   void SetVarDesc(const std::string& name, framework::VarDesc* var_desc);
 
@@ -242,29 +212,22 @@ class VariableScope : public ScopeBase {
     return vec_meta_info_;
   }
 
-  const std::shared_ptr<VariableScopeListener>& Listener() const {
-    return listener_;
-  }
-
   void SetVarSikpInplace(const std::string& name, bool skip);
 
   bool GetVarSikpInplace(int id) const;
 
-  void ClearListener();
-
-  void ResetListener();
-
-  friend class VariableScopeListener;
-
  private:
+  // not owned, better remove it since all vars should be
+  // accessed by Scope instead of VariableScope
   std::vector<Variable*> var_list_;
+
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
+
   Scope* scope_{nullptr};
   // TODO(zhiqiu): find a better way to support local scope.
   Scope* local_scope_{nullptr};
   // mutable RWLock vars_lock_;
-  std::shared_ptr<VariableScopeListener> listener_{nullptr};
 };
 
 class NextInstruction {

@@ -1,3 +1,8 @@
+# If CI_SKIP_CPP_TEST=ON, there is no need to build and run these test.
+if("$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  return()
+endif()
+
 set(INFERENCE_EXTRA_DEPS paddle_inference_shared)
 
 function(download_data install_dir data_file check_sum)
@@ -1250,10 +1255,6 @@ cc_test(
   paddle_infer_api_errors_test
   SRCS paddle_infer_api_errors_tester.cc
   DEPS paddle_inference_api)
-
-if("$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
-  return()
-endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(trt_resnext_test PROPERTIES TIMEOUT 300)

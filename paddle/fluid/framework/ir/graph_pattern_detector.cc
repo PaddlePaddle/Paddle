@@ -29,6 +29,12 @@ using string::Style;
 
 size_t PDPattern::id_ = 0UL;
 
+#ifdef PADDLE_WITH_TENSORRT
+namespace patterns {
+thread_local std::unordered_map<std::string, size_t> KeyCounter::dic_;
+}
+#endif
+
 PDNode *PDPattern::NewNode(const std::string &name) {
   if (!name.empty()) {
     PADDLE_ENFORCE_EQ(

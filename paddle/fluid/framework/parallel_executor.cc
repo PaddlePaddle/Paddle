@@ -972,37 +972,9 @@ void ParallelExecutor::BCastParamsToDevices(
   }
 }
 
-FetchResultType ParallelExecutor::Run(
-    const std::vector<std::string> &fetch_tensors, bool return_merged) {
-  platform::RecordEvent record_run(
-      "ParallelExecutor::Run", platform::TracerEventType::UserDefined, 1);
-  VLOG(3) << "enter ParallelExecutor Run";
-#ifdef PADDLE_WITH_CUDA
-  if (platform::IsCUDAGraphCapturing()) {
-    PADDLE_ENFORCE_EQ(fetch_tensors.empty(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Cannot fetch data when using CUDA Graph."));
-    PADDLE_ENFORCE_EQ(
-        member_->build_strategy_.allow_cuda_graph_capture_,
-        true,
-        platform::errors::InvalidArgument(
-            "You must turn on build_strategy.allow_cuda_graph_capture = True "
-            "to enable CUDA Graph capturing."));
-    PADDLE_ENFORCE_EQ(
-        member_->places_[0],
-        platform::CUDAGraphCapturingPlace(),
-        platform::errors::InvalidArgument("The place to capture CUDAGraph is "
-                                          "not the same as the place to run."));
-  }
-#endif
-
-#ifdef WITH_GPERFTOOLS
-  if (gProfileStarted) {
-    ProfilerFlush();
-  }
-#endif
-
+FetchUnmergedList ParallelExecutor::Run(
+    const std::vector<std::string> &fetch_tensors) {
+  PreludeToRun(fetch_tensors);
   platform::RecordBlock b(0);
 
   ResetHasFeedGuard reset_has_feed_guard(member_);
@@ -1012,8 +984,26 @@ FetchResultType ParallelExecutor::Run(
                                 member_->HasGarbageCollectors());
 
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
-  auto fetch_data = member_->executor_->Run(fetch_tensors, return_merged);
-  return fetch_data;
+  auto fetch_data =
+      member_->executor_->Run(fetch_tensors, /*return_merged=*/false);
+  return BOOST_GET(FetchUnmergedList, fetch_data);
+}
+
+FetchList ParallelExecutor::RunAndMerge(
+    const std::vector<std::string> &fetch_tensors) {
+  PreludeToRun(fetch_tensors);
+  platform::RecordBlock b(0);
+
+  ResetHasFeedGuard reset_has_feed_guard(member_);
+
+  ir::SkipMemOptVarsGuard guard(&(member_->mem_opt_var_infos_),
+                                fetch_tensors,
+                                member_->HasGarbageCollectors());
+
+  VLOG(3) << "ParallelExecutor begin to run member_->executor_->RunAndMerge";
+  auto fetch_data =
+      member_->executor_->Run(fetch_tensors, /*return_merged=*/true);
+  return BOOST_GET(FetchList, fetch_data);
 }
 
 void ParallelExecutor::RunWithoutFetch(
@@ -1438,6 +1428,38 @@ std::vector<ir::Graph *> ParallelExecutor::CloneGraphToMultiDevices(
   }
 
   return graphs;
+}
+
+void ParallelExecutor::PreludeToRun(
+    const std::vector<std::string> &fetch_tensors) {
+  platform::RecordEvent record_run(
+      "ParallelExecutor::Run", platform::TracerEventType::UserDefined, 1);
+  VLOG(3) << "enter ParallelExecutor Run";
+#ifdef PADDLE_WITH_CUDA
+  if (platform::IsCUDAGraphCapturing()) {
+    PADDLE_ENFORCE_EQ(fetch_tensors.empty(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Cannot fetch data when using CUDA Graph."));
+    PADDLE_ENFORCE_EQ(
+        member_->build_strategy_.allow_cuda_graph_capture_,
+        true,
+        platform::errors::InvalidArgument(
+            "You must turn on build_strategy.allow_cuda_graph_capture = True "
+            "to enable CUDA Graph capturing."));
+    PADDLE_ENFORCE_EQ(
+        member_->places_[0],
+        platform::CUDAGraphCapturingPlace(),
+        platform::errors::InvalidArgument("The place to capture CUDAGraph is "
+                                          "not the same as the place to run."));
+  }
+#endif
+
+#ifdef WITH_GPERFTOOLS
+  if (gProfileStarted) {
+    ProfilerFlush();
+  }
+#endif
 }
 
 void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {

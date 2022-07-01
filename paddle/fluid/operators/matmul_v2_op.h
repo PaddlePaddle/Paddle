@@ -21,7 +21,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/dot_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"

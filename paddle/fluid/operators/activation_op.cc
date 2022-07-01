@@ -1503,6 +1503,7 @@ REGISTER_ACTIVATION_OP(thresholded_relu,
                        ThresholdedRelu,
                        ThresholdedReluFunctor,
                        ThresholdedReluGradFunctor);
+REGISTER_ACTIVATION_OP(relu6, Relu6, Relu6Functor, Relu6GradFunctor);
 REGISTER_ACTIVATION_OP(hard_shrink,
                        HardShrink,
                        HardShrinkFunctor,

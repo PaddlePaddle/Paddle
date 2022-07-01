@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -103,13 +103,13 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir):
 
     with open(nodes_level_cmakelist_path, "w") as f:
         f.write(
-            "cc_library(dygraph_node SRCS nodes.cc DEPS ${eager_deps} ${fluid_deps})\n"
+            "cc_library(dygraph_node SRCS nodes.cc DEPS ${eager_deps} ${fluid_deps} ${fluid_manual_nodes})\n"
         )
         f.write("add_dependencies(dygraph_node eager_codegen)")
 
     with open(forwards_level_cmakelist_path, "w") as f:
         f.write(
-            "cc_library(dygraph_function SRCS dygraph_forward_functions.cc DEPS ${eager_deps} ${fluid_deps} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})\n"
+            "cc_library(dygraph_function SRCS dygraph_forward_functions.cc DEPS ${eager_deps} ${fluid_deps} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ${fluid_manual_functions})\n"
         )
         f.write("add_dependencies(dygraph_function eager_codegen)")
 

@@ -272,7 +272,7 @@ void BlockDesc::MoveFrom(BlockDesc *block) {
     for (const auto &pair : src_op->GetAttrMap()) {
       const auto &attr_name = pair.first;
       const auto &attr_value = pair.second;
-      auto attr_type = static_cast<proto::AttrType>(attr_value.which() - 1);
+      auto attr_type = static_cast<proto::AttrType>(attr_value.index() - 1);
       if (attr_type == proto::AttrType::BLOCK) {
         auto block_id = BOOST_GET_CONST(BlockDesc *, attr_value)->ID();
         dst_op->SetBlockAttr(attr_name, prog_->MutableBlock(block_id));

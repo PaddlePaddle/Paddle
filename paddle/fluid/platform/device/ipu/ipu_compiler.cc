@@ -19,6 +19,8 @@
 #include <popart/optimizer.hpp>
 #include <popart/sgd.hpp>
 
+#include "boost/blank.hpp"
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/device/ipu/ipu_names.h"
 #include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
@@ -390,7 +392,7 @@ void Compiler::LowerConstants(const Scope* scope) {
       auto* tensor = var->GetMutable<framework::LoDTensor>();
       ConstantOpAttrVisitor visitor(tensor, dtype);
       auto value = op_desc->GetAttr("value");
-      boost::apply_visitor(visitor, value);
+      paddle::visit(visitor, value);
       auto ddim = phi::make_ddim(shape);
       tensor->Resize(ddim);
 
@@ -475,7 +477,7 @@ void Compiler::LowerBody() {
       auto attributes = std::map<std::string, popart::any>{};
       for (auto& attr : op_desc->GetAttrMap()) {
         CustomOpAttrVisitor visitor(&attributes, attr.first);
-        boost::apply_visitor(visitor, attr.second);
+        paddle::visit(visitor, attr.second);
       }
       auto __op_type =
           BOOST_GET_CONST(std::string, op_desc->GetAttr("__op_type"));
