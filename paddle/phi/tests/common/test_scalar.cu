@@ -164,6 +164,7 @@ TEST(Scalar, ConstructFromDenseTensor7) {
                            .GetAllocator(phi::GPUPlace())
                            .get());
   dev_ctx.Init();
+
   auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
   FillTensor<<<1, 1, 0, dev_ctx.stream()>>>(dense_x_data);
   dev_ctx.Wait();
@@ -184,7 +185,6 @@ TEST(Scalar, ConstructFromTensor) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(phi::GPUPlace())
                            .get());
-  dev_ctx.Init();
   auto* dense_x_data = dev_ctx.Alloc<float>(dense_x.get());
   FillTensor<<<1, 1, 0, dev_ctx.stream()>>>(dense_x_data);
   dev_ctx.Wait();
