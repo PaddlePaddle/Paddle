@@ -404,6 +404,16 @@ void BindInferenceApi(py::module *m) {
   m->def("get_trt_compile_version", &paddle_infer::GetTrtCompileVersion);
   m->def("get_trt_runtime_version", &paddle_infer::GetTrtRuntimeVersion);
   m->def("get_num_bytes_of_data_type", &paddle_infer::GetNumBytesOfDataType);
+  m->def("convert_to_mixed_precision_bind",
+         &paddle_infer::ConvertToMixedPrecision,
+         py::arg("model_file"),
+         py::arg("params_file"),
+         py::arg("mixed_model_file"),
+         py::arg("mixed_params_file"),
+         py::arg("mixed_precision"),
+         py::arg("backend"),
+         py::arg("keep_io_types") = true,
+         py::arg("black_list") = std::unordered_set<std::string>());
 }
 
 namespace {
@@ -586,6 +596,14 @@ void BindAnalysisConfig(py::module *m) {
       .value("Float32", AnalysisConfig::Precision::kFloat32)
       .value("Int8", AnalysisConfig::Precision::kInt8)
       .value("Half", AnalysisConfig::Precision::kHalf)
+      .value("Bfloat16", AnalysisConfig::Precision::kBf16)
+      .export_values();
+
+  py::enum_<AnalysisConfig::Backend>(analysis_config, "Backend")
+      .value("CPU", AnalysisConfig::Backend::kCPU)
+      .value("GPU", AnalysisConfig::Backend::kGPU)
+      .value("NPU", AnalysisConfig::Backend::kNPU)
+      .value("XPU", AnalysisConfig::Backend::kXPU)
       .export_values();
 
   analysis_config.def(py::init<>())

@@ -1119,17 +1119,23 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
     auto qkv_weights = ctx.MultiInput<Tensor>("QKVW");
     auto qkv_biases = ctx.MultiInput<Tensor>("QKVBias");
+    const bool trans_qkvw = ctx.Attr<bool>("trans_qkvw");
     const auto qkv_w_dims = qkv_weights[0]->dims();
-    int num_head = qkv_w_dims[1];
-    int dim_head = qkv_w_dims[2];
+    int num_head = trans_qkvw ? qkv_w_dims[1] : qkv_w_dims[2];
+    int dim_head = trans_qkvw ? qkv_w_dims[2] : qkv_w_dims[3];
     int hidden_size = num_head * dim_head;
     int output_size = 3 * hidden_size;
     int input_size = dim_embed;
 
     bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
-    // (transA, transB, compute_bias) = (false, true, false)
-    auto qkv_compute = AttnMatMul<T>(
-        dev_ctx, false, true, bsz_seq, output_size, input_size, compute_bias);
+    // (transA, transB, compute_bias) = (false, trans_qkvw, false)
+    auto qkv_compute = AttnMatMul<T>(dev_ctx,
+                                     false,
+                                     trans_qkvw,
+                                     bsz_seq,
+                                     output_size,
+                                     input_size,
+                                     compute_bias);
     Tensor qkv_out;
     auto *qkv_out_data =
         qkv_out.mutable_data<T>({bsz, seq_len, 3, num_head, dim_head}, place);

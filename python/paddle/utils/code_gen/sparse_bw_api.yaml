@@ -63,6 +63,14 @@
     func : multiply_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
            multiply_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr}
 
+- backward_api : mv_grad
+  forward : mv(Tensor x, Tensor vec) -> Tensor(out)
+  args : (Tensor x, Tensor vec, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(vec_grad)
+  kernel :
+    func : mv_coo_grad{sparse_coo, dense, dense -> sparse_coo, dense},
+           mv_csr_grad{sparse_csr, dense, dense -> sparse_csr, dense}
+
 - backward_api : relu_grad
   forward : relu(Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)

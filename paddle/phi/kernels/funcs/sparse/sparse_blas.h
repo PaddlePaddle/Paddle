@@ -38,6 +38,14 @@ class SparseBlas {
             phi::DenseTensor* mat_out) const;
 
   template <typename T, typename TensorType>
+  void SPMV(bool transa,
+            T alpha,
+            const TensorType& mat_a,
+            const phi::DenseTensor& vec_x,
+            T beta,
+            phi::DenseTensor* vec_out) const;
+
+  template <typename T, typename TensorType>
   void SDDMM(bool transa,
              bool transb,
              T alpha,
@@ -58,6 +66,11 @@ class SparseBlasT : private SparseBlas<DeviceContext> {
   template <typename... ARGS>
   void SPMM(ARGS... args) const {
     Base()->template SPMM<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void SPMV(ARGS... args) const {
+    Base()->template SPMV<T>(args...);
   }
 
   template <typename... ARGS>

@@ -122,7 +122,7 @@ class FeedOp : public framework::OperatorBase {
     auto &feed_item = feed_list.at(static_cast<size_t>(col));
 
     FeedVariableVisitor visitor(out_var, place);
-    boost::apply_visitor(visitor, feed_item);
+    paddle::visit(visitor, feed_item);
   }
 };
 

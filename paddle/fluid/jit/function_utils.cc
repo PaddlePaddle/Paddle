@@ -12,11 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/jit/layer_utils.h"
+#include "paddle/fluid/jit/function_utils.h"
+
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/var_desc.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace jit {
-
+namespace utils {
 void FetchVarsByNames(const std::vector<std::string> &names,
                       const framework::Scope &scope,
                       std::vector<Variable> *outs) {
@@ -88,5 +92,6 @@ void RemoveFeedFetch(framework::ProgramDesc *program_desc) {
   }
 }
 
+}  // namespace utils
 }  // namespace jit
 }  // namespace paddle

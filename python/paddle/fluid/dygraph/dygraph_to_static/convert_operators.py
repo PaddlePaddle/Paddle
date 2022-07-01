@@ -24,7 +24,7 @@ from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_
 from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
 
 
-def convert_while_loop(cond, body, loop_vars):
+def convert_while_loop(cond, body, getter, setter):
     """
     A function representation of a Python ``while`` statement.
 
@@ -39,25 +39,36 @@ def convert_while_loop(cond, body, loop_vars):
 
     # NOTE: It may be slower if cond is very expensive, but usually cond is just O(1).
     # If loop_vars is changed during cond callable, then it causes bug, but current logical_and/logical_not/... doesn't change the loop_vars.
-    pred = cond(*loop_vars)
+    pred = cond()
     if isinstance(pred, Variable):
-        loop_vars = _run_paddle_while_loop(cond, body, loop_vars)
+        loop_vars = _run_paddle_while(cond, body, getter, setter)
     else:
-        loop_vars = _run_py_while(cond, body, loop_vars)
+        loop_vars = _run_py_while(cond, body, getter, setter)
 
     return loop_vars
 
 
-def _run_paddle_while_loop(cond, body, loop_vars):
+def _run_paddle_while(cond, body, getter, setter):
     # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
-    loop_vars = [to_static_variable(var) for var in loop_vars]
+    def to_list(x):
+        if isinstance(x, (tuple, list)): return x
+        return [x]
+
+    # UndefinedVar will become data layer not check.
+    loop_vars = [to_static_variable(var) for var in to_list(getter())]
+    setter(loop_vars if len(loop_vars) > 1 else
+           loop_vars[0])  # change the non-local var to variable
+    # variable maybe modified to inner var. change it into
     loop_vars = control_flow.while_loop(cond, body, loop_vars)
+    setter(loop_vars if len(loop_vars) > 1 else
+           loop_vars[0])  # change the non-local var to variable
     return loop_vars
 
 
-def _run_py_while(cond, body, loop_vars):
-    while cond(*loop_vars):
-        loop_vars = body(*loop_vars)
+def _run_py_while(cond, body, getter, setter):
+    loop_vars = getter()
+    while cond():
+        loop_vars = body()
     return loop_vars
 
 
@@ -209,9 +220,44 @@ def convert_ifelse(pred, true_fn, false_fn, get_args, set_args,
         out = _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
                                return_name_ids)
     else:
-        out = _run_py_ifelse(pred, true_fn, false_fn)
+        out = _run_py_ifelse(pred, true_fn, false_fn, get_args, set_args,
+                             return_name_ids)
 
-    return _remove_no_value_return_var(out)
+    return out
+
+
+def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
+                     return_name_ids):
+    """
+    Paddle cond API will evaluate both ture_fn and false_fn codes.
+    """
+    pred = cast_bool_if_necessary(pred)
+    init_args = get_args()
+
+    def new_true_fn():
+        set_args(init_args)
+        outs = true_fn()
+        _check_no_undefined_var(outs, return_name_ids, 'if_body')
+        return outs
+
+    def new_false_fn():
+        set_args(init_args)
+        outs = false_fn()
+        _check_no_undefined_var(outs, return_name_ids, 'else_body')
+        return outs
+
+    cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn)
+    return _recover_args_state(cond_outs, get_args, set_args, return_name_ids)
+
+
+def _run_py_ifelse(pred, true_fn, false_fn, get_args, set_args,
+                   return_name_ids):
+    """
+    Evaluate python original branch function if-else.
+    """
+    py_outs = true_fn() if pred else false_fn()
+    py_outs = _remove_no_value_return_var(py_outs)
+    return _recover_args_state(py_outs, get_args, set_args, return_name_ids)
 
 
 def _remove_no_value_return_var(out):
@@ -258,48 +304,31 @@ def _check_no_undefined_var(outs, names, branch_name):
                 .format(name, branch_name))
 
 
-def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
-                     return_name_ids):
+def _recover_args_state(outs, get_args, set_args, return_name_ids):
     """
-    Paddle cond API will evaluate both ture_fn and false_fn codes.
+    Currently we support variant length of early return statement by padding
+    _no_return_value.
+
+    # TODO(dev): We shall consider to evaluate whether should support this for Python if-else?
     """
-    pred = cast_bool_if_necessary(pred)
-    init_args = get_args()
-
-    def new_true_fn():
-        set_args(init_args)
-        outs = true_fn()
-        _check_no_undefined_var(outs, return_name_ids, 'if_body')
-        return outs
-
-    def new_false_fn():
-        set_args(init_args)
-        outs = false_fn()
-        _check_no_undefined_var(outs, return_name_ids, 'else_body')
-        return outs
-
-    cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn)
     # IfExpr's return_name_ids maybe None
     if return_name_ids is None:
-        return cond_outs
+        return outs
 
+    init_args = get_args()
     # recover args state
     num_outs = len(return_name_ids)
     num_args = 1 if not isinstance(init_args, tuple) else len(init_args)
     assert num_outs <= num_args
 
     if num_args == 1:
-        final_outs = cond_outs
+        final_outs = outs
     else:
-        cond_outs = (cond_outs, ) if num_outs == 1 else cond_outs
-        final_outs = cond_outs + init_args[num_outs:]
+        outs = (outs, ) if num_outs == 1 else outs
+        final_outs = outs + init_args[num_outs:]
 
     set_args(final_outs)
     return final_outs
-
-
-def _run_py_ifelse(pred, true_fn, false_fn):
-    return true_fn() if pred else false_fn()
 
 
 def convert_len(var):

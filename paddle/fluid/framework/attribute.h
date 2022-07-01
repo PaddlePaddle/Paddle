@@ -23,12 +23,12 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#include "boost/variant/get.hpp"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/utils/any.h"
+#include "paddle/utils/variant.h"
 
 namespace paddle {
 namespace framework {
@@ -45,8 +45,8 @@ struct ExtractAttribute {
   T* operator()(Attribute& attr) const {
     T* attr_value = nullptr;
     try {
-      attr_value = &boost::get<T>(attr);
-    } catch (boost::bad_get& bad_get) {
+      attr_value = &paddle::get<T>(attr);
+    } catch (paddle::bad_variant_access const& bad_get) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot get attribute (%s) by type %s, its type is %s.",
           attr_name_,
@@ -80,8 +80,8 @@ struct ExtractAttribute<bool> {
     }
     bool* attr_value = nullptr;
     try {
-      attr_value = &boost::get<bool>(attr);
-    } catch (boost::bad_get& bad_get) {
+      attr_value = &paddle::get<bool>(attr);
+    } catch (paddle::bad_variant_access const& bad_get) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot get attribute (%s) by type bool, its type is %s.",
           attr_name_,
@@ -108,8 +108,8 @@ struct ExtractAttribute<int64_t> {
     }
     int64_t* attr_value = nullptr;
     try {
-      attr_value = &boost::get<int64_t>(attr);
-    } catch (boost::bad_get& bad_get) {
+      attr_value = &paddle::get<int64_t>(attr);
+    } catch (paddle::bad_variant_access const& bad_get) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot get attribute (%s) by type int64_t, its type is %s.",
           attr_name_,
@@ -138,8 +138,8 @@ struct ExtractAttribute<std::vector<int64_t>> {
     }
     std::vector<int64_t>* attr_value = nullptr;
     try {
-      attr_value = &boost::get<std::vector<int64_t>>(attr);
-    } catch (boost::bad_get& bad_get) {
+      attr_value = &paddle::get<std::vector<int64_t>>(attr);
+    } catch (paddle::bad_variant_access const& bad_get) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot get attribute (%s) by type std::vector<int64_t>, its type is "
           "%s.",
@@ -167,8 +167,8 @@ struct ExtractAttribute<float> {
     }
     float* attr_value = nullptr;
     try {
-      attr_value = &boost::get<float>(attr);
-    } catch (boost::bad_get& bad_get) {
+      attr_value = &paddle::get<float>(attr);
+    } catch (paddle::bad_variant_access const& bad_get) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot get attribute (%s) by type float, its type is %s.",
           attr_name_,
@@ -197,8 +197,8 @@ struct ExtractAttribute<std::vector<double>> {
     }
     std::vector<double>* attr_value = nullptr;
     try {
-      attr_value = &boost::get<std::vector<double>>(attr);
-    } catch (boost::bad_get& bad_get) {
+      attr_value = &paddle::get<std::vector<double>>(attr);
+    } catch (paddle::bad_variant_access const& bad_get) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot get attribute (%s) by type std::vector<double>, its type is "
           "%s.",
@@ -214,11 +214,11 @@ struct ExtractAttribute<std::vector<double>> {
 template <typename T>
 inline proto::AttrType AttrTypeID() {
   Attribute tmp = T();
-  return static_cast<proto::AttrType>(tmp.which() - 1);
+  return static_cast<proto::AttrType>(tmp.index() - 1);
 }
 
 inline proto::AttrType AttrTypeID(const Attribute& attr) {
-  return static_cast<proto::AttrType>(attr.which() - 1);
+  return static_cast<proto::AttrType>(attr.index() - 1);
 }
 
 class AttrReader {

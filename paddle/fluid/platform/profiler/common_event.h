@@ -91,6 +91,8 @@ struct CommonMemEvent {
         type(type),
         increase_bytes(increase_bytes),
         place(place),
+        current_allocated(current_allocated),
+        current_reserved(current_reserved),
         peak_allocated(peak_allocated),
         peak_reserved(peak_reserved) {}
   uint64_t timestamp_ns;

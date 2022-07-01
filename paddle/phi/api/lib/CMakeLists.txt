@@ -95,7 +95,7 @@ set(wrapped_infermeta_header_file
 set(wrapped_infermeta_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
-if(NOT PYTHON_EXECUTABLE)
+if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
 endif()
 
@@ -224,7 +224,8 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
           ${api_source_file}
   COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
-  DEPENDS ${api_yaml_file} ${api_gen_file} ${api_gen_base}
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${api_gen_file}
+          ${api_gen_base}
   VERBATIM)
 
 # generate backward api
@@ -240,7 +241,8 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_source_file_tmp}
           ${bw_api_source_file}
   COMMENT "copy_if_different ${bw_api_header_file} ${bw_api_source_file}"
-  DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file} ${api_gen_base}
+  DEPENDS ${bw_api_yaml_file} ${legacy_bw_api_yaml_file} ${bw_api_gen_file}
+          ${api_gen_base}
   VERBATIM)
 
 # generate sparse api
@@ -333,7 +335,7 @@ cc_library(
 cc_library(
   context_pool
   SRCS context_pool.cc
-  DEPS phi_context phi_enforce place)
+  DEPS phi_context phi_enforce place init)
 
 cc_library(
   kernel_dispatch

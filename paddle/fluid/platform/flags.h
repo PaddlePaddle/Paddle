@@ -22,13 +22,14 @@
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/utils/variant.h"
 
 namespace paddle {
 namespace platform {
 
 struct FlagInfo {
   using ValueType =
-      boost::variant<bool, int32_t, int64_t, uint64_t, double, std::string>;
+      paddle::variant<bool, int32_t, int64_t, uint64_t, double, std::string>;
   std::string name;
   mutable void *value_ptr;
   ValueType default_value;

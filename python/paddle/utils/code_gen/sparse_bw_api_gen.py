@@ -48,9 +48,9 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
         return BackwardAPI.get_define_args(self)
 
     def gene_output(self,
-                    output_type_list,
-                    set_out_func,
-                    code_indent,
+                    out_dtype_list,
+                    out_tensor_type_list=None,
+                    code_indent='',
                     inplace_flag=False):
         kernel_output = ""
         output_names = []
@@ -61,19 +61,19 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
             'sparse_csr': 'TensorType::SPARSE_CSR'
         }
 
-        if len(output_type_list) == 1:
+        if len(out_dtype_list) == 1:
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
             inplace_assign = " = " + self.inplace_map[self.outputs['names'][
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
-    auto kernel_out = {set_out_func}({self.outputs['names'][0]}, {output_type_map[output_type_list[0]]});"""
+    auto kernel_out = SetSparseKernelOutput({self.outputs['names'][0]}, {output_type_map[out_dtype_list[0]]});"""
 
-        elif len(output_type_list) > 1:
+        elif len(out_dtype_list) > 1:
             output_create = ""
 
-            for i, out_type_item in enumerate(output_type_list):
+            for i, out_type_item in enumerate(out_dtype_list):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
                 if inplace_flag and self.inplace_map is not None and self.outputs[
@@ -82,7 +82,7 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
 
                 output_create = output_create + f"""
-    auto kernel_out_{i} = {set_out_func}({self.outputs['names'][i]}, {output_type_map[output_type_list[i]]});"""
+    auto kernel_out_{i} = SetSparseKernelOutput({self.outputs['names'][i]}, {output_type_map[out_dtype_list[i]]});"""
 
             kernel_output = kernel_output[:-2]
         else:
