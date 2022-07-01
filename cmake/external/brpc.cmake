@@ -46,9 +46,10 @@ ExternalProject_Add(
   extern_brpc
   ${EXTERNAL_PROJECT_LOG_ARGS}
   # TODO(gongwb): change to de newst repo when they changed
-  GIT_REPOSITORY "https://github.com/wangjiawei04/brpc"
+  # change to use original incubator-brpc project to fix _dl_sym problem.
+  GIT_REPOSITORY "https://github.com/apache/incubator-brpc.git"
   #GIT_REPOSITORY  "https://github.com/ziyoujiyi/brpc" # ssl error in the previous repo（can be mannual fixed）
-  GIT_TAG "e203afb794caf027da0f1e0776443e7d20c0c28e"
+  GIT_TAG "d7be1d9cf90687c687c778e522fa9da79b7824ee"
   PREFIX ${BRPC_PREFIX_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
