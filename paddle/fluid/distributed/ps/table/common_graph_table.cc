@@ -118,7 +118,8 @@ int32_t GraphTable::add_node_to_ssd(
                  ch,
                  sizeof(int) * 2 + sizeof(int64_t),
                  str) == 0) {
-      int64_t *stored_data = (reinterpret_cast<const int64_t *>(str.c_str()));
+      const int64_t *stored_data =
+          (reinterpret_cast<const int64_t *>(str.c_str()));
       int n = str.size() / sizeof(int64_t);
       char *new_data = new char[n * sizeof(int64_t) + len];
       memcpy(new_data, stored_data, n * sizeof(int64_t));
@@ -180,7 +181,7 @@ char *GraphTable::random_sample_neighbor_from_ssd(
                ch,
                sizeof(int) * 2 + sizeof(int64_t),
                str) == 0) {
-    int64_t *data = (reinterpret_cast<const int64_t *>(str.c_str()));
+    const int64_t *data = (reinterpret_cast<const int64_t *>(str.c_str()));
     int n = str.size() / sizeof(int64_t);
     std::unordered_map<int, int> m;
     // std::vector<int64_t> res;
