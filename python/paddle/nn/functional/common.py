@@ -97,9 +97,6 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
         and Lout is the total number of such blocks.
         The data type of output is the same as the input :math:`x`
 
-    Return Type:
-        Tensor
-
     Examples:
 
         .. code-block:: python

@@ -5653,12 +5653,6 @@ def ctc_greedy_decoder(input,
         output_length, 2-D Tensor, shape is [batch_size, 1], data type is int64. It is the length of \
                            each sequence of output for padding mode.
 
-    Return type:
-        For lod mode: Variable
-
-        For padding mode: tuple of two Variables (output, output_length).
-
-
     Examples:
         .. code-block:: python
 
@@ -5859,10 +5853,8 @@ def im2sequence(input,
                     user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-            The output is a 2-D LoDTensor with shape {input.batch\_size * output\_height * output\_width, \
+            Variable, The output is a 2-D LoDTensor with shape {input.batch\_size * output\_height * output\_width, \
             filter\_size\_height * filter\_size\_width * input.channels}. The data type is float32.
-
-    Return Type: Variable
 
     Examples:
 
@@ -7010,10 +7002,7 @@ def pad(x, paddings, pad_value=0., name=None):
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        The padded tensor, with the same data type and rank as :attr:`x`
-
-    Return Type:
-        Variable
+        Variable, The padded tensor, with the same data type and rank as :attr:`x`
 
     Examples:
         .. code-block:: python
@@ -7104,10 +7093,7 @@ def pad_constant_like(x, y, pad_value=0., name=None):
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        The padded tensor, with the same shape as :attr:`x` and the same data type as :attr:`y`
-
-    Return Type:
-        Variable
+        Variable, The padded tensor, with the same shape as :attr:`x` and the same data type as :attr:`y`
 
     Examples:
         .. code-block:: python
@@ -9377,11 +9363,8 @@ def crop(x, shape=None, offsets=None, name=None):
             None by default.
 
     Returns:
-        The cropped Tensor, which has the same rank and data type with `x`
-
-    Return Type:
-        Variable
-
+        Variable, The cropped Tensor, which has the same rank and data type with `x`
+        
     Raises:
         ValueError: If shape is not a list, tuple or Variable.
 
@@ -12978,10 +12961,7 @@ def clip(x, min, max, name=None):
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        ${out_comment}
-
-    Return Type:
-        ${out_type}
+        ${out_type}, ${out_comment}        
 
     Examples:
         .. code-block:: python
@@ -14405,9 +14385,6 @@ def psroi_pool(input,
     Returns:
         ${out_comment}.
 
-    Return Type:
-        Variable
-
     Examples:
         .. code-block:: python
 
@@ -15167,9 +15144,6 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
         Cout is the  total number of values within each block,
         and Lout is the total number of such blocks.
         The data type of output is the same as the input :math:`x`
-
-    Return Type:
-        Tensor
 
     Examples:
 

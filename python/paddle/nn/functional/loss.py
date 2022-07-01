@@ -396,10 +396,8 @@ def square_error_cost(input, label):
         label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        The tensor storing the element-wise squared error \
+        Tensor, The tensor storing the element-wise squared error \
                   difference between input and label.
-
-    Return type: Tensor.
 
     Examples:
 
@@ -1012,9 +1010,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        The tensor variable storing the smooth_l1_loss of input and label.
-
-    Return type: Tensor.
+        Tensor, The tensor variable storing the smooth_l1_loss of input and label.
 
     Examples:
         .. code-block:: python
@@ -1563,9 +1559,7 @@ def mse_loss(input, label, reduction='mean', name=None):
 
 
     Returns:
-        Tensor: The tensor tensor storing the mean square error difference of input and label.
-
-    Return type: Tensor.
+        Tensor, The tensor tensor storing the mean square error difference of input and label.
 
     Examples:
 

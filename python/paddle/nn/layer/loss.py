@@ -1185,9 +1185,7 @@ class SmoothL1Loss(Layer):
             is the same as the shape of input.
 
     Returns:
-        The tensor storing the smooth_l1_loss of input and label.
-
-    Return type: Tensor.
+        Tensor, The tensor storing the smooth_l1_loss of input and label.
 
     Examples:
         .. code-block:: python

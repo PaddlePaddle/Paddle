@@ -190,8 +190,6 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             and data type of :code:`dtype`. The data type should be bool, float32, float64, int8, \
             int32 or int64.
 
-    Return Type: Tensor
-
     Examples:
         .. code-block:: python
 

@@ -114,9 +114,6 @@ class MetricBase(object):
         Returns:
             None
 
-        Return types:
-            None
-
         """
         states = {
             attr: value
@@ -144,8 +141,6 @@ class MetricBase(object):
         Returns:
             a python dict, which contains the inner states of the metric instance
 
-        Return types:
-            a python dict
         """
         states = {
             attr: value
@@ -169,10 +164,7 @@ class MetricBase(object):
             labels(numpy.array): the labels of current minibatch.
 
         Returns:
-            None
-
-        Return types:
-            None        
+            None  
 
         """
         raise NotImplementedError(
@@ -187,10 +179,8 @@ class MetricBase(object):
             None
 
         Returns:
-            The overall performance across different mini-batches.
-
-        Return types:
-            float|list(float)|numpy.array: the metrics via Python.
+            float|list(float)|numpy.array, the metrics via Python. The overall performance across different mini-batches.
+            
         """
         raise NotImplementedError(
             "Should not use it directly, please extend it.")

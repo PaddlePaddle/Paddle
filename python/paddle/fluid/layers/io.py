@@ -98,11 +98,8 @@ def data(name,
             Default: True. 
 
     Returns:
-        The global variable that gives access to the data.
-
-    Return Type:
-        Variable
-
+        Variable, The global variable that gives access to the data.
+        
     Examples:
         .. code-block:: python
 
@@ -601,10 +598,7 @@ def py_reader(capacity,
             from CPU to GPU. Default is True.
 
     Returns:
-       A Reader from which we can get feeding data.
-
-    Return Type:
-       Variable
+       Variable, A Reader from which we can get feeding data.
 
     Examples:
        1. The basic usage of :code:`py_reader` is as follows:
