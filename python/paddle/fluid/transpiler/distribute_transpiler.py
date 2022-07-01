@@ -282,7 +282,7 @@ class DistributeTranspiler(object):
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
 
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_loss = paddle.mean(cost)
+            avg_loss = fluid.layers.mean(cost)
 
             sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(avg_loss)
