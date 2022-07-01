@@ -1217,14 +1217,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
-        if (with_dynamic_shape) {
-          if (decrease_axis.size() > 1) {
-            return false;
-          }
-        } else {
-          if (decrease_axis.size() > 0) {
-            VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
-                       "is not supported in TensorRT";
+        if (!with_dynamic_shape) {
+          if (decrease_axis.end() !=
+              std::find(decrease_axis.begin(), decrease_axis.end(), 0)) {
             return false;
           }
         }

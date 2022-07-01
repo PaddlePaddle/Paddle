@@ -42,41 +42,23 @@ struct DynamicGradMerger {
   }
 
   template <typename T>
-  __device__ __forceinline__ void update_basic(T& output, const T& input) {
+  __device__ __forceinline__ void update_one(T& output, const T& input) {
     output.slot = input.slot;
     output.show = input.show;
     output.clk = input.clk;
     output.mf_dim = input.mf_dim;
     output.lr_g = input.lr_g;
-    // for (int i = 0; i < output.mf_dim; ++i) {
-    //  output.mf_g[i] = input.mf_g[i];
-    //}
+    for (int i = 0; i < output.mf_dim; ++i) {
+      output.mf_g[i] = input.mf_g[i];
+    }
   }
   template <typename T>
-  __device__ __forceinline__ void merge_basic(T& output, const T& input) {
+  __device__ __forceinline__ void merge_one(T& output, const T& input) {
     output.show += input.show;
     output.clk += input.clk;
     output.lr_g += input.lr_g;
-    // for (int i = 0; i < input.mf_dim; ++i) {
-    //  output.mf_g[i] += input.mf_g[i];
-    //}
-  }
-
-  template <typename T>
-  __device__ __forceinline__ void update_embedx(T& output,
-                                                const T& input,
-                                                size_t embedx_id) {
-    if (embedx_id < output.mf_dim) {
-      output.mf_g[embedx_id] = input.mf_g[embedx_id];
-    }
-  }
-
-  template <typename T>
-  __device__ __forceinline__ void merge_embedx(T& output,
-                                               const T& input,
-                                               size_t embedx_id) {
-    if (embedx_id < output.mf_dim) {
-      output.mf_g[embedx_id] += input.mf_g[embedx_id];
+    for (int i = 0; i < input.mf_dim; ++i) {
+      output.mf_g[i] += input.mf_g[i];
     }
   }
 };
@@ -183,7 +165,6 @@ class HeterCommKernel {
                       const char* input,
                       char* output,
                       int n,
-                      size_t grad_dim,
                       size_t grad_value_size,
                       DynamicGradMerger& merger_,
                       const StreamType& stream);

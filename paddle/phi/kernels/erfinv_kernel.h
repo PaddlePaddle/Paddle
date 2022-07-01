@@ -18,6 +18,18 @@
 
 namespace phi {
 
+/**
+ * @brief This kernel is used to compute inverse error function of x.
+ *
+ *        The equation is:
+ *        $$erfinv(x) = {ndtri({x \over 2} + 0.5)} \over {\sqrt{2}}$$
+ *
+ *        The input `x` can carry the LoD (Level of Details) information,
+ *        or not. And the output shares the LoD information with `x`
+ * @param  ctx     device context
+ * @param  x       the input tensor of erfinv
+ * @param  out     the output tensor of erfinv
+ */
 template <typename T, typename Context>
 void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);
 
