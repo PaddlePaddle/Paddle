@@ -83,13 +83,13 @@ __global__ void search_kernel(Table* table,
   }
 }
 
-template <typename Table>
+template <typename Table, typename FVAceessor>
 __global__ void dy_mf_search_kernel(Table* table,
                                     const typename Table::key_type* const keys,
                                     char* vals,
                                     size_t len,
                                     size_t pull_feature_value_size,
-                                    CommonFeatureValueAccessor feature_value_accessor) {
+                                    FVAceessor feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   // return;
   if (i < len) {

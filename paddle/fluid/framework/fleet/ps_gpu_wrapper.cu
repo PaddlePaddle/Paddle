@@ -66,6 +66,7 @@ __global__ void PullCopy(float** dest,
   }
 }
 
+template <typename FVAceessor>
 __global__ void PullCopy(float** dest,
                          const float* src,
                          const int64_t* len,
@@ -74,7 +75,7 @@ __global__ void PullCopy(float** dest,
                          uint64_t** keys,
                          uint64_t max_val_size,
                          int* gpu_dim,
-                         CommonFeatureValueAccessor feature_value_accessor) {
+                         FVAceessor feature_value_accessor) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;
@@ -145,6 +146,7 @@ __global__ void PushCopy(FeaturePushValue* dest,
   }
 }
 
+template <typename FVAceessor>
 __global__ void PushCopyWithPool(float* dest,
                                  float** src,
                                  int64_t* len,
@@ -154,7 +156,7 @@ __global__ void PushCopyWithPool(float* dest,
                                  int* slot_vector,
                                  int* mf_dim_vector,
                                  size_t grad_value_size,
-                                CommonFeatureValueAccessor feature_value_accessor) {
+                                 FVAceessor feature_value_accessor) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;

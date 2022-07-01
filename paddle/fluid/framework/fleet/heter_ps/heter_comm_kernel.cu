@@ -128,7 +128,7 @@ __global__ void fill_dvals_kernel(ValType* d_shard_vals,
   }
 }
 
-template <typename KeyType, typename T>
+template <typename KeyType, typename T, typename FVAceessor>
 __global__ void dy_mf_fill_shard_grads_kernel(KeyType* d_shard_keys,
                                               KeyType* d_keys,
                                               float* d_shard_grads,
@@ -136,7 +136,7 @@ __global__ void dy_mf_fill_shard_grads_kernel(KeyType* d_shard_keys,
                                               T* idx,
                                               size_t len,
                                               size_t grad_value_size,
-                                              CommonFeatureValueAccessor feature_value_accessor) {
+                                              FVAceessor feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     d_shard_keys[i] = d_keys[idx[i]];
@@ -147,6 +147,7 @@ __global__ void dy_mf_fill_shard_grads_kernel(KeyType* d_shard_keys,
   }
 }
 
+template <typename FVAceessor>
 __global__ void merge_gradients_kernel(const uint32_t* offset,
                                        const uint32_t* fea_num,
                                        const uint32_t* index,
@@ -154,8 +155,8 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
                                        char* output,
                                        int n,
                                        size_t grad_value_size,
-                                       DynamicGradMerger& merger_,
-                                      CommonFeatureValueAccessor& feature_value_accessor) {
+                                       DynamicGradMerger& merger,
+                                       FVAceessor& feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < n) {
     uint32_t start = offset[i];
@@ -174,13 +175,13 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
   }
 }
 
-template <typename T>
+template <typename T, typename FVAceessor>
 __global__ void dy_mf_fill_dvals_kernel(float* d_shard_vals,
                                         float* d_vals,
                                         T* idx,
                                         size_t len,
                                         size_t val_size,
-                                       CommonFeatureValueAccessor feature_value_accessor) {
+                                        FVAceessor feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     uint64_t new_offset = uint64_t(idx[i]) * val_size;
