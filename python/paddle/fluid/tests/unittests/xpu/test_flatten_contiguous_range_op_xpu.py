@@ -17,7 +17,6 @@ from __future__ import print_function
 import sys
 
 sys.path.append("..")
-
 import numpy as np
 import unittest
 import sys
@@ -27,215 +26,214 @@ from op_test import OpTest
 from op_test_xpu import XPUOpTest
 import paddle
 import paddle.fluid as fluid
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 
 
-class TestFlattenOp(XPUOpTest):
+class XPUTestFlattenOp(XPUOpTestWrapper):
 
-    def setUp(self):
-        self.set_xpu()
-        self.op_type = "flatten_contiguous_range"
-        self.place = paddle.XPUPlace(0)
-        self.use_xpu = True
-        self.use_mkldnn = False
+    def __init__(self):
+        self.op_name = 'flatten_contiguous_range'
+        self.use_dynamic_create_class = False
 
-        self.start_axis = 0
-        self.stop_axis = -1
-        self.dtype = np.float32
-        self.init_test_case()
-        self.inputs = {"X": np.random.random(self.in_shape).astype(self.dtype)}
-        self.init_attrs()
-        self.outputs = {
-            "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.in_shape).astype("float32")
-        }
+    class TestFlattenOp(XPUOpTest):
 
-    def set_xpu(self):
-        self.__class__.use_xpu = True
+        def setUp(self):
+            self.set_xpu()
+            self.op_type = "flatten_contiguous_range"
+            self.place = paddle.XPUPlace(0)
+            self.use_xpu = True
+            self.use_mkldnn = False
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place, no_check_set=["XShape"])
+            self.start_axis = 0
+            self.stop_axis = -1
+            self.dtype = self.in_type
+            self.init_test_case()
+            self.inputs = {
+                "X": np.random.random(self.in_shape).astype(self.dtype)
+            }
+            self.init_attrs()
+            self.outputs = {
+                "Out": self.inputs["X"].reshape(self.new_shape),
+                "XShape": np.random.random(self.in_shape).astype(self.dtype)
+            }
 
-    def test_check_grad(self):
-        self.check_grad_with_place(self.place, ["X"], "Out")
+        def set_xpu(self):
+            self.__class__.use_xpu = True
 
-    def init_test_case(self):
-        self.in_shape = (3, 2, 5, 4)
-        self.start_axis = 0
-        self.stop_axis = -1
-        self.new_shape = (120)
+        def test_check_output(self):
+            self.check_output_with_place(self.place, no_check_set=["XShape"])
 
-    def init_attrs(self):
-        self.attrs = {
-            "start_axis": self.start_axis,
-            "stop_axis": self.stop_axis,
-            'use_xpu': True,
-        }
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ["X"], "Out")
 
+        def init_test_case(self):
+            self.in_shape = (3, 2, 5, 4)
+            self.start_axis = 0
+            self.stop_axis = -1
+            self.new_shape = (120)
 
-class TestFlattenOp_1(TestFlattenOp):
+        def init_attrs(self):
+            self.attrs = {
+                "start_axis": self.start_axis,
+                "stop_axis": self.stop_axis,
+                'use_xpu': True,
+            }
 
-    def init_test_case(self):
-        self.in_shape = (3, 2, 5, 4)
-        self.start_axis = 1
-        self.stop_axis = 2
-        self.new_shape = (3, 10, 4)
+    class TestFlattenOp_1(TestFlattenOp):
 
-    def init_attrs(self):
-        self.attrs = {
-            "start_axis": self.start_axis,
-            "stop_axis": self.stop_axis
-        }
+        def init_test_case(self):
+            self.in_shape = (3, 2, 5, 4)
+            self.start_axis = 1
+            self.stop_axis = 2
+            self.new_shape = (3, 10, 4)
 
+        def init_attrs(self):
+            self.attrs = {
+                "start_axis": self.start_axis,
+                "stop_axis": self.stop_axis
+            }
 
-class TestFlattenOp_2(TestFlattenOp):
+    class TestFlattenOp_2(TestFlattenOp):
 
-    def init_test_case(self):
-        self.in_shape = (3, 2, 5, 4)
-        self.start_axis = 0
-        self.stop_axis = 1
-        self.new_shape = (6, 5, 4)
+        def init_test_case(self):
+            self.in_shape = (3, 2, 5, 4)
+            self.start_axis = 0
+            self.stop_axis = 1
+            self.new_shape = (6, 5, 4)
 
-    def init_attrs(self):
-        self.attrs = {
-            "start_axis": self.start_axis,
-            "stop_axis": self.stop_axis
-        }
+        def init_attrs(self):
+            self.attrs = {
+                "start_axis": self.start_axis,
+                "stop_axis": self.stop_axis
+            }
 
+    class TestFlattenOp_3(TestFlattenOp):
 
-class TestFlattenOp_3(TestFlattenOp):
+        def init_test_case(self):
+            self.in_shape = (3, 2, 5, 4)
+            self.start_axis = 0
+            self.stop_axis = 2
+            self.new_shape = (30, 4)
 
-    def init_test_case(self):
-        self.in_shape = (3, 2, 5, 4)
-        self.start_axis = 0
-        self.stop_axis = 2
-        self.new_shape = (30, 4)
+        def init_attrs(self):
+            self.attrs = {
+                "start_axis": self.start_axis,
+                "stop_axis": self.stop_axis
+            }
 
-    def init_attrs(self):
-        self.attrs = {
-            "start_axis": self.start_axis,
-            "stop_axis": self.stop_axis
-        }
+    class TestFlattenOp_4(TestFlattenOp):
 
+        def init_test_case(self):
+            self.in_shape = (3, 2, 5, 4)
+            self.start_axis = -2
+            self.stop_axis = -1
+            self.new_shape = (3, 2, 20)
 
-class TestFlattenOp_4(TestFlattenOp):
+        def init_attrs(self):
+            self.attrs = {
+                "start_axis": self.start_axis,
+                "stop_axis": self.stop_axis
+            }
 
-    def init_test_case(self):
-        self.in_shape = (3, 2, 5, 4)
-        self.start_axis = -2
-        self.stop_axis = -1
-        self.new_shape = (3, 2, 20)
+    class TestFlattenOp_5(TestFlattenOp):
 
-    def init_attrs(self):
-        self.attrs = {
-            "start_axis": self.start_axis,
-            "stop_axis": self.stop_axis
-        }
+        def init_test_case(self):
+            self.in_shape = (3, 2, 5, 4)
+            self.start_axis = 2
+            self.stop_axis = 2
+            self.new_shape = (3, 2, 5, 4)
 
+        def init_attrs(self):
+            self.attrs = {
+                "start_axis": self.start_axis,
+                "stop_axis": self.stop_axis
+            }
 
-class TestFlattenOp_5(TestFlattenOp):
+    class TestFlattenOpSixDims(TestFlattenOp):
 
-    def init_test_case(self):
-        self.in_shape = (3, 2, 5, 4)
-        self.start_axis = 2
-        self.stop_axis = 2
-        self.new_shape = (3, 2, 5, 4)
+        def init_test_case(self):
+            self.in_shape = (3, 2, 3, 2, 4, 4)
+            self.start_axis = 3
+            self.stop_axis = 5
+            self.new_shape = (3, 2, 3, 32)
 
-    def init_attrs(self):
-        self.attrs = {
-            "start_axis": self.start_axis,
-            "stop_axis": self.stop_axis
-        }
+        def init_attrs(self):
+            self.attrs = {
+                "start_axis": self.start_axis,
+                "stop_axis": self.stop_axis
+            }
 
+    class TestFlattenOp_Float32(TestFlattenOp):
 
-class TestFlattenOpSixDims(TestFlattenOp):
+        def init_test_case(self):
+            self.in_shape = (3, 2, 5, 4)
+            self.start_axis = 0
+            self.stop_axis = 1
+            self.new_shape = (6, 5, 4)
+            self.dtype = np.float32
 
-    def init_test_case(self):
-        self.in_shape = (3, 2, 3, 2, 4, 4)
-        self.start_axis = 3
-        self.stop_axis = 5
-        self.new_shape = (3, 2, 3, 32)
+        def init_attrs(self):
+            self.attrs = {
+                "start_axis": self.start_axis,
+                "stop_axis": self.stop_axis
+            }
 
-    def init_attrs(self):
-        self.attrs = {
-            "start_axis": self.start_axis,
-            "stop_axis": self.stop_axis
-        }
+    class TestFlattenOp_int32(TestFlattenOp):
 
+        def init_test_case(self):
+            self.in_shape = (3, 2, 5, 4)
+            self.start_axis = 0
+            self.stop_axis = 1
+            self.new_shape = (6, 5, 4)
+            self.dtype = np.int32
 
-class TestFlattenOp_Float32(TestFlattenOp):
+        def init_attrs(self):
+            self.attrs = {
+                "start_axis": self.start_axis,
+                "stop_axis": self.stop_axis,
+                'use_xpu': True
+            }
 
-    def init_test_case(self):
-        self.in_shape = (3, 2, 5, 4)
-        self.start_axis = 0
-        self.stop_axis = 1
-        self.new_shape = (6, 5, 4)
-        self.dtype = np.float32
+        def test_check_grad(self):
+            pass
 
-    def init_attrs(self):
-        self.attrs = {
-            "start_axis": self.start_axis,
-            "stop_axis": self.stop_axis
-        }
+    class TestFlattenOp_int8(TestFlattenOp):
 
+        def init_test_case(self):
+            self.in_shape = (3, 2, 5, 4)
+            self.start_axis = 0
+            self.stop_axis = 1
+            self.new_shape = (6, 5, 4)
+            self.dtype = np.int8
 
-class TestFlattenOp_int32(TestFlattenOp):
+        def init_attrs(self):
+            self.attrs = {
+                "start_axis": self.start_axis,
+                "stop_axis": self.stop_axis
+            }
 
-    def init_test_case(self):
-        self.in_shape = (3, 2, 5, 4)
-        self.start_axis = 0
-        self.stop_axis = 1
-        self.new_shape = (6, 5, 4)
-        self.dtype = np.int32
+        def test_check_grad(self):
+            pass
 
-    def init_attrs(self):
-        self.attrs = {
-            "start_axis": self.start_axis,
-            "stop_axis": self.stop_axis,
-            'use_xpu': True
-        }
+    class TestFlattenOp_int64(TestFlattenOp):
 
-    def test_check_grad(self):
-        pass
+        def init_test_case(self):
+            self.in_shape = (3, 2, 5, 4)
+            self.start_axis = 0
+            self.stop_axis = 1
+            self.new_shape = (6, 5, 4)
+            self.dtype = np.int64
 
+        def init_attrs(self):
+            self.attrs = {
+                "start_axis": self.start_axis,
+                "stop_axis": self.stop_axis
+            }
 
-class TestFlattenOp_int8(TestFlattenOp):
-
-    def init_test_case(self):
-        self.in_shape = (3, 2, 5, 4)
-        self.start_axis = 0
-        self.stop_axis = 1
-        self.new_shape = (6, 5, 4)
-        self.dtype = np.int8
-
-    def init_attrs(self):
-        self.attrs = {
-            "start_axis": self.start_axis,
-            "stop_axis": self.stop_axis
-        }
-
-    def test_check_grad(self):
-        pass
-
-
-class TestFlattenOp_int64(TestFlattenOp):
-
-    def init_test_case(self):
-        self.in_shape = (3, 2, 5, 4)
-        self.start_axis = 0
-        self.stop_axis = 1
-        self.new_shape = (6, 5, 4)
-        self.dtype = np.int64
-
-    def init_attrs(self):
-        self.attrs = {
-            "start_axis": self.start_axis,
-            "stop_axis": self.stop_axis
-        }
-
-    def test_check_grad(self):
-        pass
+        def test_check_grad(self):
+            pass
 
 
 class TestFlatten2OpError(unittest.TestCase):
@@ -337,6 +335,12 @@ class TestFlattenPython(unittest.TestCase):
         res_shape = test_Negative()
         self.assertTrue((2, 3, 16) == res_shape)
 
+
+support_types = get_xpu_op_support_types('flatten_contiguous_range')
+support_types_for_grad = get_xpu_op_support_types('mean')
+for stype in support_types:
+    if stype in support_types_for_grad:
+        create_test_class(globals(), XPUTestFlattenOp, stype)
 
 if __name__ == "__main__":
     unittest.main()
