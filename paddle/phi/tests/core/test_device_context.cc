@@ -36,7 +36,6 @@ TEST(DeviceContext, cpu_context) {
   std::cout << "test training scenarios" << std::endl;
   {
     phi::CPUContext ctx;
-    ctx.Init();
     EXPECT_TRUE(ctx.eigen_device() != nullptr);
   }
 
