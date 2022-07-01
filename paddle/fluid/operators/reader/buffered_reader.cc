@@ -19,6 +19,9 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+#include "paddle/phi/backends/device_guard.h"
+#include "paddle/phi/backends/device_manager.h"
+
 namespace paddle {
 namespace operators {
 namespace reader {
@@ -105,11 +108,29 @@ BufferedReader::BufferedReader(
   }
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(place_)) {
+    auto stream = ((platform::CustomDeviceContext
+                        *)(platform::DeviceContextPool::Instance().Get(place_)))
+                      ->stream();
+    custom_device_compute_stream_ =
+        std::make_shared<phi::stream::Stream>(place_, stream);
+
+    custom_device_events_.resize(buffer_size);
+    for (auto &event : custom_device_events_) {
+      event = std::make_shared<phi::event::Event>();
+      event->Init(place_);
+    }
+    custom_device_stream_.Init(place_);
+  }
+#endif
+
   cpu_buffer_.resize(buffer_size);
   cuda_buffer_.resize(buffer_size);
   npu_buffer_.resize(buffer_size);
   mlu_buffer_.resize(buffer_size);
   xpu_buffer_.resize(buffer_size);
+  custom_device_buffer_.resize(buffer_size);
   ReadTillBufferFullAsync();
 }
 
@@ -410,6 +431,58 @@ void BufferedReader::ReadAsync(size_t i) {
       platform::XPUStreamSync(stream_.get());
     }
 #endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (platform::is_custom_place(place_)) {
+      TensorVec &custom_device = custom_device_buffer_[i];
+      if (custom_device.empty()) {
+        custom_device.resize(cpu.size());
+      } else {
+        PADDLE_ENFORCE_EQ(custom_device.size(),
+                          cpu.size(),
+                          platform::errors::InvalidArgument(
+                              "Input tensor number on CustomDevice and CPU "
+                              "devices are not matched. "
+                              "The number on CustomDevice is %d, on CPU is %d",
+                              custom_device.size(),
+                              cpu.size()));
+      }
+
+      std::vector<void *> custom_device_ptrs;
+      custom_device_ptrs.reserve(cpu.size());
+      for (size_t i = 0; i < cpu.size(); ++i) {
+        custom_device[i].Resize(cpu[i].dims());
+        custom_device[i].set_layout(cpu[i].layout());
+        custom_device_ptrs.emplace_back(
+            custom_device[i].mutable_data(place_, cpu[i].type()));
+      }
+
+      phi::DeviceGuard guard(place_);
+      phi::DeviceManager::GetDeviceWithPlace(place_)->RecordEvent(
+          custom_device_events_[i].get(), custom_device_compute_stream_.get());
+      phi::DeviceManager::GetDeviceWithPlace(place_)->StreamWaitEvent(
+          &custom_device_stream_, custom_device_events_[i].get());
+
+      platform::RecordEvent record_event("BufferedReader:MemoryCopy",
+                                         platform::TracerEventType::UserDefined,
+                                         1);
+      for (size_t i = 0; i < cpu.size(); ++i) {
+        auto cpu_place = cpu[i].place();
+        auto cpu_ptr = cpu[i].data();
+        auto custom_device_ptr = custom_device_ptrs[i];
+        auto size =
+            cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
+        if ((platform::is_custom_place(cpu_place))) {
+          memory::Copy(place_, custom_device_ptr, cpu_place, cpu_ptr, size);
+          custom_device_stream_.Synchronize();
+        } else {
+          memory::Copy(place_, custom_device_ptr, cpu_place, cpu_ptr, size);
+        }
+        custom_device[i].set_lod(cpu[i].lod());
+      }
+      custom_device_stream_.Synchronize();
+    }
+#endif
     return i;
   }));
 }
@@ -449,6 +522,8 @@ void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
     *out = std::move(mlu_buffer_[i]);
   } else if (platform::is_xpu_place(place_)) {
     *out = std::move(xpu_buffer_[i]);
+  } else if (platform::is_custom_place(place_)) {
+    *out = std::move(custom_device_buffer_[i]);
   } else {
     *out = std::move(cpu_buffer_[i]);
   }
