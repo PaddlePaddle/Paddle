@@ -34,5 +34,13 @@ void CompilationUnit::SetFunction(
   function_dict_[name] = function;
 }
 
+std::vector<std::string> CompilationUnit::FunctionNames() const {
+  std::vector<std::string> names;
+  for (auto it = function_dict_.begin(); it != function_dict_.end(); it++) {
+    names.emplace_back(it->first);
+  }
+  return names;
+}
+
 }  // namespace jit
 }  // namespace paddle

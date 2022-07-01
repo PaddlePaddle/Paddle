@@ -38,7 +38,12 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     tcp_store
-    new_profiler)
+    new_profiler
+    jit_serializer
+    jit_layer
+    jit_function_utils
+    jit_serializer_utils
+    jit_function_schema)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)

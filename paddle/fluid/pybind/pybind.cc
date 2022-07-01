@@ -96,6 +96,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
+#include "paddle/fluid/jit/executor_function.h"
+#include "paddle/fluid/jit/layer.h"
+#include "paddle/fluid/jit/serializer.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
@@ -1742,6 +1745,72 @@ PYBIND11_MODULE(core_noavx, m) {
         std::copy(rows.begin(), rows.end(), std::back_inserter(new_rows));
         return new_rows;
       });
+
+  // extern PyTypeObject* p_tensor_type;
+
+  py::class_<jit::ExecutorFunction, std::shared_ptr<jit::ExecutorFunction>>(
+      m, "ExectorFunction", R"DOC(ExectorFunction Class.)DOC")
+      // .def("__call__", &jit::ExecutorFunction::operator())
+      // .def("__call__", [](jit::ExecutorFunction &self, const
+      // std::vector<py::object> &tensor_inputs) { if
+      // (PyObject_IsInstance(tensor_inputs[0].ptr(),
+      // reinterpret_cast<PyObject*>(p_tensor_type))) {
+      //   VLOG(3) << "eager tensor";
+      // } else {
+      //   VLOG(3) << "varbase";
+      // }
+
+      // std::vector<Variable> var_inputs;
+      // for (auto &tensor: tensor_inputs) {
+      //   auto real_tensor = tensor->tensor;
+      //   Variable var;
+      //   auto *dense_tensor = var.GetMutable<frameworkPyTypeObject>();
+      //   dense_tensor->ShareDataWith(*static_cast<framework::Tensor*>(real_tensor.impl().get()));
+      //   var_inputs.emplace_back(var);
+      // }
+      // auto var_outputs = self(var_inputs);
+      // std::vector<paddle::experimental::Tensor> tensor_outputs;
+      // for (auto &var: var_outputs) {
+      //   paddle::experimental::Tensor tensor;
+      //   tensor.set_impl(std::make_shared<framework::Tensor>(var.Get<framework::Tensor>()));
+      //   tensor_outputs.emplace_back(tensor);
+      // }
+      // return tensor_outputs;
+      // })
+      .def("__call__",
+           [](jit::ExecutorFunction &self,
+              const std::vector<std::shared_ptr<imperative::VarBase>>
+                  &tensor_inputs) {
+             std::vector<Variable> var_inputs;
+             for (auto &tensor : tensor_inputs) {
+               var_inputs.emplace_back(tensor->Var());
+             }
+             auto var_outputs = self(var_inputs);
+             std::vector<std::shared_ptr<imperative::VarBase>> tensor_outputs;
+             for (auto &var : var_outputs) {
+               imperative::VariableWrapper var_wrapper("x", var);
+               auto tmp =
+                   std::make_shared<imperative::VariableWrapper>(var_wrapper);
+               auto tmp2 = std::make_shared<imperative::VarBase>(tmp);
+               tensor_outputs.emplace_back(tmp2);
+             }
+             return tensor_outputs;
+           });
+
+  py::class_<jit::Layer>(m, "Layer", R"DOC(Layer Class.)DOC")
+      .def("function", &jit::Layer::Function)
+      .def("forward", &jit::Layer::forward)
+      .def("function_names", &jit::Layer::FunctionNames);
+
+  // m.def("Load", &paddle::jit::Load);
+  m.def("Load",
+        [](const std::string &path, const platform::CPUPlace &cpu_place) {
+          return paddle::jit::Load(path, cpu_place);
+        });
+  m.def("Load",
+        [](const std::string &path, const platform::CUDAPlace &cuda_place) {
+          return paddle::jit::Load(path, cuda_place);
+        });
 
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
