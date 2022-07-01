@@ -123,7 +123,7 @@ void MainTest(bool convWithExistingBias,
       EXPECT_EQ(
           op->GetAttrIfExists<std::vector<float>>("Output_shift_scale")[0],
           scale / scale_weights[0]);
-      EXPECT_EQ(op->GetAttrIfExists<float>("Activation_scale"), scale);
+      EXPECT_EQ(op->GetAttrIfExists<float>("activation_scale"), scale);
 
       if (convWithExistingBias) {
         EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Bias_scales")[0],

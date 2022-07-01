@@ -1009,32 +1009,61 @@ class ActivationMKLDNNHandler
   }
 };
 
-static const dnnl::algorithm AcquireActivationAlgorithm(
-    std::string activation_name) {
-  std::unordered_map<std::string, dnnl::algorithm> activation_map = {
-      {"abs", dnnl::algorithm::eltwise_abs},
-      {"clip", dnnl::algorithm::eltwise_clip},
-      {"gelu", dnnl::algorithm::eltwise_gelu_erf},
-      {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
-      {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-      {"hard_swish", dnnl::algorithm::eltwise_hardswish},
-      {"leaky_relu", dnnl::algorithm::eltwise_relu},
-      {"mish", dnnl::algorithm::eltwise_mish},
-      {"relu", dnnl::algorithm::eltwise_relu},
-      {"relu6", dnnl::algorithm::eltwise_bounded_relu},
-      {"sigmoid", dnnl::algorithm::eltwise_logistic},
-      {"sqrt", dnnl::algorithm::eltwise_sqrt},
-      {"swish", dnnl::algorithm::eltwise_swish},
-      {"tanh", dnnl::algorithm::eltwise_tanh}};
+static void AppendActivation(const framework::ExecutionContext& ctx,
+                             dnnl::post_ops& post_ops,
+                             float quantized_activation_scale = 1.0f) {
+  const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
+  const auto fuse_alpha =
+      ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
+  const auto fuse_beta =
+      ctx.HasAttr("fuse_beta") ? ctx.Attr<float>("fuse_beta") : 0.0f;
 
-  const auto& activation_type = activation_map.find(activation_name);
+  float activation_scale;
 
-  PADDLE_ENFORCE_NE(activation_type,
-                    activation_map.end(),
-                    platform::errors::InvalidArgument(
-                        "Activation '%s' not found in oneDNN algorithms mapper",
-                        activation_name));
-  return activation_type->second;
+  if (quantized_activation_scale != 1.0f) {
+    activation_scale = quantized_activation_scale;
+  } else {
+    activation_scale = ctx.HasAttr("activation_scale")
+                           ? ctx.Attr<float>("activation_scale")
+                           : 1.0f;
+  }
+
+  if (fuse_activation == "hard_sigmoid") {
+    post_ops.append_eltwise(activation_scale,
+                            dnnl::algorithm::eltwise_linear,
+                            fuse_alpha,
+                            fuse_beta);
+    post_ops.append_eltwise(
+        activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+  } else {
+    const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
+        {"abs", dnnl::algorithm::eltwise_abs},
+        {"clip", dnnl::algorithm::eltwise_clip},
+        {"gelu", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+        {"hard_swish", dnnl::algorithm::eltwise_hardswish},
+        {"leaky_relu", dnnl::algorithm::eltwise_relu},
+        {"mish", dnnl::algorithm::eltwise_mish},
+        {"relu", dnnl::algorithm::eltwise_relu},
+        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+        {"sigmoid", dnnl::algorithm::eltwise_logistic},
+        {"sqrt", dnnl::algorithm::eltwise_sqrt},
+        {"swish", dnnl::algorithm::eltwise_swish},
+        {"tanh", dnnl::algorithm::eltwise_tanh}};
+
+    const auto& activation_type = activation_map.find(fuse_activation);
+
+    PADDLE_ENFORCE_NE(
+        activation_type,
+        activation_map.end(),
+        platform::errors::InvalidArgument(
+            "Activation '%s' not found in oneDNN algorithms mapper",
+            fuse_activation));
+
+    post_ops.append_eltwise(
+        activation_scale, activation_type->second, fuse_alpha, fuse_beta);
+  }
 }
 
 class ReorderMKLDNNHandler {

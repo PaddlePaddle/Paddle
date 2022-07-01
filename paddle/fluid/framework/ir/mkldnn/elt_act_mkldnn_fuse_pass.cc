@@ -45,15 +45,15 @@ void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
       std::unordered_map<std::string, std::string> attr_map;
 
       if (act_type == "swish")
-        attr_map.emplace("beta", "activation_alpha");
+        attr_map.emplace("beta", "fuse_alpha");
       else if (act_type == "relu6")
-        attr_map.emplace("threshold", "activation_alpha");
+        attr_map.emplace("threshold", "fuse_alpha");
       else if (act_type == "clip") {
-        attr_map.emplace("min", "activation_alpha");
-        attr_map.emplace("max", "activation_beta");
+        attr_map.emplace("min", "fuse_alpha");
+        attr_map.emplace("max", "fuse_beta");
       } else {
-        attr_map.emplace("alpha", "activation_alpha");
-        attr_map.emplace("beta", "activation_beta");
+        attr_map.emplace("alpha", "fuse_alpha");
+        attr_map.emplace("beta", "fuse_beta");
       }
       FuseElementwiseAct(graph, elt_type, act_type, attr_map);
     }
@@ -108,9 +108,9 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
 
     if (act_type == "gelu" && activation_op->HasAttr("approximate") &&
         BOOST_GET_CONST(bool, activation_op->GetAttr("approximate")))
-      elementwise_op->SetAttr("activation_type", std::string("gelu_tanh"));
+      elementwise_op->SetAttr("fuse_activation", std::string("gelu_tanh"));
     else
-      elementwise_op->SetAttr("activation_type", act_type);
+      elementwise_op->SetAttr("fuse_activation", act_type);
 
     elementwise_op->SetOutput("Out", {activation_out->Name()});
 

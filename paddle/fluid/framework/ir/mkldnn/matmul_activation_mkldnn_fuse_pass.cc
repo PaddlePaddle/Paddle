@@ -146,7 +146,7 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .IsType<bool>()
       .End();
 
-  AddOpCompat(OpCompat("relu"))
+  AddOpCompat(OpCompat("abs"))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -154,36 +154,42 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .IsTensor()
       .End();
 
-  AddOpCompat(OpCompat("leaky_relu"))
+  AddOpCompat(OpCompat("clip"))
       .AddInput("X")
       .IsTensor()
       .End()
       .AddOutput("Out")
       .IsTensor()
       .End()
-      .AddAttr("alpha")
+      .AddAttr("min")
+      .End()
+      .AddAttr("max")
+      .End();
+
+  AddOpCompat(OpCompat("gelu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("approximate")
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("hard_sigmoid"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("slope")
+      .IsOptional()
       .IsType<float>()
-      .End();
-
-  AddOpCompat(OpCompat("relu6"))
-      .AddInput("X")
-      .IsTensor()
       .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("threshold")
-      .IsType<float>()
-      .End();
-
-  AddOpCompat(OpCompat("swish"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("beta")
+      .AddAttr("offset")
+      .IsOptional()
       .IsType<float>()
       .End();
 
@@ -207,6 +213,17 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .IsType<float>()
       .End();
 
+  AddOpCompat(OpCompat("leaky_relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsType<float>()
+      .End();
+
   AddOpCompat(OpCompat("mish"))
       .AddInput("X")
       .IsTensor()
@@ -215,39 +232,23 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .IsTensor()
       .End();
 
-  AddOpCompat(OpCompat("hard_sigmoid"))
+  AddOpCompat(OpCompat("relu"))
       .AddInput("X")
       .IsTensor()
       .End()
       .AddOutput("Out")
       .IsTensor()
-      .End()
-      .AddAttr("slope")
-      .IsOptional()
-      .IsType<float>()
-      .End()
-      .AddAttr("offset")
-      .IsOptional()
-      .IsType<float>()
       .End();
 
-  AddOpCompat(OpCompat("gelu"))
+  AddOpCompat(OpCompat("relu6"))
       .AddInput("X")
       .IsTensor()
       .End()
       .AddOutput("Out")
       .IsTensor()
       .End()
-      .AddAttr("approximate")
-      .IsType<bool>()
-      .End();
-
-  AddOpCompat(OpCompat("tanh"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
+      .AddAttr("threshold")
+      .IsType<float>()
       .End();
 
   AddOpCompat(OpCompat("sigmoid"))
@@ -266,7 +267,18 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .IsTensor()
       .End();
 
-  AddOpCompat(OpCompat("abs"))
+  AddOpCompat(OpCompat("swish"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("beta")
+      .IsType<float>()
+      .End();
+
+  AddOpCompat(OpCompat("tanh"))
       .AddInput("X")
       .IsTensor()
       .End()

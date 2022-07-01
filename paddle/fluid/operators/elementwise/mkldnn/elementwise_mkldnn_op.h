@@ -50,21 +50,8 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
  private:
   dnnl::post_ops get_post_ops(const framework::ExecutionContext& ctx) const {
     dnnl::post_ops post_operations;
-    if (ctx.HasAttr("activation_type")) {
-      const float scale = ctx.HasAttr("activation_scale")
-                              ? ctx.Attr<float>("activation_scale")
-                              : 1.0f;
-      const float alpha = ctx.HasAttr("activation_alpha")
-                              ? ctx.Attr<float>("activation_alpha")
-                              : 0.0f;
-      const float beta = ctx.HasAttr("activation_beta")
-                             ? ctx.Attr<float>("activation_beta")
-                             : 0.0f;
-
-      const auto activation_algorithm = platform::AcquireActivationAlgorithm(
-          ctx.Attr<std::string>("activation_type"));
-
-      post_operations.append_eltwise(scale, activation_algorithm, alpha, beta);
+    if (ctx.HasAttr("fuse_activation")) {
+      platform::AppendActivation(ctx, post_operations);
     }
     return post_operations;
   }
