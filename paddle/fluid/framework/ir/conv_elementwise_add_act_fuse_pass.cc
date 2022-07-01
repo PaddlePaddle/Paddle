@@ -118,16 +118,6 @@ ConvElementwiseAddActFusePass::ConvElementwiseAddActFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End();
-
-#if CUDNN_VERSION >= 8300
-  AddOpCompat(OpCompat("swish"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End();
-#endif
 }
 
 void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
@@ -198,7 +188,4 @@ REGISTER_PASS_CAPABILITY(conv_elementwise_add_act_fuse_pass)
             .EQ("relu", 0)
             .EQ("sigmoid", 0)
             .EQ("tanh", 0)
-#if CUDNN_VERSION >= 8300
-            .EQ("swish", 0)
-#endif
             .EQ("identity", 0));
