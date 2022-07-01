@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
 import unittest
-import paddle.inference as paddle_infer
+import itertools
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
+import numpy as np
+import paddle.inference as paddle_infer
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
 
 
 class TrtConvertConv2dTest(TrtLayerAutoScanTest):
@@ -52,62 +53,73 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
-        for batch in [1, 4]:
-            for strides in [[1, 1], [2, 2], [1, 2]]:
-                for paddings in [[0, 3], [1, 2, 3, 4]]:
-                    for groups in [1, 3]:
-                        for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
-                            for dilations in [[1, 1], [2, 2], [1, 2]]:
-                                for data_format in ['NCHW']:
+        batch_options = [1, 2]
+        strides_options = [[2, 2], [1, 2]]
+        paddings_options = [[0, 3], [1, 2, 3, 4]]
+        groups_options = [1, 3]
+        padding_altorithm_options = ['EXPLICIT', 'SAME', 'VALID']
+        dilations_options = [[1, 2]]
+        data_format_options = ['NCHW']
 
-                                    dics = [{
-                                        "data_fromat": data_format,
-                                        "dilations": dilations,
-                                        "padding_algorithm": padding_algorithm,
-                                        "groups": groups,
-                                        "paddings": paddings,
-                                        "strides": strides,
-                                        "data_format": data_format
-                                    }, {}]
+        configurations = [
+            batch_options,
+            strides_options,
+            paddings_options,
+            groups_options,
+            padding_altorithm_options,
+            dilations_options,
+            data_format_options,
+        ]
 
-                                    ops_config = [{
-                                        "op_type": "conv2d",
-                                        "op_inputs": {
-                                            "Input": ["input_data"],
-                                            "Filter": ["conv2d_weight"]
-                                        },
-                                        "op_outputs": {
-                                            "Output": ["conv_output_data"]
-                                        },
-                                        "op_attrs": dics[0]
-                                    }, {
-                                        "op_type": "relu",
-                                        "op_inputs": {
-                                            "X": ["conv_output_data"]
-                                        },
-                                        "op_outputs": {
-                                            "Out": ["output_data"]
-                                        },
-                                        "op_attrs": dics[1]
-                                    }]
+        for batch, strides, paddings, groups, padding_algorithm, dilations, data_format in itertools.product(
+                *configurations):
 
-                                    ops = self.generate_op_config(ops_config)
+            attrs = [{
+                "data_fromat": data_format,
+                "dilations": dilations,
+                "padding_algorithm": padding_algorithm,
+                "groups": groups,
+                "paddings": paddings,
+                "strides": strides,
+                "data_format": data_format,
+            }, {}]
 
-                                    program_config = ProgramConfig(
-                                        ops=ops,
-                                        weights={
-                                            "conv2d_weight":
-                                            TensorConfig(data_gen=partial(
-                                                generate_weight1, dics))
-                                        },
-                                        inputs={
-                                            "input_data":
-                                            TensorConfig(data_gen=partial(
-                                                generate_input1, batch, dics))
-                                        },
-                                        outputs=["output_data"])
+            ops_config = [{
+                "op_type": "conv2d",
+                "op_inputs": {
+                    "Input": ["input_data"],
+                    "Filter": ["conv2d_weight"]
+                },
+                "op_outputs": {
+                    "Output": ["conv_output_data"]
+                },
+                "op_attrs": attrs[0]
+            }, {
+                "op_type": "relu",
+                "op_inputs": {
+                    "X": ["conv_output_data"]
+                },
+                "op_outputs": {
+                    "Out": ["output_data"]
+                },
+                "op_attrs": attrs[1]
+            }]
 
-                                    yield program_config
+            ops = self.generate_op_config(ops_config)
+
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={
+                    "conv2d_weight":
+                    TensorConfig(data_gen=partial(generate_weight1, attrs))
+                },
+                inputs={
+                    "input_data": TensorConfig(data_gen=partial(generate_input1,
+                                                                batch, attrs))
+                },
+                outputs=["output_data"])
+
+            yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
