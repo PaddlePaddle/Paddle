@@ -273,6 +273,11 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
         continue;
       }
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (!tensor->IsInitialized()) {
+        VLOG(0) << "Note: field[" << field
+                << "] is not initialized, so it was skipped.";
+        continue;
+      }
       auto& dims = tensor->dims();
       if (dims.size() == 2 && dims[0] > 0) {
         batch_size = std::min(batch_size, static_cast<size_t>(dims[0]));
