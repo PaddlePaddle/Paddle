@@ -394,8 +394,8 @@ DeviceManager& DeviceManager::Instance() {
 }
 
 void DeviceManager::Clear() {
-  Instance().device_map_.clear();
-  Instance().device_impl_map_.clear();
+  // Instance().device_map_.clear();
+  // Instance().device_impl_map_.clear();
 }
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
