@@ -65,7 +65,10 @@ class TestMultiLoad(unittest.TestCase):
 
         model_path = os.path.join(self.temp_dir.name, 'multi_program')
         paddle.jit.save(model, model_path, use_combine=True)
-        jit_layer = JitLayer(model_path, paddle.CUDAPlace(0))
+        place = paddle.CPUPlace()
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        jit_layer = JitLayer(model_path, place)
         forward_out2 = jit_layer.forward(x)
         infer_out2 = jit_layer.infer(x)
         # import pdb; pdb.set_trace()
