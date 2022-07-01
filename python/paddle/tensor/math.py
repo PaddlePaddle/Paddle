@@ -1796,7 +1796,7 @@ def outer(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The outer-product Tensor.
+        Tensor: The outer-product Tensor. shape=[x.size, y.size].
 
     Examples:
         .. code-block:: python
