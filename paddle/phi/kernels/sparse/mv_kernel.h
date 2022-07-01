@@ -17,24 +17,23 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
-#include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
 namespace sparse {
 
-template <typename Context>
-void CopyCoo(const Context& dev_ctx,
-             const SparseCooTensor& src,
-             Place dst_place,
-             bool blocking,
-             SparseCooTensor* dst);
+/* COO @ DENSE VEC -> DENSE VEC */
+template <typename T, typename Context>
+void MvCooKernel(const Context& dev_ctx,
+                 const SparseCooTensor& x,
+                 const DenseTensor& vec,
+                 DenseTensor* out);
 
-template <typename Context>
-void CopyCsr(const Context& dev_ctx,
-             const SparseCsrTensor& src,
-             Place dst_place,
-             bool blocking,
-             SparseCsrTensor* dst);
+/* CSR @ DENSE VEC -> DENSE VEC */
+template <typename T, typename Context>
+void MvCsrKernel(const Context& dev_ctx,
+                 const SparseCsrTensor& x,
+                 const DenseTensor& vec,
+                 DenseTensor* out);
 
 }  // namespace sparse
 }  // namespace phi

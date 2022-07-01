@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
-#include "paddle/phi/kernels/autotune/cache.h"
 
 namespace paddle {
 namespace operators {
@@ -1155,50 +1154,31 @@ inline void SimplifyThenLaunch(const int rank,
 }
 
 template <typename T>
-size_t GetTransposeKey(const int rank,
-                       const Tensor& in,
-                       const std::vector<int32_t>& perm) {
-  auto in_shape = phi::vectorize(in.dims());
-  return phi::autotune::GetKey(
-      in_shape, perm, rank, paddle::experimental::CppTypeToDataType<T>::Type());
-}
-
-template <typename T>
-void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx,
-                              const int rank,
+void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
                               const Tensor& in,
                               const std::vector<int32_t>& perm,
                               Tensor* out) {
-  PADDLE_ENFORCE_LT(
-      rank,
-      phi::DDim::kMaxRank,
-      platform::errors::OutOfRange(
-          "The maximum dimension rank of "
-          "tensor is expected to be less than %d, but here is %d.",
-          phi::DDim::kMaxRank,
-          rank));
-
-  auto ret = TransposeSimple<T>::run(dev_ctx, in, perm, out);
+  const int rank = perm.size();
+  auto ret = TransposeSimple<T>::run(ctx, in, perm, out);
   if (!ret) {
-    auto* tuner = phi::autotune::MakeTransposeTuner<T>(
-        SimplifyThenLaunch<phi::GPUContext, T>);
-    if (!tuner->IsInit()) {
-      tuner->AddCallBack(
-          phi::autotune::MakeCallback<T>(TransCompute<phi::GPUContext, T>));
-      tuner->Finalize();
-    }
+    auto* tuner =
+        phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext, T>);
+    tuner->AddCallBack(
+        phi::autotune::MakeCallback<T>(SimplifyThenLaunch<phi::GPUContext, T>));
 
-    auto key = GetTransposeKey<T>(rank, in, perm);
-    auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
-    if (cache.Find(key)) {
-      auto index = cache.Get(key);
-      tuner->RunBestKernel(index, rank, dev_ctx, in, out, perm);
-    } else {
-      // All avaliable kernels have ran while picking the best kernel, so
-      // there may be no need for another RunBestKernel.
-      auto index = tuner->PickBestKernel(dev_ctx, rank, dev_ctx, in, out, perm);
-      cache.Set(key, index);
-    }
+    size_t key = phi::autotune::TransposeKey(
+        phi::vectorize(in.dims()),
+        perm,
+        paddle::experimental::CppTypeToDataType<T>::Type());
+
+    tuner->Run(ctx,
+               phi::autotune::AlgorithmType::kTranspose,
+               key,
+               rank,
+               ctx,
+               in,
+               out,
+               perm);
   }
 }
 

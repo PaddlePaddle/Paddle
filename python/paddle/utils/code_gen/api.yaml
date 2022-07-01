@@ -33,6 +33,53 @@
     func : cholesky_solve
   backward : cholesky_solve_grad
 
+- api : cross
+  args : (Tensor x, Tensor y, int axis = 9)
+  output : Tensor
+  infer_meta :
+    func : CrossInferMeta
+  kernel :
+    func : cross
+    data_type : x
+  backward : cross_grad
+
+- api : diagonal
+  args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)
+  output : Tensor
+  infer_meta :
+    func : DiagonalInferMeta
+  kernel :
+    func : diagonal
+  backward : diagonal_grad
+
+- api : digamma
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : digamma
+  backward : digamma_grad
+
+- api : dist
+  args : (Tensor x, Tensor y, float p = 2.0)
+  output : Tensor
+  infer_meta :
+    func : DistInferMeta
+  kernel :
+    func : dist
+  backward : dist_grad
+
+- api : dot
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : DotInferMeta
+  kernel :
+    func : dot
+    data_type : x
+  backward : dot_grad
+
 - api : erf
   args : (Tensor x)
   output : Tensor

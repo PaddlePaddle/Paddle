@@ -90,7 +90,6 @@ __global__ void dy_mf_search_kernel(Table* table,
                                     size_t len,
                                     size_t pull_feature_value_size) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  // return;
   if (i < len) {
     auto it = table->find(keys[i]);
 

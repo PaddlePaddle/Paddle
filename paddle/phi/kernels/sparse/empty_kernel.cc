@@ -28,12 +28,10 @@ void EmptyLikeCooKernel(const Context& dev_ctx,
                         SparseCooTensor* out) {
   const DenseTensor& x_indices = x.non_zero_indices();
   const DenseTensor& x_values = x.non_zero_elements();
-
   DenseTensor* out_indices = out->mutable_non_zero_indices();
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
   phi::Copy(dev_ctx, x_indices, dev_ctx.GetPlace(), false, out_indices);
-  phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, out_values);
 
   out_values->Resize(x_values.dims());
   dev_ctx.template Alloc<T>(out_values);
@@ -48,7 +46,6 @@ void EmptyLikeCsrKernel(const Context& dev_ctx,
   const DenseTensor& x_crows = x.non_zero_crows();
   const DenseTensor& x_cols = x.non_zero_cols();
   const DenseTensor& x_values = x.non_zero_elements();
-
   DenseTensor* out_crows = out->mutable_non_zero_crows();
   DenseTensor* out_cols = out->mutable_non_zero_cols();
   DenseTensor* out_values = out->mutable_non_zero_elements();

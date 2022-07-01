@@ -406,10 +406,18 @@ struct KeyCounter {
     return x;
   }
 
+#ifdef PADDLE_WITH_TENSORRT
+  static int IncCounter(const std::string& key) { return dic_[key]++; }
+  static void CleanCounter() { dic_.clear(); }
+
+ private:
+  static thread_local std::unordered_map<std::string, size_t> dic_;
+#else
   int IncCounter(const std::string& key) { return dic_[key]++; }
 
  private:
   std::unordered_map<std::string, size_t> dic_;
+#endif
 };
 
 // Generate a unique PDNode's name with name_scope and id.
