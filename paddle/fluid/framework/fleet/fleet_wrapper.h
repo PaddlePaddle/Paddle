@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <google/protobuf/text_format.h>
 #include <memory>
 #ifdef PADDLE_WITH_PSLIB
 #include <archive.h>
@@ -277,6 +278,13 @@ class FleetWrapper {
                   const std::vector<uint64_t>& host_sign_list,
                   int node_num,
                   int index);
+
+#if defined PADDLE_WITH_PSLIB && defined PADDLE_WITH_HETERPS
+  void InitializeGPUServer(const std::string& fleet_desc);
+  // _ps_param for gpups optimizer config
+  ::paddle::PSParameter _ps_param;
+#endif
+
   // stop server
   void StopServer();
   // finalize worker to make worker can be stop

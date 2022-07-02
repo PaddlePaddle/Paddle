@@ -270,7 +270,15 @@ class PSGPUWrapper {
                     float mf_initial_range,
                     float mf_min_bound,
                     float mf_max_bound);
-  void InitializeGPUServer(std::unordered_map<std::string, float> config) {
+
+  void InitializeGPUServer(std::unordered_map<std::string, float>& config) {
+    // set sparse shard num
+    int sparse_shard_num = (config.find("sparse_shard_num") == config.end())
+                               ? 37
+                               : config["sparse_shard_num"];
+    thread_keys_shard_num_ = sparse_shard_num;
+    VLOG(0) << "GPUPS set sparse shard num: " << thread_keys_shard_num_;
+
     float nonclk_coeff = (config.find("nonclk_coeff") == config.end())
                              ? 1.0
                              : config["nonclk_coeff"];

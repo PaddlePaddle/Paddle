@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <google/protobuf/text_format.h>
-
 #include <cstdlib>
 #include <string>
 #include <vector>
@@ -50,7 +48,7 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
       dense_grad_names_[table_id][j] = table.dense_grad_name(j);
     }
   }
-  InitializeGPUServer(trainer_desc);
+  // InitializeGPUServer(trainer_desc);
   scale_datanorm_ = trainer_desc.scale_datanorm();
   int place_num = trainer_desc.worker_places_size();
   const std::vector<paddle::framework::DataFeed*> readers =
@@ -95,6 +93,8 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
   }
   return;
 }
+
+/**
 
 void add_sparse_optimizer(
     std::unordered_map<std::string, float>& config,  // NOLINT
@@ -241,6 +241,7 @@ void PSGPUTrainer::InitializeGPUServer(const TrainerDesc& trainer_desc) {
   auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
   ps_gpu_wrapper->InitializeGPUServer(config);
 }
+*/
 
 std::string PSGPUTrainer::GetDumpPath(int tid) {
   if (user_define_dump_filename_ != "") {
