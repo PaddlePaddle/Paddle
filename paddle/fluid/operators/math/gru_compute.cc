@@ -16,12 +16,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 namespace math {
 

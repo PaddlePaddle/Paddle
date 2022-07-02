@@ -367,14 +367,6 @@ DeviceContextPool::DeviceContextPool(
                         /*disable_setting_default_stream_for_allocator=*/false);
 }
 
-CPUDeviceContext::CPUDeviceContext() : phi::CPUContext() {
-  phi::CPUContext::Init();
-}
-
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) : phi::CPUContext(place) {
-  phi::CPUContext::Init();
-}
-
 #ifdef PADDLE_WITH_IPU
 IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {}
 

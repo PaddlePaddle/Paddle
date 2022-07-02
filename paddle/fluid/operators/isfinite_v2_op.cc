@@ -34,9 +34,6 @@ namespace operators {
 template <typename DeviceContext, typename T, typename Functor>
 class OverflowKernel;
 }  // namespace operators
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace plat = paddle::platform;

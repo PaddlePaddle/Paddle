@@ -273,7 +273,6 @@ TEST(math_funciton, set_constant) {
   t.Resize({10, 10});
   t.mutable_data<int>(paddle::platform::CPUPlace());
   auto* ctx = new paddle::platform::CPUDeviceContext();
-  ctx->Init();
   phi::funcs::set_constant(*ctx, &t, 10);
   for (int64_t i = 0; i < t.numel(); ++i) {
     PADDLE_ENFORCE_EQ(10,
