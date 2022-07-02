@@ -159,8 +159,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class SGDOpKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
+class SGDOpKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");

@@ -382,11 +382,9 @@ REGISTER_OPERATOR(inplace_abn,
                   InplaceAbnOpInplaceInferer)
 REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp)
 
-REGISTER_OP_CPU_KERNEL(
-    inplace_abn,
-    ops::InplaceABNKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::InplaceABNKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    inplace_abn_grad,
-    ops::InplaceABNGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::InplaceABNGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(inplace_abn,
+                       ops::InplaceABNKernel<phi::CPUContext, float>,
+                       ops::InplaceABNKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(inplace_abn_grad,
+                       ops::InplaceABNGradKernel<phi::CPUContext, float>,
+                       ops::InplaceABNGradKernel<phi::CPUContext, double>);

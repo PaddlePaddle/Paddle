@@ -1253,7 +1253,7 @@ void TensorFromStream(std::istream& is,
     is.seekg(seekg, is.cur);
 
     void* buf;
-    platform::CPUDeviceContext ctx;
+    phi::CPUContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
@@ -1336,7 +1336,7 @@ void TensorFromStream(std::istream& is,
     std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
     tensor->Resize(phi::make_ddim(dims));
     void* buf;
-    platform::CPUDeviceContext ctx;
+    phi::CPUContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||

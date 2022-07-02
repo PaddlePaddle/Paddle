@@ -341,7 +341,7 @@ void testIm2col<paddle::platform::CUDADeviceContext,
 #endif
 
 TEST(math, im2col) {
-  testIm2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
+  testIm2col<phi::CPUContext, paddle::platform::CPUPlace>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   testIm2col<paddle::platform::CUDADeviceContext,
              paddle::platform::CUDAPlace>();
@@ -350,7 +350,7 @@ TEST(math, im2col) {
 
 #define PREPARE_IM2COL_CPU                                                   \
   paddle::platform::CPUPlace place;                                          \
-  paddle::platform::CPUDeviceContext context(place);                         \
+  phi::CPUContext context(place);                                            \
   paddle::framework::Tensor input;                                           \
   paddle::framework::Tensor out;                                             \
   paddle::framework::Tensor ref;                                             \
@@ -367,7 +367,7 @@ TEST(math, im2col) {
   ref.mutable_data<float>({ic, fh, fw, output_height, output_width}, place); \
   paddle::operators::math::Im2ColFunctor<                                    \
       paddle::operators::math::ColFormat::kCFO,                              \
-      paddle::platform::CPUDeviceContext,                                    \
+      phi::CPUContext,                                                       \
       float>                                                                 \
       im2col
 

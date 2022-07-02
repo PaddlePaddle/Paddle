@@ -164,12 +164,10 @@ REGISTER_OPERATOR(stft,
 
 REGISTER_OPERATOR(stft_grad, ops::StftGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    stft,
-    ops::StftKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::StftKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(stft,
+                       ops::StftKernel<phi::CPUContext, float>,
+                       ops::StftKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
-    stft_grad,
-    ops::StftGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::StftGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(stft_grad,
+                       ops::StftGradKernel<phi::CPUContext, float>,
+                       ops::StftGradKernel<phi::CPUContext, double>);

@@ -97,7 +97,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(sequence_erase,
                              ops::SequenceEraseOp,
                              ops::SequenceEraseOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    sequence_erase,
-    ops::SequenceEraseKernel<paddle::platform::CPUDeviceContext, int32_t>,
-    ops::SequenceEraseKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_erase,
+                       ops::SequenceEraseKernel<phi::CPUContext, int32_t>,
+                       ops::SequenceEraseKernel<phi::CPUContext, int64_t>);

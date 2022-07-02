@@ -223,14 +223,12 @@ REGISTER_OPERATOR(crop,
                   ops::CropGradOpMaker<paddle::imperative::OpBase>,
                   ops::GropNoNeedBufferVarInferer);
 REGISTER_OPERATOR(crop_grad, ops::CropOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    crop,
-    ops::CropKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CropKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    crop_grad,
-    ops::CropGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CropGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(crop,
+                       ops::CropKernel<phi::CPUContext, float>,
+                       ops::CropKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(crop_grad,
+                       ops::CropGradKernel<phi::CPUContext, float>,
+                       ops::CropGradKernel<phi::CPUContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
     crop,

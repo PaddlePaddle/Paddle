@@ -164,6 +164,7 @@ TEST(Scalar, ConstructFromDenseTensor7) {
                            .GetAllocator(phi::GPUPlace())
                            .get());
   dev_ctx.Init();
+
   auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
   FillTensor<<<1, 1, 0, dev_ctx.stream()>>>(dense_x_data);
   dev_ctx.Wait();

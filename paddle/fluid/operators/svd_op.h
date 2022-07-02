@@ -40,10 +40,10 @@ class SvdCPUKernel : public framework::OpKernel<T> {
 
     /*Create Tensors and output, set the dim ...*/
     auto numel = x->numel();
-    auto& orig_dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
-    auto& dev_ctx = static_cast<const typename framework::ConvertToPhiContext<
-        platform::CPUDeviceContext>::TYPE&>(orig_dev_ctx);
+    auto& orig_dev_ctx = context.template device_context<phi::CPUContext>();
+    auto& dev_ctx = static_cast<
+        const typename framework::ConvertToPhiContext<phi::CPUContext>::TYPE&>(
+        orig_dev_ctx);
     Tensor trans_x = ::phi::TransposeLast2Dim<T>(dev_ctx, *x);
     auto* x_data = trans_x.data<T>();
     auto x_dims = x->dims();

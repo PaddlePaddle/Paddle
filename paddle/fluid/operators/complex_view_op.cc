@@ -161,12 +161,10 @@ REGISTER_OPERATOR(as_real,
                   ops::AsRealGradMaker<paddle::framework::OpDesc>,
                   ops::AsRealGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
-    as_complex,
-    ops::AsComplexKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AsComplexKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(as_complex,
+                       ops::AsComplexKernel<phi::CPUContext, float>,
+                       ops::AsComplexKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
-    as_real,
-    ops::AsRealKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AsRealKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(as_real,
+                       ops::AsRealKernel<phi::CPUContext, float>,
+                       ops::AsRealKernel<phi::CPUContext, double>);
