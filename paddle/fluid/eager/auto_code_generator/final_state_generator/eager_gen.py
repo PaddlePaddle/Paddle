@@ -1550,7 +1550,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             compute_require_grad_args_str = ",".join(
                 compute_require_grad_args_list)
             compute_require_next_grad_str = f"{indent}bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;\n"
-            compute_require_next_grad_str += f"{indent}bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({compute_require_grad_args_str});\n"
+            if len(compute_require_grad_args_list) > 1:
+                compute_require_next_grad_str += f"{indent}bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({compute_require_grad_args_str});\n"
+            else:
+                compute_require_next_grad_str += f"{indent}bool require_any_grad = (trace_backward && true);\n"
 
         # 3. Get Output AutoGradMeta
         outputs_autograd_meta_list = []
