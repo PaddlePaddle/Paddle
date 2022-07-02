@@ -58,6 +58,8 @@ class TensorWrapper {
         // Only Copy Meta
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(tensor.impl().get());
+        // TODO(jiabin): It's not a good idea to set memory size to zero, find
+        // another way and change this.
         intermidiate_tensor_.set_impl(
             std::move(std::make_shared<phi::DenseTensor>(
                 std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
