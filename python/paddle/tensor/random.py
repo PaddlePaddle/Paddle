@@ -87,7 +87,7 @@ def bernoulli(x, name=None):
 
 def poisson(x, name=None):
     r"""
-    Returns a tensor filled with random number from a Poisson Distribution.
+    Returns a tensor filled with random number from a Poisson Distribution. The shape and dtype of the output Tensor are the same as those of the input Tensor.
 
     .. math::
 
