@@ -277,51 +277,6 @@ template struct SelectedRowsSumTo<platform::CPUDeviceContext, float>;
 template struct SelectedRowsSumTo<platform::CPUDeviceContext, double>;
 
 template <typename T>
-struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& context,
-                  const phi::SelectedRows& input1,
-                  framework::Tensor* input2) {
-    if (UNLIKELY(input1.rows().size() == 0)) {
-      LOG(WARNING) << "input selected rows is empty!";
-      return;
-    }
-    auto in1_height = input1.height();
-    const auto& in2_dims = input2->dims();
-    PADDLE_ENFORCE_EQ(
-        in1_height,
-        in2_dims[0],
-        platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But received first input height = "
-                                          "[%d], second input height = [%d]",
-                                          in1_height,
-                                          in2_dims[0]));
-
-    auto& in1_value = input1.value();
-    auto& in1_rows = input1.rows();
-
-    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
-    PADDLE_ENFORCE_EQ(
-        in1_row_numel,
-        input2->numel() / in1_height,
-        platform::errors::InvalidArgument(
-            "The two inputs width must be equal."
-            "But received first input width = [%d], second input width = [%d]",
-            in1_row_numel,
-            input2->numel() / in1_height));
-
-    auto* in1_data = in1_value.data<T>();
-    auto* input2_data = input2->data<T>();
-
-    for (size_t i = 0; i < in1_rows.size(); i++) {
-      for (int64_t j = 0; j < in1_row_numel; j++) {
-        input2_data[in1_rows[i] * in1_row_numel + j] +=
-            in1_data[i * in1_row_numel + j];
-      }
-    }
-  }
-};
-
-template <typename T>
 struct SelectedRowsAddToTensor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
                   const phi::SelectedRows& input1,
@@ -365,13 +320,6 @@ struct SelectedRowsAddToTensor<phi::CPUContext, T> {
     }
   }
 };
-
-template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, float>;
-template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, double>;
-template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int>;
-template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int64_t>;
-template struct SelectedRowsAddToTensor<platform::CPUDeviceContext,
-                                        platform::bfloat16>;
 
 template struct SelectedRowsAddToTensor<phi::CPUContext, float>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, double>;
@@ -583,34 +531,6 @@ struct MergeAddImpl {
 };
 
 template <typename T>
-struct MergeAdd<platform::CPUDeviceContext, T> {
-  // unary functor, merge by adding duplicated rows in
-  // the input SelectedRows object.
-  phi::SelectedRows operator()(const platform::CPUDeviceContext& context,
-                               const phi::SelectedRows& input,
-                               const bool sorted_result) {
-    return MergeAddImpl<platform::CPUDeviceContext, T>()(
-        context, input, sorted_result);
-  }
-
-  void operator()(const platform::CPUDeviceContext& context,
-                  const phi::SelectedRows& input,
-                  phi::SelectedRows* output,
-                  const bool sorted_result) {
-    MergeAddImpl<platform::CPUDeviceContext, T>()(
-        context, input, output, sorted_result);
-  }
-
-  void operator()(const platform::CPUDeviceContext& context,
-                  const std::vector<const phi::SelectedRows*>& inputs,
-                  phi::SelectedRows* output,
-                  const bool sorted_result) {
-    MergeAddImpl<platform::CPUDeviceContext, T>()(
-        context, inputs, output, sorted_result);
-  }
-};
-
-template <typename T>
 struct MergeAdd<phi::CPUContext, T> {
   // unary functor, merge by adding duplicated rows in
   // the input SelectedRows object.
@@ -635,10 +555,8 @@ struct MergeAdd<phi::CPUContext, T> {
   }
 };
 
-#define TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(dtype)               \
-  template struct MergeAddImpl<platform::CPUDeviceContext, dtype>; \
-  template struct MergeAddImpl<phi::CPUContext, dtype>;            \
-  template struct MergeAdd<platform::CPUDeviceContext, dtype>;     \
+#define TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(dtype)    \
+  template struct MergeAddImpl<phi::CPUContext, dtype>; \
   template struct MergeAdd<phi::CPUContext, dtype>;
 
 TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(float)

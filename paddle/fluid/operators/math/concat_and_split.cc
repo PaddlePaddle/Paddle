@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/fluid/platform/device_context.h"
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -27,13 +28,6 @@ limitations under the License. */
 namespace phi {
 class DenseTensor;
 }  // namespace phi
-
-namespace paddle {
-namespace framework {}  // namespace framework
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
-}  // namespace paddle
 
 namespace paddle {
 namespace operators {
