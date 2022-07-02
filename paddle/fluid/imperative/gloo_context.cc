@@ -200,7 +200,7 @@ void GLOOParallelContext::Broadcast(framework::Variable *src, int ring_id) {
 
 paddle::platform::DeviceContext *GLOOParallelContext::GetDeviceContext(
     int ring_id) {
-  // return the CPUDeviceContext
+  // return the CPUContext
   return device_.get();
 }
 
