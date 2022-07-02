@@ -219,7 +219,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     T nms_threshold = static_cast<T>(ctx.Attr<float>("nms_threshold"));
     T nms_eta = static_cast<T>(ctx.Attr<float>("nms_eta"));
     T score_threshold = static_cast<T>(ctx.Attr<float>("score_threshold"));
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
 
     int num_det = 0;
 
@@ -361,7 +361,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto rois_num = ctx.Input<Tensor>("RoisNum");
     auto score_dims = scores->dims();
     auto score_size = score_dims.size();
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
 
     std::vector<std::map<int, std::vector<int>>> all_indices;
     std::vector<size_t> batch_starts = {0};

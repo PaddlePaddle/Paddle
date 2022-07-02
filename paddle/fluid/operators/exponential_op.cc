@@ -62,8 +62,7 @@ class ExponentialOpInferVarType
 };
 
 template <typename T>
-class ExponentialKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
+class ExponentialKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *out = ctx.Output<framework::Tensor>("Out");
@@ -135,9 +134,8 @@ REGISTER_OPERATOR(exponential_grad,
                   ExponentialGradInferer);
 
 REGISTER_OP_CPU_KERNEL(exponential,
-                       ops::ExponentialKernel<plat::CPUDeviceContext, float>,
-                       ops::ExponentialKernel<plat::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    exponential_grad,
-    ops::ExponentialGradKernel<plat::CPUDeviceContext, float>,
-    ops::ExponentialGradKernel<plat::CPUDeviceContext, double>);
+                       ops::ExponentialKernel<phi::CPUContext, float>,
+                       ops::ExponentialKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(exponential_grad,
+                       ops::ExponentialGradKernel<phi::CPUContext, float>,
+                       ops::ExponentialGradKernel<phi::CPUContext, double>);

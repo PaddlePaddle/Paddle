@@ -51,7 +51,7 @@ struct ArrayToLoDFunctor : public boost::static_visitor<void> {
   void operator()(Place place) const {
     auto &pool = platform::DeviceContextPool::Instance();
     if (std::is_same<Place, platform::CPUPlace>::value) {
-      Apply(static_cast<platform::CPUDeviceContext *>(pool.Get(place)));
+      Apply(static_cast<phi::CPUContext *>(pool.Get(place)));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       Apply(static_cast<platform::CUDADeviceContext *>(pool.Get(place)));
