@@ -18,12 +18,6 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace paddle {
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 namespace math {
 
@@ -128,9 +122,6 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
                                 functor_impl);
   }
 }
-
-template class CrossEntropyFunctor<platform::CPUDeviceContext, float>;
-template class CrossEntropyFunctor<platform::CPUDeviceContext, double>;
 
 template class CrossEntropyFunctor<phi::CPUContext, float>;
 template class CrossEntropyFunctor<phi::CPUContext, double>;

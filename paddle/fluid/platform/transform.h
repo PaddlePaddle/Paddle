@@ -69,30 +69,6 @@ struct Transform {
 };
 
 // NOTE: After the phi kernel is migrated, it needs to be deleted.
-template <>
-struct Transform<platform::CPUDeviceContext> {
-  template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const platform::CPUDeviceContext& context,
-                  InputIter first,
-                  InputIter last,
-                  OutputIter result,
-                  UnaryOperation op) {
-    std::transform(first, last, result, op);
-  }
-
-  template <typename InputIter1,
-            typename InputIter2,
-            typename OutputIter,
-            typename BinaryOperation>
-  void operator()(const platform::CPUDeviceContext& context,
-                  InputIter1 first1,
-                  InputIter1 last1,
-                  InputIter2 first2,
-                  OutputIter result,
-                  BinaryOperation op) {
-    std::transform(first1, last1, first2, result, op);
-  }
-};
 
 template <>
 struct Transform<phi::CPUContext> {

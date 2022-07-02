@@ -134,14 +134,7 @@ constexpr DeviceType kMLU = DeviceType::MLU;
 
 using DeviceContext = phi::DeviceContext;
 
-// using CPUDeviceContext = phi::CPUContext;
-// TODO(wilber): The place constructor is used in many places, it is more
-// difficult to use CPUDeviceContext = phi::CPUContext directly.
-class CPUDeviceContext : public phi::CPUContext {
- public:
-  CPUDeviceContext();
-  explicit CPUDeviceContext(CPUPlace place);
-};
+using CPUDeviceContext = phi::CPUContext;
 
 template <typename Place>
 struct DefaultDeviceContextType;
