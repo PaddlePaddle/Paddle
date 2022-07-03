@@ -337,7 +337,7 @@ class MatMulMKLDNNHandler
              ctx.Attr<std::vector<int>>("fused_reshape_Y").empty());
   }
 
-  bool IsOutputFused(const ExecutionContext& ctx) {
+  bool IsOutputFused(const ExecutionContext& ctx) const {
     return ctx.HasAttr("fused_transpose_Out") ||
            ctx.HasAttr("fused_reshape_Out");
   }
