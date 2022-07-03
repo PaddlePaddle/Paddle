@@ -112,15 +112,7 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext& ctx,
 }
 
 bool IsOutputFused(const ExecutionContext& ctx) {
-  if (ctx.HasAttr("fused_transpose_Out") && ctx.HasAttr("fused_reshape_Out")) {
-    auto axis = ctx.Attr<std::vector<int>>("fused_transpose_Out");
-    auto shape = ctx.Attr<std::vector<int>>("fused_reshape_Out");
-
-    if (!axis.empty() && !shape.empty()) {
-      return true;
-    }
-  }
-  return false;
+  return ctx.HasAttr("fused_transpose_Out") || ctx.HasAttr("fused_reshape_Out");
 }
 
 float ComputeOutputScale(const ExecutionContext& ctx) {
@@ -263,16 +255,12 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
     std::vector<int64_t> x_bd_dims(ndims, 1);
     std::vector<int64_t> y_bd_dims(ndims, 1);
 
-    if (ctx.HasAttr("fused_transpose_Out") &&
-        ctx.HasAttr("fused_reshape_Out")) {
+    if (IsOutputFused(ctx)) {
       auto axis = ctx.Attr<std::vector<int>>("fused_transpose_Out");
       auto shape = ctx.Attr<std::vector<int>>("fused_reshape_Out");
-
-      if (!axis.empty() && !shape.empty()) {
-        auto out_dims = out->dims();
-        auto new_dims = out_dims.transpose(axis).reshape(shape);
-        out->Resize(new_dims);
-      }
+      auto out_dims = out->dims();
+      auto new_dims = out_dims.transpose(axis).reshape(shape);
+      out->Resize(new_dims);
     }
 
     CalculateMatrixDims(
