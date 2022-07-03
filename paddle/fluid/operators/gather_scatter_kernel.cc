@@ -45,12 +45,17 @@ class ReduceMultiply {
 };
 static ReduceMultiply reduce_mul;
 
-template <typename tensor_t, typename index_t = int64_t,
+template <typename tensor_t,
+          typename index_t = int64_t,
           bool is_scatter_like = true>
 struct cpu_gather_scatter_functor {
   template <typename func_t>
-  void operator()(Tensor self, int dim, const Tensor& index, const Tensor& src,
-                  const std::string& method_name, const func_t& reduce_op,
+  void operator()(Tensor self,
+                  int dim,
+                  const Tensor& index,
+                  const Tensor& src,
+                  const std::string& method_name,
+                  const func_t& reduce_op,
                   const platform::DeviceContext& ctx) {
     if (index.numel() == 0) {
       return;
@@ -125,39 +130,57 @@ struct cpu_gather_scatter_functor {
 };
 
 template <typename tensor_t, typename index_t>
-void cpu_gather_kernel(Tensor self, int dim, const Tensor& index, Tensor result,
+void cpu_gather_kernel(Tensor self,
+                       int dim,
+                       const Tensor& index,
+                       Tensor result,
                        const platform::DeviceContext& ctx) {
-  cpu_gather_scatter_functor<tensor_t, index_t,
+  cpu_gather_scatter_functor<tensor_t,
+                             index_t,
                              /*is_scatter_like=*/false>()(
       result, dim, index, self, "gather_out_cpu", tensor_assign, ctx);
 }
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_assign_kernel(Tensor self, int dim, const Tensor& index,
-                               Tensor src, const platform::DeviceContext& ctx) {
-  cpu_gather_scatter_functor<tensor_t, index_t,
+void cpu_scatter_assign_kernel(Tensor self,
+                               int dim,
+                               const Tensor& index,
+                               Tensor src,
+                               const platform::DeviceContext& ctx) {
+  cpu_gather_scatter_functor<tensor_t,
+                             index_t,
                              /*is_scatter_like=*/true>()(
       self, dim, index, src, "scatter_assign_cpu", tensor_assign, ctx);
 }
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_add_kernel(Tensor self, int dim, const Tensor& index,
-                            Tensor src, const platform::DeviceContext& ctx) {
-  cpu_gather_scatter_functor<tensor_t, index_t,
+void cpu_scatter_add_kernel(Tensor self,
+                            int dim,
+                            const Tensor& index,
+                            Tensor src,
+                            const platform::DeviceContext& ctx) {
+  cpu_gather_scatter_functor<tensor_t,
+                             index_t,
                              /*is_scatter_like=*/true>()(
       self, dim, index, src, "scatter_add_cpu", reduce_add, ctx);
 }
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_mul_kernel(Tensor self, int dim, const Tensor& index,
-                            Tensor src, const platform::DeviceContext& ctx) {
-  cpu_gather_scatter_functor<tensor_t, index_t,
+void cpu_scatter_mul_kernel(Tensor self,
+                            int dim,
+                            const Tensor& index,
+                            Tensor src,
+                            const platform::DeviceContext& ctx) {
+  cpu_gather_scatter_functor<tensor_t,
+                             index_t,
                              /*is_scatter_like=*/true>()(
       self, dim, index, src, "scatter_mul_cpu", reduce_mul, ctx);
 }
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_input_grad_kernel(Tensor self, int dim, const Tensor& index,
+void cpu_scatter_input_grad_kernel(Tensor self,
+                                   int dim,
+                                   const Tensor& index,
                                    Tensor output,
                                    const platform::DeviceContext& ctx) {
   auto* index_data = index.data<index_t>();

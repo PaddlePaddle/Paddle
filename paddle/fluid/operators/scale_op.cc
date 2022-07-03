@@ -34,7 +34,8 @@ class ScaleOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -122,10 +123,14 @@ DECLARE_INPLACE_OP_INFERER(ScaleOpInplaceInferer, {"X", "Out"});
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(scale, ScaleInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(scale,
+                            ScaleInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
-REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker,
+REGISTER_OPERATOR(scale,
+                  ops::ScaleOp,
+                  ops::ScaleOpMaker,
                   ops::ScaleGradMaker<paddle::framework::OpDesc>,
                   ops::ScaleGradMaker<paddle::imperative::OpBase>,
-                  ScaleInferShapeFunctor, ops::ScaleOpVarTypeInference,
+                  ScaleInferShapeFunctor,
+                  ops::ScaleOpVarTypeInference,
                   ops::ScaleOpInplaceInferer);

@@ -55,6 +55,8 @@ std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
   CHECK_GPU_INPUT(x);
   auto out = paddle::empty_like(x);
 
+  PD_CHECK(x.place() == paddle::DefaultGPUPlace());
+
   int64_t numel = x.numel();
   int64_t block = 512;
   int64_t grid = (numel + block - 1) / block;
@@ -74,6 +76,8 @@ std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
   CHECK_GPU_INPUT(out);
   CHECK_GPU_INPUT(grad_out);
   auto grad_x = paddle::empty_like(x);
+
+  PD_CHECK(x.place() == paddle::DefaultGPUPlace());
 
   int64_t numel = out.numel();
   int64_t block = 512;
@@ -101,12 +105,12 @@ std::vector<paddle::Tensor> relu_cuda_double_backward(
   int64_t grid = (numel + block - 1) / block;
   PD_DISPATCH_FLOATING_AND_HALF_TYPES(
       out.type(), "relu_cuda_double_backward_kernel", ([&] {
-        relu_cuda_double_backward_kernel<
-            data_t><<<grid, block, 0, out.stream()>>>(
-            out.data<data_t>(),
-            ddx.data<data_t>(),
-            ddout.mutable_data<data_t>(out.place()),
-            numel);
+        relu_cuda_double_backward_kernel<data_t>
+            <<<grid, block, 0, out.stream()>>>(
+                out.data<data_t>(),
+                ddx.data<data_t>(),
+                ddout.mutable_data<data_t>(out.place()),
+                numel);
       }));
 
   std::cout << "Debug info: run relu gpu double backward success." << std::endl;

@@ -73,7 +73,8 @@ void QuantDequantMkldnnPass::MarkSkipQuantizedPool2d(ir::Graph* graph) const {
 }
 
 void QuantDequantMkldnnPass::CollectInfoFromFake(
-    ir::Graph* graph, Scope* scope,
+    ir::Graph* graph,
+    Scope* scope,
     const std::unordered_set<std::string>& fake_dequantize_types,
     std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
     const {
@@ -95,9 +96,10 @@ void QuantDequantMkldnnPass::CollectInfoFromFake(
         auto scale_name = op_desc->Input("Scales")[0];
         auto* var = scope->FindVar(scale_name);
         PADDLE_ENFORCE_NOT_NULL(
-            var, platform::errors::NotFound(
-                     "The Scales variable [%s] of dequantize op is not found.",
-                     var));
+            var,
+            platform::errors::NotFound(
+                "The Scales variable [%s] of dequantize op is not found.",
+                var));
 
         auto* scale_tensor = var->GetMutable<LoDTensor>();
         auto* scale_data = scale_tensor->data<float>();
@@ -112,7 +114,8 @@ void QuantDequantMkldnnPass::CollectInfoFromFake(
 }
 
 void QuantDequantMkldnnPass::CollectInputScalesFromFake(
-    ir::Graph* graph, Scope* scope,
+    ir::Graph* graph,
+    Scope* scope,
     const std::unordered_set<std::string>& fake_quantize_types,
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
     const {
@@ -126,7 +129,8 @@ void QuantDequantMkldnnPass::CollectInputScalesFromFake(
       auto* op_desc = op_node->Op();
       const int bit_length =
           BOOST_GET_CONST(int, op_desc->GetAttr("bit_length"));
-      PADDLE_ENFORCE_EQ(bit_length, 8,
+      PADDLE_ENFORCE_EQ(bit_length,
+                        8,
                         platform::errors::InvalidArgument(
                             "Unsupported number quantization "
                             "bits: %d, only 8 is supported now.",
@@ -190,7 +194,8 @@ void QuantDequantMkldnnPass::CollectOutputScalesFromAttr(
 }
 
 void QuantDequantMkldnnPass::CollectFakeQuantizeOps(
-    ir::Graph* graph, Node* op_node,
+    ir::Graph* graph,
+    Node* op_node,
     std::unordered_set<const Node*>* nodes2rm) const {
   auto* op_desc = op_node->Op();
   auto x_var_name = op_desc->Input("X")[0];
@@ -243,7 +248,8 @@ void QuantDequantMkldnnPass::CollectFakeQuantizeOps(
 }
 
 void QuantDequantMkldnnPass::CollectFakeDequantizeOps(
-    ir::Graph* graph, Node* op_node,
+    ir::Graph* graph,
+    Node* op_node,
     std::unordered_set<const Node*>* nodes2rm) const {
   auto* op_desc = op_node->Op();
   auto x_var_name = op_desc->Input("X")[0];
@@ -369,7 +375,9 @@ bool QuantDequantMkldnnPass::IsInt8Weight(
 }
 
 void QuantDequantMkldnnPass::DequantizeOpWeights(
-    Node* op_node, Scope* scope, const std::string& weight_name,
+    Node* op_node,
+    Scope* scope,
+    const std::string& weight_name,
     const std::string& output_name,
     const std::unordered_map<std::string, std::vector<float>>&
         weight_thresholds) const {
@@ -390,9 +398,11 @@ void QuantDequantMkldnnPass::DequantizeOpWeights(
 
   auto* var = scope->FindVar(weight_var_name);
   PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::NotFound(
-               "The input persistable [%s] var of [%s] op is not found.",
-               weight_var_name, op_desc->Type()));
+      var,
+      platform::errors::NotFound(
+          "The input persistable [%s] var of [%s] op is not found.",
+          weight_var_name,
+          op_desc->Type()));
   auto* weight_tensor = var->GetMutable<LoDTensor>();
   const auto weight_dims = weight_tensor->dims();
 
@@ -444,14 +454,17 @@ void QuantDequantMkldnnPass::DequantizeOpWeights(
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The size of weight scales vector (%d) does not "
         "match the dimensions (%d) of the weights tensor %s.",
-        size, weight_tensor->dims().size(), weight_var_name));
+        size,
+        weight_tensor->dims().size(),
+        weight_var_name));
   }
 
   weight_tensor->Resize(weight_dims);
 }
 
 void QuantDequantMkldnnPass::DequantizeWeights(
-    ir::Graph* graph, Scope* scope,
+    ir::Graph* graph,
+    Scope* scope,
     const std::unordered_map<std::string, std::vector<float>>&
         weight_thresholds) const {
   VLOG(3) << "dequantize weight for ops which has weight";
@@ -467,8 +480,8 @@ void QuantDequantMkldnnPass::DequantizeWeights(
     if (!op_node->IsOp()) continue;
     if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d") {
       if (IsInt8Weight(op_node, scope, "Filter")) {
-        DequantizeOpWeights(op_node, scope, "Filter", "Output",
-                            weight_thresholds);
+        DequantizeOpWeights(
+            op_node, scope, "Filter", "Output", weight_thresholds);
       }
     } else if (op_node->Name() == "mul" || op_node->Name() == "matmul" ||
                op_node->Name() == "matmul_v2") {
@@ -537,10 +550,12 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   MarkSkipQuantizedOps(graph, skip_ops);
   MarkSkipQuantizedPool2d(graph);
   CollectInfoFromFake(graph, scope, fake_dequantize_types, &weight_thresholds);
-  CollectInputScalesFromFake(graph, scope, fake_quantize_types,
-                             &var_quant_scales);
+  CollectInputScalesFromFake(
+      graph, scope, fake_quantize_types, &var_quant_scales);
   CollectOutputScalesFromAttr(graph, &var_quant_scales);
-  RemoveFakeOps(graph, fake_quantize_types, fake_dequantize_types,
+  RemoveFakeOps(graph,
+                fake_quantize_types,
+                fake_dequantize_types,
                 fake_quantize_dequantize_types);
   DequantizeWeights(graph, scope, weight_thresholds);
   UpdateActivations(graph);
@@ -548,8 +563,8 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
 
   // save var_quant_scales in the first op's attr
   // for compute_propagate_scales_mkldnn_pass
-  SaveInfoInTheFirstOp(graph, "has_quant_info", "var_quant_scales",
-                       var_quant_scales);
+  SaveInfoInTheFirstOp(
+      graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 
 }  // namespace ir

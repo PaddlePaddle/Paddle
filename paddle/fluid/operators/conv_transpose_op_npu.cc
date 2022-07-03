@@ -58,8 +58,8 @@ class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
     filter_data_dims = phi::slice_ddim(filter_dims, 2, in_dims.size());
 
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    phi::UpdatePaddingAndDilation(&padding, &dilation, padding_algorithm,
-                                  in_data_dims, stride, ksize);
+    phi::UpdatePaddingAndDilation(
+        &padding, &dilation, padding_algorithm, in_data_dims, stride, ksize);
 
     // construct NPU attr
     std::vector<int> strides(4, 1);
@@ -90,7 +90,8 @@ class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     const auto& runner = NpuOpRunner("Conv2DTransposeD",
-                                     {input_tensor, *filter}, {output_tensor},
+                                     {input_tensor, *filter},
+                                     {output_tensor},
                                      {{"input_size", output_dim_vec},
                                       {"strides", strides},
                                       {"dilations", dilations},
@@ -140,8 +141,8 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims =
         phi::slice_ddim(filter_dims, 2, filter_dims.size());
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    phi::UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                                  in_data_dims, strides, ksize);
+    phi::UpdatePaddingAndDilation(
+        &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
     std::vector<int> strides_vec(4, 1);
     std::vector<int> dilations_vec(4, 1);
@@ -168,7 +169,8 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
       filter_grad->mutable_data<T>(ctx.GetPlace());
       const auto& runner =
           NpuOpRunner("Conv2DBackpropFilterD",
-                      {output_grad_tensor, input_tensor}, {*filter_grad},
+                      {output_grad_tensor, input_tensor},
+                      {*filter_grad},
                       {{"filter_size", phi::vectorize<int>(filter_dims)},
                        {"strides", strides_vec},
                        {"pads", paddings},
@@ -184,7 +186,8 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
       if (channel_last) {
         input_grad_tensor.set_layout(DataLayout::kNHWC);
       }
-      const auto& runner = NpuOpRunner("Conv2D", {output_grad_tensor, *filter},
+      const auto& runner = NpuOpRunner("Conv2D",
+                                       {output_grad_tensor, *filter},
                                        {input_grad_tensor},
                                        {{"strides", strides_vec},
                                         {"pads", paddings},
@@ -202,7 +205,8 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(conv2d_transpose, ops::Conv2DTransposeNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(conv2d_transpose,
+                       ops::Conv2DTransposeNPUKernel<float>,
                        ops::Conv2DTransposeNPUKernel<plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(conv2d_transpose_grad,

@@ -55,8 +55,10 @@ struct DstMaskFunctor {
     factor = static_cast<MT>(1.0f / retain_prob_);
   }
 
-  HOSTDEVICE inline void operator()(OutT* dst, const T1* src_val,
-                                    const T2* rand, int num) const {
+  HOSTDEVICE inline void operator()(OutT* dst,
+                                    const T1* src_val,
+                                    const T2* rand,
+                                    int num) const {
     static constexpr int kCount =
         phi::funcs::uniform_distribution<T2>::kReturnsCount;
 // 0 ~ kCount -1 is dist , kCount ~ 2 * kCount - 1 is mask
@@ -76,9 +78,12 @@ struct DstMaskFunctor {
 };
 
 template <typename T, typename MaskType>
-__global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
+__global__ void VectorizedRandomGenerator(const size_t n,
+                                          uint64_t seed,
                                           const float dropout_prob,
-                                          const T* src, MaskType* mask, T* dst,
+                                          const T* src,
+                                          MaskType* mask,
+                                          T* dst,
                                           bool is_upscale_in_train,
                                           uint64_t increment,
                                           size_t main_offset) {
@@ -108,8 +113,8 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
       DstMaskFunctor<T, float>(1.0f - dropout_prob, is_upscale_in_train);
   for (; fix < main_offset; fix += stride) {
     kps::ReadData<T, kCount, 1, 1, false>(&dst_mask[0], src + fix, deal_size);
-    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(&rands[0], Rand(),
-                                                          &state);
+    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(
+        &rands[0], Rand(), &state);
     // dst
     kps::OperatorTernary<T, float, T, DstMaskFunctor<T, float>>(
         &dst_mask[0], &dst_mask[0], &rands[0], dst_functor, kCount);
@@ -117,8 +122,8 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
     // mask
     kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
         &mask_result[0], &dst_mask[kCount], Cast());
-    kps::WriteData<MaskType, kCount, 1, 1, false>(mask + fix, &mask_result[0],
-                                                  deal_size);
+    kps::WriteData<MaskType, kCount, 1, 1, false>(
+        mask + fix, &mask_result[0], deal_size);
     if (fix > idx * kCount + 1) {
       __syncthreads();
     }
@@ -126,8 +131,8 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
   int remainder = n - fix;
   if (remainder > 0) {
     kps::ReadData<T, kCount, 1, 1, true>(&dst_mask[0], src + fix, remainder);
-    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(&rands[0], Rand(),
-                                                          &state);
+    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(
+        &rands[0], Rand(), &state);
     // dst
     kps::OperatorTernary<T, float, T, DstMaskFunctor<T, float>>(
         &dst_mask[0], &dst_mask[0], &rands[0], dst_functor, kCount);
@@ -135,8 +140,8 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
     // mask
     kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
         &mask_result[0], &dst_mask[kCount], Cast());
-    kps::WriteData<MaskType, kCount, 1, 1, true>(mask + fix, &mask_result[0],
-                                                 remainder);
+    kps::WriteData<MaskType, kCount, 1, 1, true>(
+        mask + fix, &mask_result[0], remainder);
     __syncthreads();
   }
 }
@@ -198,9 +203,12 @@ struct DstFunctor {
 };
 
 template <typename T, typename MaskType>
-__global__ void VectorizedGeneratorMask(const size_t n, uint64_t seed,
-                                        const float dropout_prob, const T* src,
-                                        MaskType* mask, uint64_t increment,
+__global__ void VectorizedGeneratorMask(const size_t n,
+                                        uint64_t seed,
+                                        const float dropout_prob,
+                                        const T* src,
+                                        MaskType* mask,
+                                        uint64_t increment,
                                         size_t main_offset) {
   constexpr int kCount = phi::funcs::uniform_distribution<float>::kReturnsCount;
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
@@ -226,8 +234,8 @@ __global__ void VectorizedGeneratorMask(const size_t n, uint64_t seed,
   auto mask_functor = MaskFunctor<T, float>(1.0f - dropout_prob);
   for (; fix < main_offset; fix += stride) {
     kps::ReadData<T, kCount, 1, 1, false>(&dst_mask[0], src + fix, deal_size);
-    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(&rands[0], Rand(),
-                                                          &state);
+    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(
+        &rands[0], Rand(), &state);
     // dst
     kps::OperatorBinary<float, T, MaskFunctor<T, float>>(
         &dst_mask[0], &rands[0], mask_functor, kCount);
@@ -235,8 +243,8 @@ __global__ void VectorizedGeneratorMask(const size_t n, uint64_t seed,
     // mask
     kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
         &mask_result[0], &dst_mask[0], Cast());
-    kps::WriteData<MaskType, kCount, 1, 1, false>(mask + fix, &mask_result[0],
-                                                  deal_size);
+    kps::WriteData<MaskType, kCount, 1, 1, false>(
+        mask + fix, &mask_result[0], deal_size);
     if (fix > idx * kCount + 1) {
       __syncthreads();
     }
@@ -244,16 +252,16 @@ __global__ void VectorizedGeneratorMask(const size_t n, uint64_t seed,
   int remainder = n - fix;
   if (remainder > 0) {
     kps::ReadData<T, kCount, 1, 1, true>(&dst_mask[0], src + fix, remainder);
-    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(&rands[0], Rand(),
-                                                          &state);
+    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(
+        &rands[0], Rand(), &state);
     // dst
     kps::OperatorBinary<float, T, MaskFunctor<T, float>>(
         &dst_mask[0], &rands[0], mask_functor, kCount);
     // mask
     kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
         &mask_result[0], &dst_mask[0], Cast());
-    kps::WriteData<MaskType, kCount, 1, 1, true>(mask + fix, &mask_result[0],
-                                                 remainder);
+    kps::WriteData<MaskType, kCount, 1, 1, true>(
+        mask + fix, &mask_result[0], remainder);
     __syncthreads();
   }
 }
@@ -273,7 +281,8 @@ inline void CalcBroadcastedMask(const phi::GPUContext& dev_ctx,
 
 template <typename T, typename MT>
 void ScaleByDropoutFactor(const phi::GPUContext& dev_ctx,
-                          const framework::Tensor& x, framework::Tensor* y,
+                          const framework::Tensor& x,
+                          framework::Tensor* y,
                           MT factor) {
   std::vector<const framework::Tensor*> ins = {&x};
   std::vector<framework::Tensor*> outs = {y};
@@ -282,12 +291,16 @@ void ScaleByDropoutFactor(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T>
-void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
-                              float dropout_prob, bool upscale_in_train,
-                              bool is_fix_seed, int seed_val,
+void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx,
+                              bool is_test,
+                              float dropout_prob,
+                              bool upscale_in_train,
+                              bool is_fix_seed,
+                              int seed_val,
                               const framework::Tensor& x,
                               const framework::Tensor* seed,
-                              framework::Tensor* mask, framework::Tensor* y,
+                              framework::Tensor* mask,
+                              framework::Tensor* y,
                               bool is_dropout_nd = false) {
   int64_t x_numel = x.numel();
   auto stream = dev_ctx.stream();
@@ -331,32 +344,50 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
 
     auto offset =
         ((x_numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;
-    GetSeedDataAndIncrement(dev_ctx, seed, is_fix_seed, seed_val, offset,
-                            &seed_data, &increment);
+    GetSeedDataAndIncrement(
+        dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
     size_t main_offset =
         size / (block_size * kVecSize) * (block_size * kVecSize);
 
     if (is_dropout_nd) {
-      VectorizedGeneratorMask<T, uint8_t><<<grid_size, block_size, 0, stream>>>(
-          size, seed_data, dropout_prob, x_data, mask_data, increment,
-          main_offset);
+      VectorizedGeneratorMask<T, uint8_t>
+          <<<grid_size, block_size, 0, stream>>>(size,
+                                                 seed_data,
+                                                 dropout_prob,
+                                                 x_data,
+                                                 mask_data,
+                                                 increment,
+                                                 main_offset);
 
       framework::Tensor broadcasted_mask;
       broadcasted_mask.Resize(x.dims());
       CalcBroadcastedMask(dev_ctx, *mask, &broadcasted_mask);
 
-      auto dst_functor = DstFunctor<T, uint8_t>(1.0f - dropout_prob,
-                                                upscale_in_train, x_numel);
+      auto dst_functor = DstFunctor<T, uint8_t>(
+          1.0f - dropout_prob, upscale_in_train, x_numel);
       std::vector<const framework::Tensor*> ins = {&x, &broadcasted_mask};
       std::vector<framework::Tensor*> outs = {y};
       phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, dst_functor);
     } else {
 #define PD_DROPOUT_KERNEL_NAME VectorizedRandomGenerator<T, uint8_t>
-      PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(
-          !is_fix_seed, PD_DROPOUT_KERNEL_NAME, grid_size, block_size, 0,
-          stream, offset, KERNEL_PARAMS.As<uint64_t>(1),
-          KERNEL_PARAMS.As<uint64_t>(7), size, seed_data, dropout_prob, x_data,
-          mask_data, y_data, upscale_in_train, increment, main_offset);
+      PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(!is_fix_seed,
+                                         PD_DROPOUT_KERNEL_NAME,
+                                         grid_size,
+                                         block_size,
+                                         0,
+                                         stream,
+                                         offset,
+                                         KERNEL_PARAMS.As<uint64_t>(1),
+                                         KERNEL_PARAMS.As<uint64_t>(7),
+                                         size,
+                                         seed_data,
+                                         dropout_prob,
+                                         x_data,
+                                         mask_data,
+                                         y_data,
+                                         upscale_in_train,
+                                         increment,
+                                         main_offset);
 #undef PD_DROPOUT_KERNEL_NAME
     }
   } else {
@@ -389,8 +420,10 @@ struct CudaDropoutGradFunctor {
 };
 
 template <typename T>
-void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
-                                float dropout_prob, bool upscale_in_train,
+void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
+                                bool is_test,
+                                float dropout_prob,
+                                bool upscale_in_train,
                                 const framework::Tensor& grad_y,
                                 const framework::Tensor& mask,
                                 framework::Tensor* grad_x,

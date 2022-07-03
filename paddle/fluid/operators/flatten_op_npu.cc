@@ -48,8 +48,10 @@ class Flatten2GradNPUKernel : public framework::OpKernel<T> {
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<paddle::platform::NPUDeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<paddle::platform::NPUDeviceContext>(),
+        d_x);
     d_x->Resize(x_dims);
   }
 };
@@ -68,7 +70,9 @@ class FlattenContiguousRangeNPUKernel : public framework::OpKernel<T> {
     Out->mutable_data<T>(ctx.GetPlace());
 
     const auto &runner =
-        NpuOpRunner("FlattenV2", {*X}, {*Out},
+        NpuOpRunner("FlattenV2",
+                    {*X},
+                    {*Out},
                     {{"axis", static_cast<int32_t>(start_axis)},
                      {"end_axis", static_cast<int32_t>(stop_axis)}});
     auto stream =
@@ -91,8 +95,10 @@ class FlattenContiguousRangeGradNPUKernel : public framework::OpKernel<T> {
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<paddle::platform::NPUDeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<paddle::platform::NPUDeviceContext>(),
+        d_x);
     d_x->Resize(x_dims);
   }
 };
@@ -102,13 +108,15 @@ class FlattenContiguousRangeGradNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(flatten2, ops::Flatten2NPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(flatten2,
+                       ops::Flatten2NPUKernel<float>,
                        ops::Flatten2NPUKernel<double>,
                        ops::Flatten2NPUKernel<uint8_t>,
                        ops::Flatten2NPUKernel<int>,
                        ops::Flatten2NPUKernel<int8_t>,
                        ops::Flatten2NPUKernel<int64_t>);
-REGISTER_OP_NPU_KERNEL(flatten2_grad, ops::Flatten2GradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(flatten2_grad,
+                       ops::Flatten2GradNPUKernel<float>,
                        ops::Flatten2GradNPUKernel<double>,
                        ops::Flatten2GradNPUKernel<uint8_t>,
                        ops::Flatten2GradNPUKernel<int>,

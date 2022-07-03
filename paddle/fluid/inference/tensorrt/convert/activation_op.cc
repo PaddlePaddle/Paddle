@@ -41,7 +41,8 @@ class ActivationOpConverter : public OpConverter {
  public:
   ActivationOpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
@@ -65,13 +66,13 @@ class ActivationOpConverter : public OpConverter {
           engine_, Activation, *input_tensor, nvinfer1::ActivationType::kCLIP);
       layer_clip->setAlpha(-3.40282e+038);
       layer_clip->setBeta(threshold / beta);
-      layer = TRT_ENGINE_ADD_LAYER(engine_, Activation,
-                                   *layer_clip->getOutput(0), op_pair->second);
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Activation, *layer_clip->getOutput(0), op_pair->second);
       layer->setAlpha(1.0f / beta);
       layer->setBeta(beta);
     } else {
-      layer = TRT_ENGINE_ADD_LAYER(engine_, Activation, *input_tensor,
-                                   op_pair->second);
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Activation, *input_tensor, op_pair->second);
     }
 
 #if IS_TRT_VERSION_GE(5130)

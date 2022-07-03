@@ -722,6 +722,10 @@ class ASPHelper(object):
         if param_name in supported_layers_and_prune_func_map:
             return True
 
+        # The parameter's name is neither in *.* format nor added to supported_layers_and_prune_func_map, return False.
+        if len(param_name_list) == 1:
+            return False
+
         param_name_no_weight_suffix = param_name_list[0]
         param_type_suffix = param_name_list[1]
         layer_name = param_name_no_weight_suffix[:param_name_no_weight_suffix.

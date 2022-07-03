@@ -30,7 +30,8 @@ class LookupTableV2MLUKernel : public framework::OpKernel<T> {
 
     auto *table_var = ctx.InputVar("W");
     PADDLE_ENFORCE_EQ(
-        table_var->IsType<framework::LoDTensor>(), true,
+        table_var->IsType<framework::LoDTensor>(),
+        true,
         platform::errors::InvalidArgument("mlu only accept LoDTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
 
@@ -38,10 +39,14 @@ class LookupTableV2MLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc table_desc(*table_t);
     MLUCnnlTensorDesc output_desc(*output_t);
 
-    MLUCnnl::EmbeddingForward(ctx, padding_idx, table_desc.get(),
-                              GetBasePtr(table_t), ids_desc.get(),
+    MLUCnnl::EmbeddingForward(ctx,
+                              padding_idx,
+                              table_desc.get(),
+                              GetBasePtr(table_t),
+                              ids_desc.get(),
                               static_cast<const int *>(GetBasePtr(ids_t)),
-                              output_desc.get(), GetBasePtr(output_t));
+                              output_desc.get(),
+                              GetBasePtr(output_t));
   }
 };
 
@@ -50,13 +55,15 @@ class LookupTableV2GradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *table_var = ctx.InputVar("W");
-    PADDLE_ENFORCE_EQ(table_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(table_var->IsType<framework::LoDTensor>(),
+                      true,
                       platform::errors::PermissionDenied(
                           "Unsupported Variable Type , idx in "
                           "LookupTableV2GradMLUKernel should be LoDTensor."));
     bool is_sparse = ctx.Attr<bool>("is_sparse");
     PADDLE_ENFORCE_EQ(
-        is_sparse, false,
+        is_sparse,
+        false,
         platform::errors::InvalidArgument(
             "LookupTableV2GradMLUKernel dose NOT support is_sparse = True."));
     auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");
@@ -70,7 +77,8 @@ class LookupTableV2GradMLUKernel : public framework::OpKernel<T> {
 
     int64_t ids_numel = ids_t->numel();
     PADDLE_ENFORCE_EQ(
-        ids_numel <= std::numeric_limits<int32_t>::max(), true,
+        ids_numel <= std::numeric_limits<int32_t>::max(),
+        true,
         platform::errors::OutOfRange(
             "Number of ids greater than int32_t::max , please check "
             "number of ids in LookupTableV2GradMLUKernel."));
@@ -81,8 +89,12 @@ class LookupTableV2GradMLUKernel : public framework::OpKernel<T> {
       MLUCnnlTensorDesc ids_desc(*ids_t);
       MLUCnnlTensorDesc ids_int32_desc(ids_int32);
       auto cast_type = GetCastDataType(ids_t->dtype(), DataType::INT32);
-      MLUCnnl::Cast(ctx, cast_type, ids_desc.get(), GetBasePtr(ids_t),
-                    ids_int32_desc.get(), GetBasePtr(&ids_int32));
+      MLUCnnl::Cast(ctx,
+                    cast_type,
+                    ids_desc.get(),
+                    GetBasePtr(ids_t),
+                    ids_int32_desc.get(),
+                    GetBasePtr(&ids_int32));
     } else {
       ids_int32 = *ids_t;
     }
@@ -91,9 +103,14 @@ class LookupTableV2GradMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc output_grad_desc(*output_grad_t);
     MLUCnnlTensorDesc table_grad_desc(*table_grad_t);
 
-    MLUCnnl::EmbeddingBackward(ctx, padding_idx, false, ids_int32_desc.get(),
-                               GetBasePtr(&ids_int32), output_grad_desc.get(),
-                               GetBasePtr(output_grad_t), table_grad_desc.get(),
+    MLUCnnl::EmbeddingBackward(ctx,
+                               padding_idx,
+                               false,
+                               ids_int32_desc.get(),
+                               GetBasePtr(&ids_int32),
+                               output_grad_desc.get(),
+                               GetBasePtr(output_grad_t),
+                               table_grad_desc.get(),
                                GetBasePtr(table_grad_t));
   }
 };
@@ -103,7 +120,8 @@ class LookupTableV2GradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(lookup_table_v2, ops::LookupTableV2MLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(lookup_table_v2,
+                       ops::LookupTableV2MLUKernel<float>,
                        ops::LookupTableV2MLUKernel<int>,
                        ops::LookupTableV2MLUKernel<plat::float16>);
 

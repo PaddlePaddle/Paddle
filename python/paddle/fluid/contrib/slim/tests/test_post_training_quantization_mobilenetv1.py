@@ -425,7 +425,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1(TestPostTrainingQuantization):
 
     def test_post_training_onnx_format_mobilenetv1(self):
         model = "MobileNet-V1"
-        algo = "avg"
+        algo = "emd"
         round_type = "round"
         data_urls = [
             'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'

@@ -42,7 +42,9 @@ struct MergedMomentumMasterParams<MT, kParamNum, false> {
   HOSTDEVICE constexpr void SetMasterParam(size_t, MT *) {}
 };
 
-template <typename T, typename MT, bool kHasMasterParams,
+template <typename T,
+          typename MT,
+          bool kHasMasterParams,
           uint32_t kParamNum = kHasMasterParams ? 55 : 110>
 struct MergedMomentumKernelParam
     : public MergedMomentumMasterParams<MT, kParamNum, kHasMasterParams> {
@@ -103,14 +105,17 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
     auto params = ctx.MultiInput<framework::Tensor>("Param");
     auto params_out = ctx.MultiOutput<framework::Tensor>("ParamOut");
     size_t n = params.size();
-    PADDLE_ENFORCE_EQ(n, params_out.size(),
+    PADDLE_ENFORCE_EQ(n,
+                      params_out.size(),
                       platform::errors::InvalidArgument(
                           "The size of Output(ParamOut) must be equal to "
                           "Input(Param), but got the size of Output(ParamOut) "
                           "is %d, the size of Input(Param) is %d.",
-                          params_out.size(), n));
+                          params_out.size(),
+                          n));
     for (size_t i = 0; i < n; ++i) {
-      PADDLE_ENFORCE_EQ(params[i], params_out[i],
+      PADDLE_ENFORCE_EQ(params[i],
+                        params_out[i],
                         platform::errors::InvalidArgument(
                             "The size of Input(Param) and Output(ParamOut) "
                             "must be the same Tensors."));
@@ -118,30 +123,37 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
 
     auto grads = ctx.MultiInput<framework::Tensor>("Grad");
     PADDLE_ENFORCE_EQ(
-        n, grads.size(),
+        n,
+        grads.size(),
         platform::errors::InvalidArgument(
             "The size of Input(Grad) must be equal to Input(Param), but got "
             "the size of Input(Grad) is %d, the size of Input(Param) is %d.",
-            grads.size(), n));
+            grads.size(),
+            n));
 
     auto velocitys = ctx.MultiInput<framework::Tensor>("Velocity");
-    PADDLE_ENFORCE_EQ(n, velocitys.size(),
+    PADDLE_ENFORCE_EQ(n,
+                      velocitys.size(),
                       platform::errors::InvalidArgument(
                           "The size of Input(Velocity) must be equal to "
                           "Input(Param), but got the size of Input(Velocity) "
                           "is %d, the size of Input(Param) is %d.",
-                          velocitys.size(), n));
+                          velocitys.size(),
+                          n));
 
     auto velocitys_out = ctx.MultiOutput<framework::Tensor>("VelocityOut");
     PADDLE_ENFORCE_EQ(
-        n, velocitys_out.size(),
+        n,
+        velocitys_out.size(),
         platform::errors::InvalidArgument(
             "The size of Output(VelocityOut) must be "
             "equal to Input(Param), but got the size of Output(VelocityOut) is "
             "%d, the size of Input(Param) is %d.",
-            velocitys_out.size(), n));
+            velocitys_out.size(),
+            n));
     for (size_t i = 0; i < n; ++i) {
-      PADDLE_ENFORCE_EQ(velocitys[i], velocitys_out[i],
+      PADDLE_ENFORCE_EQ(velocitys[i],
+                        velocitys_out[i],
                         platform::errors::InvalidArgument(
                             "Input(Velocity) and Output(VelocityOut) must be "
                             "the same Tensors."));
@@ -152,21 +164,26 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
         ctx.MultiOutput<framework::Tensor>("MasterParamOut");
     if (multi_precision) {
       PADDLE_ENFORCE_EQ(
-          n, master_params.size(),
+          n,
+          master_params.size(),
           platform::errors::InvalidArgument(
               "The size of Input(MasterParam) must be "
               "equal to Input(Param), but got the size of Input(MasterParam) "
               "is %d, the size of Input(Param) is %d.",
-              master_params.size(), n));
+              master_params.size(),
+              n));
       PADDLE_ENFORCE_EQ(
-          n, master_params_out.size(),
+          n,
+          master_params_out.size(),
           platform::errors::InvalidArgument(
               "The size of Output(MasterParamOut) must be equal to "
               "Input(MasterParam), but got the size of Output(MasterParamOut) "
               "is %d, the size of Input(Param) is %d.",
-              master_params_out.size(), n));
+              master_params_out.size(),
+              n));
       for (size_t i = 0; i < n; ++i) {
-        PADDLE_ENFORCE_EQ(master_params[i], master_params_out[i],
+        PADDLE_ENFORCE_EQ(master_params[i],
+                          master_params_out[i],
                           platform::errors::InvalidArgument(
                               "Input(MasterParam) and Output(MasterParamOut) "
                               "must be the same Tensors."));
@@ -185,13 +202,15 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
     auto lrs = ctx.MultiInput<framework::Tensor>("LearningRate");
     if (lrs.size() != 1) {
       PADDLE_ENFORCE_EQ(
-          n, lrs.size(),
+          n,
+          lrs.size(),
           platform::errors::InvalidArgument(
               "If the size of Input(LearningRate) is not 1, the size of "
               "Input(LearningRate) must be "
               "equal to Input(Param), but got the size of Input(LearningRate) "
               "is %d, the size of Input(Param) is %d.",
-              lrs.size(), n));
+              lrs.size(),
+              n));
     }
     auto use_nesterov = ctx.Attr<bool>("use_nesterov");
     auto regularization_methods =
@@ -200,20 +219,24 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
         ctx.Attr<std::vector<float>>("regularization_coeff");
     if (regularization_methods.size() != 0) {
       PADDLE_ENFORCE_EQ(
-          n, regularization_methods.size(),
+          n,
+          regularization_methods.size(),
           platform::errors::InvalidArgument(
               "The size of Attr(regularization_method) must be equal "
               "to Input(Param), but got the size of "
               "Attr(regularization_method) is %d, the size of Input(Param) is "
               "%d.",
-              regularization_methods.size(), n));
+              regularization_methods.size(),
+              n));
       PADDLE_ENFORCE_EQ(
-          n, regularization_coeffs.size(),
+          n,
+          regularization_coeffs.size(),
           platform::errors::InvalidArgument(
               "The size of Attr(regularization_coeff) must be equal "
               "to Input(Param), but got the size of Attr(regularization_coeff) "
               "is %d, the size of Input(Param) is %d.",
-              regularization_coeffs.size(), n));
+              regularization_coeffs.size(),
+              n));
     }
 
     VLOG(5) << "use_nesterov: " << use_nesterov
@@ -246,8 +269,9 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
       kernel_params.grads[j] = grads[j + start]->data<T>();              \
       kernel_params.velocitys[j] = velocitys_out[j + start]->data<MT>(); \
       kernel_params.SetMasterParam(                                      \
-          j, kMultiPrecision ? master_params_out[j + start]->data<MT>()  \
-                             : nullptr);                                 \
+          j,                                                             \
+          kMultiPrecision ? master_params_out[j + start]->data<MT>()     \
+                          : nullptr);                                    \
     }                                                                    \
     platform::ForRange<DeviceContext> for_range(dev_ctx, max_size);      \
     for_range(kernel_params);                                            \
@@ -280,21 +304,35 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
             multi_precision ? master_params_out[idx]->data<MT>() : nullptr;
         if (platform::is_cpu_place(ctx.GetPlace())) {
           phi::CPUDenseMomentumFunctor<MT> functor;
-          functor(params[idx], grads[idx], velocitys[idx], lr_temp,
-                  static_cast<MT>(mu), use_nesterov, regularization_flag,
-                  regularization_coeff, params_out[idx], velocitys_out[idx]);
+          functor(params[idx],
+                  grads[idx],
+                  velocitys[idx],
+                  lr_temp,
+                  static_cast<MT>(mu),
+                  use_nesterov,
+                  regularization_flag,
+                  regularization_coeff,
+                  params_out[idx],
+                  velocitys_out[idx]);
           VLOG(10) << "Launch MergedMomentum cpu kernel.";
         } else if (platform::is_gpu_place(ctx.GetPlace())) {
           platform::ForRange<DeviceContext> for_range(
               static_cast<const DeviceContext &>(ctx.device_context()),
               params[idx]->numel());
-#define PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(__nesterov, __reg_type)         \
-  phi::DenseMomentumFunctor<T, MT, __reg_type, __nesterov> functor(           \
-      params[idx]->data<T>(), grads[idx]->data<T>(),                          \
-      velocitys[idx]->data<MT>(), lr_temp->data<MPType>(), master_in_data,    \
-      static_cast<MT>(mu), static_cast<MT>(rescale_grad),                     \
-      params[idx]->numel(), regularization_coeff, params_out[idx]->data<T>(), \
-      velocitys_out[idx]->data<MT>(), master_out_data);                       \
+#define PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(__nesterov, __reg_type) \
+  phi::DenseMomentumFunctor<T, MT, __reg_type, __nesterov> functor(   \
+      params[idx]->data<T>(),                                         \
+      grads[idx]->data<T>(),                                          \
+      velocitys[idx]->data<MT>(),                                     \
+      lr_temp->data<MPType>(),                                        \
+      master_in_data,                                                 \
+      static_cast<MT>(mu),                                            \
+      static_cast<MT>(rescale_grad),                                  \
+      params[idx]->numel(),                                           \
+      regularization_coeff,                                           \
+      params_out[idx]->data<T>(),                                     \
+      velocitys_out[idx]->data<MT>(),                                 \
+      master_out_data);                                               \
   for_range(functor);
           if (use_nesterov) {
             if (regularization_flag == phi::RegularizationType::kL2DECAY) {

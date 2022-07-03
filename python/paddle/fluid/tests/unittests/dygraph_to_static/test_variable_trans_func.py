@@ -22,30 +22,6 @@ import paddle.fluid as fluid
 
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import data_layer_not_check
-
-
-class TestDataLayerNotCheck(unittest.TestCase):
-
-    def test_create_none_shape(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            d = data_layer_not_check(name="d", shape=(None, -1, 3))
-            self.assertEqual(d.shape, (-1, -1, 3))
-            self.assertEqual(d.name, "d")
-
-    def test_feed_mismatch_shape(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            d = data_layer_not_check(name="d", shape=(1, 2, 3))
-        feed_in_data = np.random.uniform(size=[1, 2, 4]).astype(np.float32)
-        place = fluid.CUDAPlace(
-            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        ret = exe.run(main_program,
-                      feed={d.name: feed_in_data},
-                      fetch_list=[d.name])
-        self.assertTrue(np.allclose(ret, feed_in_data))
 
 
 class TestVariableTransFunc(unittest.TestCase):

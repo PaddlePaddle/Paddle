@@ -93,4 +93,6 @@ class Watcher(object):
 
     def stop(self):
         if hasattr(self, "proc"):
-            self.proc.join()
+            # daemon without join
+            # self.proc.join()
+            pass

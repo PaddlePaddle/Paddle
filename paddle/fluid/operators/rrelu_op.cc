@@ -52,7 +52,8 @@ class RReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("lower", "Lower bound of the uniform distribution.")
         .SetDefault(default_lower)
         .AddCustomChecker([](const float& lower) {
-          PADDLE_ENFORCE_EQ(lower >= 0.0f && lower < 1.0f, true,
+          PADDLE_ENFORCE_EQ(lower >= 0.0f && lower < 1.0f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'RRelu_lower' must be between 0.0 and 1.0."));
         });
@@ -60,7 +61,8 @@ class RReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("upper", "Upper bound of the uniform distribution.")
         .SetDefault(defalut_upper)
         .AddCustomChecker([](const float& upper) {
-          PADDLE_ENFORCE_EQ(upper > 0.0f && upper <= 1.0f, true,
+          PADDLE_ENFORCE_EQ(upper > 0.0f && upper <= 1.0f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'RRelu_upper' must be between 0.0 and 1.0."));
         });
@@ -114,14 +116,18 @@ class RReluGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(rrelu, RReluInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(rrelu,
+                            RReluInferShapeFunctor,
                             PD_INFER_META(phi::RReluInferMeta));
 
-REGISTER_OPERATOR(rrelu, ops::RReluOp, ops::RReluOpMaker,
+REGISTER_OPERATOR(rrelu,
+                  ops::RReluOp,
+                  ops::RReluOpMaker,
                   ops::RReluGradOpMaker<paddle::framework::OpDesc>,
                   ops::RReluGradOpMaker<paddle::imperative::OpBase>,
                   RReluInferShapeFunctor);
 
-DECLARE_INFER_SHAPE_FUNCTOR(rrelu_grad, RReluGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(rrelu_grad,
+                            RReluGradInferShapeFunctor,
                             PD_INFER_META(phi::RReluGradInferMeta));
 REGISTER_OPERATOR(rrelu_grad, ops::RReluGradOp, RReluGradInferShapeFunctor);

@@ -176,24 +176,35 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     int output_size = 3 * hidden_size;
     int input_size = dim_embed;
 
-    auto layer_norm_compute = AttnLayerNorm<T>(ctx.cuda_device_context(),
-                                               epsilon, bsz_seq, dim_embed);
+    auto layer_norm_compute = AttnLayerNorm<T>(
+        ctx.cuda_device_context(), epsilon, bsz_seq, dim_embed);
 
     bool compute_bias = true;
     if (qkv_bias == nullptr) {
       compute_bias = false;
     }
     // (transA, transB, compute_bias) = (false, true, true)
-    auto qkv_compute =
-        AttnMatMul<T>(ctx.cuda_device_context(), false, true, bsz_seq,
-                      output_size, input_size, compute_bias);
+    auto qkv_compute = AttnMatMul<T>(ctx.cuda_device_context(),
+                                     false,
+                                     true,
+                                     bsz_seq,
+                                     output_size,
+                                     input_size,
+                                     compute_bias);
 
-    AttnDropoutParam attn_dropout_param(
-        is_test_1, dropout_implementation_1, attn_dropout_rate,
-        is_upscale_in_train_1, is_fix_seed_1, seed_val_1, seed_1);
-    auto fmha_ref_compute =
-        FMHARef<T>(ctx.cuda_device_context(), batch_size, max_seq_len, num_head,
-                   dim_head, attn_dropout_param);
+    AttnDropoutParam attn_dropout_param(is_test_1,
+                                        dropout_implementation_1,
+                                        attn_dropout_rate,
+                                        is_upscale_in_train_1,
+                                        is_fix_seed_1,
+                                        seed_val_1,
+                                        seed_1);
+    auto fmha_ref_compute = FMHARef<T>(ctx.cuda_device_context(),
+                                       batch_size,
+                                       max_seq_len,
+                                       num_head,
+                                       dim_head,
+                                       attn_dropout_param);
 
     output_size = hidden_size;
     // (transA, transB, compute_bias) = (false, false, false)
@@ -202,12 +213,19 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     // which is actually the input size. While the input size is hidden size,
     // which is actually the output size. So for out linear, switch the
     // input size and output size.
-    auto out_linear_compute =
-        AttnMatMul<T>(ctx.cuda_device_context(), false, false, bsz_seq,
-                      input_size, output_size, false);
+    auto out_linear_compute = AttnMatMul<T>(ctx.cuda_device_context(),
+                                            false,
+                                            false,
+                                            bsz_seq,
+                                            input_size,
+                                            output_size,
+                                            false);
     DropoutParam dropout_param2(ctx, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
-        ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param2,
+        ctx.cuda_device_context(),
+        bsz_seq,
+        dim_embed,
+        dropout_param2,
         ln_epsilon);
 
     if (pre_layer_norm) {
@@ -218,31 +236,51 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
       auto *ln_var_data = ln_var->mutable_data<U>(ctx.GetPlace());
       auto *ln_out_data = ln_out->mutable_data<T>(ctx.GetPlace());
 
-      layer_norm_compute.ComputeForward(x_data, ln_scale_data, ln_bias_data,
-                                        ln_out_data, ln_mean_data, ln_var_data);
-      qkv_compute.ComputeForward(qkv_weight, ln_out, qkv_bias, qkv_out,
-                                 qkv_bias_out);
+      layer_norm_compute.ComputeForward(x_data,
+                                        ln_scale_data,
+                                        ln_bias_data,
+                                        ln_out_data,
+                                        ln_mean_data,
+                                        ln_var_data);
+      qkv_compute.ComputeForward(
+          qkv_weight, ln_out, qkv_bias, qkv_out, qkv_bias_out);
     } else {
-      qkv_compute.ComputeForward(qkv_weight, input_x, qkv_bias, qkv_out,
-                                 qkv_bias_out);
+      qkv_compute.ComputeForward(
+          qkv_weight, input_x, qkv_bias, qkv_out, qkv_bias_out);
     }
     if (qkv_bias == nullptr) {
-      fmha_ref_compute.ComputeForward(
-          *qkv_out, cache_kv, src_mask, transpose_out_2, cache_kv_out, qk_out,
-          src_mask_out, softmax_out, attn_dropout_mask_out, attn_dropout_out,
-          qktv_out, fmha_out);
+      fmha_ref_compute.ComputeForward(*qkv_out,
+                                      cache_kv,
+                                      src_mask,
+                                      transpose_out_2,
+                                      cache_kv_out,
+                                      qk_out,
+                                      src_mask_out,
+                                      softmax_out,
+                                      attn_dropout_mask_out,
+                                      attn_dropout_out,
+                                      qktv_out,
+                                      fmha_out);
     } else {
-      fmha_ref_compute.ComputeForward(
-          *qkv_bias_out, cache_kv, src_mask, transpose_out_2, cache_kv_out,
-          qk_out, src_mask_out, softmax_out, attn_dropout_mask_out,
-          attn_dropout_out, qktv_out, fmha_out);
+      fmha_ref_compute.ComputeForward(*qkv_bias_out,
+                                      cache_kv,
+                                      src_mask,
+                                      transpose_out_2,
+                                      cache_kv_out,
+                                      qk_out,
+                                      src_mask_out,
+                                      softmax_out,
+                                      attn_dropout_mask_out,
+                                      attn_dropout_out,
+                                      qktv_out,
+                                      fmha_out);
     }
 
     // fmha_out: [batch_size, seq_len, num_head, head_dim]
     // weight:   [embed_dim, embed_dim]
     // out_linear_out: [batch_size, seq_len, embed_dim]
-    out_linear_compute.ComputeForward(out_linear_weight, fmha_out, nullptr,
-                                      out_linear_out, nullptr);
+    out_linear_compute.ComputeForward(
+        out_linear_weight, fmha_out, nullptr, out_linear_out, nullptr);
     // tensor model parallel
     AllReduce<T>(*out_linear_out, ring_id, ctx.cuda_device_context());
 
@@ -251,11 +289,16 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     if (pre_layer_norm) {
       // output = (residual + dropout(input + bias))
       fused_dropout_layernorm_helper.ResidualDropoutBias(
-          ctx.cuda_device_context(), out_linear_out_data, residual_ptr,
-          out_linear_bias_data, final_out_data, dropout_mask_out_data);
+          ctx.cuda_device_context(),
+          out_linear_out_data,
+          residual_ptr,
+          out_linear_bias_data,
+          final_out_data,
+          dropout_mask_out_data);
     } else {
       // TODO(Xreki): support post layer_norm case when add_residual is false.
-      PADDLE_ENFORCE_EQ(add_residual, true,
+      PADDLE_ENFORCE_EQ(add_residual,
+                        true,
                         platform::errors::InvalidArgument(
                             "Attribute add_residual is expected to be true "
                             "when pre_layer_norm is false."));
@@ -268,10 +311,17 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
       U *ln_var_2_ptr = ln_var_2->mutable_data<U>(ctx.GetPlace());
       // output = layernorm(residual + dropout(input + bias))
       fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
-          ctx.cuda_device_context(), out_linear_out_data, residual_ptr,
-          out_linear_bias_data, ln_scale_2_ptr, ln_bias_2_ptr,
-          bias_dropout_residual_out_ptr, dropout_mask_out_data, final_out_data,
-          ln_mean_2_ptr, ln_var_2_ptr);
+          ctx.cuda_device_context(),
+          out_linear_out_data,
+          residual_ptr,
+          out_linear_bias_data,
+          ln_scale_2_ptr,
+          ln_bias_2_ptr,
+          bias_dropout_residual_out_ptr,
+          dropout_mask_out_data,
+          final_out_data,
+          ln_mean_2_ptr,
+          ln_var_2_ptr);
     }
   }
 };
@@ -436,34 +486,56 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     bool transA = false;
     bool transB = true;
     bool compute_qkv_bias = qkv_bias ? true : false;
-    auto layer_norm_compute = AttnLayerNorm<T>(ctx.cuda_device_context(),
-                                               epsilon, bsz_seq, dim_embed);
-    auto qkv_compute =
-        AttnMatMul<T>(ctx.cuda_device_context(), transA, transB, bsz_seq,
-                      output_size, input_size, compute_qkv_bias);
-    AttnDropoutParam attn_dropout_param(
-        is_test_1, dropout_implementation_1, attn_dropout_prob,
-        is_upscale_in_train_1, is_fix_seed_1, seed_val_1, seed_1);
-    auto fmha_ref_compute =
-        FMHARef<T>(ctx.cuda_device_context(), batch_size, max_seq_len, num_head,
-                   dim_head, attn_dropout_param);
+    auto layer_norm_compute = AttnLayerNorm<T>(
+        ctx.cuda_device_context(), epsilon, bsz_seq, dim_embed);
+    auto qkv_compute = AttnMatMul<T>(ctx.cuda_device_context(),
+                                     transA,
+                                     transB,
+                                     bsz_seq,
+                                     output_size,
+                                     input_size,
+                                     compute_qkv_bias);
+    AttnDropoutParam attn_dropout_param(is_test_1,
+                                        dropout_implementation_1,
+                                        attn_dropout_prob,
+                                        is_upscale_in_train_1,
+                                        is_fix_seed_1,
+                                        seed_val_1,
+                                        seed_1);
+    auto fmha_ref_compute = FMHARef<T>(ctx.cuda_device_context(),
+                                       batch_size,
+                                       max_seq_len,
+                                       num_head,
+                                       dim_head,
+                                       attn_dropout_param);
     output_size = hidden_size;
     transA = false;
     transB = false;
     bool compute_bias = false;
     // (b*s, num_head * dim_head) * (num_head * dim_head, dim_embed)
-    auto out_linear_compute =
-        AttnMatMul<T>(ctx.cuda_device_context(), transA, transB, bsz_seq,
-                      input_size, output_size, compute_bias);
+    auto out_linear_compute = AttnMatMul<T>(ctx.cuda_device_context(),
+                                            transA,
+                                            transB,
+                                            bsz_seq,
+                                            input_size,
+                                            output_size,
+                                            compute_bias);
     DropoutParam dropout_param2(ctx, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
-        ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param2,
+        ctx.cuda_device_context(),
+        bsz_seq,
+        dim_embed,
+        dropout_param2,
         ln2epsilon);
 
     if (pre_layer_norm) {
       fused_dropout_layernorm_helper.ResidualDropoutBiasGrad(
-          ctx.cuda_device_context(), d_y_data, dropout_mask_out_data,
-          d_out_linear_out_data, d_residual_data, d_out_linear_bias_data);
+          ctx.cuda_device_context(),
+          d_y_data,
+          dropout_mask_out_data,
+          d_out_linear_out_data,
+          d_residual_data,
+          d_out_linear_bias_data);
     } else {
       auto *ln_2_mean_data = ln_2_mean->data<U>();
       auto *ln_2_var_data = ln_2_var->data<U>();
@@ -481,28 +553,62 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
           d_bias_dropout_residual_out->mutable_data<T>(ctx.GetPlace());
 
       fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
-          ctx.cuda_device_context(), d_y_data, bias_dropout_residual_out_data,
-          dropout_mask_out_data, ln_2_scale_data, ln_2_mean_data, ln_2_var_data,
-          d_bias_dropout_residual_out_data, d_ln_2_scale_data, d_ln_2_bias_data,
-          d_out_linear_out_data, d_out_linear_bias_data, d_residual_data);
+          ctx.cuda_device_context(),
+          d_y_data,
+          bias_dropout_residual_out_data,
+          dropout_mask_out_data,
+          ln_2_scale_data,
+          ln_2_mean_data,
+          ln_2_var_data,
+          d_bias_dropout_residual_out_data,
+          d_ln_2_scale_data,
+          d_ln_2_bias_data,
+          d_out_linear_out_data,
+          d_out_linear_bias_data,
+          d_residual_data);
     }
 
-    out_linear_compute.ComputeBackward(fmha_out, out_linear_weight,
-                                       d_out_linear_out, d_fmha_out,
-                                       d_out_linear_weight, nullptr);
+    out_linear_compute.ComputeBackward(fmha_out,
+                                       out_linear_weight,
+                                       d_out_linear_out,
+                                       d_fmha_out,
+                                       d_out_linear_weight,
+                                       nullptr);
 
     if (qkv_bias != nullptr) {
-      fmha_ref_compute.ComputeBackward(
-          *transpose_out_2, src_mask, *softmax_out, *attn_dropout_mask_out,
-          *attn_dropout_out, *qk_out, *src_mask_out, *d_fmha_out, d_qktv_out,
-          d_attn_dropout_out, d_softmax_out, d_src_mask_out, d_qk_out,
-          d_transpose_out_2, nullptr, d_qkv_bias_out);
+      fmha_ref_compute.ComputeBackward(*transpose_out_2,
+                                       src_mask,
+                                       *softmax_out,
+                                       *attn_dropout_mask_out,
+                                       *attn_dropout_out,
+                                       *qk_out,
+                                       *src_mask_out,
+                                       *d_fmha_out,
+                                       d_qktv_out,
+                                       d_attn_dropout_out,
+                                       d_softmax_out,
+                                       d_src_mask_out,
+                                       d_qk_out,
+                                       d_transpose_out_2,
+                                       nullptr,
+                                       d_qkv_bias_out);
     } else {
-      fmha_ref_compute.ComputeBackward(
-          *transpose_out_2, src_mask, *softmax_out, *attn_dropout_mask_out,
-          *attn_dropout_out, *qk_out, *src_mask_out, *d_fmha_out, d_qktv_out,
-          d_attn_dropout_out, d_softmax_out, d_src_mask_out, d_qk_out,
-          d_transpose_out_2, nullptr, d_qkv_out);
+      fmha_ref_compute.ComputeBackward(*transpose_out_2,
+                                       src_mask,
+                                       *softmax_out,
+                                       *attn_dropout_mask_out,
+                                       *attn_dropout_out,
+                                       *qk_out,
+                                       *src_mask_out,
+                                       *d_fmha_out,
+                                       d_qktv_out,
+                                       d_attn_dropout_out,
+                                       d_softmax_out,
+                                       d_src_mask_out,
+                                       d_qk_out,
+                                       d_transpose_out_2,
+                                       nullptr,
+                                       d_qkv_out);
     }
 
     if (pre_layer_norm) {
@@ -524,24 +630,33 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
           (d_ln_bias == nullptr ? nullptr
                                 : d_ln_bias->mutable_data<U>(ctx.GetPlace()));
       if (qkv_bias != nullptr) {
-        qkv_compute.ComputeBackward(ln_out, qkv_weight, d_qkv_bias_out,
-                                    d_ln_out, d_qkv_weight, d_qkv_bias);
+        qkv_compute.ComputeBackward(ln_out,
+                                    qkv_weight,
+                                    d_qkv_bias_out,
+                                    d_ln_out,
+                                    d_qkv_weight,
+                                    d_qkv_bias);
       } else {
-        qkv_compute.ComputeBackward(ln_out, qkv_weight, d_qkv_out, d_ln_out,
-                                    d_qkv_weight, d_qkv_bias);
+        qkv_compute.ComputeBackward(
+            ln_out, qkv_weight, d_qkv_out, d_ln_out, d_qkv_weight, d_qkv_bias);
       }
       // tensor model parallel
       AllReduce<T>(*d_ln_out, ring_id, ctx.cuda_device_context());
-      layer_norm_compute.ComputeBackward(x_data, d_ln_out_data, ln_scale_data,
-                                         ln_mean_data, ln_var_data, d_x_data,
-                                         d_ln_scale_data, d_ln_bias_data);
+      layer_norm_compute.ComputeBackward(x_data,
+                                         d_ln_out_data,
+                                         ln_scale_data,
+                                         ln_mean_data,
+                                         ln_var_data,
+                                         d_x_data,
+                                         d_ln_scale_data,
+                                         d_ln_bias_data);
     } else {
       if (qkv_bias != nullptr) {
-        qkv_compute.ComputeBackward(input_x, qkv_weight, d_qkv_bias_out, d_x,
-                                    d_qkv_weight, d_qkv_bias);
+        qkv_compute.ComputeBackward(
+            input_x, qkv_weight, d_qkv_bias_out, d_x, d_qkv_weight, d_qkv_bias);
       } else {
-        qkv_compute.ComputeBackward(input_x, qkv_weight, d_qkv_out, d_x,
-                                    d_qkv_weight, d_qkv_bias);
+        qkv_compute.ComputeBackward(
+            input_x, qkv_weight, d_qkv_out, d_x, d_qkv_weight, d_qkv_bias);
       }
       // tensor model parallel
       AllReduce<T>(*d_x, ring_id, ctx.cuda_device_context());
@@ -551,8 +666,8 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
       // gradient accumulation
       std::vector<const Tensor *> ins = {&d_residual, d_x};
       std::vector<Tensor *> outs = {d_x};
-      phi::funcs::ElementwiseKernel<T>(ctx.cuda_device_context(), ins, &outs,
-                                       phi::funcs::AddFunctor<T>());
+      phi::funcs::ElementwiseKernel<T>(
+          ctx.cuda_device_context(), ins, &outs, phi::funcs::AddFunctor<T>());
     }
   }
 };
@@ -562,7 +677,8 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(fused_attention, ops::FusedAttentionOpKernel<float>,
+REGISTER_OP_CUDA_KERNEL(fused_attention,
+                        ops::FusedAttentionOpKernel<float>,
                         ops::FusedAttentionOpKernel<double>,
                         ops::FusedAttentionOpKernel<plat::float16>);
 REGISTER_OP_CUDA_KERNEL(fused_attention_grad,

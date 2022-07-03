@@ -17,11 +17,24 @@ namespace paddle {
 namespace operators {
 
 template <typename XPUType, typename FCT>
-int xpu_fc_wrapper(xpu::Context* ctx, const XPUType* x, const XPUType* w,
-                   XPUType* y, int m, int n, int k, bool x_trans, bool w_trans,
-                   const float* x_maxptr, const float* w_maxptr,
-                   float* y_maxptr, int ldx, int ldw, int ldy, float alpha,
-                   float beta, const float* bias,
+int xpu_fc_wrapper(xpu::Context* ctx,
+                   const XPUType* x,
+                   const XPUType* w,
+                   XPUType* y,
+                   int m,
+                   int n,
+                   int k,
+                   bool x_trans,
+                   bool w_trans,
+                   const float* x_maxptr,
+                   const float* w_maxptr,
+                   float* y_maxptr,
+                   int ldx,
+                   int ldw,
+                   int ldy,
+                   float alpha,
+                   float beta,
+                   const float* bias,
                    const xpu::Activation_t& act) {
   int r = 0;
   if (x_trans && std::getenv("XPU_PADDLE_FC_TRANS_A") != nullptr &&
@@ -36,14 +49,46 @@ int xpu_fc_wrapper(xpu::Context* ctx, const XPUType* x, const XPUType* w,
     r = xpu::transpose<XPUType>(ctx, x, l3_addr, shape, axis);
     if (r != XPU_SUCCESS) return r;
 
-    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(
-        ctx, l3_addr, w, y, m, n, k, false, w_trans, x_maxptr, w_maxptr,
-        y_maxptr, k, ldw, ldy, alpha, beta, bias, act);
+    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
+                                                       l3_addr,
+                                                       w,
+                                                       y,
+                                                       m,
+                                                       n,
+                                                       k,
+                                                       false,
+                                                       w_trans,
+                                                       x_maxptr,
+                                                       w_maxptr,
+                                                       y_maxptr,
+                                                       k,
+                                                       ldw,
+                                                       ldy,
+                                                       alpha,
+                                                       beta,
+                                                       bias,
+                                                       act);
     if (r != XPU_SUCCESS) return r;
   } else {
-    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(
-        ctx, x, w, y, m, n, k, x_trans, w_trans, x_maxptr, w_maxptr, y_maxptr,
-        ldx, ldw, ldy, alpha, beta, bias, act);
+    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
+                                                       x,
+                                                       w,
+                                                       y,
+                                                       m,
+                                                       n,
+                                                       k,
+                                                       x_trans,
+                                                       w_trans,
+                                                       x_maxptr,
+                                                       w_maxptr,
+                                                       y_maxptr,
+                                                       ldx,
+                                                       ldw,
+                                                       ldy,
+                                                       alpha,
+                                                       beta,
+                                                       bias,
+                                                       act);
   }
   return r;
 }

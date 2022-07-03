@@ -1,8 +1,8 @@
 set(api_yaml_path
-    "${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/legacy_api.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_api.yaml"
+    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/api.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_api.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_api.yaml"
 )
 set(backward_yaml_path
-    "${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/backward.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/legacy_backward.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_bw_api.yaml"
+    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/backward.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_backward.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_bw_api.yaml"
 )
 set(tmp_forwards_cc_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/forwards/tmp_dygraph_functions.cc"
@@ -30,7 +30,7 @@ set(nodes_h_path
 )
 # StringTensor only needs forward api
 set(fwd_api_yaml_path
-    "${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/strings_api.yaml")
+    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/strings_api.yaml")
 
 message("Final State Eager CodeGen")
 add_custom_target(

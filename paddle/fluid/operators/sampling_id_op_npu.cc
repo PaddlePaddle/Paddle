@@ -15,5 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/sampling_id_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(sampling_id, paddle::operators::SamplingIdKernel<float>,
+REGISTER_OP_NPU_KERNEL(sampling_id,
+                       paddle::operators::SamplingIdKernel<float>,
                        paddle::operators::SamplingIdKernel<double>);

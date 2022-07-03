@@ -30,12 +30,17 @@ import numpy as np
 import paddle
 from paddle.fluid import unique_name
 from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid import core
 
 # Note(Aurelius): Do not forget the dot `.` to distinguish other
 # module such as paddlenlp.
 PADDLE_MODULE_PREFIX = 'paddle.'
 DYGRAPH_MODULE_PREFIX = 'paddle.fluid.dygraph'
 DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.fluid.dygraph.dygraph_to_static'
+GET_ARGS_FUNC_PREFIX = 'get_args'
+SET_ARGS_FUNC_PREFIX = 'set_args'
+ARGS_NAME = '__args'
 
 
 class BaseNodeVisitor(gast.NodeVisitor):
@@ -57,6 +62,51 @@ class BaseNodeVisitor(gast.NodeVisitor):
         ret = visitor(node)
         self.ancestor_nodes.pop()
         return ret
+
+
+def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
+    """
+    This function creates a Tensor on the global block. The created Tensor
+    doesn't check the dtype and the shape of feed data because dygraph input
+    data can be various-length. This API is used in translating dygraph into
+    static graph.
+
+     Note: 
+        The default :code:`stop_gradient` attribute of the Tensor created by
+        this API is true, which means the gradient won't be passed backward
+        through the data Tensor. Set :code:`var.stop_gradient = False` If
+        user would like to pass backward gradient.
+
+    Args:
+       name (str): The name/alias of the Tensor, see :ref:`api_guide_Name`
+           for more details.
+       shape (list|tuple): List|Tuple of integers declaring the shape. You can
+           set "None" at a dimension to indicate the dimension can be of any
+           size. For example, it is useful to set changeable batch size as "None" 
+       dtype (np.dtype|VarType|str, optional): The type of the data. Supported
+           dtype: bool, float16, float32, float64, int8, int16, int32, int64,
+           uint8. Default: float32
+       lod_level (int, optional): The LoD level of the LoDTensor. Usually users
+           don't have to set this value. For more details about when and how to
+           use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0
+
+    Returns:
+        Tensor: The global Tensor that gives access to the data.
+    """
+    helper = LayerHelper('data', **locals())
+    shape = list(shape)
+    for i in six.moves.range(len(shape)):
+        if shape[i] is None:
+            shape[i] = -1
+
+    return helper.create_variable(name=name,
+                                  shape=shape,
+                                  dtype=dtype,
+                                  type=core.VarDesc.VarType.LOD_TENSOR,
+                                  stop_gradient=True,
+                                  lod_level=lod_level,
+                                  is_data=True,
+                                  need_check_feed=False)
 
 
 # imp is deprecated in python3
@@ -85,6 +135,23 @@ FullArgSpec = collections.namedtuple('FullArgSpec', [
     'args', 'varargs', 'varkw', 'defaults', 'kwonlyargs', 'kwonlydefaults',
     'annotations'
 ])
+
+
+class UndefinedVar:
+
+    def __init__(self, name):
+        self.name = name
+
+    def check(self):
+        raise UnboundLocalError(
+            "local variable '{}' should be created before using it.")
+
+
+def saw(x):
+    if isinstance(x, UndefinedVar):
+        return x.check()
+    else:
+        return x
 
 
 def getfullargspec(target):
@@ -395,10 +462,16 @@ def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
         raise TypeError(
             'name_ids must be list or tuple or set, but received %s' %
             type(type(name_ids)))
-    gast_names = [
-        gast.Name(id=name_id, ctx=ctx, annotation=None, type_comment=None)
-        for name_id in name_ids
-    ]
+
+    def create_node_for_name(name):
+        if '.' not in name:
+            return gast.Name(id=name,
+                             ctx=ctx,
+                             annotation=None,
+                             type_comment=None)
+        return gast.parse(name).body[0].value
+
+    gast_names = [create_node_for_name(name_id) for name_id in name_ids]
     if len(gast_names) == 1 and not gen_tuple_if_single:
         name_node = gast_names[0]
     else:
@@ -825,6 +898,16 @@ class NameNodeReplaceTransformer(gast.NodeTransformer):
             return self.replace_node
         return node
 
+    def visit_Nonlocal(self, node):
+        names = node.names
+
+        def replace(s):
+            if s == self.target_name: return self.replace_node.id
+            return s
+
+        node.names = list(map(replace, names))
+        return node
+
 
 class ForLoopTuplePreTransformer(gast.NodeTransformer):
     """
@@ -1161,7 +1244,7 @@ class ForNodeVisitor(object):
         else:
             iter_var_name = ast_to_source_code(self.iter_node).strip()
 
-        convert_len_node_source_str = '{} = _jst.convert_len({})'.format(
+        convert_len_node_source_str = '{} = _jst.Len({})'.format(
             self.iter_var_len_name, iter_var_name)
 
         convert_len_node = gast.parse(convert_len_node_source_str).body[0]
@@ -1510,3 +1593,88 @@ def slice_is_num(slice_node):
         return True
 
     return False
+
+
+def create_get_args_node(names):
+    """
+    Create get_args function as follows:
+
+        def get_args_0():
+            nonlocal x, y
+            return x, y
+    """
+
+    def empty_node():
+        func_def = """
+        def {func_name}():
+            return
+        """.format(func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX))
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
+    assert isinstance(names, (list, tuple))
+    if not names:
+        return empty_node()
+
+    mapped = list(filter(lambda n: '.' not in n, names))
+    nonlocal_names = sorted(
+        mapped,
+        key=mapped.index)  # to keep the order, we can't use set() to unique
+    template = """
+    def {func_name}():
+        nonlocal {nonlocal_vars}
+        return {vars},
+    """
+    func_def = template.format(
+        func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
+        nonlocal_vars=','.join(nonlocal_names),
+        vars=",".join(names))
+    return gast.parse(textwrap.dedent(func_def)).body[0]
+
+
+def create_set_args_node(names):
+    """
+    Create set_args function as follows:
+
+        def set_args_0(__args):
+            nonlocal x, y
+            x, y = __args
+    """
+
+    def empty_node():
+        func_def = """
+        def {func_name}({args}):
+            pass
+        """.format(func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
+                   args=ARGS_NAME)
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
+    assert isinstance(names, (list, tuple))
+    if not names:
+        return empty_node()
+
+    mapped = list(filter(lambda n: '.' not in n, names))
+    nonlocal_names = sorted(
+        mapped,
+        key=mapped.index)  # to keep the order, we can't use set() to unique
+    template = """
+    def {func_name}({args}):
+        nonlocal {nonlocal_vars}
+        {vars}, = {args}
+    """
+    func_def = template.format(
+        func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
+        args=ARGS_NAME,
+        nonlocal_vars=','.join(nonlocal_names),
+        vars=",".join(names))
+    return gast.parse(textwrap.dedent(func_def)).body[0]
+
+
+def create_nonlocal_stmt_node(names):
+    assert isinstance(names, (list, tuple))
+
+    mapped = list(filter(lambda n: '.' not in n, names))
+    names = sorted(
+        mapped,
+        key=mapped.index)  # to keep the order, we can't use set() to unique
+    func_code = "nonlocal {}".format(','.join(names))
+    return gast.parse(func_code).body[0]

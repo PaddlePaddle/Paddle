@@ -31,14 +31,15 @@ class MergedAdamOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "Beta1Pow" || var_name == "Beta2Pow" ||
         var_name == "SkipUpdate") {
       return expected_kernel_type;
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };
@@ -127,12 +128,13 @@ $$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(merged_adam, ops::MergedAdamOp,
+REGISTER_OP_WITHOUT_GRADIENT(merged_adam,
+                             ops::MergedAdamOp,
                              ops::MergedAdamOpMaker);
-REGISTER_OP_WITHOUT_GRADIENT(merged_adamw, ops::MergedAdamOp,
+REGISTER_OP_WITHOUT_GRADIENT(merged_adamw,
+                             ops::MergedAdamOp,
                              ops::MergedAdamOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    merged_adam,
-    ops::MergedAdamOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MergedAdamOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(merged_adam,
+                       ops::MergedAdamOpKernel<phi::CPUContext, float>,
+                       ops::MergedAdamOpKernel<phi::CPUContext, double>);

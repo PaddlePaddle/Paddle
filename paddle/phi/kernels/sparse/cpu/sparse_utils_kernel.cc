@@ -198,7 +198,7 @@ void SparseCooToCsrCPUKernel(const CPUContext& dev_ctx,
   const auto& coo_values = x.non_zero_elements();
   const IntT* batchs_ptr = coo_indices.data<IntT>();
   const IntT* coo_rows_data =
-      batchs == 1 ? batchs_ptr : batchs_ptr + non_zero_num;
+      x_dims.size() == 2 ? batchs_ptr : batchs_ptr + non_zero_num;
   const IntT* coo_cols_data = coo_rows_data + non_zero_num;
   const T* coo_values_data = coo_values.data<T>();
 

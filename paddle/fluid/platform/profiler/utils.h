@@ -32,7 +32,8 @@ std::string string_format(const std::string& format, Args... args) {
   int size_s = std::snprintf(nullptr, 0, format.c_str(), args...) +
                1;  // Extra space for '\0'
   PADDLE_ENFORCE_GE(
-      size_s, 0,
+      size_s,
+      0,
       platform::errors::Fatal("Error during profiler data formatting."));
   auto size = static_cast<size_t>(size_s);
   auto buf = std::make_unique<char[]>(size);
@@ -124,10 +125,14 @@ static float nsToMsFloat(uint64_t end_ns, uint64_t start_ns = 0) {
 }
 
 #ifdef PADDLE_WITH_CUPTI
-float CalculateEstOccupancy(uint32_t deviceId, uint16_t registersPerThread,
+float CalculateEstOccupancy(uint32_t deviceId,
+                            uint16_t registersPerThread,
                             int32_t staticSharedMemory,
-                            int32_t dynamicSharedMemory, int32_t blockX,
-                            int32_t blockY, int32_t blockZ, float blocksPerSm);
+                            int32_t dynamicSharedMemory,
+                            int32_t blockX,
+                            int32_t blockY,
+                            int32_t blockZ,
+                            float blocksPerSm);
 #endif
 
 }  // namespace platform
