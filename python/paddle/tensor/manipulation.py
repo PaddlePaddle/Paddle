@@ -3934,7 +3934,8 @@ def repeat_interleave(x, repeats, axis=None, name=None):
     """
 
     Returns a new tensor which repeats the ``x`` tensor along dimension ``axis`` using
-    the entries in ``repeats`` which is a int or a Tensor.
+    the entries in ``repeats`` which is a int or a Tensor. When repeats is 1-D Tensor, the repeats length must match the specified axis dimension, and the value of the corresponding position of repeats indicates the number of times the x corresponding position element needs to be copied. When repeats is int, x copies repeats times along all elements on the specified axis axis.
+
 
     Args:
         x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float32, float64, int32, int64.
