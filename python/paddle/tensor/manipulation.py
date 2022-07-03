@@ -2399,7 +2399,7 @@ def gather(x, index, axis=None, name=None):
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        output (Tensor): The output is a tensor with the same rank as ``x``.
+        Tensor: The output is a tensor with the same rank as ``x``.
     
     Examples:
 
@@ -2675,7 +2675,7 @@ def scatter_nd_add(x, index, updates, name=None):
         name (str|None): The output tensor name. If set None, the layer will be named automatically.
 
     Returns:
-        output (Tensor): The output is a tensor with the same shape and dtype as x.
+        Tensor: The output is a tensor with the same shape and dtype as x.
 
     Examples:
 
@@ -2739,7 +2739,7 @@ def scatter_nd(index, updates, shape, name=None):
         name (str|None): The output Tensor name. If set None, the layer will be named automatically.
 
     Returns:
-        output (Tensor): The output is a tensor with the same type as :attr:`updates` .
+        Tensor: The output is a tensor with the same type as :attr:`updates` .
 
     Examples:
 
@@ -3399,7 +3399,7 @@ def gather_nd(x, index, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        output (Tensor): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
+        Tensor: A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
     
     Examples:
 
@@ -3658,7 +3658,7 @@ def tensordot(x, y, axes=2, name=None):
                              For more information, please refer to :ref:`api_guide_Name` .
 
     Return: 
-        Output (Tensor): The contraction result with the same data type as ``x`` and ``y``. 
+        Tensor: The contraction result with the same data type as ``x`` and ``y``. 
         In general, :math:`output.ndim = x.ndim + y.ndim - 2 \times n_{axes}`, where :math:`n_{axes}` denotes the number of axes to be contracted.
     
     NOTES:
