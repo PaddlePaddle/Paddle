@@ -137,9 +137,11 @@ __global__ void UniqueKernel(const IntT* in_indexs,
                              int* out_index_table,
                              int* out_indexs,
                              int* nnz) {
-  __shared__ int count;
+  extern __shared__ int cache[];
+  __shared__ int count, start;
   if (threadIdx.x == 0) {
     count = 0;
+    start = 0;
   }
   __syncthreads();
 
@@ -157,7 +159,11 @@ __global__ void UniqueKernel(const IntT* in_indexs,
   __syncthreads();
 
   if (threadIdx.x == 0) {
-    atomicAdd(nnz, count);
+    start = atomicAdd(nnz, count);
+  }
+  __syncthreads();
+  for (int i = threadIdx.x; i < count; i += blockDim.x) {
+    out_indexs[start + i] = cache[i];
   }
 }
 
@@ -317,14 +323,14 @@ __global__ void GetOutIndexTable(const IntT* indices,
 }
 
 template <typename IntT>
-__global__ void GetOutIndexTable(const int* indexs,
+__global__ void GetOutIndexTable(int* indexs,
                                  const int non_zero_num,
                                  const Dims4D out_dims,
                                  int* out_index_table,
                                  IntT* out_indices) {
   CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
     IntT index = static_cast<IntT>(indexs[i]);
-    index = index == -1 ? 0 : index;
+    // index = index == -1 ? 0 : index;
     out_index_table[index] = i;
     IntT batch, x, y, z;
     phi::funcs::sparse::IndexToPoint<Dims4D>(
@@ -334,6 +340,7 @@ __global__ void GetOutIndexTable(const int* indexs,
     out_indices[i + non_zero_num] = z;
     out_indices[i + non_zero_num * 2] = y;
     out_indices[i + non_zero_num * 3] = x;
+    indexs[i] = 0;
   }
 }
 
@@ -743,9 +750,10 @@ int ProductRuleBook(const Context& dev_ctx,
     cudaMemsetAsync(unique_key_ptr, 0, sizeof(int), dev_ctx.stream());
 
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+    size_t cache_size = sizeof(int) * config.thread_per_block.x;
     UniqueKernel<IntT><<<config.block_per_grid,
                          config.thread_per_block,
-                         0,
+                         cache_size,
                          dev_ctx.stream()>>>(rulebook_ptr + rulebook_len,
                                              rulebook_len,
                                              out_index_table_ptr,
@@ -758,6 +766,14 @@ int ProductRuleBook(const Context& dev_ctx,
                     cudaMemcpyDeviceToHost,
                     dev_ctx.stream());
     dev_ctx.Wait();
+
+    // thrust::pair<int*, int*> min_max =
+    // thrust::minmax_element(thrust::cuda::par.on(dev_ctx.stream()),
+    // out_index_ptr, out_index_ptr + out_nnz); int start = 0, end = 0;
+    // cudaMemcpyAsync(&start, min_max.first, sizeof(int),
+    // cudaMemcpyDeviceToHost, dev_ctx.stream()); cudaMemcpyAsync(&end,
+    // min_max.second, sizeof(int), cudaMemcpyDeviceToHost, dev_ctx.stream());
+    // dev_ctx.Wait();
 
     const int64_t sparse_dim = 4;
     DenseTensorMeta indices_meta(
@@ -773,11 +789,12 @@ int ProductRuleBook(const Context& dev_ctx,
     // thrust::sort(thrust::cuda::par.on(dev_ctx.stream()),
     //              out_index_ptr,
     //              out_index_ptr + out_nnz);
-    thrust::remove_copy(thrust::cuda::par.on(dev_ctx.stream()),
-                        out_index_table_ptr,
-                        out_index_table_ptr + table_size,
-                        out_index_ptr,
-                        0);
+    // printf("start = %d, end=%d, table_size=%d, nnz=%d\n", start, end,
+    // table_size); thrust::remove_copy(thrust::cuda::par.on(dev_ctx.stream()),
+    //                    out_index_table_ptr + start,
+    //                    out_index_table_ptr + end,
+    //                    out_index_ptr,
+    //                    0);
 
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
     GetOutIndexTable<IntT><<<config.block_per_grid,
@@ -789,8 +806,8 @@ int ProductRuleBook(const Context& dev_ctx,
                                                  out_index_table_ptr,
                                                  out_indices_ptr);
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
-    cudaMemsetAsync(
-        out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
+    // cudaMemsetAsync(
+    //     out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
     unique_value->ResizeAndAllocate({static_cast<int>(out_nnz * kernel_size)});
     int* unique_value_ptr = unique_value->data<int>();
 
